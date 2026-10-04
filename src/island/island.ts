@@ -156,12 +156,10 @@ export class Island {
     } else {
       document.addEventListener("mousemove", (e) => this.pointer(e.clientX, e.clientY));
     }
-    // Île cachée : la fenêtre n'est qu'une bande de 6 px, la souris qui y entre la réveille.
-    if (IS_TAURI) {
-      document.addEventListener("mouseenter", () => this.fsm.state === "hidden" && this.fsm.pointerEnter());
-      document.addEventListener("mousemove", () => this.fsm.state === "hidden" && this.fsm.pointerEnter());
-      document.addEventListener("mouseleave", () => this.fsm.state === "hidden" && this.fsm.pointerLeave());
-    }
+    // Île cachée : la fenêtre n'est qu'une bande de 6 px. Le Rust surveille la
+    // souris et prévient quand elle touche cette bande.
+    void onTauriEvent("wake-enter", () => this.fsm.state === "hidden" && this.fsm.pointerEnter());
+    void onTauriEvent("wake-leave", () => this.fsm.state === "hidden" && this.fsm.pointerLeave());
 
     this.shell.addEventListener("click", (e) => {
       if ((e.target as HTMLElement).closest("button, input, select, textarea, a")) return;

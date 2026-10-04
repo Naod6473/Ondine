@@ -72,12 +72,12 @@ Elle a deux tailles (en px logiques, multipliées par l'échelle de l'écran) :
 
 | Taille   | Quand                     | Rôle |
 |----------|---------------------------|------|
-| 240 × 6  | île `hidden`              | bande invisible tout en haut : le survol ou un fichier glissé réveille l'île |
+| 240 × 6  | île `hidden`              | bande invisible tout en haut : le survol (détecté par le Rust, 20 fois par seconde) ou un fichier glissé réveille l'île |
 | 720 × 320| tous les autres états     | assez grande pour la plus grande vue ; seule la forme de l'île prend la souris |
 
 **Clics traversants.** Tauri 2 ne sait rendre « transparente aux clics » que la
-fenêtre entière. Le Rust lit donc la souris ~60 fois par seconde (seulement quand
-l'île est visible) et bascule ce réglage quand la souris entre ou sort de la forme
+fenêtre entière. Le Rust lit donc la souris ~60 fois par seconde quand l'île est
+visible, et bascule ce réglage quand la souris entre ou sort de la forme
 de l'île, que le front lui envoie à chaque changement (`island_set_rect`). Pendant
 qu'un bouton de souris est enfoncé au-dessus du panneau, tout le panneau prend la
 souris : sinon Windows ne verrait pas l'île comme cible d'un glisser-déposer.

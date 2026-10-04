@@ -15,7 +15,7 @@
 // Technique reprise de Coucou (github.com/Louis-CFM/coucou, MIT).
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use serde::Serialize;
@@ -61,25 +61,28 @@ pub struct IslandRect {
     pub h: f64,
 }
 
-/// Réveille ou endort le thread qui lit la souris : quand l'île est cachée, il
-/// dort sur une Condvar et ne coûte rien.
+/// État partagé entre les commandes et le thread qui lit la souris.
 pub struct PollGate {
-    active: Mutex<bool>,
-    cv: Condvar,
+    /// Vrai quand l'île est visible (fenêtre « panneau »).
+    active: AtomicBool,
     pub collapsed: AtomicBool,
     rect: Mutex<IslandRect>,
     /// Dernier état envoyé à Windows, pour ne l'appeler que s'il change.
     ignoring: AtomicBool,
+    /// Sérialise les changements de « clics traversants » : sans lui, le thread de
+    /// lecture pouvait rendre la bande de réveil transparente aux clics juste après
+    /// qu'on l'a réduite, et l'île ne se réveillait plus.
+    flag_lock: Mutex<()>,
 }
 
 impl PollGate {
     pub fn new() -> Self {
         Self {
-            active: Mutex::new(false),
-            cv: Condvar::new(),
+            active: AtomicBool::new(false),
             collapsed: AtomicBool::new(true),
             rect: Mutex::new(IslandRect::default()),
             ignoring: AtomicBool::new(false),
+            flag_lock: Mutex::new(()),
         }
     }
 
@@ -88,19 +91,11 @@ impl PollGate {
     }
 
     pub fn set_active(&self, on: bool) {
-        *self.active.lock().unwrap() = on;
-        self.cv.notify_all();
-    }
-
-    fn wait_until_active(&self) {
-        let mut guard = self.active.lock().unwrap();
-        while !*guard {
-            guard = self.cv.wait(guard).unwrap();
-        }
+        self.active.store(on, Ordering::Relaxed);
     }
 
     fn is_active(&self) -> bool {
-        *self.active.lock().unwrap()
+        self.active.load(Ordering::Relaxed)
     }
 }
 
@@ -171,6 +166,7 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
 /// Après un changement de taille : la fenêtre reprend la souris, et le prochain
 /// tour de lecture décide à nouveau d'après la position de la souris.
 pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
+    let _guard = gate.flag_lock.lock().unwrap();
     if let Some(win) = window(app) {
         let _ = win.set_ignore_cursor_events(false);
     }
@@ -190,72 +186,101 @@ fn screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
     Some((p.x, p.y, size.width, size.height, m.scale_factor().to_bits()))
 }
 
-/// Lit la souris ~60 fois par seconde tant que l'île est visible :
-///   - bascule les clics traversants selon qu'elle est sur l'île ou non ;
-///   - envoie sa position au front (événement "cursor"), pour le survol et le
-///     regard de la mascotte ;
-///   - surveille les écrans (≈ 2 fois par seconde) et prévient s'ils changent.
+/// Lit la souris en permanence, dans un thread à part :
+///   - île cachée (20 fois par seconde) : regarde seulement si la souris touche la
+///     bande de réveil, et prévient le front ("wake-enter" / "wake-leave"). On ne
+///     compte PAS sur les événements souris de la page : une fenêtre entièrement
+///     transparente et qui ne prend pas le focus ne les reçoit pas toujours ;
+///   - île visible (~60 fois par seconde) : bascule les clics traversants selon que
+///     la souris est sur l'île ou non, et envoie sa position au front ("cursor"),
+///     pour le survol et le regard de la mascotte ;
+///   - dans les deux cas, surveille les écrans (≈ 2 fois par seconde).
 pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
     std::thread::spawn(move || {
         let mut was_down = false;
         let mut last_screen = None;
+        let mut last = (f64::MIN, f64::MIN);
+        let mut in_wake_zone = false;
+        let mut ticks: u32 = 0;
         loop {
-            gate.wait_until_active();
-            let mut last = (f64::MIN, f64::MIN);
-            let mut ticks: u32 = 0;
-            while gate.is_active() {
-                std::thread::sleep(Duration::from_millis(16));
+            let active = gate.is_active();
+            std::thread::sleep(Duration::from_millis(if active { 16 } else { 50 }));
 
-                ticks = ticks.wrapping_add(1);
-                if ticks % 30 == 0 {
-                    let now = screen_key(&app);
-                    if now.is_some() && now != last_screen {
-                        let first = last_screen.is_none();
-                        last_screen = now;
-                        if !first {
-                            log::info("disposition des écrans modifiée : l'île se replace");
-                            let _ = app.emit_to(WINDOW_LABEL, "screen-changed", ());
-                        }
+            ticks = ticks.wrapping_add(1);
+            if ticks % (if active { 30 } else { 10 }) == 0 {
+                let now = screen_key(&app);
+                if now.is_some() && now != last_screen {
+                    let first = last_screen.is_none();
+                    last_screen = now;
+                    if !first {
+                        log::info("disposition des écrans modifiée : l'île se replace");
+                        let _ = app.emit_to(WINDOW_LABEL, "screen-changed", ());
                     }
                 }
+            }
 
-                let Some(win) = window(&app) else { continue };
-                let Ok(origin) = win.outer_position() else { continue };
-                let scale = win.scale_factor().unwrap_or(1.0);
-                let Some((cx, cy)) = platform::cursor_physical() else { continue };
-                let x = (cx - origin.x as f64) / scale;
-                let y = (cy - origin.y as f64) / scale;
-                if (x - last.0).abs() < 1.0 && (y - last.1).abs() < 1.0 {
-                    continue;
+            let Some(win) = window(&app) else { continue };
+            let Ok(origin) = win.outer_position() else { continue };
+            let Some((cx, cy)) = platform::cursor_physical() else { continue };
+
+            // Un bouton enfoncé peut être le début d'un glisser de fichier : on
+            // s'assure que l'île est bien une cible de dépôt avant qu'il n'arrive.
+            let down = platform::left_button_down();
+            if down && !was_down {
+                let handle = app.clone();
+                let _ = app.run_on_main_thread(move || platform::unblock_webview_drops(&handle));
+            }
+            was_down = down;
+
+            if !active {
+                // ── Île cachée : la bande de réveil ──
+                last = (f64::MIN, f64::MIN);
+                let Ok(size) = win.outer_size() else { continue };
+                // Au moins 2 px de haut, et le bord tout en haut compte toujours.
+                let inside = cx >= origin.x as f64
+                    && cx < (origin.x + size.width as i32) as f64
+                    && cy < (origin.y + (size.height as i32).max(2)) as f64
+                    && cy >= (origin.y - 1) as f64;
+                if inside != in_wake_zone {
+                    in_wake_zone = inside;
+                    let event = if inside { "wake-enter" } else { "wake-leave" };
+                    let _ = app.emit_to(WINDOW_LABEL, event, ());
                 }
-                last = (x, y);
+                continue;
+            }
+            in_wake_zone = false;
 
-                let r = *gate.rect.lock().unwrap();
-                let on_island = r.w > 0.0
-                    && x >= r.x - HIT_MARGIN
-                    && x <= r.x + r.w + HIT_MARGIN
-                    && y >= r.y - HIT_MARGIN
-                    && y <= r.y + r.h + HIT_MARGIN;
+            // ── Île visible ──
+            let scale = win.scale_factor().unwrap_or(1.0);
+            let x = (cx - origin.x as f64) / scale;
+            let y = (cy - origin.y as f64) / scale;
+            if (x - last.0).abs() < 1.0 && (y - last.1).abs() < 1.0 {
+                continue;
+            }
+            last = (x, y);
 
-                // Glisser un fichier : une fenêtre « transparente aux clics » est
-                // invisible pour le glisser-déposer de Windows. Donc tant qu'un bouton
-                // est enfoncé au-dessus du panneau, tout le panneau prend la souris.
-                let down = platform::left_button_down();
-                if down && !was_down {
-                    let handle = app.clone();
-                    let _ = app.run_on_main_thread(move || platform::unblock_webview_drops(&handle));
-                }
-                was_down = down;
-                let over_panel = x >= 0.0 && x <= PANEL_W && y >= 0.0 && y <= PANEL_H;
+            let r = *gate.rect.lock().unwrap();
+            let on_island = r.w > 0.0
+                && x >= r.x - HIT_MARGIN
+                && x <= r.x + r.w + HIT_MARGIN
+                && y >= r.y - HIT_MARGIN
+                && y <= r.y + r.h + HIT_MARGIN;
 
-                let accept = on_island || (down && over_panel);
-                if gate.ignoring.load(Ordering::Relaxed) == accept {
+            // Glisser un fichier : une fenêtre « transparente aux clics » est
+            // invisible pour le glisser-déposer de Windows. Donc tant qu'un bouton
+            // est enfoncé au-dessus du panneau, tout le panneau prend la souris.
+            let over_panel = x >= 0.0 && x <= PANEL_W && y >= 0.0 && y <= PANEL_H;
+            let accept = on_island || (down && over_panel);
+            {
+                let _guard = gate.flag_lock.lock().unwrap();
+                // L'île a pu être réduite entre-temps : la bande doit toujours prendre la souris.
+                if !gate.collapsed.load(Ordering::Relaxed) && gate.ignoring.load(Ordering::Relaxed) == accept {
                     gate.ignoring.store(!accept, Ordering::Relaxed);
                     let _ = win.set_ignore_cursor_events(!accept);
                 }
-
-                let _ = win.emit("cursor", CursorPayload { x, y });
             }
+
+            let _ = win.emit("cursor", CursorPayload { x, y });
         }
     });
 }

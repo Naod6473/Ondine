@@ -159,6 +159,8 @@ export class IslandStateMachine {
     if (to === this.state) return;
     const from = this.state;
     this.state = to;
+    // Une île cachée n'est plus survolée : le prochain survol doit la réveiller.
+    if (to === "hidden") this.hovering = false;
     this.cancelTimer();
     this.onTransition(from, to);
   }
