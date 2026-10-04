@@ -46,6 +46,7 @@ island/
 │  │  └─ renderers/            canvas-placeholder.ts, spritesheet.ts, overlays.ts
 │  ├─ modules/
 │  │  ├─ index.ts             LISTE DES MODULES (front)
+│  │  ├─ shelf/               Étagère et dépôt de fichiers (phase 2)
 │  │  └─ hello/               module d'exemple : manifest.json + index.ts
 │  ├─ settings/               fenêtre de réglages (formulaires générés)
 │  └─ styles/                 island.css, settings.css
@@ -57,8 +58,8 @@ island/
       ├─ tray.rs              icône de la zone de notification
       ├─ island/mod.rs        placement multi-écrans/DPI, clics traversants, souris
       ├─ platform/            tout le Win32 (windows.rs) ; other.rs = bouchons
-      ├─ services/            réglages, journal, identifiants, bus, annulation, confidentialité
-      └─ modules/             registre des modules Rust + hello.rs
+      ├─ services/            réglages, journal, identifiants, bus, annulation, confidentialité, fichiers
+      └─ modules/             registre des modules Rust + shelf.rs, hello.rs
 ```
 
 ## L'île
@@ -147,7 +148,7 @@ Lu à la fois par le front (import) et par le Rust (`include_str!`).
   "permissions": [],                  // files, clipboard, network, claude-api, credentials
   "settings": { "version": 1, "fields": [
     { "key": "name", "type": "string", "label": "Ton prénom", "default": "Simon" }
-  ]},                                 // types : string, number, boolean, select
+  ]},                                 // types : string, number, boolean, select, folders
   "views": ["compact", "expanded", "drop"],
   "commands": ["greet"],              // commandes Rust exposées
   "events": { "emits": ["hello.greeted"], "listens": ["hello.ping"] }
@@ -170,7 +171,9 @@ Ce qui est vérifié, et où :
 
 - **Front** (`src/modules/<id>/index.ts`) exporte un `IslandModule` :
   `setup(api)` et des `views` (`compact`, `expanded` : des fonctions qui montent
-  la vue dans un élément ; `drop` : une liste de cibles de dépôt). Tout passe par
+  la vue dans un élément ; `drop` : une liste de cibles de dépôt, ou une
+  fonction `(api) => cibles` appelée à chaque glisser quand les cibles dépendent
+  des réglages, comme les favoris de l'Étagère). Tout passe par
   `api` : `emit`, `on`, `invoke`, `settings`, `notify`, `handler`, `log`.
 - **Rust** (facultatif, `src-tauri/src/modules/<id>.rs`) implémente
   `RustModule` : `invoke(ctx, commande, args)` et `on_event(ctx, message)`.
@@ -217,6 +220,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `mascot.state` | mascotte | |
 | `undo.offered` / `undo.done` / `undo.expired` | service d'annulation | bouton « Annuler » |
 | `module.crashed` | Rust | l'île prévient |
+| `shelf.changed` `{items}` | Étagère (Rust) | la vue de l'étagère se redessine |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -235,7 +239,12 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
   journaliser de clé, de mot de passe, de texte copié ni de contenu de fichier.
 - **Annulation** (`undo.rs`) : un module fait son action puis enregistre comment
   la défaire ; l'île affiche « Annuler » quelques secondes. **Jamais de suppression
-  définitive** : supprimer = Corbeille (service dédié avec la phase 2).
+  définitive** : supprimer = Corbeille.
+- **Fichiers** (`files.rs`) : Corbeille (envoyer, ressortir), copier, déplacer,
+  compresser en .zip, copier du texte, montrer dans l'Explorateur. Jamais
+  d'écrasement : si le nom est pris, on crée « nom (2).ext ». Un déplacement entre
+  deux disques = copie puis original à la Corbeille. Les liens symboliques ne sont
+  pas suivis. Les chemins doivent avoir été validés avant (`ctx.check_path`).
 - **Confidentialité** (`privacy.rs`) : aucune télémétrie. `check_path` refuse les
   chemins relatifs, inexistants ou situés dans un dossier exclu (après résolution
   des `..` et des liens). Un module qui envoie du contenu à l'API Claude déclare
@@ -286,3 +295,26 @@ bus ──▶ MascotController (mascot-state.ts) ──▶ MascotRenderer (rende
   fichiers, relance l'appli, choisis-la dans Réglages → Mascotte et teste chaque
   animation. Un manifeste invalide est signalé, et l'île garde la provisoire.
   Tant que son moteur n'est pas branché, la provisoire la remplace.
+
+## Module Étagère (phase 2)
+
+Front : `src/modules/shelf/index.ts`. Rust : `src-tauri/src/modules/shelf.rs`.
+
+- **Cibles de dépôt** : Étagère, Copier vers…, Déplacer vers… (boîte « Choisir
+  un dossier »), un favori par dossier des réglages (copie ou déplacement selon
+  le réglage, 6 au plus dans l'île), Copier le chemin, Compresser, Corbeille.
+- **L'étagère** : une liste de chemins gardée en mémoire par le Rust, vidée à
+  l'arrêt de l'île. Rien n'est copié. Les éléments déplacés suivent leur nouveau
+  chemin ; ceux envoyés à la Corbeille quittent l'étagère (et y reviennent si on
+  annule).
+- **Annuler** (8 s) : copie → les copies vont à la Corbeille ; déplacement →
+  chaque élément revient à sa place (refusé si quelque chose a pris sa place) ;
+  Corbeille → les éléments ressortent ; compression → l'archive va à la Corbeille ;
+  vider l'étagère → la liste revient.
+- Chaque chemin reçu est validé par `ctx.check_path` (dossiers exclus compris),
+  la destination aussi. Un seul chemin refusé = rien n'est fait.
+- Une erreur normale (dossier exclu, fichier disparu) s'affiche dans l'île et ne
+  compte pas comme un plantage du module.
+- La boîte « Choisir un dossier » est la commande `dialog_pick_folder`
+  (plugin officiel `tauri-plugin-dialog`), appelée depuis le Rust uniquement :
+  les pages n'ont pas accès au plugin directement.

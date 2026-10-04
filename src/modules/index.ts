@@ -4,5 +4,6 @@
 
 import type { IslandModule } from "../core/module-types";
 import { hello } from "./hello";
+import { shelf } from "./shelf";
 
-export const ALL_MODULES: IslandModule[] = [hello];
+export const ALL_MODULES: IslandModule[] = [shelf, hello];

@@ -79,7 +79,15 @@ export class ModuleRegistry {
   dropTargets(): { target: DropTarget; moduleId: string }[] {
     const out: { target: DropTarget; moduleId: string }[] = [];
     for (const r of this.running.values()) {
-      for (const target of r.module.views?.drop ?? []) out.push({ target, moduleId: r.module.manifest.id });
+      const id = r.module.manifest.id;
+      const drop = r.module.views?.drop;
+      let targets: DropTarget[] = [];
+      try {
+        targets = typeof drop === "function" ? drop(r.api) : (drop ?? []);
+      } catch (err) {
+        this.fail(id, err, "cibles de dépôt");
+      }
+      for (const target of targets) out.push({ target, moduleId: id });
     }
     return out;
   }

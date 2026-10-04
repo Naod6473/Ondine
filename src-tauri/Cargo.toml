@@ -20,6 +20,14 @@ tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# Boîte de dialogue « choisir un dossier » (plugin officiel de Tauri).
+tauri-plugin-dialog = "2"
+# Corbeille de Windows : envoyer et restaurer (jamais de suppression définitive).
+trash = "5"
+# Presse-papiers (texte) depuis le Rust.
+arboard = { version = "3", default-features = false }
+# Création d'archives .zip (compression « deflate » seulement).
+zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [target.'cfg(windows)'.dependencies]
 # Gestionnaire d'identifiants Windows. Version 3 volontairement : la 4 a changé d'API.

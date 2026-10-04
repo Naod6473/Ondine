@@ -56,6 +56,8 @@ export const Bridge = {
   settingsExport: () => callOrThrow<string>("settings_export"),
   settingsImport: (text: string) => callOrThrow<void>("settings_import", { text }),
   privacyCheckFolder: (path: string) => callOrThrow<string>("privacy_check_folder", { path }),
+  /** Boîte « Choisir un dossier » de Windows. null si on annule (ou hors de l'appli). */
+  pickFolder: (title?: string) => call<string | null>("dialog_pick_folder", { title: title ?? null }),
   openSettingsWindow: () => call<void>("settings_open_window"),
 
   // Fenêtre de l'île

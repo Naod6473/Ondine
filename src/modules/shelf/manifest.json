@@ -1,0 +1,38 @@
+{
+  "id": "shelf",
+  "name": "Étagère",
+  "icon": "🧺",
+  "description": "Glisse des fichiers sur l'île pour les poser sur l'étagère, les envoyer à la Corbeille, les copier ou les déplacer (dossiers favoris compris), copier leur chemin ou les compresser. Toute action sur les fichiers est annulable quelques secondes.",
+  "version": "0.1.0",
+  "permissions": ["files", "clipboard"],
+  "settings": {
+    "version": 1,
+    "fields": [
+      {
+        "key": "favorites",
+        "type": "folders",
+        "label": "Dossiers favoris",
+        "help": "Chacun devient une cible quand tu glisses des fichiers sur l'île.",
+        "default": []
+      },
+      {
+        "key": "favoriteAction",
+        "type": "select",
+        "label": "Lâcher sur un favori…",
+        "default": "copy",
+        "options": [
+          { "value": "copy", "label": "copie les fichiers" },
+          { "value": "move", "label": "déplace les fichiers" }
+        ]
+      },
+      { "key": "showTrash", "type": "boolean", "label": "Cible « Corbeille »", "default": true },
+      { "key": "showCompress", "type": "boolean", "label": "Cible « Compresser »", "default": true }
+    ]
+  },
+  "views": ["expanded", "drop"],
+  "commands": ["list", "add", "remove", "clear", "copy_paths", "trash", "copy_to", "move_to", "compress", "reveal"],
+  "events": {
+    "emits": ["shelf.changed", "task.started", "task.finished", "task.failed"],
+    "listens": ["shelf.changed"]
+  }
+}

@@ -108,6 +108,22 @@ fn privacy_check_folder(path: String) -> Result<String, String> {
     privacy::check_folder(&path)
 }
 
+/// Boîte « Choisir un dossier » de Windows. Renvoie None si on annule.
+/// `async` : la boîte bloque jusqu'au choix, il ne faut pas bloquer le thread
+/// principal (doc du plugin dialog). Elle est rattachée à la fenêtre qui la
+/// demande, pour s'afficher devant elle (l'île est « toujours au premier plan »).
+#[tauri::command]
+async fn dialog_pick_folder(window: Window, title: Option<String>) -> Option<String> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = window
+        .dialog()
+        .file()
+        .set_parent(&window)
+        .set_title(title.unwrap_or_else(|| "Choisir un dossier".into()))
+        .blocking_pick_folder()?;
+    picked.into_path().ok().map(|p| p.to_string_lossy().to_string())
+}
+
 // ── Fenêtre de l'île ─────────────────────────────────────────────────────────
 
 /// Île cachée → la fenêtre devient la bande de réveil et la lecture de la souris
@@ -293,6 +309,8 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             let _ = app.emit_to(island::WINDOW_LABEL, "tray", "open".to_string());
         }))
+        // Boîte « Choisir un dossier » (utilisée seulement depuis le Rust, voir dialog_pick_folder).
+        .plugin(tauri_plugin_dialog::init())
         .manage(Shared { settings: Mutex::new(loaded.clone()), gate: gate.clone() })
         .manage(Registry::new())
         .manage(UndoService::default())
@@ -302,6 +320,7 @@ pub fn run() {
             settings_export,
             settings_import,
             privacy_check_folder,
+            dialog_pick_folder,
             island_set_collapsed,
             island_set_rect,
             island_set_focus,

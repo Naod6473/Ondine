@@ -13,6 +13,7 @@
 // Ajouter un module Rust : voir ARCHITECTURE.md, « Ajouter un module ».
 
 mod hello;
+mod shelf;
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -163,7 +164,7 @@ pub struct ModuleStatus {
 impl Registry {
     /// La liste des modules Rust. AJOUTER UN MODULE = ajouter une ligne ici.
     pub fn new() -> Self {
-        let modules: Vec<Box<dyn RustModule>> = vec![Box::new(hello::Hello::default())];
+        let modules: Vec<Box<dyn RustModule>> = vec![Box::new(shelf::Shelf::default()), Box::new(hello::Hello::default())];
 
         let mut entries = Vec::new();
         for module in modules {
@@ -268,6 +269,12 @@ mod tests {
     fn hello_manifest_is_valid() {
         let m = check_manifest(hello::Hello::default().manifest_json()).unwrap();
         assert_eq!(m.id, "hello");
+    }
+
+    #[test]
+    fn shelf_manifest_is_valid() {
+        let m = check_manifest(shelf::Shelf::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "shelf");
     }
 
     #[test]

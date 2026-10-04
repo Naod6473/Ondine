@@ -6,9 +6,11 @@
 // - bus         : le bus d'événements côté Rust, relié à celui du front
 // - undo        : les actions annulables pendant quelques secondes
 // - privacy     : validation des chemins et dossiers exclus
+// - files       : copier, déplacer, Corbeille, zip, presse-papiers (sans jamais écraser)
 
 pub mod bus;
 pub mod credentials;
+pub mod files;
 pub mod log;
 pub mod privacy;
 pub mod settings;
