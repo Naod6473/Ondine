@@ -21,7 +21,8 @@ island/
 ├─ settings.html              page de la fenêtre de réglages
 ├─ scripts/gen-icons.mjs      dessine l'icône de l'appli (npm run icons)
 ├─ mascots/                   UNE MASCOTTE = UN DOSSIER (manifest.json + fichiers)
-│  └─ placeholder/            la mascotte provisoire, dessinée en code
+│  ├─ placeholder/            la mascotte provisoire, dessinée en code
+│  └─ goutte/                 la goutte en planches de sprites (mascotte par défaut)
 ├─ src/                       ── FRONT (TypeScript) ──
 │  ├─ main.ts                 démarrage de la fenêtre de l'île
 │  ├─ core/                   le socle partagé par tout le front
@@ -42,7 +43,7 @@ island/
 │  │  ├─ mascot-state.ts      machine à états de la mascotte, reliée au bus
 │  │  ├─ catalog.ts           trouve et vérifie les mascottes de mascots/
 │  │  ├─ types.ts             états, humeurs, format du manifeste
-│  │  └─ renderers/canvas-placeholder.ts   la goutte provisoire en Canvas 2D
+│  │  └─ renderers/            canvas-placeholder.ts, spritesheet.ts, overlays.ts
 │  ├─ modules/
 │  │  ├─ index.ts             LISTE DES MODULES (front)
 │  │  └─ hello/               module d'exemple : manifest.json + index.ts
@@ -274,6 +275,13 @@ bus ──▶ MascotController (mascot-state.ts) ──▶ MascotRenderer (rende
 - **Déclencheurs** : voir le tableau du bus ; plus l'inactivité (bored après
   `mascot.boredAfterSecs`, sleep après `mascot.sleepAfterSecs`) et le réveil
   dès que la souris revient sur l'île.
+- **Moteurs branchés** : `canvas-code` (la goutte provisoire, `mascots/placeholder/`)
+  et `spritesheet` (`mascots/goutte/`). Une planche = une ligne d'images de même
+  largeur. `"mode": "gaze"` choisit l'image d'après la souris (de la première,
+  regard à gauche, à la dernière, regard à droite) et `nearFile` donne la planche
+  « de près ». En attendant une vraie planche par état, `effect` (breathe, bounce,
+  jump, shake, wobble…) anime le corps par du code et `overlay` (zzz, confetti,
+  hearts…) dessine un effet autour.
 - **Ajouter ta mascotte** : crée `mascots/<id>/` avec `manifest.json` et ses
   fichiers, relance l'appli, choisis-la dans Réglages → Mascotte et teste chaque
   animation. Un manifeste invalide est signalé, et l'île garde la provisoire.

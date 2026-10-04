@@ -102,7 +102,7 @@ impl Default for IslandPrefs {
 
 impl Default for MascotPrefs {
     fn default() -> Self {
-        Self { enabled: true, id: "placeholder".into(), bored_after_secs: 60.0, sleep_after_secs: 180.0 }
+        Self { enabled: true, id: "goutte".into(), bored_after_secs: 60.0, sleep_after_secs: 180.0 }
     }
 }
 

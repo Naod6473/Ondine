@@ -24,7 +24,7 @@ export interface CatalogEntry {
 }
 
 /** Vérifie un manifeste et liste ce qui ne va pas, au lieu de planter plus tard. */
-export function validateManifest(m: MascotManifest): string[] {
+export function validateManifest(m: MascotManifest, assets?: Record<string, string>): string[] {
   const problems: string[] = [];
   if (!m.id || !m.name) problems.push("id ou name manquant");
   const names = new Set<string>();
@@ -32,6 +32,9 @@ export function validateManifest(m: MascotManifest): string[] {
     if (names.has(a.name)) problems.push(`animation en double : ${a.name}`);
     names.add(a.name);
     if (!(a.durationMs > 0)) problems.push(`${a.name} : durationMs doit être > 0`);
+    for (const f of [a.source?.file, a.source?.nearFile]) {
+      if (f && assets && !(f in assets)) problems.push(`${a.name} : fichier introuvable (${f})`);
+    }
     for (const t of a.transitionsTo ?? []) {
       if (t !== "*" && !(m.animations ?? []).some((b) => b.name === t)) problems.push(`${a.name} : transition vers une animation inconnue (${t})`);
     }
@@ -51,7 +54,7 @@ export function mascotCatalog(): CatalogEntry[] {
     for (const [assetPath, url] of Object.entries(assetUrls)) {
       if (assetPath.startsWith(folder)) assets[assetPath.slice(folder.length)] = url;
     }
-    return { manifest, assets, problems: validateManifest(manifest) };
+    return { manifest, assets, problems: validateManifest(manifest, assets) };
   });
 }
 

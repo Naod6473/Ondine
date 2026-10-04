@@ -8,10 +8,10 @@
 
 import type { MascotRenderer } from "../renderer";
 import type { AnimationSpec, MascotState, Mood } from "../types";
+import { drawHeart, drawOverlay, type Overlay } from "./overlays";
 
 type Eyes = "open" | "closed" | "happy" | "spiral" | "heart" | "wide" | "half";
 type Mouth = "none" | "smile" | "flat" | "o" | "open";
-type Extra = "none" | "zzz" | "dots" | "bang" | "confetti" | "hearts" | "steam" | "sweat" | "stars";
 
 interface Pose {
   /** Décalage vertical du corps, en fraction du rayon (négatif = vers le haut). */
@@ -30,7 +30,7 @@ interface Pose {
   /** Ouverture de la bouche (0 à 1) pour "open". */
   mouthOpen: number;
   blush: boolean;
-  extra: Extra;
+  extra: Overlay;
   /** Regard imposé (de -1 à 1) ; null = suit la souris. */
   gaze: { x: number; y: number } | null;
   blink: boolean;
@@ -347,7 +347,7 @@ export class PlaceholderCanvasRenderer implements MascotRenderer {
     this.drawMouth(pose, fx, eyeY + R * 0.42, R);
     ctx.restore();
 
-    this.drawExtra(pose, w / 2, cy, R, t);
+    drawOverlay(this.ctx, pose.extra, w / 2, cy, R, t);
   }
 
   private drawEye(pose: Pose, x: number, y: number, R: number, side: number, t: number) {
@@ -404,7 +404,7 @@ export class PlaceholderCanvasRenderer implements MascotRenderer {
         break;
       }
       case "heart":
-        this.heart(x, y, ew * 2.2, "#e8336d");
+        drawHeart(ctx, x, y, ew * 2.2, "#e8336d");
         break;
     }
   }
@@ -435,96 +435,5 @@ export class PlaceholderCanvasRenderer implements MascotRenderer {
     }
   }
 
-  private drawExtra(pose: Pose, cx: number, cy: number, R: number, t: number) {
-    const ctx = this.ctx;
-    ctx.save();
-    ctx.fillStyle = "#e8ecf4";
-    ctx.strokeStyle = "#e8ecf4";
-    ctx.lineWidth = Math.max(1, R * 0.06);
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    switch (pose.extra) {
-      case "zzz": {
-        for (let i = 0; i < 3; i++) {
-          const phase = (t * 0.5 + i / 3) % 1;
-          ctx.globalAlpha = 1 - phase;
-          ctx.font = `bold ${R * (0.3 + phase * 0.25)}px system-ui, sans-serif`;
-          ctx.fillText("z", cx + R * (0.9 + phase * 0.5), cy - R * (0.7 + phase * 0.9));
-        }
-        break;
-      }
-      case "dots":
-        for (let i = 0; i < 3; i++) {
-          const on = Math.floor(t * 3) % 4 > i;
-          ctx.globalAlpha = on ? 1 : 0.25;
-          ctx.beginPath();
-          ctx.arc(cx + R * (0.85 + i * 0.25), cy - R * 1.0, R * 0.07, 0, TAU);
-          ctx.fill();
-        }
-        break;
-      case "bang":
-        ctx.fillStyle = "#ffcf4a";
-        ctx.font = `900 ${R * 0.8}px system-ui, sans-serif`;
-        ctx.fillText("!", cx + R * 1.15, cy - R * 0.85 + Math.sin(t * 10) * R * 0.05);
-        break;
-      case "sweat":
-        ctx.fillStyle = "#9fd7ff";
-        ctx.beginPath();
-        ctx.ellipse(cx + R * 0.95, cy - R * 0.5 + ((t * 0.8) % 1) * R * 0.4, R * 0.08, R * 0.12, 0, 0, TAU);
-        ctx.fill();
-        break;
-      case "steam":
-        for (const side of [-1, 1]) {
-          const phase = (t * 1.5 + (side > 0 ? 0.5 : 0)) % 1;
-          ctx.globalAlpha = 1 - phase;
-          ctx.beginPath();
-          ctx.arc(cx + side * R * (0.9 + phase * 0.3), cy - R * (0.9 + phase * 0.5), R * (0.08 + phase * 0.1), 0, TAU);
-          ctx.fill();
-        }
-        break;
-      case "stars":
-        for (let i = 0; i < 3; i++) {
-          const a = t * 4 + (i * TAU) / 3;
-          ctx.fillStyle = "#ffe066";
-          ctx.font = `${R * 0.35}px system-ui, sans-serif`;
-          ctx.fillText("★", cx + Math.cos(a) * R * 0.9, cy - R * 1.05 + Math.sin(a) * R * 0.18);
-        }
-        break;
-      case "hearts":
-        for (let i = 0; i < 2; i++) {
-          const phase = (t * 0.6 + i * 0.5) % 1;
-          ctx.globalAlpha = 1 - phase;
-          this.heart(cx + (i ? 1 : -1) * R * 0.9, cy - R * (0.8 + phase * 0.8), R * 0.28, "#ff6f9c");
-        }
-        break;
-      case "confetti": {
-        const colors = ["#ffcf4a", "#ff6f9c", "#7be0a8", "#8ab8ff"];
-        for (let i = 0; i < 14; i++) {
-          const seed = Math.sin(i * 91.7) * 1000;
-          const rx = (seed - Math.floor(seed)) * 2 - 1;
-          const phase = (t * 0.7 + i / 14) % 1;
-          ctx.globalAlpha = 1 - phase;
-          ctx.fillStyle = colors[i % colors.length];
-          ctx.fillRect(cx + rx * R * 1.6, cy - R * 1.4 + phase * R * 1.4, R * 0.1, R * 0.16);
-        }
-        break;
-      }
-      case "none":
-        break;
-    }
-    ctx.restore();
-  }
 
-  private heart(x: number, y: number, size: number, color: string) {
-    const ctx = this.ctx;
-    const s = size / 2;
-    ctx.save();
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(x, y + s * 0.7);
-    ctx.bezierCurveTo(x - s * 1.2, y - s * 0.1, x - s * 0.5, y - s * 0.9, x, y - s * 0.35);
-    ctx.bezierCurveTo(x + s * 0.5, y - s * 0.9, x + s * 1.2, y - s * 0.1, x, y + s * 0.7);
-    ctx.fill();
-    ctx.restore();
-  }
 }

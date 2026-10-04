@@ -23,11 +23,18 @@ export type MascotState = (typeof MASCOT_STATES)[number];
 export type Mood = "neutral" | "happy" | "grumpy" | "tired";
 
 /**
- * D'où vient une animation. Une seule de ces formes à la fois :
- *   { "function": "idle" }                         dessinée en code (renderer "canvas-code")
- *   { "file": "idle.png", "frames": 12, "fps": 24 } planche de sprites (à venir)
- *   { "file": "idle.json" }                         Lottie (à venir)
- *   { "file": "mascot.riv", "animation": "idle" }   Rive (à venir)
+ * D'où vient une animation. Formes possibles :
+ *   { "function": "idle" }                          dessinée en code (moteur "canvas-code")
+ *   { "file": "idle.png", "frames": 12, "fps": 24 }  planche de sprites jouée dans le temps
+ *   { "file": "regard-loin.png", "frames": 7, "mode": "gaze",
+ *     "nearFile": "regard-pres.png" }               planche de REGARD : l'image est choisie
+ *                                                   selon la position de la souris
+ *   { "file": "idle.json" }                          Lottie (à venir)
+ *   { "file": "mascot.riv", "animation": "idle" }    Rive (à venir)
+ *
+ * Avec le moteur "spritesheet", on peut en plus animer une planche par du code
+ * en attendant les vraies animations : "effect" (mouvement du corps) et
+ * "overlay" (effet dessiné autour : zzz, confettis…).
  */
 export interface AnimationSource {
   function?: string;
@@ -35,7 +42,30 @@ export interface AnimationSource {
   frames?: number;
   fps?: number;
   animation?: string;
+  /** "play" (défaut) : images jouées dans le temps ; "gaze" : image choisie par le regard. */
+  mode?: "play" | "gaze";
+  /** Mode "gaze" : planche utilisée quand la souris est tout près de la mascotte. */
+  nearFile?: string;
+  /** Mode "gaze" : distance (px) en dessous de laquelle on utilise `nearFile`. Défaut 90. */
+  nearDistance?: number;
+  effect?: SpriteEffect;
+  overlay?: "none" | "zzz" | "dots" | "bang" | "confetti" | "hearts" | "steam" | "sweat" | "stars";
 }
+
+/** Mouvements de corps qu'on peut appliquer à n'importe quelle planche. */
+export type SpriteEffect =
+  | "breathe"
+  | "wake"
+  | "sleep"
+  | "bounce"
+  | "jump"
+  | "shake"
+  | "wobble"
+  | "bob"
+  | "pulse"
+  | "chomp"
+  | "sway"
+  | "sigh";
 
 export interface AnimationSpec {
   name: string;

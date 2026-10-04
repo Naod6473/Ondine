@@ -4,6 +4,7 @@
 
 import type { AnimationSpec, MascotManifest, MascotState, Mood } from "./types";
 import { PlaceholderCanvasRenderer } from "./renderers/canvas-placeholder";
+import { SpriteSheetRenderer } from "./renderers/spritesheet";
 
 export interface MascotRenderer {
   /** Se dessine dans `container` (il remplit sa taille, et suit ses changements). */
@@ -26,7 +27,7 @@ type RendererFactory = (manifest: MascotManifest, assets: Record<string, string>
 /** Les moteurs connus. Ajouter un moteur = ajouter une ligne ici. */
 const RENDERERS: Record<string, RendererFactory> = {
   "canvas-code": () => new PlaceholderCanvasRenderer(),
-  // "spritesheet": (m, assets) => new SpriteRenderer(m, assets),
+  spritesheet: (m, assets) => new SpriteSheetRenderer(m, assets),
   // "lottie":      (m, assets) => new LottieRenderer(m, assets),
   // "rive":        (m, assets) => new RiveRenderer(m, assets),
 };

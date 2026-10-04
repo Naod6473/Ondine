@@ -31,7 +31,7 @@ export function defaultSettings(): Settings {
     version: 1,
     general: { screen: "primary", logLevel: "info" },
     island: { compactHideSecs: 4, expandedCollapseSecs: 8, notificationSecs: 6 },
-    mascot: { enabled: true, id: "placeholder", boredAfterSecs: 60, sleepAfterSecs: 180 },
+    mascot: { enabled: true, id: "goutte", boredAfterSecs: 60, sleepAfterSecs: 180 },
     privacy: { excludedFolders: [] },
     modules: {},
   };
