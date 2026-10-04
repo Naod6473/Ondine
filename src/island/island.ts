@@ -86,6 +86,8 @@ export class Island {
     };
 
     this.registry.onChange = () => this.render(true);
+    // Sans `force` : on ne redessine que si le module affiché en compact change.
+    this.registry.onCompactChange = () => this.render();
     settingsStore.onChange((s) => this.applySettings(s));
     this.applySettings(settingsStore.current);
     this.wireInputs();
@@ -311,7 +313,8 @@ export class Island {
     const tabs = this.registry.withView("expanded");
     if (!tabs.some((t) => t.module.manifest.id === this.activeTab)) this.activeTab = tabs[0]?.module.manifest.id ?? null;
 
-    const key = [state, state === "expanded" ? this.activeTab : "", state === "compact" || state === "alert" ? n?.id : ""].join("|");
+    const compactOwner = state === "compact" ? (this.registry.withView("compact")[0]?.module.manifest.id ?? "") : "";
+    const key = [state, state === "expanded" ? this.activeTab : "", state === "compact" || state === "alert" ? n?.id : "", compactOwner].join("|");
     if (key === this.renderedKey && !force) {
       this.renderBanner(n);
       return;

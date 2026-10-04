@@ -350,6 +350,8 @@ pub fn run() {
             }
             gate.collapsed.store(true, Ordering::Relaxed);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
+            // Travail de fond des modules (ex. : Musique surveille le lecteur).
+            handle.state::<Registry>().start_all(&handle);
 
             log::info(format!("--- Island {} démarrée ---", env!("CARGO_PKG_VERSION")));
             Ok(())

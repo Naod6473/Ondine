@@ -13,6 +13,7 @@
 // Ajouter un module Rust : voir ARCHITECTURE.md, « Ajouter un module ».
 
 mod hello;
+mod media;
 mod shelf;
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -60,6 +61,13 @@ pub struct Events {
 pub trait RustModule: Send + Sync {
     /// Le texte de manifest.json, en général `include_str!(...)`.
     fn manifest_json(&self) -> &'static str;
+
+    /// Appelée une fois au démarrage de l'île, pour un module qui a besoin de
+    /// travailler en fond (un thread qui surveille quelque chose). Le thread doit
+    /// vérifier `is_active` avant chaque tour et rattraper ses propres paniques.
+    fn start(&self, app: &AppHandle) {
+        let _ = app;
+    }
 
     /// Une commande déclarée dans le manifeste est appelée par le front.
     fn invoke(&self, ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
@@ -164,7 +172,11 @@ pub struct ModuleStatus {
 impl Registry {
     /// La liste des modules Rust. AJOUTER UN MODULE = ajouter une ligne ici.
     pub fn new() -> Self {
-        let modules: Vec<Box<dyn RustModule>> = vec![Box::new(shelf::Shelf::default()), Box::new(hello::Hello::default())];
+        let modules: Vec<Box<dyn RustModule>> = vec![
+            Box::new(shelf::Shelf::default()),
+            Box::new(media::Media::default()),
+            Box::new(hello::Hello::default()),
+        ];
 
         let mut entries = Vec::new();
         for module in modules {
@@ -174,6 +186,16 @@ impl Registry {
             }
         }
         Self { entries }
+    }
+
+    /// Lance le travail de fond des modules (`RustModule::start`). Un module qui
+    /// panique ici est compté comme un plantage, les autres démarrent quand même.
+    pub fn start_all(&self, app: &AppHandle) {
+        for entry in &self.entries {
+            if catch_unwind(AssertUnwindSafe(|| entry.module.start(app))).is_err() {
+                record_failure(app, entry, "démarrage");
+            }
+        }
     }
 
     pub fn statuses(&self) -> Vec<ModuleStatus> {
@@ -203,6 +225,13 @@ fn check_manifest(text: &str) -> Result<Manifest, String> {
 
 fn enabled(app: &AppHandle, id: &str) -> bool {
     app.state::<crate::Shared>().settings.lock().unwrap().module_enabled(id)
+}
+
+/// Le module est-il activé ET pas mis à l'écart ? Pour les threads de fond.
+pub fn is_active(app: &AppHandle, id: &str) -> bool {
+    let Some(registry) = app.try_state::<Registry>() else { return false };
+    let Some(entry) = registry.find(id) else { return false };
+    enabled(app, id) && entry.failures.load(Ordering::Relaxed) < MAX_FAILURES
 }
 
 /// Note un plantage ; au-delà de MAX_FAILURES, le module est mis à l'écart.
@@ -275,6 +304,12 @@ mod tests {
     fn shelf_manifest_is_valid() {
         let m = check_manifest(shelf::Shelf::default().manifest_json()).unwrap();
         assert_eq!(m.id, "shelf");
+    }
+
+    #[test]
+    fn media_manifest_is_valid() {
+        let m = check_manifest(media::Media::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "media");
     }
 
     #[test]

@@ -30,6 +30,8 @@ export class ModuleRegistry {
   private benched = new Set<string>();
   /** Prévient l'île quand la liste des modules actifs change (pour redessiner). */
   onChange: () => void = () => {};
+  /** Prévient l'île qu'un module veut peut-être (ou ne veut plus) la vue compacte. */
+  onCompactChange: () => void = () => {};
 
   constructor(
     private readonly all: IslandModule[],
@@ -67,7 +69,17 @@ export class ModuleRegistry {
 
   /** Modules actifs ayant une vue de ce type, dans l'ordre de déclaration. */
   withView(kind: Exclude<ViewKind, "drop">): Running[] {
-    return [...this.running.values()].filter((r) => r.module.views?.[kind]);
+    return [...this.running.values()].filter((r) => {
+      if (!r.module.views?.[kind]) return false;
+      const when = r.module.views.compactWhen;
+      if (kind !== "compact" || !when) return true;
+      try {
+        return when(r.api);
+      } catch (err) {
+        this.fail(r.module.manifest.id, err, "compactWhen");
+        return false;
+      }
+    });
   }
 
   /** Noms des modules mis à l'écart pendant cette session (trop de plantages). */
@@ -225,6 +237,7 @@ export class ModuleRegistry {
           }
         };
       },
+      refreshCompact: () => self.onCompactChange(),
       log: logger(id),
     };
   }

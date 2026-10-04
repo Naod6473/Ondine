@@ -28,14 +28,21 @@ trash = "5"
 arboard = { version = "3", default-features = false }
 # Création d'archives .zip (compression « deflate » seulement).
 zip = { version = "2", default-features = false, features = ["deflate"] }
+# Encode la pochette d'album en texte (data URL) pour l'afficher dans l'île.
+base64 = "0.22"
 
 [target.'cfg(windows)'.dependencies]
 # Gestionnaire d'identifiants Windows. Version 3 volontairement : la 4 a changé d'API.
 keyring = { version = "3", features = ["windows-native"] }
 windows = { version = "0.61", features = [
+  # « En cours de lecture » (SMTC) : Media_Control, et Storage_Streams pour la pochette.
+  "Foundation",
+  "Media_Control",
+  "Storage_Streams",
   "Win32_Foundation",
   "Win32_System_Ole",
   "Win32_System_SystemInformation",
+  "Win32_System_WinRT",
   "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_WindowsAndMessaging",
 ] }

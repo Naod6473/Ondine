@@ -4,6 +4,9 @@
 // windows.rs est la vraie implémentation ; other.rs ne sert qu'à ce que le code
 // compile ailleurs (vérifications sur Linux), il ne fait presque rien.
 
+// « En cours de lecture » (SMTC). Contient sa propre version Linux.
+pub mod media;
+
 #[cfg(windows)]
 mod windows;
 #[cfg(windows)]
