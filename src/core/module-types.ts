@@ -1,0 +1,82 @@
+// Ce qu'est un module, côté front.
+//
+// Un module = un dossier src/modules/<id>/ avec :
+//   - manifest.json : la carte d'identité (lue aussi par le Rust) ;
+//   - index.ts      : exporte un `IslandModule` (setup + vues).
+// Voir ARCHITECTURE.md, « Ajouter un module ».
+
+import type { BusHandler } from "./bus";
+import type { Logger } from "./log";
+import type { NotificationRequest } from "./notifications";
+
+/** Ce qu'un module peut demander. Le Rust refuse toute autre valeur. */
+export type Permission = "files" | "clipboard" | "network" | "claude-api" | "credentials";
+
+export type ViewKind = "compact" | "expanded" | "drop";
+
+/** Un champ de réglage : l'écran de réglages est généré à partir de cette liste. */
+export type SettingField =
+  | { key: string; type: "string"; label: string; help?: string; default: string; maxLength?: number }
+  | { key: string; type: "number"; label: string; help?: string; default: number; min?: number; max?: number; step?: number }
+  | { key: string; type: "boolean"; label: string; help?: string; default: boolean }
+  | { key: string; type: "select"; label: string; help?: string; default: string; options: { value: string; label: string }[] };
+
+export interface ModuleManifest {
+  id: string;
+  name: string;
+  /** Un emoji pour l'instant (une image plus tard). */
+  icon: string;
+  description: string;
+  version: string;
+  permissions: Permission[];
+  settings?: { version: number; fields: SettingField[] };
+  views: ViewKind[];
+  /** Commandes Rust que le module expose (appelées via api.invoke). */
+  commands: string[];
+  events: { emits: string[]; listens: string[] };
+}
+
+/** Ce que l'île donne à un module. Tout passe par ici : pas d'accès direct aux autres modules. */
+export interface ModuleApi {
+  readonly manifest: ModuleManifest;
+  /** Publie sur le bus (le sujet doit être déclaré dans `events.emits`). */
+  emit(topic: string, payload?: unknown): void;
+  /** Écoute le bus (le sujet doit être couvert par `events.listens`). */
+  on(pattern: string, handler: BusHandler): () => void;
+  /** Appelle une commande Rust du module (déclarée dans `commands`). */
+  invoke<T = unknown>(command: string, args?: unknown): Promise<T>;
+  /** Réglages du module, valeurs par défaut comprises. */
+  settings(): Record<string, unknown>;
+  onSettingsChange(fn: (values: Record<string, unknown>) => void): () => void;
+  /** Demande l'attention de l'île. C'est l'île qui décide quand et comment afficher. */
+  notify(request: Omit<NotificationRequest, "moduleId">): number;
+  /**
+   * Entoure un gestionnaire d'événement (clic…) : si il lance une erreur, même
+   * asynchrone, elle est attribuée à ce module au lieu de se perdre. À utiliser
+   * pour tous les `onclick` des vues.
+   */
+  handler<A extends unknown[]>(fn: (...args: A) => unknown): (...args: A) => void;
+  log: Logger;
+}
+
+/** Monte une vue dans `el`. Peut renvoyer une fonction de nettoyage. */
+export type ViewMount = (el: HTMLElement, api: ModuleApi) => void | (() => void);
+
+/** Une cible de dépôt, affichée quand on glisse des fichiers sur l'île. */
+export interface DropTarget {
+  id: string;
+  label: string;
+  icon: string;
+  onDrop(paths: string[], api: ModuleApi): void | Promise<void>;
+}
+
+export interface IslandModule {
+  manifest: ModuleManifest;
+  /** Appelé quand le module démarre (ou est réactivé). Peut renvoyer un nettoyage. */
+  setup?(api: ModuleApi): void | (() => void);
+  views?: {
+    compact?: ViewMount;
+    expanded?: ViewMount;
+    drop?: DropTarget[];
+  };
+}

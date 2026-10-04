@@ -1,0 +1,32 @@
+{
+  "id": "hello",
+  "name": "Bonjour",
+  "icon": "👋",
+  "description": "Module d'exemple : il prouve que le bus, les commandes Rust, les vues, les réglages, l'annulation et l'isolation des plantages fonctionnent.",
+  "version": "0.1.0",
+  "permissions": [],
+  "settings": {
+    "version": 1,
+    "fields": [
+      { "key": "name", "type": "string", "label": "Ton prénom", "default": "Simon", "maxLength": 40 },
+      { "key": "greetOnStart", "type": "boolean", "label": "Dire bonjour au démarrage", "default": true },
+      {
+        "key": "tone",
+        "type": "select",
+        "label": "Ton",
+        "default": "friendly",
+        "options": [
+          { "value": "friendly", "label": "Amical" },
+          { "value": "formal", "label": "Formel" }
+        ]
+      },
+      { "key": "taskSeconds", "type": "number", "label": "Durée de la tâche simulée (secondes)", "default": 2, "min": 1, "max": 30, "step": 1 }
+    ]
+  },
+  "views": ["compact", "expanded", "drop"],
+  "commands": ["greet", "count", "bump", "value", "crash"],
+  "events": {
+    "emits": ["hello.greeted", "hello.ping", "hello.pong", "task.started", "task.finished", "task.failed"],
+    "listens": ["hello.ping", "hello.pong", "hello.greeted", "undo.done"]
+  }
+}
