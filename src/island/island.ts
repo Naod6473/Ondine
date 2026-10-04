@@ -384,7 +384,18 @@ export class Island {
     const body = el("div", { class: "view view-expanded" });
     this.content.append(header, banner, body);
     if (this.activeTab) this.unmountView = this.registry.mountView(this.activeTab, "expanded", body);
-    else body.append(el("p", { class: "muted" }, "Aucun module actif. Active-en un dans les réglages."));
+    else {
+      const benched = this.registry.benchedNames();
+      body.append(
+        el(
+          "p",
+          { class: "muted" },
+          benched.length
+            ? `${benched.join(", ")} a été mis à l'écart après trois plantages. Il revient au prochain démarrage de l'appli.`
+            : "Aucun module actif. Active-en un dans les réglages.",
+        ),
+      );
+    }
   }
 
   private renderDrop() {

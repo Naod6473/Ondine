@@ -70,6 +70,11 @@ export class ModuleRegistry {
     return [...this.running.values()].filter((r) => r.module.views?.[kind]);
   }
 
+  /** Noms des modules mis à l'écart pendant cette session (trop de plantages). */
+  benchedNames(): string[] {
+    return this.all.filter((m) => this.benched.has(m.manifest.id)).map((m) => m.manifest.name);
+  }
+
   /** Toutes les cibles de dépôt des modules actifs. */
   dropTargets(): { target: DropTarget; moduleId: string }[] {
     const out: { target: DropTarget; moduleId: string }[] = [];
