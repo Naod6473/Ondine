@@ -2,8 +2,9 @@
 // luminosité des écrans, depuis l'île.
 //
 // Le front (src/modules/controls) affiche les curseurs et les boutons
-// « couper ». Ici on ne fait que transmettre à platform::audio et
-// platform::brightness, en vérifiant les valeurs reçues. Rien n'est écrit
+// « couper », et les interrupteurs Wi-Fi / Bluetooth / mode avion. Ici on ne
+// fait que transmettre à platform::audio, platform::brightness et
+// platform::radios, en vérifiant les valeurs reçues. Rien n'est écrit
 // dans le journal à chaque changement.
 
 use serde_json::{json, Value};
@@ -11,6 +12,7 @@ use serde_json::{json, Value};
 use super::{ModuleContext, RustModule};
 use crate::platform::audio::{self, Device};
 use crate::platform::brightness;
+use crate::platform::radios::{self, Kind};
 
 #[derive(Default)]
 pub struct Controls;
@@ -74,6 +76,21 @@ impl RustModule for Controls {
                     .filter(|v| *v <= 100)
                     .ok_or("la luminosité doit être un nombre entre 0 et 100")?;
                 brightness::set(id, level as u32)?;
+                Ok(Value::Null)
+            }
+            // {} → [{ kind: "wifi" | "bluetooth" | "mobile", on, disabled }]
+            "radios" => Ok(json!(radios::list()?)),
+            // { kind, on: bool }
+            "set_radio" => {
+                let kind = args.get("kind").and_then(Value::as_str).and_then(Kind::parse).ok_or("radio inconnue")?;
+                let on = args.get("on").and_then(Value::as_bool).ok_or("« on » doit valoir true ou false")?;
+                radios::set(kind, on)?;
+                Ok(Value::Null)
+            }
+            // { on: bool } : tout éteindre, ou rallumer ce qui l'était.
+            "set_airplane" => {
+                let on = args.get("on").and_then(Value::as_bool).ok_or("« on » doit valoir true ou false")?;
+                radios::set_airplane(on)?;
                 Ok(Value::Null)
             }
             _ => Err(format!("commande non gérée : {command}")),

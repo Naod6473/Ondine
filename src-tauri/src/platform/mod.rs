@@ -8,6 +8,8 @@
 pub mod audio;
 // Luminosité des écrans (portable : WMI ; externes : DDC/CI). Contient sa propre version Linux.
 pub mod brightness;
+// Wi-Fi, Bluetooth, mode avion (Windows.Devices.Radios). Contient sa propre version Linux.
+pub mod radios;
 // « En cours de lecture » (SMTC). Contient sa propre version Linux.
 pub mod media;
 // Lire le texte d'une image (OCR de Windows). Contient sa propre version Linux.

@@ -2354,3 +2354,74 @@ body {
 .ctl-screens.named .ctl-name {
   display: inline;
 }
+/* Les pastilles Wi-Fi / Bluetooth / Mode avion : rondes, bleues quand c'est allumé. */
+.ctl-radios {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+.ctl-radios:empty {
+  display: none;
+}
+.ctl-radio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: none;
+  color: var(--island-fg);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.ctl-radio-dot {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--line);
+  transition:
+    background 240ms ease,
+    color 240ms ease,
+    transform 360ms var(--ease);
+}
+.ctl-radio-dot svg {
+  width: 22px;
+  height: 22px;
+  margin: auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ctl-radio:hover:not(:disabled) .ctl-radio-dot {
+  background: rgba(255, 255, 255, 0.18);
+}
+.ctl-radio:active:not(:disabled) .ctl-radio-dot {
+  transform: scale(0.88);
+}
+.ctl-radio.on .ctl-radio-dot {
+  background: #2f8cff;
+  border-color: transparent;
+  color: #fff;
+}
+/* Le mode avion allumé est orange, comme sur un téléphone. */
+.ctl-radio.on[data-kind="airplane"] .ctl-radio-dot {
+  background: #ff9f0a;
+}
+.ctl-radio:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ctl-radio-dot {
+    transition: none;
+  }
+  .ctl-radio:active .ctl-radio-dot {
+    transform: none;
+  }
+}

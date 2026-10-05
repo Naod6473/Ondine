@@ -705,6 +705,13 @@ s'il n'existe pas ou est désactivé).
   `ext-N` = écran externe par DDC/CI (dxva2 `GetMonitorBrightness` /
   `SetMonitorBrightness`, N = rang parmi les écrans physiques, un verrou
   évite deux dialogues à la fois). Un écran qui ne répond pas n'est pas listé.
+- Radios (`platform/radios.rs`, WinRT `Windows.Devices.Radios`) : `radios` →
+  `[{kind: wifi|bluetooth|mobile, on, disabled}]` (relu toutes les 2 s) ;
+  `set_radio {kind, on}` (demande `RequestAccessAsync` puis `SetStateAsync` sur
+  chaque radio de la famille) ; `set_airplane {on}`. Pas d'API publique pour le
+  vrai mode avion : on éteint tout en retenant ce qui était allumé, et on le
+  rallume à la sortie (Wi-Fi + Bluetooth si l'île a redémarré entre-temps).
+  NON VÉRIFIÉ : que Windows autorise une appli classique (hors Store).
 
 ## Agents IA (`src/modules/agents/`, `src-tauri/src/modules/agents.rs`, `src-tauri/src/cli.rs`)
 
