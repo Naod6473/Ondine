@@ -18,6 +18,7 @@ mod clipboard;
 mod hello;
 mod launcher;
 mod media;
+mod nettools;
 mod rules;
 mod notes;
 mod remote;
@@ -193,6 +194,7 @@ impl Registry {
             Box::new(launcher::Launcher::default()),
             Box::new(system::SystemInfo::default()),
             Box::new(remote::Remote::default()),
+            Box::new(nettools::NetTools),
             Box::new(hello::Hello::default()),
         ];
 
@@ -370,6 +372,12 @@ mod tests {
     fn launcher_manifest_is_valid() {
         let m = check_manifest(launcher::Launcher::default().manifest_json()).unwrap();
         assert_eq!(m.id, "launcher");
+    }
+
+    #[test]
+    fn nettools_manifest_is_valid() {
+        let m = check_manifest(nettools::NetTools.manifest_json()).unwrap();
+        assert_eq!(m.id, "nettools");
     }
 
     #[test]

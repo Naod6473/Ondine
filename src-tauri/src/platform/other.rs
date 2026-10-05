@@ -107,3 +107,11 @@ pub struct Battery {
 pub fn battery() -> Option<Battery> {
     None
 }
+
+pub fn ping(_ip: std::net::Ipv4Addr, _timeout_ms: u32) -> Result<Option<(u32, u8)>, String> {
+    Err("disponible seulement sous Windows".into())
+}
+
+pub fn reverse_dns(_ip: std::net::Ipv4Addr) -> Option<String> {
+    None
+}

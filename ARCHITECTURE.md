@@ -643,3 +643,17 @@ s'il n'existe pas ou est désactivé).
 - Le journal note le type de connexion, jamais l'adresse.
 - Lanceur : il reçoit la liste par `remote.changed` (numéro, nom, type) et
   demande l'ouverture par `remote.connect {id}`.
+
+### Module Réseau (`src/modules/nettools/`, `src-tauri/src/modules/nettools.rs`)
+
+- Permission `network`. L'adresse tapée passe par le même `check_host` que
+  les Accès distants ; le journal ne la contient pas.
+- `ping {host}` : un écho ICMP par `IcmpSendEcho` (iphlpapi, sans droits
+  administrateur), IPv4 seulement, 1 s au plus. Le front le répète chaque
+  seconde tant que l'onglet est ouvert : barres des 40 derniers temps
+  (rouge = perdu), perte, min / moyenne / max.
+- `port {host, port}` : connexion TCP (2 s au plus) → `open`, `closed`
+  (refusée : la machine répond mais rien n'écoute) ou `silent` (pas de
+  réponse : éteinte ou pare-feu). Raccourcis : 443, 80, 3389, 22, 445, 53.
+- `dns {host}` : nom → adresses par le résolveur de Windows ; une IPv4 →
+  son nom (`GetNameInfoW`, recherche inverse).

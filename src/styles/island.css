@@ -1676,3 +1676,116 @@ body {
 .remote-actions small {
   font-size: 11px;
 }
+
+/* Réseau (Outils IT) */
+.net {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.net-head {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.net-host {
+  flex: 1;
+  min-width: 0;
+}
+.net-port {
+  width: 58px;
+  flex: none;
+}
+.net-head .btn {
+  flex: none;
+}
+/* « Ping » ↔ « Arrêter » : même largeur, le champ d'adresse ne saute pas. */
+.net-head .btn:first-of-type {
+  min-width: 86px;
+}
+.net-chips {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.net-chip {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted, rgba(255, 255, 255, 0.55));
+  border-radius: 999px;
+  padding: 1px 8px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    transform 300ms var(--ease);
+}
+.net-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--island-fg);
+}
+.net-chip:active {
+  transform: scale(0.95);
+}
+.net-out p {
+  margin: 2px 0;
+}
+.net-ping-top {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.net-big {
+  font-size: 20px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.net-bad,
+.net-result.closed {
+  color: #ff9c8f;
+}
+.net-result.silent {
+  color: #ffc65c;
+}
+.net-result.open {
+  color: #7ee8a2;
+}
+.net-graph {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 44px;
+  margin: 6px 0 4px;
+}
+.net-graph i {
+  flex: 1;
+  max-width: 9px;
+  min-height: 2px;
+  border-radius: 2px 2px 1px 1px;
+  background: linear-gradient(to top, rgba(94, 224, 138, 0.55), #5ee08a);
+  transition: height 420ms var(--ease);
+  animation: net-grow 420ms var(--ease);
+}
+.net-graph i.lost {
+  background: rgba(255, 122, 107, 0.45);
+}
+@keyframes net-grow {
+  from {
+    transform: scaleY(0);
+    transform-origin: bottom;
+  }
+}
+.net-list {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  user-select: text;
+  font-variant-numeric: tabular-nums;
+}
+@media (prefers-reduced-motion: reduce) {
+  .net-graph i {
+    animation: none;
+    transition: none;
+  }
+}

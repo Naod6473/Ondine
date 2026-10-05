@@ -285,7 +285,7 @@ fn read_favorite(args: &Value) -> Result<Favorite, String> {
 }
 
 /// Un nom de serveur (srv-01.domaine.local), une IPv4 ou une IPv6.
-fn check_host(host: &str) -> Result<(), String> {
+pub(super) fn check_host(host: &str) -> Result<(), String> {
     let ok_char = |c: char| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_' | ':' | '[' | ']');
     let first_ok = host.starts_with(|c: char| c.is_ascii_alphanumeric() || c == '[');
     if host.is_empty() || host.len() > 253 || !first_ok || !host.chars().all(ok_char) {

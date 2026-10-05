@@ -79,6 +79,8 @@ windows = { version = "0.61", features = [
   "Win32_System_Diagnostics_Debug",
   # Infos système : la batterie.
   "Win32_System_Power",
+  "Win32_NetworkManagement_IpHelper",
+  "Win32_Networking_WinSock",
 ] }
 
 [profile.release]
