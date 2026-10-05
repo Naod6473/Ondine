@@ -8,5 +8,6 @@ import { clipboard } from "./clipboard";
 import { hello } from "./hello";
 import { media } from "./media";
 import { shelf } from "./shelf";
+import { timerModule } from "./timer";
 
-export const ALL_MODULES: IslandModule[] = [shelf, clipboard, capture, media, hello];
+export const ALL_MODULES: IslandModule[] = [shelf, clipboard, capture, timerModule, media, hello];
