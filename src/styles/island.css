@@ -2878,3 +2878,25 @@ body[data-edge="right"] .privacy-dot {
 .net-status:empty {
   display: none;
 }
+
+/* Presse-papiers : le bouton « Aa » et ses quatre casses. */
+.clip-case,
+.clip-case-pick {
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 26px;
+}
+.clip-case-pick {
+  animation: clip-case-in 220ms var(--ease) both;
+}
+@keyframes clip-case-in {
+  from {
+    opacity: 0;
+    scale: 0.7;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .clip-case-pick {
+    animation: none;
+  }
+}

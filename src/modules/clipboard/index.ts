@@ -74,8 +74,31 @@ async function copy(api: ModuleApi, args: unknown) {
   }
 }
 
+/** Les casses proposées par le bouton « Aa ». */
+const CASES: [mode: string, label: string, title: string][] = [
+  ["upper", "ABC", "Copier en MAJUSCULES"],
+  ["lower", "abc", "Copier en minuscules"],
+  ["title", "Abc", "Copier Avec Une Majuscule À Chaque Mot"],
+  ["sentence", "Ab.", "Copier en phrase (majuscule au début de chaque phrase)"],
+];
+
 export const clipboard: IslandModule = {
   manifest: manifest as ModuleManifest,
+
+  // Un lien copié a été nettoyé (Rust) : on le dit, avec « Remettre » l'original.
+  setup(api) {
+    return api.on("clipboard.link-cleaned", (msg) => {
+      const n = (msg.payload as { removed?: number } | null)?.removed ?? 0;
+      api.notify({
+        title: "Lien nettoyé",
+        body: `${n} traqueur${n > 1 ? "s" : ""} retiré${n > 1 ? "s" : ""} (utm, fbclid…).`,
+        icon: "🧹",
+        priority: "low",
+        key: "clipboard-link",
+        actions: [{ label: "Remettre", run: async () => void (await attempt(api, "Remettre le lien", () => api.invoke("restore_link"))) }],
+      });
+    });
+  },
 
   views: {
     expanded(root, api) {
@@ -169,6 +192,38 @@ export const clipboard: IslandModule = {
                   item.pinned ? "📍" : "📌",
                 ),
                 el("button", { class: "icon-btn", title: "Copier", onclick: api.handler(() => copy(api, { id: item.id })) }, "📋"),
+                el(
+                  "button",
+                  {
+                    class: "icon-btn clip-case",
+                    title: "Changer la casse (MAJUSCULES, minuscules…)",
+                    onclick: api.handler((e: Event) => {
+                      // Les boutons de l'élément laissent place aux quatre casses.
+                      const actions = (e.currentTarget as HTMLElement).parentElement!;
+                      const back = [...actions.childNodes];
+                      actions.replaceChildren(
+                        ...CASES.map(([mode, label, title]) =>
+                          el(
+                            "button",
+                            {
+                              class: "icon-btn clip-case-pick",
+                              title,
+                              onclick: api.handler(async () => {
+                                actions.replaceChildren(...back);
+                                if (await attempt(api, "Changer la casse", () => api.invoke("transform", { id: item.id, mode }))) {
+                                  api.notify({ title: "Copié dans la nouvelle casse", icon: "🔠", priority: "low", key: "clipboard-copied" });
+                                }
+                              }),
+                            },
+                            label,
+                          ),
+                        ),
+                        el("button", { class: "icon-btn", title: "Fermer", onclick: () => actions.replaceChildren(...back) }, "‹"),
+                      );
+                    }),
+                  },
+                  "Aa",
+                ),
                 el(
                   "button",
                   { class: "icon-btn", title: "Retirer de l'historique", onclick: api.handler(() => attempt(api, "Retirer", () => api.invoke("delete", { id: item.id }))) },
