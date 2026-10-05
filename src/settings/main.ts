@@ -1,171 +1,464 @@
 // La fenêtre de réglages. Tout y est généré : les réglages des modules à partir
 // de leurs manifestes, la liste des mascottes à partir du dossier mascots/.
 //
+// Disposition :
+//   - à gauche, une barre latérale en verre : une recherche, puis les pages
+//     rangées en trois groupes (L'île, Modules, Sécurité) ; une pastille glisse
+//     sous la page affichée ;
+//   - à droite, la page : un en-tête, puis des blocs de lignes (controls.ts).
+//
 // Chaque changement est appliqué tout de suite et enregistré par le Rust, qui
 // prévient l'île (événement "settings-changed").
 
 import { Bridge, IS_TAURI, windowLabel } from "../core/bridge";
 import { Bus } from "../core/bus";
 import { errorText } from "../core/log";
+import type { ModuleManifest } from "../core/module-types";
 import { settingsStore } from "../core/settings-store";
 import { applyTabOrder, mergeOrder } from "../core/tab-order";
 import type { Settings } from "../core/types";
-import { clear, el } from "../island/dom";
+import { el } from "../island/dom";
+import { reducedMotion } from "../island/tab-pill";
 import { mascotCatalog } from "../mascot/catalog";
 import { createRenderer, type MascotRenderer } from "../mascot/renderer";
 import { ALL_MODULES } from "../modules";
-import { settingsForm } from "./form";
+import { chip, choice, group, row, stepper, toggle, wideRow } from "./controls";
+import { settingsRows } from "./form";
+import { NavPill } from "./nav-pill";
 import { connectRules, rulesSection } from "./rules-editor";
 
 const PERMISSION_LABELS: Record<string, string> = {
-  files: "Accès aux fichiers",
+  files: "Fichiers",
   clipboard: "Presse-papiers",
   network: "Réseau",
-  "claude-api": "Envoie du contenu à l'API Claude",
-  credentials: "Lit des identifiants",
+  "claude-api": "Envoie à l'API Claude",
+  credentials: "Identifiants",
 };
 
-const SECTIONS = [
-  { id: "general", label: "Général" },
-  { id: "modules", label: "Modules" },
-  { id: "rules", label: "Règles" },
-  { id: "mascot", label: "Mascotte" },
-  { id: "privacy", label: "Confidentialité" },
-  { id: "credentials", label: "Identifiants" },
-  { id: "backup", label: "Sauvegarde" },
-] as const;
+/** Une page de la barre latérale. */
+interface Page {
+  id: string;
+  group: "L'île" | "Modules" | "Sécurité";
+  icon: string;
+  label: string;
+  /** Une ligne sous le titre de la page. */
+  sub: string;
+  /** Mots trouvés par la recherche (les libellés de la page). */
+  keywords: string[];
+  render: (main: HTMLElement) => void;
+}
 
-type SectionId = (typeof SECTIONS)[number]["id"];
+const ISLAND_PAGES: Page[] = [
+  {
+    id: "general",
+    group: "L'île",
+    icon: "⚙️",
+    label: "Général",
+    sub: "L'écran, le repli de l'île, les notifications et le journal.",
+    keywords: ["Écran de l'île", "Replier l'île", "Durée des notifications", "Niveau du journal", "Dossier du journal"],
+    render: general,
+  },
+  {
+    id: "tabs",
+    group: "L'île",
+    icon: "🗂️",
+    label: "Onglets",
+    sub: "Les modules actifs et l'ordre de leurs onglets dans l'île.",
+    keywords: ["Ordre des onglets", "Activer un module", "Désactiver un module", "Ordre d'origine"],
+    render: tabs,
+  },
+  {
+    id: "mascot",
+    group: "L'île",
+    icon: "💧",
+    label: "Mascotte",
+    sub: "Qui vit dans l'île, et quand elle s'ennuie ou s'endort.",
+    keywords: ["Afficher la mascotte", "Mascotte", "S'ennuie après", "S'endort après", "Tester les animations"],
+    render: mascot,
+  },
+  {
+    id: "rules",
+    group: "L'île",
+    icon: "⚡",
+    label: "Règles",
+    sub: "Quand quelque chose arrive, l'île agit pour toi.",
+    keywords: ["Règles automatiques", "Raccourci clavier", "Surveiller un dossier", "Clé USB", "Modèles de règles"],
+    // Le module « Règles » n'a pas de page à part : son interrupteur est ici.
+    render: (main) => {
+      const man = ALL_MODULES.find((m) => m.manifest.id === "rules")?.manifest;
+      if (man) modulePage(main, man, true);
+      rulesSection(main);
+    },
+  },
+];
+
+const SECURITY_PAGES: Page[] = [
+  {
+    id: "privacy",
+    group: "Sécurité",
+    icon: "🛡️",
+    label: "Confidentialité",
+    sub: "Aucune télémétrie. Ce qui part vers Claude est toujours montré avant.",
+    keywords: ["Télémétrie", "Dossiers exclus", "Exclure un dossier"],
+    render: privacy,
+  },
+  {
+    id: "credentials",
+    group: "Sécurité",
+    icon: "🔑",
+    label: "Identifiants",
+    sub: "Rangés dans le Gestionnaire d'identifiants Windows.",
+    keywords: ["Clé API Anthropic", "Gestionnaire d'identifiants"],
+    render: credentials,
+  },
+  {
+    id: "backup",
+    group: "Sécurité",
+    icon: "💾",
+    label: "Sauvegarde",
+    sub: "Exporter ou importer tes réglages (jamais les clés).",
+    keywords: ["Exporter les réglages", "Importer des réglages"],
+    render: backup,
+  },
+];
+
+/** Une page par module, dans l'ordre des onglets. */
+function modulePages(): Page[] {
+  const listed = ALL_MODULES.filter((m) => m.manifest.id !== "rules");
+  return applyTabOrder(listed, (m) => m.manifest.id, settingsStore.current.island.tabOrder ?? []).map((m) => ({
+    id: `module:${m.manifest.id}`,
+    group: "Modules" as const,
+    icon: m.manifest.icon,
+    label: m.manifest.name,
+    sub: firstSentence(m.manifest.description),
+    keywords: [m.manifest.description, ...(m.manifest.settings?.fields ?? []).map((f) => f.label)],
+    render: (main: HTMLElement) => modulePage(main, m.manifest),
+  }));
+}
+
+/** « Lance Claude Code… en un clic. Un tableau… » → « Lance Claude Code… en un clic. » */
+function firstSentence(text: string): string {
+  const end = text.search(/[.!?](\s|$)/);
+  return end > 0 ? text.slice(0, end + 1) : text;
+}
+
+function allPages(): Page[] {
+  return [...ISLAND_PAGES, ...modulePages(), ...SECURITY_PAGES];
+}
 
 let bus: Bus;
-let section: SectionId = "general";
+let current = "general";
+let query = "";
 let preview: MascotRenderer | null = null;
+let pill: NavPill | null = null;
+/** Quand on a enregistré nous-mêmes pour la dernière fois (voir `start`). */
+let lastOwnSave = 0;
+
 const app = document.getElementById("app")!;
+const nav = el("nav", { class: "sidebar", "aria-label": "Pages des réglages" });
+const content = el("main", { class: "content" });
 
 async function start() {
   const boot = await Bridge.boot();
   await settingsStore.connect(boot?.settings ?? null);
   bus = new Bus(windowLabel("settings"));
   await bus.connect();
+  try {
+    current = localStorage.getItem("settings.page") ?? current;
+  } catch {
+    // stockage indisponible : on démarre sur « Général »
+  }
+  if (!allPages().some((p) => p.id === current)) current = "general";
+
   // Section « Règles » : l'onglet de l'île peut demander d'ouvrir l'éditeur.
   connectRules(
     bus,
+    () => go("rules"),
     () => {
-      section = "rules";
-      render();
-    },
-    () => {
-      if (section === "rules") render();
+      if (current === "rules") showPage(false);
     },
   );
-  // Si les réglages changent ailleurs (import…), on redessine.
+  // Les réglages ont changé. Si c'est nous (un interrupteur…), la page est
+  // déjà à jour : on ne la redessine pas, pour ne pas couper son animation.
+  // Si c'est ailleurs (l'île, un import), on redessine, sauf pendant la saisie.
   settingsStore.onChange(() => {
-    // Ne pas redessiner pendant qu'on tape dans un champ.
-    if (!(document.activeElement instanceof HTMLInputElement)) render();
+    syncNav();
+    if (performance.now() - lastOwnSave < 1500) return;
+    const typing = document.activeElement instanceof HTMLInputElement && document.activeElement.type !== "checkbox";
+    if (!typing) showPage(false);
   });
-  render();
+
+  app.append(backdrop(), nav, content);
+  drawNav();
+  showPage(false);
   if (boot) document.title = `Réglages — Island ${boot.version}`;
 }
 
-function save(change: (s: Settings) => void) {
-  void settingsStore.update(change);
+/** Les taches de couleur floues derrière le verre. */
+function backdrop(): HTMLElement {
+  return el("div", { class: "backdrop", "aria-hidden": "true" }, el("i", { class: "blob a" }), el("i", { class: "blob b" }), el("i", { class: "blob c" }));
 }
 
-function render() {
+/**
+ * Enregistre un changement. `redraw` : la page doit se redessiner (une liste
+ * qui change de longueur, par exemple) ; sinon la commande s'est déjà mise à
+ * jour toute seule.
+ */
+function save(change: (s: Settings) => void, redraw = false) {
+  lastOwnSave = performance.now();
+  void settingsStore.update(change).then(() => {
+    if (redraw) showPage(false);
+  });
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+
+function go(id: string, focusKey?: string) {
+  if (id === current && !query) return focusKey ? highlight(focusKey) : undefined;
+  const before = allPages().findIndex((p) => p.id === current);
+  current = id;
+  if (query) {
+    query = "";
+    const search = nav.querySelector<HTMLInputElement>(".search");
+    if (search) search.value = "";
+    nav.querySelector(".nav-list")?.classList.remove("searching");
+  }
+  try {
+    localStorage.setItem("settings.page", id);
+  } catch {
+    // pas grave : on ne se souviendra juste pas de la page
+  }
+  syncNav();
+  const after = allPages().findIndex((p) => p.id === id);
+  showPage(true, after >= before ? 1 : -1);
+  if (focusKey) highlight(focusKey);
+}
+
+function drawNav() {
+  const focused = document.activeElement;
+  const hadFocus = focused instanceof HTMLInputElement && focused.classList.contains("search");
+  const search = el("input", { class: "search", type: "search", placeholder: "Rechercher un réglage", "aria-label": "Rechercher un réglage" }) as HTMLInputElement;
+  search.value = query;
+  search.addEventListener("input", () => {
+    query = search.value;
+    showPage(false);
+    const list = nav.querySelector(".nav-list");
+    list?.classList.toggle("searching", !!query.trim());
+  });
+  search.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && search.value) {
+      search.value = "";
+      query = "";
+      showPage(false);
+    }
+  });
+
+  navShape = shapeOf();
+  const list = el("div", { class: `nav-list ${query.trim() ? "searching" : ""}` });
+  pill = new NavPill(list);
+  let active: HTMLElement | null = null;
+  let lastGroup = "";
+  for (const p of allPages()) {
+    if (p.group !== lastGroup) {
+      list.append(el("div", { class: "nav-group" }, p.group));
+      lastGroup = p.group;
+    }
+    const moduleOff = p.id.startsWith("module:") && !settingsStore.moduleEnabled(p.id.slice(7));
+    const item = el(
+      "button",
+      { class: `nav-item ${p.id === current ? "active" : ""} ${moduleOff ? "off" : ""}`, title: p.label, "data-page": p.id, "aria-current": p.id === current ? "page" : false },
+      el("span", { class: "nav-icon" }, p.icon),
+      el("span", { class: "nav-label" }, p.label),
+      moduleOff ? el("span", { class: "nav-off", title: "Module désactivé" }) : null,
+    );
+    item.addEventListener("click", () => go(p.id));
+    if (p.id === current) active = item;
+    list.append(item);
+  }
+  nav.replaceChildren(
+    el("div", { class: "brand" }, el("span", { class: "brand-drop" }, "💧"), el("span", {}, "Réglages")),
+    search,
+    list,
+  );
+  // La pastille se place une fois la liste affichée (il faut ses positions).
+  requestAnimationFrame(() => {
+    if (active) pill?.jumpTo(active);
+    else pill?.refresh();
+  });
+  if (hadFocus) {
+    search.focus();
+    search.setSelectionRange(search.value.length, search.value.length);
+  }
+}
+
+/** Ce qui change la liste de la barre : l'ordre des pages et les modules éteints. */
+let navShape = "";
+function shapeOf(): string {
+  return allPages()
+    .map((p) => `${p.id}${p.id.startsWith("module:") && !settingsStore.moduleEnabled(p.id.slice(7)) ? "-off" : ""}`)
+    .join(",");
+}
+
+/**
+ * Met la barre à jour : reconstruite seulement si sa liste a changé ; sinon on
+ * change juste la page active, et la pastille glisse jusqu'à elle.
+ */
+function syncNav() {
+  const shape = shapeOf();
+  if (shape !== navShape) return drawNav();
+  let active: HTMLElement | null = null;
+  for (const item of nav.querySelectorAll<HTMLElement>(".nav-item")) {
+    const on = item.dataset.page === current && !query.trim();
+    item.classList.toggle("active", on);
+    if (on) {
+      item.setAttribute("aria-current", "page");
+      active = item;
+    } else item.removeAttribute("aria-current");
+  }
+  if (active) pill?.moveTo(active);
+}
+
+/** Affiche la page courante (ou les résultats de recherche). */
+function showPage(animate: boolean, direction = 1) {
   preview?.destroy();
   preview = null;
-  clear(app);
-  const nav = el("nav", { class: "nav" });
-  for (const s of SECTIONS) {
-    nav.append(
-      el(
-        "button",
-        {
-          class: s.id === section ? "active" : "",
-          onclick: () => {
-            section = s.id;
-            render();
-          },
-        },
-        s.label,
-      ),
-    );
+  const page = el("div", { class: "page" });
+  if (!IS_TAURI) page.append(el("p", { class: "banner" }, "Aperçu dans un navigateur : rien n'est enregistré."));
+  if (query.trim()) {
+    results(page, query);
+  } else {
+    const p = allPages().find((x) => x.id === current) ?? ISLAND_PAGES[0];
+    page.append(header(p.icon, p.label, p.sub));
+    p.render(page);
   }
-  const main = el("main", {});
-  if (!IS_TAURI) main.append(el("p", { class: "note" }, "Aperçu dans un navigateur : rien n'est enregistré."));
-  ({ general, modules, rules: rulesSection, mascot, privacy, credentials, backup })[section](main);
-  app.append(nav, main);
+  const old = content.firstElementChild as HTMLElement | null;
+  const y = content.scrollTop;
+  content.replaceChildren(page);
+  if (!animate) {
+    content.scrollTop = y;
+    return;
+  }
+  content.scrollTop = 0;
+  if (reducedMotion() || !old) return;
+  // La nouvelle page arrive dans le sens du déplacement, en fondu.
+  page.animate(
+    [
+      { opacity: 0, transform: `translateY(${direction * 14}px)`, filter: "blur(4px)" },
+      { opacity: 1, transform: "none", filter: "blur(0)" },
+    ],
+    { duration: 320, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
+  );
 }
 
-function row(label: string, control: HTMLElement, help?: string) {
-  return el("div", { class: "field" }, el("label", {}, label), control, help ? el("div", { class: "help" }, help) : null);
+function header(icon: string, title: string, sub: string, extra?: HTMLElement): HTMLElement {
+  return el(
+    "header",
+    { class: "page-head" },
+    el("span", { class: "page-icon" }, icon),
+    el("div", { class: "page-titles" }, el("h1", {}, title), el("p", {}, sub)),
+    extra ?? null,
+  );
 }
 
-function select(value: string, options: [string, string][], onChange: (v: string) => void) {
-  const s = el("select", {}) as HTMLSelectElement;
-  for (const [v, l] of options) s.append(el("option", { value: v }, l));
-  s.value = value;
-  s.addEventListener("change", () => onChange(s.value));
-  return s;
-}
-
-function number(value: number, min: number, max: number, onChange: (v: number) => void, step = 1) {
-  const i = el("input", { type: "number", min, max, step }) as HTMLInputElement;
-  i.value = String(value);
-  i.addEventListener("change", () => {
-    const v = Math.min(max, Math.max(min, Number(i.value) || min));
-    i.value = String(v);
-    onChange(v);
+/** Fait défiler jusqu'à la ligne `key` et la fait briller un instant. */
+function highlight(key: string) {
+  requestAnimationFrame(() => {
+    const target = [...content.querySelectorAll<HTMLElement>("[data-key]")].find((r) => r.dataset.key === key);
+    if (!target) return;
+    target.scrollIntoView({ block: "center", behavior: reducedMotion() ? "auto" : "smooth" });
+    target.classList.remove("flash");
+    void target.offsetWidth; // relance l'animation si on recherche deux fois la même chose
+    target.classList.add("flash");
   });
-  return i;
 }
 
-function checkbox(value: boolean, onChange: (v: boolean) => void) {
-  const c = el("input", { type: "checkbox" }) as HTMLInputElement;
-  c.checked = value;
-  c.addEventListener("change", () => onChange(c.checked));
-  return c;
+// ── Recherche ─────────────────────────────────────────────────────────────────
+
+/** Minuscules et sans accents : « écran » trouve « Ecran ». */
+function simple(text: string): string {
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
-// ── Sections ──────────────────────────────────────────────────────────────────
+function results(page: HTMLElement, q: string) {
+  const words = simple(q).split(/\s+/).filter(Boolean);
+  const hits: { page: Page; key?: string; label: string }[] = [];
+  for (const p of allPages()) {
+    const matches = (text: string) => words.every((w) => simple(text).includes(w));
+    if (matches(`${p.label} ${p.sub}`)) hits.push({ page: p, label: p.label });
+    for (const k of p.keywords) {
+      if (!matches(k)) continue;
+      // Une description trouvée : on montre la page, pas tout le texte.
+      if (k.length > 80) {
+        if (!hits.some((h) => h.page === p && !h.key)) hits.push({ page: p, label: p.label });
+      } else hits.push({ page: p, key: k, label: k });
+    }
+  }
+  page.append(header("🔎", "Recherche", hits.length ? `${hits.length} résultat${hits.length > 1 ? "s" : ""} pour « ${q.trim()} »` : `Rien trouvé pour « ${q.trim()} ».`));
+  if (!hits.length) return;
+  page.append(
+    group(
+      null,
+      hits.slice(0, 40).map((h) =>
+        el(
+          "button",
+          { class: "row result", onclick: () => go(h.page.id, h.key) },
+          el("span", { class: "result-icon" }, h.page.icon),
+          el("div", { class: "row-text" }, el("div", { class: "row-label" }, h.label), el("div", { class: "row-help" }, h.key ? h.page.label : h.page.group)),
+          el("span", { class: "chevron" }, "›"),
+        ),
+      ),
+    ),
+  );
+}
+
+// ── Pages ─────────────────────────────────────────────────────────────────────
 
 function general(main: HTMLElement) {
   const s = settingsStore.current;
   main.append(
-    el("h2", {}, "Général"),
-    row(
-      "Écran de l'île",
-      select(s.general.screen, [["primary", "Écran principal"], ["cursor", "Écran de la souris"]], (v) =>
-        save((d) => (d.general.screen = v as Settings["general"]["screen"])),
+    group("L'île", [
+      row(
+        "Écran de l'île",
+        choice(s.general.screen, [["primary", "Principal"], ["cursor", "Sous la souris"]], (v) => save((d) => (d.general.screen = v as Settings["general"]["screen"]))),
+        "Sur plusieurs écrans : celui où l'île apparaît.",
       ),
-    ),
-    row(
-      "Replier l'île quand la souris n'est plus dessus, après (s)",
-      number(s.island.collapseSecs, 0.5, 30, (v) => save((d) => (d.island.collapseSecs = v)), 0.5),
-    ),
-    row("Durée des notifications (s)", number(s.island.notificationSecs, 2, 60, (v) => save((d) => (d.island.notificationSecs = v)))),
-    row(
-      "Niveau du journal",
-      select(s.general.logLevel, [["error", "Erreurs"], ["warn", "Avertissements"], ["info", "Informations"], ["debug", "Débogage"]], (v) =>
-        save((d) => (d.general.logLevel = v as Settings["general"]["logLevel"])),
+      row(
+        "Replier l'île",
+        stepper(s.island.collapseSecs, 0.5, 30, (v) => save((d) => (d.island.collapseSecs = v)), 0.5, "s"),
+        "Quand la souris n'est plus dessus, après ce délai.",
       ),
-      "Le journal reste sur ton PC, dans %LOCALAPPDATA%\\Island\\logs. Il ne contient jamais de clé ni de contenu de fichier.",
+      row("Durée des notifications", stepper(s.island.notificationSecs, 2, 60, (v) => save((d) => (d.island.notificationSecs = v)), 1, "s")),
+    ]),
+    group(
+      "Journal",
+      [
+        row(
+          "Niveau du journal",
+          choice(
+            s.general.logLevel,
+            [["error", "Erreurs"], ["warn", "Avertissements"], ["info", "Informations"], ["debug", "Débogage"]],
+            (v) => save((d) => (d.general.logLevel = v as Settings["general"]["logLevel"])),
+          ),
+        ),
+        row("Dossier du journal", el("button", { class: "btn small", onclick: () => void Bridge.openLogsFolder() }, "Ouvrir")),
+      ],
+      "Le journal reste sur ton PC (%LOCALAPPDATA%\\Island\\logs). Il ne contient jamais de clé ni de contenu de fichier.",
     ),
-    el("div", { class: "btn-row" }, el("button", { class: "btn", onclick: () => void Bridge.openLogsFolder() }, "Ouvrir le dossier du journal")),
   );
 }
 
 /**
- * L'ordre des onglets : glisser une ligne (ou ses flèches ↑ ↓). On peut aussi
- * glisser les onglets directement dans l'île.
+ * Les modules : un interrupteur chacun, et l'ordre des onglets (glisser une
+ * ligne, ou ses flèches). On peut aussi glisser les onglets dans l'île.
  */
-function tabOrder(main: HTMLElement) {
+function tabs(main: HTMLElement) {
   const withTab = ALL_MODULES.filter((m) => m.views?.expanded).map((m) => m.manifest);
+  const without = ALL_MODULES.filter((m) => !m.views?.expanded).map((m) => m.manifest);
   const ordered = applyTabOrder(withTab, (m) => m.id, settingsStore.current.island.tabOrder ?? []);
-  const list = el("ol", { class: "order-list" });
-  const saveOrder = (ids: string[]) => {
+  const list = el("div", { class: "group-body order-list" });
+  const saveOrder = (ids: string[], redraw: boolean) => {
     const all = applyTabOrder(ALL_MODULES.map((m) => m.manifest.id), (id) => id, settingsStore.current.island.tabOrder ?? []);
-    save((d) => (d.island.tabOrder = mergeOrder(ids, all)));
+    save((d) => (d.island.tabOrder = mergeOrder(ids, all)), redraw);
   };
   const idsShown = () => [...list.children].map((li) => (li as HTMLElement).dataset.id!);
   let dragged: HTMLElement | null = null;
@@ -175,123 +468,148 @@ function tabOrder(main: HTMLElement) {
       const ids = ordered.map((m) => m.id);
       const [id] = ids.splice(i, 1);
       ids.splice(i + delta, 0, id);
-      saveOrder(ids);
+      saveOrder(ids, true);
     };
-    const li = el(
-      "li",
-      { class: `order-item${settingsStore.moduleEnabled(man.id) ? "" : " off"}`, draggable: "true", "data-id": man.id },
-      el("span", { class: "order-grip", title: "Glisser pour déplacer" }, "⠿"),
-      el("span", { class: "card-icon" }, man.icon),
-      el("span", { class: "order-name" }, man.name, settingsStore.moduleEnabled(man.id) ? null : el("span", { class: "muted" }, " (désactivé)")),
-      el("button", { class: "btn small", title: "Monter", disabled: i === 0, onclick: () => move(-1) }, "↑"),
-      el("button", { class: "btn small", title: "Descendre", disabled: i === ordered.length - 1, onclick: () => move(1) }, "↓"),
+    const item = el(
+      "div",
+      { class: "row order-item", draggable: "true", "data-id": man.id, "data-key": man.name },
+      el("span", { class: "order-grip", title: "Glisser pour déplacer", "aria-hidden": "true" }, "⠿"),
+      el("span", { class: "result-icon" }, man.icon),
+      el("div", { class: "row-text" }, el("div", { class: "row-label" }, man.name)),
+      el(
+        "div",
+        { class: "order-arrows" },
+        el("button", { class: "icon-btn", title: "Monter", "aria-label": `Monter ${man.name}`, disabled: i === 0, onclick: () => move(-1) }, "↑"),
+        el("button", { class: "icon-btn", title: "Descendre", "aria-label": `Descendre ${man.name}`, disabled: i === ordered.length - 1, onclick: () => move(1) }, "↓"),
+      ),
+      enableToggle(man),
     );
-    li.addEventListener("dragstart", (e) => {
-      dragged = li;
-      li.classList.add("dragging");
+    item.addEventListener("dragstart", (e) => {
+      dragged = item;
+      item.classList.add("dragging");
       e.dataTransfer?.setData("text/plain", man.id);
     });
-    li.addEventListener("dragover", (e) => {
-      if (!dragged || dragged === li) return;
+    item.addEventListener("dragover", (e) => {
+      if (!dragged || dragged === item) return;
       e.preventDefault();
-      const r = li.getBoundingClientRect();
-      list.insertBefore(dragged, e.clientY < r.top + r.height / 2 ? li : li.nextSibling);
+      const r = item.getBoundingClientRect();
+      // Les autres lignes s'écartent en glissant (FLIP) au lieu de sauter.
+      const rows = [...list.children] as HTMLElement[];
+      const before = new Map(rows.map((x) => [x, x.offsetTop]));
+      list.insertBefore(dragged, e.clientY < r.top + r.height / 2 ? item : item.nextSibling);
+      if (!reducedMotion()) {
+        for (const x of rows) {
+          const dy = (before.get(x) ?? 0) - x.offsetTop;
+          if (dy && x !== dragged) x.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 200, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" });
+        }
+      }
     });
-    li.addEventListener("dragend", () => {
-      li.classList.remove("dragging");
+    item.addEventListener("dragend", () => {
+      item.classList.remove("dragging");
       dragged = null;
       const ids = idsShown();
-      if (ids.join(",") !== ordered.map((m) => m.id).join(",")) saveOrder(ids);
+      if (ids.join(",") !== ordered.map((m) => m.id).join(",")) saveOrder(ids, true);
     });
-    list.append(li);
+    list.append(item);
   });
 
   main.append(
-    el("h3", {}, "Ordre des onglets"),
-    el("p", { class: "muted" }, "Glisse une ligne, ou utilise ↑ ↓. Tu peux aussi faire glisser les onglets directement dans l'île."),
-    list,
-    el("div", { class: "btn-row" }, el("button", { class: "btn", onclick: () => save((d) => (d.island.tabOrder = [])) }, "Ordre d'origine")),
+    el(
+      "section",
+      { class: "group" },
+      el("h3", { class: "group-title" }, "Ordre des onglets"),
+      list,
+      el("p", { class: "group-note" }, "Glisse une ligne, ou utilise ↑ ↓. Tu peux aussi faire glisser les onglets directement dans l'île."),
+    ),
+    el("div", { class: "actions" }, el("button", { class: "btn", onclick: () => save((d) => (d.island.tabOrder = []), true) }, "Ordre d'origine")),
+  );
+  if (without.length) {
+    main.append(group("Sans onglet", without.map((man) => row(`${man.icon}  ${man.name}`, enableToggle(man), undefined, man.name))));
+  }
+}
+
+/** L'interrupteur « module activé ». */
+function enableToggle(man: ModuleManifest): HTMLElement {
+  return toggle(
+    settingsStore.moduleEnabled(man.id),
+    (v) =>
+      save((d) => {
+        d.modules[man.id] = { enabled: v, values: d.modules[man.id]?.values ?? {} };
+      }),
+    `Activer ${man.name}`,
   );
 }
 
-function modules(main: HTMLElement) {
-  main.append(el("h2", {}, "Modules"));
-  tabOrder(main);
-  main.append(el("h3", {}, "Réglages des modules"));
-  for (const m of applyTabOrder(ALL_MODULES, (x) => x.manifest.id, settingsStore.current.island.tabOrder ?? [])) {
-    const man = m.manifest;
-    const enabled = settingsStore.moduleEnabled(man.id);
-    const card = el("section", { class: "card" });
-    card.append(
-      el(
-        "div",
-        { class: "card-head" },
-        el("span", { class: "card-icon" }, man.icon),
-        el("div", { class: "card-title" }, el("strong", {}, man.name), el("span", { class: "muted" }, ` v${man.version}`)),
-        el(
-          "label",
-          { class: "switch" },
-          checkbox(enabled, (v) =>
-            save((d) => {
-              d.modules[man.id] = { enabled: v, values: d.modules[man.id]?.values ?? {} };
-            }),
-          ),
-          enabled ? " Activé" : " Désactivé",
-        ),
-      ),
-      el("p", { class: "muted" }, man.description),
-      el(
-        "p",
-        { class: "perms" },
-        "Permissions : ",
-        man.permissions.length ? man.permissions.map((p) => PERMISSION_LABELS[p] ?? p).join(", ") : "aucune",
-      ),
-    );
-    if (man.settings?.fields.length) {
-      card.append(
-        settingsForm(man.settings.fields, settingsStore.moduleValues(man), (key, value) =>
-          save((d) => {
-            const entry = (d.modules[man.id] ??= { enabled: true, values: {} });
-            entry.values[key] = value;
-          }),
-        ),
-      );
-    }
-    main.append(card);
+/** La page d'un module. `compact` : seulement l'interrupteur et les réglages (page Règles). */
+function modulePage(main: HTMLElement, man: ModuleManifest, compact = false) {
+  const perms = man.permissions.length
+    ? man.permissions.map((p) => chip(PERMISSION_LABELS[p] ?? p, p === "claude-api" ? "warn" : ""))
+    : [chip("Aucune permission", "ok")];
+  // La description complète, repliée sur trois lignes si elle est longue.
+  const about = el("p", { class: "about clamp" }, man.description);
+  const more = el("button", { class: "link-btn" }, "Lire la suite");
+  more.addEventListener("click", () => {
+    const open = about.classList.toggle("clamp");
+    more.textContent = open ? "Lire la suite" : "Réduire";
+  });
+  main.append(
+    group(null, [
+      row("Activé", enableToggle(man), "Désactivé, le module s'arrête et son onglet disparaît.", "Activé"),
+      compact ? null : wideRow("Permissions", el("div", { class: "chips" }, ...perms)),
+      compact ? null : wideRow("À propos", el("div", {}, about, man.description.length > 220 ? more : null)),
+    ]),
+  );
+  const fields = man.settings?.fields ?? [];
+  if (!fields.length) {
+    if (!compact) main.append(el("p", { class: "empty" }, "Ce module n'a pas de réglage."));
+    return;
   }
+  main.append(
+    group(
+      "Réglages",
+      settingsRows(fields, settingsStore.moduleValues(man), (key, value) =>
+        save((d) => {
+          const entry = (d.modules[man.id] ??= { enabled: true, values: {} });
+          entry.values[key] = value;
+        }),
+      ),
+    ),
+  );
+  if (!compact) main.append(el("p", { class: "version" }, `${man.name} · version ${man.version}`));
 }
 
 function mascot(main: HTMLElement) {
   const s = settingsStore.current;
   const catalog = mascotCatalog();
-  const current = catalog.find((e) => e.manifest.id === s.mascot.id) ?? catalog[0];
+  const cur = catalog.find((e) => e.manifest.id === s.mascot.id) ?? catalog[0];
   main.append(
-    el("h2", {}, "Mascotte"),
-    row("Afficher la mascotte", checkbox(s.mascot.enabled, (v) => save((d) => (d.mascot.enabled = v)))),
-    row(
-      "Mascotte",
-      select(
-        current?.manifest.id ?? "",
-        catalog.map((e) => [e.manifest.id, e.problems.length ? `${e.manifest.name} (manifeste invalide)` : e.manifest.name]),
-        (v) => save((d) => (d.mascot.id = v)),
+    group("Apparence", [
+      row("Afficher la mascotte", toggle(s.mascot.enabled, (v) => save((d) => (d.mascot.enabled = v)), "Afficher la mascotte")),
+      row(
+        "Mascotte",
+        choice(
+          cur?.manifest.id ?? "",
+          catalog.map((e) => [e.manifest.id, e.problems.length ? `${e.manifest.name} (invalide)` : e.manifest.name]),
+          (v) => save((d) => (d.mascot.id = v), true),
+        ),
+        "Dépose tes mascottes dans le dossier mascots/ du projet, puis relance l'appli.",
       ),
-      "Dépose tes mascottes dans le dossier mascots/ du projet (un dossier + manifest.json), puis relance l'appli.",
-    ),
-    row("S'ennuie après (s)", number(s.mascot.boredAfterSecs, 10, 3600, (v) => save((d) => (d.mascot.boredAfterSecs = v)))),
-    row("S'endort après (s)", number(s.mascot.sleepAfterSecs, 20, 7200, (v) => save((d) => (d.mascot.sleepAfterSecs = v)))),
+    ]),
+    group("Humeur", [
+      row("S'ennuie après", stepper(s.mascot.boredAfterSecs, 10, 3600, (v) => save((d) => (d.mascot.boredAfterSecs = v)), 10, "s")),
+      row("S'endort après", stepper(s.mascot.sleepAfterSecs, 20, 7200, (v) => save((d) => (d.mascot.sleepAfterSecs = v)), 10, "s")),
+    ]),
   );
-  if (!current) return;
-  if (current.problems.length) {
-    main.append(el("div", { class: "note error" }, "Problèmes dans le manifeste : ", current.problems.join(" ; ")));
-  }
+  if (!cur) return;
+  if (cur.problems.length) main.append(el("p", { class: "banner error" }, "Problèmes dans le manifeste : ", cur.problems.join(" ; ")));
 
-  // Aperçu : un renderer à part, et chaque bouton joue aussi l'animation sur l'île.
+  // Aperçu : un renderer à part ; chaque bouton joue aussi l'animation sur l'île.
   const stage = el("div", { class: "mascot-stage" });
-  const buttons = el("div", { class: "btn-row" });
-  main.append(el("h3", {}, "Tester les animations"), stage, buttons);
-  preview = createRenderer(current.manifest, current.assets);
+  const buttons = el("div", { class: "anim-grid" });
+  main.append(el("section", { class: "group", "data-key": "Tester les animations" }, el("h3", { class: "group-title" }, "Tester les animations"), el("div", { class: "group-body stage-body" }, stage, buttons)));
+  preview = createRenderer(cur.manifest, cur.assets);
   preview.mount(stage);
-  const idle = current.manifest.animations.find((a) => a.name === current.manifest.fallback);
+  const idle = cur.manifest.animations.find((a) => a.name === cur.manifest.fallback);
   if (idle) preview.play(idle);
   preview.onAnimationEnd(() => idle && preview?.play(idle));
   stage.addEventListener("mousemove", (e) => {
@@ -299,12 +617,12 @@ function mascot(main: HTMLElement) {
     preview?.lookAt(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
   });
   stage.addEventListener("mouseleave", () => preview?.lookAt(null, null));
-  for (const a of current.manifest.animations) {
+  for (const a of cur.manifest.animations) {
     buttons.append(
       el(
         "button",
         {
-          class: "btn",
+          class: "anim-btn",
           title: `${a.durationMs} ms, ${a.loop ? "en boucle" : "une fois"}, priorité ${a.priority}`,
           onclick: () => {
             preview?.play(a);
@@ -319,115 +637,88 @@ function mascot(main: HTMLElement) {
 
 function privacy(main: HTMLElement) {
   const s = settingsStore.current;
-  const list = el("ul", { class: "folders" });
-  for (const folder of s.privacy.excludedFolders) {
-    list.append(
+  const rows: HTMLElement[] = s.privacy.excludedFolders.map((folder) =>
+    row(
+      folder,
       el(
-        "li",
-        {},
-        el("code", {}, folder),
-        el(
-          "button",
-          { class: "icon-btn", title: "Retirer", onclick: () => save((d) => (d.privacy.excludedFolders = d.privacy.excludedFolders.filter((f) => f !== folder))) },
-          "×",
-        ),
+        "button",
+        {
+          class: "icon-btn",
+          title: "Retirer",
+          "aria-label": `Retirer ${folder}`,
+          onclick: () => save((d) => (d.privacy.excludedFolders = d.privacy.excludedFolders.filter((f) => f !== folder)), true),
+        },
+        "×",
       ),
-    );
-  }
-  if (!s.privacy.excludedFolders.length) list.append(el("li", { class: "muted" }, "Aucun dossier exclu."));
-  const input = el("input", { type: "text", placeholder: "C:\\Users\\moi\\Documents\\Privé" }) as HTMLInputElement;
-  const msg = el("div", { class: "help" });
-  const add = el("button", {
-    class: "btn",
-    onclick: async () => {
-      try {
-        const folder = await Bridge.privacyCheckFolder(input.value);
-        save((d) => {
-          if (!d.privacy.excludedFolders.includes(folder)) d.privacy.excludedFolders.push(folder);
-        });
-      } catch (err) {
-        msg.textContent = errorText(err);
-      }
-    },
-  }, "Exclure ce dossier");
-  main.append(
-    el("h2", {}, "Confidentialité"),
-    el(
-      "p",
-      {},
-      "Island n'envoie aucune télémétrie. Un module qui envoie du contenu à l'API Claude le déclare (voir ses permissions) et te montre ce qui part avant l'envoi.",
     ),
-    el("h3", {}, "Dossiers exclus"),
-    el("p", { class: "muted" }, "Aucun module ne lira ni n'enverra un fichier situé dans ces dossiers."),
-    list,
-    el("div", { class: "inline" }, input, add),
+  );
+  if (!rows.length) rows.push(el("div", { class: "row muted-row" }, "Aucun dossier exclu."));
+  const input = el("input", { type: "text", class: "text grow", placeholder: "C:\\Users\\moi\\Documents\\Privé", "aria-label": "Dossier à exclure" }) as HTMLInputElement;
+  const msg = el("div", { class: "row-help error-text" });
+  const add = async () => {
+    msg.textContent = "";
+    try {
+      const folder = await Bridge.privacyCheckFolder(input.value);
+      save((d) => {
+        if (!d.privacy.excludedFolders.includes(folder)) d.privacy.excludedFolders.push(folder);
+      }, true);
+    } catch (err) {
+      msg.textContent = errorText(err);
+    }
+  };
+  input.addEventListener("keydown", (e) => e.key === "Enter" && void add());
+  main.append(
+    group(
+      "Ce que l'île promet",
+      [
+        row("Télémétrie", chip("Aucune", "ok"), "Rien n'est envoyé sur Internet sans que tu le demandes."),
+        row("Envoi à Claude", chip("Toujours montré avant", "ok"), "Un module qui envoie du contenu à l'API Claude le déclare et te montre ce qui part."),
+      ],
+    ),
+    group("Dossiers exclus", [...rows, wideRow(null, el("div", { class: "inline" }, input, el("button", { class: "btn", onclick: () => void add() }, "Exclure")))], "Aucun module ne lira ni n'enverra un fichier situé dans ces dossiers."),
     msg,
   );
 }
 
 function credentials(main: HTMLElement) {
-  main.append(
-    el("h2", {}, "Identifiants"),
-    el(
-      "p",
-      { class: "muted" },
-      "Les clés sont rangées dans le Gestionnaire d'identifiants Windows. L'île peut seulement savoir si une clé existe : elle ne peut jamais la réafficher.",
-    ),
-  );
   const keys = [{ key: "anthropic-api-key", label: "Clé API Anthropic" }];
   for (const k of keys) {
-    const status = el("span", { class: "status" }, "…");
-    const input = el("input", { type: "password", placeholder: "Coller la clé ici", autocomplete: "off" }) as HTMLInputElement;
-    const msg = el("div", { class: "help" });
+    const status = chip("…");
+    const input = el("input", { type: "password", class: "text grow", placeholder: "Coller la clé ici", autocomplete: "off", "aria-label": k.label }) as HTMLInputElement;
+    const msg = el("div", { class: "row-help" });
     const refresh = async () => {
       const present = await Bridge.credentialExists(k.key);
-      status.textContent = present ? "✓ enregistrée" : "aucune";
-      status.className = `status ${present ? "ok" : ""}`;
+      status.textContent = present ? "✓ Enregistrée" : "Aucune";
+      status.className = `chip ${present ? "ok" : ""}`;
+    };
+    const act = async (fn: () => Promise<unknown>, done: string) => {
+      try {
+        await fn();
+        input.value = "";
+        msg.textContent = done;
+      } catch (err) {
+        msg.textContent = errorText(err);
+      }
+      void refresh();
     };
     main.append(
-      el(
-        "section",
-        { class: "card" },
-        el("div", { class: "card-head" }, el("strong", {}, k.label), status),
-        el(
-          "div",
-          { class: "inline" },
-          input,
-          el(
-            "button",
-            {
-              class: "btn",
-              onclick: async () => {
-                try {
-                  await Bridge.credentialSet(k.key, input.value);
-                  input.value = "";
-                  msg.textContent = "Enregistrée.";
-                } catch (err) {
-                  msg.textContent = errorText(err);
-                }
-                void refresh();
-              },
-            },
-            "Enregistrer",
+      group(
+        k.label,
+        [
+          row("État", status, undefined, k.label),
+          wideRow(
+            null,
+            el(
+              "div",
+              { class: "inline" },
+              input,
+              el("button", { class: "btn primary", onclick: () => void act(() => Bridge.credentialSet(k.key, input.value), "Enregistrée.") }, "Enregistrer"),
+              el("button", { class: "btn", onclick: () => void act(() => Bridge.credentialDelete(k.key), "Supprimée.") }, "Supprimer"),
+            ),
           ),
-          el(
-            "button",
-            {
-              class: "btn",
-              onclick: async () => {
-                try {
-                  await Bridge.credentialDelete(k.key);
-                  msg.textContent = "Supprimée.";
-                } catch (err) {
-                  msg.textContent = errorText(err);
-                }
-                void refresh();
-              },
-            },
-            "Supprimer",
-          ),
-        ),
-        msg,
+          msg,
+        ],
+        "L'île peut seulement savoir si une clé existe : elle ne peut jamais la réafficher.",
       ),
     );
     void refresh();
@@ -435,8 +726,8 @@ function credentials(main: HTMLElement) {
 }
 
 function backup(main: HTMLElement) {
-  const msg = el("div", { class: "help" });
-  const file = el("input", { type: "file", accept: ".json,application/json" }) as HTMLInputElement;
+  const msg = el("div", { class: "row-help" });
+  const file = el("input", { type: "file", accept: ".json,application/json", class: "file-hidden" }) as HTMLInputElement;
   file.addEventListener("change", async () => {
     const f = file.files?.[0];
     if (!f) return;
@@ -449,28 +740,32 @@ function backup(main: HTMLElement) {
     file.value = "";
   });
   main.append(
-    el("h2", {}, "Sauvegarde"),
-    el("p", { class: "muted" }, "Les clés ne font jamais partie de l'export : elles restent dans le Gestionnaire d'identifiants."),
-    el(
-      "div",
-      { class: "btn-row" },
-      el(
-        "button",
-        {
-          class: "btn",
-          onclick: async () => {
-            try {
-              msg.textContent = `Exporté dans ${await Bridge.settingsExport()}`;
-            } catch (err) {
-              msg.textContent = errorText(err);
-            }
-          },
-        },
-        "Exporter les réglages",
-      ),
+    group(
+      null,
+      [
+        row(
+          "Exporter les réglages",
+          el(
+            "button",
+            {
+              class: "btn small",
+              onclick: async () => {
+                try {
+                  msg.textContent = `Exporté dans ${await Bridge.settingsExport()}`;
+                } catch (err) {
+                  msg.textContent = errorText(err);
+                }
+              },
+            },
+            "Exporter",
+          ),
+          "Un fichier .json, dans %APPDATA%\\Island\\exports (le dossier s'ouvre).",
+        ),
+        row("Importer des réglages", el("label", { class: "btn small" }, "Choisir…", file), "Remplace tes réglages actuels."),
+        msg,
+      ],
+      "Les clés ne font jamais partie de l'export : elles restent dans le Gestionnaire d'identifiants.",
     ),
-    row("Importer un fichier de réglages", file),
-    msg,
   );
 }
 

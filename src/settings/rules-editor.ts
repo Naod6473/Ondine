@@ -154,7 +154,7 @@ function row(label: string, control: HTMLElement | string, help?: string) {
 // ── La section ───────────────────────────────────────────────────────────────
 
 export function rulesSection(main: HTMLElement) {
-  main.append(el("h2", {}, "Règles"));
+  // (le titre « Règles » est dessiné par la page, voir settings/main.ts)
   if (message) main.append(el("div", { class: `note${message.error ? " error" : ""}` }, message.text));
   if (draft) editor(main, draft);
   else list(main);
