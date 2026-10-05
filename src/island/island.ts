@@ -18,6 +18,7 @@ import { findMascot } from "../mascot/catalog";
 import { MascotController } from "../mascot/mascot-state";
 import { createRenderer } from "../mascot/renderer";
 import { clear, el } from "./dom";
+import { icon } from "./icon";
 import { IslandStateMachine, type IslandState } from "./island-state";
 import { enableTabDrag, flip } from "./tab-drag";
 import { reducedMotion, TabPill } from "./tab-pill";
@@ -415,7 +416,7 @@ export class Island {
       const button = el(
         "button",
         { class: `tab ${m.id === this.activeTab ? "active" : ""}`, "data-id": m.id, title: `${m.name} (glisser pour déplacer)`, onclick: () => this.switchTab(m.id) },
-        el("span", { class: "tab-icon" }, m.icon),
+        el("span", { class: "tab-icon" }, icon(m.icon)),
         el("span", { class: "tab-label" }, m.name),
       );
       buttons.set(m.id, button);
@@ -554,7 +555,7 @@ export class Island {
     const row = el("div", { class: "drop-row" });
     targets.forEach(({ target }, i) => {
       row.append(
-        el("div", { class: "drop-target", "data-drop-index": i }, el("span", { class: "drop-icon" }, target.icon), el("span", {}, target.label)),
+        el("div", { class: "drop-target", "data-drop-index": i }, el("span", { class: "drop-icon" }, icon(target.icon)), el("span", {}, target.label)),
       );
     });
     if (!targets.length) row.append(el("span", { class: "muted" }, "Aucune cible de dépôt active."));
@@ -595,7 +596,7 @@ export class Island {
       "div",
       // Plusieurs boutons (une question à choix) : ils passent sur leur propre ligne.
       { class: `notif ${big ? "big" : ""} ${(n.actions?.length ?? 0) > 1 ? "many" : ""} prio-${n.priority}` },
-      el("span", { class: "notif-icon" }, n.icon ?? "•"),
+      el("span", { class: "notif-icon" }, icon(n.icon ?? "•")),
       el("div", { class: "notif-text" }, el("div", { class: "notif-title" }, n.title), n.body ? el("div", { class: "notif-body" }, n.body) : null),
       actions,
     );

@@ -12,6 +12,7 @@ import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { Bridge } from "../../core/bridge";
 import { el } from "../../island/dom";
+import { agentIcon, icon } from "../../island/icon";
 
 interface AgentEvent {
   at: number;
@@ -56,6 +57,12 @@ let chosenTool: LaunchTool = "claude";
 
 const ICON: Record<AgentEvent["kind"], string> = { waiting: "✋", done: "✅", info: "💬" };
 const redraws = new Set<() => void>();
+
+/** Le logo d'une source connue (« claude-code », « gemini »…), sinon rien. */
+function sourceIcon(source: string): string | undefined {
+  const name = agentIcon(source);
+  return name === "🤖" ? undefined : name;
+}
 
 /** « 4 min », « 1 h 05 » : depuis combien de temps. */
 function duration(ms: number): string {
@@ -150,7 +157,8 @@ export const agents: IslandModule = {
         title: e.title,
         // Attente : le message de Claude (« … to use Bash ») ; sinon, le projet.
         body: e.kind === "waiting" ? [e.body, where].filter(Boolean).join(" · ") : e.body || where,
-        icon: ICON[e.kind] ?? "🤖",
+        // Le logo de l'agent (Claude, Gemini…) ; sinon l'état (✋ ✅ 💬).
+        icon: sourceIcon(e.source) ?? ICON[e.kind] ?? "🤖",
         // Claude attend : l'île s'ouvre pour te le dire ; le reste reste discret.
         priority: e.kind === "waiting" ? "high" : "normal",
         key: `agents-${e.session}`,
@@ -463,6 +471,7 @@ export const agents: IslandModule = {
                 "button",
                 { class: `agents-session ${x.state}`, title: "Revenir à sa fenêtre", onclick: api.handler(() => goTo(api, x.id)) },
                 el("i", { class: "agents-dot" }),
+                el("span", { class: "agents-logo" }, icon(sourceIcon(x.source) ?? "🤖")),
                 el("b", {}, SOURCE_NAMES[x.source] ?? x.source),
                 el("span", {}, x.project || "—"),
                 el("small", { class: "muted" }, what),

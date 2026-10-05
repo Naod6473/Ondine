@@ -18,6 +18,7 @@ import { settingsStore } from "../core/settings-store";
 import { applyTabOrder, mergeOrder } from "../core/tab-order";
 import type { Settings } from "../core/types";
 import { el } from "../island/dom";
+import { icon as iconNode } from "../island/icon";
 import { reducedMotion } from "../island/tab-pill";
 import { mascotCatalog } from "../mascot/catalog";
 import { createRenderer, type MascotRenderer } from "../mascot/renderer";
@@ -267,7 +268,7 @@ function drawNav() {
     const item = el(
       "button",
       { class: `nav-item ${p.id === current ? "active" : ""} ${moduleOff ? "off" : ""}`, title: p.label, "data-page": p.id, "aria-current": p.id === current ? "page" : false },
-      el("span", { class: "nav-icon" }, p.icon),
+      el("span", { class: "nav-icon" }, iconNode(p.icon)),
       el("span", { class: "nav-label" }, p.label),
       moduleOff ? el("span", { class: "nav-off", title: "Module désactivé" }) : null,
     );
@@ -350,11 +351,11 @@ function showPage(animate: boolean, direction = 1) {
   );
 }
 
-function header(icon: string, title: string, sub: string, extra?: HTMLElement): HTMLElement {
+function header(pageIcon: string, title: string, sub: string, extra?: HTMLElement): HTMLElement {
   return el(
     "header",
     { class: "page-head" },
-    el("span", { class: "page-icon" }, icon),
+    el("span", { class: "page-icon" }, iconNode(pageIcon)),
     el("div", { class: "page-titles" }, el("h1", {}, title), el("p", {}, sub)),
     extra ?? null,
   );
@@ -402,7 +403,7 @@ function results(page: HTMLElement, q: string) {
         el(
           "button",
           { class: "row result", onclick: () => go(h.page.id, h.key) },
-          el("span", { class: "result-icon" }, h.page.icon),
+          el("span", { class: "result-icon" }, iconNode(h.page.icon)),
           el("div", { class: "row-text" }, el("div", { class: "row-label" }, h.label), el("div", { class: "row-help" }, h.key ? h.page.label : h.page.group)),
           el("span", { class: "chevron" }, "›"),
         ),
@@ -474,7 +475,7 @@ function tabs(main: HTMLElement) {
       "div",
       { class: "row order-item", draggable: "true", "data-id": man.id, "data-key": man.name },
       el("span", { class: "order-grip", title: "Glisser pour déplacer", "aria-hidden": "true" }, "⠿"),
-      el("span", { class: "result-icon" }, man.icon),
+      el("span", { class: "result-icon" }, iconNode(man.icon)),
       el("div", { class: "row-text" }, el("div", { class: "row-label" }, man.name)),
       el(
         "div",
