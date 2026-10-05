@@ -25,6 +25,7 @@ mod rules;
 mod notes;
 mod remote;
 mod shelf;
+mod shelf_tools;
 mod system;
 mod terminal;
 

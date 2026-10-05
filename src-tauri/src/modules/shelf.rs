@@ -4,7 +4,9 @@
 //     quand l'île s'arrête). Rien n'est copié : on retient seulement où sont les
 //     fichiers, pour agir dessus plus tard ;
 //   - les actions : Corbeille, copier vers, déplacer vers, copier le chemin,
-//     compresser, montrer dans l'Explorateur.
+//     compresser, montrer dans l'Explorateur ;
+//   - les outils (shelf_tools.rs) : convertir / réduire des images, renommer
+//     plusieurs fichiers selon un modèle.
 //
 // Règles appliquées ici :
 //   - chaque chemin reçu du front est validé (ctx.check_path : chemin absolu,
@@ -22,6 +24,7 @@ use std::sync::{Arc, Mutex};
 use serde_json::{json, Value};
 use tauri::AppHandle;
 
+use super::shelf_tools::{self, OutFormat};
 use super::{ModuleContext, RustModule};
 use crate::services::undo::DEFAULT_WINDOW;
 use crate::services::bus::BusMessage;
@@ -94,6 +97,19 @@ impl RustModule for Shelf {
             "copy_to" => self.copy_to(ctx, &args),
             "move_to" => self.move_to(ctx, &args),
             "compress" => self.compress(ctx, &args),
+            // { paths, format: "same"|"png"|"jpeg", maxWidth: 0 (= garder) | px, quality: 30..100 }
+            "images" => images(ctx, &args),
+            // { paths, pattern, start } → [{ from, to }] : l'aperçu, rien n'est renommé.
+            "rename_preview" => {
+                let paths = tool_paths(ctx, &args)?;
+                let plan = shelf_tools::rename_plan(&paths, arg_str(&args, "pattern"), arg_start(&args))?;
+                Ok(json!(plan
+                    .iter()
+                    .map(|(a, b)| json!({ "from": shelf_tools::file_name(a), "to": shelf_tools::file_name(b) }))
+                    .collect::<Vec<_>>()))
+            }
+            // Pareil, mais pour de vrai (après le bouton de confirmation du front).
+            "rename" => self.rename(ctx, &args),
             other => Err(format!("commande inconnue : {other}")),
         }
     }
@@ -110,6 +126,43 @@ impl RustModule for Shelf {
 }
 
 impl Shelf {
+    /// Renomme selon le modèle. Annuler = chacun reprend son ancien nom.
+    fn rename(&self, ctx: &ModuleContext, args: &Value) -> Result<Value, String> {
+        let paths = tool_paths(ctx, args)?;
+        let plan = shelf_tools::rename_plan(&paths, arg_str(args, "pattern"), arg_start(args))?;
+        let done = shelf_tools::apply_renames(&plan)?;
+        // L'étagère suit les fichiers renommés.
+        {
+            let mut items = self.items.locked();
+            for (old, new) in &done {
+                if let Some(slot) = items.iter_mut().find(|p| *p == old) {
+                    *slot = new.clone();
+                }
+            }
+        }
+        changed(ctx.app, &self.items);
+        ctx.log_info(format!("{} fichier(s) renommé(s)", done.len()));
+        let count = done.len();
+        let (items, app) = (self.items.clone(), ctx.app.clone());
+        let undo_id = ctx.offer_undo(
+            &format!("{count} fichier(s) renommé(s)"),
+            DEFAULT_WINDOW,
+            Box::new(move || {
+                shelf_tools::undo_renames(&done)?;
+                let mut list = items.locked();
+                for (old, new) in &done {
+                    if let Some(slot) = list.iter_mut().find(|p| *p == new) {
+                        *slot = old.clone();
+                    }
+                }
+                drop(list);
+                changed(&app, &items);
+                Ok(())
+            }),
+        );
+        Ok(json!({ "count": count, "undoId": undo_id }))
+    }
+
     /// Pose des chemins sur l'étagère (chacun validé) et renvoie combien sont nouveaux.
     fn add(&self, ctx: &ModuleContext, args: &Value) -> Result<usize, String> {
         let paths = checked_paths(ctx, args)?;
@@ -295,6 +348,59 @@ fn finish_task(ctx: &ModuleContext, what: &str, error: &Option<String>) {
         None => ctx.emit("task.finished", json!({ "label": what })),
         Some(_) => ctx.emit("task.failed", json!({ "label": what })),
     }
+}
+
+fn arg_str<'a>(args: &'a Value, key: &str) -> &'a str {
+    args.get(key).and_then(Value::as_str).unwrap_or("")
+}
+
+fn arg_start(args: &Value) -> u32 {
+    args.get("start").and_then(Value::as_u64).unwrap_or(1).min(99_999) as u32
+}
+
+/// Les chemins d'un outil : validés, des fichiers (pas des dossiers), 100 au plus.
+fn tool_paths(ctx: &ModuleContext, args: &Value) -> Result<Vec<PathBuf>, String> {
+    let paths: Vec<PathBuf> = checked_paths(ctx, args)?.into_iter().filter(|p| p.is_file()).collect();
+    if paths.is_empty() {
+        return Err("aucun fichier (les dossiers sont ignorés)".into());
+    }
+    if paths.len() > shelf_tools::MAX_FILES {
+        return Err(format!("au plus {} fichiers à la fois", shelf_tools::MAX_FILES));
+    }
+    Ok(paths)
+}
+
+/// Convertit / réduit les images. Annuler = les nouvelles images vont à la Corbeille.
+fn images(ctx: &ModuleContext, args: &Value) -> Result<Value, String> {
+    let paths = tool_paths(ctx, args)?;
+    let format = OutFormat::parse(arg_str(args, "format")).ok_or("format inconnu")?;
+    let max_width = args.get("maxWidth").and_then(Value::as_u64).filter(|w| *w > 0).map(|w| w.clamp(16, 16_384) as u32);
+    let quality = args.get("quality").and_then(Value::as_u64).unwrap_or(85).clamp(30, 100) as u8;
+    if format == OutFormat::Same && max_width.is_none() {
+        return Err("choisis un format ou une taille : sinon l'image ne change pas".into());
+    }
+    ctx.emit("task.started", json!({ "label": "Images" }));
+    let mut created = Vec::new();
+    let mut errors = Vec::new();
+    for p in &paths {
+        match shelf_tools::convert_image(p, format, max_width, quality) {
+            Ok(c) => created.push(c),
+            Err(e) => errors.push(e),
+        }
+    }
+    let error = errors.first().cloned();
+    finish_task(ctx, "Images", &error);
+    if created.is_empty() {
+        return Err(error.unwrap_or_else(|| "aucune image créée".into()));
+    }
+    ctx.log_info(format!("{} image(s) créée(s)", created.len()));
+    let count = created.len();
+    let undo_id = ctx.offer_undo(
+        &format!("{count} image(s) créée(s) à côté des originales"),
+        DEFAULT_WINDOW,
+        Box::new(move || files::to_trash(&created)),
+    );
+    Ok(json!({ "count": count, "failed": errors.len(), "error": error, "undoId": undo_id }))
 }
 
 /// « rapport.pdf » ou « 3 éléments ».

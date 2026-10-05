@@ -2905,3 +2905,82 @@ body[data-edge="right"] .privacy-dot {
 body.presenting .island[data-state="hidden"] {
   opacity: 0;
 }
+
+/* ── Étagère : outils images et renommage ────────────────────────────────── */
+
+.tool {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+.tool-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tool-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+.tool-row.hidden {
+  display: none;
+}
+.tool-row > .muted:first-child {
+  min-width: 84px;
+}
+.tool-seg {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.tool-seg-btn {
+  border: 0;
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: none;
+  color: var(--island-fg);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 180ms var(--ease), color 180ms var(--ease);
+}
+.tool-seg-btn.on {
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--accent);
+}
+.tool-range {
+  width: 140px;
+  accent-color: var(--accent);
+}
+.tool-pattern {
+  flex: 1;
+  min-width: 140px;
+}
+.tool-start {
+  width: 64px;
+}
+.tool-note {
+  margin: 0;
+  font-size: 11px;
+}
+.tool-preview {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+.tool-preview li {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
