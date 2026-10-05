@@ -109,7 +109,7 @@ const SECURITY_PAGES: Page[] = [
     icon: "🔑",
     label: "Identifiants",
     sub: "Rangés dans le Gestionnaire d'identifiants Windows.",
-    keywords: ["Clé API Anthropic", "Gestionnaire d'identifiants"],
+    keywords: ["Clé API Anthropic", "Adresse iCal de ton agenda", "Google Agenda", "Gestionnaire d'identifiants"],
     render: credentials,
   },
   {
@@ -682,10 +682,18 @@ function privacy(main: HTMLElement) {
 }
 
 function credentials(main: HTMLElement) {
-  const keys = [{ key: "anthropic-api-key", label: "Clé API Anthropic" }];
+  const keys = [
+    { key: "anthropic-api-key", label: "Clé API Anthropic", placeholder: "Coller la clé ici", help: "" },
+    {
+      key: "agenda-ical-url",
+      label: "Adresse iCal de ton agenda",
+      placeholder: "Coller l'adresse secrète iCal (https://…)",
+      help: "Google Agenda : Paramètres → ton agenda → « Adresse secrète au format iCal ». L'onglet Agenda le télécharge toutes les 15 minutes. Garde ce lien pour toi : il donne accès à tout ton agenda.",
+    },
+  ];
   for (const k of keys) {
     const status = chip("…");
-    const input = el("input", { type: "password", class: "text grow", placeholder: "Coller la clé ici", autocomplete: "off", "aria-label": k.label }) as HTMLInputElement;
+    const input = el("input", { type: "password", class: "text grow", placeholder: k.placeholder, autocomplete: "off", "aria-label": k.label }) as HTMLInputElement;
     const msg = el("div", { class: "row-help" });
     const refresh = async () => {
       const present = await Bridge.credentialExists(k.key);
@@ -706,7 +714,7 @@ function credentials(main: HTMLElement) {
       group(
         k.label,
         [
-          row("État", status, undefined, k.label),
+          row("État", status, k.help || undefined, k.label),
           wideRow(
             null,
             el(

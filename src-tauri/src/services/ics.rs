@@ -629,4 +629,27 @@ mod tests {
         assert!(parse_rule("FREQ=SECONDLY").is_none());
         assert!(parse_by_day("X").is_none());
     }
+
+    #[test]
+    fn google_calendar_export() {
+        // Comme un export de Google Agenda : en-têtes X-WR, bloc VTIMEZONE (avec
+        // ses propres DTSTART, à ignorer), heures TZID, rappel VALARM.
+        let text = "BEGIN:VCALENDAR\r\nPRODID:-//Google Inc//Google Calendar 70.9054//EN\r\nVERSION:2.0\r\nCALSCALE:GREGORIAN\r\n\
+             METHOD:PUBLISH\r\nX-WR-CALNAME:simon\r\nX-WR-TIMEZONE:Europe/Paris\r\n\
+             BEGIN:VTIMEZONE\r\nTZID:Europe/Paris\r\nX-LIC-LOCATION:Europe/Paris\r\n\
+             BEGIN:DAYLIGHT\r\nTZOFFSETFROM:+0100\r\nTZOFFSETTO:+0200\r\nTZNAME:CEST\r\nDTSTART:19700329T020000\r\nRRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU\r\nEND:DAYLIGHT\r\n\
+             BEGIN:STANDARD\r\nTZOFFSETFROM:+0200\r\nTZOFFSETTO:+0100\r\nTZNAME:CET\r\nDTSTART:19701025T030000\r\nRRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU\r\nEND:STANDARD\r\n\
+             END:VTIMEZONE\r\n\
+             BEGIN:VEVENT\r\nDTSTART;TZID=Europe/Paris:20261006T090000\r\nDTEND;TZID=Europe/Paris:20261006T100000\r\n\
+             RRULE:FREQ=WEEKLY;WKST=MO;BYDAY=TU\r\nDTSTAMP:20261005T120000Z\r\nUID:abc123@google.com\r\nCREATED:20261001T080000Z\r\n\
+             DESCRIPTION:Point d'équipe\\, ordre du jour :\\n- un\r\n  deux\r\nLAST-MODIFIED:20261001T080000Z\r\nLOCATION:\r\nSEQUENCE:0\r\n\
+             STATUS:CONFIRMED\r\nSUMMARY:Réunion\r\nTRANSP:OPAQUE\r\n\
+             BEGIN:VALARM\r\nACTION:DISPLAY\r\nDESCRIPTION:This is an event reminder\r\nTRIGGER:-P0DT0H10M0S\r\nEND:VALARM\r\nEND:VEVENT\r\n\
+             END:VCALENDAR\r\n";
+        let events = parse(text);
+        assert_eq!(events.len(), 1);
+        let occ = occurrences(&events, dt("2026-10-05 12:00"), dt("2026-10-20 00:00"));
+        assert_eq!(starts(&occ), vec!["2026-10-06 09:00", "2026-10-13 09:00"]);
+        assert_eq!(occ[0].summary, "Réunion");
+    }
 }

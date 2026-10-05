@@ -13,6 +13,7 @@ import { Bridge } from "../../core/bridge";
 import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
+import { icon } from "../../island/icon";
 import { reducedMotion } from "../../island/tab-pill";
 
 interface Meeting {
@@ -183,9 +184,13 @@ export const agenda: IslandModule = {
             el(
               "div",
               { class: "agenda-empty" },
-              el("div", { class: "agenda-empty-icon" }, "📅"),
+              el("div", { class: "agenda-empty-icon" }, icon("📅")),
               el("b", {}, "Aucun agenda pour l'instant"),
-              el("p", { class: "muted" }, "Exporte ton agenda au format .ics (Outlook, Google Agenda, Thunderbird…), puis choisis le fichier dans les réglages du module Agenda."),
+              el(
+                "p",
+                { class: "muted" },
+                "Google Agenda : colle son adresse secrète iCal dans Réglages → Identifiants (toujours à jour). Sinon, exporte ton agenda en .ics et choisis le fichier dans les réglages du module Agenda.",
+              ),
               el("button", { class: "btn primary", onclick: api.handler(() => Bridge.openSettingsWindow()) }, "⚙ Ouvrir les réglages"),
             ),
           );

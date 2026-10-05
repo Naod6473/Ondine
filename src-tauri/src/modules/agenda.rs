@@ -12,8 +12,11 @@
 // rendez-vous : le front le demande avec la commande "upcoming". Rien n'est
 // écrit dans le journal à part le nom du fichier en cas d'erreur.
 //
-// Rien n'est téléchargé : pour un agenda en ligne, il faut l'exporter en .ics
-// (un abonnement par adresse internet viendra peut-être plus tard).
+// Agenda en ligne (Google Agenda…) : si tu as enregistré son adresse secrète
+// iCal dans Réglages → Identifiants, il est téléchargé au démarrage puis toutes
+// les 15 minutes (lecture seule, rien n'est envoyé). L'adresse reste dans le
+// Gestionnaire d'identifiants : elle n'apparaît jamais dans le journal, dans
+// les messages d'erreur ni dans l'interface.
 
 use crate::sync::LockExt;
 use std::collections::hash_map::DefaultHasher;
@@ -22,13 +25,14 @@ use std::hash::{Hash, Hasher};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, Instant, SystemTime};
 
 use chrono::{Local, NaiveDateTime, TimeZone};
 use serde_json::{json, Value};
 use tauri::AppHandle;
 
 use super::{ModuleContext, RustModule};
+use crate::services::credentials::ICAL_URL;
 use crate::services::ics::{self, Event, Occurrence};
 use crate::services::log;
 
@@ -41,6 +45,8 @@ const MAX_FILE_BYTES: u64 = 20 * 1024 * 1024;
 const HORIZON_DAYS: i64 = 30;
 const MAX_UPCOMING: usize = 30;
 const TICK: Duration = Duration::from_secs(15);
+/// L'agenda en ligne est retéléchargé à cet intervalle.
+const ONLINE_EVERY: Duration = Duration::from_secs(15 * 60);
 
 /// Un fichier .ics déjà lu (ses événements sont rangés dans `State::events`).
 struct Loaded {
@@ -57,6 +63,14 @@ struct State {
     events: Arc<Vec<Event>>,
     /// Un message par fichier qui n'a pas pu être lu (affiché dans l'onglet).
     errors: Vec<String>,
+    /// Les événements de l'agenda en ligne (dernier téléchargement réussi).
+    online: Arc<Vec<Event>>,
+    /// Le dernier échec de téléchargement (sans l'adresse, qui est secrète).
+    online_error: Option<String>,
+    /// Une empreinte de l'adresse (pas l'adresse) : si elle change, on retélécharge.
+    online_key: u64,
+    /// Quand on a téléchargé pour la dernière fois (réussi ou non).
+    online_at: Option<Instant>,
     /// La dernière liste publiée (pour ne publier que les changements).
     upcoming: Vec<Value>,
     /// Les rendez-vous déjà rappelés (leur clé).
@@ -91,6 +105,7 @@ impl RustModule for Agenda {
                     let mut s = self.state.locked();
                     s.files.clear();
                     s.events = Arc::default();
+                    s.online_at = None; // l'agenda en ligne aussi
                 }
                 refresh(ctx, &self.state);
                 Ok(listing(&self.state.locked()))
@@ -102,7 +117,11 @@ impl RustModule for Agenda {
 
 /// Ce que renvoie la commande "upcoming".
 fn listing(state: &State) -> Value {
-    json!({ "events": state.upcoming, "errors": state.errors, "files": state.files.len() })
+    let mut errors = state.errors.clone();
+    errors.extend(state.online_error.clone());
+    // « files » : combien de sources sont branchées (fichiers + agenda en ligne).
+    let sources = state.files.len() + usize::from(state.online_key != 0);
+    json!({ "events": state.upcoming, "errors": errors, "files": sources })
 }
 
 /// La boucle du thread de fond.
@@ -140,10 +159,18 @@ fn refresh(ctx: &ModuleContext, state: &Shared) {
         s.errors = errors;
     }
 
+    refresh_online(ctx, state);
+
     // Les prochains rendez-vous, de maintenant à dans 30 jours (calcul hors verrou aussi).
-    let events = state.locked().events.clone();
+    let (events, online) = {
+        let s = state.locked();
+        (s.events.clone(), s.online.clone())
+    };
     let now = Local::now().naive_local();
-    let occ = ics::occurrences(&events, now, now + chrono::Duration::days(HORIZON_DAYS));
+    let to = now + chrono::Duration::days(HORIZON_DAYS);
+    let mut occ = ics::occurrences(&events, now, to);
+    occ.extend(ics::occurrences(&online, now, to));
+    occ.sort_by(|a, b| a.start.cmp(&b.start).then_with(|| a.summary.cmp(&b.summary)));
     let upcoming: Vec<Value> = occ.iter().take(MAX_UPCOMING).map(to_json).collect();
 
     let mut s = state.locked();
@@ -164,9 +191,9 @@ fn refresh(ctx: &ModuleContext, state: &Shared) {
     let payload = json!({
         "count": s.upcoming.len(),
         "next": s.upcoming.first().and_then(|e| e.get("start").cloned()),
-        "errors": s.errors.len(),
+        "errors": s.errors.len() + usize::from(s.online_error.is_some()),
         // Change avec la liste : le front sait qu'il doit la redemander.
-        "version": version_of(&s.upcoming, &s.errors),
+        "version": version_of(&s.upcoming, &s.errors, &s.online_error),
     });
     let changed = payload != s.last_payload;
     s.last_payload = payload.clone();
@@ -178,6 +205,93 @@ fn refresh(ctx: &ModuleContext, state: &Shared) {
     for key in reminders {
         ctx.emit("agenda.reminder", json!({ "key": key, "minutes": reminder_min }));
     }
+}
+
+/// L'agenda en ligne : téléchargé si une adresse est enregistrée et que c'est
+/// l'heure (ou que l'adresse a changé). Un échec garde les rendez-vous déjà
+/// connus et affiche un message dans l'onglet.
+fn refresh_online(ctx: &ModuleContext, state: &Shared) {
+    let url = ctx.credential(ICAL_URL).ok().flatten();
+    let Some(url) = url else {
+        // Plus d'adresse (supprimée dans les réglages) : on oublie tout.
+        let mut s = state.locked();
+        if s.online_key != 0 {
+            s.online = Arc::default();
+            s.online_error = None;
+            s.online_key = 0;
+            s.online_at = None;
+        }
+        return;
+    };
+    let key = fingerprint(&url);
+    {
+        let mut s = state.locked();
+        let due = s.online_key != key || s.online_at.is_none_or(|t| t.elapsed() >= ONLINE_EVERY);
+        if !due {
+            return;
+        }
+        if s.online_key != key {
+            s.online = Arc::default(); // une autre adresse : les anciens rendez-vous ne valent plus
+        }
+        // Noté AVANT de télécharger : un échec n'entraîne pas un nouvel essai toutes les 15 s.
+        s.online_key = key;
+        s.online_at = Some(Instant::now());
+    }
+    // Le téléchargement se fait sans tenir le verrou.
+    let result = download(&url).map(|text| ics::parse(&text));
+    let mut s = state.locked();
+    match result {
+        Ok(events) => {
+            s.online = Arc::new(events);
+            s.online_error = None;
+        }
+        Err(e) => {
+            ctx.log_warn(format!("agenda : agenda en ligne non téléchargé : {e}"));
+            s.online_error = Some(format!("Agenda en ligne : {e}"));
+        }
+    }
+}
+
+/// Une empreinte de l'adresse, pour savoir si elle a changé sans la garder en mémoire.
+/// Jamais 0 (0 veut dire « pas d'agenda en ligne »).
+fn fingerprint(url: &str) -> u64 {
+    let mut h = DefaultHasher::new();
+    url.hash(&mut h);
+    h.finish().max(1)
+}
+
+/// Télécharge l'agenda (https seulement, 20 Mo au plus, 30 s au plus).
+/// Les messages d'erreur ne contiennent JAMAIS l'adresse.
+fn download(url: &str) -> Result<String, String> {
+    crate::services::credentials::check_ical_url(url)?;
+    use ureq::tls::{RootCerts, TlsConfig, TlsProvider};
+    let agent: ureq::Agent = ureq::Agent::config_builder()
+        // Le TLS de Windows et ses certificats (comme « Demander à Claude »).
+        .tls_config(TlsConfig::builder().provider(TlsProvider::NativeTls).root_certs(RootCerts::PlatformVerifier).build())
+        .https_only(true) // une redirection vers http:// est refusée
+        .http_status_as_error(false)
+        .timeout_global(Some(Duration::from_secs(30)))
+        .build()
+        .into();
+    // On ne recopie pas le message de ureq : il pourrait contenir l'adresse.
+    let mut resp = agent.get(url).call().map_err(|_| "injoignable (pas de connexion Internet ?)".to_string())?;
+    let status = resp.status().as_u16();
+    if status != 200 {
+        return Err(match status {
+            401 | 403 | 404 => format!("le serveur refuse cette adresse (code {status}) : recopie l'adresse secrète iCal"),
+            _ => format!("le serveur a répondu {status}, nouvel essai dans 15 minutes"),
+        });
+    }
+    let text = resp
+        .body_mut()
+        .with_config()
+        .limit(MAX_FILE_BYTES)
+        .read_to_string()
+        .map_err(|_| "réponse illisible ou trop grosse (plus de 20 Mo)".to_string())?;
+    if !text.contains("BEGIN:VCALENDAR") {
+        return Err("ce lien ne renvoie pas un agenda iCal (.ics) : prends l'« adresse secrète au format iCal »".into());
+    }
+    Ok(text)
 }
 
 /// Faut-il relire ? Oui si la liste des fichiers ou une date de modification a changé.
@@ -238,10 +352,11 @@ fn key_of(o: &Occurrence) -> String {
     format!("{:x}", h.finish())
 }
 
-fn version_of(upcoming: &[Value], errors: &[String]) -> String {
+fn version_of(upcoming: &[Value], errors: &[String], online_error: &Option<String>) -> String {
     let mut h = DefaultHasher::new();
     serde_json::to_string(upcoming).unwrap_or_default().hash(&mut h);
     errors.hash(&mut h);
+    online_error.hash(&mut h);
     format!("{:x}", h.finish())
 }
 
