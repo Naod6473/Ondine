@@ -155,3 +155,8 @@ pub fn pipe_client_alive(_file: &std::fs::File) -> bool {
 pub fn migrate_old_dirs() -> Vec<String> {
     Vec::new()
 }
+
+/// Hors Windows : pas de fond Mica.
+pub fn supports_mica() -> bool {
+    false
+}

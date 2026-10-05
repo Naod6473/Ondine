@@ -48,6 +48,8 @@ export interface BootInfo {
   rustModules: { id: string; crashed: boolean }[];
   /** L'appli tourne en administrateur (glisser-déposer bloqué par Windows). */
   elevated: boolean;
+  /** Windows 11 : la fenêtre de réglages a le fond Mica (la page laisse son fond transparent). */
+  mica?: boolean;
 }
 
 export const Bridge = {

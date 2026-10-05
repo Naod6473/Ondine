@@ -161,6 +161,8 @@ const content = el("main", { class: "content" });
 
 async function start() {
   const boot = await Bridge.boot();
+  // Fond Mica de Windows 11 : la page devient transparente (voir settings.css).
+  if (boot?.mica) document.documentElement.classList.add("mica");
   await settingsStore.connect(boot?.settings ?? null);
   bus = new Bus(windowLabel("settings"));
   await bus.connect();

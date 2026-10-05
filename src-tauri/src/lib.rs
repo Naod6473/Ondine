@@ -46,6 +46,8 @@ struct BootInfo {
     rust_modules: Vec<ModuleStatus>,
     /// L'appli tourne en administrateur : le glisser-déposer depuis l'Explorateur est bloqué.
     elevated: bool,
+    /// La fenêtre de réglages a le fond Mica de Windows 11 (sinon : fond peint par la page).
+    mica: bool,
 }
 
 // ── Démarrage et réglages ────────────────────────────────────────────────────
@@ -59,6 +61,7 @@ fn boot(app: AppHandle, shared: State<Shared>, registry: State<Registry>) -> Boo
         version: env!("CARGO_PKG_VERSION").to_string(),
         rust_modules: registry.statuses(),
         elevated: platform::is_elevated(),
+        mica: platform::supports_mica(),
     }
 }
 
@@ -278,17 +281,24 @@ fn page_url(app: &AppHandle, page: &str) -> WebviewUrl {
 /// Les fenêtres secondaires (réglages, annotation) sont créées cachées au
 /// démarrage, puis seulement montrées ou cachées : sous WebView2, une fenêtre
 /// créée plus tard peut rester blanche.
-fn create_hidden_window(app: &AppHandle, label: &str, page: &str, title: &str, size: (f64, f64), min: (f64, f64)) {
+fn create_hidden_window(app: &AppHandle, label: &str, page: &str, title: &str, size: (f64, f64), min: (f64, f64), mica: bool) {
     let url = page_url(app, page);
-    match WebviewWindowBuilder::new(app, label, url)
+    let mut builder = WebviewWindowBuilder::new(app, label, url)
         .additional_browser_args(BROWSER_ARGS)
         .title(title)
         .inner_size(size.0, size.1)
         .min_inner_size(min.0, min.1)
         .visible(false)
-        .center()
-        .build()
-    {
+        .center();
+    // Windows 11 : le fond « Mica » (le fond d'écran flouté et teinté, comme les
+    // Paramètres de Windows). La page laisse alors son fond transparent.
+    // Sur Windows 10, Mica n'existe pas : on garde une fenêtre normale.
+    if mica && platform::supports_mica() {
+        builder = builder
+            .transparent(true)
+            .effects(tauri::utils::config::WindowEffectsConfig { effects: vec![tauri::window::Effect::Mica], ..Default::default() });
+    }
+    match builder.build() {
         Ok(win) => {
             // Fermer = cacher, sinon on ne pourrait plus la rouvrir.
             let hidden = win.clone();
@@ -406,8 +416,8 @@ pub fn run() {
             let handle = app.handle().clone();
             tray::build(&handle)?;
             // Avant l'île : voir create_hidden_window.
-            create_hidden_window(&handle, "settings", "settings.html", "Réglages — Ondine", (760.0, 720.0), (560.0, 480.0));
-            create_hidden_window(&handle, "annotate", "annotate.html", "Annoter — Ondine", (1100.0, 760.0), (640.0, 420.0));
+            create_hidden_window(&handle, "settings", "settings.html", "Réglages — Ondine", (760.0, 720.0), (560.0, 480.0), true);
+            create_hidden_window(&handle, "annotate", "annotate.html", "Annoter — Ondine", (1100.0, 760.0), (640.0, 420.0), false);
 
             if let Some(win) = island::window(&handle) {
                 platform::make_non_activating(&win);
