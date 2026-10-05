@@ -346,6 +346,24 @@ function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>) {
 export const controls: IslandModule = {
   manifest: manifest as ModuleManifest,
 
+  setup(api) {
+    // Le raccourci micro (Rust) : une petite notification confirme, le badge
+    // d'Ondine (island.ts) reste tant que le micro est coupé.
+    const offMuted = api.on("controls.mic-muted", (msg) => {
+      const p = (msg.payload ?? {}) as { muted?: boolean; source?: string };
+      if (p.source !== "hotkey") return;
+      api.notify({ title: p.muted ? "Micro coupé" : "Micro rétabli", icon: p.muted ? "🔇" : "🎙️", priority: "low", key: "controls-mic", durationMs: 1800 });
+    });
+    const offError = api.on("controls.mic-error", (msg) => {
+      const p = (msg.payload ?? {}) as { message?: string };
+      api.notify({ title: p.message ?? "Le micro ne répond pas", icon: "⚠️", priority: "normal", key: "controls-mic" });
+    });
+    return () => {
+      offMuted();
+      offError();
+    };
+  },
+
   views: {
     expanded(root, api: ModuleApi) {
       // Le micro apparaît deux fois (pastille + pilier) : le pilier tient la pastille à jour.

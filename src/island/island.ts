@@ -53,6 +53,10 @@ export class Island {
   private shell = el("div", { class: "island", "data-state": "hidden" });
   private mascotSlot = el("div", { class: "mascot-slot", title: "" });
   private content = el("div", { class: "island-content" });
+  /** Le petit point orange (micro) ou vert (caméra) quand une appli s'en sert. */
+  private privacyDot = el("span", { class: "privacy-dot", "aria-hidden": "true" });
+  /** Qui utilise le micro et la caméra (message "controls.media-use" du module Contrôles). */
+  private mediaUse: { mic: string[]; cam: string[] } = { mic: [], cam: [] };
   private mascot: MascotController | null = null;
   private mascotId = "";
 
@@ -86,7 +90,7 @@ export class Island {
   ) {
     this.fsm = new IslandStateMachine(timingsFrom(settingsStore.current));
     this.fsm.onTransition = (from, to) => this.onTransition(from, to);
-    this.shell.append(this.mascotSlot, this.content);
+    this.shell.append(this.mascotSlot, this.content, this.privacyDot);
     this.root.append(this.shell);
     this.hanger = new Hanger(this.root, {
       edge: () => this.edge(),
@@ -97,7 +101,8 @@ export class Island {
     });
     window.setInterval(() => void this.maybePeek(), PEEK_CHECK_MS);
     // Dans un navigateur (npm run dev) : window.ondinePeek() la fait venir tout de suite.
-    if (!IS_TAURI) (window as unknown as { ondinePeek: () => void }).ondinePeek = () => this.hanger.show();
+    // Et window.ondineBus.emit("controls.media-use", { mic: ["Zoom"], cam: [] }) simule un message.
+    if (!IS_TAURI) Object.assign(window, { ondinePeek: () => this.hanger.show(), ondineBus: this.bus });
 
     this.notifications.defaultDurationMs = settingsStore.current.island.notificationSecs * 1000;
     let wasAlert = false;
@@ -138,6 +143,7 @@ export class Island {
     this.applySettings(settingsStore.current);
     this.wireInputs();
     this.wireUndo();
+    this.wirePrivacy();
     // Bouton « Faire venir Ondine » des réglages.
     this.bus.on("mascot.peek-now", () => {
       if (this.fsm.state === "hidden") this.hanger.show();
@@ -155,6 +161,7 @@ export class Island {
     applyTheme(s.island.theme ?? "nuit", s.island.color ?? "");
     setSoundPrefs(s.island.sounds ?? true, s.island.soundVolume ?? 0.5);
     this.reorderTabs();
+    this.drawPrivacy();
     this.notifications.defaultDurationMs = s.island.notificationSecs * 1000;
     const wanted = s.mascot.enabled ? s.mascot.id : "";
     if (wanted !== this.mascotId) {
@@ -175,6 +182,39 @@ export class Island {
     if (this.mascot) {
       this.mascot.timings = { boredAfterMs: s.mascot.boredAfterSecs * 1000, sleepAfterMs: s.mascot.sleepAfterSecs * 1000 };
     }
+  }
+
+  // ── Micro et caméra ────────────────────────────────────────────────────────
+
+  /**
+   * Le module Contrôles dit qui utilise le micro ou la caméra, et si le micro
+   * est coupé. On montre un point (orange = micro, vert = caméra, comme sur
+   * iPhone), même île cachée (une petite barre au bord), et un badge sur Ondine
+   * tant que le micro est coupé.
+   */
+  private wirePrivacy() {
+    this.bus.on("controls.media-use", (msg) => {
+      const p = (msg.payload ?? {}) as { mic?: string[]; cam?: string[] };
+      this.mediaUse = { mic: p.mic ?? [], cam: p.cam ?? [] };
+      this.drawPrivacy();
+    });
+    this.bus.on("controls.mic-muted", (msg) => {
+      const muted = !!(msg.payload as { muted?: boolean } | null)?.muted;
+      this.mascotSlot.classList.toggle("mic-muted", muted);
+    });
+  }
+
+  private drawPrivacy() {
+    const values = settingsStore.current.modules?.controls?.values ?? {};
+    const wanted = values.privacyDot !== false;
+    const { mic, cam } = this.mediaUse;
+    const kind = !wanted ? "" : cam.length ? "cam" : mic.length ? "mic" : "";
+    this.shell.dataset.privacy = kind;
+    const parts = [];
+    if (cam.length) parts.push(`Caméra : ${cam.join(", ")}`);
+    if (mic.length) parts.push(`Micro : ${mic.join(", ")}`);
+    this.privacyDot.title = parts.join(" · ");
+    this.privacyDot.setAttribute("aria-label", this.privacyDot.title);
   }
 
   // ── Transitions ────────────────────────────────────────────────────────────

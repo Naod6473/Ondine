@@ -98,6 +98,8 @@ windows = { version = "0.61", features = [
   # Contrôles : luminosité (WMI pour l'écran du portable, DDC/CI pour les externes).
   "Win32_System_Wmi",
   "Win32_Devices_Display",
+  # Contrôles : qui utilise le micro / la caméra (registre « ConsentStore »).
+  "Win32_System_Registry",
   # Contrôles : Wi-Fi, Bluetooth, mode avion.
   "Devices_Radios",
   "Foundation_Collections",
