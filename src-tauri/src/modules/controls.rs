@@ -69,6 +69,14 @@ impl RustModule for Controls {
 
     fn invoke(&self, _ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
         match command {
+            // {} → [{ id, name, default }] : les sorties audio branchées.
+            "outputs" => Ok(json!(audio::outputs()?)),
+            // { id } : cette sortie devient celle par défaut (API interne de Windows, voir audio.rs).
+            "set_output" => {
+                let id = args.get("id").and_then(Value::as_str).filter(|s| s.len() <= 512).ok_or("sortie inconnue")?;
+                audio::set_default_output(id)?;
+                Ok(Value::Null)
+            }
             // {} → { mic: [noms], cam: [noms] } : qui utilise le micro / la caméra.
             "media_use" => Ok(json!(media_use::current())),
             // {} : coupe le micro s'il est ouvert, le rétablit sinon.

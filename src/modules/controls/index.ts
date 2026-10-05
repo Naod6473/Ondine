@@ -36,6 +36,12 @@ interface Radio {
   disabled: boolean;
 }
 
+interface Output {
+  id: string;
+  name: string;
+  default: boolean;
+}
+
 interface Screen {
   id: string;
   name: string;
@@ -215,6 +221,7 @@ function devicePillar(api: ModuleApi, device: DeviceId, onState: (level: Level |
   const col = column(p.pill, label);
   return {
     node: col.node,
+    caption: col.caption,
     toggleMute,
     update(level: Level | null) {
       p.setOff(!level);
@@ -231,6 +238,74 @@ function devicePillar(api: ModuleApi, device: DeviceId, onState: (level: Level |
       paint(level);
     },
   };
+}
+
+/**
+ * Choisir la sortie audio (casque, haut-parleurs, écran…) : le nom « Son »
+ * sous le pilier devient un bouton qui ouvre une petite liste en verre.
+ * Changer la sortie passe par une API interne de Windows (voir audio.rs).
+ */
+function outputMenu(api: ModuleApi, caption: HTMLElement, host: HTMLElement) {
+  caption.classList.add("ctl-output-btn");
+  caption.setAttribute("role", "button");
+  caption.tabIndex = 0;
+  caption.title = "Choisir la sortie audio";
+  let menu: HTMLElement | null = null;
+  const close = () => {
+    menu?.remove();
+    menu = null;
+    document.removeEventListener("pointerdown", outside, true);
+  };
+  const outside = (e: Event) => {
+    if (menu && !menu.contains(e.target as Node) && e.target !== caption) close();
+  };
+  const open = async () => {
+    if (menu) return close();
+    let list: Output[] = [];
+    try {
+      list = await api.invoke<Output[]>("outputs");
+    } catch (err) {
+      api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "controls-error" });
+      return;
+    }
+    menu = el("div", { class: "ctl-menu", role: "menu" });
+    if (!list.length) menu.append(el("div", { class: "ctl-menu-empty muted" }, "Aucune sortie audio"));
+    for (const o of list) {
+      menu.append(
+        el(
+          "button",
+          {
+            class: `ctl-menu-item ${o.default ? "on" : ""}`,
+            role: "menuitemradio",
+            "aria-checked": String(o.default),
+            title: o.name,
+            onclick: api.handler(async () => {
+              close();
+              if (o.default) return;
+              try {
+                await api.invoke("set_output", { id: o.id });
+                api.notify({ title: `Le son sort sur ${o.name}`, icon: "🎧", priority: "low", key: "controls-output" });
+              } catch (err) {
+                api.notify({ title: errorText(err), icon: "⚠️", priority: "normal", key: "controls-error" });
+              }
+            }),
+          },
+          el("span", { class: "ctl-menu-check" }, o.default ? "✓" : ""),
+          el("span", { class: "ctl-menu-name" }, o.name),
+        ),
+      );
+    }
+    // La liste s'ouvre au-dessus du bouton, à sa gauche (dans la vue, sans déborder).
+    const h = host.getBoundingClientRect();
+    const c = caption.getBoundingClientRect();
+    menu.style.left = `${Math.max(0, c.left - h.left - 8)}px`;
+    menu.style.bottom = `${h.bottom - c.top + 4}px`;
+    host.append(menu);
+    document.addEventListener("pointerdown", outside, true);
+  };
+  caption.addEventListener("click", api.handler(open));
+  caption.addEventListener("keydown", (e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), void open()));
+  return close;
 }
 
 /** Le pilier de luminosité d'un écran. */
@@ -371,7 +446,9 @@ export const controls: IslandModule = {
       const microphone = devicePillar(api, "microphone", (level) => toggles.mic(level));
       const toggles = toggleCard(api, () => microphone.toggleMute());
       const screensBox = el("div", { class: "ctl-screens" });
-      root.append(el("div", { class: "ctl" }, toggles.node, el("div", { class: "ctl-card ctl-pillars" }, speakers.node, microphone.node, screensBox)));
+      const ctl = el("div", { class: "ctl" }, toggles.node, el("div", { class: "ctl-card ctl-pillars" }, speakers.node, microphone.node, screensBox));
+      root.append(ctl);
+      const closeMenu = outputMenu(api, speakers.caption, ctl);
       toggles.radios([]);
 
       let alive = true;
@@ -431,6 +508,7 @@ export const controls: IslandModule = {
       ];
       return () => {
         alive = false;
+        closeMenu();
         timers.forEach((t) => window.clearInterval(t));
       };
     },

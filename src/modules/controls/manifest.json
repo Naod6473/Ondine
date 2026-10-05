@@ -18,7 +18,9 @@
     "set_radio",
     "set_airplane",
     "media_use",
-    "toggle_mic"
+    "toggle_mic",
+    "outputs",
+    "set_output"
   ],
   "events": {
     "emits": [

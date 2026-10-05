@@ -95,6 +95,8 @@ windows = { version = "0.61", features = [
   "Win32_Media_Audio_Endpoints",
   # (requis par IMMDevice::Activate)
   "Win32_System_Variant",
+  # Contrôles : le nom des sorties audio (IMMDevice::OpenPropertyStore).
+  "Win32_UI_Shell_PropertiesSystem",
   # Contrôles : luminosité (WMI pour l'écran du portable, DDC/CI pour les externes).
   "Win32_System_Wmi",
   "Win32_Devices_Display",
