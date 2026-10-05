@@ -2,21 +2,81 @@
   "id": "agents",
   "name": "Agents IA",
   "icon": "🤖",
-  "description": "Claude Code (et d'autres outils) préviennent l'île : « Claude attend ta permission », « Claude a fini ». Ils passent par la commande « island.exe notify » et un canal local réservé à ton compte Windows : rien ne passe par Internet. L'île affiche les messages, n'exécute jamais rien, et ne lit jamais ce que tu tapes dans Claude.",
+  "description": "Lance Claude Code dans un de tes projets en un clic. Claude Code (et d'autres outils) préviennent l'île : « Claude attend ta permission », « Claude a fini ». Ils passent par la commande « island.exe notify » et un canal local réservé à ton compte Windows : rien ne passe par Internet. L'île affiche les messages, n'exécute jamais rien, et ne lit jamais ce que tu tapes dans Claude.",
   "version": "0.1.0",
-  "permissions": ["clipboard"],
+  "permissions": [
+    "clipboard",
+    "files"
+  ],
   "settings": {
     "version": 1,
     "fields": [
-      { "key": "notifyWaiting", "type": "boolean", "label": "Prévenir quand Claude attend ma réponse ou ma permission", "default": true },
-      { "key": "notifyDone", "type": "boolean", "label": "Prévenir quand Claude a fini", "default": true },
-      { "key": "mascot", "type": "boolean", "label": "La mascotte réfléchit pendant que Claude travaille", "default": true }
+      {
+        "key": "projects",
+        "type": "folders",
+        "label": "Projets pour Claude Code",
+        "help": "Un bouton par projet dans l'onglet et dans le lanceur. Vide = ton dossier utilisateur.",
+        "default": [],
+        "max": 8
+      },
+      {
+        "key": "claudeIn",
+        "type": "select",
+        "label": "Ouvrir Claude Code dans",
+        "default": "console",
+        "options": [
+          {
+            "value": "console",
+            "label": "Une fenêtre de console"
+          },
+          {
+            "value": "wt",
+            "label": "Windows Terminal (s'il est installé)"
+          }
+        ]
+      },
+      {
+        "key": "notifyWaiting",
+        "type": "boolean",
+        "label": "Prévenir quand Claude attend ma réponse ou ma permission",
+        "default": true
+      },
+      {
+        "key": "notifyDone",
+        "type": "boolean",
+        "label": "Prévenir quand Claude a fini",
+        "default": true
+      },
+      {
+        "key": "mascot",
+        "type": "boolean",
+        "label": "La mascotte réfléchit pendant que Claude travaille",
+        "default": true
+      }
     ]
   },
-  "views": ["expanded"],
-  "commands": ["history", "hook_config", "copy_config", "test"],
+  "views": [
+    "expanded"
+  ],
+  "commands": [
+    "history",
+    "hook_config",
+    "copy_config",
+    "test",
+    "projects",
+    "launch_claude"
+  ],
   "events": {
-    "emits": ["agents.event", "claude.thinking", "claude.done", "task.finished"],
-    "listens": ["agents.event"]
+    "emits": [
+      "agents.event",
+      "claude.thinking",
+      "claude.done",
+      "task.finished",
+      "agents.projects"
+    ],
+    "listens": [
+      "agents.event",
+      "agents.launch"
+    ]
   }
 }

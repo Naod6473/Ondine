@@ -65,12 +65,14 @@
       "launcher.hotkey-error",
       "terminal.open",
       "timer.start",
-      "remote.connect"
+      "remote.connect",
+      "agents.launch"
     ],
     "listens": [
       "launcher.open",
       "launcher.hotkey-error",
-      "remote.changed"
+      "remote.changed",
+      "agents.projects"
     ]
   }
 }

@@ -2,12 +2,14 @@
 //
 // Le Rust (src-tauri/src/modules/agents.rs) écoute le canal local, comprend
 // les hooks de Claude Code et publie « agents.event ». Ici : la notification
-// dans l'île, l'historique des derniers messages, et la marche à suivre pour
-// brancher Claude Code (copier la configuration, essayer).
+// dans l'île, les boutons pour lancer Claude Code dans un projet, l'historique
+// des derniers messages, et la marche à suivre pour brancher Claude Code
+// (copier la configuration, essayer).
 
 import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
+import { Bridge } from "../../core/bridge";
 import { el } from "../../island/dom";
 
 interface AgentEvent {
@@ -34,6 +36,8 @@ export const agents: IslandModule = {
   manifest: manifest as ModuleManifest,
 
   setup(api) {
+    // Le Rust publie la liste des projets pour le lanceur (« agents.projects »).
+    void api.invoke("projects").catch(() => {});
     api.on("agents.event", (msg) => {
       const e = msg.payload as AgentEvent | null;
       if (!e?.title) return;
@@ -56,7 +60,34 @@ export const agents: IslandModule = {
       const list = el("ul", { class: "agents-list" });
       const status = el("p", { class: "muted agents-status" });
       const guide = el("details", { class: "agents-guide" });
-      root.append(el("div", { class: "agents" }, status, list, guide));
+      const launch = el("div", { class: "agents-launch" });
+      root.append(el("div", { class: "agents" }, launch, status, list, guide));
+
+      // ── Lancer Claude Code ─────────────────────────────────────────────────
+      const start = (args: Record<string, unknown>) =>
+        api.handler(async () => {
+          try {
+            await api.invoke("launch_claude", args);
+            api.closeIsland();
+          } catch (err) {
+            api.notify({ title: "Claude Code", body: errorText(err), icon: "⚠️", priority: "low", key: "agents-error" });
+          }
+        });
+      const pick = api.handler(async () => {
+        const path = await Bridge.pickFolder("Ouvrir Claude Code dans…");
+        if (path) await start({ path })();
+      });
+      void api.invoke<{ projects: { path: string; name: string }[] }>("projects").then(
+        ({ projects }) =>
+          launch.replaceChildren(
+            el("span", { class: "agents-launch-title" }, "▶ Claude Code"),
+            ...(projects.length
+              ? projects.map((p, i) => el("button", { class: "btn small", title: `Ouvrir Claude Code dans ${p.path}`, onclick: start({ index: i }) }, `📁 ${p.name}`))
+              : [el("button", { class: "btn small primary", title: "Dans ton dossier utilisateur", onclick: start({}) }, "Lancer")]),
+            el("button", { class: "btn small", title: "Choisir le dossier du projet", onclick: pick }, "Autre dossier…"),
+          ),
+        () => {},
+      );
 
       const copy = el(
         "button",

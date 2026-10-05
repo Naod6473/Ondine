@@ -276,6 +276,8 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `remote.changed` `{favorites: [{id, name, kind}]}` | Accès distants (Rust, et front au démarrage) | le Lanceur met à jour ses serveurs (sans les adresses) |
 | `remote.connect` `{id}` | Lanceur (front) | Accès distants ouvre ce favori |
 | `agents.event` `{source, kind, title, body, project, at}` | Agents IA (Rust) | notification (✋ « attend ta permission » en priorité haute, ✅ « a fini ») et historique |
+| `agents.projects` `{projects: [{index, name}]}` | Agents IA (Rust) | le Lanceur propose « Claude Code · projet » |
+| `agents.launch` `{index?}` | Lanceur (front) | Agents IA ouvre Claude Code dans ce projet |
 | `claude.thinking` / `claude.done` | Agents IA (Rust) | la mascotte réfléchit tant qu'une session de Claude Code travaille |
 
 ## Services communs (`src-tauri/src/services/`)
@@ -689,3 +691,11 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
 - Configuration proposée (`hook_config`, bouton « Copier la configuration ») :
   forme `command` + `args` (Claude Code lance island.exe directement, sans
   Git Bash ni PowerShell, donc aucun échappement du chemin).
+- Lancer Claude Code (`launch_claude {path? | index?}`, permission `files`) :
+  `cmd.exe /k claude` dans le dossier (cmd trouve `claude.exe` ou `claude.cmd`
+  dans le PATH ; la fenêtre reste ouverte si Claude n'est pas installé), ou
+  `wt.exe -d <dossier> cmd.exe /k claude` selon le réglage (sauf si le
+  dossier contient « ; », que Windows Terminal lirait comme un séparateur).
+  Dossiers : réglage « Projets » (8 au plus, validés par `check_path`), la
+  boîte « Choisir un dossier », sinon le dossier utilisateur. Seul le mot
+  `claude` est tapé.

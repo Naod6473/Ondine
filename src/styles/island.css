@@ -1858,3 +1858,13 @@ body {
     animation: none;
   }
 }
+.agents-launch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.agents-launch-title {
+  font-weight: 600;
+  margin-right: 2px;
+}

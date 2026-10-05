@@ -9,6 +9,11 @@
 //       claude.thinking   → la mascotte réfléchit pendant que Claude travaille ;
 //       claude.done / task.finished → elle revient, contente, quand il a fini.
 //
+// Il lance aussi Claude Code : « cmd /k claude » dans un dossier de projet
+// choisi dans les réglages (ou avec la boîte « Choisir un dossier »), validé
+// par `check_path`. Seul le mot « claude » est tapé : aucun texte venu
+// d'ailleurs n'est ajouté à la ligne de commande.
+//
 // Sécurité : ce qui arrive par le canal est du TEXTE À AFFICHER, rien de plus.
 // On n'exécute rien, on ne suit aucun chemin, on n'ouvre rien. Les textes sont
 // tronqués, le dossier du projet est réduit à son nom. Le texte que tu tapes
@@ -18,6 +23,7 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
@@ -25,6 +31,7 @@ use serde_json::{json, Value};
 use tauri::AppHandle;
 
 use super::{ModuleContext, RustModule};
+use crate::services::bus::BusMessage;
 use crate::cli::MAX_MESSAGE;
 use crate::platform;
 use crate::services::{files, log};
@@ -104,7 +111,18 @@ impl RustModule for Agents {
         });
     }
 
-    fn invoke(&self, ctx: &ModuleContext, command: &str, _args: Value) -> Result<Value, String> {
+    /// "agents.launch" `{index?}` : le lanceur demande Claude Code.
+    fn on_event(&self, ctx: &ModuleContext, msg: &BusMessage) {
+        if msg.topic != "agents.launch" {
+            return;
+        }
+        let args = json!({ "index": msg.payload.get("index").cloned().unwrap_or(Value::Null) });
+        if let Err(e) = self.invoke(ctx, "launch_claude", args) {
+            ctx.log_warn(format!("Claude Code demandé par le lanceur : {e}"));
+        }
+    }
+
+    fn invoke(&self, ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
         match command {
             "history" => {
                 let st = self.state.lock().unwrap();
@@ -117,6 +135,23 @@ impl RustModule for Agents {
                 files::copy_text(&hook_config(&exe_path()))?;
                 Ok(Value::Null)
             }
+            // Les projets du réglage (ceux qui existent encore), pour les boutons.
+            "projects" => {
+                let list = projects(ctx);
+                // Le lanceur s'en sert aussi (seulement le numéro et le nom).
+                ctx.emit("agents.projects", json!({ "projects": list.iter().enumerate().map(|(i, p)| json!({ "index": i, "name": folder_name(p) })).collect::<Vec<_>>() }));
+                Ok(json!({ "projects": list.iter().map(|p| json!({ "path": p.display().to_string(), "name": folder_name(p) })).collect::<Vec<_>>() }))
+            }
+            // { path? } ou { index? } : ouvre Claude Code dans ce dossier.
+            "launch_claude" => {
+                let dir = match (args.get("path").and_then(Value::as_str), args.get("index").and_then(Value::as_u64)) {
+                    (Some(path), _) => folder_of(ctx.check_path(path)?),
+                    (None, Some(i)) => projects(ctx).into_iter().nth(i as usize).ok_or("projet introuvable")?,
+                    (None, None) => projects(ctx).into_iter().next().unwrap_or_else(platform::home_dir),
+                };
+                launch_claude(ctx, &dir)?;
+                Ok(json!({ "dir": dir.display().to_string() }))
+            }
             // « Essayer » : comme si Claude venait de finir.
             "test" => {
                 let msg = json!({ "v": 1, "source": "claude-code", "hook": { "hook_event_name": "Stop", "session_id": "essai", "cwd": "C:\\Projets\\Island" } });
@@ -126,6 +161,54 @@ impl RustModule for Agents {
             other => Err(format!("commande inconnue : {other}")),
         }
     }
+}
+
+// ── Lancer Claude Code ───────────────────────────────────────────────────────
+
+/// Les dossiers de projets du réglage, validés (les disparus sont ignorés).
+fn projects(ctx: &ModuleContext) -> Vec<PathBuf> {
+    let settings = ctx.settings();
+    let raw = settings.get("projects").and_then(Value::as_array).cloned().unwrap_or_default();
+    raw.iter().filter_map(Value::as_str).filter_map(|p| ctx.check_path(p).ok()).filter(|p| p.is_dir()).take(8).collect()
+}
+
+fn launch_claude(ctx: &ModuleContext, dir: &Path) -> Result<(), String> {
+    ctx.require("files")?;
+    let in_wt = ctx.settings().get("claudeIn").and_then(Value::as_str) == Some("wt");
+    let (program, args) = claude_command(dir, in_wt);
+    // La console doit pouvoir passer devant l'île.
+    platform::forget_previous_foreground();
+    platform::spawn_console(program, &args, dir)?;
+    ctx.log_info(format!("ouvre Claude Code dans {}", dir.display()));
+    Ok(())
+}
+
+/// « cmd /k claude » : cmd trouve claude.exe ou claude.cmd (installation npm)
+/// dans le PATH, et la fenêtre reste ouverte si Claude n'est pas installé
+/// (on lit alors le message d'erreur de Windows).
+fn claude_command(dir: &Path, in_wt: bool) -> (&'static str, Vec<String>) {
+    let cmd = ["cmd.exe".to_string(), "/k".into(), "claude".into()];
+    // Windows Terminal lit « ; » comme un séparateur de commandes : un dossier
+    // qui en contient s'ouvre dans une console classique.
+    if in_wt && !dir.display().to_string().contains(';') {
+        let mut args = vec!["-d".to_string(), dir.display().to_string()];
+        args.extend(cmd);
+        ("wt.exe", args)
+    } else {
+        ("cmd.exe", cmd[1..].to_vec())
+    }
+}
+
+fn folder_name(p: &Path) -> String {
+    p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| p.display().to_string())
+}
+
+/// Un dossier reste lui-même ; un fichier donne le dossier qui le contient.
+fn folder_of(path: PathBuf) -> PathBuf {
+    if path.is_dir() {
+        return path;
+    }
+    path.parent().map(Path::to_path_buf).unwrap_or(path)
 }
 
 // ── Recevoir un message ──────────────────────────────────────────────────────
@@ -334,6 +417,15 @@ mod tests {
         assert_eq!((e.source.as_str(), e.title.as_str()), ("masauvegarde", "Terminée sans erreur"));
         assert!(understand(&json!({ "source": "x" }), 0).is_none());
         assert_eq!(clean(&"a".repeat(400), 10).chars().count(), 10);
+    }
+
+    #[test]
+    fn claude_command_lines() {
+        let dir = Path::new(r"C:\Projets\Mon appli");
+        assert_eq!(claude_command(dir, false), ("cmd.exe", vec!["/k".to_string(), "claude".to_string()]));
+        let (p, a) = claude_command(dir, true);
+        assert_eq!((p, a[1].as_str(), a[2].as_str()), ("wt.exe", r"C:\Projets\Mon appli", "cmd.exe"));
+        assert_eq!(claude_command(Path::new(r"C:\a;b"), true).0, "cmd.exe");
     }
 
     #[test]

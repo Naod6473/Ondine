@@ -52,6 +52,8 @@ const KIND_BONUS = { action: 4, app: 3, tool: 2, recent: 1 };
 let listing: Listing = { items: [], hotkey: "", hotkeyError: null };
 /** Les serveurs favoris du module Accès distants (reçus par le bus « remote.changed »). */
 let servers: { id: number; name: string; kind: "rdp" | "ssh" }[] = [];
+/** Les projets de Claude Code (module Agents IA, sujet « agents.projects »). */
+let claudeProjects: { index: number; name: string }[] = [];
 /** La vue affichée, si elle l'est : pour remettre le focus dans la recherche. */
 let shown: { focus: () => void; redraw: () => void } | null = null;
 
@@ -104,6 +106,17 @@ function islandActions(api: ModuleApi, query: string): Result[] {
     await Bridge.openSettingsWindow();
     close();
   });
+  // Claude Code : un résultat par projet (ou un seul, dans le dossier utilisateur).
+  if (settingsStore.moduleEnabled("agents")) {
+    const words = ["claude", "claude code", "ia", "agent", "cli"];
+    const launch = (index?: number) => async () => {
+      await api.invoke("forget_focus"); // la console doit pouvoir passer devant
+      api.emit("agents.launch", index === undefined ? {} : { index });
+      close();
+    };
+    if (!claudeProjects.length) add("claude", "Lancer Claude Code", "✳️", words, launch());
+    for (const p of claudeProjects) add(`claude-${p.index}`, `Claude Code · ${p.name}`, "✳️", words.map((w) => `${w} ${p.name}`).concat(words), launch(p.index));
+  }
   // Les serveurs favoris : le module Accès distants ouvre la connexion.
   if (settingsStore.moduleEnabled("remote")) {
     for (const srv of servers) {
@@ -168,6 +181,10 @@ export const launcher: IslandModule = {
       void Bridge.islandSetFocus(true);
       shown?.focus();
       void load(api);
+    });
+    api.on("agents.projects", (msg) => {
+      const list = (msg.payload as { projects?: typeof claudeProjects } | null)?.projects;
+      if (Array.isArray(list)) claudeProjects = list;
     });
     api.on("remote.changed", (msg) => {
       const list = (msg.payload as { favorites?: typeof servers } | null)?.favorites;
