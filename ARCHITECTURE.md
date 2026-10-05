@@ -279,8 +279,8 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `agents.projects` `{tools, projects: [{index, name}]}` | Agents IA (Rust) | le Lanceur propose « Claude Code · projet », « Codex · projet »… |
 | `agents.launch` `{tool, index?}` | Lanceur (front) | Agents IA ouvre cet agent dans ce projet |
 | `agents.changed` | Agents IA (Rust) | l'onglet redessine le tableau des sessions |
-| `agents.ask` `{id, who, question, options, timeoutSecs}` | Agents IA (Rust, outil MCP) | alerte avec un bouton par choix |
-| `agents.ask.closed` `{id, expired}` | Agents IA (Rust) | remplace l'alerte par « Réponse envoyée » ou « sans réponse » |
+| `agents.ask` `{id, kind, who, question, detail, options, session, until}` | Agents IA (Rust : outil MCP ou permission) | alerte avec un bouton par choix (permission : Autoriser… / Refuser / Au terminal) |
+| `agents.ask.closed` `{id, expired, gone}` | Agents IA (Rust) | remplace l'alerte par « Réponse envoyée », « Pas de réponse » ou « Réglé ailleurs » |
 | `agents.progress` `{source, who, title, step, total}` | Agents IA (Rust, outil MCP) | notification « 3/7 » remplacée à chaque étape |
 | `claude.thinking` / `claude.done` | Agents IA (Rust) | la mascotte réfléchit tant qu'une session de Claude Code travaille |
 
@@ -751,3 +751,22 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
     -- "chemin" mcp` ; Codex `[mcp_servers.island]` avec
     `tool_timeout_sec = 1800` (défaut 60 s, trop court pour une question) ;
     Gemini `mcpServers.island` avec `timeout` 1 800 000 ms (défaut 10 min).
+- Autoriser / Refuser depuis l'île (`island.exe permission --source
+  claude-code|codex`, hook `PermissionRequest`, réglage `permissions`
+  **désactivé par défaut**) :
+  - le hook envoie seulement le nom de l'outil et un résumé d'une ligne
+    (`command`, `file_path`, `url`…, jamais le contenu d'un fichier à écrire,
+    500 caractères au plus) ; rien n'est journalisé ;
+  - l'île l'affiche en alerte : « Autoriser… » (une 2e confirmation « Oui,
+    autoriser » ; la commande `answer` refuse un `allow` sans `confirmed`),
+    « Refuser », « Au terminal » ;
+  - réponse : `{"hookSpecificOutput":{"hookEventName":"PermissionRequest",
+    "decision":{"behavior":"allow"|"deny"}}}` (même format pour Claude Code et
+    Codex) ; sinon `{}` = aucune décision, la question habituelle s'affiche
+    dans le terminal. C'est le cas si le réglage est coupé, l'île fermée, ou
+    sans réponse après le délai choisi (30 s à 5 min, réglage
+    `permissionWait`). Délai du hook : 330 s ;
+  - si l'agent n'attend plus (réponse donnée dans le terminal, hook coupé),
+    `PeekNamedPipe` le voit et l'alerte devient « Réglé ailleurs » ; même
+    chose pour `island_ask` ;
+  - Gemini CLI : impossible (un hook peut refuser, pas autoriser).

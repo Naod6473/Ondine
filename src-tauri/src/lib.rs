@@ -337,6 +337,11 @@ pub fn notify_cli() {
     cli::notify(std::env::args().skip(2).collect());
 }
 
+/// `island.exe permission` : Autoriser / Refuser depuis l'île (voir cli.rs).
+pub fn permission_cli() {
+    cli::permission(std::env::args().skip(2).collect());
+}
+
 /// `island.exe mcp` : l'île comme serveur MCP pour les agents (voir cli.rs).
 pub fn mcp_cli() {
     cli::mcp();

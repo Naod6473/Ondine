@@ -1920,6 +1920,21 @@ body {
   background: rgba(255, 196, 0, 0.12);
   border: 1px solid rgba(255, 196, 0, 0.3);
 }
+.agents-ask.permission {
+  background: rgba(124, 196, 255, 0.1);
+  border-color: rgba(124, 196, 255, 0.3);
+}
+.agents-ask-detail {
+  display: block;
+  margin: 4px 0 6px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.agents-confirm {
+  color: #ffcf4a;
+  font-size: 12px;
+  align-self: center;
+}
 .agents-ask-q {
   margin: 4px 0 6px;
   overflow-wrap: anywhere;

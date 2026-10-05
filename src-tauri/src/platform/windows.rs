@@ -631,6 +631,16 @@ pub fn serve_agents_pipe(max: usize, mut on_message: impl FnMut(Vec<u8>, std::fs
     }
 }
 
+/// Côté île : le programme qui attend une réponse est-il toujours là ? (Si
+/// l'agent a eu sa réponse ailleurs, il a fermé le canal : on retire la question.)
+pub fn pipe_client_alive(file: &std::fs::File) -> bool {
+    use std::os::windows::io::AsRawHandle;
+    use ::windows::Win32::Foundation::HANDLE;
+    use ::windows::Win32::System::Pipes::PeekNamedPipe;
+    // Regarder sans rien lire : échoue (ERROR_BROKEN_PIPE) si l'autre bout est fermé.
+    unsafe { PeekNamedPipe(HANDLE(file.as_raw_handle() as _), None, 0, None, None, None).is_ok() }
+}
+
 /// Ouvre le canal de l'île (quelques essais rapides s'il est occupé).
 fn open_agents_pipe() -> Result<std::fs::File, String> {
     let name = agents_pipe_name();

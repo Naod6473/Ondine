@@ -139,3 +139,7 @@ pub fn own_console_window() -> isize {
 pub fn focus_agent_window(_hwnd: isize, _pids: &[u32]) -> Result<(), String> {
     Err("disponible seulement sous Windows".into())
 }
+
+pub fn pipe_client_alive(_file: &std::fs::File) -> bool {
+    true
+}

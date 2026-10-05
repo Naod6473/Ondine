@@ -98,9 +98,18 @@ struct State {
 /// Une question en attente : le canal pour répondre à l'agent, et les choix.
 struct Ask {
     reply: std::fs::File,
+    /// "question" (outil MCP island_ask) ou "permission" (Autoriser / Refuser).
+    kind: &'static str,
     who: String,
     question: String,
+    /// Permission : ce que l'outil va faire (la commande, le fichier).
+    detail: String,
+    /// Les boutons affichés…
     options: Vec<String>,
+    /// … et ce qui est renvoyé à l'agent pour chacun.
+    answers: Vec<String>,
+    /// La session de l'agent (pour « Y aller »), si connue.
+    session: String,
     /// Jusqu'à quand (ms) : ensuite, l'agent reçoit « pas de réponse ».
     until: u64,
 }
@@ -177,7 +186,7 @@ impl RustModule for Agents {
                 let mut asks: Vec<Value> = st
                     .asks
                     .iter()
-                    .map(|(id, a)| json!({ "id": id, "who": a.who, "question": a.question, "options": a.options, "until": a.until }))
+                    .map(|(id, a)| ask_json(*id, a))
                     .collect();
                 asks.sort_by_key(|a| a["id"].as_u64());
                 Ok(json!({ "events": st.history, "working": st.working(), "sessions": sorted_sessions(&st), "asks": asks }))
@@ -192,9 +201,14 @@ impl RustModule for Agents {
                     if choice >= ask.options.len() {
                         return Err("choix inconnu".into());
                     }
+                    // Autoriser une action d'un agent : seulement après la confirmation.
+                    if ask.answers[choice] == "allow" && args.get("confirmed") != Some(&Value::Bool(true)) {
+                        return Err("autorisation non confirmée".into());
+                    }
                     st.asks.remove(&id).unwrap()
                 };
-                answer_line(&mut ask.reply, Some(&ask.options[choice]), None);
+                let answer = Some(ask.answers[choice].as_str()).filter(|a| !a.is_empty());
+                answer_line(&mut ask.reply, answer, None);
                 ctx.log_info("réponse envoyée à un agent");
                 ctx.emit("agents.ask.closed", json!({ "id": id, "expired": false }));
                 ctx.emit("agents.changed", Value::Null);
@@ -214,10 +228,12 @@ impl RustModule for Agents {
             // La configuration à coller dans Claude Code (avec le chemin de CE programme).
             "hook_config" => Ok(json!({ "exe": exe_path() })),
             // { tool: "claude-code" | "codex" | "gemini" }
+            // { tool, permission? } : la configuration des hooks (ou du hook « Autoriser / Refuser »).
             "copy_config" => {
                 ctx.require("clipboard")?;
                 let tool = args.get("tool").and_then(Value::as_str).unwrap_or("claude-code");
-                files::copy_text(&hook_config(tool, &exe_path())?)?;
+                let text = if args.get("permission") == Some(&Value::Bool(true)) { permission_config(tool, &exe_path())? } else { hook_config(tool, &exe_path())? };
+                files::copy_text(&text)?;
                 Ok(Value::Null)
             }
             // { tool } : la configuration MCP de cet outil, dans le presse-papiers.
@@ -381,6 +397,8 @@ fn route(app: &AppHandle, state: &Shared, bytes: &[u8], reply: std::fs::File) {
     let msg = serde_json::from_slice::<Value>(bytes).unwrap_or(Value::Null);
     if msg["source"] == "mcp" && msg["request"].is_object() {
         mcp_request(app, state, &msg, reply);
+    } else if msg["source"] == "permission" {
+        permission_request(app, state, &msg, reply);
     } else {
         drop(reply); // un hook n'attend pas de réponse
         receive(app, state, bytes);
@@ -457,37 +475,126 @@ fn mcp_request(app: &AppHandle, state: &Shared, msg: &Value, reply: std::fs::Fil
                 return refuse(reply, "Il faut une question et 2 à 4 options.");
             }
             let secs = req["timeoutSecs"].as_u64().unwrap_or(600).clamp(60, 1500);
-            let id = {
-                let mut st = state.lock().unwrap();
-                if st.asks.len() >= MAX_ASKS {
-                    drop(st);
-                    return refuse(reply, "Trop de questions en attente dans l'île.");
-                }
-                st.next_ask += 1;
-                let id = st.next_ask;
-                let until = now_ms() + secs * 1000;
-                st.asks.insert(id, Ask { reply, who: who.clone(), question: question.clone(), options: options.clone(), until });
-                id
-            };
-            super::with_context(app, ID, |ctx| {
-                ctx.emit("agents.ask", json!({ "id": id, "who": who, "question": question, "options": options, "timeoutSecs": secs }));
-                ctx.emit("agents.changed", Value::Null);
-            });
-            // Le délai : sans clic, l'agent reçoit « pas de réponse » et continue.
-            let (a, s) = (app.clone(), state.clone());
-            std::thread::spawn(move || {
-                std::thread::sleep(Duration::from_secs(secs));
-                if let Some(mut ask) = s.lock().unwrap().asks.remove(&id) {
-                    answer_line(&mut ask.reply, None, Some("Pas de réponse de l'utilisateur à temps : continue sans, ou repose la question plus tard."));
-                    super::with_context(&a, ID, |ctx| {
-                        ctx.emit("agents.ask.closed", json!({ "id": id, "expired": true }));
-                        ctx.emit("agents.changed", Value::Null);
-                    });
-                }
-            });
+            let ask = Ask { reply, kind: "question", who, question, detail: String::new(), answers: options.clone(), options, session: String::new(), until: 0 };
+            if let Err(reply) = open_ask(app, state, ask, secs) {
+                refuse(reply, "Trop de questions en attente dans l'île.");
+            }
         }
         _ => {}
     }
+}
+
+// ── Autoriser / Refuser depuis l'île (« island.exe permission ») ─────────────
+//
+// Désactivé par défaut. Une fois activé, quand Claude Code ou Codex va te
+// demander la permission d'utiliser un outil, l'île affiche l'outil et ce
+// qu'il va faire, avec « Autoriser » (à confirmer une 2e fois) et
+// « Refuser ». Sans réponse dans le délai choisi, l'agent n'a AUCUNE
+// décision : sa question habituelle s'affiche dans le terminal.
+
+fn permission_request(app: &AppHandle, state: &Shared, msg: &Value, mut reply: std::fs::File) {
+    // « Pas de décision » : l'agent pose sa question habituelle.
+    let pass = |reply: &mut std::fs::File| answer_line(reply, None, None);
+    if !super::is_active(app, ID) || !allow(state) {
+        return pass(&mut reply);
+    }
+    let settings = super::with_context(app, ID, |ctx| ctx.settings()).unwrap_or_default();
+    if settings.get("permissions").and_then(Value::as_bool) != Some(true) {
+        return pass(&mut reply);
+    }
+    let secs = settings.get("permissionWait").and_then(Value::as_str).and_then(|s| s.parse::<u64>().ok()).unwrap_or(60).clamp(15, 300);
+    let source = client_source(msg["client"].as_str().unwrap_or(""));
+    let who = who(&source);
+    let tool = clean(msg["tool"].as_str().unwrap_or(""), 60);
+    let session = msg["session"].as_str().map(|id| format!("{source}:{}", clean(id, 80))).unwrap_or_default();
+    // Pour « Y aller » : on note où est sa fenêtre (comme pour un hook).
+    if !session.is_empty() {
+        let pids: Vec<u32> = msg["pids"].as_array().into_iter().flatten().filter_map(Value::as_u64).filter_map(|p| u32::try_from(p).ok()).take(8).collect();
+        let hwnd = msg["hwnd"].as_i64().unwrap_or(0) as isize;
+        let mut st = state.lock().unwrap();
+        if let Some(sess) = st.sessions.get_mut(&session) {
+            if !pids.is_empty() || hwnd != 0 {
+                sess.pids = pids;
+                sess.hwnd = hwnd;
+            }
+        }
+    }
+    log::debug(format!("agents : demande de permission ({source})"));
+    let project = project_name(msg["cwd"].as_str().unwrap_or(""));
+    let question = match (tool.is_empty(), project.is_empty()) {
+        (false, false) => format!("{who} veut utiliser {tool} · {project}"),
+        (false, true) => format!("{who} veut utiliser {tool}"),
+        _ => format!("{who} demande une permission"),
+    };
+    let ask = Ask {
+        reply,
+        kind: "permission",
+        who: who.to_string(),
+        question,
+        detail: clean(msg["detail"].as_str().unwrap_or(""), 500),
+        options: vec!["Autoriser".into(), "Refuser".into(), "Au terminal".into()],
+        // « Au terminal » : pas de décision, la question s'affiche là-bas.
+        answers: vec!["allow".into(), "deny".into(), String::new()],
+        session,
+        until: 0,
+    };
+    if let Err(mut reply) = open_ask(app, state, ask, secs) {
+        pass(&mut reply);
+    }
+}
+
+/// Met une question en attente et la montre ; un fil la surveille : si l'agent
+/// part (il a eu sa réponse ailleurs) on la retire, et au bout de `secs`
+/// secondes sans clic l'agent reçoit « pas de réponse ».
+/// Erreur (le canal rendu) : trop de questions en attente.
+fn open_ask(app: &AppHandle, state: &Shared, mut ask: Ask, secs: u64) -> Result<(), std::fs::File> {
+    let id = {
+        let mut st = state.lock().unwrap();
+        if st.asks.len() >= MAX_ASKS {
+            return Err(ask.reply);
+        }
+        st.next_ask += 1;
+        ask.until = now_ms() + secs * 1000;
+        super::with_context(app, ID, |ctx| ctx.emit("agents.ask", ask_json(st.next_ask, &ask)));
+        let id = st.next_ask;
+        st.asks.insert(id, ask);
+        id
+    };
+    super::with_context(app, ID, |ctx| ctx.emit("agents.changed", Value::Null));
+    let (a, s) = (app.clone(), state.clone());
+    std::thread::spawn(move || {
+        let deadline = Instant::now() + Duration::from_secs(secs);
+        loop {
+            std::thread::sleep(Duration::from_secs(1));
+            let mut st = s.lock().unwrap();
+            let Some(ask) = st.asks.get(&id) else { return }; // déjà répondu
+            let gone = !platform::pipe_client_alive(&ask.reply);
+            let expired = Instant::now() >= deadline;
+            if !gone && !expired {
+                continue;
+            }
+            let mut ask = st.asks.remove(&id).unwrap();
+            drop(st);
+            if expired && !gone {
+                let reason = match ask.kind {
+                    "permission" => "pas de réponse dans l'île",
+                    _ => "Pas de réponse de l'utilisateur à temps : continue sans, ou repose la question plus tard.",
+                };
+                answer_line(&mut ask.reply, None, Some(reason));
+            }
+            super::with_context(&a, ID, |ctx| {
+                ctx.emit("agents.ask.closed", json!({ "id": id, "expired": expired, "gone": gone }));
+                ctx.emit("agents.changed", Value::Null);
+            });
+            return;
+        }
+    });
+    Ok(())
+}
+
+/// Une question en attente, telle que le front la reçoit.
+fn ask_json(id: u64, a: &Ask) -> Value {
+    json!({ "id": id, "kind": a.kind, "who": a.who, "question": a.question, "detail": a.detail, "options": a.options, "session": a.session, "until": a.until })
 }
 
 /// Ajoute un message libre à l'historique et le montre.
@@ -542,7 +649,7 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
     let hwnd = msg["hwnd"].as_i64().unwrap_or(0) as isize;
 
     // Qui est au travail ? (la mascotte réfléchit tant qu'au moins une session travaille)
-    let (started, finished) = {
+    let (started, finished, already_shown) = {
         let mut st = state.lock().unwrap();
         let was_busy = st.working() > 0;
         if event.kind == "ended" {
@@ -577,11 +684,14 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
             entry.updated = Some(Instant::now());
         }
         let busy = st.working() > 0;
+        // Une demande de permission déjà affichée dans l'île pour cette session :
+        // pas besoin d'une 2e notification « attend ta permission ».
+        let shown = event.kind == "waiting" && st.asks.values().any(|a| a.kind == "permission" && a.session == event.session);
         if matches!(event.kind, "waiting" | "done" | "info") {
             st.history.push_front(event.clone());
             st.history.truncate(MAX_HISTORY);
         }
-        (!was_busy && busy, was_busy && !busy)
+        (!was_busy && busy, was_busy && !busy, shown)
     };
 
     super::with_context(app, ID, |ctx| {
@@ -599,7 +709,7 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
             }
         }
         let wanted = match event.kind {
-            "waiting" => on("notifyWaiting"),
+            "waiting" => on("notifyWaiting") && !already_shown,
             "done" => on("notifyDone"),
             "info" => true,
             _ => false,
@@ -780,6 +890,26 @@ fn gemini_config(exe: &str) -> String {
     serde_json::to_string_pretty(&config).unwrap_or_default()
 }
 
+/// Le hook « Autoriser / Refuser depuis l'île » (PermissionRequest), à part :
+/// on ne l'ajoute que si on le veut. Délai du hook : 330 s, un peu plus que
+/// la plus longue attente de l'île (5 min), pour qu'elle ait le dernier mot.
+fn permission_config(tool: &str, exe: &str) -> Result<String, String> {
+    match tool {
+        "claude-code" => {
+            let entry = json!([{ "hooks": [{ "type": "command", "command": exe, "args": ["permission", "--source", "claude-code"], "timeout": 330 }] }]);
+            Ok(serde_json::to_string_pretty(&json!({ "hooks": { "PermissionRequest": entry } })).unwrap_or_default())
+        }
+        "codex" => {
+            let command = format!("\"{exe}\" permission --source codex");
+            let toml = format!("\"{}\"", command.replace('\\', "\\\\").replace('"', "\\\""));
+            Ok(format!("# Island : Autoriser / Refuser depuis l'île (à coller dans %USERPROFILE%\\.codex\\config.toml)\n\n[[hooks.PermissionRequest]]\n[[hooks.PermissionRequest.hooks]]\ntype = \"command\"\ncommand = {toml}\ntimeout = 330\n"))
+        }
+        // Gemini CLI : un hook peut refuser ou laisser demander, mais pas autoriser.
+        "gemini" => Err("Gemini CLI ne laisse pas un hook autoriser un outil : réponds dans son terminal.".into()),
+        other => Err(format!("outil inconnu : {other}")),
+    }
+}
+
 /// Brancher l'île comme serveur MCP (« island.exe mcp »), pour chaque outil.
 /// La question (`island_ask`) peut attendre ton clic jusqu'à 30 min : on
 /// relève le délai que l'outil accorde à un appel quand il le permet.
@@ -836,6 +966,17 @@ mod tests {
         assert_eq!((e.source.as_str(), e.title.as_str()), ("masauvegarde", "Terminée sans erreur"));
         assert!(understand(&json!({ "source": "x" }), 0).is_none());
         assert_eq!(clean(&"a".repeat(400), 10).chars().count(), 10);
+    }
+
+    #[test]
+    fn permission_configs() {
+        let exe = r"C:\Program Files\Island\island.exe";
+        let claude: Value = serde_json::from_str(&permission_config("claude-code", exe).unwrap()).unwrap();
+        let hook = &claude["hooks"]["PermissionRequest"][0]["hooks"][0];
+        assert_eq!((hook["command"].as_str(), hook["args"][0].as_str(), hook["timeout"].as_u64()), (Some(exe), Some("permission"), Some(330)));
+        let codex = permission_config("codex", exe).unwrap();
+        assert!(codex.contains(r#"command = "\"C:\\Program Files\\Island\\island.exe\" permission --source codex""#), "{codex}");
+        assert!(permission_config("gemini", exe).is_err());
     }
 
     #[test]

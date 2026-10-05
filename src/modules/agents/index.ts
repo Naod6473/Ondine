@@ -23,12 +23,17 @@ interface AgentEvent {
   session: string;
 }
 
-/** Une question posée par un agent (outil MCP « island_ask »). */
+/** Une question posée par un agent (outil MCP « island_ask »), ou une demande
+ *  de permission (« island.exe permission » : Autoriser / Refuser / Au terminal). */
 interface Ask {
   id: number;
+  kind: "question" | "permission";
   who: string;
   question: string;
+  /** Permission : ce que l'outil va faire (la commande, le fichier). */
+  detail: string;
   options: string[];
+  session: string;
   /** Jusqu'à quand (ms). */
   until: number;
 }
@@ -68,13 +73,46 @@ async function goTo(api: ModuleApi, session: string) {
   }
 }
 
-/** Envoie ton choix à l'agent qui attend. */
-async function answer(api: ModuleApi, id: number, choice: number) {
+/** Envoie ton choix à l'agent qui attend (`confirmed` : pour « Autoriser »). */
+async function answer(api: ModuleApi, id: number, choice: number, confirmed = false) {
   try {
-    await api.invoke("answer", { id, choice });
+    await api.invoke("answer", { id, choice, confirmed });
   } catch (err) {
     api.notify({ title: "Réponse non envoyée", body: errorText(err), icon: "⚠️", priority: "low", key: `agents-ask-${id}` });
   }
+}
+
+/** Montre une demande de permission. « Autoriser » demande une confirmation. */
+function showPermission(api: ModuleApi, q: Ask) {
+  api.notify({
+    title: q.question,
+    body: q.detail || undefined,
+    icon: "🔐",
+    priority: "high",
+    sticky: true,
+    key: `agents-ask-${q.id}`,
+    actions: [
+      { label: "Autoriser…", run: () => confirmPermission(api, q) },
+      { label: "Refuser", run: () => answer(api, q.id, 1) },
+      { label: "Au terminal", run: () => answer(api, q.id, 2).then(() => (q.session ? goTo(api, q.session) : undefined)) },
+    ],
+  });
+}
+
+/** La confirmation : on relit ce qu'on autorise avant de dire oui. */
+function confirmPermission(api: ModuleApi, q: Ask) {
+  api.notify({
+    title: `Confirmer : ${q.who} peut le faire ?`,
+    body: q.detail || q.question,
+    icon: "⚠️",
+    priority: "high",
+    sticky: true,
+    key: `agents-ask-${q.id}`,
+    actions: [
+      { label: "Oui, autoriser", run: () => answer(api, q.id, 0, true) },
+      { label: "Retour", run: () => showPermission(api, q) },
+    ],
+  });
 }
 
 /** « ▰▰▰▱▱▱ » : une petite barre en texte. */
@@ -116,6 +154,7 @@ export const agents: IslandModule = {
     api.on("agents.ask", (msg) => {
       const q = msg.payload as Ask | null;
       if (!q?.question) return;
+      if (q.kind === "permission") return showPermission(api, q);
       api.notify({
         title: `${q.who} te demande`,
         body: q.question,
@@ -127,12 +166,13 @@ export const agents: IslandModule = {
       });
     });
     api.on("agents.ask.closed", (msg) => {
-      const c = msg.payload as { id: number; expired: boolean } | null;
+      const c = msg.payload as { id: number; expired: boolean; gone?: boolean } | null;
       if (!c) return;
+      // gone : l'agent n'attend plus (réponse donnée dans le terminal, ou arrêté).
       api.notify({
-        title: c.expired ? "Question restée sans réponse" : "Réponse envoyée",
-        body: c.expired ? "L'agent continue sans ta réponse." : undefined,
-        icon: c.expired ? "⌛" : "✔️",
+        title: c.gone ? "Réglé ailleurs" : c.expired ? "Pas de réponse dans l'île" : "Réponse envoyée",
+        body: c.gone ? "L'agent n'attend plus cette réponse." : c.expired ? "L'agent continue sans, ou te demande dans le terminal." : undefined,
+        icon: c.gone ? "↩️" : c.expired ? "⌛" : "✔️",
         priority: "low",
         durationMs: 2500,
         key: `agents-ask-${c.id}`,
@@ -272,6 +312,23 @@ export const agents: IslandModule = {
         },
         "🔌 Copier la config MCP",
       );
+      // Autoriser / Refuser depuis l'île : un hook à part, seulement si on le veut.
+      const permText = el("p", { class: "muted agents-mcp-steps" });
+      const copyPerm = el(
+        "button",
+        {
+          class: "btn small",
+          onclick: api.handler(async () => {
+            try {
+              await api.invoke("copy_config", { tool, permission: true });
+              api.notify({ title: "Hook d'autorisation copié", body: `Colle-le dans ${TOOLS[tool].file}, puis active le réglage « Autoriser / Refuser depuis l'île ».`, icon: "📋", priority: "low", key: "agents-copied" });
+            } catch (err) {
+              api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "agents-error" });
+            }
+          }),
+        },
+        "🔐 Copier le hook d'autorisation",
+      );
       const test = el("button", { class: "btn small", title: "Fait comme si Claude venait de finir", onclick: api.handler(() => api.invoke("test")) }, "Essayer");
       const drawGuide = () => {
         toolButtons.forEach((b) => b.classList.toggle("active", b.dataset.tool === tool));
@@ -283,6 +340,12 @@ export const agents: IslandModule = {
         mcpSteps.textContent =
           "En plus (facultatif) : branche l'île comme serveur MCP. L'agent pourra alors t'envoyer un message, sa progression, lancer le minuteur, ou te poser une question à choix que tu réponds d'un clic. " +
           MCP_STEPS[tool];
+        const permOn = api.settings().permissions === true;
+        permText.textContent =
+          tool === "gemini"
+            ? "Autoriser / Refuser depuis l'île : Gemini CLI ne le permet pas (un hook peut refuser, pas autoriser). Réponds dans son terminal."
+            : `Autoriser / Refuser depuis l'île (${permOn ? "activé" : "désactivé dans les réglages"}) : quand ${TOOLS[tool].name} demande une permission, l'île montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Sans réponse à temps, la question passe au terminal. Colle ce hook en plus, de la même façon.`;
+        copyPerm.hidden = tool === "gemini";
       };
       guide.append(
         el("summary", {}, "Brancher Claude Code, Codex ou Gemini"),
@@ -291,8 +354,40 @@ export const agents: IslandModule = {
         el("div", { class: "btn-row" }, copy, test),
         mcpSteps,
         el("div", { class: "btn-row" }, copyMcp),
+        permText,
+        el("div", { class: "btn-row" }, copyPerm),
       );
       drawGuide();
+
+      // Une question en attente, dans l'onglet (aussi après avoir fermé sa notification).
+      const askRow = (q: Ask): HTMLElement => {
+        const left = `encore ${Math.max(1, Math.ceil((q.until - Date.now()) / 60000))} min`;
+        const isPerm = q.kind === "permission";
+        const buttons = el("div", { class: "btn-row" });
+        const plain = () =>
+          buttons.replaceChildren(
+            ...q.options.map((o, i) =>
+              // Autoriser : d'abord la confirmation, sur place.
+              isPerm && i === 0
+                ? el("button", { class: "btn small", onclick: api.handler(() => confirm()) }, `${o}…`)
+                : el("button", { class: "btn small", onclick: api.handler(() => answer(api, q.id, i)) }, o),
+            ),
+          );
+        const confirm = () =>
+          buttons.replaceChildren(
+            el("span", { class: "agents-confirm" }, "Vraiment autoriser ?"),
+            el("button", { class: "btn small primary", onclick: api.handler(() => answer(api, q.id, 0, true)) }, "Oui, autoriser"),
+            el("button", { class: "btn small", onclick: api.handler(plain) }, "Retour"),
+          );
+        plain();
+        return el(
+          "li",
+          { class: `agents-ask ${q.kind}` },
+          el("div", {}, el("b", {}, isPerm ? `🔐 ${q.question}` : `❓ ${q.who} te demande`), el("small", { class: "muted" }, ` · ${left}`)),
+          isPerm ? (q.detail ? el("code", { class: "agents-ask-detail" }, q.detail) : null) : el("div", { class: "agents-ask-q" }, q.question),
+          buttons,
+        );
+      };
 
       const draw = async () => {
         let data: { events: AgentEvent[]; working: number; sessions: Session[]; asks: Ask[] };
@@ -307,17 +402,7 @@ export const agents: IslandModule = {
             "Personne ne travaille en ce moment."
           : "Aucune session pour l'instant.";
         // Les questions en attente (aussi après avoir fermé leur notification).
-        asks.replaceChildren(
-          ...(data.asks ?? []).map((q) =>
-            el(
-              "li",
-              { class: "agents-ask" },
-              el("div", {}, el("b", {}, `❓ ${q.who} te demande`), el("small", { class: "muted" }, ` · encore ${Math.max(1, Math.ceil((q.until - Date.now()) / 60000))} min`)),
-              el("div", { class: "agents-ask-q" }, q.question),
-              el("div", { class: "btn-row" }, ...q.options.map((o, i) => el("button", { class: "btn small", onclick: api.handler(() => answer(api, q.id, i)) }, o))),
-            ),
-          ),
-        );
+        asks.replaceChildren(...(data.asks ?? []).map((q) => askRow(q)));
         // Le tableau « En cours » : un clic ramène la fenêtre de la session.
         board.replaceChildren(
           ...data.sessions.map((x) => {

@@ -113,6 +113,115 @@ mod tests {
     }
 }
 
+// ── « island.exe permission » : Autoriser / Refuser depuis l'île ─────────────
+//
+//   island.exe permission --source claude-code   (hook PermissionRequest)
+//   island.exe permission --source codex
+//
+// Claude Code ou Codex va te demander la permission d'utiliser un outil
+// (« Bash : npm test »). Ce hook la montre dans l'île et attend ta réponse :
+//   - « Autoriser » (confirmé une 2e fois) → la décision « allow » ;
+//   - « Refuser » → « deny » ;
+//   - pas de réponse à temps, réglage désactivé, île fermée → AUCUNE décision
+//     (« {} ») : la question habituelle s'affiche dans le terminal.
+// Seuls le nom de l'outil et un court résumé de ce qu'il va faire (la
+// commande, le fichier) partent vers l'île : pas le contenu des fichiers.
+// Rien n'est journalisé. Code de sortie toujours 0.
+
+/// Longueur maximale du résumé envoyé à l'île.
+const MAX_DETAIL: usize = 500;
+
+pub fn permission(args: Vec<String>) {
+    let message = build(&args, read_stdin());
+    let decision = permission_request(&message).unwrap_or(None);
+    println!("{}", decision_json(decision.as_deref()));
+}
+
+/// Envoie la demande à l'île et lit sa réponse : Some("allow" | "deny") ou None.
+fn permission_request(message: &Value) -> Result<Option<String>, String> {
+    let hook = &message["hook"];
+    if hook["hook_event_name"] != "PermissionRequest" {
+        return Ok(None);
+    }
+    let request = json!({
+        "v": 1,
+        "source": "permission",
+        "client": message["source"],
+        "tool": hook["tool_name"],
+        "detail": permission_detail(hook),
+        "session": hook["session_id"],
+        "cwd": hook["cwd"],
+        "pids": platform::ancestor_pids(8),
+        "hwnd": platform::own_console_window(),
+    });
+    let reply = platform::request_agents_pipe(request.to_string().as_bytes())?;
+    let reply: Value = serde_json::from_slice(&reply).map_err(|e| e.to_string())?;
+    Ok(match reply["answer"].as_str() {
+        Some(a @ ("allow" | "deny")) => Some(a.to_string()),
+        _ => None,
+    })
+}
+
+/// Ce que l'outil va faire, en une ligne : la commande, le fichier, l'adresse…
+/// (jamais le contenu d'un fichier à écrire).
+fn permission_detail(hook: &Value) -> String {
+    let input = &hook["tool_input"];
+    let first = ["command", "file_path", "notebook_path", "path", "url", "pattern", "description"]
+        .iter()
+        .find_map(|k| input[k].as_str().filter(|v| !v.trim().is_empty()));
+    let text = match first {
+        Some(t) => t.to_string(),
+        None => {
+            // Un autre outil (MCP…) : ses paramètres, sans les longs textes.
+            let short: serde_json::Map<String, Value> = input
+                .as_object()
+                .into_iter()
+                .flatten()
+                .filter(|(_, v)| !v.as_str().is_some_and(|s| s.len() > 120))
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect();
+            if short.is_empty() { String::new() } else { Value::Object(short).to_string() }
+        }
+    };
+    let mut cut: String = text.chars().take(MAX_DETAIL).collect();
+    if text.chars().count() > MAX_DETAIL {
+        cut.push('…');
+    }
+    cut
+}
+
+/// La sortie attendue par Claude Code et Codex (même format) ; « {} » = pas de décision.
+fn decision_json(decision: Option<&str>) -> Value {
+    match decision {
+        Some("allow") => json!({ "hookSpecificOutput": { "hookEventName": "PermissionRequest", "decision": { "behavior": "allow" } } }),
+        Some("deny") => json!({ "hookSpecificOutput": { "hookEventName": "PermissionRequest", "decision": { "behavior": "deny", "message": "Refusé par l'utilisateur depuis l'île." } } }),
+        _ => json!({}),
+    }
+}
+
+#[cfg(test)]
+mod permission_tests {
+    use super::*;
+
+    #[test]
+    fn details_never_carry_file_contents() {
+        assert_eq!(permission_detail(&json!({ "tool_input": { "command": "npm test" } })), "npm test");
+        let d = permission_detail(&json!({ "tool_input": { "file_path": "C:\\x\\a.rs", "content": "secret" } }));
+        assert_eq!(d, "C:\\x\\a.rs");
+        let d = permission_detail(&json!({ "tool_input": { "query": "rust", "body": "x".repeat(500) } }));
+        assert_eq!(d, r#"{"query":"rust"}"#);
+        assert_eq!(permission_detail(&json!({ "tool_input": { "command": "a".repeat(900) } })).chars().count(), MAX_DETAIL + 1);
+    }
+
+    #[test]
+    fn decisions() {
+        assert_eq!(decision_json(Some("allow"))["hookSpecificOutput"]["decision"]["behavior"], "allow");
+        assert_eq!(decision_json(Some("deny"))["hookSpecificOutput"]["decision"]["behavior"], "deny");
+        assert_eq!(decision_json(None), json!({}));
+        assert_eq!(decision_json(Some("bizarre")), json!({}));
+    }
+}
+
 // ── « island.exe mcp » : l'île comme serveur MCP ─────────────────────────────
 //
 // Claude Code, Codex ou Gemini CLI lancent « island.exe mcp » et lui parlent

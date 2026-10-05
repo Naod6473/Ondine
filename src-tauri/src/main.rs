@@ -8,6 +8,7 @@ fn main() {
         Some("notify") => return island_lib::notify_cli(),
         // « island.exe mcp » : un agent (Claude Code, Codex, Gemini) nous parle en MCP.
         Some("mcp") => return island_lib::mcp_cli(),
+        Some("permission") => return island_lib::permission_cli(),
         _ => {}
     }
     island_lib::run()
