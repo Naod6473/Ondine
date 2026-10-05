@@ -22,20 +22,37 @@ use super::LocalTime;
 
 // ── Dossiers ──────────────────────────────────────────────────────────────────
 
-/// %APPDATA%\Island : les réglages.
-pub fn config_dir() -> PathBuf {
-    std::env::var_os("APPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("Island")
+/// Le dossier `name` dans %APPDATA% ou %LOCALAPPDATA%.
+fn app_dir(var: &str, name: &str) -> PathBuf {
+    std::env::var_os(var).map(PathBuf::from).unwrap_or_else(|| PathBuf::from(".")).join(name)
 }
 
-/// %LOCALAPPDATA%\Island : le journal.
+/// %APPDATA%\Ondine : les réglages.
+pub fn config_dir() -> PathBuf {
+    app_dir("APPDATA", "Ondine")
+}
+
+/// %LOCALAPPDATA%\Ondine : le journal.
 pub fn local_dir() -> PathBuf {
-    std::env::var_os("LOCALAPPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("Island")
+    app_dir("LOCALAPPDATA", "Ondine")
+}
+
+/// L'appli s'appelait « Island » : au premier lancement d'Ondine, on renomme
+/// ses anciens dossiers (réglages, notes, favoris, journal) pour ne rien perdre.
+/// Rien n'est supprimé ; si « Ondine » existe déjà, on ne touche à rien.
+/// Renvoie ce qui s'est passé, pour le journal (qui n'est pas encore ouvert).
+pub fn migrate_old_dirs() -> Vec<String> {
+    let mut done = Vec::new();
+    for var in ["APPDATA", "LOCALAPPDATA"] {
+        let (old, new) = (app_dir(var, "Island"), app_dir(var, "Ondine"));
+        if old.is_dir() && !new.exists() {
+            match std::fs::rename(&old, &new) {
+                Ok(()) => done.push(format!("dossier %{var}%\\Island renommé en Ondine")),
+                Err(e) => done.push(format!("dossier %{var}%\\Island non renommé : {e}")),
+            }
+        }
+    }
+    done
 }
 
 pub fn local_time() -> LocalTime {
@@ -613,8 +630,8 @@ pub fn reverse_dns(ip: std::net::Ipv4Addr) -> Option<String> {
 //     d'utilisateur) ;
 //   - côté île, ses droits (DACL) n'autorisent QUE ce compte : un autre
 //     utilisateur ne peut ni s'y connecter ni le lire ;
-//   - côté client (island.exe notify / mcp / permission), on vérifie avant
-//     d'envoyer quoi que ce soit que l'autre bout est bien un « island.exe »
+//   - côté client (ondine.exe notify / mcp / permission), on vérifie avant
+//     d'envoyer quoi que ce soit que l'autre bout est bien un « ondine.exe »
 //     lancé par le même compte : un programme qui aurait créé le canal avant
 //     l'île ne peut donc pas recevoir les demandes ni répondre « allow » ;
 //   - le client interdit au serveur d'agir en son nom (niveau « identification »).
@@ -658,7 +675,7 @@ fn own_sid() -> Option<String> {
 pub fn agents_pipe_name() -> String {
     let id = own_sid().unwrap_or_else(|| std::env::var("USERNAME").unwrap_or_default());
     let id: String = id.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-').collect();
-    format!(r"\\.\pipe\island-agents-{id}")
+    format!(r"\\.\pipe\ondine-agents-{id}")
 }
 
 /// Au plus tant de clients lus en même temps (les autres sont refusés).
@@ -839,7 +856,7 @@ fn open_agents_pipe() -> Result<std::fs::File, String> {
     Err(format!("l'île n'est pas ouverte ({last})"))
 }
 
-/// Le programme qui a créé le canal est-il bien l'île (« island.exe ») du même
+/// Le programme qui a créé le canal est-il bien l'île (« ondine.exe ») du même
 /// compte Windows ? Sinon on refuse : ce pourrait être un imposteur qui attend
 /// les demandes de permission pour répondre « allow ».
 fn check_pipe_server(pipe: &std::fs::File) -> Result<(), String> {
@@ -864,7 +881,7 @@ fn check_pipe_server(pipe: &std::fs::File) -> Result<(), String> {
         let is_island = exe
             .as_deref()
             .and_then(|p| std::path::Path::new(p).file_name().map(|n| n.to_string_lossy().to_lowercase()))
-            .is_some_and(|n| n == "island.exe");
+            .is_some_and(|n| n == "ondine.exe");
         if same_user && is_island {
             Ok(())
         } else {
@@ -873,14 +890,14 @@ fn check_pipe_server(pipe: &std::fs::File) -> Result<(), String> {
     }
 }
 
-/// Côté client (« island.exe notify ») : envoie un message à l'île, si elle tourne.
+/// Côté client (« ondine.exe notify ») : envoie un message à l'île, si elle tourne.
 pub fn send_agents_pipe(bytes: &[u8]) -> Result<(), String> {
     use std::io::Write;
     let mut f = open_agents_pipe()?;
     f.write_all(bytes).and_then(|_| f.write_all(b"\n")).map_err(|e| e.to_string())
 }
 
-/// Côté client (« island.exe mcp ») : envoie une demande et attend la réponse
+/// Côté client (« ondine.exe mcp ») : envoie une demande et attend la réponse
 /// de l'île (une ligne). Bloque jusqu'à la réponse ou la fermeture du canal.
 pub fn request_agents_pipe(bytes: &[u8]) -> Result<Vec<u8>, String> {
     use std::io::{BufRead, Write};
@@ -895,7 +912,7 @@ pub fn request_agents_pipe(bytes: &[u8]) -> Result<Vec<u8>, String> {
 
 /// Les programmes « au-dessus » de celui-ci (son parent, le parent du parent…),
 /// du plus proche au plus lointain, sans dépasser l'île elle-même. Appelé par
-/// « island.exe notify » : parmi eux se trouve le terminal où tourne l'agent.
+/// « ondine.exe notify » : parmi eux se trouve le terminal où tourne l'agent.
 pub fn ancestor_pids(max: usize) -> Vec<u32> {
     use ::windows::Win32::Foundation::CloseHandle;
     use ::windows::Win32::System::Diagnostics::ToolHelp::{CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS};
@@ -924,7 +941,7 @@ pub fn ancestor_pids(max: usize) -> Vec<u32> {
         }
         match table.get(&parent) {
             // On ne remonte pas au-delà de l'île (quand elle a lancé l'agent).
-            Some((_, name)) if name == "island.exe" || name == "explorer.exe" => break,
+            Some((_, name)) if name == "ondine.exe" || name == "explorer.exe" => break,
             Some(_) => out.push(parent),
             None => break,
         }

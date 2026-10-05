@@ -1,4 +1,4 @@
-// Island : le câblage de l'appli et les commandes que le front peut appeler.
+// Ondine : le câblage de l'appli et les commandes que le front peut appeler.
 //
 // Plan du dossier src-tauri/src :
 //   lib.rs        ← ici : démarrage + liste des commandes Tauri
@@ -84,7 +84,7 @@ fn settings_save(app: AppHandle, shared: State<Shared>, settings: Settings) -> R
     apply_settings(&app, &shared, settings)
 }
 
-/// Écrit une copie des réglages dans %APPDATA%\Island\exports et ouvre ce dossier.
+/// Écrit une copie des réglages dans %APPDATA%\Ondine\exports et ouvre ce dossier.
 #[tauri::command]
 fn settings_export(shared: State<Shared>) -> Result<String, String> {
     let current = shared.settings.locked().clone();
@@ -333,25 +333,30 @@ fn app_quit(app: AppHandle) {
 
 // ── Démarrage ────────────────────────────────────────────────────────────────
 
-/// `island.exe notify …` : appelé par un autre outil (hook de Claude Code…),
+/// `ondine.exe notify …` : appelé par un autre outil (hook de Claude Code…),
 /// envoie un message à l'île déjà ouverte puis s'arrête. Voir cli.rs.
 pub fn notify_cli() {
     cli::notify(std::env::args().skip(2).collect());
 }
 
-/// `island.exe permission` : Autoriser / Refuser depuis l'île (voir cli.rs).
+/// `ondine.exe permission` : Autoriser / Refuser depuis l'île (voir cli.rs).
 pub fn permission_cli() {
     cli::permission(std::env::args().skip(2).collect());
 }
 
-/// `island.exe mcp` : l'île comme serveur MCP pour les agents (voir cli.rs).
+/// `ondine.exe mcp` : l'île comme serveur MCP pour les agents (voir cli.rs).
 pub fn mcp_cli() {
     cli::mcp();
 }
 
 pub fn run() {
+    // Avant tout : récupérer les dossiers de l'ancien nom (« Island »).
+    let migrated = platform::migrate_old_dirs();
     let loaded = settings::load();
     log::set_min_level(log::Level::parse(&loaded.general.log_level));
+    for line in migrated {
+        log::info(line);
+    }
 
     // Une panique (n'importe où) est notée dans le journal. Celles des modules
     // sont en plus rattrapées par catch_unwind (modules/mod.rs).
@@ -401,8 +406,8 @@ pub fn run() {
             let handle = app.handle().clone();
             tray::build(&handle)?;
             // Avant l'île : voir create_hidden_window.
-            create_hidden_window(&handle, "settings", "settings.html", "Réglages — Island", (760.0, 720.0), (560.0, 480.0));
-            create_hidden_window(&handle, "annotate", "annotate.html", "Annoter — Island", (1100.0, 760.0), (640.0, 420.0));
+            create_hidden_window(&handle, "settings", "settings.html", "Réglages — Ondine", (760.0, 720.0), (560.0, 480.0));
+            create_hidden_window(&handle, "annotate", "annotate.html", "Annoter — Ondine", (1100.0, 760.0), (640.0, 420.0));
 
             if let Some(win) = island::window(&handle) {
                 platform::make_non_activating(&win);
@@ -415,12 +420,12 @@ pub fn run() {
             // Travail de fond des modules (ex. : Musique surveille le lecteur).
             handle.state::<Registry>().start_all(&handle);
 
-            log::info(format!("--- Island {} démarrée ---", env!("CARGO_PKG_VERSION")));
+            log::info(format!("--- Ondine {} démarrée ---", env!("CARGO_PKG_VERSION")));
             if platform::is_elevated() {
                 log::warn("l'île tourne en administrateur : Windows bloque le glisser-déposer depuis l'Explorateur");
             }
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("impossible de démarrer Island");
+        .expect("impossible de démarrer Ondine");
 }

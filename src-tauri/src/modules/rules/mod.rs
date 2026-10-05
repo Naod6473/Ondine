@@ -47,7 +47,7 @@ const MAX_RUNS_PER_MINUTE: usize = 20;
 const PRODUCED_TTL: Duration = Duration::from_secs(30);
 const HISTORY_LEN: usize = 40;
 
-/// Ce qui est enregistré dans %APPDATA%\Island\rules.json.
+/// Ce qui est enregistré dans %APPDATA%\Ondine\rules.json.
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 struct Saved {

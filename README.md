@@ -1,4 +1,4 @@
-# Island
+# Ondine
 
 « L'île » intelligente pour Windows 10/11 : une interface en haut au centre de
 l'écran, modulaire, avec une mascotte animée. Voir [ARCHITECTURE.md](ARCHITECTURE.md).
@@ -34,16 +34,16 @@ La liste des tests et l'installation sur un autre PC : [TESTS.md](TESTS.md).
 ## Construire l'installateur
 
 ```powershell
-npm run tauri build    # src-tauri\target\release\bundle\nsis\Island_0.1.0_x64-setup.exe
+npm run tauri build    # src-tauri\target\release\bundle\nsis\Ondine_0.1.0_x64-setup.exe
 ```
 
-`src-tauri\target\release\island.exe` fonctionne aussi sans installation.
+`src-tauri\target\release\ondine.exe` fonctionne aussi sans installation.
 
 ## Où sont les fichiers
 
 | Quoi | Où |
 |------|----|
-| Réglages | `%APPDATA%\Island\settings.json` |
-| Exports de réglages | `%APPDATA%\Island\exports\` |
-| Journal | `%LOCALAPPDATA%\Island\logs\island.log` |
+| Réglages | `%APPDATA%\Ondine\settings.json` |
+| Exports de réglages | `%APPDATA%\Ondine\exports\` |
+| Journal | `%LOCALAPPDATA%\Ondine\logs\ondine.log` |
 | Clés API | Gestionnaire d'identifiants Windows (entrées contenant « io.github.naod6473.island ») |

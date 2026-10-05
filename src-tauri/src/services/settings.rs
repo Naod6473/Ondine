@@ -1,4 +1,4 @@
-// Les réglages : %APPDATA%\Island\settings.json
+// Les réglages : %APPDATA%\Ondine\settings.json
 //
 // - Schéma versionné : le champ `version` dit quelle forme a le fichier. Quand la
 //   forme change, on augmente CURRENT_VERSION et on ajoute une étape dans `migrate`.
@@ -197,7 +197,7 @@ pub fn save(settings: &Settings) -> Result<(), String> {
     std::fs::rename(&tmp, path()).map_err(|e| e.to_string())
 }
 
-/// Exporte les réglages dans %APPDATA%\Island\exports et renvoie le chemin du fichier.
+/// Exporte les réglages dans %APPDATA%\Ondine\exports et renvoie le chemin du fichier.
 pub fn export(settings: &Settings) -> Result<PathBuf, String> {
     let out_dir = dir().join("exports");
     std::fs::create_dir_all(&out_dir).map_err(|e| e.to_string())?;

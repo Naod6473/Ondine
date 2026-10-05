@@ -11,7 +11,11 @@ pub const KNOWN_KEYS: &[&str] = &["anthropic-api-key"];
 
 /// Nom sous lequel les clés apparaissent dans le Gestionnaire d'identifiants.
 #[cfg(windows)]
-const SERVICE: &str = "io.github.naod6473.island";
+const SERVICE: &str = "io.github.naod6473.ondine";
+/// L'ancien nom (quand l'appli s'appelait « Island ») : une clé enregistrée
+/// avant le renommage est recopiée sous le nouveau nom à la première lecture.
+#[cfg(windows)]
+const OLD_SERVICE: &str = "io.github.naod6473.island";
 
 fn check_key(key: &str) -> Result<(), String> {
     if KNOWN_KEYS.contains(&key) {
@@ -29,8 +33,18 @@ mod store {
         Entry::new(super::SERVICE, key).map_err(|e| e.to_string())
     }
 
+    fn old_entry(key: &str) -> Result<Entry, String> {
+        Entry::new(super::OLD_SERVICE, key).map_err(|e| e.to_string())
+    }
+
     pub fn get(key: &str) -> Option<String> {
-        entry(key).ok()?.get_password().ok().filter(|v| !v.is_empty())
+        if let Some(v) = entry(key).ok()?.get_password().ok().filter(|v| !v.is_empty()) {
+            return Some(v);
+        }
+        // Pas encore sous le nouveau nom : on regarde sous l'ancien, et on recopie.
+        let old = old_entry(key).ok()?.get_password().ok().filter(|v| !v.is_empty())?;
+        let _ = set(key, &old);
+        Some(old)
     }
 
     pub fn set(key: &str, value: &str) -> Result<(), String> {
@@ -38,10 +52,14 @@ mod store {
     }
 
     pub fn delete(key: &str) -> Result<(), String> {
-        match entry(key)?.delete_credential() {
-            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-            Err(e) => Err(e.to_string()),
+        // Les deux noms : sinon l'ancienne copie « reviendrait » à la lecture.
+        for e in [entry(key)?, old_entry(key)?] {
+            match e.delete_credential() {
+                Ok(()) | Err(keyring::Error::NoEntry) => {}
+                Err(e) => return Err(e.to_string()),
+            }
         }
+        Ok(())
     }
 }
 

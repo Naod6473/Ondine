@@ -386,7 +386,7 @@ export class Island {
     }
     const first = this.registry.withView("compact")[0];
     if (!first) {
-      this.content.append(el("span", { class: "muted" }, "Island"));
+      this.content.append(el("span", { class: "muted" }, "Ondine"));
       return;
     }
     const slot = el("div", { class: "view view-compact" });

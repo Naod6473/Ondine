@@ -1,6 +1,6 @@
-# Architecture d'Island
+# Architecture d'Ondine
 
-Island est une appli Windows 10/11 qui vit en haut au centre de l'écran : une
+Ondine est une appli Windows 10/11 qui vit en haut au centre de l'écran : une
 « île » noire et une icône dans la zone de notification, rien dans la barre des
 tâches. Pile : **Tauri 2** (WebView2) + **Rust** pour le système, **TypeScript +
 Vite sans framework** pour l'interface.
@@ -288,16 +288,16 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 
 ## Services communs (`src-tauri/src/services/`)
 
-- **Réglages** (`settings.rs`) : `%APPDATA%\Island\settings.json`, champ
+- **Réglages** (`settings.rs`) : `%APPDATA%\Ondine\settings.json`, champ
   `version` + fonction `migrate` pour faire évoluer le format ; écriture atomique ;
   un fichier abîmé est mis de côté, jamais effacé ; export dans
-  `%APPDATA%\Island\exports\`, import depuis Réglages → Sauvegarde (refusé s'il
+  `%APPDATA%\Ondine\exports\`, import depuis Réglages → Sauvegarde (refusé s'il
   vient d'une version plus récente).
 - **Identifiants** (`credentials.rs`) : Gestionnaire d'identifiants Windows
   (crate `keyring` 3). Liste fermée de clés (`anthropic-api-key`). Le front peut
   demander si une clé existe, en enregistrer ou en supprimer une, **jamais** la
   relire. Seul un module Rust avec la permission `credentials` peut la lire.
-- **Journal** (`log.rs`) : `%LOCALAPPDATA%\Island\logs\island.log`, niveaux
+- **Journal** (`log.rs`) : `%LOCALAPPDATA%\Ondine\logs\ondine.log`, niveaux
   error/warn/info/debug (réglable), rotation à 1 Mo (3 anciens gardés), chaque
   ligne passe par `redact` qui masque ce qui ressemble à une clé. Règle : ne jamais
   journaliser de clé, de mot de passe, de texte copié ni de contenu de fichier.
@@ -450,7 +450,7 @@ et l'accès à Windows dans `src-tauri/src/platform/windows.rs` (« Presse-papie
   récent en haut, sans doublons, 50 copies par défaut (réglage), 100 000
   caractères au plus par copie. Recherche sans tenir compte des majuscules,
   faite en Rust ; le front ne reçoit qu'un aperçu de 300 caractères.
-- **Épinglés et snippets** : enregistrés dans `%APPDATA%\Island\clipboard.json`
+- **Épinglés et snippets** : enregistrés dans `%APPDATA%\Ondine\clipboard.json`
   (écriture via un fichier temporaire renommé). Un fichier abîmé est mis de
   côté, jamais effacé.
 - **Coller** : le Rust met le texte dans le presse-papiers, rend le clavier à la
@@ -481,7 +481,7 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   (réglage) et gardé pour l'onglet ; le journal ne note que le nombre de
   caractères.
 - **Enregistrer** : PNG (crate `image`) dans le dossier choisi, sinon
-  `Images\Island` (dossier connu `FOLDERID_Pictures`, OneDrive compris). Le
+  `Images\Ondine` (dossier connu `FOLDERID_Pictures`, OneDrive compris). Le
   dossier passe par `check_path` (dossiers exclus) ; « Annuler » envoie le
   fichier à la Corbeille.
 - **Vers l'étagère** : enregistre le PNG puis publie `shelf.add` ; l'Étagère
@@ -519,7 +519,7 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
 
 ### Module Notes (`src/modules/notes/`, `src-tauri/src/modules/notes.rs`)
 
-- Données dans `%APPDATA%\Island\notes.json` (écriture atomique ; un fichier
+- Données dans `%APPDATA%\Ondine\notes.json` (écriture atomique ; un fichier
   abîmé est mis de côté). Supprimer une note ou des tâches propose « Annuler »
   et les remet à leur place.
 - La liste des tâches garde un élément HTML par tâche (repéré par son numéro) :
@@ -570,7 +570,7 @@ dans l'ordre). Fichiers : `model.rs` (la forme d'une règle, sa validation, le
 renommage), `mod.rs` (commandes, exécution, annulation), `watch.rs` (le fil
 qui surveille dossiers et lecteurs).
 
-- Stockage : `%APPDATA%\Island\rules.json` (écriture atomique ; un fichier
+- Stockage : `%APPDATA%\Ondine\rules.json` (écriture atomique ; un fichier
   abîmé est mis de côté, pas écrasé). L'historique (« Récemment ») reste en
   mémoire.
 - Déclencheurs :
@@ -653,7 +653,7 @@ s'il n'existe pas ou est désactivé).
 
 ### Module Accès distants (`src/modules/remote/`, `src-tauri/src/modules/remote.rs`)
 
-- Favoris RDP et SSH dans `%APPDATA%\Island\remote.json` : nom, type,
+- Favoris RDP et SSH dans `%APPDATA%\Ondine\remote.json` : nom, type,
   adresse, port, utilisateur (SSH). Jamais de mot de passe. Supprimer
   propose « Annuler ».
 - Deux programmes seulement : `mstsc.exe /v:serveur[:port]` (`/f` si le
@@ -690,7 +690,7 @@ s'il n'existe pas ou est désactivé).
 
 Les outils extérieurs préviennent l'île par une porte d'entrée locale.
 
-- `island.exe notify [--source x] [--title t] [--message m]` (`main.rs` →
+- `ondine.exe notify [--source x] [--title t] [--message m]` (`main.rs` →
   `cli.rs`) : ne démarre PAS l'île. Lit l'entrée standard si un programme
   l'envoie (le JSON d'un hook), emballe le tout en
   `{v, source, title?, message?, hook?}` et l'envoie par le canal
@@ -713,7 +713,7 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   journal ne note que le type d'événement. Historique : 30 derniers, en
   mémoire seulement.
 - Configuration proposée (`hook_config`, bouton « Copier la configuration ») :
-  forme `command` + `args` (Claude Code lance island.exe directement, sans
+  forme `command` + `args` (Claude Code lance ondine.exe directement, sans
   Git Bash ni PowerShell, donc aucun échappement du chemin).
 - Lancer Claude Code (`launch_claude {path? | index?}`, permission `files`) :
   `cmd.exe /k claude` dans le dossier (cmd trouve `claude.exe` ou `claude.cmd`
@@ -743,22 +743,22 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   (`outil:session_id`) avec son état (`working`, `waiting`, `done`, `idle`
   après 1 h sans nouvelles) et depuis quand ; oubliée 2 h après sa dernière
   nouvelle ou à `SessionEnd`.
-- « Y aller » (`focus {session}`) : `island.exe notify` envoie aussi les
+- « Y aller » (`focus {session}`) : `ondine.exe notify` envoie aussi les
   numéros de ses programmes parents (`ancestor_pids`, jusqu'à l'île ou
   l'Explorateur exclus) et sa console si elle est visible. L'île cherche la
   première fenêtre visible de ces programmes (`EnumWindows`), la restaure si
   elle est réduite, puis la passe devant (`SetForegroundWindow`, précédé d'un
   appui sur Alt pour que Windows l'autorise). Ces numéros ne servent qu'à ça.
-- L'île comme serveur MCP (`island.exe mcp`, `cli.rs`) : un petit serveur
+- L'île comme serveur MCP (`ondine.exe mcp`, `cli.rs`) : un petit serveur
   MCP en stdio (JSON-RPC, une ligne par message ; versions 2024-11-05,
   2025-03-26 et 2025-06-18). Ne démarre pas l'île : il passe chaque appel
   par le même canal, devenu « dans les deux sens » (une ligne de demande,
   éventuellement une ligne de réponse). Quatre outils :
-  - `island_notify {title, message?}` → message dans l'historique ;
-  - `island_progress {title?, step, total}` → `agents.progress`, une
+  - `ondine_notify {title, message?}` → message dans l'historique ;
+  - `ondine_progress {title?, step, total}` → `agents.progress`, une
     notification discrète remplacée à chaque étape ;
-  - `island_timer {minutes 1–180}` → `timer.start` ;
-  - `island_ask {question, options 2–4, timeout_minutes 1–25}` →
+  - `ondine_timer {minutes 1–180}` → `timer.start` ;
+  - `ondine_ask {question, options 2–4, timeout_minutes 1–25}` →
     `agents.ask`, une alerte qui reste affichée avec un bouton par choix (et
     dans l'onglet). Le clic (`answer {id, choice}`) renvoie `{"answer": "…"}`
     à l'agent ; sans clic avant le délai : `{"answer": null, "reason": …}`.
@@ -771,7 +771,7 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
     -- "chemin" mcp` ; Codex `[mcp_servers.island]` avec
     `tool_timeout_sec = 1800` (défaut 60 s, trop court pour une question) ;
     Gemini `mcpServers.island` avec `timeout` 1 800 000 ms (défaut 10 min).
-- Autoriser / Refuser depuis l'île (`island.exe permission --source
+- Autoriser / Refuser depuis l'île (`ondine.exe permission --source
   claude-code|codex`, hook `PermissionRequest`, réglage `permissions`
   **désactivé par défaut**) :
   - le hook envoie seulement le nom de l'outil et un résumé d'une ligne
@@ -788,7 +788,7 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
     `permissionWait`). Délai du hook : 330 s ;
   - si l'agent n'attend plus (réponse donnée dans le terminal, hook coupé),
     `PeekNamedPipe` le voit et l'alerte devient « Réglé ailleurs » ; même
-    chose pour `island_ask` ;
+    chose pour `ondine_ask` ;
   - Gemini CLI : impossible (un hook peut refuser, pas autoriser).
 - Mode concentration (`quiet_start {minutes: 25 | 60 | 120 | 0}`, 0 = jusqu'à
   `quiet_stop`) : les notifications des agents sont gardées (`held`, 100 au

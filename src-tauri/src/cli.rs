@@ -1,7 +1,7 @@
-// « island.exe notify » : la porte d'entrée des autres outils vers l'île.
+// « ondine.exe notify » : la porte d'entrée des autres outils vers l'île.
 //
-//   island.exe notify --source claude-code      (le JSON du hook arrive sur l'entrée standard)
-//   island.exe notify --title "Sauvegarde" --message "Terminée"
+//   ondine.exe notify --source claude-code      (le JSON du hook arrive sur l'entrée standard)
+//   ondine.exe notify --title "Sauvegarde" --message "Terminée"
 //
 // Le programme ne démarre pas l'île : il emballe ce qu'il a reçu dans un
 // petit JSON, l'envoie par le canal local de l'île (named pipe, réservé à
@@ -113,10 +113,10 @@ mod tests {
     }
 }
 
-// ── « island.exe permission » : Autoriser / Refuser depuis l'île ─────────────
+// ── « ondine.exe permission » : Autoriser / Refuser depuis l'île ─────────────
 //
-//   island.exe permission --source claude-code   (hook PermissionRequest)
-//   island.exe permission --source codex
+//   ondine.exe permission --source claude-code   (hook PermissionRequest)
+//   ondine.exe permission --source codex
 //
 // Claude Code ou Codex va te demander la permission d'utiliser un outil
 // (« Bash : npm test »). Ce hook la montre dans l'île et attend ta réponse :
@@ -222,15 +222,15 @@ mod permission_tests {
     }
 }
 
-// ── « island.exe mcp » : l'île comme serveur MCP ─────────────────────────────
+// ── « ondine.exe mcp » : l'île comme serveur MCP ─────────────────────────────
 //
-// Claude Code, Codex ou Gemini CLI lancent « island.exe mcp » et lui parlent
+// Claude Code, Codex ou Gemini CLI lancent « ondine.exe mcp » et lui parlent
 // en JSON-RPC (le protocole MCP), une ligne par message, sur l'entrée et la
 // sortie standard. On propose quatre outils à l'agent :
-//   - island_notify   : afficher une notification ;
-//   - island_ask      : poser une question avec 2 à 4 boutons, et attendre ton choix ;
-//   - island_progress : montrer une progression (« étape 3/7 ») ;
-//   - island_timer    : lancer le minuteur de l'île.
+//   - ondine_notify   : afficher une notification ;
+//   - ondine_ask      : poser une question avec 2 à 4 boutons, et attendre ton choix ;
+//   - ondine_progress : montrer une progression (« étape 3/7 ») ;
+//   - ondine_timer    : lancer le minuteur de l'île.
 // Chaque appel est transmis à l'île par le même canal local que « notify ».
 // La sortie standard ne sert QU'AU protocole : aucun autre texte n'y est écrit.
 
@@ -287,8 +287,8 @@ fn mcp_handle(msg: &Value, client: &mut String, wrap: &dyn Fn((Value, String)) -
             ok(json!({
                 "protocolVersion": version,
                 "capabilities": { "tools": {} },
-                "serverInfo": { "name": "island", "version": env!("CARGO_PKG_VERSION") },
-                "instructions": "L'île est une barre en haut de l'écran Windows de l'utilisateur. Utilise island_ask pour lui poser une question courte à choix, island_progress pour montrer l'avancement d'une longue tâche, island_notify pour un message bref.",
+                "serverInfo": { "name": "ondine", "version": env!("CARGO_PKG_VERSION") },
+                "instructions": "Ondine (l'île) est une barre en haut de l'écran Windows de l'utilisateur. Utilise ondine_ask pour lui poser une question courte à choix, ondine_progress pour montrer l'avancement d'une longue tâche, ondine_notify pour un message bref.",
             }))
         }
         "ping" => ok(json!({})),
@@ -309,7 +309,7 @@ fn mcp_handle(msg: &Value, client: &mut String, wrap: &dyn Fn((Value, String)) -
 fn mcp_tools() -> Value {
     json!([
         {
-            "name": "island_notify",
+            "name": "ondine_notify",
             "description": "Affiche une notification courte dans l'île (en haut de l'écran de l'utilisateur).",
             "inputSchema": { "type": "object", "properties": {
                 "title": { "type": "string", "description": "Titre, quelques mots" },
@@ -317,7 +317,7 @@ fn mcp_tools() -> Value {
             }, "required": ["title"] }
         },
         {
-            "name": "island_ask",
+            "name": "ondine_ask",
             "description": "Pose une question à l'utilisateur dans l'île, avec 2 à 4 boutons de réponse, et attend son choix. Renvoie le texte du bouton choisi, ou indique qu'il n'a pas répondu à temps.",
             "inputSchema": { "type": "object", "properties": {
                 "question": { "type": "string", "description": "La question, courte" },
@@ -326,7 +326,7 @@ fn mcp_tools() -> Value {
             }, "required": ["question", "options"] }
         },
         {
-            "name": "island_progress",
+            "name": "ondine_progress",
             "description": "Montre l'avancement d'une longue tâche dans l'île (par exemple étape 3 sur 7).",
             "inputSchema": { "type": "object", "properties": {
                 "title": { "type": "string", "description": "Ce qui est en cours" },
@@ -335,7 +335,7 @@ fn mcp_tools() -> Value {
             }, "required": ["title", "step", "total"] }
         },
         {
-            "name": "island_timer",
+            "name": "ondine_timer",
             "description": "Lance le minuteur de l'île (par exemple pour une pause ou un rappel).",
             "inputSchema": { "type": "object", "properties": {
                 "minutes": { "type": "integer", "minimum": 1, "maximum": 180 }
@@ -348,13 +348,13 @@ fn mcp_tools() -> Value {
 fn mcp_call(name: &str, args: &Value, client: &str, wrap: &dyn Fn((Value, String)) -> Value) -> Result<String, String> {
     let text = |k: &str| args[k].as_str().unwrap_or("").trim().to_string();
     let request = match name {
-        "island_notify" => {
+        "ondine_notify" => {
             if text("title").is_empty() {
                 return Err("« title » est obligatoire".into());
             }
             json!({ "tool": "notify", "title": text("title"), "message": text("message") })
         }
-        "island_ask" => {
+        "ondine_ask" => {
             let options: Vec<String> = args["options"].as_array().into_iter().flatten().filter_map(Value::as_str).map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
             if text("question").is_empty() || !(2..=4).contains(&options.len()) {
                 return Err("il faut une question et 2 à 4 options".into());
@@ -362,20 +362,20 @@ fn mcp_call(name: &str, args: &Value, client: &str, wrap: &dyn Fn((Value, String
             let minutes = args["timeout_minutes"].as_f64().unwrap_or(10.0).clamp(1.0, 25.0); // Claude Code coupe un outil muet après 30 min
             json!({ "tool": "ask", "question": text("question"), "options": options, "timeoutSecs": (minutes * 60.0) as u64 })
         }
-        "island_progress" => {
+        "ondine_progress" => {
             let (step, total) = (args["step"].as_u64().unwrap_or(0), args["total"].as_u64().unwrap_or(0));
             if total == 0 || step > total {
                 return Err("« step » doit être entre 0 et « total »".into());
             }
             json!({ "tool": "progress", "title": text("title"), "step": step, "total": total })
         }
-        "island_timer" => {
+        "ondine_timer" => {
             let minutes = args["minutes"].as_u64().filter(|m| (1..=180).contains(m)).ok_or("« minutes » doit être entre 1 et 180")?;
             json!({ "tool": "timer", "minutes": minutes })
         }
         other => return Err(format!("outil inconnu : {other}")),
     };
-    let is_ask = name == "island_ask";
+    let is_ask = name == "ondine_ask";
     let message = wrap((request, client.to_string())).to_string();
     if !is_ask {
         platform::send_agents_pipe(message.as_bytes())?;
@@ -403,7 +403,7 @@ mod mcp_tests {
     fn initialize_and_list() {
         let r = call(json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "protocolVersion": "2025-03-26", "clientInfo": { "name": "claude-code" } } })).unwrap();
         assert_eq!(r["result"]["protocolVersion"], "2025-03-26");
-        assert_eq!(r["result"]["serverInfo"]["name"], "island");
+        assert_eq!(r["result"]["serverInfo"]["name"], "ondine");
         let r = call(json!({ "jsonrpc": "2.0", "id": 2, "method": "initialize", "params": { "protocolVersion": "2099-01-01" } })).unwrap();
         assert_eq!(r["result"]["protocolVersion"], "2025-06-18");
         let r = call(json!({ "jsonrpc": "2.0", "id": 3, "method": "tools/list" })).unwrap();
@@ -414,9 +414,9 @@ mod mcp_tests {
 
     #[test]
     fn bad_arguments_are_tool_errors() {
-        let r = call(json!({ "jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": { "name": "island_ask", "arguments": { "question": "?", "options": ["un"] } } })).unwrap();
+        let r = call(json!({ "jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": { "name": "ondine_ask", "arguments": { "question": "?", "options": ["un"] } } })).unwrap();
         assert_eq!(r["result"]["isError"], true);
-        let r = call(json!({ "jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": { "name": "island_timer", "arguments": { "minutes": 999 } } })).unwrap();
+        let r = call(json!({ "jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": { "name": "ondine_timer", "arguments": { "minutes": 999 } } })).unwrap();
         assert_eq!(r["result"]["isError"], true);
         assert_eq!(client_label("gemini-cli-mcp-client"), "gemini");
     }

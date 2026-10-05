@@ -1,13 +1,13 @@
 [package]
-name = "island"
+name = "ondine"
 version = "0.1.0"
 description = "L'île : une interface intelligente en haut de l'écran Windows"
 edition = "2021"
 license = "MIT"
 
-# lib + bin : c'est la forme que Tauri 2 attend (main.rs appelle island_lib::run()).
+# lib + bin : c'est la forme que Tauri 2 attend (main.rs appelle ondine_lib::run()).
 [lib]
-name = "island_lib"
+name = "ondine_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

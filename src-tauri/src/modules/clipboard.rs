@@ -10,7 +10,7 @@
 //     de passe…) n'est JAMAIS lue : platform::clipboard_is_sensitive ;
 //   - l'historique reste en mémoire : il disparaît quand l'île s'arrête. Seuls
 //     les éléments épinglés et les snippets sont enregistrés sur le disque
-//     (%APPDATA%\Island\clipboard.json), parce que tu l'as demandé en épinglant ;
+//     (%APPDATA%\Ondine\clipboard.json), parce que tu l'as demandé en épinglant ;
 //   - aucun texte copié n'est écrit dans le journal, ni envoyé sur le bus : le
 //     message "clipboard.changed" ne dit que « quelque chose a changé » ;
 //   - effacer (un élément, l'historique, un snippet) propose « Annuler ».

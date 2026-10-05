@@ -12,11 +12,11 @@ fn base(var: &str) -> PathBuf {
 }
 
 pub fn config_dir() -> PathBuf {
-    base("HOME").join(".config").join("island")
+    base("HOME").join(".config").join("ondine")
 }
 
 pub fn local_dir() -> PathBuf {
-    base("HOME").join(".local").join("share").join("island")
+    base("HOME").join(".local").join("share").join("ondine")
 }
 
 pub fn local_time() -> LocalTime {
@@ -149,4 +149,9 @@ pub fn focus_agent_window(_hwnd: isize, _pids: &[u32]) -> Result<(), String> {
 
 pub fn pipe_client_alive(_file: &std::fs::File) -> bool {
     true
+}
+
+/// Hors Windows : pas d'ancienne installation à récupérer.
+pub fn migrate_old_dirs() -> Vec<String> {
+    Vec::new()
 }

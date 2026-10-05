@@ -1,7 +1,7 @@
 // Module « Accès distants » (phase Outils IT) : des favoris Bureau à distance
 // (RDP) et SSH, ouverts en un clic depuis l'île ou le lanceur.
 //
-// Les favoris sont enregistrés dans %APPDATA%\Island\remote.json : un nom,
+// Les favoris sont enregistrés dans %APPDATA%\Ondine\remote.json : un nom,
 // le type (rdp / ssh), l'adresse, éventuellement un port et un utilisateur.
 // JAMAIS de mot de passe : Windows (mstsc) et ssh gèrent eux-mêmes
 // l'authentification.

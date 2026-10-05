@@ -3,7 +3,7 @@
 Tout est dans `main` (PR #8 et #9). Coche au fur et à mesure. Si quelque chose
 ne marche pas, note le numéro du test et envoie-moi :
 - ce que tu as vu (une capture si possible) ;
-- les dernières lignes du journal : `%LOCALAPPDATA%\Island\logs\island.log`.
+- les dernières lignes du journal : `%LOCALAPPDATA%\Ondine\logs\ondine.log`.
 
 Le journal ne contient jamais de clé ni de contenu.
 
@@ -49,8 +49,8 @@ ou télécharge à la main :
 
 ```powershell
 cd $HOME
-git clone https://github.com/Naod6473/Island.git
-cd Island
+git clone https://github.com/Naod6473/Ondine.git
+cd Ondine
 npm.cmd install
 npm.cmd run tauri dev
 ```
@@ -63,7 +63,7 @@ npm.cmd run tauri dev
 ### 0.3 Sur un ordinateur où le projet est déjà là
 
 ```powershell
-cd $HOME\Island            # ou ton dossier
+cd $HOME\Ondine            # ou ton dossier
 git checkout main
 git pull
 npm.cmd install
@@ -79,8 +79,8 @@ npm.cmd run tauri build    # → src-tauri\target\release\bundle\nsis\Island_0.1
 ```
 
 **Important pour les agents :** les configurations copiées depuis l'île
-contiennent le chemin de l'`island.exe` qui tourne. En mode dev, c'est
-`…\Island\src-tauri\target\debug\island.exe`. Si tu installes ensuite la
+contiennent le chemin de l'`ondine.exe` qui tourne. En mode dev, c'est
+`…\Ondine\src-tauri\target\debug\ondine.exe`. Si tu installes ensuite la
 version construite, recopie les configurations depuis cette version.
 
 ---
@@ -170,16 +170,16 @@ Dans l'onglet 🤖, ouvre « Brancher Claude Code, Codex ou Gemini ».
 
 1. ☐ Choisis « Claude Code », puis « 🔌 Copier la config MCP ».
 2. ☐ Colle la commande copiée dans PowerShell, une fois. Elle ressemble à
-   `claude mcp add --scope user island -- "…\island.exe" mcp`.
+   `claude mcp add --scope user island -- "…\ondine.exe" mcp`.
 3. ☐ Relance Claude Code et tape `/mcp` : « island » doit être connecté.
    - **À vérifier :** s'il est en erreur, envoie-moi la capture.
 4. ☐ Demande à Claude :
-   « Pose-moi une question avec island_ask, avec 3 choix ».
+   « Pose-moi une question avec ondine_ask, avec 3 choix ».
    - Une alerte « ❓ Claude te demande » s'affiche avec 3 boutons.
    - Clique un choix : Claude doit dire lequel tu as choisi.
-5. ☐ Demande : « Montre une progression de 5 étapes avec island_progress ».
+5. ☐ Demande : « Montre une progression de 5 étapes avec ondine_progress ».
    Une notification « 1/5… 5/5 » doit s'afficher.
-6. ☐ Demande : « Lance un minuteur de 1 minute avec island_timer ». Le
+6. ☐ Demande : « Lance un minuteur de 1 minute avec ondine_timer ». Le
    minuteur de l'île démarre.
 7. ☐ Ferme l'alerte de question avec × sans répondre : la question reste dans
    l'onglet 🤖, où tu peux encore répondre.

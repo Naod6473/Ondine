@@ -2,7 +2,7 @@
 // l'île, et l'île te prévient.
 //
 // Chemin d'un message :
-//   hook de Claude Code → « island.exe notify --source claude-code » (cli.rs)
+//   hook de Claude Code → « ondine.exe notify --source claude-code » (cli.rs)
 //   → canal local de l'île (named pipe, réservé à ton compte Windows)
 //   → ce module, qui comprend l'événement et publie sur le bus :
 //       agents.event      → le front affiche une notification et l'historique ;
@@ -92,7 +92,7 @@ struct State {
     sessions: HashMap<String, Session>,
     /// Arrivées récentes (limite de débit).
     recent: VecDeque<Instant>,
-    /// Les questions posées par un agent (outil MCP « island_ask »), en
+    /// Les questions posées par un agent (outil MCP « ondine_ask »), en
     /// attente de ton clic, par numéro.
     asks: HashMap<u64, Ask>,
     next_ask: u64,
@@ -111,7 +111,7 @@ impl State {
 /// Une question en attente : le canal pour répondre à l'agent, et les choix.
 struct Ask {
     reply: std::fs::File,
-    /// "question" (outil MCP island_ask) ou "permission" (Autoriser / Refuser).
+    /// "question" (outil MCP ondine_ask) ou "permission" (Autoriser / Refuser).
     kind: &'static str,
     who: String,
     question: String,
@@ -463,8 +463,8 @@ fn allow(state: &Shared) -> bool {
     true
 }
 
-/// Un message du canal : une demande MCP (« island.exe mcp ») ou un hook
-/// (« island.exe notify »). `reply` sert seulement à répondre à une question.
+/// Un message du canal : une demande MCP (« ondine.exe mcp ») ou un hook
+/// (« ondine.exe notify »). `reply` sert seulement à répondre à une question.
 fn route(app: &AppHandle, state: &Shared, bytes: &[u8], reply: std::fs::File) {
     let msg = serde_json::from_slice::<Value>(bytes).unwrap_or(Value::Null);
     if msg["source"] == "mcp" && msg["request"].is_object() {
@@ -477,14 +477,14 @@ fn route(app: &AppHandle, state: &Shared, bytes: &[u8], reply: std::fs::File) {
     }
 }
 
-// ── Les outils MCP (« island.exe mcp ») ──────────────────────────────────────
+// ── Les outils MCP (« ondine.exe mcp ») ──────────────────────────────────────
 //
 // Un agent (Claude Code, Codex, Gemini) qui a branché l'île comme serveur MCP
 // peut l'appeler de lui-même :
-//   - island_notify   : un message (« Les tests passent ») ;
-//   - island_progress : « étape 3 sur 7 » ;
-//   - island_timer    : lance le minuteur de l'île ;
-//   - island_ask      : te pose une question à choix, et attend ton clic.
+//   - ondine_notify   : un message (« Les tests passent ») ;
+//   - ondine_progress : « étape 3 sur 7 » ;
+//   - ondine_timer    : lance le minuteur de l'île ;
+//   - ondine_ask      : te pose une question à choix, et attend ton clic.
 // Comme pour les hooks, ce sont des TEXTES À AFFICHER : rien n'est exécuté.
 // La réponse renvoyée à l'agent est seulement le texte du choix cliqué.
 
@@ -556,7 +556,7 @@ fn mcp_request(app: &AppHandle, state: &Shared, msg: &Value, reply: std::fs::Fil
     }
 }
 
-// ── Autoriser / Refuser depuis l'île (« island.exe permission ») ─────────────
+// ── Autoriser / Refuser depuis l'île (« ondine.exe permission ») ─────────────
 //
 // Désactivé par défaut. Une fois activé, quand Claude Code ou Codex va te
 // demander la permission d'utiliser un outil, l'île affiche l'outil et ce
@@ -797,7 +797,7 @@ fn allow_is_confirmed(confirmed: bool, armed: Option<Instant>, now: Instant) -> 
     Ok(())
 }
 
-/// La ligne renvoyée à « island.exe mcp » : `{"answer": "…" | null, "reason"?: "…"}`.
+/// La ligne renvoyée à « ondine.exe mcp » : `{"answer": "…" | null, "reason"?: "…"}`.
 /// Si l'agent est parti entre-temps, l'écriture échoue sans bruit.
 fn answer_line(reply: &mut std::fs::File, answer: Option<&str>, reason: Option<&str>) {
     use std::io::Write;
@@ -808,7 +808,7 @@ fn answer_line(reply: &mut std::fs::File, answer: Option<&str>, reason: Option<&
     let _ = reply.write_all(format!("{line}\n").as_bytes());
 }
 
-/// Le nom de l'outil donné par « island.exe mcp » (claude-code, codex…),
+/// Le nom de l'outil donné par « ondine.exe mcp » (claude-code, codex…),
 /// réduit aux caractères sûrs.
 fn client_source(raw: &str) -> String {
     let s: String = raw.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-').take(30).collect::<String>().to_lowercase();
@@ -958,7 +958,7 @@ fn understand(msg: &Value, at: u64) -> Option<Event> {
     });
 
     match event {
-        // Pas de hook : un message libre (« island.exe notify --title … --message … »).
+        // Pas de hook : un message libre (« ondine.exe notify --title … --message … »).
         None => {
             if hook.is_object() {
                 return None; // un JSON inconnu : ignoré
@@ -1042,7 +1042,7 @@ fn hook_config(tool: &str, exe: &str) -> Result<String, String> {
 }
 
 /// Claude Code (settings.json). Forme « programme + paramètres » (`command` +
-/// `args`) : Claude Code lance directement island.exe, sans Git Bash ni
+/// `args`) : Claude Code lance directement ondine.exe, sans Git Bash ni
 /// PowerShell, donc rien à échapper dans le chemin (même avec des espaces).
 fn claude_config(exe: &str) -> String {
     let entry = json!([{ "hooks": [{ "type": "command", "command": exe, "args": ["notify", "--source", "claude-code"] }] }]);
@@ -1062,7 +1062,7 @@ fn claude_config(exe: &str) -> String {
 fn codex_config(exe: &str) -> String {
     let command = format!("\"{exe}\" notify --source codex");
     let toml = format!("\"{}\"", command.replace('\\', "\\\\").replace('"', "\\\""));
-    let mut out = String::from("# Island : Codex prévient l'île (à coller dans %USERPROFILE%\\.codex\\config.toml)\n");
+    let mut out = String::from("# Ondine : Codex prévient l'île (à coller dans %USERPROFILE%\\.codex\\config.toml)\n");
     for event in ["UserPromptSubmit", "PermissionRequest", "Stop", "SessionEnd"] {
         out.push_str(&format!("\n[[hooks.{event}]]\n[[hooks.{event}.hooks]]\ntype = \"command\"\ncommand = {toml}\n"));
     }
@@ -1074,7 +1074,7 @@ fn codex_config(exe: &str) -> String {
 /// dans le chemin se double), et `$input |` pour lui passer le JSON reçu.
 fn gemini_config(exe: &str) -> String {
     let command = format!("$input | & '{}' notify --source gemini", exe.replace('\'', "''"));
-    let entry = json!([{ "matcher": "*", "hooks": [{ "name": "island", "type": "command", "command": command, "timeout": 5000 }] }]);
+    let entry = json!([{ "matcher": "*", "hooks": [{ "name": "ondine", "type": "command", "command": command, "timeout": 5000 }] }]);
     let config = json!({
         "hooks": {
             "BeforeAgent": entry,
@@ -1098,7 +1098,7 @@ fn permission_config(tool: &str, exe: &str) -> Result<String, String> {
         "codex" => {
             let command = format!("\"{exe}\" permission --source codex");
             let toml = format!("\"{}\"", command.replace('\\', "\\\\").replace('"', "\\\""));
-            Ok(format!("# Island : Autoriser / Refuser depuis l'île (à coller dans %USERPROFILE%\\.codex\\config.toml)\n\n[[hooks.PermissionRequest]]\n[[hooks.PermissionRequest.hooks]]\ntype = \"command\"\ncommand = {toml}\ntimeout = 330\n"))
+            Ok(format!("# Ondine : Autoriser / Refuser depuis l'île (à coller dans %USERPROFILE%\\.codex\\config.toml)\n\n[[hooks.PermissionRequest]]\n[[hooks.PermissionRequest.hooks]]\ntype = \"command\"\ncommand = {toml}\ntimeout = 330\n"))
         }
         // Gemini CLI : un hook peut refuser ou laisser demander, mais pas autoriser.
         "gemini" => Err("Gemini CLI ne laisse pas un hook autoriser un outil : réponds dans son terminal.".into()),
@@ -1106,19 +1106,19 @@ fn permission_config(tool: &str, exe: &str) -> Result<String, String> {
     }
 }
 
-/// Brancher l'île comme serveur MCP (« island.exe mcp »), pour chaque outil.
-/// La question (`island_ask`) peut attendre ton clic jusqu'à 30 min : on
+/// Brancher l'île comme serveur MCP (« ondine.exe mcp »), pour chaque outil.
+/// La question (`ondine_ask`) peut attendre ton clic jusqu'à 30 min : on
 /// relève le délai que l'outil accorde à un appel quand il le permet.
 fn mcp_config(tool: &str, exe: &str) -> Result<String, String> {
     match tool {
         // Une commande à taper une fois (le chemin entre guillemets : cmd ou PowerShell).
-        "claude-code" => Ok(format!("claude mcp add --scope user island -- \"{exe}\" mcp")),
+        "claude-code" => Ok(format!("claude mcp add --scope user ondine -- \"{exe}\" mcp")),
         "codex" => {
             let path = format!("\"{}\"", exe.replace('\\', "\\\\").replace('"', "\\\""));
-            Ok(format!("# Island comme serveur MCP (à coller dans %USERPROFILE%\\.codex\\config.toml)\n\n[mcp_servers.island]\ncommand = {path}\nargs = [\"mcp\"]\ntool_timeout_sec = 1800\n"))
+            Ok(format!("# Ondine comme serveur MCP (à coller dans %USERPROFILE%\\.codex\\config.toml)\n\n[mcp_servers.ondine]\ncommand = {path}\nargs = [\"mcp\"]\ntool_timeout_sec = 1800\n"))
         }
         "gemini" => {
-            let config = json!({ "mcpServers": { "island": { "command": exe, "args": ["mcp"], "timeout": 1_800_000 } } });
+            let config = json!({ "mcpServers": { "ondine": { "command": exe, "args": ["mcp"], "timeout": 1_800_000 } } });
             Ok(serde_json::to_string_pretty(&config).unwrap_or_default())
         }
         other => Err(format!("outil inconnu : {other}")),
@@ -1176,23 +1176,23 @@ mod tests {
 
     #[test]
     fn permission_configs() {
-        let exe = r"C:\Program Files\Island\island.exe";
+        let exe = r"C:\Program Files\Ondine\ondine.exe";
         let claude: Value = serde_json::from_str(&permission_config("claude-code", exe).unwrap()).unwrap();
         let hook = &claude["hooks"]["PermissionRequest"][0]["hooks"][0];
         assert_eq!((hook["command"].as_str(), hook["args"][0].as_str(), hook["timeout"].as_u64()), (Some(exe), Some("permission"), Some(330)));
         let codex = permission_config("codex", exe).unwrap();
-        assert!(codex.contains(r#"command = "\"C:\\Program Files\\Island\\island.exe\" permission --source codex""#), "{codex}");
+        assert!(codex.contains(r#"command = "\"C:\\Program Files\\Ondine\\ondine.exe\" permission --source codex""#), "{codex}");
         assert!(permission_config("gemini", exe).is_err());
     }
 
     #[test]
     fn mcp_configs() {
-        let exe = r"C:\Program Files\Island\island.exe";
-        assert_eq!(mcp_config("claude-code", exe).unwrap(), r#"claude mcp add --scope user island -- "C:\Program Files\Island\island.exe" mcp"#);
+        let exe = r"C:\Program Files\Ondine\ondine.exe";
+        assert_eq!(mcp_config("claude-code", exe).unwrap(), r#"claude mcp add --scope user ondine -- "C:\Program Files\Ondine\ondine.exe" mcp"#);
         let codex = mcp_config("codex", exe).unwrap();
-        assert!(codex.contains(r#"command = "C:\\Program Files\\Island\\island.exe""#), "{codex}");
+        assert!(codex.contains(r#"command = "C:\\Program Files\\Ondine\\ondine.exe""#), "{codex}");
         let gemini: Value = serde_json::from_str(&mcp_config("gemini", exe).unwrap()).unwrap();
-        assert_eq!(gemini["mcpServers"]["island"]["command"], exe);
+        assert_eq!(gemini["mcpServers"]["ondine"]["command"], exe);
         assert!(mcp_config("x", exe).is_err());
     }
 
@@ -1202,7 +1202,7 @@ mod tests {
         assert_eq!(client_source("$(rm)"), "rm");
         assert_eq!(client_source(""), "agent");
         assert_eq!(who("codex"), "Codex");
-        // La ligne renvoyée à « island.exe mcp » : du JSON sur une ligne.
+        // La ligne renvoyée à « ondine.exe mcp » : du JSON sur une ligne.
         let path = std::env::temp_dir().join(format!("island-answer-{}.txt", std::process::id()));
         let mut f = std::fs::File::create(&path).unwrap();
         answer_line(&mut f, Some("Oui \"vraiment\"\nfin"), None);
@@ -1253,20 +1253,20 @@ mod tests {
 
     #[test]
     fn codex_and_gemini_configs() {
-        let exe = r"C:\Program Files\Island\island.exe";
+        let exe = r"C:\Program Files\Ondine\ondine.exe";
         let c = codex_config(exe);
-        assert!(c.contains(r#"command = "\"C:\\Program Files\\Island\\island.exe\" notify --source codex""#), "{c}");
+        assert!(c.contains(r#"command = "\"C:\\Program Files\\Ondine\\ondine.exe\" notify --source codex""#), "{c}");
         assert!(c.contains("[[hooks.PermissionRequest.hooks]]"));
-        let g: Value = serde_json::from_str(&gemini_config(r"C:\Users\O'Neil\island.exe")).unwrap();
-        assert_eq!(g["hooks"]["AfterAgent"][0]["hooks"][0]["command"], r"$input | & 'C:\Users\O''Neil\island.exe' notify --source gemini");
+        let g: Value = serde_json::from_str(&gemini_config(r"C:\Users\O'Neil\ondine.exe")).unwrap();
+        assert_eq!(g["hooks"]["AfterAgent"][0]["hooks"][0]["command"], r"$input | & 'C:\Users\O''Neil\ondine.exe' notify --source gemini");
         assert!(hook_config("chatgpt-web", exe).is_err());
     }
 
     #[test]
     fn config_runs_the_exe_with_args() {
-        let c: Value = serde_json::from_str(&claude_config(r"C:\Program Files\Island\island.exe")).unwrap();
+        let c: Value = serde_json::from_str(&claude_config(r"C:\Program Files\Ondine\ondine.exe")).unwrap();
         let h = &c["hooks"]["Stop"][0]["hooks"][0];
-        assert_eq!(h["command"], r"C:\Program Files\Island\island.exe");
+        assert_eq!(h["command"], r"C:\Program Files\Ondine\ondine.exe");
         assert_eq!(h["args"], json!(["notify", "--source", "claude-code"]));
     }
 }

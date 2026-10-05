@@ -18,7 +18,7 @@
         "key": "folder",
         "type": "folders",
         "label": "Dossier des captures",
-        "help": "Vide : le dossier Images\\Island.",
+        "help": "Vide : le dossier Images\\Ondine.",
         "default": [],
         "max": 1
       }

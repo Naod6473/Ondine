@@ -291,7 +291,7 @@ fn save_png(ctx: &ModuleContext, png: &[u8]) -> Result<PathBuf, String> {
     Ok(path)
 }
 
-/// Le dossier choisi dans les réglages, sinon Images\Island (créé si besoin).
+/// Le dossier choisi dans les réglages, sinon Images\Ondine (créé si besoin).
 /// Validé comme tout autre chemin : un dossier exclu est refusé.
 fn capture_dir(ctx: &ModuleContext) -> Result<PathBuf, String> {
     let chosen = ctx
@@ -304,7 +304,7 @@ fn capture_dir(ctx: &ModuleContext) -> Result<PathBuf, String> {
     let dir = match chosen {
         Some(dir) => dir,
         None => {
-            let dir = platform::pictures_dir().ok_or("dossier Images introuvable")?.join("Island");
+            let dir = platform::pictures_dir().ok_or("dossier Images introuvable")?.join("Ondine");
             std::fs::create_dir_all(&dir).map_err(|e| format!("impossible de créer {} : {e}", dir.display()))?;
             dir
         }

@@ -24,8 +24,8 @@ interface AgentEvent {
   session: string;
 }
 
-/** Une question posée par un agent (outil MCP « island_ask »), ou une demande
- *  de permission (« island.exe permission » : Autoriser / Refuser / Au terminal). */
+/** Une question posée par un agent (outil MCP « ondine_ask »), ou une demande
+ *  de permission (« ondine.exe permission » : Autoriser / Refuser / Au terminal). */
 interface Ask {
   id: number;
   kind: "question" | "permission";
@@ -502,7 +502,7 @@ export const agents: IslandModule = {
 
       void api.invoke<{ exe: string }>("hook_config").then(
         (c) => (exe.textContent = `${c.exe} notify`),
-        () => (exe.textContent = "island.exe notify"),
+        () => (exe.textContent = "ondine.exe notify"),
       );
       redraws.add(draw);
       void draw();

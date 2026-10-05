@@ -192,7 +192,7 @@ async function start() {
   app.append(backdrop(), nav, content);
   drawNav();
   showPage(false);
-  if (boot) document.title = `Réglages — Island ${boot.version}`;
+  if (boot) document.title = `Réglages — Ondine ${boot.version}`;
 }
 
 /** Les taches de couleur floues derrière le verre. */
@@ -443,7 +443,7 @@ function general(main: HTMLElement) {
         ),
         row("Dossier du journal", el("button", { class: "btn small", onclick: () => void Bridge.openLogsFolder() }, "Ouvrir")),
       ],
-      "Le journal reste sur ton PC (%LOCALAPPDATA%\\Island\\logs). Il ne contient jamais de clé ni de contenu de fichier.",
+      "Le journal reste sur ton PC (%LOCALAPPDATA%\\Ondine\\logs). Il ne contient jamais de clé ni de contenu de fichier.",
     ),
   );
 }
@@ -760,7 +760,7 @@ function backup(main: HTMLElement) {
             },
             "Exporter",
           ),
-          "Un fichier .json, dans %APPDATA%\\Island\\exports (le dossier s'ouvre).",
+          "Un fichier .json, dans %APPDATA%\\Ondine\\exports (le dossier s'ouvre).",
         ),
         row("Importer des réglages", el("label", { class: "btn small" }, "Choisir…", file), "Remplace tes réglages actuels."),
         msg,

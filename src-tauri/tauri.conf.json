@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Island",
+  "productName": "Ondine",
   "version": "0.1.0",
-  "identifier": "io.github.naod6473.island",
+  "identifier": "io.github.naod6473.ondine",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -18,7 +18,7 @@
     "windows": [
       {
         "label": "island",
-        "title": "Island",
+        "title": "Ondine",
         "url": "index.html",
         "width": 240,
         "height": 6,

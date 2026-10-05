@@ -1,7 +1,7 @@
-// Le journal : %LOCALAPPDATA%\Island\logs\island.log
+// Le journal : %LOCALAPPDATA%\Ondine\logs\ondine.log
 //
 // - Quatre niveaux (error, warn, info, debug). Le niveau minimum vient des réglages.
-// - Rotation : au-delà de 1 Mo, island.log devient island.log.1 (on garde 3 anciens).
+// - Rotation : au-delà de 1 Mo, ondine.log devient ondine.log.1 (on garde 3 anciens).
 // - Jamais de contenu sensible : chaque ligne passe par `redact`, qui masque ce qui
 //   ressemble à une clé ou à un jeton. C'est un filet de sécurité, pas une excuse :
 //   n'écris jamais une clé, un mot de passe ou le contenu d'un fichier dans le journal.
@@ -59,7 +59,7 @@ pub fn dir() -> PathBuf {
 }
 
 fn file() -> PathBuf {
-    dir().join("island.log")
+    dir().join("ondine.log")
 }
 
 pub fn error(message: impl AsRef<str>) {
@@ -107,13 +107,13 @@ fn rotate_if_needed() {
     if !too_big {
         return;
     }
-    // island.log.2 → .3, .1 → .2, island.log → .1 (l'ancien .3 est écrasé).
+    // ondine.log.2 → .3, .1 → .2, ondine.log → .1 (l'ancien .3 est écrasé).
     for i in (1..KEEP_OLD).rev() {
-        let from = dir().join(format!("island.log.{i}"));
-        let to = dir().join(format!("island.log.{}", i + 1));
+        let from = dir().join(format!("ondine.log.{i}"));
+        let to = dir().join(format!("ondine.log.{}", i + 1));
         let _ = std::fs::rename(from, to);
     }
-    let _ = std::fs::rename(&path, dir().join("island.log.1"));
+    let _ = std::fs::rename(&path, dir().join("ondine.log.1"));
 }
 
 /// Masque ce qui ressemble à un secret : toute « mot » de 32 caractères ou plus

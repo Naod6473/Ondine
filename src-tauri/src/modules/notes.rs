@@ -1,7 +1,7 @@
 // Module « Notes » : notes rapides et liste de choses à faire.
 //
 // Les données vivent ici, côté Rust, et sont enregistrées dans
-// %APPDATA%\Island\notes.json (écriture via un fichier temporaire renommé :
+// %APPDATA%\Ondine\notes.json (écriture via un fichier temporaire renommé :
 // jamais de fichier à moitié écrit). Le Rust les garde pour pouvoir proposer
 // « Annuler » quand on supprime quelque chose.
 //
