@@ -275,6 +275,15 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `system.disk-low` `{mount, freePct, freeGb}` | Système (Rust, toutes les 30 s) | notification 💽 : disque presque plein |
 | `remote.changed` `{favorites: [{id, name, kind}]}` | Accès distants (Rust, et front au démarrage) | le Lanceur met à jour ses serveurs (sans les adresses) |
 | `remote.connect` `{id}` | Lanceur (front) | Accès distants ouvre ce favori |
+| `agents.event` `{source, kind, title, body, project, at}` | Agents IA (Rust) | notification (✋ « attend ta permission » en priorité haute, ✅ « a fini ») et historique |
+| `agents.projects` `{tools, projects: [{index, name}]}` | Agents IA (Rust) | le Lanceur propose « Claude Code · projet », « Codex · projet »… |
+| `agents.launch` `{tool, index?}` | Lanceur (front) | Agents IA ouvre cet agent dans ce projet |
+| `agents.changed` | Agents IA (Rust) | l'onglet redessine le tableau des sessions |
+| `agents.ask` `{id, kind, who, question, detail, options, session, until}` | Agents IA (Rust : outil MCP ou permission) | alerte avec un bouton par choix (permission : Autoriser… / Refuser / Au terminal) |
+| `agents.ask.closed` `{id, expired, gone}` | Agents IA (Rust) | remplace l'alerte par « Réponse envoyée », « Pas de réponse » ou « Réglé ailleurs » |
+| `agents.progress` `{source, who, title, step, total}` | Agents IA (Rust, outil MCP) | notification « 3/7 » remplacée à chaque étape |
+| `agents.quiet` `{on, summary?}` | Agents IA (Rust) | début / fin de la concentration ; à la fin, la notification du résumé |
+| `claude.thinking` / `claude.done` | Agents IA (Rust) | la mascotte réfléchit tant qu'une session de Claude Code travaille |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -657,3 +666,142 @@ s'il n'existe pas ou est désactivé).
   réponse : éteinte ou pare-feu). Raccourcis : 443, 80, 3389, 22, 445, 53.
 - `dns {host}` : nom → adresses par le résolveur de Windows ; une IPv4 →
   son nom (`GetNameInfoW`, recherche inverse).
+
+## Agents IA (`src/modules/agents/`, `src-tauri/src/modules/agents.rs`, `src-tauri/src/cli.rs`)
+
+Les outils extérieurs préviennent l'île par une porte d'entrée locale.
+
+- `island.exe notify [--source x] [--title t] [--message m]` (`main.rs` →
+  `cli.rs`) : ne démarre PAS l'île. Lit l'entrée standard si un programme
+  l'envoie (le JSON d'un hook), emballe le tout en
+  `{v, source, title?, message?, hook?}` et l'envoie par le canal
+  `\\.\pipe\island-agents-<utilisateur>`, puis s'arrête avec le code 0, sans
+  rien écrire (un hook ne doit jamais bloquer Claude Code).
+- Le canal (`platform::serve_agents_pipe`) : une ligne par connexion, jamais depuis
+  le réseau (`PIPE_REJECT_REMOTE_CLIENTS`), première instance exclusive
+  (`FILE_FLAG_FIRST_PIPE_INSTANCE` : on refuse d'écouter si un autre programme
+  a pris le nom), droits Windows par défaut (seul le compte qui l'a créé peut
+  écrire). 64 Ko au plus par message, 10 messages par seconde au plus.
+- Hooks de Claude Code compris (`understand`) :
+  - `UserPromptSubmit` → la session travaille (le texte tapé n'est jamais lu) ;
+  - `Notification` → « attend ta permission » (`permission_prompt`) ou « attend
+    ta réponse » (`idle_prompt`, `elicitation_dialog`, `agent_needs_input`) ;
+    les autres types (connexion, quotas…) sont ignorés ;
+  - `Stop` → « a fini » (`last_assistant_message` n'est jamais lu) ;
+  - `SessionEnd` → la session est oubliée. Une session muette depuis 1 h aussi.
+- Tout arrivage est du texte à afficher : tronqué, sans caractères de
+  contrôle, le dossier réduit à son nom. Rien n'est exécuté ni ouvert. Le
+  journal ne note que le type d'événement. Historique : 30 derniers, en
+  mémoire seulement.
+- Configuration proposée (`hook_config`, bouton « Copier la configuration ») :
+  forme `command` + `args` (Claude Code lance island.exe directement, sans
+  Git Bash ni PowerShell, donc aucun échappement du chemin).
+- Lancer Claude Code (`launch_claude {path? | index?}`, permission `files`) :
+  `cmd.exe /k claude` dans le dossier (cmd trouve `claude.exe` ou `claude.cmd`
+  dans le PATH ; la fenêtre reste ouverte si Claude n'est pas installé), ou
+  `wt.exe -d <dossier> cmd.exe /k claude` selon le réglage (sauf si le
+  dossier contient « ; », que Windows Terminal lirait comme un séparateur).
+  Dossiers : réglage « Projets » (8 au plus, validés par `check_path`), la
+  boîte « Choisir un dossier », sinon le dossier utilisateur. Seul le mot
+  `claude` est tapé.
+- Codex et Gemini CLI (`--source codex` / `--source gemini`) :
+  - Codex : hooks `UserPromptSubmit`, `PermissionRequest` (« attend ta
+    permission », avec le nom de l'outil), `Stop`, `SessionEnd`, lancés par
+    `cmd /C` (config.toml, approuvés une fois par l'utilisateur dans
+    `/hooks`). L'ancien réglage `notify` marche aussi : son JSON
+    (`agent-turn-complete`) arrive en dernier paramètre, `cli.rs` le prend.
+  - Gemini CLI (0.26+) : hooks `BeforeAgent`, `AfterAgent`, `Notification`
+    (`ToolPermission`), `SessionEnd`, lancés par PowerShell :
+    `$input | & 'chemin' notify --source gemini` (`$input` passe le JSON reçu).
+  - Les deux attendent du JSON sur la sortie : `cli.rs` écrit `{}` (aucune
+    décision ; l'île ne répond jamais à la place de l'utilisateur).
+  - `prompt`, `prompt_response`, `last_assistant_message`, `tool_input` ne
+    sont jamais lus.
+- Lancer un agent (`launch {tool, path? | index?}`) : `claude`, `codex` ou
+  `gemini` (liste fermée, enum `Tool`), même mécanisme que ci-dessus.
+  Réglages « Proposer Claude Code / Codex / Gemini CLI ».
+- Tableau des sessions (`history` → `sessions`) : une ligne par session
+  (`outil:session_id`) avec son état (`working`, `waiting`, `done`, `idle`
+  après 1 h sans nouvelles) et depuis quand ; oubliée 2 h après sa dernière
+  nouvelle ou à `SessionEnd`.
+- « Y aller » (`focus {session}`) : `island.exe notify` envoie aussi les
+  numéros de ses programmes parents (`ancestor_pids`, jusqu'à l'île ou
+  l'Explorateur exclus) et sa console si elle est visible. L'île cherche la
+  première fenêtre visible de ces programmes (`EnumWindows`), la restaure si
+  elle est réduite, puis la passe devant (`SetForegroundWindow`, précédé d'un
+  appui sur Alt pour que Windows l'autorise). Ces numéros ne servent qu'à ça.
+- L'île comme serveur MCP (`island.exe mcp`, `cli.rs`) : un petit serveur
+  MCP en stdio (JSON-RPC, une ligne par message ; versions 2024-11-05,
+  2025-03-26 et 2025-06-18). Ne démarre pas l'île : il passe chaque appel
+  par le même canal, devenu « dans les deux sens » (une ligne de demande,
+  éventuellement une ligne de réponse). Quatre outils :
+  - `island_notify {title, message?}` → message dans l'historique ;
+  - `island_progress {title?, step, total}` → `agents.progress`, une
+    notification discrète remplacée à chaque étape ;
+  - `island_timer {minutes 1–180}` → `timer.start` ;
+  - `island_ask {question, options 2–4, timeout_minutes 1–25}` →
+    `agents.ask`, une alerte qui reste affichée avec un bouton par choix (et
+    dans l'onglet). Le clic (`answer {id, choice}`) renvoie `{"answer": "…"}`
+    à l'agent ; sans clic avant le délai : `{"answer": null, "reason": …}`.
+    5 questions en attente au plus. Délai plafonné à 25 min parce que Claude
+    Code coupe un outil stdio muet après 30 min.
+  - Réglage « Accepter les outils MCP » (activé par défaut) ; sinon l'agent
+    reçoit un refus poli. Comme pour les hooks : du texte à afficher, rien
+    n'est exécuté, la réponse est seulement le texte du choix cliqué.
+  - Configuration (`copy_mcp {tool}`) : `claude mcp add --scope user island
+    -- "chemin" mcp` ; Codex `[mcp_servers.island]` avec
+    `tool_timeout_sec = 1800` (défaut 60 s, trop court pour une question) ;
+    Gemini `mcpServers.island` avec `timeout` 1 800 000 ms (défaut 10 min).
+- Autoriser / Refuser depuis l'île (`island.exe permission --source
+  claude-code|codex`, hook `PermissionRequest`, réglage `permissions`
+  **désactivé par défaut**) :
+  - le hook envoie seulement le nom de l'outil et un résumé d'une ligne
+    (`command`, `file_path`, `url`…, jamais le contenu d'un fichier à écrire,
+    500 caractères au plus) ; rien n'est journalisé ;
+  - l'île l'affiche en alerte : « Autoriser… » (une 2e confirmation « Oui,
+    autoriser » ; la commande `answer` refuse un `allow` sans `confirmed`),
+    « Refuser », « Au terminal » ;
+  - réponse : `{"hookSpecificOutput":{"hookEventName":"PermissionRequest",
+    "decision":{"behavior":"allow"|"deny"}}}` (même format pour Claude Code et
+    Codex) ; sinon `{}` = aucune décision, la question habituelle s'affiche
+    dans le terminal. C'est le cas si le réglage est coupé, l'île fermée, ou
+    sans réponse après le délai choisi (30 s à 5 min, réglage
+    `permissionWait`). Délai du hook : 330 s ;
+  - si l'agent n'attend plus (réponse donnée dans le terminal, hook coupé),
+    `PeekNamedPipe` le voit et l'alerte devient « Réglé ailleurs » ; même
+    chose pour `island_ask` ;
+  - Gemini CLI : impossible (un hook peut refuser, pas autoriser).
+- Mode concentration (`quiet_start {minutes: 25 | 60 | 120 | 0}`, 0 = jusqu'à
+  `quiet_stop`) : les notifications des agents sont gardées (`held`, 100 au
+  plus) au lieu d'être montrées, pas de fête de la mascotte, les questions
+  attendent dans l'onglet sans s'ouvrir en grand, et les demandes de
+  permission passent tout de suite au terminal. À la fin : `agents.quiet
+  {on: false, summary}`, une seule notification (« Claude a fini 2 tâches ·
+  Codex t'attend · 1 question en attente »). En mémoire seulement.
+
+## Demander à Claude (`src/modules/askclaude/`, `src-tauri/src/modules/askclaude.rs`)
+
+Une erreur collée, un fichier texte ou une image (capture), une question :
+Claude répond par l'API Messages d'Anthropic (`POST
+https://api.anthropic.com/v1/messages`, en-tête `anthropic-version:
+2023-06-01`, client HTTP `ureq` 3).
+
+- Permissions : `claude-api` (déclarée et affichée dans les réglages),
+  `credentials` (lire `anthropic-api-key`, dans le Rust seulement), `files`,
+  `clipboard`.
+- Deux temps : `prepare {text | path}` lit le contenu (texte ≤ 100 Ko en
+  UTF-8, ou image png/jpg/gif/webp ≤ 3,7 Mo ; chemins validés par
+  `check_path`, donc dossiers exclus refusés), le GARDE côté Rust et renvoie
+  l'aperçu complet (texte entier, image, consigne, modèle, destination). Puis
+  `send {id, question}` envoie exactement ce contenu préparé (refusé si
+  l'aperçu a changé). Rien ne part sans ce clic.
+- Le texte est envoyé balisé `<document nom="…">…</document>` après la
+  question : un document à lire, pas des instructions.
+- `status` → `{hasKey, model}` : le front sait seulement si la clé existe.
+- Réglages : modèle (Sonnet 5.5 par défaut, Opus 5.5, Haiku 4.5), longueur
+  maximale (256 à 4096 jetons), consigne (montrée avant l'envoi), dépôt.
+- La réponse est affichée en texte (jamais en HTML), copiable. Le journal ne
+  note que la taille de l'envoi. Erreurs de l'API traduites (401 clé refusée,
+  429 trop de demandes, 529 surchargée).
+- Dépôt sur l'île : « Demander à Claude » prépare le fichier et ouvre l'onglet
+  sur l'aperçu.

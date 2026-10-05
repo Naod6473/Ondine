@@ -552,3 +552,238 @@ pub fn reverse_dns(ip: std::net::Ipv4Addr) -> Option<String> {
         Some(String::from_utf16_lossy(&name[..len]))
     }
 }
+
+// ── Porte d'entrée locale (« island notify ») ────────────────────────────────
+
+/// Le nom du canal (named pipe) par lequel les outils parlent à l'île. Un nom
+/// par utilisateur Windows ; les droits par défaut de Windows ne laissent
+/// écrire que le compte qui l'a créé.
+pub fn agents_pipe_name() -> String {
+    let user: String = std::env::var("USERNAME").unwrap_or_default().chars().filter(|c| c.is_ascii_alphanumeric()).collect();
+    format!(r"\\.\pipe\island-agents-{user}")
+}
+
+/// Écoute le canal pour toujours : chaque client envoie UNE ligne (au plus
+/// `max` octets). `on_message` reçoit les octets et le canal lui-même : il
+/// peut y écrire une réponse (une question posée par un agent), ou le laisser
+/// se fermer. Bloquant : à lancer dans un thread.
+pub fn serve_agents_pipe(max: usize, mut on_message: impl FnMut(Vec<u8>, std::fs::File)) -> Result<(), String> {
+    use std::io::{BufRead, Read};
+    use std::os::windows::io::{FromRawHandle, RawHandle};
+    use ::windows::core::HSTRING;
+    use ::windows::Win32::Foundation::{ERROR_PIPE_CONNECTED, HANDLE};
+    use ::windows::Win32::Storage::FileSystem::{FILE_FLAG_FIRST_PIPE_INSTANCE, FILE_FLAGS_AND_ATTRIBUTES, PIPE_ACCESS_DUPLEX};
+    use ::windows::Win32::System::Pipes::{
+        ConnectNamedPipe, CreateNamedPipeW, PIPE_READMODE_BYTE, PIPE_REJECT_REMOTE_CLIENTS, PIPE_TYPE_BYTE, PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
+    };
+
+    let name = HSTRING::from(agents_pipe_name());
+    // `first` : la toute première création échoue si le nom est déjà pris par
+    // un autre programme (on refuse d'écouter à sa place).
+    let create = |first: bool| -> Result<HANDLE, String> {
+        // Dans les deux sens : l'île peut répondre (« ask »).
+        let flags = if first { PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE } else { PIPE_ACCESS_DUPLEX | FILE_FLAGS_AND_ATTRIBUTES(0) };
+        let h = unsafe {
+            CreateNamedPipeW(
+                &name,
+                flags,
+                // Octets bruts, bloquant, et jamais depuis une autre machine.
+                PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
+                PIPE_UNLIMITED_INSTANCES,
+                4096,
+                max as u32,
+                0,
+                None,
+            )
+        };
+        if h.is_invalid() {
+            Err(format!("canal indisponible : {}", ::windows::core::Error::from_win32()))
+        } else {
+            Ok(h)
+        }
+    };
+
+    let mut next = create(true)?;
+    loop {
+        let current = next;
+        // Attend un client. « Déjà connecté » n'est pas une erreur.
+        if let Err(e) = unsafe { ConnectNamedPipe(current, None) } {
+            if e.code() != ERROR_PIPE_CONNECTED.to_hresult() {
+                // On referme et on recommence avec une instance neuve.
+                drop(unsafe { std::fs::File::from_raw_handle(current.0 as RawHandle) });
+                next = create(false)?;
+                continue;
+            }
+        }
+        // Une nouvelle instance AVANT de lire : le nom reste à nous.
+        next = create(false)?;
+        // `File` lit le canal et le referme quand il est détruit. On lit une
+        // ligne (jusqu'au retour à la ligne, ou jusqu'à ce que le client ferme).
+        let file = unsafe { std::fs::File::from_raw_handle(current.0 as RawHandle) };
+        let mut bytes = Vec::new();
+        let _ = std::io::BufReader::new((&file).take(max as u64 + 1)).read_until(b'\n', &mut bytes);
+        while bytes.last() == Some(&b'\n') || bytes.last() == Some(&b'\r') {
+            bytes.pop();
+        }
+        if !bytes.is_empty() && bytes.len() <= max {
+            on_message(bytes, file);
+        }
+    }
+}
+
+/// Côté île : le programme qui attend une réponse est-il toujours là ? (Si
+/// l'agent a eu sa réponse ailleurs, il a fermé le canal : on retire la question.)
+pub fn pipe_client_alive(file: &std::fs::File) -> bool {
+    use std::os::windows::io::AsRawHandle;
+    use ::windows::Win32::Foundation::HANDLE;
+    use ::windows::Win32::System::Pipes::PeekNamedPipe;
+    // Regarder sans rien lire : échoue (ERROR_BROKEN_PIPE) si l'autre bout est fermé.
+    unsafe { PeekNamedPipe(HANDLE(file.as_raw_handle() as _), None, 0, None, None, None).is_ok() }
+}
+
+/// Ouvre le canal de l'île (quelques essais rapides s'il est occupé).
+fn open_agents_pipe() -> Result<std::fs::File, String> {
+    let name = agents_pipe_name();
+    let mut last = String::new();
+    for _ in 0..5 {
+        match std::fs::OpenOptions::new().read(true).write(true).open(&name) {
+            Ok(f) => return Ok(f),
+            Err(e) => {
+                last = e.to_string();
+                std::thread::sleep(std::time::Duration::from_millis(60));
+            }
+        }
+    }
+    Err(format!("l'île n'est pas ouverte ({last})"))
+}
+
+/// Côté client (« island.exe notify ») : envoie un message à l'île, si elle tourne.
+pub fn send_agents_pipe(bytes: &[u8]) -> Result<(), String> {
+    use std::io::Write;
+    let mut f = open_agents_pipe()?;
+    f.write_all(bytes).and_then(|_| f.write_all(b"\n")).map_err(|e| e.to_string())
+}
+
+/// Côté client (« island.exe mcp ») : envoie une demande et attend la réponse
+/// de l'île (une ligne). Bloque jusqu'à la réponse ou la fermeture du canal.
+pub fn request_agents_pipe(bytes: &[u8]) -> Result<Vec<u8>, String> {
+    use std::io::{BufRead, Write};
+    let mut f = open_agents_pipe()?;
+    f.write_all(bytes).and_then(|_| f.write_all(b"\n")).map_err(|e| e.to_string())?;
+    let mut reply = Vec::new();
+    std::io::BufReader::new(f).read_until(b'\n', &mut reply).map_err(|e| e.to_string())?;
+    Ok(reply)
+}
+
+// ── Retrouver la fenêtre d'un agent (Claude Code, Codex…) ────────────────────
+
+/// Les programmes « au-dessus » de celui-ci (son parent, le parent du parent…),
+/// du plus proche au plus lointain, sans dépasser l'île elle-même. Appelé par
+/// « island.exe notify » : parmi eux se trouve le terminal où tourne l'agent.
+pub fn ancestor_pids(max: usize) -> Vec<u32> {
+    use ::windows::Win32::Foundation::CloseHandle;
+    use ::windows::Win32::System::Diagnostics::ToolHelp::{CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS};
+    // Une photo de tous les programmes : numéro → (parent, nom).
+    let mut table = std::collections::HashMap::new();
+    unsafe {
+        let Ok(snap) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) else { return vec![] };
+        let mut entry = PROCESSENTRY32W { dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32, ..Default::default() };
+        let mut ok = Process32FirstW(snap, &mut entry).is_ok();
+        while ok {
+            let len = entry.szExeFile.iter().position(|&c| c == 0).unwrap_or(entry.szExeFile.len());
+            let name = String::from_utf16_lossy(&entry.szExeFile[..len]).to_lowercase();
+            table.insert(entry.th32ProcessID, (entry.th32ParentProcessID, name));
+            ok = Process32NextW(snap, &mut entry).is_ok();
+        }
+        let _ = CloseHandle(snap);
+    }
+    let mut out = Vec::new();
+    let mut pid = std::process::id();
+    while out.len() < max {
+        let Some((parent, _)) = table.get(&pid) else { break };
+        let parent = *parent;
+        // 0 et 4 : le système. Une boucle (numéro réutilisé) : on s'arrête.
+        if parent == 0 || parent == 4 || out.contains(&parent) {
+            break;
+        }
+        match table.get(&parent) {
+            // On ne remonte pas au-delà de l'île (quand elle a lancé l'agent).
+            Some((_, name)) if name == "island.exe" || name == "explorer.exe" => break,
+            Some(_) => out.push(parent),
+            None => break,
+        }
+        pid = parent;
+    }
+    out
+}
+
+/// La fenêtre de console de ce programme, si elle est visible (sinon 0).
+pub fn own_console_window() -> isize {
+    use ::windows::Win32::System::Console::GetConsoleWindow;
+    use ::windows::Win32::UI::WindowsAndMessaging::IsWindowVisible;
+    unsafe {
+        let h = GetConsoleWindow();
+        if !h.0.is_null() && IsWindowVisible(h).as_bool() {
+            h.0 as isize
+        } else {
+            0
+        }
+    }
+}
+
+/// Fait passer devant la fenêtre d'un agent : `hwnd` (sa console) si elle
+/// existe encore, sinon la première fenêtre visible d'un des programmes
+/// `pids` (du plus proche au plus lointain). Err si aucune n'est trouvée.
+pub fn focus_agent_window(hwnd: isize, pids: &[u32]) -> Result<(), String> {
+    use ::windows::core::BOOL;
+    use ::windows::Win32::Foundation::{LPARAM, HWND};
+    use ::windows::Win32::UI::Input::KeyboardAndMouse::{SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP, VK_MENU};
+    use ::windows::Win32::UI::WindowsAndMessaging::{
+        EnumWindows, GetWindow, GetWindowTextLengthW, GetWindowThreadProcessId, IsIconic, IsWindow, IsWindowVisible, SetForegroundWindow, ShowWindow, GW_OWNER, SW_RESTORE,
+    };
+
+    // Les fenêtres principales visibles (avec un titre, sans propriétaire), et leur programme.
+    unsafe extern "system" fn collect(h: HWND, lparam: LPARAM) -> BOOL {
+        let list = unsafe { &mut *(lparam.0 as *mut Vec<(isize, u32)>) };
+        unsafe {
+            if IsWindowVisible(h).as_bool() && GetWindowTextLengthW(h) > 0 && GetWindow(h, GW_OWNER).is_err() {
+                let mut pid = 0u32;
+                GetWindowThreadProcessId(h, Some(&mut pid));
+                list.push((h.0 as isize, pid));
+            }
+        }
+        BOOL(1) // continuer
+    }
+
+    let target = unsafe {
+        let direct = HWND(hwnd as *mut _);
+        if hwnd != 0 && IsWindow(Some(direct)).as_bool() && IsWindowVisible(direct).as_bool() {
+            Some(direct)
+        } else {
+            let mut windows: Vec<(isize, u32)> = Vec::new();
+            let _ = EnumWindows(Some(collect), LPARAM(&mut windows as *mut _ as isize));
+            pids.iter().find_map(|p| windows.iter().find(|(_, wp)| wp == p)).map(|(h, _)| HWND(*h as *mut _))
+        }
+    };
+    let Some(target) = target else {
+        return Err("la fenêtre de cette session est introuvable (fermée ?)".into());
+    };
+    unsafe {
+        if IsIconic(target).as_bool() {
+            let _ = ShowWindow(target, SW_RESTORE);
+        }
+        // Windows ne laisse passer une fenêtre devant que si on vient d'agir au
+        // clavier : une pression sur Alt, seule, lève ce verrou (astuce connue).
+        let key = |flags: KEYBD_EVENT_FLAGS| INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 { ki: KEYBDINPUT { wVk: VK_MENU, wScan: 0, dwFlags: flags, time: 0, dwExtraInfo: 0 } },
+        };
+        SendInput(&[key(KEYBD_EVENT_FLAGS(0)), key(KEYEVENTF_KEYUP)], std::mem::size_of::<INPUT>() as i32);
+        if !SetForegroundWindow(target).as_bool() {
+            return Err("Windows a refusé de passer à cette fenêtre".into());
+        }
+    }
+    // L'île, en se refermant, ne doit pas reprendre la main.
+    forget_previous_foreground();
+    Ok(())
+}

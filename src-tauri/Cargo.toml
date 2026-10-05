@@ -41,6 +41,9 @@ notify = "8"
 sysinfo = { version = "0.39", default-features = false, features = ["system", "disk", "network"] }
 # Raccourcis clavier globaux (plugin officiel de Tauri, version 2 : la 3 est en alpha).
 tauri-plugin-global-shortcut = "2"
+# Appeler l'API Claude (Demander à Claude). TLS de Windows (SChannel) et ses
+# certificats racines (ceux d'une entreprise aussi) : pas de code C à compiler.
+ureq = { version = "3", default-features = false, features = ["json", "gzip", "native-tls"] }
 
 [target.'cfg(windows)'.dependencies]
 # Gestionnaire d'identifiants Windows. Version 3 volontairement : la 4 a changé d'API.
@@ -81,6 +84,10 @@ windows = { version = "0.61", features = [
   "Win32_System_Power",
   "Win32_NetworkManagement_IpHelper",
   "Win32_Networking_WinSock",
+  "Win32_System_Pipes",
+  "Win32_System_IO",
+  "Win32_System_Diagnostics_ToolHelp",
+  "Win32_System_Console",
 ] }
 
 [profile.release]

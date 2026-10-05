@@ -13,6 +13,8 @@
 // Ajouter un module Rust : voir ARCHITECTURE.md, « Ajouter un module ».
 
 mod agenda;
+mod agents;
+mod askclaude;
 mod capture;
 mod clipboard;
 mod hello;
@@ -195,6 +197,8 @@ impl Registry {
             Box::new(system::SystemInfo::default()),
             Box::new(remote::Remote::default()),
             Box::new(nettools::NetTools),
+            Box::new(agents::Agents::default()),
+            Box::new(askclaude::AskClaude::default()),
             Box::new(hello::Hello::default()),
         ];
 
@@ -372,6 +376,18 @@ mod tests {
     fn launcher_manifest_is_valid() {
         let m = check_manifest(launcher::Launcher::default().manifest_json()).unwrap();
         assert_eq!(m.id, "launcher");
+    }
+
+    #[test]
+    fn askclaude_manifest_is_valid() {
+        let m = check_manifest(askclaude::AskClaude::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "askclaude");
+    }
+
+    #[test]
+    fn agents_manifest_is_valid() {
+        let m = check_manifest(agents::Agents::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "agents");
     }
 
     #[test]

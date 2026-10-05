@@ -115,3 +115,31 @@ pub fn ping(_ip: std::net::Ipv4Addr, _timeout_ms: u32) -> Result<Option<(u32, u8
 pub fn reverse_dns(_ip: std::net::Ipv4Addr) -> Option<String> {
     None
 }
+
+pub fn serve_agents_pipe(_max: usize, _on_message: impl FnMut(Vec<u8>, std::fs::File)) -> Result<(), String> {
+    Err("disponible seulement sous Windows".into())
+}
+
+pub fn send_agents_pipe(_bytes: &[u8]) -> Result<(), String> {
+    Err("disponible seulement sous Windows".into())
+}
+
+pub fn request_agents_pipe(_bytes: &[u8]) -> Result<Vec<u8>, String> {
+    Err("disponible seulement sous Windows".into())
+}
+
+pub fn ancestor_pids(_max: usize) -> Vec<u32> {
+    vec![]
+}
+
+pub fn own_console_window() -> isize {
+    0
+}
+
+pub fn focus_agent_window(_hwnd: isize, _pids: &[u32]) -> Result<(), String> {
+    Err("disponible seulement sous Windows".into())
+}
+
+pub fn pipe_client_alive(_file: &std::fs::File) -> bool {
+    true
+}

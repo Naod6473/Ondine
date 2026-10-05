@@ -223,6 +223,14 @@ body {
 .tabs.dense .tab {
   padding: 3px 7px;
 }
+.tabs.tight .tab {
+  padding: 3px 4px;
+}
+.tabs.tight .tab-label {
+  max-width: 62px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .tabs.icons-only .tab:not(.active) .tab-label {
   max-width: 0;
   margin-left: 0;
@@ -334,6 +342,23 @@ body {
   display: flex;
   gap: 4px;
   align-items: center;
+}
+/* Une question à choix : le texte en haut, les boutons dessous (l'alerte grandit). */
+.notif.many {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.notif.many .notif-text {
+  flex-basis: calc(100% - 40px);
+}
+.notif.many .notif-actions {
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.island[data-state="alert"]:has(.notif.many) {
+  width: 580px;
+  height: 150px;
 }
 .notif.prio-critical .notif-title {
   color: #ff8a8a;
@@ -1788,4 +1813,286 @@ body {
     animation: none;
     transition: none;
   }
+}
+
+/* Agents IA */
+.agents {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.agents-status {
+  margin: 0;
+  font-size: 12px;
+}
+.agents-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.agents-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  border-radius: 9px;
+  animation: agents-in 320ms var(--ease);
+}
+.agents-item.waiting {
+  background: rgba(255, 198, 92, 0.09);
+}
+.agents-empty {
+  padding: 4px 8px;
+}
+@keyframes agents-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.agents-guide {
+  font-size: 12px;
+}
+.agents-guide summary {
+  cursor: pointer;
+  color: var(--muted, rgba(255, 255, 255, 0.55));
+}
+.agents-guide ol {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+.agents-guide code {
+  font-size: 11px;
+  user-select: text;
+  overflow-wrap: anywhere;
+}
+.agents-exe {
+  display: block;
+  margin-top: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .agents-item {
+    animation: none;
+  }
+}
+.agents-launch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.agents-launch-title {
+  font-weight: 600;
+  margin-right: 2px;
+}
+.agents-tools {
+  margin: 6px 0 2px;
+}
+.net-chip.active {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--island-fg);
+}
+.agents-launch-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--line);
+  margin: 0 2px;
+}
+.agents-subtitle {
+  font-size: 11px;
+  margin-top: 2px;
+}
+/* Le mode concentration */
+.agents-quiet {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0 6px;
+  font-size: 12px;
+}
+.agents-quiet.on {
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 11px;
+  background: rgba(160, 120, 255, 0.14);
+  border: 1px solid rgba(160, 120, 255, 0.3);
+}
+/* Les questions posées par un agent (MCP) */
+.agents-asks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.agents-asks:empty {
+  display: none;
+}
+.agents-ask {
+  padding: 8px 10px;
+  border-radius: 11px;
+  background: rgba(255, 196, 0, 0.12);
+  border: 1px solid rgba(255, 196, 0, 0.3);
+}
+.agents-ask.permission {
+  background: rgba(124, 196, 255, 0.1);
+  border-color: rgba(124, 196, 255, 0.3);
+}
+.agents-ask-detail {
+  display: block;
+  margin: 4px 0 6px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.agents-confirm {
+  color: #ffcf4a;
+  font-size: 12px;
+  align-self: center;
+}
+.agents-ask-q {
+  margin: 4px 0 6px;
+  overflow-wrap: anywhere;
+}
+.agents-board {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.agents-session {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--island-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    transform 300ms var(--ease);
+}
+.agents-session:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.agents-session:active {
+  transform: scale(0.98);
+}
+.agents-session small {
+  margin-left: auto;
+}
+.agents-session.waiting {
+  background: rgba(255, 198, 92, 0.09);
+}
+.agents-go {
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.agents-session:hover .agents-go {
+  opacity: 0.7;
+}
+/* Le point d'état : vert qui respire (au travail), orange (t'attend), gris (fini). */
+.agents-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  background: rgba(255, 255, 255, 0.3);
+}
+.agents-session.working .agents-dot {
+  background: #5ee08a;
+  animation: remote-breathe 1.4s ease-in-out infinite;
+}
+.agents-session.waiting .agents-dot {
+  background: #ffc65c;
+  box-shadow: 0 0 6px rgba(255, 198, 92, 0.7);
+}
+@media (prefers-reduced-motion: reduce) {
+  .agents-session.working .agents-dot {
+    animation: none;
+  }
+}
+
+/* ── Demander à Claude ───────────────────────────────────────────────────── */
+
+.ask {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ask-input,
+.ask-question {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+.ask-warn {
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(255, 196, 0, 0.12);
+  font-size: 12px;
+}
+.ask-outgoing,
+.ask-answer {
+  padding: 8px 10px;
+  border-radius: 11px;
+  border: 1px solid rgba(124, 196, 255, 0.3);
+  background: rgba(124, 196, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+.ask-answer {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+}
+.ask-outgoing-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ask-field {
+  overflow-wrap: anywhere;
+}
+.ask-doc {
+  margin: 0;
+  max-height: 140px;
+  overflow: auto;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ask-image {
+  max-width: 100%;
+  max-height: 140px;
+  object-fit: contain;
+  align-self: flex-start;
+  border-radius: 8px;
+}
+.ask-answer-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.ask-error {
+  margin: 0;
+  color: #ff8a8a;
+  font-size: 12px;
 }
