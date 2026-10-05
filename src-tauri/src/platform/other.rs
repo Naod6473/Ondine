@@ -39,3 +39,6 @@ pub fn left_button_down() -> bool {
 pub fn make_non_activating(_win: &WebviewWindow) {}
 pub fn set_activating(_win: &WebviewWindow, _activating: bool) {}
 pub fn unblock_webview_drops(_app: &AppHandle) {}
+pub fn is_elevated() -> bool {
+    false
+}

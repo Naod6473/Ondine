@@ -46,6 +46,8 @@ export interface BootInfo {
   screen: ScreenInfo;
   version: string;
   rustModules: { id: string; crashed: boolean }[];
+  /** L'appli tourne en administrateur (glisser-déposer bloqué par Windows). */
+  elevated: boolean;
 }
 
 export const Bridge = {

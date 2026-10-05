@@ -151,6 +151,36 @@ pub fn unblock_webview_drops(app: &AppHandle) {
     }
 }
 
+/// L'appli tourne-t-elle « en tant qu'administrateur » ?
+///
+/// Important pour le glisser-déposer : Windows interdit de glisser un fichier
+/// depuis une appli normale (l'Explorateur) vers une appli administrateur
+/// (curseur 🚫). C'est le cas si `npm run tauri dev` est lancé depuis un
+/// terminal ouvert « en tant qu'administrateur ».
+pub fn is_elevated() -> bool {
+    use ::windows::Win32::Foundation::{CloseHandle, HANDLE};
+    use ::windows::Win32::Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY};
+    use ::windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
+    unsafe {
+        let mut token = HANDLE::default();
+        if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token).is_err() {
+            return false;
+        }
+        let mut info = TOKEN_ELEVATION::default();
+        let mut len = 0u32;
+        let ok = GetTokenInformation(
+            token,
+            TokenElevation,
+            Some(&mut info as *mut TOKEN_ELEVATION as *mut _),
+            std::mem::size_of::<TOKEN_ELEVATION>() as u32,
+            &mut len,
+        )
+        .is_ok();
+        let _ = CloseHandle(token);
+        ok && info.TokenIsElevated != 0
+    }
+}
+
 /// Ce que `unblock_webview_drops` a déjà écrit dans le journal.
 static LAST_DROP_SUMMARY: Mutex<Vec<String>> = Mutex::new(Vec::new());
 

@@ -41,6 +41,8 @@ struct BootInfo {
     screen: ScreenInfo,
     version: String,
     rust_modules: Vec<ModuleStatus>,
+    /// L'appli tourne en administrateur : le glisser-déposer depuis l'Explorateur est bloqué.
+    elevated: bool,
 }
 
 // ── Démarrage et réglages ────────────────────────────────────────────────────
@@ -53,6 +55,7 @@ fn boot(app: AppHandle, shared: State<Shared>, registry: State<Registry>) -> Boo
         settings,
         version: env!("CARGO_PKG_VERSION").to_string(),
         rust_modules: registry.statuses(),
+        elevated: platform::is_elevated(),
     }
 }
 
@@ -354,6 +357,9 @@ pub fn run() {
             handle.state::<Registry>().start_all(&handle);
 
             log::info(format!("--- Island {} démarrée ---", env!("CARGO_PKG_VERSION")));
+            if platform::is_elevated() {
+                log::warn("l'île tourne en administrateur : Windows bloque le glisser-déposer depuis l'Explorateur");
+            }
             Ok(())
         })
         .run(tauri::generate_context!())
