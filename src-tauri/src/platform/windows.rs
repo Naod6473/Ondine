@@ -213,6 +213,79 @@ pub fn clipboard_sequence() -> u32 {
     unsafe { ::windows::Win32::System::DataExchange::GetClipboardSequenceNumber() }
 }
 
+/// Met un SECRET (mot de passe généré) dans le presse-papiers, marqué comme
+/// le font les gestionnaires de mots de passe : pas d'historique Windows
+/// (Win+V), pas de synchro dans le cloud, ignoré par les outils de surveillance
+/// (dont le nôtre). Renvoie le numéro de copie, pour l'effacer plus tard.
+pub fn copy_secret(text: &str) -> Result<u32, String> {
+    use ::windows::core::w;
+    use ::windows::Win32::Foundation::HANDLE;
+    use ::windows::Win32::System::DataExchange::{CloseClipboard, EmptyClipboard, OpenClipboard, RegisterClipboardFormatW, SetClipboardData};
+    use ::windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
+    use ::windows::Win32::System::Ole::CF_UNICODETEXT;
+
+    /// Copie des octets dans un bloc mémoire que le presse-papiers gardera.
+    unsafe fn block(bytes: &[u8]) -> Result<HANDLE, String> {
+        let mem = GlobalAlloc(GMEM_MOVEABLE, bytes.len()).map_err(|e| e.to_string())?;
+        let ptr = GlobalLock(mem) as *mut u8;
+        if ptr.is_null() {
+            return Err("mémoire indisponible".into());
+        }
+        std::ptr::copy_nonoverlapping(bytes.as_ptr(), ptr, bytes.len());
+        let _ = GlobalUnlock(mem);
+        Ok(HANDLE(mem.0))
+    }
+
+    let wide: Vec<u16> = text.encode_utf16().chain(std::iter::once(0)).collect();
+    let text_bytes: Vec<u8> = wide.iter().flat_map(|c| c.to_le_bytes()).collect();
+    let zero = 0u32.to_le_bytes();
+    unsafe {
+        let mut opened = false;
+        for _ in 0..10 {
+            if OpenClipboard(None).is_ok() {
+                opened = true;
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        if !opened {
+            return Err("le presse-papiers est occupé, réessaie".into());
+        }
+        let result = (|| -> Result<(), String> {
+            EmptyClipboard().map_err(|e| e.to_string())?;
+            // Les marques « ne pas garder » d'abord, le texte ensuite.
+            for name in [w!("ExcludeClipboardContentFromMonitorProcessing"), w!("CanIncludeInClipboardHistory"), w!("CanUploadToCloudClipboard")] {
+                let format = RegisterClipboardFormatW(name);
+                if format != 0 {
+                    SetClipboardData(format, Some(block(&zero)?)).map_err(|e| e.to_string())?;
+                }
+            }
+            SetClipboardData(CF_UNICODETEXT.0 as u32, Some(block(&text_bytes)?)).map_err(|e| e.to_string())?;
+            Ok(())
+        })();
+        let _ = CloseClipboard();
+        result?;
+    }
+    Ok(clipboard_sequence())
+}
+
+/// Vide le presse-papiers s'il contient encore la copie numéro `seq` (rien
+/// n'a été copié depuis) : le mot de passe ne traîne pas.
+pub fn clear_clipboard_if(seq: u32) -> bool {
+    use ::windows::Win32::System::DataExchange::{CloseClipboard, EmptyClipboard, OpenClipboard};
+    if clipboard_sequence() != seq {
+        return false;
+    }
+    unsafe {
+        if OpenClipboard(None).is_err() {
+            return false;
+        }
+        let ok = EmptyClipboard().is_ok();
+        let _ = CloseClipboard();
+        ok
+    }
+}
+
 /// La copie actuelle est-elle marquée « sensible » par l'appli qui l'a faite ?
 ///
 /// Les gestionnaires de mots de passe (KeePass, Bitwarden, 1Password…) ajoutent

@@ -2984,3 +2984,37 @@ body.presenting .island[data-state="hidden"] {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Presse-papiers : générateur de mots de passe. */
+.pw {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pw-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pw-out {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: all;
+}
+.pw-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+.pw-check input {
+  accent-color: var(--accent);
+}

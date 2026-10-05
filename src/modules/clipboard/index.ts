@@ -38,7 +38,7 @@ interface ListResult {
 
 /** Ce que la vue retient entre deux ouvertures de l'île. */
 const view = {
-  tab: "history" as "history" | "snippets",
+  tab: "history" as "history" | "snippets" | "password",
   query: "",
 };
 
@@ -73,6 +73,9 @@ async function copy(api: ModuleApi, args: unknown) {
     api.notify({ title: "Copié", icon: "📋", priority: "low", key: "clipboard-copied" });
   }
 }
+
+/** Les choix du générateur de mots de passe (gardés pendant que l'île tourne). */
+const pw = { length: 20, upper: true, lower: true, digits: true, symbols: true, ambiguous: false };
 
 /** Les casses proposées par le bouton « Aa ». */
 const CASES: [mode: string, label: string, title: string][] = [
@@ -112,7 +115,7 @@ export const clipboard: IslandModule = {
       });
       const tabButton = (tab: typeof view.tab, label: string) =>
         el("button", { class: `tab ${view.tab === tab ? "active" : ""}`, "data-tab": tab, onclick: api.handler(() => setTab(tab)) }, label);
-      const tabs = el("div", { class: "clip-tabs" }, tabButton("history", "Historique"), tabButton("snippets", "Snippets"));
+      const tabs = el("div", { class: "clip-tabs" }, tabButton("history", "Historique"), tabButton("snippets", "Snippets"), tabButton("password", "🔑 Mot de passe"));
       const plain = el(
         "button",
         {
@@ -143,13 +146,15 @@ export const clipboard: IslandModule = {
         } catch {
           return; // hors de l'appli (navigateur) : liste vide
         }
-        if (alive && !editing) draw();
+        // (L'onglet mot de passe ne se redessine pas : il garderait le même mot de passe affiché.)
+        if (alive && !editing && view.tab !== "password") draw();
       };
 
       // ── Le corps : la liste de l'onglet choisi ──
       const draw = () => {
         body.replaceChildren();
         if (view.tab === "history") drawHistory();
+        else if (view.tab === "password") drawPassword();
         else if (editing) drawForm(editing);
         else drawSnippets();
       };
@@ -249,6 +254,63 @@ export const clipboard: IslandModule = {
           ),
         );
         body.append(list, footer);
+      };
+
+      // ── Générateur de mots de passe ──
+      const drawPassword = () => {
+        const out = el("code", { class: "pw-out" }, "…");
+        const length = el("input", { type: "range", min: 8, max: 64, value: pw.length, class: "tool-range" }) as HTMLInputElement;
+        const lengthVal = el("span", { class: "tool-val" }, String(pw.length));
+        let current = "";
+        const make = async () => {
+          try {
+            const r = await api.invoke<{ password: string }>("password_generate", pw);
+            current = r.password;
+            out.textContent = current;
+          } catch (err) {
+            current = "";
+            out.textContent = `⚠️ ${errorText(err)}`;
+          }
+        };
+        length.oninput = () => {
+          pw.length = Number(length.value);
+          lengthVal.textContent = length.value;
+          void make();
+        };
+        const check = (key: "upper" | "lower" | "digits" | "symbols" | "ambiguous", label: string) => {
+          const box = el("input", { type: "checkbox" }) as HTMLInputElement;
+          box.checked = pw[key];
+          box.onchange = () => {
+            pw[key] = box.checked;
+            void make();
+          };
+          return el("label", { class: "pw-check" }, box, label);
+        };
+        const copyBtn = el(
+          "button",
+          {
+            class: "btn small primary",
+            title: "Copié en secret : ni l'historique de Windows, ni celui de l'île ne le gardent",
+            onclick: api.handler(async () => {
+              if (!current) return;
+              if (await attempt(api, "Copier le mot de passe", () => api.invoke("password_copy", { password: current }))) {
+                api.notify({ title: "Mot de passe copié", body: "Effacé du presse-papiers dans 30 secondes.", icon: "🔑", priority: "low", key: "clipboard-copied" });
+              }
+            }),
+          },
+          "Copier",
+        );
+        body.append(
+          el(
+            "div",
+            { class: "pw" },
+            el("div", { class: "pw-row" }, out, el("button", { class: "icon-btn", title: "Un autre", onclick: api.handler(make) }, "↻"), copyBtn),
+            el("label", { class: "tool-row" }, el("span", { class: "muted" }, "Longueur"), length, lengthVal),
+            el("div", { class: "tool-row" }, check("upper", "ABC"), check("lower", "abc"), check("digits", "123"), check("symbols", "#$%"), check("ambiguous", "Garder 0 O l 1")),
+            el("p", { class: "muted tool-note" }, "Tiré au hasard par Windows, sur ton PC. Jamais enregistré ni écrit dans le journal ; effacé du presse-papiers au bout de 30 s."),
+          ),
+        );
+        void make();
       };
 
       const drawSnippets = () => {

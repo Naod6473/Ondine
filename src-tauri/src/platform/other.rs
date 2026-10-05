@@ -48,6 +48,12 @@ pub fn clipboard_sequence() -> u32 {
 pub fn clipboard_is_sensitive() -> bool {
     false
 }
+pub fn copy_secret(_text: &str) -> Result<u32, String> {
+    Err("disponible seulement sous Windows".into())
+}
+pub fn clear_clipboard_if(_seq: u32) -> bool {
+    false
+}
 pub fn paste_into_previous(_app: &AppHandle) -> Result<(), String> {
     Err("disponible seulement sous Windows".into())
 }

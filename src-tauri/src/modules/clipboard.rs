@@ -18,7 +18,11 @@
 //     plein de traqueurs (utm_source, fbclid, gclid…), on remet dans le
 //     presse-papiers le même lien sans eux. La notification propose « Remettre »
 //     (le lien d'origine, qu'on ne nettoie plus ensuite) ;
-//   - changer la casse d'une copie (MAJUSCULES, minuscules, Titre, Phrase).
+//   - changer la casse d'une copie (MAJUSCULES, minuscules, Titre, Phrase) ;
+//   - générer un mot de passe (hasard du système) : copié marqué « secret »
+//     (ni historique Windows, ni le nôtre, ni cloud), puis effacé du
+//     presse-papiers au bout de 30 s si rien d'autre n'a été copié entre-temps.
+//     Il n'est jamais enregistré ni écrit dans le journal.
 //
 // Le manifeste est le même fichier que celui du front (src/modules/clipboard/manifest.json).
 
@@ -168,6 +172,18 @@ impl RustModule for Clipboard {
                 };
                 files::copy_text(&original)?;
                 Ok(Value::Null)
+            }
+            // { length, upper, lower, digits, symbols, ambiguous } → { password }
+            "password_generate" => Ok(json!({ "password": generate_password(&PasswordRules::from_args(&args))? })),
+            // { password } : copié en secret, effacé dans 30 s.
+            "password_copy" => {
+                let text = args.get("password").and_then(Value::as_str).filter(|s| !s.is_empty() && s.len() <= 256).ok_or("mot de passe manquant")?;
+                let seq = platform::copy_secret(text)?;
+                std::thread::spawn(move || {
+                    std::thread::sleep(SECRET_LIFETIME);
+                    platform::clear_clipboard_if(seq);
+                });
+                Ok(json!({ "clearsInSecs": SECRET_LIFETIME.as_secs() }))
             }
             "snippet_save" => self.snippet_save(ctx, &args),
             "snippet_delete" => self.snippet_delete(ctx, arg_id(&args, "id")?),
@@ -385,6 +401,83 @@ fn watch(app: AppHandle, store: Shared) {
             log::warn("presse-papiers : panique pendant la lecture d'une copie");
         }
     }
+}
+
+/// Un mot de passe copié est effacé du presse-papiers au bout de…
+const SECRET_LIFETIME: Duration = Duration::from_secs(30);
+
+/// Les familles de caractères d'un mot de passe.
+struct PasswordRules {
+    length: usize,
+    upper: bool,
+    lower: bool,
+    digits: bool,
+    symbols: bool,
+    /// Garder les caractères qui se ressemblent (0 O o, 1 l I |…).
+    ambiguous: bool,
+}
+
+impl PasswordRules {
+    fn from_args(args: &Value) -> Self {
+        let flag = |k: &str| args.get(k).and_then(Value::as_bool).unwrap_or(true);
+        Self {
+            length: args.get("length").and_then(Value::as_u64).unwrap_or(20).clamp(8, 128) as usize,
+            upper: flag("upper"),
+            lower: flag("lower"),
+            digits: flag("digits"),
+            symbols: flag("symbols"),
+            ambiguous: args.get("ambiguous").and_then(Value::as_bool).unwrap_or(false),
+        }
+    }
+}
+
+/// Un nombre au hasard dans 0..n, sans biais (on rejette le haut de l'intervalle).
+fn random_below(n: u32) -> Result<u32, String> {
+    let limit = u32::MAX - (u32::MAX % n);
+    loop {
+        let mut b = [0u8; 4];
+        getrandom::fill(&mut b).map_err(|_| "le hasard du système est indisponible".to_string())?;
+        let v = u32::from_le_bytes(b);
+        if v < limit {
+            return Ok(v % n);
+        }
+    }
+}
+
+/// Un mot de passe avec au moins un caractère de chaque famille choisie.
+fn generate_password(r: &PasswordRules) -> Result<String, String> {
+    const AMBIGUOUS: &str = "0Oo1lI|`'\"";
+    let keep = |set: &str| -> Vec<char> { set.chars().filter(|c| r.ambiguous || !AMBIGUOUS.contains(*c)).collect() };
+    let mut families: Vec<Vec<char>> = Vec::new();
+    if r.upper {
+        families.push(keep("ABCDEFGHIJKLMNOPQRSTUVWXYZ"));
+    }
+    if r.lower {
+        families.push(keep("abcdefghijklmnopqrstuvwxyz"));
+    }
+    if r.digits {
+        families.push(keep("0123456789"));
+    }
+    if r.symbols {
+        families.push(keep("!#$%&*+-=?@^_~.:;,()[]{}"));
+    }
+    if families.is_empty() {
+        return Err("choisis au moins une sorte de caractères".into());
+    }
+    let all: Vec<char> = families.concat();
+    // Un de chaque famille, puis le reste au hasard, puis on mélange.
+    let mut out: Vec<char> = Vec::with_capacity(r.length);
+    for f in &families {
+        out.push(f[random_below(f.len() as u32)? as usize]);
+    }
+    while out.len() < r.length {
+        out.push(all[random_below(all.len() as u32)? as usize]);
+    }
+    for i in (1..out.len()).rev() {
+        let j = random_below(i as u32 + 1)? as usize;
+        out.swap(i, j);
+    }
+    Ok(out.into_iter().collect())
 }
 
 /// Le réglage « liens propres » (activé si absent).
@@ -648,6 +741,21 @@ mod tests {
         assert_eq!(clean_link("https://ex.com/?id=4"), None);
         assert_eq!(clean_link("voir https://ex.com/?utm_source=x"), None);
         assert_eq!(clean_link("ftp://ex.com/?utm_source=x"), None);
+    }
+
+    #[test]
+    fn passwords_follow_the_rules() {
+        let rules = |length, symbols| PasswordRules { length, upper: true, lower: true, digits: true, symbols, ambiguous: false };
+        let p = generate_password(&rules(24, true)).unwrap();
+        assert_eq!(p.chars().count(), 24);
+        assert!(p.chars().any(|c| c.is_ascii_uppercase()) && p.chars().any(|c| c.is_ascii_lowercase()) && p.chars().any(|c| c.is_ascii_digit()));
+        assert!(p.chars().any(|c| !c.is_ascii_alphanumeric()));
+        assert!(!p.contains(['0', 'O', 'l', '1', 'I']));
+        let p = generate_password(&rules(12, false)).unwrap();
+        assert!(p.chars().all(|c| c.is_ascii_alphanumeric()));
+        assert_ne!(generate_password(&rules(20, true)).unwrap(), generate_password(&rules(20, true)).unwrap());
+        let none = PasswordRules { length: 10, upper: false, lower: false, digits: false, symbols: false, ambiguous: false };
+        assert!(generate_password(&none).is_err());
     }
 
     #[test]

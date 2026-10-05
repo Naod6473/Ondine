@@ -2,7 +2,7 @@
   "id": "clipboard",
   "name": "Presse-papiers",
   "icon": "📋",
-  "description": "Garde l'historique de tes copies de texte (recherche, épinglage), colle sans mise en forme, range tes textes fréquents en snippets, retire les traqueurs des liens copiés (utm_source, fbclid…) et change la casse d'un texte en un clic. Les copies que Windows signale comme sensibles (mots de passe) sont ignorées. L'historique reste en mémoire et disparaît à la fermeture de l'île ; seuls les éléments épinglés et les snippets sont enregistrés, sur ton ordinateur.",
+  "description": "Garde l'historique de tes copies de texte (recherche, épinglage), colle sans mise en forme, range tes textes fréquents en snippets, retire les traqueurs des liens copiés (utm_source, fbclid…) change la casse d'un texte en un clic, et génère des mots de passe (copiés en secret, effacés au bout de 30 s, jamais enregistrés). Les copies que Windows signale comme sensibles (mots de passe) sont ignorées. L'historique reste en mémoire et disparaît à la fermeture de l'île ; seuls les éléments épinglés et les snippets sont enregistrés, sur ton ordinateur.",
   "version": "0.1.0",
   "permissions": [
     "clipboard"
@@ -43,7 +43,9 @@
     "snippet_save",
     "snippet_delete",
     "transform",
-    "restore_link"
+    "restore_link",
+    "password_generate",
+    "password_copy"
   ],
   "events": {
     "emits": [
