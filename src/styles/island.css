@@ -690,3 +690,432 @@ body {
   resize: vertical;
   white-space: pre-wrap;
 }
+
+/* ── Sous-onglets (pastille « liquide », comme les onglets de l'île) ────── */
+
+.segmented {
+  position: relative;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  margin-bottom: 8px;
+}
+.seg {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 200ms ease,
+    transform 300ms var(--ease);
+}
+.seg:hover,
+.seg.active {
+  color: var(--island-fg);
+}
+.seg:active {
+  transform: scale(0.92);
+}
+.segmented .tab-pill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  z-index: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  will-change: transform, width;
+  pointer-events: none;
+}
+
+/* ── Module Minuteur ─────────────────────────────────────────────────────── */
+
+.timer-compact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.timer-compact-text {
+  flex: 1;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.timer-compact-bar {
+  flex: none;
+  width: 70px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.timer-compact-bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left;
+  transform: scaleX(0);
+}
+.timer-layout {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.timer-ring {
+  flex: none;
+  width: 104px;
+  height: 104px;
+  transform: rotate(-90deg);
+}
+.timer-ring circle {
+  fill: none;
+  stroke-width: 7;
+}
+.timer-ring .track {
+  stroke: rgba(255, 255, 255, 0.08);
+}
+.timer-ring .bar {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 400ms var(--ease);
+}
+.timer-ring text {
+  transform: rotate(90deg);
+  transform-origin: 60px 60px;
+  text-anchor: middle;
+  dominant-baseline: central;
+  fill: var(--island-fg);
+}
+.timer-ring .time {
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.timer-ring .sub {
+  font-size: 10px;
+  fill: var(--muted);
+}
+.timer-side {
+  flex: 1;
+  min-width: 0;
+}
+.btn.primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: #0c0d12;
+  font-weight: 600;
+  min-width: 96px;
+}
+.btn.primary:hover {
+  background: #a3d6ff;
+}
+.timer-tomatoes {
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+.timer-hint {
+  font-size: 11px;
+  margin: 2px 0 0;
+}
+.timer-big {
+  font-size: 34px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+}
+.timer-laps {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  max-height: 64px;
+  overflow: auto;
+  font-variant-numeric: tabular-nums;
+}
+.timer-laps li {
+  display: flex;
+  gap: 14px;
+  font-size: 12px;
+}
+
+/* ── Module Notes ────────────────────────────────────────────────────────── */
+
+.notes-add {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 6px;
+}
+.todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 4px;
+  border-radius: 8px;
+}
+.todo-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.todo-check {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--muted);
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transition:
+    background 220ms ease,
+    border-color 220ms ease,
+    transform 360ms var(--ease);
+}
+.todo-check::after {
+  content: "";
+  position: absolute;
+  left: 4.5px;
+  top: 1.5px;
+  width: 4px;
+  height: 8px;
+  border: solid #0c0d12;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform 300ms var(--ease);
+}
+.todo-check:active {
+  transform: scale(0.85);
+}
+.todo-item.done .todo-check {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.todo-item.done .todo-check::after {
+  transform: rotate(45deg) scale(1);
+}
+.todo-text {
+  flex: 0 1 auto; /* aussi large que le texte : le trait qui barre s'arrête au bout */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* Le trait qui barre se dessine de gauche à droite. */
+  background: linear-gradient(currentColor, currentColor) no-repeat 0 55% / 0 1px;
+  transition:
+    background-size 320ms var(--ease-out),
+    color 220ms ease;
+}
+.todo-item.done .todo-text {
+  color: var(--muted);
+  background-size: 100% 1px;
+}
+.todo-edit {
+  flex: 1;
+  min-width: 0;
+}
+.todo-del {
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.todo-item:hover .todo-del {
+  opacity: 1;
+}
+.notes-foot {
+  align-items: center;
+  justify-content: space-between;
+}
+.note-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.note-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  min-height: 62px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--island-fg);
+  font: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    background 150ms ease,
+    transform 300ms var(--ease);
+}
+.note-card:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+.note-card:active {
+  transform: scale(0.97);
+}
+.note-card b,
+.note-card span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.note-card small {
+  margin-top: auto;
+  font-size: 10px;
+}
+.note-bar {
+  align-items: center;
+  margin-top: 0;
+}
+.note-bar .spacer {
+  flex: 1;
+}
+.note-status {
+  font-size: 11px;
+}
+.note-editor {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 120px;
+  resize: none;
+  white-space: pre-wrap;
+}
+
+/* ── Module Agenda ───────────────────────────────────────────────────────── */
+
+.agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.agenda-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px 4px;
+  text-align: center;
+}
+.agenda-empty p {
+  margin: 0 0 4px;
+  max-width: 420px;
+}
+.agenda-empty-icon {
+  font-size: 28px;
+}
+.agenda-error {
+  margin: 0;
+  font-size: 12px;
+  color: #ffb4a8;
+}
+.agenda-none {
+  margin: 4px 0;
+}
+/* La carte du prochain rendez-vous. */
+.agenda-next {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  transition: background 300ms var(--ease);
+}
+.agenda-next.live {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.agenda-when {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+.agenda-next.live .agenda-when {
+  color: var(--island-fg);
+}
+.agenda-title {
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agenda-next .muted {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agenda-list {
+  display: flex;
+  flex-direction: column;
+}
+.agenda-day {
+  padding: 6px 2px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.agenda-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 3px 6px;
+  border-radius: 8px;
+  min-width: 0;
+}
+.agenda-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.agenda-row.live {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.agenda-time {
+  flex: none;
+  width: 48px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 12px;
+}
+.agenda-row-title {
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agenda-loc {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agenda-foot {
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0;
+}
+.agenda-foot .muted {
+  font-size: 11px;
+}

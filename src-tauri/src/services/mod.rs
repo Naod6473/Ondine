@@ -7,10 +7,12 @@
 // - undo        : les actions annulables pendant quelques secondes
 // - privacy     : validation des chemins et dossiers exclus
 // - files       : copier, déplacer, Corbeille, zip, presse-papiers (sans jamais écraser)
+// - ics         : lecture des fichiers d'agenda .ics (rien n'est téléchargé)
 
 pub mod bus;
 pub mod credentials;
 pub mod files;
+pub mod ics;
 pub mod log;
 pub mod privacy;
 pub mod settings;

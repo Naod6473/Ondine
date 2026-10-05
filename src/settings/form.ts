@@ -52,7 +52,10 @@ export function settingsForm(
         break;
       }
       case "folders":
-        input = foldersInput(field.max ?? 20, Array.isArray(current) ? (current as string[]) : [], (v) => onChange(field.key, v));
+        input = pathsInput("folders", [], field.max ?? 20, Array.isArray(current) ? (current as string[]) : [], (v) => onChange(field.key, v));
+        break;
+      case "files":
+        input = pathsInput("files", field.extensions, field.max ?? 20, Array.isArray(current) ? (current as string[]) : [], (v) => onChange(field.key, v));
         break;
     }
     form.append(
@@ -68,8 +71,11 @@ export function settingsForm(
   return form;
 }
 
-/** Une liste de dossiers : chacun avec « × », plus un bouton « Ajouter un dossier… ». */
-function foldersInput(max: number, initial: string[], onChange: (folders: string[]) => void): HTMLElement {
+/**
+ * Une liste de dossiers (ou de fichiers) : chacun avec « × », plus un bouton
+ * « Ajouter… » qui ouvre la boîte de choix de Windows.
+ */
+function pathsInput(kind: "folders" | "files", extensions: string[], max: number, initial: string[], onChange: (paths: string[]) => void): HTMLElement {
   let folders = [...initial];
   const box = el("div", { class: "folders-input" });
   const draw = () => {
@@ -85,18 +91,18 @@ function foldersInput(max: number, initial: string[], onChange: (folders: string
         ),
       );
     }
-    if (!folders.length) list.append(el("li", { class: "muted" }, "Aucun dossier."));
+    if (!folders.length) list.append(el("li", { class: "muted" }, kind === "files" ? "Aucun fichier." : "Aucun dossier."));
     const add = el(
       "button",
       {
         class: "btn",
         disabled: !IS_TAURI || folders.length >= max,
         onclick: async () => {
-          const picked = await Bridge.pickFolder("Ajouter un dossier favori");
+          const picked = kind === "files" ? await Bridge.pickFile("Ajouter un fichier", extensions) : await Bridge.pickFolder("Ajouter un dossier");
           if (picked && !folders.includes(picked)) update([...folders, picked]);
         },
       },
-      "Ajouter un dossier…",
+      kind === "files" ? "Ajouter un fichier…" : "Ajouter un dossier…",
     );
     box.append(list, add);
   };
