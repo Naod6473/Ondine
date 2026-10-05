@@ -652,4 +652,16 @@ mod tests {
         assert_eq!(starts(&occ), vec!["2026-10-06 09:00", "2026-10-13 09:00"]);
         assert_eq!(occ[0].summary, "Réunion");
     }
+
+    #[test]
+    fn yearly_event_from_years_ago() {
+        // Un anniversaire Google : journée entière, chaque année depuis 2015.
+        let events = parse(&cal(
+            "BEGIN:VEVENT\r\nDTSTART;VALUE=DATE:20151019\r\nDTEND;VALUE=DATE:20151020\r\nRRULE:FREQ=YEARLY\r\nUID:y1\r\nSUMMARY:Anniv\r\nEND:VEVENT\r\n\
+             BEGIN:VEVENT\r\nDTSTART:20181019T180000Z\r\nDTEND:20181019T190000Z\r\nRRULE:FREQ=YEARLY;WKST=MO;BYMONTH=10;BYMONTHDAY=19\r\nUID:y2\r\nSUMMARY:Soirée\r\nEND:VEVENT\r\n",
+        ));
+        let occ = occurrences(&events, dt("2026-10-05 21:00"), dt("2026-11-04 21:00"));
+        assert_eq!(occ.len(), 2, "{:?}", starts(&occ));
+        assert_eq!(starts(&occ)[0], "2026-10-19 00:00");
+    }
 }
