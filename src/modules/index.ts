@@ -13,7 +13,8 @@ import { notes } from "./notes";
 import { rules } from "./rules";
 import { shelf } from "./shelf";
 import { system } from "./system";
+import { remote } from "./remote";
 import { terminal } from "./terminal";
 import { timerModule } from "./timer";
 
-export const ALL_MODULES: IslandModule[] = [shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, launcher, rules, media, hello];
+export const ALL_MODULES: IslandModule[] = [shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, launcher, rules, media, hello];

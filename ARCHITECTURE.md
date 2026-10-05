@@ -273,6 +273,8 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `launcher.open` | Lanceur (Rust, raccourci global) | l'île s'ouvre sur l'onglet Lanceur, recherche prête |
 | `launcher.hotkey-error` `{text}` | Lanceur (Rust) | notification : raccourci déjà pris |
 | `system.disk-low` `{mount, freePct, freeGb}` | Système (Rust, toutes les 30 s) | notification 💽 : disque presque plein |
+| `remote.changed` `{favorites: [{id, name, kind}]}` | Accès distants (Rust, et front au démarrage) | le Lanceur met à jour ses serveurs (sans les adresses) |
+| `remote.connect` `{id}` | Lanceur (front) | Accès distants ouvre ce favori |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -620,3 +622,24 @@ s'il n'existe pas ou est désactivé).
   tant que l'onglet est ouvert.
 - Avec plus de 8 onglets, la barre d'onglets se resserre (`.tabs.dense`) en
   attendant la navigation à la souris prévue plus tard.
+
+### Module Accès distants (`src/modules/remote/`, `src-tauri/src/modules/remote.rs`)
+
+- Favoris RDP et SSH dans `%APPDATA%\Island\remote.json` : nom, type,
+  adresse, port, utilisateur (SSH). Jamais de mot de passe. Supprimer
+  propose « Annuler ».
+- Deux programmes seulement : `mstsc.exe /v:serveur[:port]` (`/f` si le
+  réglage plein écran est coché) et `ssh.exe [-p port] [-l utilisateur]
+  serveur`, dans une console ou dans Windows Terminal (`wt.exe new-tab …`,
+  réglage). Chaque valeur est un paramètre séparé, sans interpréteur.
+- Validation (`check_host`, `check_user`) : lettres, chiffres et quelques
+  signes, ni espace ni « ; », jamais de « - » au début (sinon ssh lirait
+  une option comme `-oProxyCommand`, qui lance une commande).
+- Connexion rapide : on tape une adresse, on clique RDP ou SSH (validée de
+  la même façon), ★ pour l'enregistrer.
+- « Tester » (`probe`, permission `network`) : une connexion TCP vers le port
+  (3389 / 22 par défaut, 1,5 s au plus), rien n'est envoyé. Point vert avec
+  le temps de réponse, ou rouge.
+- Le journal note le type de connexion, jamais l'adresse.
+- Lanceur : il reçoit la liste par `remote.changed` (numéro, nom, type) et
+  demande l'ouverture par `remote.connect {id}`.

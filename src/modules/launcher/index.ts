@@ -50,6 +50,8 @@ const TAGS = { app: "Appli", tool: "Outil", recent: "Récent" };
 const KIND_BONUS = { action: 4, app: 3, tool: 2, recent: 1 };
 
 let listing: Listing = { items: [], hotkey: "", hotkeyError: null };
+/** Les serveurs favoris du module Accès distants (reçus par le bus « remote.changed »). */
+let servers: { id: number; name: string; kind: "rdp" | "ssh" }[] = [];
 /** La vue affichée, si elle l'est : pour remettre le focus dans la recherche. */
 let shown: { focus: () => void; redraw: () => void } | null = null;
 
@@ -102,6 +104,24 @@ function islandActions(api: ModuleApi, query: string): Result[] {
     await Bridge.openSettingsWindow();
     close();
   });
+  // Les serveurs favoris : le module Accès distants ouvre la connexion.
+  if (settingsStore.moduleEnabled("remote")) {
+    for (const srv of servers) {
+      const label = srv.kind === "rdp" ? "RDP" : "SSH";
+      const best = Math.max(score(srv.name, query), score(`${label} ${srv.name}`, query) - 5);
+      if (best > 0) {
+        out.push({
+          key: `remote-${srv.id}`,
+          name: srv.name,
+          detail: srv.kind === "rdp" ? "Bureau à distance" : "Terminal SSH",
+          icon: srv.kind === "rdp" ? "🖥️" : "⌨️",
+          tag: label,
+          score: best + KIND_BONUS.app,
+          run: () => (api.emit("remote.connect", { id: srv.id }), close()),
+        });
+      }
+    }
+  }
   // Un onglet par module affiché dans l'île.
   for (const m of ALL_MODULES) {
     const id = m.manifest.id;
@@ -148,6 +168,10 @@ export const launcher: IslandModule = {
       void Bridge.islandSetFocus(true);
       shown?.focus();
       void load(api);
+    });
+    api.on("remote.changed", (msg) => {
+      const list = (msg.payload as { favorites?: typeof servers } | null)?.favorites;
+      if (Array.isArray(list)) servers = list;
     });
     api.on("launcher.hotkey-error", (msg) => {
       const text = (msg.payload as { text?: string } | null)?.text ?? "raccourci du lanceur indisponible";

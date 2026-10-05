@@ -2,9 +2,11 @@
   "id": "launcher",
   "name": "Lanceur",
   "icon": "🚀",
-  "description": "Un raccourci clavier (Alt+Espace par défaut) ouvre une recherche : applications du menu Démarrer, outils Windows (Services, Gestionnaire de périphériques…), fichiers récents et actions de l'île. Entrée pour ouvrir.",
+  "description": "Un raccourci clavier (Alt+Espace par défaut) ouvre une recherche : applications du menu Démarrer, outils Windows (Services, Gestionnaire de périphériques…), fichiers récents, serveurs favoris (Accès distants) et actions de l'île. Entrée pour ouvrir.",
   "version": "0.1.0",
-  "permissions": ["files"],
+  "permissions": [
+    "files"
+  ],
   "settings": {
     "version": 1,
     "fields": [
@@ -14,21 +16,61 @@
         "label": "Raccourci",
         "default": "Alt+Space",
         "options": [
-          { "value": "Alt+Space", "label": "Alt + Espace" },
-          { "value": "Ctrl+Space", "label": "Ctrl + Espace" },
-          { "value": "Ctrl+Alt+Space", "label": "Ctrl + Alt + Espace" },
-          { "value": "Ctrl+Shift+Space", "label": "Ctrl + Maj + Espace" },
-          { "value": "Super+Shift+Space", "label": "Win + Maj + Espace" },
-          { "value": "off", "label": "Aucun (seulement l'onglet)" }
+          {
+            "value": "Alt+Space",
+            "label": "Alt + Espace"
+          },
+          {
+            "value": "Ctrl+Space",
+            "label": "Ctrl + Espace"
+          },
+          {
+            "value": "Ctrl+Alt+Space",
+            "label": "Ctrl + Alt + Espace"
+          },
+          {
+            "value": "Ctrl+Shift+Space",
+            "label": "Ctrl + Maj + Espace"
+          },
+          {
+            "value": "Super+Shift+Space",
+            "label": "Win + Maj + Espace"
+          },
+          {
+            "value": "off",
+            "label": "Aucun (seulement l'onglet)"
+          }
         ]
       },
-      { "key": "showRecent", "type": "boolean", "label": "Proposer les fichiers ouverts récemment", "help": "Ceux des dossiers exclus (Confidentialité) ne sont jamais montrés.", "default": true }
+      {
+        "key": "showRecent",
+        "type": "boolean",
+        "label": "Proposer les fichiers ouverts récemment",
+        "help": "Ceux des dossiers exclus (Confidentialité) ne sont jamais montrés.",
+        "default": true
+      }
     ]
   },
-  "views": ["expanded"],
-  "commands": ["entries", "launch", "forget_focus"],
+  "views": [
+    "expanded"
+  ],
+  "commands": [
+    "entries",
+    "launch",
+    "forget_focus"
+  ],
   "events": {
-    "emits": ["launcher.open", "launcher.hotkey-error", "terminal.open", "timer.start"],
-    "listens": ["launcher.open", "launcher.hotkey-error"]
+    "emits": [
+      "launcher.open",
+      "launcher.hotkey-error",
+      "terminal.open",
+      "timer.start",
+      "remote.connect"
+    ],
+    "listens": [
+      "launcher.open",
+      "launcher.hotkey-error",
+      "remote.changed"
+    ]
   }
 }
