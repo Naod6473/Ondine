@@ -648,6 +648,42 @@ pub fn shortcut_target(lnk: &std::path::Path) -> Option<PathBuf> {
     }
 }
 
+// ── Garder une fenêtre au premier plan ───────────────────────────────────────
+
+/// La fenêtre « de l'utilisateur » : celle qui avait le focus avant l'île, sinon
+/// celle qui l'a maintenant si ce n'est pas l'île. Un entier (voir PREVIOUS_FOREGROUND).
+pub fn user_window(app: &AppHandle) -> Option<isize> {
+    use ::windows::Win32::UI::WindowsAndMessaging::IsWindow;
+    let island = app.get_webview_window(crate::island::WINDOW_LABEL).and_then(|w| hwnd_of(&w)).map(|h| h.0 as isize);
+    let prev = *PREVIOUS_FOREGROUND.locked();
+    let candidate = if prev != 0 { prev } else { unsafe { GetForegroundWindow() }.0 as isize };
+    let ok = candidate != 0 && Some(candidate) != island && unsafe { IsWindow(Some(HWND(candidate as *mut _))) }.as_bool();
+    ok.then_some(candidate)
+}
+
+/// Le titre d'une fenêtre (« Sans titre - Bloc-notes »).
+pub fn window_title(h: isize) -> String {
+    use ::windows::Win32::UI::WindowsAndMessaging::GetWindowTextW;
+    let mut buf = [0u16; 256];
+    let n = unsafe { GetWindowTextW(HWND(h as *mut _), &mut buf) };
+    String::from_utf16_lossy(&buf[..n.max(0) as usize])
+}
+
+/// Est-elle « toujours au premier plan » ?
+pub fn is_topmost(h: isize) -> bool {
+    use ::windows::Win32::UI::WindowsAndMessaging::WS_EX_TOPMOST;
+    let ex = unsafe { GetWindowLongPtrW(HWND(h as *mut _), GWL_EXSTYLE) };
+    ex & WS_EX_TOPMOST.0 as isize != 0
+}
+
+/// La garde au premier plan (ou la relâche), sans la déplacer ni lui donner le focus.
+pub fn set_topmost(h: isize, on: bool) -> Result<(), String> {
+    use ::windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, HWND_NOTOPMOST, HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE};
+    let after = if on { HWND_TOPMOST } else { HWND_NOTOPMOST };
+    unsafe { SetWindowPos(HWND(h as *mut _), Some(after), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE) }
+        .map_err(|_| "Windows refuse (fenêtre d'une appli lancée en administrateur ?)".to_string())
+}
+
 /// L'île ne rendra PAS le focus à la fenêtre d'avant en se fermant : le
 /// programme qu'on vient de lancer doit pouvoir passer devant.
 pub fn forget_previous_foreground() {

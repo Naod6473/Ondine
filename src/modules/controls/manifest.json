@@ -20,7 +20,9 @@
     "media_use",
     "toggle_mic",
     "outputs",
-    "set_output"
+    "set_output",
+    "window",
+    "toggle_pin"
   ],
   "events": {
     "emits": [

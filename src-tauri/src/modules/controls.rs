@@ -12,6 +12,9 @@
 //     pour le petit point orange / vert de l'île ;
 //   - si le micro est coupé → "controls.mic-muted", pour le badge d'Ondine ;
 //   - le raccourci « couper le micro » choisi dans les réglages (micHotkey).
+//
+// « Premier plan » : garde la fenêtre où tu travaillais (celle d'avant l'île)
+// au-dessus des autres, comme une vidéo en incrustation. Un second appui la relâche.
 
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -67,7 +70,7 @@ impl RustModule for Controls {
         std::thread::spawn(move || watch(app));
     }
 
-    fn invoke(&self, _ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
+    fn invoke(&self, ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
         match command {
             // {} → [{ id, name, default }] : les sorties audio branchées.
             "outputs" => Ok(json!(audio::outputs()?)),
@@ -76,6 +79,18 @@ impl RustModule for Controls {
                 let id = args.get("id").and_then(Value::as_str).filter(|s| s.len() <= 512).ok_or("sortie inconnue")?;
                 audio::set_default_output(id)?;
                 Ok(Value::Null)
+            }
+            // {} → { title, pinned } de la fenêtre où tu travaillais (null : aucune).
+            "window" => Ok(match crate::platform::user_window(ctx.app) {
+                Some(h) => json!({ "title": crate::platform::window_title(h), "pinned": crate::platform::is_topmost(h) }),
+                None => Value::Null,
+            }),
+            // {} : la garde au premier plan, ou la relâche. → { title, pinned }
+            "toggle_pin" => {
+                let h = crate::platform::user_window(ctx.app).ok_or("aucune fenêtre à garder au premier plan")?;
+                let pinned = !crate::platform::is_topmost(h);
+                crate::platform::set_topmost(h, pinned)?;
+                Ok(json!({ "title": crate::platform::window_title(h), "pinned": pinned }))
             }
             // {} → { mic: [noms], cam: [noms] } : qui utilise le micro / la caméra.
             "media_use" => Ok(json!(media_use::current())),

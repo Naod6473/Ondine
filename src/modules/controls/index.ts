@@ -65,6 +65,7 @@ const GLYPHS = {
   microphoneOff: "M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM6 11a6 6 0 0 0 12 0M12 17v4M4 4l16 16",
   wifi: "M2 9a15 15 0 0 1 20 0M5.5 12.5a10 10 0 0 1 13 0M9 16a5 5 0 0 1 6 0M12 19.5h.01",
   bluetooth: "M7 7l10 10-5 4V3l5 4L7 17",
+  pin: "M9 3h6l-1 5 3 3v2h-4v7l-1 1-1-1v-7H7v-2l3-3z",
   airplane: "M10.5 3.5a1.5 1.5 0 0 1 3 0V9l7 4v2l-7-2v4.5l2.5 2V21L12 20l-4 1v-1.5l2.5-2V13l-7 2v-2l7-4z",
   mobile: "M5 20v-3M10 20v-7M15 20v-11M20 20V4",
   sun: "M12 8a4 4 0 1 1 0 8a4 4 0 0 1 0-8zM12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4",
@@ -333,7 +334,7 @@ function screenPillar(api: ModuleApi, screen: Screen) {
   };
 }
 
-const TILE_NAMES = { wifi: "Wi-Fi", bluetooth: "Bluetooth", mobile: "Mobile", airplane: "Avion", mic: "Micro" } as const;
+const TILE_NAMES = { wifi: "Wi-Fi", bluetooth: "Bluetooth", mobile: "Mobile", airplane: "Avion", mic: "Micro", pin: "Épingler" } as const;
 type TileId = keyof typeof TILE_NAMES;
 
 /** La carte de pastilles rondes : radios, mode avion, micro coupé. */
@@ -372,6 +373,12 @@ function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>) {
   };
 
   const mic = tile("mic", "microphoneOff", () => onMicToggle());
+  // Garder au premier plan la fenêtre où tu travaillais (celle d'avant l'île).
+  const pin = tile("pin", "pin", async () => {
+    const r = await api.invoke<{ title: string; pinned: boolean }>("toggle_pin");
+    const name = r.title ? `« ${r.title.length > 40 ? `${r.title.slice(0, 40)}…` : r.title} »` : "La fenêtre";
+    api.notify({ title: r.pinned ? `${name} reste au premier plan` : `${name} n'est plus au premier plan`, icon: "📌", priority: "low", key: "controls-pin" });
+  });
   let shown: string | null = null;
 
   return {
@@ -382,11 +389,12 @@ function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>) {
       const key = list.map((r) => r.kind).join(",");
       if (key !== shown) {
         shown = key;
-        for (const id of [...tiles.keys()]) if (id !== "mic") tiles.delete(id);
+        for (const id of [...tiles.keys()]) if (id !== "mic" && id !== "pin") tiles.delete(id);
         card.replaceChildren(
           ...list.map((r) => tile(r.kind, r.kind, (on) => api.invoke("set_radio", { kind: r.kind, on }))),
           ...(list.length ? [tile("airplane", "airplane", (on) => api.invoke("set_airplane", { on }))] : []),
           mic,
+          pin,
         );
       }
       for (const r of list) {
@@ -405,6 +413,14 @@ function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>) {
         airplane.title = on ? "Mode avion : tout est coupé" : "Mode avion : couper Wi-Fi, Bluetooth…";
         airplane.setAttribute("aria-pressed", String(on));
       }
+    },
+    /** La pastille « Premier plan » : allumée si la fenêtre d'avant y est déjà. */
+    window(info: { title: string; pinned: boolean } | null) {
+      if (busy) return;
+      pin.disabled = !info;
+      pin.classList.toggle("on", !!info?.pinned);
+      pin.title = !info ? "Aucune fenêtre" : `${info.pinned ? "Relâcher" : "Garder au premier plan"} : ${info.title || "la fenêtre d'avant"}`;
+      pin.setAttribute("aria-pressed", String(!!info?.pinned));
     },
     /** La pastille « Micro » s'allume (en rouge) quand le micro est coupé. */
     mic(level: Level | null) {
@@ -463,7 +479,17 @@ export const controls: IslandModule = {
         }
       };
 
+      const refreshWindow = async () => {
+        try {
+          const win = await api.invoke<{ title: string; pinned: boolean } | null>("window");
+          if (alive) toggles.window(win);
+        } catch {
+          // hors de l'appli
+        }
+      };
+
       const refreshRadios = async () => {
+        void refreshWindow();
         try {
           const list = await api.invoke<Radio[]>("radios");
           if (alive) toggles.radios(list);

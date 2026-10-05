@@ -181,3 +181,16 @@ pub fn idle_ms() -> u64 {
 pub fn presentation_busy() -> bool {
     false
 }
+
+pub fn user_window(_app: &AppHandle) -> Option<isize> {
+    None
+}
+pub fn window_title(_h: isize) -> String {
+    String::new()
+}
+pub fn is_topmost(_h: isize) -> bool {
+    false
+}
+pub fn set_topmost(_h: isize, _on: bool) -> Result<(), String> {
+    Err("disponible seulement sous Windows".into())
+}
