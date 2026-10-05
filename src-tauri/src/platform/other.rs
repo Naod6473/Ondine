@@ -42,3 +42,12 @@ pub fn unblock_webview_drops(_app: &AppHandle) {}
 pub fn is_elevated() -> bool {
     false
 }
+pub fn clipboard_sequence() -> u32 {
+    0
+}
+pub fn clipboard_is_sensitive() -> bool {
+    false
+}
+pub fn paste_into_previous(_app: &AppHandle) -> Result<(), String> {
+    Err("disponible seulement sous Windows".into())
+}

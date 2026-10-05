@@ -1,0 +1,29 @@
+{
+  "id": "clipboard",
+  "name": "Presse-papiers",
+  "icon": "📋",
+  "description": "Garde l'historique de tes copies de texte (recherche, épinglage), colle sans mise en forme, et range tes textes fréquents en snippets. Les copies que Windows signale comme sensibles (mots de passe) sont ignorées. L'historique reste en mémoire et disparaît à la fermeture de l'île ; seuls les éléments épinglés et les snippets sont enregistrés, sur ton ordinateur.",
+  "version": "0.1.0",
+  "permissions": ["clipboard"],
+  "settings": {
+    "version": 1,
+    "fields": [
+      {
+        "key": "maxItems",
+        "type": "number",
+        "label": "Nombre de copies gardées",
+        "help": "Les éléments épinglés ne comptent pas.",
+        "default": 50,
+        "min": 10,
+        "max": 500,
+        "step": 10
+      }
+    ]
+  },
+  "views": ["expanded"],
+  "commands": ["list", "pin", "delete", "clear", "copy", "paste", "paste_plain", "snippet_save", "snippet_delete"],
+  "events": {
+    "emits": ["clipboard.changed"],
+    "listens": ["clipboard.changed"]
+  }
+}

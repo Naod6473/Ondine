@@ -504,3 +504,90 @@ body {
     height: 14px;
   }
 }
+
+/* ── Module Presse-papiers ───────────────────────────────────────────────── */
+
+.clip-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.clip-search,
+.clip-input {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--island-fg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 9px;
+  font: inherit;
+  outline: none;
+  user-select: text;
+}
+.clip-search {
+  flex: 1;
+  min-width: 0;
+}
+.clip-search:focus,
+.clip-input:focus {
+  border-color: var(--accent);
+}
+.clip-tabs {
+  display: flex;
+  gap: 2px;
+}
+.clip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.clip-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 4px;
+  border-radius: 8px;
+}
+.clip-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.clip-item.pinned .clip-text {
+  color: var(--accent);
+}
+.clip-text {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: var(--island-fg);
+  font: inherit;
+  padding: 3px 2px;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.clip-meta {
+  flex: none;
+  font-size: 11px;
+}
+.clip-actions {
+  display: flex;
+  gap: 0;
+  flex: none;
+}
+.clip-foot {
+  align-items: center;
+  justify-content: space-between;
+}
+.clip-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.clip-textarea {
+  min-height: 110px;
+  resize: vertical;
+  white-space: pre-wrap;
+}
