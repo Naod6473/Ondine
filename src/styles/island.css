@@ -2320,3 +2320,37 @@ body {
     transform: none;
   }
 }
+/* Le soleil devant un curseur de luminosité (pas un bouton). */
+.ctl-icon {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: flex;
+}
+.ctl-icon svg {
+  width: 20px;
+  height: 20px;
+  margin: auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+.ctl-screens {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+/* Le nom de l'écran, seulement s'il y en a plusieurs. */
+.ctl-name {
+  display: none;
+  flex: none;
+  width: 92px;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ctl-screens.named .ctl-name {
+  display: inline;
+}

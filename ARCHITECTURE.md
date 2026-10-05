@@ -698,6 +698,13 @@ s'il n'existe pas ou est désactivé).
 - Le front relit l'état chaque seconde tant que l'onglet est ouvert (touches
   du clavier, autre appli) ; pendant un glissé, au plus un envoi toutes les
   60 ms et le curseur n'est pas écrasé.
+- Luminosité (`platform/brightness.rs`) : `screens` → `[{id, name,
+  brightness}]` (relu toutes les 5 s, c'est lent) ; `set_brightness {id,
+  brightness}`. `internal` = écran du portable par WMI (`root\WMI`,
+  `WmiMonitorBrightness` / `WmiMonitorBrightnessMethods.WmiSetBrightness`) ;
+  `ext-N` = écran externe par DDC/CI (dxva2 `GetMonitorBrightness` /
+  `SetMonitorBrightness`, N = rang parmi les écrans physiques, un verrou
+  évite deux dialogues à la fois). Un écran qui ne répond pas n'est pas listé.
 
 ## Agents IA (`src/modules/agents/`, `src-tauri/src/modules/agents.rs`, `src-tauri/src/cli.rs`)
 

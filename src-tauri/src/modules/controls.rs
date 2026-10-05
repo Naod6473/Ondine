@@ -1,13 +1,16 @@
-// Module « Contrôles » : le volume des haut-parleurs et du micro, depuis l'île.
+// Module « Contrôles » : le volume des haut-parleurs et du micro, et la
+// luminosité des écrans, depuis l'île.
 //
-// Le front (src/modules/controls) affiche deux curseurs et deux boutons
-// « couper ». Ici on ne fait que transmettre à platform::audio, en vérifiant
-// les valeurs reçues. Rien n'est écrit dans le journal à chaque changement.
+// Le front (src/modules/controls) affiche les curseurs et les boutons
+// « couper ». Ici on ne fait que transmettre à platform::audio et
+// platform::brightness, en vérifiant les valeurs reçues. Rien n'est écrit
+// dans le journal à chaque changement.
 
 use serde_json::{json, Value};
 
 use super::{ModuleContext, RustModule};
 use crate::platform::audio::{self, Device};
+use crate::platform::brightness;
 
 #[derive(Default)]
 pub struct Controls;
@@ -57,6 +60,20 @@ impl RustModule for Controls {
                 let device = arg_device(&args)?;
                 let muted = args.get("muted").and_then(Value::as_bool).ok_or("« muted » doit valoir true ou false")?;
                 audio::set_muted(device, muted)?;
+                Ok(Value::Null)
+            }
+            // {} → [{ id, name, brightness }] : les écrans réglables (peut être vide).
+            // À part de « state » : parler aux écrans externes est lent.
+            "screens" => Ok(json!(brightness::list())),
+            // { id, brightness: 0..100 }
+            "set_brightness" => {
+                let id = args.get("id").and_then(Value::as_str).filter(|s| s.len() <= 16).ok_or("écran inconnu")?;
+                let level = args
+                    .get("brightness")
+                    .and_then(Value::as_u64)
+                    .filter(|v| *v <= 100)
+                    .ok_or("la luminosité doit être un nombre entre 0 et 100")?;
+                brightness::set(id, level as u32)?;
                 Ok(Value::Null)
             }
             _ => Err(format!("commande non gérée : {command}")),

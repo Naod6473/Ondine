@@ -6,6 +6,8 @@
 
 // Volume des haut-parleurs et du micro (Core Audio). Contient sa propre version Linux.
 pub mod audio;
+// Luminosité des écrans (portable : WMI ; externes : DDC/CI). Contient sa propre version Linux.
+pub mod brightness;
 // « En cours de lecture » (SMTC). Contient sa propre version Linux.
 pub mod media;
 // Lire le texte d'une image (OCR de Windows). Contient sa propre version Linux.
