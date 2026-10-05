@@ -160,7 +160,8 @@ body {
   font-size: 15px;
 }
 .brand-drop {
-  font-size: 20px;
+  font-size: 22px;
+  line-height: 1;
   filter: drop-shadow(0 2px 4px rgba(47, 125, 225, 0.35));
 }
 .search {

@@ -277,7 +277,7 @@ function drawNav() {
     list.append(item);
   }
   nav.replaceChildren(
-    el("div", { class: "brand" }, el("span", { class: "brand-drop" }, "💧"), el("span", {}, "Réglages")),
+    el("div", { class: "brand" }, el("span", { class: "brand-drop" }, iconNode("💧")), el("span", {}, "Réglages")),
     search,
     list,
   );
