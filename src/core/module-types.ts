@@ -21,7 +21,9 @@ export type SettingField =
   | { key: string; type: "boolean"; label: string; help?: string; default: boolean }
   | { key: string; type: "select"; label: string; help?: string; default: string; options: { value: string; label: string }[] }
   /** Une liste de dossiers, choisis avec la boîte « Choisir un dossier » de Windows. */
-  | { key: string; type: "folders"; label: string; help?: string; default: string[]; max?: number };
+  | { key: string; type: "folders"; label: string; help?: string; default: string[]; max?: number }
+  /** Une liste de fichiers, choisis avec la boîte « Ouvrir » de Windows (filtrée par extension). */
+  | { key: string; type: "files"; label: string; help?: string; default: string[]; max?: number; extensions: string[] };
 
 export interface ModuleManifest {
   id: string;

@@ -50,6 +50,9 @@ island/
 │  │  ├─ shelf/               Étagère et dépôt de fichiers (phase 2)
 │  │  ├─ clipboard/           Presse-papiers et snippets (phase 4)
 │  │  ├─ capture/             Captures d'écran et OCR (phase 5)
+│  │  ├─ timer/               Minuteur, Pomodoro, chrono (phase 6, front seulement)
+│  │  ├─ notes/               Notes rapides et to-do (phase 6)
+│  │  ├─ agenda/              Prochain rendez-vous depuis un .ics (phase 6)
 │  │  ├─ media/               Musique en cours de lecture (phase 3)
 │  │  └─ hello/               module d'exemple : manifest.json + index.ts
 │  ├─ settings/               fenêtre de réglages (formulaires générés)
@@ -63,8 +66,8 @@ island/
       ├─ tray.rs              icône de la zone de notification
       ├─ island/mod.rs        placement multi-écrans/DPI, clics traversants, souris
       ├─ platform/            tout le Win32 (windows.rs) ; other.rs = bouchons ; media.rs = SMTC ; ocr.rs = OCR
-      ├─ services/            réglages, journal, identifiants, bus, annulation, confidentialité, fichiers
-      └─ modules/             registre des modules Rust + shelf.rs, clipboard.rs, capture.rs, media.rs, hello.rs
+      ├─ services/            réglages, journal, identifiants, bus, annulation, confidentialité, fichiers, ics
+      └─ modules/             registre des modules Rust + shelf.rs, clipboard.rs, capture.rs, notes.rs, agenda.rs, media.rs, hello.rs
 ```
 
 ## L'île
@@ -170,7 +173,7 @@ Lu à la fois par le front (import) et par le Rust (`include_str!`).
   "permissions": [],                  // files, clipboard, network, claude-api, credentials
   "settings": { "version": 1, "fields": [
     { "key": "name", "type": "string", "label": "Ton prénom", "default": "Simon" }
-  ]},                                 // types : string, number, boolean, select, folders
+  ]},                                 // types : string, number, boolean, select, folders, files
   "views": ["compact", "expanded", "drop"],
   "commands": ["greet"],              // commandes Rust exposées
   "events": { "emits": ["hello.greeted"], "listens": ["hello.ping"] }
@@ -255,6 +258,10 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `capture.done` `{action, ok, result, error}` | Capture (Rust) | notification ; l'onglet redemande le texte lu (`last`), qui n'est pas dans le message |
 | `shelf.add` `{paths}` | Capture (Rust) | l'Étagère valide les chemins et les pose sur l'étagère |
 | `clipboard.changed` `{count}` | Presse-papiers (Rust) | l'onglet redemande la liste (le message ne contient aucun texte copié) |
+| `timer.done` `{title}` | Minuteur (front) | (la notification et le son sont faits par le module) |
+| `notes.changed` `{notes, todos, open}` | Notes (Rust) | l'onglet redemande la liste (que des nombres dans le message) |
+| `agenda.changed` `{count, next, errors, version}` | Agenda (Rust) | l'onglet et la pilule redemandent la liste (`upcoming`) |
+| `agenda.reminder` `{key, minutes}` | Agenda (Rust) | notification « Dans 10 min : … » (île en alerte) |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -279,6 +286,9 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
   d'écrasement : si le nom est pris, on crée « nom (2).ext ». Un déplacement entre
   deux disques = copie puis original à la Corbeille. Les liens symboliques ne sont
   pas suivis. Les chemins doivent avoir été validés avant (`ctx.check_path`).
+- **Agenda .ics** (`ics.rs`) : lit le texte d'un fichier iCalendar (aucun
+  téléchargement, rien d'exécuté) et déroule les répétitions. Voir « Module
+  Agenda ».
 - **Confidentialité** (`privacy.rs`) : aucune télémétrie. `check_path` refuse les
   chemins relatifs, inexistants ou situés dans un dossier exclu (après résolution
   des `..` et des liens). Un module qui envoie du contenu à l'API Claude déclare
@@ -447,3 +457,45 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   leur icône (le nom au survol).
 - `modules::with_context(app, id, f)` donne un `ModuleContext` à un thread de
   fond (réglages, `check_path`, `offer_undo`) tant que le module est actif.
+
+## Phase 6 : temps et organisation
+
+### Module Minuteur (`src/modules/timer/`, front seulement)
+
+- Trois sous-onglets (Minuteur, Pomodoro, Chrono) avec la même pastille
+  « liquide » que les onglets de l'île (`TabPill`).
+- On ne compte pas les secondes : on retient l'heure de fin (ou de départ) et
+  on calcule ce qui reste, donc rien ne dérive si la fenêtre est en veille.
+- À la fin : notification `high` (l'île s'ouvre en alerte), petit son généré
+  (WebAudio, autorisé seulement après un premier clic dans l'île), et
+  `task.finished` (la mascotte fait la fête).
+- Pilule : le temps qui reste et une barre de progression, tant que ça tourne.
+
+### Module Notes (`src/modules/notes/`, `src-tauri/src/modules/notes.rs`)
+
+- Données dans `%APPDATA%\Island\notes.json` (écriture atomique ; un fichier
+  abîmé est mis de côté). Supprimer une note ou des tâches propose « Annuler »
+  et les remet à leur place.
+- La liste des tâches garde un élément HTML par tâche (repéré par son numéro) :
+  les animations (case cochée, texte barré, arrivée, départ) se font sans tout
+  redessiner. Double-clic pour modifier une tâche.
+- Le texte des notes ne passe jamais par le bus ni par le journal.
+
+### Module Agenda (`src/modules/agenda/`, `src-tauri/src/modules/agenda.rs`)
+
+- Réglage `icsFiles` (type `files`, extension `.ics`, 5 au plus) : la boîte
+  « Ouvrir » de Windows (`dialog_pick_file`). Les chemins passent par
+  `check_path` (dossiers exclus), la taille est limitée à 20 Mo.
+- Un thread relit un fichier quand sa date de modification change (toutes les
+  15 s), calcule les rendez-vous des 30 prochains jours (30 au plus), publie
+  `agenda.changed` si la liste a changé et `agenda.reminder` une seule fois
+  par rendez-vous, `reminderMin` minutes avant.
+- Lecture du .ics (`services/ics.rs`) : lignes repliées, texte échappé,
+  journées entières, heures UTC (`Z`) converties, `DURATION`, `RRULE`
+  (DAILY/WEEKLY/MONTHLY/YEARLY avec INTERVAL, COUNT, UNTIL, BYDAY dont
+  « 1MO » / « -1FR »), `EXDATE`, `RECURRENCE-ID`, `STATUS:CANCELLED`.
+  **Limite** : une heure avec fuseau nommé (`TZID=…`) est lue comme une heure
+  locale de l'ordinateur (juste si l'agenda est dans le même fuseau).
+- Pilule : « Dans 12 min · Titre » quand un rendez-vous approche
+  (`compactWithinMin`), puis « En cours » avec une barre qui se remplit.
+

@@ -998,3 +998,124 @@ body {
   resize: none;
   white-space: pre-wrap;
 }
+
+/* ── Module Agenda ───────────────────────────────────────────────────────── */
+
+.agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.agenda-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px 4px;
+  text-align: center;
+}
+.agenda-empty p {
+  margin: 0 0 4px;
+  max-width: 420px;
+}
+.agenda-empty-icon {
+  font-size: 28px;
+}
+.agenda-error {
+  margin: 0;
+  font-size: 12px;
+  color: #ffb4a8;
+}
+.agenda-none {
+  margin: 4px 0;
+}
+/* La carte du prochain rendez-vous. */
+.agenda-next {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  transition: background 300ms var(--ease);
+}
+.agenda-next.live {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.agenda-when {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+.agenda-next.live .agenda-when {
+  color: var(--island-fg);
+}
+.agenda-title {
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agenda-next .muted {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agenda-list {
+  display: flex;
+  flex-direction: column;
+}
+.agenda-day {
+  padding: 6px 2px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.agenda-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 3px 6px;
+  border-radius: 8px;
+  min-width: 0;
+}
+.agenda-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.agenda-row.live {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.agenda-time {
+  flex: none;
+  width: 48px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 12px;
+}
+.agenda-row-title {
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agenda-loc {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agenda-foot {
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0;
+}
+.agenda-foot .muted {
+  font-size: 11px;
+}

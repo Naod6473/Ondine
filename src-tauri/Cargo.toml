@@ -29,6 +29,8 @@ trash = "5"
 arboard = { version = "3", default-features = false, features = ["image-data"] }
 # Enregistrer les captures en PNG et réduire une image trop grande pour l'OCR.
 image = { version = "0.25", default-features = false, features = ["png"] }
+# Dates des rendez-vous (.ics) : fuseaux UTC/local, jours de la semaine.
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 # Création d'archives .zip (compression « deflate » seulement).
 zip = { version = "2", default-features = false, features = ["deflate"] }
 # Encode la pochette d'album en texte (data URL) pour l'afficher dans l'île.

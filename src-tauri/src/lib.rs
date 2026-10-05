@@ -127,6 +127,29 @@ async fn dialog_pick_folder(window: Window, title: Option<String>) -> Option<Str
     picked.into_path().ok().map(|p| p.to_string_lossy().to_string())
 }
 
+/// Boîte « Ouvrir un fichier », filtrée par extensions (ex. ["ics"]). Mêmes
+/// précautions que pour les dossiers. Les extensions viennent des manifestes :
+/// on ne garde que des lettres et des chiffres.
+#[tauri::command]
+async fn dialog_pick_file(window: Window, title: Option<String>, extensions: Vec<String>) -> Option<String> {
+    use tauri_plugin_dialog::DialogExt;
+    let clean: Vec<String> = extensions
+        .into_iter()
+        .filter(|e| !e.is_empty() && e.len() < 10 && e.chars().all(|c| c.is_ascii_alphanumeric()))
+        .collect();
+    let mut dialog = window
+        .dialog()
+        .file()
+        .set_parent(&window)
+        .set_title(title.unwrap_or_else(|| "Choisir un fichier".into()));
+    if !clean.is_empty() {
+        let refs: Vec<&str> = clean.iter().map(String::as_str).collect();
+        dialog = dialog.add_filter(clean.join(", ").to_uppercase(), &refs);
+    }
+    let picked = dialog.blocking_pick_file()?;
+    picked.into_path().ok().map(|p| p.to_string_lossy().to_string())
+}
+
 // ── Fenêtre de l'île ─────────────────────────────────────────────────────────
 
 /// Île cachée → la fenêtre devient la bande de réveil et la lecture de la souris
@@ -336,6 +359,7 @@ pub fn run() {
             settings_import,
             privacy_check_folder,
             dialog_pick_folder,
+            dialog_pick_file,
             island_set_collapsed,
             island_set_rect,
             island_set_focus,

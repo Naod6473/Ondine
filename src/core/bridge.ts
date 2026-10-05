@@ -60,6 +60,8 @@ export const Bridge = {
   privacyCheckFolder: (path: string) => callOrThrow<string>("privacy_check_folder", { path }),
   /** Boîte « Choisir un dossier » de Windows. null si on annule (ou hors de l'appli). */
   pickFolder: (title?: string) => call<string | null>("dialog_pick_folder", { title: title ?? null }),
+  /** Boîte « Ouvrir » de Windows, filtrée par extensions (ex. ["ics"]). */
+  pickFile: (title: string, extensions: string[]) => call<string | null>("dialog_pick_file", { title, extensions }),
   openSettingsWindow: () => call<void>("settings_open_window"),
   /** Cache la fenêtre qui appelle (fenêtre d'annotation). */
   windowHide: () => call<void>("window_hide"),

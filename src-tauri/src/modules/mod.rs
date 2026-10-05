@@ -12,6 +12,7 @@
 //
 // Ajouter un module Rust : voir ARCHITECTURE.md, « Ajouter un module ».
 
+mod agenda;
 mod capture;
 mod clipboard;
 mod hello;
@@ -181,6 +182,7 @@ impl Registry {
             Box::new(clipboard::Clipboard::default()),
             Box::new(capture::Capture::default()),
             Box::new(notes::Notes::default()),
+            Box::new(agenda::Agenda::default()),
             Box::new(hello::Hello::default()),
         ];
 
@@ -346,6 +348,12 @@ mod tests {
     fn notes_manifest_is_valid() {
         let m = check_manifest(notes::Notes::default().manifest_json()).unwrap();
         assert_eq!(m.id, "notes");
+    }
+
+    #[test]
+    fn agenda_manifest_is_valid() {
+        let m = check_manifest(agenda::Agenda::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "agenda");
     }
 
     #[test]
