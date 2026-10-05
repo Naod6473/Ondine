@@ -78,8 +78,14 @@ export class Island {
 
     this.notifications.defaultDurationMs = settingsStore.current.island.notificationSecs * 1000;
     let wasAlert = false;
+    let lastShown = "";
     this.notifications.onShow = (n) => {
       const alert = isAlert(n);
+      // Une nouvelle notification : Ondine peut y réagir (voir mascot-state.ts).
+      if (n && !alert && String(n.id) !== lastShown) {
+        this.bus.emit("notify.shown", { moduleId: n.moduleId, icon: n.icon ?? "", priority: n.priority });
+      }
+      lastShown = n ? String(n.id) : "";
       if (alert) {
         this.fsm.alertStart();
         this.bus.emit("notify.alert", { title: n?.title });
