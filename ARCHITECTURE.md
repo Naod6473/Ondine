@@ -372,7 +372,9 @@ bus ──▶ MascotController (mascot-state.ts) ──▶ MascotRenderer (rende
   la paupière arrive en bas. Une animation choisit `"pose"`, ou `"poses"` +
   `"poseMs"` pour une suite (agacée → colère), et peut ajouter `"look"` (`up`,
   `spin`), `"wide"`, `"variants"` (au repos, une variante passe de temps en
-  temps) et `"fadeMs"`. Changer de pose = un **fondu** (280 ms par défaut) : les
+  temps) et `"fadeMs"`. Une animation dessinée image par image (bulle, glitch,
+  danse…) est une suite de poses `"poses": ["danse-1", …]` : en boucle si
+  l'animation boucle, avec un fondu court (≈ 40 % de `poseMs`) entre deux images. Changer de pose = un **fondu** (280 ms par défaut) : les
   deux images sont mélangées en mode `lighter` dans un calque hors écran, ce qui
   donne un vrai mélange de couleurs. Avec « réduire les animations », le corps
   ne bouge plus et les yeux ne clignent plus, mais le fondu reste.

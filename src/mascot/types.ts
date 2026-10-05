@@ -69,7 +69,11 @@ export interface AnimationSource {
   // ── Moteur "poses" ──
   /** La pose à montrer (clé de `poses` dans le manifeste). */
   pose?: string;
-  /** Plusieurs poses à la suite, chacune `poseMs` ms ; la dernière reste affichée. */
+  /**
+   * Plusieurs poses à la suite, chacune `poseMs` ms (les images d'une animation,
+   * fondues l'une dans l'autre) ; en boucle si l'animation boucle, sinon la
+   * dernière reste affichée.
+   */
   poses?: string[];
   /** Durée de chaque pose de `poses` (défaut 600 ms). */
   poseMs?: number;

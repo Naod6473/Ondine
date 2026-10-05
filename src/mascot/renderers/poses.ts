@@ -257,8 +257,9 @@ export class PosesRenderer implements MascotRenderer {
     const src = anim.source;
     let pose = src.pose ?? "open";
     if (src.poses?.length) {
-      const i = Math.min(src.poses.length - 1, Math.floor(elapsed / (src.poseMs ?? 600)));
-      pose = src.poses[i];
+      // Une animation en boucle reprend au début ; sinon la dernière image reste.
+      const step = Math.floor(elapsed / (src.poseMs ?? 600));
+      pose = src.poses[anim.loop ? step % src.poses.length : Math.min(src.poses.length - 1, step)];
     }
     // Au repos, de temps en temps, une variante passe deux secondes et demie.
     if (src.variants?.length && anim.loop && !this.reduced) {
