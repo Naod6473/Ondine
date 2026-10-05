@@ -6,7 +6,10 @@
 //   - les actions : Corbeille, copier vers, déplacer vers, copier le chemin,
 //     compresser, montrer dans l'Explorateur ;
 //   - les outils (shelf_tools.rs) : convertir / réduire des images, renommer
-//     plusieurs fichiers selon un modèle.
+//     plusieurs fichiers selon un modèle ;
+//   - Téléchargements (réglage) : un fichier qui vient d'arriver dans le dossier
+//     Téléchargements est posé tout seul sur l'étagère, une fois fini (taille
+//     stable, plus de « .crdownload » / « .part »).
 //
 // Règles appliquées ici :
 //   - chaque chemin reçu du front est validé (ctx.check_path : chemin absolu,
@@ -18,8 +21,11 @@
 // Le manifeste est le même fichier que celui du front (src/modules/shelf/manifest.json).
 
 use crate::sync::LockExt;
+use std::collections::HashMap;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use serde_json::{json, Value};
 use tauri::AppHandle;
@@ -45,6 +51,11 @@ pub struct Shelf {
 impl RustModule for Shelf {
     fn manifest_json(&self) -> &'static str {
         include_str!("../../../src/modules/shelf/manifest.json")
+    }
+
+    fn start(&self, app: &AppHandle) {
+        let (app, items) = (app.clone(), self.items.clone());
+        std::thread::spawn(move || watch_downloads(app, items));
     }
 
     fn invoke(&self, ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
@@ -452,6 +463,76 @@ fn list_json(items: &Items) -> Value {
 
 /// Prévient le front (sujet "shelf.changed") avec la nouvelle liste. Passe par
 /// bus::emit directement : les fonctions d'annulation n'ont pas de ModuleContext.
+// ── Téléchargements → étagère ───────────────────────────────────────────────
+
+/// Les fichiers en cours de téléchargement (navigateurs, gestionnaires).
+fn is_partial(name: &str) -> bool {
+    let n = name.to_lowercase();
+    n.starts_with('.') || n.starts_with("~$") || [".crdownload", ".part", ".partial", ".tmp", ".download", ".opdownload"].iter().any(|e| n.ends_with(e))
+}
+
+/// Regarde le dossier Téléchargements toutes les 3 s. Un nouveau fichier est
+/// posé sur l'étagère quand sa taille n'a pas bougé entre deux tours.
+fn watch_downloads(app: AppHandle, items: Items) {
+    const TICK: Duration = Duration::from_secs(3);
+    // Ce qui était déjà là (nom → taille) ; et les nouveaux en attente (nom → taille vue).
+    let mut known: Option<HashMap<String, u64>> = None;
+    let mut waiting: HashMap<String, u64> = HashMap::new();
+    loop {
+        std::thread::sleep(TICK);
+        let wanted = super::with_context(&app, "shelf", |ctx| ctx.settings().get("watchDownloads").and_then(Value::as_bool).unwrap_or(true));
+        if wanted != Some(true) {
+            known = None;
+            waiting.clear();
+            continue;
+        }
+        let step = catch_unwind(AssertUnwindSafe(|| {
+            let Some(dir) = crate::platform::downloads_dir() else { return };
+            let Ok(entries) = std::fs::read_dir(&dir) else { return };
+            let mut now = HashMap::new();
+            for e in entries.flatten() {
+                let Ok(meta) = e.metadata() else { continue };
+                if meta.is_file() {
+                    now.insert(e.file_name().to_string_lossy().to_string(), meta.len());
+                }
+            }
+            let Some(before) = known.replace(now.clone()) else { return }; // premier tour : on note
+            for (name, size) in &now {
+                if before.contains_key(name) && !waiting.contains_key(name) || is_partial(name) {
+                    continue;
+                }
+                match waiting.get(name) {
+                    // Même taille qu'au tour d'avant : fini.
+                    Some(prev) if prev == size && *size > 0 => {
+                        waiting.remove(name);
+                        let path = dir.join(name);
+                        super::with_context(&app, "shelf", |ctx| {
+                            let args = json!({ "paths": [path.display().to_string()] });
+                            if let Ok(paths) = checked_paths(ctx, &args) {
+                                let mut list = items.locked();
+                                if list.len() < MAX_ITEMS && !list.contains(&paths[0]) {
+                                    list.push(paths[0].clone());
+                                    drop(list);
+                                    changed(&app, &items);
+                                    ctx.emit("shelf.downloaded", json!({ "name": name }));
+                                }
+                            }
+                        });
+                    }
+                    _ => {
+                        waiting.insert(name.clone(), *size);
+                    }
+                }
+            }
+            // Les fichiers disparus ne sont plus attendus.
+            waiting.retain(|n, _| now.contains_key(n));
+        }));
+        if step.is_err() {
+            crate::services::log::warn("étagère : erreur pendant la surveillance des Téléchargements, on continue");
+        }
+    }
+}
+
 fn changed(app: &AppHandle, items: &Items) {
     bus::emit(app, "shelf", "shelf.changed", list_json(items));
 }

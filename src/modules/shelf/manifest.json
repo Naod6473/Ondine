@@ -51,6 +51,13 @@
         "type": "boolean",
         "label": "Cibles « Images » et « Renommer »",
         "default": true
+      },
+      {
+        "key": "watchDownloads",
+        "type": "boolean",
+        "label": "Poser sur l'étagère chaque nouveau fichier téléchargé",
+        "help": "Le dossier Téléchargements est regardé toutes les 3 secondes ; le fichier arrive quand le téléchargement est fini.",
+        "default": true
       }
     ]
   },
@@ -78,11 +85,13 @@
       "shelf.changed",
       "task.started",
       "task.finished",
-      "task.failed"
+      "task.failed",
+      "shelf.downloaded"
     ],
     "listens": [
       "shelf.changed",
-      "shelf.add"
+      "shelf.add",
+      "shelf.downloaded"
     ]
   }
 }

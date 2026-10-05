@@ -285,6 +285,11 @@ export const shelf: IslandModule = {
 
   setup(api) {
     api.on("shelf.changed", (msg) => setItems((msg.payload as { items: ShelfItem[] }).items));
+    // Un fichier vient d'arriver dans Téléchargements : il est sur l'étagère.
+    api.on("shelf.downloaded", (msg) => {
+      const name = (msg.payload as { name?: string } | null)?.name ?? "";
+      api.notify({ title: "Téléchargé, posé sur l'étagère", body: name, icon: "📥", priority: "low", key: "shelf-downloaded", actions: [{ label: "Voir", run: () => api.openIsland("shelf") }] });
+    });
     // L'étagère vit côté Rust : au démarrage (ou après réactivation), on la relit.
     api
       .invoke<{ items: ShelfItem[] }>("list")

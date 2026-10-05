@@ -409,6 +409,18 @@ pub fn pictures_dir() -> Option<PathBuf> {
     }
 }
 
+/// Le dossier « Téléchargements » de l'utilisateur.
+pub fn downloads_dir() -> Option<PathBuf> {
+    use ::windows::Win32::System::Com::CoTaskMemFree;
+    use ::windows::Win32::UI::Shell::{FOLDERID_Downloads, SHGetKnownFolderPath, KF_FLAG_DEFAULT};
+    unsafe {
+        let raw = SHGetKnownFolderPath(&FOLDERID_Downloads, KF_FLAG_DEFAULT, None).ok()?;
+        let path = raw.to_string().ok().map(PathBuf::from);
+        CoTaskMemFree(Some(raw.0 as *const _));
+        path
+    }
+}
+
 /// Le dossier « Documents » de l'utilisateur (même s'il est déplacé dans OneDrive).
 pub fn documents_dir() -> Option<PathBuf> {
     use ::windows::Win32::System::Com::CoTaskMemFree;

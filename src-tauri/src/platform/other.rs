@@ -63,6 +63,9 @@ pub fn launch_screen_snip() -> Result<(), String> {
 pub fn pictures_dir() -> Option<PathBuf> {
     Some(base("HOME").join("Pictures"))
 }
+pub fn downloads_dir() -> Option<PathBuf> {
+    Some(base("HOME").join("Downloads"))
+}
 pub fn documents_dir() -> Option<PathBuf> {
     Some(base("HOME").join("Documents"))
 }
