@@ -28,6 +28,7 @@ import { ALL_MODULES } from "../modules";
 import { chip, choice, group, row, stepper, toggle, wideRow } from "./controls";
 import { settingsRows } from "./form";
 import { NavPill } from "./nav-pill";
+import { startI18n } from "../core/i18n";
 import { connectRules, rulesSection } from "./rules-editor";
 
 const PERMISSION_LABELS: Record<string, string> = {
@@ -58,7 +59,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "⚙️",
     label: "Général",
     sub: "L'écran, le repli de l'île, les notifications et le journal.",
-    keywords: ["Sur quel écran ?", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal"],
+    keywords: ["Langue", "Language", "Sur quel écran ?", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal"],
     render: general,
   },
   {
@@ -175,6 +176,7 @@ async function start() {
   // Fond Mica de Windows 11 : la page devient transparente (voir settings.css).
   if (boot?.mica) document.documentElement.classList.add("mica");
   await settingsStore.connect(boot?.settings ?? null);
+  await startI18n();
   bus = new Bus(windowLabel("settings"));
   await bus.connect();
   try {
@@ -431,6 +433,11 @@ function general(main: HTMLElement) {
   const s = settingsStore.current;
   main.append(
     group("L'île", [
+      row(
+        "Langue",
+        choice(s.general.language ?? "auto", [["auto", "Automatique"], ["fr", "Français"], ["en", "English"]], (v) => save((d) => (d.general.language = v as Settings["general"]["language"]))),
+        "Automatique : la langue choisie à l'installation, sinon celle de Windows. Les fenêtres se rechargent.",
+      ),
       row(
         "Sur quel écran ?",
         choice(s.general.screen, [["primary", "Écran principal"], ["cursor", "Suit la souris"]], (v) => save((d) => (d.general.screen = v as Settings["general"]["screen"]))),

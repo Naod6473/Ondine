@@ -77,6 +77,7 @@ export const Bridge = {
   /** On attrape l'île : la fenêtre suit la souris jusqu'au lâcher, puis s'aimante à un bord. */
   islandDragStart: () => call<void>("island_drag_start"),
   /** Depuis quand personne n'a touché le PC, et si une présentation / un plein écran est en cours. */
+  uiLanguage: () => call<"fr" | "en">("ui_language"),
   deskState: () => call<{ idleMs: number; busy: boolean }>("desk_state"),
 
   // Journal

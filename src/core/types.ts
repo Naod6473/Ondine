@@ -7,6 +7,8 @@ export interface Settings {
     /** "primary" = écran principal, "cursor" = l'écran où se trouve la souris. */
     screen: "primary" | "cursor";
     logLevel: "error" | "warn" | "info" | "debug";
+    /** Langue de l'interface : "auto" (installateur, sinon Windows), "fr" ou "en". */
+    language: "auto" | "fr" | "en";
   };
   island: {
     /** Replier l'île quand la souris n'est plus dessus depuis ce nombre de secondes. */
@@ -49,7 +51,7 @@ export interface Settings {
 export function defaultSettings(): Settings {
   return {
     version: 2,
-    general: { screen: "primary", logLevel: "info" },
+    general: { screen: "primary", logLevel: "info", language: "auto" },
     island: {
       collapseSecs: 1.5,
       notificationSecs: 6,

@@ -37,6 +37,9 @@ pub struct General {
     pub screen: String,
     /// "error", "warn", "info" ou "debug".
     pub log_level: String,
+    /// La langue de l'interface : "auto" (celle choisie à l'installation, sinon
+    /// celle de Windows), "fr" ou "en".
+    pub language: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -114,7 +117,7 @@ impl Default for Settings {
 
 impl Default for General {
     fn default() -> Self {
-        Self { screen: "primary".into(), log_level: "info".into() }
+        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into() }
     }
 }
 
@@ -161,6 +164,9 @@ impl Settings {
     /// la main) : un bord inconnu redevient « en haut », un nombre hors limites
     /// est ramené dans ses bornes.
     pub fn sanitize(&mut self) {
+        if !["auto", "fr", "en"].contains(&self.general.language.as_str()) {
+            self.general.language = "auto".into();
+        }
         let i = &mut self.island;
         if !["top", "left", "right"].contains(&i.edge.as_str()) {
             i.edge = "top".into();

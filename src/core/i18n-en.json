@@ -1,0 +1,1704 @@
+{
+"exact": {
+"Flèche": "Arrow",
+"Épais": "Thick",
+"Aucune image. Dans l'onglet Capture de l'île, choisis « ✏️ Annoter ».": "No image. In the island's Capture tab, choose \"✏️ Annotate\".",
+"Annuler (Ctrl+Z)": "Undo (Ctrl+Z)",
+"Rétablir (Ctrl+Y)": "Redo (Ctrl+Y)",
+"Copier l'image (Ctrl+C)": "Copy image (Ctrl+C)",
+"📋 Copier": "📋 Copy",
+"Enregistrer en PNG (Ctrl+S)": "Save as PNG (Ctrl+S)",
+"💾 Enregistrer": "💾 Save",
+"Enregistrer et poser sur l'étagère": "Save and put on the Shelf",
+"🧺 Étagère": "🧺 Shelf",
+"Fermer (Échap)": "Close (Esc)",
+"Image copiée": "Image copied",
+"Posée sur l'étagère": "Put on the Shelf",
+"Enregistrée": "Saved",
+"disponible seulement dans l'appli": "only available in the app",
+"Trop de plantages côté Rust. Il revient au prochain démarrage.": "Too many crashes on the Rust side. It will return at next launch.",
+"L'île continue normalement.": "The island keeps running normally.",
+"cibles de dépôt": "drop targets",
+"Cette vue a rencontré une erreur.": "This view ran into an error.",
+"démarrage": "start",
+"arrêt": "stop",
+"Il a planté plusieurs fois. Il revient au prochain démarrage.": "It crashed several times. It will return at next launch.",
+"réglages": "settings",
+"Lâche le fichier sur une cible": "Drop the file on a target",
+"Annulé": "Canceled",
+"Réglages": "Settings",
+"Réduire (Échap pour fermer)": "Collapse (Esc to close)",
+"Aucun module actif. Active-en un dans les réglages.": "No active modules. Turn one on in Settings.",
+"Aucune cible de dépôt active.": "No active drop targets.",
+"Océan": "Ocean",
+"Forêt": "Forest",
+"Personnalisée": "Custom",
+"Ondine tourne en administrateur": "Ondine is running as administrator",
+"Windows bloque alors le glisser-déposer depuis l'Explorateur. Relance-la depuis un terminal normal.": "Windows then blocks drag and drop from Explorer. Relaunch it from a normal terminal.",
+"agenda en ligne": "online calendar",
+"Toute la journée": "All day",
+"Demain : aucun rendez-vous": "Tomorrow: no appointments",
+"${first.allDay ? \"Toute la journée\" :": "${first.allDay ? \"All day\" :",
+"Bonne soirée !": "Have a good evening!",
+"En cours": "Ongoing",
+"Aucun agenda pour l'instant": "No calendar yet",
+"Google Agenda : colle son adresse secrète iCal dans Réglages → Identifiants (toujours à jour). Sinon, exporte ton agenda en .ics et choisis le fichier dans les réglages du module Agenda.": "Google Calendar: paste its secret iCal address in Settings → Credentials (always up to date). Otherwise, export your calendar as .ics and pick the file in the Calendar module settings.",
+"⚙ Ouvrir les réglages": "⚙ Open settings",
+"Journée": "Day",
+"Relire les fichiers .ics": "Reload the .ics files",
+"🔄 Relire": "🔄 Reload",
+"Fenêtre introuvable": "Window not found",
+"Réponse non envoyée": "Reply not sent",
+"Au terminal": "In the terminal",
+"Oui, autoriser": "Yes, allow",
+"à l'instant": "just now",
+"↗ Y aller": "↗ Go there",
+"Réglé ailleurs": "Handled elsewhere",
+"Pas de réponse dans l'île": "No reply in the island",
+"Réponse envoyée": "Reply sent",
+"L'agent n'attend plus cette réponse.": "The agent is no longer waiting for this reply.",
+"L'agent continue sans, ou te demande dans le terminal.": "The agent carries on without it, or asks you in the terminal.",
+"Rien de nouveau du côté des agents": "Nothing new from the agents",
+"Fin de la concentration": "End of focus",
+"Derniers messages": "Latest messages",
+"Dans ton dossier utilisateur": "In your user folder",
+"Choisir le dossier du projet": "Choose the project folder",
+"Autre dossier…": "Other folder…",
+"Colle le bloc « hooks » (fusionne-le s'il en existe déjà un), puis relance Claude Code.": "Paste the \"hooks\" block (merge it if one already exists), then restart Claude Code.",
+"Colle les lignes à la fin du fichier, relance Codex, puis tape /hooks pour les approuver (Codex le demande une fois).": "Paste the lines at the end of the file, restart Codex, then type /hooks to approve them (Codex asks once).",
+"Colle le bloc « hooks » (version 0.26 ou plus récente), puis relance Gemini CLI.": "Paste the \"hooks\" block (version 0.26 or newer), then restart Gemini CLI.",
+"Configuration copiée": "Configuration copied",
+"📋 Copier la configuration": "📋 Copy configuration",
+"Colle la commande dans un terminal (une seule fois), puis relance Claude Code.": "Paste the command into a terminal (just once), then restart Claude Code.",
+"Colle les lignes à la fin de %USERPROFILE%\\\\.codex\\\\config.toml, puis relance Codex.": "Paste the lines at the end of %USERPROFILE%\\\\.codex\\\\config.toml, then restart Codex.",
+"Fusionne le bloc « mcpServers » dans %USERPROFILE%\\\\.gemini\\\\settings.json, puis relance Gemini CLI.": "Merge the \"mcpServers\" block into %USERPROFILE%\\\\.gemini\\\\settings.json, then restart Gemini CLI.",
+"Configuration MCP copiée": "MCP configuration copied",
+"🔌 Copier la config MCP": "🔌 Copy MCP config",
+"Hook d'autorisation copié": "Permission hook copied",
+"🔐 Copier le hook d'autorisation": "🔐 Copy permission hook",
+"Fait comme si Claude venait de finir": "Acts as if Claude had just finished",
+"Copie la configuration.": "Copy the configuration.",
+"Ouvre": "Open",
+"Chaque hook lance :": "Each hook runs:",
+"En plus (facultatif) : branche l'île comme serveur MCP. L'agent pourra alors t'envoyer un message, sa progression, lancer le minuteur, ou te poser une question à choix que tu réponds d'un clic.": "Optional extra: hook the island up as an MCP server. The agent can then send you a message, its progress, start the timer, or ask you a multiple-choice question you answer with one click.",
+"Autoriser / Refuser depuis l'île : Gemini CLI ne le permet pas (un hook peut refuser, pas autoriser). Réponds dans son terminal.": "Allow / Deny from the island: Gemini CLI doesn't support it (a hook can deny, not allow). Answer in its terminal.",
+"Brancher Claude Code, Codex ou Gemini": "Connect Claude Code, Codex or Gemini",
+"Jusqu'à l'arrêt": "Until stopped",
+"Arrêter": "Stop",
+"Les notifications des agents attendent ; un résumé à la fin": "Agent notifications wait; a summary at the end",
+"🎧 Concentration": "🎧 Focus",
+"Vraiment autoriser ?": "Really allow?",
+"Personne ne travaille en ce moment.": "Nobody is working right now.",
+"Aucune session pour l'instant.": "No sessions yet.",
+"sans nouvelles": "no news",
+"Revenir à sa fenêtre": "Back to its window",
+"Rien reçu pour l'instant. Branche Claude Code ci-dessous, puis clique « Essayer ».": "Nothing received yet. Connect Claude Code below, then click \"Try\".",
+"Demander à Claude": "Ask Claude",
+"🔑 Pas encore de clé API Anthropic.": "🔑 No Anthropic API key yet.",
+"Ouvrir les réglages": "Open settings",
+"(Identifiants → Clé API Anthropic)": "(Credentials → Anthropic API key)",
+"Colle ici une erreur, un message, un bout de code…": "Paste an error, a message, a bit of code here…",
+"Montrer un fichier à Claude": "Show a file to Claude",
+"Préparer l'envoi": "Prepare to send",
+"Un fichier ou une capture…": "A file or a screenshot…",
+"Rien ne part avant ta confirmation.": "Nothing is sent until you confirm.",
+"Ta question (vide = « Explique-moi ceci. »)": "Your question (empty = \"Explain this to me.\")",
+"Consigne :": "Instruction:",
+"Claude réfléchit…": "Claude is thinking…",
+"Envoyer à Claude": "Send to Claude",
+"(réponse vide)": "(empty reply)",
+"Réponse coupée : augmente la longueur maximale dans les réglages.": "Reply cut off: increase the maximum length in Settings.",
+"Réponse copiée": "Reply copied",
+"Lecture du texte impossible": "Couldn't read the text",
+"Enregistrement impossible": "Couldn't save",
+"Image annotée copiée": "Annotated image copied",
+"Ouvre l'onglet Capture pour le voir.": "Open the Capture tab to see it.",
+"Capture posée sur l'étagère": "Capture put on the Shelf",
+"Capture enregistrée": "Capture saved",
+"Capturer une zone :": "Capture an area:",
+"🔤 Texte": "🔤 Text",
+"Ouvre l'outil de capture de Windows, puis lit le texte de la zone choisie": "Opens the Windows snipping tool, then reads the text in the chosen area",
+"✏️ Annoter": "✏️ Annotate",
+"Ouvre l'outil de capture de Windows, puis la zone choisie dans la fenêtre d'annotation": "Opens the Windows snipping tool, then the chosen area in the annotation window",
+"Ouvre l'outil de capture de Windows, puis enregistre la zone choisie en PNG": "Opens the Windows snipping tool, then saves the chosen area as PNG",
+"Ouvre l'outil de capture de Windows, puis enregistre la zone et la pose sur l'étagère": "Opens the Windows snipping tool, then saves the area and puts it on the Shelf",
+"Image déjà copiée :": "Image already copied:",
+"Lit le texte de l'image du presse-papiers": "Reads the text in the Clipboard image",
+"Ouvre l'image du presse-papiers dans la fenêtre d'annotation": "Opens the Clipboard image in the annotation window",
+"Enregistre l'image du presse-papiers en PNG": "Saves the Clipboard image as PNG",
+"Enregistre l'image du presse-papiers et la pose sur l'étagère": "Saves the Clipboard image and puts it on the Shelf",
+"Montre la dernière capture enregistrée dans l'Explorateur": "Shows the last saved capture in Explorer",
+"Le texte lu s'affichera ici. Tout se passe sur ton ordinateur : l'image n'est envoyée nulle part.": "The text read will show up here. Everything happens on your computer: the image is sent nowhere.",
+"Dernier texte lu${lastText.language ?": "Last text read${lastText.language ?",
+"Copier tout le texte": "Copy all text",
+"Copié": "Copied",
+"Copier en MAJUSCULES": "Copy in UPPERCASE",
+"Copier en minuscules": "Copy in lowercase",
+"Copier Avec Une Majuscule À Chaque Mot": "Copy With Capital Letters On Each Word",
+"Copier en phrase (majuscule au début de chaque phrase)": "Copy as sentences (capital at the start of each sentence)",
+"Lien nettoyé": "Link cleaned",
+"Remettre le lien": "Restore the link",
+"🔑 Mot de passe": "🔑 Password",
+"Colle le contenu actuel du presse-papiers en texte brut (sans gras, couleurs ni liens) dans la fenêtre d'avant": "Pastes the current Clipboard content as plain text (no bold, colors or links) into the previous window",
+"Coller sans mise en forme": "Paste without formatting",
+"Aucune copie ne contient ce texte.": "No copy contains this text.",
+"Rien pour l'instant. Copie du texte (Ctrl+C) n'importe où : il apparaîtra ici. Les mots de passe copiés depuis un gestionnaire sont ignorés.": "Nothing yet. Copy some text (Ctrl+C) anywhere: it will show up here. Passwords copied from a password manager are ignored.",
+"Coller dans la fenêtre d'avant": "Paste into the previous window",
+"épinglé": "pinned",
+"Désépingler": "Unpin",
+"Épingler (gardé même après redémarrage)": "Pin (kept even after a restart)",
+"Épingler": "Pin",
+"Changer la casse (MAJUSCULES, minuscules…)": "Change case (UPPERCASE, lowercase…)",
+"Changer la casse": "Change case",
+"Copié dans la nouvelle casse": "Copied in the new case",
+"Retirer de l'historique": "Remove from history",
+"Efface l'historique (les éléments épinglés restent)": "Clears the history (pinned items stay)",
+"Copié en secret : ni l'historique de Windows, ni celui de l'île ne le gardent": "Copied in secret: neither Windows history nor the island's keeps it",
+"Copier le mot de passe": "Copy the password",
+"Mot de passe copié": "Password copied",
+"Effacé du presse-papiers dans 30 secondes.": "Cleared from the Clipboard in 30 seconds.",
+"Un autre": "Another one",
+"Garder 0 O l 1": "Keep 0 O l 1",
+"Tiré au hasard par Windows, sur ton PC. Jamais enregistré ni écrit dans le journal ; effacé du presse-papiers au bout de 30 s.": "Randomly generated by Windows, on your PC. Never saved or written to the log; cleared from the Clipboard after 30 s.",
+"+ Nouveau snippet": "+ New snippet",
+"Aucun snippet ne contient ce texte.": "No snippet contains this text.",
+"Un snippet est un texte que tu colles souvent (adresse, signature, réponse type). Crée-le une fois, colle-le en un clic.": "A snippet is text you paste often (address, signature, canned reply). Create it once, paste it in one click.",
+"Nom (ex. : Adresse)": "Name (e.g. Address)",
+"Le texte à coller": "The text to paste",
+"Enregistrer le snippet": "Save snippet",
+"coupé": "muted",
+"Couper / réactiver le son": "Mute / unmute",
+"Pas de son": "No sound",
+"Pas de micro": "No mic",
+"Choisir la sortie audio": "Choose the audio output",
+"Aucune sortie audio": "No audio output",
+"Écran": "Screen",
+"« ${r.title.length > 40 ?": "\"${r.title.length > 40 ?",
+": r.title} »": ": r.title}\"",
+"La fenêtre": "The window",
+"Mode avion : tout est coupé": "Airplane mode: everything is off",
+"Mode avion : couper Wi-Fi, Bluetooth…": "Airplane mode: turn off Wi-Fi, Bluetooth…",
+"Aucune fenêtre": "No window",
+"Aucun micro": "No mic",
+"Micro coupé : cliquer pour le réactiver": "Mic muted: click to unmute",
+"Couper le micro": "Mute the mic",
+"Micro coupé": "Mic muted",
+"Micro rétabli": "Mic restored",
+"Le micro ne répond pas": "The mic isn't responding",
+"Récent": "Recent",
+"Ouvrir un terminal": "Open a terminal",
+"invite de commandes": "command prompt",
+"Réglages de l'île": "Island settings",
+"Bureau à distance": "Remote Desktop",
+"Terminal SSH": "SSH Terminal",
+"raccourci du lanceur indisponible": "launcher shortcut unavailable",
+"Une appli, un fichier, une action… (ou « 10 min »)": "An app, a file, an action… (or “10 min”)",
+"Rien trouvé.": "Nothing found.",
+"Tape le nom d'une appli, d'un fichier ou d'un onglet.": "Type the name of an app, a file or a tab.",
+"↑ ↓ pour choisir · Entrée pour ouvrir": "↑ ↓ to choose · Enter to open",
+"Le lecteur ne répond pas": "The player isn't responding",
+"Précédent": "Previous",
+"Rien en lecture. Lance de la musique dans Spotify, ton navigateur ou un autre lecteur : elle apparaîtra ici.": "Nothing playing. Start some music in Spotify, your browser or another player and it will show up here.",
+"Internet est revenu": "Internet is back",
+"Plus d'accès à Internet": "No more Internet access",
+"Le réseau local répond peut-être encore.": "The local network may still be responding.",
+"Les ressources internes ne sont plus joignables.": "Internal resources are no longer reachable.",
+"Pas de réponse depuis deux minutes.": "No response for two minutes.",
+"Ton adresse IP publique a changé": "Your public IP address changed",
+"Nom ou adresse (google.fr, 192.168.1.1…)": "Name or address (google.com, 192.168.1.1…)",
+"Ping chaque seconde (Entrée)": "Ping every second (Enter)",
+"Le port répond-il ?": "Is the port responding?",
+"Nom → adresses, ou adresse IPv4 → nom": "Name → addresses, or IPv4 address → name",
+"📵 Pas d'Internet": "📵 No Internet",
+"⏹ Arrêter": "⏹ Stop",
+"pas de réponse": "no response",
+"Aucun nom enregistré pour cette adresse.": "No name registered for this address.",
+"Tape une adresse, puis Ping, Port ou DNS.": "Type an address, then Ping, Port or DNS.",
+"✅ À faire": "✅ To do",
+"Ajouter une tâche… (Entrée)": "Add a task… (Enter)",
+"Rien à faire. Écris une tâche ci-dessus et appuie sur Entrée.": "Nothing to do. Write a task above and press Enter.",
+"Cocher / décocher": "Check / uncheck",
+"Double-clic pour modifier": "Double-click to edit",
+"Tout est fait 🎉": "All done 🎉",
+"+ Nouvelle note": "+ New note",
+"Pas encore de note. Une idée, un numéro, une liste de courses : note-le ici.": "No notes yet. An idea, a number, a shopping list: jot it down here.",
+"Écris ta note… (enregistrée automatiquement)": "Write your note… (saved automatically)",
+"Retour à la liste (Échap)": "Back to the list (Esc)",
+"Supprimer la note (annulable)": "Delete the note (can be undone)",
+"🗑 Supprimer": "🗑 Delete",
+"Et si tu faisais une petite pause ?": "How about a little break?",
+"C'est parti": "Let's go",
+"Dans 10 min": "In 10 min",
+"Accès distants": "Remote access",
+"Serveur ou adresse IP…": "Server or IP address…",
+"Bureau à distance (Entrée)": "Remote Desktop (Enter)",
+"Enregistrer en favori": "Save as favorite",
+"Aucun favori. Tape une adresse ci-dessus et clique ★ pour l'enregistrer, ou ajoute-en un :": "No favorites. Type an address above and click ★ to save it, or add one:",
+"＋ Ajouter un serveur": "＋ Add a server",
+"Pas encore testé": "Not tested yet",
+"Test en cours…": "Testing…",
+"Ne répond pas": "Not responding",
+"Supprimer (Annuler possible)": "Delete (can be undone)",
+"＋ Ajouter": "＋ Add",
+"Vérifie que chaque serveur répond sur son port": "Checks that each server responds on its port",
+"↻ Tester": "↻ Test",
+"Serveur de fichiers": "File server",
+"srv-01.domaine.local ou 192.168.1.10": "srv-01.domain.local or 192.168.1.10",
+"par défaut": "default",
+"admin (facultatif)": "admin (optional)",
+"Bureau à distance (RDP)": "Remote Desktop (RDP)",
+"Windows ou ssh le demandent à la connexion.": "Windows or ssh will ask for it when you connect.",
+"🔒 aucun mot de passe enregistré": "🔒 no password saved",
+"Règle": "Rule",
+"＋ Nouvelle règle": "＋ New rule",
+"Tout mettre en pause": "Pause all",
+"Aucune règle. Exemples : ranger les PDF téléchargés, Ctrl+Alt+V pour coller sans mise en forme, ouvrir une clé USB dès qu'elle est branchée.": "No rules. Examples: sort downloaded PDFs, Ctrl+Alt+V to paste without formatting, open a USB drive as soon as it's plugged in.",
+"Désactiver": "Disable",
+"Récemment": "Recent",
+"Déplacer dans un dossier": "Move to a folder",
+"Copier dans un dossier": "Copy to a folder",
+"Mettre à la Corbeille": "Move to Recycle Bin",
+"Poser sur l'étagère": "Put on the Shelf",
+"Montrer dans l'Explorateur": "Show in Explorer",
+"Afficher une notification": "Show a notification",
+"Ouvrir l'île": "Open the island",
+"Lancer un minuteur": "Start a timer",
+"Quand un lecteur est débranché": "When a drive is unplugged",
+"Quand une clé USB ou un disque est branché": "When a USB drive or disk is plugged in",
+"ouvrir l'île": "open the island",
+"📄 Ranger les PDF téléchargés": "📄 Sort downloaded PDFs",
+"Ranger les PDF": "Sort PDFs",
+"{nom} rangé": "{nom} sorted",
+"📋 Ctrl+Alt+V : coller sans mise en forme": "📋 Ctrl+Alt+V: paste without formatting",
+"🖥️ Ctrl+Alt+T : ouvrir un terminal": "🖥️ Ctrl+Alt+T: open a terminal",
+"💾 Clé USB branchée : l'ouvrir": "💾 USB drive plugged in: open it",
+"Clé USB branchée": "USB drive plugged in",
+"{nom} branché": "{nom} plugged in",
+"🖼️ Nouvelles captures sur l'étagère": "🖼️ New captures on the Shelf",
+"Captures sur l'étagère": "Captures on the Shelf",
+"Ajout à l'étagère": "Add to Shelf",
+"Copier vers…": "Copy to…",
+"Déplacement": "Moving",
+"Déplacer vers…": "Move to…",
+"Copie du chemin": "Copy path",
+"Chemin copié": "Path copied",
+"Confirmer ?": "Confirm?",
+"Étagère": "Shelf",
+"Copier le chemin": "Copy path",
+"Retour à l'étagère": "Back to the Shelf",
+"Qualité JPEG": "JPEG quality",
+"Créer ${n > 1 ?": "Create ${n > 1 ?",
+": \"l'image\"}": ": \"the image\"}",
+"Largeur max.": "Max width",
+"Les originaux ne bougent pas : les nouvelles images sont créées à côté (ex. « photo-1920.jpg »). Annulable quelques secondes.": "Originals stay untouched: new images are created next to them (e.g. “photo-1920.jpg”). Can be undone for a few seconds.",
+"Renommer ${n > 1 ?": "Rename ${n > 1 ?",
+": \"le fichier\"}": ": \"the file\"}",
+"Renommer (annulable quelques secondes)": "Rename (can be undone for a few seconds)",
+"Nouveau nom": "New name",
+"à partir de": "starting from",
+"{n} = numéro, {nom} = l'ancien nom. L'extension est gardée. Exemple : « vacances-{n} ».": "{n} = number, {nom} = the old name. The extension is kept. Example: “holidays-{n}”.",
+"Téléchargé, posé sur l'étagère": "Downloaded, put on the Shelf",
+"L'étagère est vide. Glisse des fichiers sur l'île et lâche-les sur « 🧺 Étagère » pour les garder sous la main.": "The Shelf is empty. Drag files onto the island and drop them on “🧺 Shelf” to keep them handy.",
+"📄 Copier vers…": "📄 Copy to…",
+"Copier tout vers un dossier": "Copy everything to a folder",
+"📦 Déplacer vers…": "📦 Move to…",
+"Déplacer tout vers un dossier": "Move everything to a folder",
+"Convertir ou réduire les images de l'étagère": "Convert or shrink the images on the Shelf",
+"Renommer les fichiers de l'étagère": "Rename the files on the Shelf",
+"Tout compresser": "Compress all",
+"Tout envoyer à la Corbeille": "Send everything to the Recycle Bin",
+"Retirer tout de l'étagère (les fichiers ne bougent pas)": "Remove everything from the Shelf (files stay where they are)",
+"Vider l'étagère": "Clear the Shelf",
+"Envoyer à la Corbeille": "Send to the Recycle Bin",
+"Retirer de l'étagère": "Remove from the Shelf",
+"Batterie faible": "Low battery",
+"Batterie chargée": "Battery charged",
+"Tu peux débrancher le chargeur.": "You can unplug the charger.",
+"Mémoire": "Memory",
+"Disque C:": "Disk C:",
+"Nom du PC, Windows, IP, MAC, mémoire, disques… à coller dans un ticket": "PC name, Windows, IP, MAC, memory, disks… to paste into a ticket",
+"Infos copiées pour le support": "Info copied for support",
+"📋 Copier pour le support": "📋 Copy for support",
+"Que se passe-t-il ? Depuis quand ? Message d'erreur…": "What's happening? Since when? Error message…",
+"Ticket prêt": "Ticket ready",
+"Le dossier est ouvert, et le texte est copié : colle-le dans ta demande.": "The folder is open and the text is copied: paste it into your request.",
+"Préparer": "Prepare",
+"Préparer un ticket": "Prepare a ticket",
+"Joindre l'image copiée (fais d'abord ta capture avec Win+Maj+S)": "Attach the copied image (take your capture first with Win+Shift+S)",
+"Un dossier est créé dans Documents\\\\Ondine\\\\Tickets avec ta description, les infos du poste et l'image. Rien n'est envoyé.": "A folder is created in Documents\\\\Ondine\\\\Tickets with your description, the PC info and the image. Nothing is sent.",
+"Ta description + les infos du poste (+ une capture) dans un dossier prêt à joindre": "Your description + the PC info (+ a capture) in a folder ready to attach",
+"🎫 Préparer un ticket": "🎫 Prepare a ticket",
+"Allumé depuis": "Uptime",
+"Réseau": "Network",
+"Aucune carte réseau connectée.": "No network adapter connected.",
+"Invite de commandes": "Command Prompt",
+"Terminal ici": "Terminal here",
+"Ouvrir en administrateur (Windows demande de confirmer)": "Open as administrator (Windows asks you to confirm)",
+"Choisir un dossier, puis y ouvrir le terminal": "Pick a folder, then open the terminal there",
+"Ouvrir le terminal dans…": "Open the terminal in…",
+"📂 Ailleurs…": "📂 Elsewhere…",
+"Dans :": "In:",
+"Pause courte": "Short break",
+"Pause longue": "Long break",
+"Minuteur terminé": "Timer finished",
+"Séance terminée : pause !": "Session over: break time!",
+"Pause terminée : au travail !": "Break over: back to work!",
+"Lance la suite quand tu es prêt.": "Start the next one when you're ready.",
+"⏱️ Minuteur": "⏱️ Timer",
+"⏲️ Chrono": "⏲️ Stopwatch",
+"Ajouter une minute": "Add one minute",
+"↺ Réinitialiser": "↺ Reset",
+"Revenir au début": "Back to the start",
+"en pause": "paused",
+"▶ Démarrer": "▶ Start",
+"⏭ Passer": "⏭ Skip",
+"Passer à la phase suivante": "Skip to the next phase",
+"Recommencer à zéro": "Start over from zero",
+"Les durées se règlent dans les réglages du module.": "Durations are set in the module settings.",
+"⚑ Tour": "⚑ Lap",
+"Noter un temps intermédiaire": "Record a split time",
+"Remettre à zéro": "Reset to zero",
+"▶ Reprendre": "▶ Resume",
+"Aucun fichier.": "No files.",
+"Aucun dossier.": "No folders.",
+"Ajouter un fichier": "Add a file",
+"Ajouter un dossier": "Add a folder",
+"＋ Ajouter un fichier…": "＋ Add a file…",
+"＋ Ajouter un dossier…": "＋ Add a folder…",
+"Envoie à l'API Claude": "Sends to the Claude API",
+"L'île": "The island",
+"Sécurité": "Security",
+"Général": "General",
+"L'écran, le repli de l'île, les notifications et le journal.": "The screen, island collapsing, notifications and the log.",
+"Sur quel écran ?": "Which screen?",
+"Replier l'île": "Collapse the island",
+"Durée des notifications": "Notification duration",
+"Raccourci pour ouvrir l'île": "Shortcut to open the island",
+"Bord de l'écran": "Screen edge",
+"Mode présentation": "Presentation mode",
+"Niveau du journal": "Log level",
+"Dossier du journal": "Log folder",
+"La couleur de l'île et ses petits sons.": "The island's color and its little sounds.",
+"Thème": "Theme",
+"Couleur de l'île": "Island color",
+"Couleur personnalisée": "Custom color",
+"Sons de clic": "Click sounds",
+"Volume des sons": "Sound volume",
+"Les modules actifs et l'ordre de leurs onglets dans l'île.": "The active modules and the order of their tabs in the island.",
+"Ordre des onglets": "Tab order",
+"Activer un module": "Enable a module",
+"Désactiver un module": "Disable a module",
+"Ordre d'origine": "Original order",
+"Qui vit dans l'île, et quand elle s'ennuie ou s'endort.": "Who lives in the island, and when it gets bored or falls asleep.",
+"Afficher la mascotte": "Show the mascot",
+"S'ennuie après": "Gets bored after",
+"S'endort après": "Falls asleep after",
+"Ondine vient pendre au bord": "Ondine hangs over the edge",
+"Tester les animations": "Test the animations",
+"Règles": "Rules",
+"Quand quelque chose arrive, l'île agit pour toi.": "When something happens, the island acts for you.",
+"Règles automatiques": "Automatic rules",
+"Raccourci clavier": "Keyboard shortcut",
+"Surveiller un dossier": "Watch a folder",
+"Clé USB": "USB drive",
+"Modèles de règles": "Rule templates",
+"Confidentialité": "Privacy",
+"Aucune télémétrie. Ce qui part vers Claude est toujours montré avant.": "No telemetry. What is sent to Claude is always shown first.",
+"Télémétrie": "Telemetry",
+"Dossiers exclus": "Excluded folders",
+"Exclure un dossier": "Exclude a folder",
+"Rangés dans le Gestionnaire d'identifiants Windows.": "Stored in Windows Credential Manager.",
+"Clé API Anthropic": "Anthropic API key",
+"Adresse iCal de ton agenda": "iCal address of your calendar",
+"Google Agenda": "Google Calendar",
+"Gestionnaire d'identifiants": "Credential Manager",
+"Exporter ou importer tes réglages (jamais les clés).": "Export or import your settings (never the keys).",
+"Exporter les réglages": "Export settings",
+"Importer des réglages": "Import settings",
+"Pages des réglages": "Settings pages",
+"Rechercher un réglage": "Search settings",
+"Module désactivé": "Module disabled",
+"Aperçu dans un navigateur : rien n'est enregistré.": "Browser preview: nothing is saved.",
+"Écran principal": "Main screen",
+"Suit la souris": "Follows the mouse",
+"Seulement si tu as plusieurs écrans : l'île reste sur l'écran principal, ou suit l'écran où se trouve ta souris.": "Only if you have several screens: the island stays on the main screen, or follows the screen your mouse is on.",
+"Quand la souris n'est plus dessus, après ce délai.": "When the mouse is no longer over it, after this delay.",
+"Partout dans Windows : un appui ouvre l'île, un second la referme.": "Anywhere in Windows: one press opens the island, a second closes it.",
+"En haut": "Top",
+"À gauche": "Left",
+"À droite": "Right",
+"Tu peux aussi attraper l'île par son bord collé à l'écran et la poser ailleurs : elle s'aimante aux bords, aux coins et au centre.": "You can also grab the island by its edge against the screen and drop it elsewhere: it snaps to edges, corners and the center.",
+"Pendant un diaporama, une vidéo ou un jeu en plein écran, l'île se cache et garde les notifications pour la fin.": "During a slideshow, video or full-screen game, the island hides and keeps notifications until the end.",
+"Débogage": "Debugging",
+"Le journal reste sur ton PC (%LOCALAPPDATA%\\\\Ondine\\\\logs). Il ne contient jamais de clé ni de contenu de fichier.": "The log stays on your PC (%LOCALAPPDATA%\\\\Ondine\\\\logs). It never contains a key or file contents.",
+"Choisis n'importe quelle couleur : si elle est trop claire, l'île l'assombrit juste assez pour que le texte reste lisible.": "Pick any color: if it's too light, the island darkens it just enough to keep the text readable.",
+"De petits « plop » à l'ouverture, à la fermeture et sur les boutons. Fabriqués sur place, sans fichier.": "Little “plop” sounds on open, close and on buttons. Made on the spot, no files.",
+"Écouter": "Listen",
+"▶ Essayer": "▶ Try it",
+"Glisser pour déplacer": "Drag to move",
+"Glisse une ligne, ou utilise ↑ ↓. Tu peux aussi faire glisser les onglets directement dans l'île.": "Drag a row, or use ↑ ↓. You can also drag the tabs directly in the island.",
+"Sans onglet": "No tab",
+"Aucune permission": "No permissions",
+"Lire la suite": "Read more",
+"Réduire": "Collapse",
+"Activé": "Enabled",
+"Désactivé, le module s'arrête et son onglet disparaît.": "Disabled, the module stops and its tab disappears.",
+"À propos": "About",
+"Ce module n'a pas de réglage.": "This module has no settings.",
+"Dépose tes mascottes dans le dossier mascots/ du projet, puis relance l'appli.": "Drop your mascots in the project's mascots/ folder, then restart the app.",
+"Visites au bord de l'écran": "Visits at the screen edge",
+"Au plus une visite toutes les": "At most one visit every",
+"Faire venir Ondine": "Bring Ondine over",
+"Quand l'île est cachée et que tu ne touches plus au PC depuis un moment, Ondine descend du bord de l'écran tête en bas, cligne des yeux, puis remonte. Un clic sur elle ouvre l'île. Jamais pendant une présentation ou un plein écran.": "When the island is hidden and you haven't touched the PC for a while, Ondine comes down from the screen edge head first, blinks, then goes back up. Click her to open the island. Never during a presentation or full screen.",
+"Problèmes dans le manifeste :": "Problems in the manifest:",
+"Aucun dossier exclu.": "No excluded folders.",
+"C:\\\\Users\\\\moi\\\\Documents\\\\Privé": "C:\\\\Users\\\\me\\\\Documents\\\\Private",
+"Dossier à exclure": "Folder to exclude",
+"Ce que l'île promet": "What the island promises",
+"Rien n'est envoyé sur Internet sans que tu le demandes.": "Nothing is sent over the Internet unless you ask for it.",
+"Envoi à Claude": "Sending to Claude",
+"Toujours montré avant": "Always shown first",
+"Un module qui envoie du contenu à l'API Claude le déclare et te montre ce qui part.": "A module that sends content to the Claude API declares it and shows you what's going out.",
+"Aucun module ne lira ni n'enverra un fichier situé dans ces dossiers.": "No module will read or send a file located in these folders.",
+"Coller la clé ici": "Paste the key here",
+"Coller l'adresse secrète iCal (https://…)": "Paste the secret iCal address (https://…)",
+"Google Agenda : Paramètres → ton agenda → « Adresse secrète au format iCal ». L'onglet Agenda le télécharge toutes les 15 minutes. Garde ce lien pour toi : il donne accès à tout ton agenda.": "Google Calendar: Settings → your calendar → “Secret address in iCal format”. The Calendar tab downloads it every 15 minutes. Keep this link to yourself: it gives access to your whole calendar.",
+"✓ Enregistrée": "✓ Saved",
+"État": "Status",
+"Enregistrée.": "Saved.",
+"Supprimée.": "Deleted.",
+"L'île peut seulement savoir si une clé existe : elle ne peut jamais la réafficher.": "The island can only tell whether a key exists: it can never display it again.",
+"Réglages importés.": "Settings imported.",
+"Un fichier .json, dans %APPDATA%\\\\Ondine\\\\exports (le dossier s'ouvre).": "A .json file, in %APPDATA%\\\\Ondine\\\\exports (the folder opens).",
+"Remplace tes réglages actuels.": "Replaces your current settings.",
+"Les clés ne font jamais partie de l'export : elles restent dans le Gestionnaire d'identifiants.": "Keys are never part of the export: they stay in the Credential Manager.",
+"aucun dossier choisi": "no folder chosen",
+"Choisir un dossier": "Choose a folder",
+"Clique ici puis appuie sur le raccourci": "Click here then press the shortcut",
+"« Quand… alors… » : l'île agit toute seule quand un fichier arrive, qu'une clé USB est branchée ou que tu appuies sur un raccourci. Déplacer ou renommer propose toujours « Annuler », et rien n'est supprimé définitivement.": "“When… then…”: the island acts on its own when a file arrives, a USB drive is plugged in or you press a shortcut. Moving or renaming always offers “Undo”, and nothing is permanently deleted.",
+"(désactivée)": "(disabled)",
+"Modèles": "Templates",
+"Un point de départ à adapter avant d'enregistrer.": "A starting point to adapt before saving.",
+"Déclencheur": "Trigger",
+"Un fichier arrive dans un dossier": "A file arrives in a folder",
+"Une clé USB ou un disque est branché": "A USB drive or disk is plugged in",
+"Un lecteur est débranché": "A drive is unplugged",
+"J'appuie sur un raccourci clavier": "I press a keyboard shortcut",
+"Un événement de l'île": "An island event",
+"Dossier surveillé": "Watched folder",
+"Inclure les sous-dossiers": "Include subfolders",
+"Avec Ctrl, Alt ou Windows. Exemple : Ctrl+Alt+V.": "With Ctrl, Alt or Windows. Example: Ctrl+Alt+V.",
+"Événement": "Event",
+"Si… (facultatif)": "If… (optional)",
+"pdf, docx (vide = toutes)": "pdf, docx (empty = all)",
+"Le nom contient": "Name contains",
+"facture (vide = peu importe)": "invoice (empty = anything)",
+"Taille minimale (Ko)": "Minimum size (KB)",
+"Taille maximale (Ko)": "Maximum size (KB)",
+"Le nom du lecteur contient": "Drive name contains",
+"KINGSTON (vide = n'importe lequel)": "KINGSTON (empty = any)",
+"Pas de condition pour ce déclencheur.": "No condition for this trigger.",
+"＋ Ajouter une action…": "＋ Add an action…",
+"Nom de la règle": "Rule name",
+"Montre ce que ferait la règle, sans rien faire": "Shows what the rule would do, without doing anything",
+"Choisir un fichier pour tester la règle": "Choose a file to test the rule",
+"🧪 Tester (sans rien faire)": "🧪 Test (does nothing)",
+"Ce que ferait la règle :": "What the rule would do:",
+"{nom} est arrivé": "{nom} arrived",
+"Le dernier onglet ouvert": "The last opened tab",
+"{nom} = nom d'origine, {date} = 2026-10-05, {heure} = 14h30. L'extension est gardée.": "{nom} = original name, {date} = 2026-10-05, {heure} = 14h30. The extension is kept.",
+"{nom} = le nom du fichier ou du lecteur.": "{nom} = the name of the file or drive.",
+"Agenda": "Calendar",
+"Ton prochain rendez-vous, lu dans un fichier .ics (export d'Outlook, Google Agenda, Thunderbird…) ou téléchargé depuis l'adresse secrète iCal de ton agenda en ligne (Réglages → Identifiants). Le fichier est relu dès qu'il change ; l'agenda en ligne est retéléchargé toutes les 15 minutes. Lecture seule : rien n'est envoyé, et l'adresse n'apparaît jamais dans le journal.": "Your next appointment, read from an .ics file (export from Outlook, Google Calendar, Thunderbird…) or downloaded from the secret iCal address of your online calendar (Settings → Credentials). The file is re-read as soon as it changes; the online calendar is re-downloaded every 15 minutes. Read-only: nothing is sent, and the address never appears in the log.",
+"Fichiers d'agenda (.ics)": "Calendar files (.ics)",
+"Exporte ton agenda au format .ics, puis choisis le fichier ici. Il est relu tout seul quand il change. Pour un agenda Google toujours à jour, mets plutôt son adresse secrète iCal dans Réglages → Identifiants.": "Export your calendar as .ics, then choose the file here. It's re-read automatically when it changes. For an always up-to-date Google calendar, put its secret iCal address in Settings → Credentials instead.",
+"Afficher les rendez-vous des prochains (jours)": "Show appointments for the next (days)",
+"Jusqu'où regarder dans le futur : 60 jours par défaut, jusqu'à un an.": "How far ahead to look: 60 days by default, up to a year.",
+"Rappel avant un rendez-vous (minutes, 0 = jamais)": "Reminder before an appointment (minutes, 0 = never)",
+"Afficher le prochain rendez-vous dans la pilule de l'île": "Show the next appointment in the island's pill",
+"… quand il commence dans moins de (minutes)": "… when it starts in less than (minutes)",
+"Récap du soir : les rendez-vous de demain à (heure, 0 = jamais)": "Evening recap: tomorrow's appointments at (hour, 0 = never)",
+"Agents IA": "AI agents",
+"Lance Claude Code, Codex ou Gemini CLI dans un de tes projets en un clic. Un tableau montre les sessions en cours ; « Y aller » ramène devant la bonne fenêtre. Claude Code, Codex et Gemini CLI préviennent l'île : « attend ta permission », « a fini ». Ils passent par la commande « ondine.exe notify » et un canal local réservé à ton compte Windows : rien ne passe par Internet. Branchée comme serveur MCP, l'île laisse aussi l'agent t'envoyer un message, une progression, lancer le minuteur ou te poser une question à choix. Le mode concentration met leurs notifications en attente et te fait un résumé à la fin. Si tu l'actives (désactivé par défaut), tu peux aussi autoriser ou refuser une action de Claude Code ou Codex depuis l'île, après confirmation. L'île n'exécute jamais rien, ne décide jamais à ta place, et ne lit ni ce que tu tapes ni les réponses de l'IA.": "Launch Claude Code, Codex or Gemini CLI in one of your projects with one click. A board shows running sessions; “Go there” brings the right window to the front. Claude Code, Codex and Gemini CLI notify the island: “waiting for your permission”, “finished”. They go through the “ondine.exe notify” command and a local channel reserved for your Windows account: nothing goes over the Internet. Hooked up as an MCP server, the island also lets the agent send you a message, a progress update, start the timer or ask you a multiple-choice question. Focus mode holds their notifications and gives you a summary at the end. If you enable it (off by default), you can also allow or deny an action from Claude Code or Codex from the island, after confirmation. The island never runs anything, never decides for you, and reads neither what you type nor the AI's replies.",
+"Projets pour les agents": "Projects for agents",
+"Un bouton par projet dans l'onglet et dans le lanceur. Vide = ton dossier utilisateur.": "One button per project in the tab and in the launcher. Empty = your user folder.",
+"Ouvrir les agents dans": "Open agents in",
+"Une fenêtre de console": "A console window",
+"Windows Terminal (s'il est installé)": "Windows Terminal (if installed)",
+"Proposer Claude Code": "Offer Claude Code",
+"Proposer Codex": "Offer Codex",
+"Proposer Gemini CLI": "Offer Gemini CLI",
+"Prévenir quand Claude attend ma réponse ou ma permission": "Notify when Claude is waiting for my answer or permission",
+"Prévenir quand Claude a fini": "Notify when Claude is done",
+"Accepter les outils MCP (message, progression, minuteur, question)": "Accept MCP tools (message, progress, timer, question)",
+"Utilisé seulement si tu as ajouté l'île comme serveur MCP dans ton agent.": "Only used if you added the island as an MCP server in your agent.",
+"Autoriser / Refuser depuis l'île": "Allow / Deny from the island",
+"Quand Claude Code ou Codex demande la permission d'utiliser un outil, l'île te montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Il faut aussi coller le hook d'autorisation (onglet Agents IA). Sans réponse, la question passe au terminal.": "When Claude Code or Codex asks permission to use a tool, the island shows you the command with “Allow” (to confirm) and “Deny”. You also need to paste the permission hook (AI agents tab). With no answer, the question falls back to the terminal.",
+"Attendre ma réponse dans l'île": "Wait for my answer in the island",
+"30 secondes": "30 seconds",
+"La mascotte réfléchit pendant que Claude travaille": "The mascot thinks while Claude works",
+"Colle une erreur, ou dépose un fichier texte ou une capture sur l'île, pose ta question : Claude répond. ENVOIE DU CONTENU À L'API CLAUDE (api.anthropic.com) : avant chaque envoi, l'île te montre exactement ce qui part, et rien ne part sans ton clic. Les dossiers exclus sont refusés. La clé API reste dans le Gestionnaire d'identifiants Windows. La réponse est seulement affichée : rien n'est exécuté.": "Paste an error, or drop a text file or a screenshot on the island, ask your question: Claude answers. SENDS CONTENT TO THE CLAUDE API (api.anthropic.com): before each send, the island shows you exactly what's going out, and nothing is sent without your click. Excluded folders are refused. The API key stays in the Windows Credential Manager. The answer is only displayed: nothing is executed.",
+"Modèle": "Model",
+"Claude Sonnet 5.5 (équilibré)": "Claude Sonnet 5.5 (balanced)",
+"Claude Opus 5.5 (le plus fort, plus cher)": "Claude Opus 5.5 (most powerful, pricier)",
+"Claude Haiku 4.5 (rapide, économique)": "Claude Haiku 4.5 (fast, economical)",
+"Longueur maximale de la réponse (jetons)": "Maximum response length (tokens)",
+"Consigne donnée à Claude": "Instruction given to Claude",
+"Vide = « Réponds en français, simplement et brièvement… ». Elle est montrée avant chaque envoi.": "Empty = “Answer in French, simply and briefly…”. It's shown before each send.",
+"Proposer « Demander à Claude » quand on dépose un fichier sur l'île": "Offer “Ask Claude” when a file is dropped on the island",
+"Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur ton ordinateur, hors ligne : l'image n'est envoyée nulle part.": "Captures an area of the screen with the Windows tool, then reads its text (OCR) or saves it as PNG. Also works on an image you've already copied. Text recognition runs on your computer, offline: the image is sent nowhere.",
+"Copier le texte lu dans le presse-papiers": "Copy the recognized text to the clipboard",
+"Dossier des captures": "Captures folder",
+"Vide : le dossier Images\\Ondine.": "Empty: the Pictures\\Ondine folder.",
+"Presse-papiers": "Clipboard",
+"Garde l'historique de tes copies de texte (recherche, épinglage), colle sans mise en forme, range tes textes fréquents en snippets, retire les traqueurs des liens copiés (utm_source, fbclid…) change la casse d'un texte en un clic, et génère des mots de passe (copiés en secret, effacés au bout de 30 s, jamais enregistrés). Les copies que Windows signale comme sensibles (mots de passe) sont ignorées. L'historique reste en mémoire et disparaît à la fermeture de l'île ; seuls les éléments épinglés et les snippets sont enregistrés, sur ton ordinateur.": "Keeps the history of your text copies (search, pinning), pastes without formatting, stores your frequent texts as snippets, strips trackers from copied links (utm_source, fbclid…), changes a text's case in one click, and generates passwords (copied secretly, erased after 30 s, never saved). Copies that Windows flags as sensitive (passwords) are ignored. The history stays in memory and disappears when the island closes; only pinned items and snippets are saved, on your computer.",
+"Nombre de copies gardées": "Number of copies kept",
+"Les éléments épinglés ne comptent pas.": "Pinned items don't count.",
+"Nettoyer les liens copiés (retirer utm_source, fbclid, gclid…)": "Clean copied links (remove utm_source, fbclid, gclid…)",
+"Le lien propre remplace le lien copié ; la notification propose de remettre l'original.": "The clean link replaces the copied one; the notification offers to restore the original.",
+"Contrôles": "Controls",
+"Le volume des haut-parleurs et du micro, la luminosité des écrans, le Wi-Fi, le Bluetooth et le mode avion, sans ouvrir Windows. Un point orange (micro) ou vert (caméra) sur l'île montre quand une appli s'en sert, et un raccourci coupe le micro de partout. Agit sur les périphériques que Windows utilise par défaut ; les écrans externes doivent accepter le réglage DDC/CI (souvent activé dans leur menu). Rien n'est écouté ni enregistré : on lit seulement ce que Windows note pour sa page Confidentialité.": "Speaker and microphone volume, screen brightness, Wi-Fi, Bluetooth and airplane mode, without opening Windows. An orange (microphone) or green (camera) dot on the island shows when an app is using them, and a shortcut mutes the mic everywhere. Acts on the devices Windows uses by default; external screens must support DDC/CI adjustment (often enabled in their menu). Nothing is listened to or recorded: it only reads what Windows logs for its Privacy page.",
+"Raccourci pour couper / rétablir le micro": "Shortcut to mute / unmute the microphone",
+"Marche partout, même en visio. Ondine porte un petit badge tant que le micro est coupé.": "Works everywhere, even in video calls. Ondine wears a little badge while the mic is muted.",
+"Aucun": "None",
+"Ctrl + Maj + M": "Ctrl + Shift + M",
+"Alt + Maj + M": "Alt + Shift + M",
+"Montrer un point quand une appli utilise le micro ou la caméra": "Show a dot when an app uses the microphone or camera",
+"Lanceur": "Launcher",
+"Un raccourci clavier (Alt+Espace par défaut) ouvre une recherche : applications du menu Démarrer, outils Windows (Services, Gestionnaire de périphériques…), fichiers récents, serveurs favoris (Accès distants) et actions de l'île. Entrée pour ouvrir.": "A keyboard shortcut (Alt+Space by default) opens a search: Start menu apps, Windows tools (Services, Device Manager…), recent files, favorite servers (Remote access) and island actions. Enter to open.",
+"Raccourci": "Shortcut",
+"Alt + Espace": "Alt + Space",
+"Ctrl + Espace": "Ctrl + Space",
+"Ctrl + Alt + Espace": "Ctrl + Alt + Space",
+"Ctrl + Maj + Espace": "Ctrl + Shift + Space",
+"Win + Maj + Espace": "Win + Shift + Space",
+"Aucun (seulement l'onglet)": "None (tab only)",
+"Proposer les fichiers ouverts récemment": "Offer recently opened files",
+"Ceux des dossiers exclus (Confidentialité) ne sont jamais montrés.": "Those in excluded folders (Privacy) are never shown.",
+"Musique": "Music",
+"Montre ce qui joue en ce moment (Spotify, navigateur, VLC… tout ce qui apparaît dans le panneau multimédia de Windows) avec lecture/pause, suivant et précédent. Lit seulement ce que Windows expose déjà ; rien ne sort de l'ordinateur.": "Shows what's playing right now (Spotify, browser, VLC… anything that appears in the Windows media panel) with play/pause, next and previous. Only reads what Windows already exposes; nothing leaves the computer.",
+"Montrer l'île quand un nouveau morceau commence": "Show the island when a new track starts",
+"Afficher le morceau dans la pilule de l'île": "Show the track in the island's pill",
+"Boutons précédent / lecture / suivant dans la pilule": "Previous / play / next buttons in the pill",
+"Un clic sur un bouton ne déplie pas l'île.": "Clicking a button doesn't expand the island.",
+"Ping en continu, test d'un port (ouvert, fermé ou bloqué) et recherche DNS, sans ouvrir de console. Surveille aussi Internet, les VPN et une liste de serveurs, et prévient quand ça coupe. Seuls les paquets de test partent, vers les adresses que tu donnes. Si tu l'actives, l'adresse IP publique est demandée à api.ipify.org toutes les 10 minutes (ce site voit alors ton adresse IP).": "Continuous ping, port test (open, closed or blocked) and DNS lookup, without opening a console. Also monitors the Internet, VPNs and a list of servers, and warns you when something drops. Only test packets are sent, to the addresses you give. If you enable it, the public IP address is requested from api.ipify.org every 10 minutes (that site then sees your IP address).",
+"Prévenir quand Internet coupe ou revient": "Notify when the Internet goes down or comes back",
+"Prévenir quand un VPN se coupe ou se branche": "Notify when a VPN disconnects or connects",
+"Surveiller ces serveurs (séparés par des virgules ; nom ou nom:port)": "Monitor these servers (comma-separated; name or name:port)",
+"Vérifiés toutes les minutes : ping, ou connexion au port s'il est donné. 10 au plus. Exemple : nas.local, 192.168.1.10:443": "Checked every minute: ping, or port connection if given. 10 at most. Example: nas.local, 192.168.1.10:443",
+"Surveiller mon adresse IP publique (contacte api.ipify.org toutes les 10 min)": "Monitor my public IP address (contacts api.ipify.org every 10 min)",
+"Désactivé par défaut : c'est le seul réglage qui contacte un site extérieur. Ce site reçoit ton adresse IP, rien d'autre.": "Off by default: it's the only setting that contacts an outside site. That site receives your IP address, nothing else.",
+"Notes rapides et liste de choses à faire. Tout est enregistré sur ton ordinateur (%APPDATA%\\Ondine\\notes.json). Supprimer propose « Annuler ».": "Quick notes and a to-do list. Everything is saved on your computer (%APPDATA%\\Ondine\\notes.json). Deleting offers “Undo”.",
+"Rappeler les tâches à faire au démarrage": "Remind me of pending tasks at startup",
+"Pauses": "Breaks",
+"Te rappelle de faire une petite pause après un long moment devant l'écran. Se tait pendant une présentation, un appel (micro utilisé) ou si tu viens déjà de t'arrêter. Tout se passe sur ton PC : on regarde seulement depuis quand la souris et le clavier sont utilisés.": "Reminds you to take a short break after a long time at the screen. Stays quiet during a presentation, a call (microphone in use) or if you've just stopped. Everything happens on your PC: it only checks how long the mouse and keyboard have been in use.",
+"Une pause toutes les (minutes d'écran, 0 = jamais)": "A break every (screen minutes, 0 = never)",
+"Ne rien dire pendant un appel (micro utilisé)": "Say nothing during a call (microphone in use)",
+"Tes serveurs Bureau à distance (RDP) et SSH en favoris, ouverts en un clic depuis l'île ou le lanceur. Enregistrés sur ton ordinateur (%APPDATA%\\Ondine\\remote.json), sans aucun mot de passe. « Tester » vérifie seulement que le serveur répond.": "Your Remote Desktop (RDP) and SSH servers as favorites, opened in one click from the island or the launcher. Saved on your computer (%APPDATA%\\Ondine\\remote.json), with no passwords at all. “Test” only checks that the server responds.",
+"Ouvrir SSH dans": "Open SSH in",
+"Bureau à distance en plein écran": "Remote Desktop in full screen",
+"Tester les serveurs à l'ouverture de l'onglet": "Test servers when the tab opens",
+"Automatisations « Quand… alors… » : un fichier arrive dans un dossier, une clé USB est branchée, un raccourci clavier est pressé, ou un événement de l'île. Tout déplacement propose « Annuler », rien n'est supprimé définitivement, et aucune règle ne peut lancer de programme.": "“When… then…” automations: a file arrives in a folder, a USB drive is plugged in, a keyboard shortcut is pressed, or an island event. Every move offers “Undo”, nothing is permanently deleted, and no rule can launch a program.",
+"Glisse des fichiers sur l'île pour les poser sur l'étagère, les envoyer à la Corbeille, les copier ou les déplacer (dossiers favoris compris), copier leur chemin, les compresser, convertir ou réduire des images, ou renommer plusieurs fichiers d'un coup (avec aperçu). Toute action sur les fichiers est annulable quelques secondes.": "Drag files onto the island to drop them on the shelf, send them to the Recycle Bin, copy or move them (favorite folders included), copy their path, compress them, convert or shrink images, or rename several files at once (with preview). Every file action can be undone for a few seconds.",
+"Dossiers favoris": "Favorite folders",
+"Chacun devient une cible quand tu glisses des fichiers sur l'île.": "Each one becomes a target when you drag files onto the island.",
+"Lâcher sur un favori…": "Drop on a favorite…",
+"copie les fichiers": "copies the files",
+"déplace les fichiers": "moves the files",
+"Cible « Corbeille »": "“Recycle Bin” target",
+"Cible « Compresser »": "“Compress” target",
+"Cibles « Images » et « Renommer »": "“Images” and “Rename” targets",
+"Poser sur l'étagère chaque nouveau fichier téléchargé": "Put each newly downloaded file on the shelf",
+"Le dossier Téléchargements est regardé toutes les 3 secondes ; le fichier arrive quand le téléchargement est fini.": "The Downloads folder is checked every 3 seconds; the file arrives once the download is finished.",
+"Système": "System",
+"L'état du PC d'un coup d'œil : processeur, mémoire, disques, adresses IP et MAC, batterie, version de Windows. Un bouton copie un résumé à coller dans un ticket de support. Prévient quand un disque est presque plein, quand la batterie est faible ou chargée. Ondine transpire quand le processeur est à fond. Tout est lu sur le PC : rien ne part sur Internet.": "Your PC's status at a glance: processor, memory, disks, IP and MAC addresses, battery, Windows version. One button copies a summary to paste into a support ticket. Warns you when a disk is almost full, when the battery is low or charged. Ondine sweats when the processor is maxed out. Everything is read on the PC: nothing is sent over the Internet.",
+"Prévenir quand un disque a moins de (% de place libre, 0 = jamais)": "Warn when a disk has less than (% free space, 0 = never)",
+"Prévenir quand la batterie descend à (%, 0 = jamais)": "Warn when the battery drops to (%, 0 = never)",
+"Prévenir quand la batterie est chargée": "Warn when the battery is charged",
+"L'humeur d'Ondine suit le PC (processeur à fond, batterie faible, heure tardive)": "Ondine's mood follows the PC (processor maxed out, low battery, late hour)",
+"Ouvre cmd, PowerShell, PowerShell 7 ou Windows Terminal en un clic, dans le dossier de ton choix (aussi en administrateur). Dépose un dossier sur l'île pour y ouvrir un terminal. L'île ne tape jamais de commande à ta place.": "Opens cmd, PowerShell, PowerShell 7 or Windows Terminal in one click, in the folder of your choice (also as administrator). Drop a folder on the island to open a terminal there. The island never types a command for you.",
+"Terminal à ouvrir": "Terminal to open",
+"Invite de commandes (cmd)": "Command Prompt (cmd)",
+"PowerShell 7 (pwsh, s'il est installé)": "PowerShell 7 (pwsh, if installed)",
+"Dossier de départ": "Starting folder",
+"Vide = ton dossier utilisateur (C:\\Users\\…).": "Empty = your user folder (C:\\Users\\…).",
+"Proposer « Terminal ici » quand on dépose un dossier sur l'île": "Offer “Terminal here” when a folder is dropped on the island",
+"Minuteur": "Timer",
+"Minuteur, Pomodoro et chronomètre. Le temps qui reste s'affiche dans la pilule de l'île, et l'île te prévient (avec un petit son) quand c'est fini.": "Timer, Pomodoro and stopwatch. The remaining time shows in the island's pill, and the island lets you know (with a little sound) when it's done.",
+"Pomodoro : travail (minutes)": "Pomodoro: work (minutes)",
+"Pomodoro : pause courte (minutes)": "Pomodoro: short break (minutes)",
+"Pomodoro : pause longue (minutes)": "Pomodoro: long break (minutes)",
+"Pomodoro : pause longue toutes les … séances": "Pomodoro: long break every … sessions",
+"Pomodoro : enchaîner automatiquement travail et pauses": "Pomodoro: chain work and breaks automatically",
+"Jouer un son à la fin": "Play a sound at the end",
+"Afficher le temps dans la pilule de l'île": "Show the time in the island's pill",
+"Refusé par l'utilisateur depuis l'île.": "Denied by the user from the island.",
+"Ondine (l'île) est une barre en haut de l'écran Windows de l'utilisateur. Utilise ondine_ask pour lui poser une question courte à choix, ondine_progress pour montrer l'avancement d'une longue tâche, ondine_notify pour un message bref.": "Ondine (the island) is a bar at the top of the user's Windows screen. Use ondine_ask to ask them a short multiple-choice question, ondine_progress to show the progress of a long task, ondine_notify for a brief message.",
+"méthode inconnue": "unknown method",
+"Affiche une notification courte dans l'île (en haut de l'écran de l'utilisateur).": "Shows a short notification in the island (at the top of the user's screen).",
+"Détail facultatif, une phrase": "Optional detail, one sentence",
+"Pose une question à l'utilisateur dans l'île, avec 2 à 4 boutons de réponse, et attend son choix. Renvoie le texte du bouton choisi, ou indique qu'il n'a pas répondu à temps.": "Asks the user a question in the island, with 2 to 4 answer buttons, and waits for their choice. Returns the text of the chosen button, or indicates that they did not answer in time.",
+"Les réponses possibles (quelques mots chacune)": "The possible answers (a few words each)",
+"Attente maximale, 1 à 25 minutes (10 par défaut)": "Maximum wait, 1 to 25 minutes (10 by default)",
+"Montre l'avancement d'une longue tâche dans l'île (par exemple étape 3 sur 7).": "Shows the progress of a long task in the island (for example step 3 of 7).",
+"Ce qui est en cours": "What is in progress",
+"Lance le minuteur de l'île (par exemple pour une pause ou un rappel).": "Starts the island's timer (for example for a break or a reminder).",
+"« title » est obligatoire": "“title” is required",
+"il faut une question et 2 à 4 options": "a question and 2 to 4 options are required",
+"« step » doit être entre 0 et « total »": "“step” must be between 0 and “total”",
+"« minutes » doit être entre 1 et 180": "“minutes” must be between 1 and 180",
+"Affiché dans l'île.": "Shown in the island.",
+"l'île n'a pas répondu": "the island did not answer",
+"Pas de réponse de l'utilisateur à temps.": "No answer from the user in time.",
+"fichier trop gros pour être un fichier de réglages": "file too big to be a settings file",
+"Choisir un fichier": "Choose a file",
+"Réglages — Ondine": "Settings — Ondine",
+"impossible de démarrer Ondine": "unable to start Ondine",
+"injoignable (pas de connexion Internet ?)": "unreachable (no Internet connection?)",
+"réponse illisible ou trop grosse (plus de 20 Mo)": "unreadable or too large response (over 20 MB)",
+"ce lien ne renvoie pas un agenda iCal (.ics) : prends l'« adresse secrète au format iCal »": "this link does not return an iCal calendar (.ics): use the “secret address in iCal format”",
+"ce n'est pas un fichier .ics": "this is not an .ics file",
+"fichier trop gros (plus de 20 Mo)": "file too big (over 20 MB)",
+"Les hooks et le serveur MCP ne peuvent pas joindre l'île. Redémarre l'île ; si ça continue, un autre programme occupe peut-être le canal.": "The hooks and the MCP server cannot reach the island. Restart the island; if it keeps happening, another program may be using the channel.",
+"cette question n'attend plus (délai dépassé ?)": "this question is no longer waiting (timed out?)",
+"rien à autoriser": "nothing to allow",
+"session inconnue (terminée ?)": "unknown session (ended?)",
+"Le module Agents IA de l'île est désactivé.": "The island's AI agents module is disabled.",
+"L'utilisateur a désactivé les outils MCP de l'île.": "The user has disabled the island's MCP tools.",
+"Trop de demandes en même temps.": "Too many requests at the same time.",
+"Il faut une question et 2 à 4 options.": "A question and 2 to 4 options are required.",
+"Trop de questions en attente dans l'île.": "Too many questions pending in the island.",
+"pas de réponse dans l'île": "no answer in the island",
+"Pas de réponse de l'utilisateur à temps : continue sans, ou repose la question plus tard.": "No answer from the user in time: continue without it, or ask again later.",
+"1 question en attente": "1 question pending",
+"autorisation non confirmée": "permission not confirmed",
+"confirmation trop ancienne : clique de nouveau sur « Autoriser… »": "confirmation too old: click “Allow…” again",
+"Gemini CLI ne laisse pas un hook autoriser un outil : réponds dans son terminal.": "Gemini CLI doesn't let a hook allow a tool: answer in its terminal.",
+"mon mot de passe est 1234": "my password is 1234",
+"Tu aides quelqu'un sur son PC Windows. Réponds en français, simplement et brièvement. Si tu n'es pas sûr, dis-le au lieu d'inventer.": "You are helping someone on their Windows PC. Answer in English, simply and briefly. If you're not sure, say so instead of making things up.",
+"le texte est vide": "the text is empty",
+"texte collé": "pasted text",
+"rien à préparer": "nothing to prepare",
+"rien de préparé": "nothing prepared",
+"l'aperçu a changé : vérifie ce qui part, puis renvoie": "the preview changed: check what is being sent, then send again",
+"Pas de clé API Anthropic : ajoute-la dans Réglages → Identifiants.": "No Anthropic API key: add it in Settings → Credentials.",
+"ce n'est pas un fichier": "this is not a file",
+"ce fichier n'est pas du texte UTF-8": "this file is not UTF-8 text",
+"clé API refusée (vérifie-la dans Réglages → Identifiants)": "API key refused (check it in Settings → Credentials)",
+"accès refusé par l'API": "access denied by the API",
+"trop de demandes : réessaie dans un moment": "too many requests: try again in a moment",
+"l'API est surchargée : réessaie dans un moment": "the API is overloaded: try again in a moment",
+"l'API a refusé la demande": "the API rejected the request",
+"aucune image à annoter": "no image to annotate",
+"aucune capture enregistrée": "no capture saved",
+"une capture est déjà en cours": "a capture is already in progress",
+"aucun texte trouvé dans l'image": "no text found in the image",
+"le contenu copié est marqué sensible : on n'y touche pas": "the copied content is marked sensitive: leaving it alone",
+"le presse-papiers ne contient pas d'image": "the clipboard does not contain an image",
+"élément introuvable": "item not found",
+"le presse-papiers ne contient pas de texte": "the clipboard does not contain text",
+"plus de lien à remettre": "no link left to restore",
+"mot de passe manquant": "missing password",
+"Copie retirée de l'historique": "Copy removed from history",
+"donne un nom au snippet": "give the snippet a name",
+"nom trop long (au plus {MAX_SNIPPET_NAME} caractères)": "name too long (at most {MAX_SNIPPET_NAME} characters)",
+"le snippet est vide": "the snippet is empty",
+"texte trop long (au plus {MAX_CHARS} caractères)": "text too long (at most {MAX_CHARS} characters)",
+"le hasard du système est indisponible": "system randomness is unavailable",
+"choisis au moins une sorte de caractères": "pick at least one kind of character",
+"périphérique inconnu (speakers ou microphone)": "unknown device (speakers or microphone)",
+"aucune fenêtre à garder au premier plan": "no window to keep on top",
+"le volume doit être un nombre entre 0 et 100": "volume must be a number between 0 and 100",
+"écran inconnu": "unknown display",
+"la luminosité doit être un nombre entre 0 et 100": "brightness must be a number between 0 and 100",
+"Paramètres Windows": "Windows Settings",
+"Panneau de configuration": "Control Panel",
+"Gestionnaire des tâches": "Task Manager",
+"Gestionnaire de périphériques": "Device Manager",
+"Observateur d'événements": "Event Viewer",
+"Gestion de l'ordinateur": "Computer Management",
+"Gestion des disques": "Disk Management",
+"Connexions réseau": "Network Connections",
+"Programmes et fonctionnalités": "Programs and Features",
+"Informations système": "System Information",
+"Éditeur du Registre": "Registry Editor",
+"Connexion Bureau à distance": "Remote Desktop Connection",
+"entrée manquante": "missing entry",
+"cette entrée n'existe plus, recherche à nouveau": "this entry no longer exists, search again",
+"ce fichier est un programme : ouvre-le depuis l'Explorateur": "this file is a program: open it from File Explorer",
+"panique pendant la lecture de l'état du lecteur": "panic while reading the player state",
+"ping : seules les adresses IPv4 sont prises en charge pour l'instant": "ping: only IPv4 addresses are supported for now",
+"le port doit être un nombre entre 1 et 65535": "the port must be a number between 1 and 65535",
+"Note supprimée": "Note deleted",
+"tâche cochée": "task checked",
+"Tâche supprimée": "Task deleted",
+"paramètre « id » manquant": "missing parameter “id”",
+"Favori supprimé": "Favorite deleted",
+"utilisateur invalide : pas d'espace, et pas de « - » au début": "invalid user: no spaces, and no “-” at the start",
+"règle introuvable": "rule not found",
+"paramètre « enabled » manquant": "missing parameter “enabled”",
+"paramètre « paused » manquant": "missing parameter “paused”",
+"le dossier surveillé n'est pas un dossier": "the watched folder is not a folder",
+"la destination est dans le dossier surveillé : la règle tournerait en boucle": "the destination is inside the watched folder: the rule would loop",
+"mise en pause : plus de 20 déclenchements en une minute": "paused: more than 20 triggers in one minute",
+"Elle s'est déclenchée plus de 20 fois en une minute.": "It triggered more than 20 times in one minute.",
+"mise en pause (trop de déclenchements)": "paused (too many triggers)",
+"nom de fichier invalide": "invalid file name",
+"nom inchangé": "name unchanged",
+"mis à la Corbeille": "moved to the Recycle Bin",
+"posé sur l'étagère": "put on the shelf",
+"montré dans l'Explorateur": "shown in File Explorer",
+"île ouverte": "island opened",
+"collé sans mise en forme": "pasted without formatting",
+"le lecteur": "the drive",
+"Envoyer à la Corbeille (récupérable)": "Send to the Recycle Bin (recoverable)",
+"Coller le presse-papiers sans mise en forme": "Paste the clipboard without formatting",
+"une capture est terminée": "a capture is finished",
+"un minuteur ou une séance Pomodoro se termine": "a timer or Pomodoro session ends",
+"un rendez-vous approche": "an appointment is coming up",
+"une tâche est terminée (copie, to-do cochée…)": "a task is finished (copy, to-do checked…)",
+"donne un nom à la règle": "give the rule a name",
+"nom trop long (au plus {MAX_NAME} caractères)": "name too long (at most {MAX_NAME} characters)",
+"ajoute au moins une action": "add at least one action",
+"au plus {MAX_ACTIONS} actions par règle": "at most {MAX_ACTIONS} actions per rule",
+"déplacer, copier, renommer ou mettre à la Corbeille : seulement quand un fichier arrive": "move, copy, rename or send to the Recycle Bin: only when a file arrives",
+"étagère et Explorateur : seulement avec un fichier ou un lecteur branché": "shelf and File Explorer: only with a file or a connected drive",
+"le texte de la notification doit faire de 1 à {MAX_TEXT} caractères": "the notification text must be 1 to {MAX_TEXT} characters",
+"minuteur : de 1 à 180 minutes": "timer: 1 to 180 minutes",
+"après « Corbeille », plus aucune action sur le fichier n'est possible": "after “Recycle Bin”, no further action on the file is possible",
+"choisis le dossier à surveiller": "choose the folder to watch",
+"texte du nom trop long": "name text too long",
+"le raccourci doit contenir Ctrl, Alt ou Windows": "the shortcut must contain Ctrl, Alt or Windows",
+"modèle de nom vide ou trop long": "name pattern empty or too long",
+"rien n'a été copié": "nothing was copied",
+"rien n'a été déplacé": "nothing was moved",
+"paramètre « paths » manquant": "missing parameter “paths”",
+"dossier de destination manquant": "missing destination folder",
+"aucun fichier (les dossiers sont ignorés)": "no files (folders are ignored)",
+"choisis un format ou une taille : sinon l'image ne change pas": "choose a format or a size: otherwise the image won't change",
+"aucune image créée": "no image created",
+"1 élément": "1 item",
+"le nom obtenu est vide ou trop long": "the resulting name is empty or too long",
+"décris le problème en quelques mots": "describe the problem in a few words",
+"description trop longue (5000 caractères au plus)": "description too long (5000 characters at most)",
+"aucune image copiée : fais d'abord ta capture (Win+Maj+S)": "no image copied: take your capture first (Win+Shift+S)",
+"Ticket préparé": "Ticket prepared",
+"(en charge)": "(charging)",
+"le service audio de Windows ne répond pas": "the Windows audio service is not responding",
+"Windows refuse de changer la sortie audio d'ici (interface interne absente)": "Windows refuses to change the audio output from here (internal interface missing)",
+"pas de périphérique audio (hors Windows)": "no audio device (non-Windows)",
+"Écran intégré": "Built-in display",
+"pas d'écran intégré réglable": "no adjustable built-in display",
+"WMI ne répond pas": "WMI is not responding",
+"écran débranché ?": "display unplugged?",
+"cet écran ne se règle pas depuis Windows (DDC/CI coupé dans son menu ?)": "this display can't be adjusted from Windows (DDC/CI turned off in its menu?)",
+"l'écran n'a pas accepté le réglage": "the display did not accept the adjustment",
+"pas d'écran réglable (hors Windows)": "no adjustable display (non-Windows)",
+"aucun lecteur en cours": "no player running",
+"le lecteur a refusé la commande": "the player refused the command",
+"image abîmée": "damaged image",
+"Windows refuse : l'accès aux radios est coupé dans Paramètres > Confidentialité": "Windows refuses: radio access is turned off in Settings > Privacy",
+"Windows refuse que l'île change les radios": "Windows won't let the island change the radios",
+"Windows n'a pas autorisé le changement": "Windows did not allow the change",
+"aucune radio de ce type sur ce PC": "no radio of this type on this PC",
+"pas de radio (hors Windows)": "no radio (non-Windows)",
+"mémoire indisponible": "memory unavailable",
+"le presse-papiers est occupé, réessaie": "the clipboard is busy, try again",
+"aucune fenêtre où coller": "no window to paste into",
+"Windows a refusé la frappe simulée": "Windows refused the simulated keystroke",
+"ouverture en administrateur annulée": "opening as administrator cancelled",
+"introuvable (déplacé ou supprimé ?)": "not found (moved or deleted?)",
+"accès refusé": "access denied",
+"aucune application n'ouvre ce type de fichier": "no application opens this type of file",
+"Windows refuse (fenêtre d'une appli lancée en administrateur ?)": "Windows refuses (window of an app launched as administrator?)",
+"canal refusé : ce n'est pas l'île de ton compte qui répond": "channel refused: the island answering is not your account's",
+"la fenêtre de cette session est introuvable (fermée ?)": "this session's window was not found (closed?)",
+"Windows a refusé de passer à cette fenêtre": "Windows refused to switch to this window",
+"le Gestionnaire d'identifiants n'existe que sous Windows": "Credential Manager only exists on Windows",
+"adresse refusée : il faut un lien qui commence par https:// (l'adresse secrète iCal de ton agenda)": "address refused: it must be a link starting with https:// (your calendar's secret iCal address)",
+"impossible de copier un dossier dans lui-même": "can't copy a folder into itself",
+"impossible de déplacer un dossier dans lui-même": "can't move a folder into itself",
+"restauration depuis la Corbeille non prise en charge ici": "restoring from the Recycle Bin is not supported here",
+"rien à compresser": "nothing to compress",
+"chemin refusé : il doit être absolu": "path refused: it must be absolute",
+"chemin refusé : il se trouve dans un dossier exclu": "path refused: it is inside an excluded folder",
+"indique le chemin complet d'un dossier existant": "enter the full path of an existing folder",
+"le fichier ne contient pas un objet de réglages": "the file does not contain a settings object",
+"trop tard : l'action n'est plus annulable": "too late: the action can no longer be undone",
+"l'annulation a planté": "the undo crashed",
+"Ouvrir le dossier du journal": "Open the log folder",
+"Langue": "Language",
+"Automatique": "Automatic",
+"Automatique : la langue choisie à l'installation, sinon celle de Windows. Les fenêtres se rechargent.": "Automatic: the language chosen during installation, otherwise Windows' language. Windows reload."
+},
+"patterns": [
+[
+"^Autoriser\\ /\\ Refuser\\ depuis\\ l'île\\ \\((.+?)\\)\\ :\\ quand\\ (.+?)\\ demande\\ une\\ permission,\\ l'île\\ montre\\ la\\ commande\\ avec\\ «\\ Autoriser\\ »\\ \\(à\\ confirmer\\)\\ et\\ «\\ Refuser\\ »\\.\\ Sans\\ réponse\\ à\\ temps,\\ la\\ question\\ passe\\ au\\ terminal\\.\\ Colle\\ ce\\ hook\\ en\\ plus,\\ de\\ la\\ même\\ façon\\.$",
+"Allow / Deny from the island ($1): when $2 asks for a permission, the island shows the command with \"Allow\" (to confirm) and \"Deny\". If there's no reply in time, the question falls back to the terminal. Paste this hook in addition, the same way."
+],
+[
+"^(.+?)\\ est\\ sur\\ un\\ lecteur\\ sans\\ Corbeille\\ \\(clé\\ USB,\\ réseau…\\)\\ :\\ l'île\\ ne\\ supprime\\ jamais\\ définitivement,\\ fais\\-le\\ toi\\-même\\ si\\ tu\\ es\\ sûr$",
+"$1 is on a drive without a Recycle Bin (USB stick, network…): the island never deletes permanently, do it yourself if you're sure"
+],
+[
+"^«\\ \\.(.+?)\\ »\\ n'est\\ pas\\ pris\\ en\\ charge\\ :\\ un\\ fichier\\ texte\\ \\(\\.txt,\\ \\.log,\\ code…\\)\\ ou\\ une\\ image\\ \\(\\.png,\\ \\.jpg\\)$",
+"“.$1” is not supported: use a text file (.txt, .log, code…) or an image (.png, .jpg)"
+],
+[
+"^(.+?)\\ est\\ déjà\\ utilisé\\ par\\ un\\ autre\\ logiciel\\ :\\ choisis\\ un\\ autre\\ raccourci\\ dans\\ les\\ réglages\\ du\\ Lanceur$",
+"$1 is already used by another program: pick another shortcut in the Launcher settings"
+],
+[
+"^(.+?)\\ est\\ déjà\\ pris\\ par\\ un\\ autre\\ logiciel\\ :\\ choisis\\ un\\ autre\\ raccourci\\ dans\\ les\\ réglages\\ de\\ Contrôles$",
+"$1 is already taken by another program: pick another shortcut in the Controls settings"
+],
+[
+"^(.+?)\\ a\\ été\\ mis\\ à\\ l'écart\\ après\\ trois\\ plantages\\.\\ Il\\ revient\\ au\\ prochain\\ démarrage\\ de\\ l'appli\\.$",
+"$1 was sidelined after three crashes. It will return at the app's next launch."
+],
+[
+"^(.+?)\\ est\\ déjà\\ pris\\ par\\ un\\ autre\\ logiciel\\ :\\ choisis\\ un\\ autre\\ raccourci\\ dans\\ Réglages\\ >\\ Général$",
+"$1 is already taken by another program: pick another shortcut in Settings > General"
+],
+[
+"^⏳\\ Pas\\ de\\ réponse\\ de\\ (.+?)\\ sur\\ le\\ port\\ (.+?)\\ :\\ serveur\\ éteint,\\ ou\\ un\\ pare\\-feu\\ bloque$",
+"⏳ No response from $1 on port $2: server is off, or a firewall is blocking"
+],
+[
+"^Colle\\-le\\ dans\\ (.+?),\\ puis\\ active\\ le\\ réglage\\ «\\ Autoriser\\ /\\ Refuser\\ depuis\\ l'île\\ »\\.$",
+"Paste it into $1, then turn on the \"Allow / Deny from the island\" setting."
+],
+[
+"^Règle\\ «\\ (.+?)\\ »\\ supprimée\\ \\(«\\ Annuler\\ »\\ dans\\ l'île\\ pendant\\ quelques\\ secondes\\)\\.$",
+"Rule “$1” deleted (“Undo” in the island for a few seconds)."
+],
+[
+"^le\\ serveur\\ refuse\\ cette\\ adresse\\ \\(code\\ (.+?)\\)\\ :\\ recopie\\ l'adresse\\ secrète\\ iCal$",
+"the server refuses this address (code $1): copy the secret iCal address again"
+],
+[
+"^(.+?)\\ minutes\\ d'écran\\ :\\ lève\\-toi,\\ regarde\\ au\\ loin,\\ bois\\ un\\ verre\\ d'eau\\.$",
+"$1 minutes of screen time: stand up, look into the distance, drink a glass of water."
+],
+[
+"^déplacement\\ impossible\\ :\\ (.+?)\\ \\(copie\\ incomplète\\ laissée\\ dans\\ (.+?)\\)$",
+"unable to move: $1 (incomplete copy left in $2)"
+],
+[
+"^⛔\\ Port\\ (.+?)\\ fermé\\ :\\ (.+?)\\ répond,\\ mais\\ rien\\ n'écoute\\ sur\\ ce\\ port$",
+"⛔ Port $1 closed: $2 responds, but nothing is listening on this port"
+],
+[
+"^(.+?)\\ ne\\ remplit\\ pas\\ les\\ conditions\\ :\\ la\\ règle\\ ne\\ ferait\\ rien\\.$",
+"$1 does not meet the conditions: the rule would do nothing."
+],
+[
+"^copié,\\ mais\\ l'original\\ n'a\\ pas\\ pu\\ aller\\ à\\ la\\ Corbeille\\ :\\ (.+?)$",
+"copied, but the original could not be sent to the Recycle Bin: $1"
+],
+[
+"^(.+?)\\ :\\ pas\\ une\\ image\\ lisible\\ \\(PNG,\\ JPEG,\\ WebP,\\ BMP\\ ou\\ GIF\\)$",
+"$1: not a readable image (PNG, JPEG, WebP, BMP or GIF)"
+],
+[
+"^le\\ module\\ (.+?)\\ a\\ été\\ mis\\ à\\ l'écart\\ après\\ plusieurs\\ plantages$",
+"module $1 was sidelined after several crashes"
+],
+[
+"^(.+?)\\ pour\\ ouvrir\\ ·\\ ↑\\ ↓\\ pour\\ choisir\\ ·\\ Entrée\\ pour\\ ouvrir$",
+"$1 to open · ↑ ↓ to choose · Enter to open"
+],
+[
+"^Processeur\\ :\\ (.+?)\\ \\((.+?)\\ cœurs\\ logiques\\),\\ (.+?)\\ %\\ utilisé$",
+"Processor: $1 ($1 logical cores), $1 % used"
+],
+[
+"^le\\ serveur\\ a\\ répondu\\ (.+?),\\ nouvel\\ essai\\ dans\\ 15\\ minutes$",
+"the server answered $1, retrying in 15 minutes"
+],
+[
+"^écris\\ un\\ modèle\\ de\\ nom,\\ par\\ exemple\\ «\\ vacances\\-(.+?)\\ »$",
+"write a name pattern, for example “holidays-$1”"
+],
+[
+"^l'outil\\ Capture\\ d'écran\\ ne\\ s'ouvre\\ pas\\ \\(code\\ (.+?)\\)$",
+"the Snipping Tool does not open (code $1)"
+],
+[
+"^(.+?)\\ ne\\ s'ouvre\\ pas\\ en\\ administrateur\\ \\(code\\ (.+?)\\)$",
+"$1 does not open as administrator (code $2)"
+],
+[
+"^Plus\\ que\\ (.+?)\\ %\\ :\\ pense\\ à\\ brancher\\ le\\ chargeur\\.$",
+"Only $1% left: remember to plug in the charger."
+],
+[
+"^Rien\\ de\\ prévu\\ dans\\ les\\ (.+?)\\ prochains\\ jours\\.\\ 🌴$",
+"Nothing planned in the next $1 days. 🌴"
+],
+[
+"^le\\ module\\ (.+?)\\ n'a\\ pas\\ la\\ permission\\ «\\ (.+?)\\ »$",
+"module $1 does not have the “$2” permission"
+],
+[
+"^impossible\\ de\\ créer\\ le\\ dossier\\ du\\ ticket\\ :\\ (.+?)$",
+"unable to create the ticket folder: $1"
+],
+[
+"^(.+?)\\ image\\(s\\)\\ créée\\(s\\)\\ à\\ côté\\ des\\ originales$",
+"$1 image(s) created next to the originals"
+],
+[
+"^(.+?)\\ traqueur(.+?)\\ retiré(.+?)\\ \\(utm,\\ fbclid…\\)\\.$",
+"$1 tracker$2 removed (utm, fbclid…)."
+],
+[
+"^impossible\\ de\\ renommer\\ (.+?)\\ :\\ rien\\ n'a\\ changé$",
+"unable to rename $1: nothing changed"
+],
+[
+"^(.+?)\\ est\\ déjà\\ utilisé\\ par\\ un\\ autre\\ logiciel$",
+"$1 is already used by another program"
+],
+[
+"^Disque\\ (.+?)\\ :\\ (.+?)\\ Go\\ libres\\ sur\\ (.+?)\\ Go$",
+"Disk $1: $1 GB free of $1 GB"
+],
+[
+"^le\\ raccourci\\ micro\\ (.+?)\\ est\\ refusé\\ :\\ (.+?)$",
+"the microphone shortcut $1 was refused: $2"
+],
+[
+"^(.+?)\\ ne\\ déclare\\ pas\\ la\\ commande\\ «\\ (.+?)\\ »$",
+"$1 does not declare the command “$2”"
+],
+[
+"^le\\ module\\ (.+?)\\ a\\ planté\\ pendant\\ «\\ (.+?)\\ »$",
+"module $1 crashed during “$2”"
+],
+[
+"^texte\\ trop\\ long\\ \\(au\\ plus\\ (.+?)\\ caractères\\)$",
+"text too long (at most $1 characters)"
+],
+[
+"^(.+?)\\ a\\ rencontré\\ une\\ erreur\\ \\((.+?)/(.+?)\\)$",
+"$1 ran into an error ($2/$3)"
+],
+[
+"^✅\\ Port\\ (.+?)\\ ouvert\\ sur\\ (.+?)\\ \\((.+?)\\ ms\\)$",
+"✅ Port $1 open on $2 ($3 ms)"
+],
+[
+"^Renommer\\ en\\ «\\ (.+?)\\ »\\ \\(exemple\\ de\\ date\\)$",
+"Rename to “$1” (date example)"
+],
+[
+"^«\\ (.+?)\\ »\\ est\\ un\\ nom\\ réservé\\ par\\ Windows$",
+"“$1” is a name reserved by Windows"
+],
+[
+"^(.+?)\\ notifications\\ pendant\\ ta\\ présentation$",
+"$1 notifications during your presentation"
+],
+[
+"^·\\ min\\ (.+?)\\ /\\ moy\\ (.+?)\\ /\\ max\\ (.+?)\\ ms$",
+"· min $1 / avg $2 / max $3 ms"
+],
+[
+"^Mémoire\\ :\\ (.+?)\\ Go\\ utilisés\\ sur\\ (.+?)\\ Go$",
+"Memory: $1 GB used of $1 GB"
+],
+[
+"^Windows\\ ne\\ liste\\ pas\\ les\\ radios\\ \\((.+?)\\)$",
+"Windows doesn't list the radios ($1)"
+],
+[
+"^(.+?)\\ élément\\(s\\)\\ posé\\(s\\)\\ sur\\ l'étagère$",
+"$1 item(s) put on the Shelf"
+],
+[
+"^réponse\\ illisible\\ de\\ l'API\\ \\(code\\ (.+?)\\)$",
+"unreadable response from the API (code $1)"
+],
+[
+"^(.+?)\\ tâche\\(s\\)\\ terminée\\(s\\)\\ retirée\\(s\\)$",
+"$1 completed task(s) removed"
+],
+[
+"^(.+?)\\ a\\ lancé\\ un\\ minuteur\\ de\\ (.+?)\\ min$",
+"$1 started a $2 min timer"
+],
+[
+"^Quand\\ un\\ fichier\\ arrive\\ dans\\ (.+?)(.+?)$",
+"When a file arrives in $1$2"
+],
+[
+"^«\\ (.+?)\\ »\\ existe\\ déjà\\ dans\\ ce\\ dossier$",
+"“$1” already exists in this folder"
+],
+[
+"^réglage\\ du\\ volume\\ indisponible\\ \\((.+?)\\)$",
+"volume control unavailable ($1)"
+],
+[
+"^le\\ raccourci\\ (.+?)\\ est\\ refusé\\ :\\ (.+?)$",
+"the shortcut $1 was refused: $2"
+],
+[
+"^le\\ raccourci\\ (.+?)\\ est\\ refusé\\ :\\ (.+?)$",
+"the shortcut $1 was refused: $2"
+],
+[
+"^écriture\\ du\\ ticket\\ impossible\\ :\\ (.+?)$",
+"unable to write the ticket: $1"
+],
+[
+"^Windows\\ a\\ refusé\\ le\\ réglage\\ \\((.+?)\\)$",
+"Windows refused the adjustment ($1)"
+],
+[
+"^changement\\ de\\ sortie\\ refusé\\ \\((.+?)\\)$",
+"output change refused ($1)"
+],
+[
+"^Confirmer\\ :\\ (.+?)\\ peut\\ le\\ faire\\ \\?$",
+"Confirm: can $1 do this?"
+],
+[
+"^impossible\\ de\\ joindre\\ l'API\\ :\\ (.+?)$",
+"unable to reach the API: $1"
+],
+[
+"^lecture\\ du\\ texte\\ impossible\\ :\\ (.+?)$",
+"unable to read the text: $1"
+],
+[
+"^(.+?)\\ n'est\\ pas\\ installé\\ sur\\ ce\\ PC$",
+"$1 is not installed on this PC"
+],
+[
+"^(.+?)\\ résultat(.+?)\\ pour\\ «\\ (.+?)\\ »$",
+"$1 result$2 for “$3”"
+],
+[
+"^Historique\\ vidé\\ \\((.+?)\\ copie\\(s\\)\\)$",
+"History cleared ($1 cop(ies))"
+],
+[
+"^Étagère\\ vidée\\ \\((.+?)\\ élément\\(s\\)\\)$",
+"Shelf cleared ($1 item(s))"
+],
+[
+"^Réseau\\ (.+?)\\ :\\ (.+?)\\ \\(MAC\\ (.+?)\\)$",
+"Network $1: $1 (MAC $1)"
+],
+[
+"^(.+?)\\ n'est\\ plus\\ dans\\ la\\ Corbeille$",
+"$1 is no longer in the Recycle Bin"
+],
+[
+"^archive\\ impossible\\ à\\ créer\\ :\\ (.+?)$",
+"unable to create the archive: $1"
+],
+[
+"^impossible\\ de\\ créer\\ (.+?)\\ :\\ (.+?)$",
+"unable to create $1: $2"
+],
+[
+"^«\\ (.+?)\\ »\\ est\\ introuvable\\ \\(DNS\\)$",
+"“$1” not found (DNS)"
+],
+[
+"^type\\ de\\ connexion\\ inconnu\\ :\\ (.+?)$",
+"unknown connection type: $1"
+],
+[
+"^au\\ plus\\ (.+?)\\ fichiers\\ à\\ la\\ fois$",
+"at most $1 files at a time"
+],
+[
+"^copie\\ de\\ (.+?)\\ impossible\\ :\\ (.+?)$",
+"unable to copy $1: $2"
+],
+[
+"^(.+?)\\ n'est\\ plus\\ au\\ premier\\ plan$",
+"$1 is no longer on top"
+],
+[
+"^l'île\\ n'est\\ pas\\ ouverte\\ \\((.+?)\\)$",
+"the island is not open ($1)"
+],
+[
+"^Lancer\\ un\\ minuteur\\ de\\ (.+?)\\ min$",
+"Start a $1 min timer"
+],
+[
+"^(.+?)\\ image\\(s\\)\\ non\\ traitée\\(s\\)$",
+"$1 image(s) not processed"
+],
+[
+"^Il\\ reste\\ (.+?)\\ Go\\ \\((.+?)\\ %\\)\\.$",
+"$1 GB left ($2%)."
+],
+[
+"^Lancer\\ un\\ minuteur\\ de\\ (.+?)\\ min$",
+"Start a $1 min timer"
+],
+[
+"^Texte\\ copié\\ \\((.+?)\\ caractères\\)$",
+"Text copied ($1 characters)"
+],
+[
+"^(.+?)\\ envoyés\\ ·\\ (.+?)\\ %\\ perdus$",
+"$1 sent · $2% lost"
+],
+[
+"^(.+?)\\ ms,\\ (.+?),\\ priorité\\ (.+?)$",
+"$1 ms, $2, priority $3"
+],
+[
+"^Règle\\ «\\ (.+?)\\ »\\ mise\\ en\\ pause$",
+"Rule “$1” paused"
+],
+[
+"^Ouvrir\\ l'île\\ sur\\ l'onglet\\ (.+?)$",
+"Open the island on the $1 tab"
+],
+[
+"^Système\\ :\\ (.+?)\\ \\(build\\ (.+?)\\)$",
+"System: $1 (build $1)"
+],
+[
+"^(.+?)\\ \\(glisser\\ pour\\ déplacer\\)$",
+"$1 (drag to move)"
+],
+[
+"^Test\\ du\\ port\\ (.+?)\\ sur\\ (.+?)…$",
+"Testing port $1 on $2…"
+],
+[
+"^Adresses\\ de\\ (.+?)\\ \\((.+?)\\ ms\\)$",
+"Addresses of $1 ($2 ms)"
+],
+[
+"^Retirer\\ les\\ terminées\\ \\((.+?)\\)$",
+"Remove completed ($1)"
+],
+[
+"^id\\ de\\ module\\ invalide\\ :\\ (.+?)$",
+"invalid module id: $1"
+],
+[
+"^raccourci\\ (.+?)\\ refusé\\ :\\ (.+?)$",
+"shortcut $1 refused: $2"
+],
+[
+"^sujet\\ de\\ bus\\ invalide\\ :\\ (.+?)$",
+"invalid bus topic: $1"
+],
+[
+"^✏️\\ Renommer\\ (.+?)\\ fichier\\(s\\)$",
+"✏️ Rename $1 file(s)"
+],
+[
+"^(.+?)(.+?)\\ ·\\ (.+?)\\ séance\\(s\\)$",
+"$1$2 · $3 session(s)"
+],
+[
+"^Rien\\ trouvé\\ pour\\ «\\ (.+?)\\ »\\.$",
+"Nothing found for “$1”."
+],
+[
+"^Règle\\ «\\ (.+?)\\ »\\ enregistrée\\.$",
+"Rule “$1” saved."
+],
+[
+"^le\\ module\\ (.+?)\\ est\\ désactivé$",
+"module $1 is disabled"
+],
+[
+"^(.+?)\\ remplit\\ les\\ conditions\\.$",
+"$1 meets the conditions."
+],
+[
+"^(.+?)\\ fichier\\(s\\)\\ renommé\\(s\\)$",
+"$1 file(s) renamed"
+],
+[
+"^(.+?)\\ ne\\ s'ouvre\\ pas\\ :\\ (.+?)$",
+"$1 does not open: $2"
+],
+[
+"^ne\\ s'ouvre\\ pas\\ \\(code\\ (.+?)\\)$",
+"does not open (code $1)"
+],
+[
+"^déplacement\\ impossible\\ :\\ (.+?)$",
+"unable to move: $1"
+],
+[
+"^(.+?)\\ a\\ rencontré\\ une\\ erreur$",
+"$1 ran into an error"
+],
+[
+"^Texte\\ lu\\ \\((.+?)\\ caractères\\)$",
+"Text read ($1 characters)"
+],
+[
+"^paramètre\\ «\\ (.+?)\\ »\\ manquant$",
+"missing parameter “$1”"
+],
+[
+"^(.+?)\\ déplacé\\(s\\)\\ dans\\ (.+?)$",
+"$1 moved to $1"
+],
+[
+"^(.+?)\\ reste\\ au\\ premier\\ plan$",
+"$1 stays on top"
+],
+[
+"^(.+?)\\ demande\\ une\\ permission$",
+"$1 is asking for permission"
+],
+[
+"^(.+?)\\ a\\ été\\ mis\\ à\\ l'écart$",
+"$1 has been sidelined"
+],
+[
+"^Demain\\ :\\ (.+?)\\ rendez\\-vous$",
+"Tomorrow: $1 appointments"
+],
+[
+"^(.+?)\\ n'est\\ pas\\ un\\ dossier$",
+"$1 is not a folder"
+],
+[
+"^Snippet\\ «\\ (.+?)\\ »\\ supprimé$",
+"Snippet “$1” deleted"
+],
+[
+"^commande\\ non\\ gérée\\ :\\ (.+?)$",
+"unhandled command: $1"
+],
+[
+"^(.+?)\\ copié\\(s\\)\\ dans\\ (.+?)$",
+"$1 copied to $1"
+],
+[
+"^⬆\\ Ce\\ qui\\ part\\ vers\\ (.+?)$",
+"⬆ What's going to $1"
+],
+[
+"^Nom\\ de\\ (.+?)\\ \\((.+?)\\ ms\\)$",
+"Name of $1 ($2 ms)"
+],
+[
+"^Disque\\ (.+?)\\ presque\\ plein$",
+"Disk $1 almost full"
+],
+[
+"^(.+?)\\ questions\\ en\\ attente$",
+"$1 questions pending"
+],
+[
+"^Règle\\ «\\ (.+?)\\ »\\ supprimée$",
+"Rule “$1” deleted"
+],
+[
+"^réglages\\ invalides\\ :\\ (.+?)$",
+"invalid settings: $1"
+],
+[
+"^événement\\ inconnu\\ :\\ (.+?)$",
+"unknown event: $1"
+],
+[
+"^(.+?)\\ tâche\\(s\\)\\ à\\ faire$",
+"$1 task(s) to do"
+],
+[
+"^Quand\\ j'appuie\\ sur\\ (.+?)$",
+"When I press $1"
+],
+[
+"^(.+?)\\ Go\\ libres\\ /\\ (.+?)$",
+"$1 GB free / $2"
+],
+[
+"^Régler\\ sur\\ (.+?)\\ minutes$",
+"Set to $1 minutes"
+],
+[
+"^Agenda\\ en\\ ligne\\ :\\ (.+?)$",
+"Online calendar: $1"
+],
+[
+"^droits\\ du\\ canal\\ :\\ (.+?)$",
+"channel permissions: $1"
+],
+[
+"^en\\ cours,\\ jusqu'à\\ (.+?)$",
+"ongoing, until $1"
+],
+[
+"^Dans\\ (.+?)\\ min\\ :\\ (.+?)$",
+"In $1 min: $2"
+],
+[
+"^Ouvrir\\ (.+?)\\ dans\\ (.+?)$",
+"Open $1 in $2"
+],
+[
+"^🎧\\ Concentration(.+?)(.+?)$",
+"🎧 Focus$1$2"
+],
+[
+"^(.+?)\\ répond\\ de\\ nouveau$",
+"$1 is responding again"
+],
+[
+"^Réglages\\ —\\ Ondine\\ (.+?)$",
+"Settings — Ondine $1"
+],
+[
+"^(.+?)\\ a\\ fini\\ une\\ tâche$",
+"$1 finished a task"
+],
+[
+"^(.+?)\\ attend\\ ta\\ réponse$",
+"$1 is waiting for your answer"
+],
+[
+"^règle\\ illisible\\ :\\ (.+?)$",
+"unreadable rule: $1"
+],
+[
+"^Le\\ son\\ sort\\ sur\\ (.+?)$",
+"Sound plays on $1"
+],
+[
+"^🌍\\ IP\\ publique\\ :\\ (.+?)$",
+"🌍 Public IP: $1"
+],
+[
+"^renommer\\ en\\ «\\ (.+?)\\ »$",
+"rename to “$1”"
+],
+[
+"^état\\ illisible\\ :\\ (.+?)$",
+"unreadable state: $1"
+],
+[
+"^Colle\\-la\\ dans\\ (.+?)\\.$",
+"Paste it into $1."
+],
+[
+"^travaille\\ depuis\\ (.+?)$",
+"working for $1"
+],
+[
+"^(.+?)\\ \\+\\ (.+?)\\ jetons$",
+"$1 + $2 tokens"
+],
+[
+"^…\\ et\\ (.+?)\\ autre\\(s\\)$",
+"… and $1 more"
+],
+[
+"^Import\\ refusé\\ :\\ (.+?)$",
+"Import refused: $1"
+],
+[
+"^«\\ (.+?)\\ »\\ enregistrée$",
+"“$1” saved"
+],
+[
+"^minuteur\\ de\\ (.+?)\\ min$",
+"$1 min timer"
+],
+[
+"^Allumé\\ depuis\\ :\\ (.+?)$",
+"Up since: $1"
+],
+[
+"^✋\\ (.+?)\\ t'attend(.+?)$",
+"✋ $1 waiting for you"
+],
+[
+"^t'attend\\ depuis\\ (.+?)$",
+"waiting for you for $1"
+],
+[
+"^(.+?)\\ ne\\ répond\\ plus$",
+"$1 is no longer responding"
+],
+[
+"^Tester\\ le\\ port\\ (.+?)$",
+"Test port $1"
+],
+[
+"^Se\\ connecter\\ à\\ (.+?)$",
+"Connect to $1"
+],
+[
+"^ouvrir\\ l'onglet\\ (.+?)$",
+"open the $1 tab"
+],
+[
+"^au\\ plus\\ (.+?)\\ règles$",
+"at most $1 rules"
+],
+[
+"^(.+?)\\ à\\ la\\ Corbeille$",
+"$1 sent to the Recycle Bin"
+],
+[
+"^clé\\ inconnue\\ :\\ (.+?)$",
+"unknown key: $1"
+],
+[
+"^VPN\\ branché\\ :\\ (.+?)$",
+"VPN connected: $1"
+],
+[
+"^nom\\ avec\\ «\\ (.+?)\\ »$",
+"name with “$1”"
+],
+[
+"^(.+?)\\ chemins\\ copiés$",
+"$1 paths copied"
+],
+[
+"^dans\\ (.+?)\\ h\\ (.+?)$",
+"in $1 h $2"
+],
+[
+"^·\\ (.+?)\\ en\\ attente$",
+"· $1 waiting"
+],
+[
+"^❓\\ (.+?)\\ te\\ demande$",
+"❓ $1 is asking you"
+],
+[
+"^🧠\\ (.+?)\\ au\\ travail$",
+"🧠 $1 working"
+],
+[
+"^Recherche\\ de\\ (.+?)…$",
+"Looking up $1…"
+],
+[
+"^Répond\\ \\((.+?)\\ ms\\)$",
+"Responding ($1 ms)"
+],
+[
+"^déplacer\\ dans\\ (.+?)$",
+"move to $1"
+],
+[
+"^notifier\\ «\\ (.+?)\\ »$",
+"notify “$1”"
+],
+[
+"^Déplacer\\ dans\\ (.+?)$",
+"Move to $1"
+],
+[
+"^Maintenant\\ :\\ (.+?)$",
+"Now: $1"
+],
+[
+"^il\\ y\\ a\\ (.+?)\\ min$",
+"$1 min ago"
+],
+[
+"^Ouvrir\\ (.+?)\\ dans…$",
+"Open $1 in…"
+],
+[
+"^Luminosité\\ :\\ (.+?)$",
+"Brightness: $1"
+],
+[
+"^VPN\\ coupé\\ :\\ (.+?)$",
+"VPN disconnected: $1"
+],
+[
+"^minuteur\\ (.+?)\\ min$",
+"timer $1 min"
+],
+[
+"^Exporté\\ dans\\ (.+?)$",
+"Exported to $1"
+],
+[
+"^désactivée\\ :\\ (.+?)$",
+"disabled: $1"
+],
+[
+"^déplacé\\ dans\\ (.+?)$",
+"moved to $1"
+],
+[
+"^copier\\ dans\\ (.+?)$",
+"copy to $1"
+],
+[
+"^(.+?)\\ élément\\(s\\)$",
+"$1 item(s)"
+],
+[
+"^(.+?)\\ \\(invalide\\)$",
+"$1 (invalid)"
+],
+[
+"^(.+?)\\ existe\\ déjà$",
+"$1 already exists"
+],
+[
+"^(.+?)\\ te\\ demande$",
+"$1 is asking you"
+],
+[
+"^encore\\ (.+?)\\ min$",
+"$1 min left"
+],
+[
+"^il\\ y\\ a\\ (.+?)\\ h$",
+"$1 h ago"
+],
+[
+"^copié\\ dans\\ (.+?)$",
+"copied to $1"
+],
+[
+"^renommé\\ en\\ (.+?)$",
+"renamed to $1"
+],
+[
+"^Contenu\\ :\\ (.+?)$",
+"Content: $1"
+],
+[
+"^(.+?)\\ impossible$",
+"$1 failed"
+],
+[
+"^(.+?)\\ interrompu$",
+"$1 interrupted"
+],
+[
+"^(.+?)\\ Go\\ libres$",
+"$1 GB free"
+],
+[
+"^Caméra\\ :\\ (.+?)$",
+"Camera: $1"
+],
+[
+"^dans\\ (.+?)\\ min$",
+"in $1 min"
+],
+[
+"^Volume\\ :\\ (.+?)$",
+"Volume: $1"
+],
+[
+"^Descendre\\ (.+?)$",
+"Move $1 down"
+],
+[
+"^Micro\\ :\\ (.+?)$",
+"Mic: $1"
+],
+[
+"^(.+?)\\ fichiers$",
+"$1 files"
+],
+[
+"^(.+?)\\ à\\ venir$",
+"$1 upcoming"
+],
+[
+"^(.+?)\\ à\\ faire$",
+"$1 to do"
+],
+[
+"^Modifiée\\ (.+?)$",
+"Edited $1"
+],
+[
+"^(.+?)\\ écoulées$",
+"$1 elapsed"
+],
+[
+"^Règle\\ :\\ (.+?)$",
+"Rule: $1"
+],
+[
+"^(.+?)\\ éléments$",
+"$1 items"
+],
+[
+"^dans\\ (.+?)\\ h$",
+"in $1 h"
+],
+[
+"^jusqu'à\\ (.+?)$",
+"until $1"
+],
+[
+"^a\\ fini\\ (.+?)$",
+"finished $1"
+],
+[
+"^Activer\\ (.+?)$",
+"Enable $1"
+],
+[
+"^Retirer\\ (.+?)$",
+"Remove $1"
+],
+[
+"^Projet\\ (.+?)$",
+"Project $1"
+],
+[
+"^Lancer\\ (.+?)$",
+"Launch $1"
+],
+[
+"^onglet\\ (.+?)$",
+"tab $1"
+],
+[
+"^Ouvrir\\ (.+?)$",
+"Open $1"
+],
+[
+"^Ouvrir\\ (.+?)$",
+"Open $1"
+],
+[
+"^Monter\\ (.+?)$",
+"Move $1 up"
+],
+[
+"^(.+?)\\ cœurs$",
+"$1 cores"
+],
+[
+"^Tour\\ (.+?)$",
+"Lap $1"
+],
+[
+"^(.+?)\\ jeté$",
+"$1 discarded"
+],
+[
+"^(.+?)\\ créé$",
+"$1 created"
+]
+]
+}

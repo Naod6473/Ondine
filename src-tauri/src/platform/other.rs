@@ -182,6 +182,10 @@ pub fn presentation_busy() -> bool {
     false
 }
 
+pub fn system_language() -> &'static str {
+    if std::env::var("LANG").unwrap_or_default().starts_with("fr") { "fr" } else { "en" }
+}
+
 pub fn user_window(_app: &AppHandle) -> Option<isize> {
     None
 }

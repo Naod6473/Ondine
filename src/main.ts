@@ -9,6 +9,7 @@ import { errorText, logger } from "./core/log";
 import { ModuleRegistry } from "./core/module-registry";
 import { NotificationQueue } from "./core/notifications";
 import { settingsStore } from "./core/settings-store";
+import { startI18n } from "./core/i18n";
 import { Island } from "./island/island";
 import { ALL_MODULES } from "./modules";
 
@@ -21,6 +22,7 @@ window.addEventListener("unhandledrejection", (e) => log.error(`promesse rejeté
 async function start() {
   const boot = await Bridge.boot();
   await settingsStore.connect(boot?.settings ?? null);
+  await startI18n();
 
   const bus = new Bus(windowLabel("island"));
   await bus.connect();

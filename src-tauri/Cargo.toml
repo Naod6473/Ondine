@@ -105,6 +105,8 @@ windows = { version = "0.61", features = [
   "Win32_Devices_Display",
   # Contrôles : qui utilise le micro / la caméra (registre « ConsentStore »).
   "Win32_System_Registry",
+  # Langue de Windows (GetUserDefaultUILanguage) pour la langue « auto ».
+  "Win32_Globalization",
   # Réseau : Internet joignable ? (NetworkListManager) et VPN branchés (cartes réseau).
   "Win32_Networking_NetworkListManager",
   "Win32_NetworkManagement_Ndis",

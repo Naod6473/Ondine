@@ -208,6 +208,20 @@ struct DeskState {
     busy: bool,
 }
 
+/// La langue de l'interface, "fr" ou "en" (le réglage, ou « auto » résolu).
+pub fn app_language(settings: &settings::Settings) -> &'static str {
+    match settings.general.language.as_str() {
+        "fr" => "fr",
+        "en" => "en",
+        _ => platform::system_language(),
+    }
+}
+
+#[tauri::command]
+fn ui_language(shared: State<Shared>) -> &'static str {
+    app_language(&shared.settings.locked())
+}
+
 #[tauri::command]
 fn desk_state() -> DeskState {
     DeskState { idle_ms: platform::idle_ms(), busy: platform::presentation_busy() }
@@ -429,6 +443,7 @@ pub fn run() {
             island_reposition,
             island_drag_start,
             desk_state,
+            ui_language,
             log_write,
             logs_open_folder,
             credential_exists,
@@ -443,7 +458,7 @@ pub fn run() {
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
-            tray::build(&handle)?;
+            tray::build(&handle, app_language(&loaded) == "en")?;
             // Avant l'île : voir create_hidden_window.
             create_hidden_window(&handle, "settings", "settings.html", "Réglages — Ondine", (760.0, 720.0), (560.0, 480.0), true);
             create_hidden_window(&handle, "annotate", "annotate.html", "Annoter — Ondine", (1100.0, 760.0), (640.0, 420.0), false);

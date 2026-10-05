@@ -87,6 +87,38 @@ pub fn cursor_physical() -> Option<(f64, f64)> {
     Some((p.x as f64, p.y as f64))
 }
 
+/// La langue de l'interface quand le réglage vaut « auto » : celle choisie dans
+/// l'installateur (il l'écrit dans HKCU\Software\Ondine, voir
+/// windows/hooks.nsh), sinon celle de Windows. "fr" ou "en".
+pub fn system_language() -> &'static str {
+    use ::windows::core::HSTRING;
+    use ::windows::Win32::Globalization::GetUserDefaultUILanguage;
+    use ::windows::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_SZ};
+    // LANGID de l'installateur, en texte (ex. « 1036 » = français, « 1033 » = anglais).
+    let mut buf = [0u16; 16];
+    let mut size = (buf.len() * 2) as u32;
+    let found = unsafe {
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            &HSTRING::from(r"Software\Ondine"),
+            &HSTRING::from("InstallLanguage"),
+            RRF_RT_REG_SZ,
+            None,
+            Some(buf.as_mut_ptr() as *mut _),
+            Some(&mut size),
+        )
+    }
+    .is_ok();
+    let langid: u16 = if found {
+        let text = String::from_utf16_lossy(&buf[..(size as usize / 2).saturating_sub(1)]);
+        text.trim().parse().unwrap_or(0)
+    } else {
+        unsafe { GetUserDefaultUILanguage() }
+    };
+    // Les 10 bits du bas = la langue principale ; 0x0C = français (France, Belgique, Canada, Suisse…).
+    if langid & 0x3ff == 0x0c { "fr" } else { "en" }
+}
+
 /// Depuis combien de millisecondes personne n'a touché ni la souris ni le clavier.
 pub fn idle_ms() -> u64 {
     use ::windows::Win32::System::SystemInformation::GetTickCount;
