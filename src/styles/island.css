@@ -1902,6 +1902,22 @@ body {
   font-size: 11px;
   margin-top: 2px;
 }
+/* Le mode concentration */
+.agents-quiet {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0 6px;
+  font-size: 12px;
+}
+.agents-quiet.on {
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 11px;
+  background: rgba(160, 120, 255, 0.14);
+  border: 1px solid rgba(160, 120, 255, 0.3);
+}
 /* Les questions posées par un agent (MCP) */
 .agents-asks {
   list-style: none;

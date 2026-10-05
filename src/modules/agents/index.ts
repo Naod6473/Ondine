@@ -192,19 +192,33 @@ export const agents: IslandModule = {
         key: `agents-progress-${p.source}`,
       });
     });
+    // Fin de la concentration : un seul résumé de ce qui s'est passé.
+    api.on("agents.quiet", (msg) => {
+      const q = msg.payload as { on: boolean; summary?: string | null } | null;
+      if (!q || q.on) return;
+      // Le résumé en titre : c'est la ligne qui se voit partout (bandeau compris).
+      api.notify({
+        title: q.summary || "Rien de nouveau du côté des agents",
+        body: "Fin de la concentration",
+        icon: "🎧",
+        priority: q.summary ? "normal" : "low",
+        key: "agents-quiet",
+      });
+    });
     api.on("agents.changed", () => redraws.forEach((r) => r()));
   },
 
   views: {
     expanded(root, api: ModuleApi) {
       const asks = el("ul", { class: "agents-asks" });
+      const quiet = el("div", { class: "agents-quiet" });
       const board = el("ul", { class: "agents-board" });
       const list = el("ul", { class: "agents-list" });
       const status = el("p", { class: "muted agents-status" });
       const guide = el("details", { class: "agents-guide" });
       const launch = el("div", { class: "agents-launch" });
       root.append(
-        el("div", { class: "agents" }, launch, asks, status, board, el("div", { class: "muted agents-subtitle" }, "Derniers messages"), list, guide),
+        el("div", { class: "agents" }, launch, asks, status, quiet, board, el("div", { class: "muted agents-subtitle" }, "Derniers messages"), list, guide),
       );
 
       // ── Lancer un agent ────────────────────────────────────────────────────
@@ -359,6 +373,26 @@ export const agents: IslandModule = {
       );
       drawGuide();
 
+      // Le mode concentration : les notifications des agents attendent, résumé à la fin.
+      const QUIET_CHOICES: [number, string][] = [[25, "25 min"], [60, "1 h"], [120, "2 h"], [0, "Jusqu'à l'arrêt"]];
+      const drawQuiet = (q: { until: number | null; held: number } | null) => {
+        if (q) {
+          const until = q.until ? ` jusqu'à ${new Date(q.until).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : "";
+          const held = q.held ? ` · ${q.held} en attente` : "";
+          quiet.className = "agents-quiet on";
+          quiet.replaceChildren(
+            el("span", {}, `🎧 Concentration${until}${held}`),
+            el("button", { class: "btn small", onclick: api.handler(() => api.invoke("quiet_stop")) }, "Arrêter"),
+          );
+        } else {
+          quiet.className = "agents-quiet";
+          quiet.replaceChildren(
+            el("span", { class: "muted", title: "Les notifications des agents attendent ; un résumé à la fin" }, "🎧 Concentration"),
+            ...QUIET_CHOICES.map(([minutes, label]) => el("button", { class: "net-chip", onclick: api.handler(() => api.invoke("quiet_start", { minutes })) }, label)),
+          );
+        }
+      };
+
       // Une question en attente, dans l'onglet (aussi après avoir fermé sa notification).
       const askRow = (q: Ask): HTMLElement => {
         const left = `encore ${Math.max(1, Math.ceil((q.until - Date.now()) / 60000))} min`;
@@ -390,7 +424,7 @@ export const agents: IslandModule = {
       };
 
       const draw = async () => {
-        let data: { events: AgentEvent[]; working: number; sessions: Session[]; asks: Ask[] };
+        let data: { events: AgentEvent[]; working: number; sessions: Session[]; asks: Ask[]; quiet: { until: number | null; held: number } | null };
         try {
           data = await api.invoke("history");
         } catch {
@@ -403,6 +437,7 @@ export const agents: IslandModule = {
           : "Aucune session pour l'instant.";
         // Les questions en attente (aussi après avoir fermé leur notification).
         asks.replaceChildren(...(data.asks ?? []).map((q) => askRow(q)));
+        drawQuiet(data.quiet);
         // Le tableau « En cours » : un clic ramène la fenêtre de la session.
         board.replaceChildren(
           ...data.sessions.map((x) => {

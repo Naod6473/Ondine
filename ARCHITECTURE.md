@@ -282,6 +282,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `agents.ask` `{id, kind, who, question, detail, options, session, until}` | Agents IA (Rust : outil MCP ou permission) | alerte avec un bouton par choix (permission : Autoriser… / Refuser / Au terminal) |
 | `agents.ask.closed` `{id, expired, gone}` | Agents IA (Rust) | remplace l'alerte par « Réponse envoyée », « Pas de réponse » ou « Réglé ailleurs » |
 | `agents.progress` `{source, who, title, step, total}` | Agents IA (Rust, outil MCP) | notification « 3/7 » remplacée à chaque étape |
+| `agents.quiet` `{on, summary?}` | Agents IA (Rust) | début / fin de la concentration ; à la fin, la notification du résumé |
 | `claude.thinking` / `claude.done` | Agents IA (Rust) | la mascotte réfléchit tant qu'une session de Claude Code travaille |
 
 ## Services communs (`src-tauri/src/services/`)
@@ -770,3 +771,10 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
     `PeekNamedPipe` le voit et l'alerte devient « Réglé ailleurs » ; même
     chose pour `island_ask` ;
   - Gemini CLI : impossible (un hook peut refuser, pas autoriser).
+- Mode concentration (`quiet_start {minutes: 25 | 60 | 120 | 0}`, 0 = jusqu'à
+  `quiet_stop`) : les notifications des agents sont gardées (`held`, 100 au
+  plus) au lieu d'être montrées, pas de fête de la mascotte, les questions
+  attendent dans l'onglet sans s'ouvrir en grand, et les demandes de
+  permission passent tout de suite au terminal. À la fin : `agents.quiet
+  {on: false, summary}`, une seule notification (« Claude a fini 2 tâches ·
+  Codex t'attend · 1 question en attente »). En mémoire seulement.

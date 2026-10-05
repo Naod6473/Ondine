@@ -93,6 +93,18 @@ struct State {
     /// attente de ton clic, par numéro.
     asks: HashMap<u64, Ask>,
     next_ask: u64,
+    /// Mode concentration : jusqu'à quand (ms ; u64::MAX = jusqu'à ce que tu
+    /// l'arrêtes). Pendant ce temps, les notifications attendent dans `held`.
+    quiet_until: Option<u64>,
+    /// Change à chaque démarrage (le fil de fin ignore une ancienne concentration).
+    quiet_gen: u64,
+    held: Vec<Event>,
+}
+
+impl State {
+    fn quiet(&self) -> bool {
+        self.quiet_until.is_some_and(|until| now_ms() < until)
+    }
 }
 
 /// Une question en attente : le canal pour répondre à l'agent, et les choix.
@@ -189,7 +201,20 @@ impl RustModule for Agents {
                     .map(|(id, a)| ask_json(*id, a))
                     .collect();
                 asks.sort_by_key(|a| a["id"].as_u64());
-                Ok(json!({ "events": st.history, "working": st.working(), "sessions": sorted_sessions(&st), "asks": asks }))
+                let quiet = if st.quiet() { json!({ "until": st.quiet_until.filter(|u| *u != u64::MAX), "held": st.held.len() }) } else { Value::Null };
+                Ok(json!({ "events": st.history, "working": st.working(), "sessions": sorted_sessions(&st), "asks": asks, "quiet": quiet }))
+            }
+            // { minutes: 0 | 25 | 60 | 120 } : la concentration (0 = jusqu'à l'arrêt).
+            "quiet_start" => {
+                let minutes = args.get("minutes").and_then(Value::as_u64).unwrap_or(0).min(8 * 60);
+                quiet_start(ctx.app, &self.state, minutes);
+                ctx.emit("agents.quiet", json!({ "on": true }));
+                ctx.emit("agents.changed", Value::Null);
+                Ok(Value::Null)
+            }
+            "quiet_stop" => {
+                quiet_stop(ctx.app, &self.state);
+                Ok(Value::Null)
             }
             // { id, choice } : ta réponse à une question d'un agent (le numéro du choix).
             "answer" => {
@@ -499,7 +524,8 @@ fn permission_request(app: &AppHandle, state: &Shared, msg: &Value, mut reply: s
         return pass(&mut reply);
     }
     let settings = super::with_context(app, ID, |ctx| ctx.settings()).unwrap_or_default();
-    if settings.get("permissions").and_then(Value::as_bool) != Some(true) {
+    // Réglage coupé, ou concentration : la question passe tout de suite au terminal.
+    if settings.get("permissions").and_then(Value::as_bool) != Some(true) || state.lock().unwrap().quiet() {
         return pass(&mut reply);
     }
     let secs = settings.get("permissionWait").and_then(Value::as_str).and_then(|s| s.parse::<u64>().ok()).unwrap_or(60).clamp(15, 300);
@@ -555,7 +581,10 @@ fn open_ask(app: &AppHandle, state: &Shared, mut ask: Ask, secs: u64) -> Result<
         }
         st.next_ask += 1;
         ask.until = now_ms() + secs * 1000;
-        super::with_context(app, ID, |ctx| ctx.emit("agents.ask", ask_json(st.next_ask, &ask)));
+        // Pendant la concentration, la question attend dans l'onglet sans s'ouvrir en grand.
+        if !st.quiet() {
+            super::with_context(app, ID, |ctx| ctx.emit("agents.ask", ask_json(st.next_ask, &ask)));
+        }
         let id = st.next_ask;
         st.asks.insert(id, ask);
         id
@@ -605,9 +634,105 @@ fn publish_info(app: &AppHandle, state: &Shared, event: Event) {
         st.history.truncate(MAX_HISTORY);
     }
     super::with_context(app, ID, |ctx| {
-        ctx.emit("agents.event", serde_json::to_value(&event).unwrap_or(Value::Null));
+        show_or_hold(ctx, state, &event);
         ctx.emit("agents.changed", Value::Null);
     });
+}
+
+/// Montre la notification, ou la garde pour le résumé pendant la concentration.
+fn show_or_hold(ctx: &ModuleContext, state: &Shared, event: &Event) {
+    {
+        let mut st = state.lock().unwrap();
+        if st.quiet() {
+            if st.held.len() < 100 {
+                st.held.push(event.clone());
+            }
+            return;
+        }
+    }
+    ctx.emit("agents.event", serde_json::to_value(event).unwrap_or(Value::Null));
+}
+
+// ── Mode concentration ───────────────────────────────────────────────────────
+//
+// Pendant la concentration, les notifications des agents attendent (elles
+// restent visibles dans l'onglet) ; les questions ne s'ouvrent pas en grand
+// (elles attendent dans l'onglet) et les demandes de permission passent
+// directement au terminal. À la fin : un seul résumé.
+
+/// Démarre la concentration pour `minutes` (0 = jusqu'à ce que tu l'arrêtes).
+fn quiet_start(app: &AppHandle, state: &Shared, minutes: u64) {
+    let gen = {
+        let mut st = state.lock().unwrap();
+        st.quiet_until = Some(if minutes == 0 { u64::MAX } else { now_ms() + minutes * 60_000 });
+        st.quiet_gen += 1;
+        st.quiet_gen
+    };
+    if minutes > 0 {
+        let (a, s) = (app.clone(), state.clone());
+        std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_secs(minutes * 60));
+            if s.lock().unwrap().quiet_gen == gen {
+                quiet_stop(&a, &s);
+            }
+        });
+    }
+}
+
+/// Arrête la concentration et montre le résumé de ce qui s'est passé.
+fn quiet_stop(app: &AppHandle, state: &Shared) {
+    let text = {
+        let mut st = state.lock().unwrap();
+        if st.quiet_until.take().is_none() {
+            return;
+        }
+        st.quiet_gen += 1;
+        let held = std::mem::take(&mut st.held);
+        let waiting: Vec<&'static str> = st.sessions.values().filter(|s| s.state == "waiting").map(|s| who(&s.source)).collect();
+        summary(&held, &waiting, st.asks.len())
+    };
+    super::with_context(app, ID, |ctx| {
+        ctx.emit("agents.quiet", json!({ "on": false, "summary": text }));
+        ctx.emit("agents.changed", Value::Null);
+    });
+}
+
+/// « Claude a fini 2 tâches · Codex t'attend · 1 question » (None : rien à dire).
+fn summary(held: &[Event], waiting: &[&str], asks: usize) -> Option<String> {
+    let mut parts: Vec<String> = Vec::new();
+    // Les fins de tâche, par agent, dans l'ordre d'arrivée.
+    let mut done: Vec<(&str, usize)> = Vec::new();
+    for e in held.iter().filter(|e| e.kind == "done") {
+        let name = who(&e.source);
+        match done.iter_mut().find(|(n, _)| *n == name) {
+            Some((_, count)) => *count += 1,
+            None => done.push((name, 1)),
+        }
+    }
+    for (name, count) in done {
+        parts.push(if count == 1 { format!("{name} a fini une tâche") } else { format!("{name} a fini {count} tâches") });
+    }
+    // Ceux qui t'attendent encore maintenant.
+    let mut names: Vec<&str> = Vec::new();
+    for w in waiting {
+        if !names.contains(w) {
+            names.push(w);
+        }
+    }
+    if !names.is_empty() {
+        let verb = if names.len() > 1 { "t'attendent" } else { "t'attend" };
+        // Plusieurs sessions du même agent : on le précise.
+        let extra = if waiting.len() > names.len() { format!(" ({} sessions)", waiting.len()) } else { String::new() };
+        parts.push(format!("{} {verb}{extra}", names.join(" et ")));
+    }
+    if asks > 0 {
+        parts.push(if asks == 1 { "1 question en attente".into() } else { format!("{asks} questions en attente") });
+    }
+    let infos = held.iter().filter(|e| e.kind == "info").count();
+    if infos > 0 {
+        parts.push(if infos == 1 { "1 message".into() } else { format!("{infos} messages") });
+    }
+    if parts.is_empty() { None } else { Some(parts.join(" · ")) }
 }
 
 /// La ligne renvoyée à « island.exe mcp » : `{"answer": "…" | null, "reason"?: "…"}`.
@@ -704,7 +829,8 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
             if finished {
                 ctx.emit("claude.done", Value::Null);
             }
-            if event.kind == "done" {
+            // (pas de fête pendant la concentration)
+            if event.kind == "done" && !state.lock().unwrap().quiet() {
                 ctx.emit("task.finished", json!({ "label": event.title }));
             }
         }
@@ -715,7 +841,7 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
             _ => false,
         };
         if wanted {
-            ctx.emit("agents.event", serde_json::to_value(&event).unwrap_or(Value::Null));
+            show_or_hold(ctx, state, &event);
         }
         // Le tableau des sessions a peut-être changé.
         ctx.emit("agents.changed", Value::Null);
@@ -966,6 +1092,16 @@ mod tests {
         assert_eq!((e.source.as_str(), e.title.as_str()), ("masauvegarde", "Terminée sans erreur"));
         assert!(understand(&json!({ "source": "x" }), 0).is_none());
         assert_eq!(clean(&"a".repeat(400), 10).chars().count(), 10);
+    }
+
+    #[test]
+    fn quiet_summary() {
+        let ev = |source: &str, kind: &'static str| Event { at: 0, source: source.into(), kind, title: String::new(), body: String::new(), project: String::new(), session: String::new() };
+        let held = vec![ev("claude-code", "done"), ev("codex", "done"), ev("claude-code", "done"), ev("mcp", "info")];
+        assert_eq!(summary(&held, &["Codex"], 1).unwrap(), "Claude a fini 2 tâches · Codex a fini une tâche · Codex t'attend · 1 question en attente · 1 message");
+        assert_eq!(summary(&[], &["Claude", "Claude"], 0).unwrap(), "Claude t'attend (2 sessions)");
+        assert_eq!(summary(&[], &["Claude", "Gemini"], 0).unwrap(), "Claude et Gemini t'attendent");
+        assert!(summary(&[], &[], 0).is_none());
     }
 
     #[test]
