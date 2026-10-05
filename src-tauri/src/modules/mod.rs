@@ -17,7 +17,6 @@ mod agents;
 mod askclaude;
 mod capture;
 mod clipboard;
-mod hello;
 mod launcher;
 mod media;
 mod nettools;
@@ -28,6 +27,7 @@ mod shelf;
 mod system;
 mod terminal;
 
+use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
@@ -129,7 +129,7 @@ impl ModuleContext<'_> {
     /// Les réglages de ce module (tels qu'enregistrés ; le front y a mis les valeurs par défaut).
     pub fn settings(&self) -> Map<String, Value> {
         let shared = self.app.state::<crate::Shared>();
-        let s = shared.settings.lock().unwrap();
+        let s = shared.settings.locked();
         s.modules.get(self.id()).map(|m| m.values.clone()).unwrap_or_default()
     }
 
@@ -137,7 +137,7 @@ impl ModuleContext<'_> {
     pub fn check_path(&self, raw: &str) -> Result<std::path::PathBuf, String> {
         self.require("files")?;
         let shared = self.app.state::<crate::Shared>();
-        let s = shared.settings.lock().unwrap();
+        let s = shared.settings.locked();
         privacy::check_path(&s, raw)
     }
 
@@ -199,7 +199,6 @@ impl Registry {
             Box::new(nettools::NetTools),
             Box::new(agents::Agents::default()),
             Box::new(askclaude::AskClaude::default()),
-            Box::new(hello::Hello::default()),
         ];
 
         let mut entries = Vec::new();
@@ -248,7 +247,7 @@ fn check_manifest(text: &str) -> Result<Manifest, String> {
 }
 
 fn enabled(app: &AppHandle, id: &str) -> bool {
-    app.state::<crate::Shared>().settings.lock().unwrap().module_enabled(id)
+    app.state::<crate::Shared>().settings.locked().module_enabled(id)
 }
 
 /// Le module est-il activé ET pas mis à l'écart ? Pour les threads de fond.
@@ -329,12 +328,6 @@ pub fn dispatch_event(app: &AppHandle, msg: &BusMessage) {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn hello_manifest_is_valid() {
-        let m = check_manifest(hello::Hello::default().manifest_json()).unwrap();
-        assert_eq!(m.id, "hello");
-    }
 
     #[test]
     fn shelf_manifest_is_valid() {

@@ -12,11 +12,11 @@ fn base(var: &str) -> PathBuf {
 }
 
 pub fn config_dir() -> PathBuf {
-    base("HOME").join(".config").join("island")
+    base("HOME").join(".config").join("ondine")
 }
 
 pub fn local_dir() -> PathBuf {
-    base("HOME").join(".local").join("share").join("island")
+    base("HOME").join(".local").join("share").join("ondine")
 }
 
 pub fn local_time() -> LocalTime {
@@ -116,7 +116,14 @@ pub fn reverse_dns(_ip: std::net::Ipv4Addr) -> Option<String> {
     None
 }
 
-pub fn serve_agents_pipe(_max: usize, _on_message: impl FnMut(Vec<u8>, std::fs::File)) -> Result<(), String> {
+pub fn has_recycle_bin(_path: &std::path::Path) -> bool {
+    true
+}
+pub fn find_program(_name: &str) -> Option<std::path::PathBuf> {
+    None
+}
+
+pub fn serve_agents_pipe(_max: usize, _on_message: impl Fn(Vec<u8>, std::fs::File) + Send + Sync + 'static) -> Result<(), String> {
     Err("disponible seulement sous Windows".into())
 }
 
@@ -142,4 +149,9 @@ pub fn focus_agent_window(_hwnd: isize, _pids: &[u32]) -> Result<(), String> {
 
 pub fn pipe_client_alive(_file: &std::fs::File) -> bool {
     true
+}
+
+/// Hors Windows : pas d'ancienne installation à récupérer.
+pub fn migrate_old_dirs() -> Vec<String> {
+    Vec::new()
 }

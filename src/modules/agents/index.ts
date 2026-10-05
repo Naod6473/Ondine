@@ -12,6 +12,7 @@ import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { Bridge } from "../../core/bridge";
 import { el } from "../../island/dom";
+import { agentIcon, icon } from "../../island/icon";
 
 interface AgentEvent {
   at: number;
@@ -23,8 +24,8 @@ interface AgentEvent {
   session: string;
 }
 
-/** Une question posée par un agent (outil MCP « island_ask »), ou une demande
- *  de permission (« island.exe permission » : Autoriser / Refuser / Au terminal). */
+/** Une question posée par un agent (outil MCP « ondine_ask »), ou une demande
+ *  de permission (« ondine.exe permission » : Autoriser / Refuser / Au terminal). */
 interface Ask {
   id: number;
   kind: "question" | "permission";
@@ -56,6 +57,12 @@ let chosenTool: LaunchTool = "claude";
 
 const ICON: Record<AgentEvent["kind"], string> = { waiting: "✋", done: "✅", info: "💬" };
 const redraws = new Set<() => void>();
+
+/** Le logo d'une source connue (« claude-code », « gemini »…), sinon rien. */
+function sourceIcon(source: string): string | undefined {
+  const name = agentIcon(source);
+  return name === "🤖" ? undefined : name;
+}
 
 /** « 4 min », « 1 h 05 » : depuis combien de temps. */
 function duration(ms: number): string {
@@ -99,8 +106,15 @@ function showPermission(api: ModuleApi, q: Ask) {
   });
 }
 
+/** Prévient l'île que l'écran de confirmation s'affiche : « Oui, autoriser »
+ *  n'est accepté qu'après (vérifié côté Rust). */
+function arm(api: ModuleApi, id: number) {
+  api.invoke("arm", { id }).catch(() => undefined); // question expirée : « answer » le dira
+}
+
 /** La confirmation : on relit ce qu'on autorise avant de dire oui. */
 function confirmPermission(api: ModuleApi, q: Ask) {
+  arm(api, q.id);
   api.notify({
     title: `Confirmer : ${q.who} peut le faire ?`,
     body: q.detail || q.question,
@@ -143,7 +157,8 @@ export const agents: IslandModule = {
         title: e.title,
         // Attente : le message de Claude (« … to use Bash ») ; sinon, le projet.
         body: e.kind === "waiting" ? [e.body, where].filter(Boolean).join(" · ") : e.body || where,
-        icon: ICON[e.kind] ?? "🤖",
+        // Le logo de l'agent (Claude, Gemini…) ; sinon l'état (✋ ✅ 💬).
+        icon: sourceIcon(e.source) ?? ICON[e.kind] ?? "🤖",
         // Claude attend : l'île s'ouvre pour te le dire ; le reste reste discret.
         priority: e.kind === "waiting" ? "high" : "normal",
         key: `agents-${e.session}`,
@@ -407,12 +422,14 @@ export const agents: IslandModule = {
                 : el("button", { class: "btn small", onclick: api.handler(() => answer(api, q.id, i)) }, o),
             ),
           );
-        const confirm = () =>
+        const confirm = () => {
+          arm(api, q.id);
           buttons.replaceChildren(
             el("span", { class: "agents-confirm" }, "Vraiment autoriser ?"),
             el("button", { class: "btn small primary", onclick: api.handler(() => answer(api, q.id, 0, true)) }, "Oui, autoriser"),
             el("button", { class: "btn small", onclick: api.handler(plain) }, "Retour"),
           );
+        };
         plain();
         return el(
           "li",
@@ -454,6 +471,7 @@ export const agents: IslandModule = {
                 "button",
                 { class: `agents-session ${x.state}`, title: "Revenir à sa fenêtre", onclick: api.handler(() => goTo(api, x.id)) },
                 el("i", { class: "agents-dot" }),
+                el("span", { class: "agents-logo" }, icon(sourceIcon(x.source) ?? "🤖")),
                 el("b", {}, SOURCE_NAMES[x.source] ?? x.source),
                 el("span", {}, x.project || "—"),
                 el("small", { class: "muted" }, what),
@@ -484,7 +502,7 @@ export const agents: IslandModule = {
 
       void api.invoke<{ exe: string }>("hook_config").then(
         (c) => (exe.textContent = `${c.exe} notify`),
-        () => (exe.textContent = "island.exe notify"),
+        () => (exe.textContent = "ondine.exe notify"),
       );
       redraws.add(draw);
       void draw();

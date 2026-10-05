@@ -12,40 +12,10 @@
 // les états dès maintenant, avant d'avoir une vraie planche pour chacun.
 
 import type { MascotRenderer } from "../renderer";
-import type { AnimationSpec, MascotManifest, MascotState, Mood, SpriteEffect } from "../types";
+import type { AnimationSpec, MascotManifest, MascotState, Mood } from "../types";
+import { EFFECTS, STILL, type Motion } from "./effects";
 import { drawOverlay } from "./overlays";
 
-const TAU = Math.PI * 2;
-
-/** Transformation du corps à un instant donné. */
-interface Motion {
-  /** Décalage vertical, en fraction de la hauteur (négatif = vers le haut). */
-  dy: number;
-  dx: number;
-  /** Étirement vertical (1 = normal) ; l'horizontal compense. */
-  squash: number;
-  rot: number;
-  /** Opacité (0 à 1). */
-  alpha: number;
-}
-
-const STILL: Motion = { dy: 0, dx: 0, squash: 1, rot: 0, alpha: 1 };
-
-/** Les mouvements. `t` = secondes depuis le début, `p` = progression 0..1. */
-const EFFECTS: Record<SpriteEffect, (t: number, p: number) => Partial<Motion>> = {
-  breathe: (t) => ({ squash: 1 + Math.sin((t / 3.2) * TAU) * 0.025 }),
-  wake: (_t, p) => ({ squash: 1 + Math.sin(Math.min(1, p * 1.4) * Math.PI) * 0.12, dy: -Math.sin(p * Math.PI) * 0.04 }),
-  sleep: (t) => ({ squash: 0.96 + Math.sin((t / 4) * TAU) * 0.04, dy: 0.03, alpha: 0.85 }),
-  bounce: (_t, p) => ({ dy: -Math.abs(Math.sin(p * TAU)) * 0.14, squash: 1 + Math.sin(p * TAU * 2) * 0.05 }),
-  jump: (_t, p) => ({ dy: -Math.abs(Math.sin(p * TAU)) * 0.25, squash: 1 + Math.sin(p * TAU * 2) * 0.08 }),
-  shake: (t, p) => ({ dx: Math.sin(t * 45) * 0.04 * (1 - p) }),
-  wobble: (t, p) => ({ rot: Math.sin(t * 7) * 0.2 * (1 - p * 0.5), dy: Math.sin(t * 5) * 0.03 }),
-  bob: (t) => ({ dy: -Math.abs(Math.sin(t * 6)) * 0.03 }),
-  pulse: (t) => ({ dy: -Math.abs(Math.sin(t * 5)) * 0.06, squash: 1 + Math.abs(Math.sin(t * 5)) * 0.04 }),
-  chomp: (_t, p) => ({ squash: p < 0.75 ? 1 - Math.abs(Math.sin(p * Math.PI * 4)) * 0.1 : 1 + Math.sin((p - 0.75) * 4 * Math.PI) * 0.08 }),
-  sway: (t) => ({ rot: Math.sin(t * 2.5) * 0.08 }),
-  sigh: (t) => ({ squash: 1 - Math.max(0, Math.sin(t * 0.9)) * 0.05, dy: 0.01 }),
-};
 
 export class SpriteSheetRenderer implements MascotRenderer {
   private canvas = document.createElement("canvas");

@@ -15,6 +15,7 @@
 //   - le dossier des captures est validé (dossiers exclus) et un fichier
 //     enregistré peut être annulé (il part à la Corbeille).
 
+use crate::sync::LockExt;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -101,18 +102,18 @@ impl RustModule for Capture {
             "shelf_clipboard" => run(ctx, &self.state, Then::Shelf),
             "annotate_clipboard" => run(ctx, &self.state, Then::Annotate),
             "annotate_image" => {
-                let png = self.state.lock().unwrap().to_annotate.clone().ok_or("aucune image à annoter")?;
+                let png = self.state.locked().to_annotate.clone().ok_or("aucune image à annoter")?;
                 Ok(json!({ "url": format!("data:image/png;base64,{}", BASE64.encode(png)) }))
             }
             "annotate_export" => self.annotate_export(ctx, &args),
-            "last" => Ok(json!({ "result": self.state.lock().unwrap().text })),
+            "last" => Ok(json!({ "result": self.state.locked().text })),
             "copy_last" => {
-                let text = self.state.lock().unwrap().text.as_ref().map(|t| t.text.clone()).ok_or("aucun texte lu")?;
+                let text = self.state.locked().text.as_ref().map(|t| t.text.clone()).ok_or("aucun texte lu")?;
                 files::copy_text(&text)?;
                 Ok(Value::Null)
             }
             "reveal" => {
-                let saved = self.state.lock().unwrap().saved.clone().ok_or("aucune capture enregistrée")?;
+                let saved = self.state.locked().saved.clone().ok_or("aucune capture enregistrée")?;
                 let path = ctx.check_path(&saved.display().to_string())?;
                 files::reveal(&path)?;
                 Ok(Value::Null)
@@ -223,7 +224,7 @@ fn run(ctx: &ModuleContext, state: &Arc<Mutex<State>>, then: Then) -> Result<Val
             // Le journal dit qu'on a lu, jamais ce qu'on a lu.
             ctx.log_info(format!("texte lu dans une image ({} caractères)", result.text.chars().count()));
             let out = json!({ "chars": result.text.chars().count(), "language": result.language, "copied": copied });
-            state.lock().unwrap().text = Some(result);
+            state.locked().text = Some(result);
             Ok(out)
         }
         Then::Save | Then::Shelf => {
@@ -231,7 +232,7 @@ fn run(ctx: &ModuleContext, state: &Arc<Mutex<State>>, then: Then) -> Result<Val
             saved_json(ctx, state, &png, matches!(then, Then::Shelf))
         }
         Then::Annotate => {
-            state.lock().unwrap().to_annotate = Some(encode_png(width, height, &bytes)?);
+            state.locked().to_annotate = Some(encode_png(width, height, &bytes)?);
             // La fenêtre d'annotation relit l'image quand elle reçoit "annotate-load".
             crate::show_window(ctx.app, ANNOTATE_WINDOW);
             let _ = ctx.app.emit_to(ANNOTATE_WINDOW, "annotate-load", ());
@@ -249,7 +250,7 @@ fn saved_json(ctx: &ModuleContext, state: &Arc<Mutex<State>>, png: &[u8], to_she
         // Les modules ne s'appellent pas : on passe par le bus.
         ctx.emit("shelf.add", json!({ "paths": [path.display().to_string()] }));
     }
-    state.lock().unwrap().saved = Some(path.clone());
+    state.locked().saved = Some(path.clone());
     let undo_path = path.clone();
     let undo_id = ctx.offer_undo(
         &format!("« {name} » enregistrée"),
@@ -290,7 +291,7 @@ fn save_png(ctx: &ModuleContext, png: &[u8]) -> Result<PathBuf, String> {
     Ok(path)
 }
 
-/// Le dossier choisi dans les réglages, sinon Images\Island (créé si besoin).
+/// Le dossier choisi dans les réglages, sinon Images\Ondine (créé si besoin).
 /// Validé comme tout autre chemin : un dossier exclu est refusé.
 fn capture_dir(ctx: &ModuleContext) -> Result<PathBuf, String> {
     let chosen = ctx
@@ -303,7 +304,7 @@ fn capture_dir(ctx: &ModuleContext) -> Result<PathBuf, String> {
     let dir = match chosen {
         Some(dir) => dir,
         None => {
-            let dir = platform::pictures_dir().ok_or("dossier Images introuvable")?.join("Island");
+            let dir = platform::pictures_dir().ok_or("dossier Images introuvable")?.join("Ondine");
             std::fs::create_dir_all(&dir).map_err(|e| format!("impossible de créer {} : {e}", dir.display()))?;
             dir
         }

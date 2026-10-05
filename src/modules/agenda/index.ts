@@ -13,6 +13,7 @@ import { Bridge } from "../../core/bridge";
 import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
+import { icon } from "../../island/icon";
 import { reducedMotion } from "../../island/tab-pill";
 
 interface Meeting {
@@ -30,6 +31,21 @@ interface Listing {
   errors: string[];
   /** Nombre de fichiers lus avec succès. */
   files: number;
+  /** Un agenda en ligne (adresse iCal) est branché. */
+  online?: boolean;
+  /** Combien d'événements ont été lus en tout, et la date du plus récent. */
+  read?: number;
+  latest?: string | null;
+}
+
+/** « 1 fichier · agenda en ligne · 245 événements lus (le plus récent : 12/03/2026) · 0 à venir » */
+function sourcesLine(files: number, online: boolean | undefined, read: number | undefined, latest: string | null | undefined, upcoming: number): string {
+  const parts: string[] = [];
+  if (files) parts.push(files > 1 ? `${files} fichiers` : "1 fichier");
+  if (online) parts.push("agenda en ligne");
+  if (read !== undefined) parts.push(`${read} événement${read > 1 ? "s" : ""} lu${read > 1 ? "s" : ""}${latest ? ` (le plus récent : ${latest})` : ""}`);
+  parts.push(`${upcoming} à venir`);
+  return parts.join(" · ");
 }
 
 let listing: Listing = { events: [], errors: [], files: 0 };
@@ -175,17 +191,21 @@ export const agenda: IslandModule = {
       let first = true;
 
       const draw = () => {
-        const { events, errors, files } = listing;
+        const { events, errors, files, online, read, latest } = listing;
         body.replaceChildren();
 
-        if (!files && !errors.length) {
+        if (!files && !online && !errors.length) {
           body.append(
             el(
               "div",
               { class: "agenda-empty" },
-              el("div", { class: "agenda-empty-icon" }, "📅"),
+              el("div", { class: "agenda-empty-icon" }, icon("📅")),
               el("b", {}, "Aucun agenda pour l'instant"),
-              el("p", { class: "muted" }, "Exporte ton agenda au format .ics (Outlook, Google Agenda, Thunderbird…), puis choisis le fichier dans les réglages du module Agenda."),
+              el(
+                "p",
+                { class: "muted" },
+                "Google Agenda : colle son adresse secrète iCal dans Réglages → Identifiants (toujours à jour). Sinon, exporte ton agenda en .ics et choisis le fichier dans les réglages du module Agenda.",
+              ),
               el("button", { class: "btn primary", onclick: api.handler(() => Bridge.openSettingsWindow()) }, "⚙ Ouvrir les réglages"),
             ),
           );
@@ -195,7 +215,7 @@ export const agenda: IslandModule = {
         for (const e of errors) body.append(el("p", { class: "agenda-error" }, `⚠️ ${e}`));
 
         if (!events.length) {
-          body.append(el("p", { class: "muted agenda-none" }, "Rien de prévu dans les 30 prochains jours. 🌴"));
+          body.append(el("p", { class: "muted agenda-none" }, `Rien de prévu dans les ${Number(api.settings().horizonDays ?? 60)} prochains jours. 🌴`));
         } else {
           // La carte du prochain rendez-vous (ou de celui en cours).
           const next = events.find((m) => !m.allDay) ?? events[0];
@@ -236,7 +256,7 @@ export const agenda: IslandModule = {
           el(
             "div",
             { class: "btn-row agenda-foot" },
-            el("span", { class: "muted" }, `${files} fichier(s) · ${events.length} rendez-vous`),
+            el("span", { class: "muted" }, sourcesLine(files, online, read, latest, events.length)),
             el("button", { class: "btn small", title: "Relire les fichiers .ics", onclick: api.handler(() => refresh(api, "reload")) }, "🔄 Relire"),
           ),
         );

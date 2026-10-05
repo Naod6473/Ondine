@@ -34,7 +34,7 @@ async function start() {
     // Windows refuse le glisser-déposer d'une appli normale vers une appli administrateur.
     notifications.push({
       moduleId: "island",
-      title: "Island tourne en administrateur",
+      title: "Ondine tourne en administrateur",
       body: "Windows bloque alors le glisser-déposer depuis l'Explorateur. Relance-la depuis un terminal normal.",
       icon: "🛡️",
       priority: "high",

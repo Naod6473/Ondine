@@ -2,22 +2,79 @@
   "id": "agenda",
   "name": "Agenda",
   "icon": "📅",
-  "description": "Ton prochain rendez-vous, lu dans un fichier .ics (export d'Outlook, Google Agenda, Thunderbird…). Le fichier est relu dès qu'il change. Rien n'est téléchargé ni envoyé.",
+  "description": "Ton prochain rendez-vous, lu dans un fichier .ics (export d'Outlook, Google Agenda, Thunderbird…) ou téléchargé depuis l'adresse secrète iCal de ton agenda en ligne (Réglages → Identifiants). Le fichier est relu dès qu'il change ; l'agenda en ligne est retéléchargé toutes les 15 minutes. Lecture seule : rien n'est envoyé, et l'adresse n'apparaît jamais dans le journal.",
   "version": "0.1.0",
-  "permissions": ["files"],
+  "permissions": [
+    "files",
+    "network",
+    "credentials"
+  ],
   "settings": {
     "version": 1,
     "fields": [
-      { "key": "icsFiles", "type": "files", "label": "Fichiers d'agenda (.ics)", "help": "Exporte ton agenda au format .ics, puis choisis le fichier ici. Il est relu tout seul quand il change.", "default": [], "max": 5, "extensions": ["ics"] },
-      { "key": "reminderMin", "type": "number", "label": "Rappel avant un rendez-vous (minutes, 0 = jamais)", "default": 10, "min": 0, "max": 240, "step": 5 },
-      { "key": "showCompact", "type": "boolean", "label": "Afficher le prochain rendez-vous dans la pilule de l'île", "default": true },
-      { "key": "compactWithinMin", "type": "number", "label": "… quand il commence dans moins de (minutes)", "default": 30, "min": 5, "max": 240, "step": 5 }
+      {
+        "key": "icsFiles",
+        "type": "files",
+        "label": "Fichiers d'agenda (.ics)",
+        "help": "Exporte ton agenda au format .ics, puis choisis le fichier ici. Il est relu tout seul quand il change. Pour un agenda Google toujours à jour, mets plutôt son adresse secrète iCal dans Réglages → Identifiants.",
+        "default": [],
+        "max": 5,
+        "extensions": [
+          "ics"
+        ]
+      },
+      {
+        "key": "horizonDays",
+        "type": "number",
+        "label": "Afficher les rendez-vous des prochains (jours)",
+        "help": "Jusqu'où regarder dans le futur : 60 jours par défaut, jusqu'à un an.",
+        "default": 60,
+        "min": 7,
+        "max": 365,
+        "step": 1
+      },
+      {
+        "key": "reminderMin",
+        "type": "number",
+        "label": "Rappel avant un rendez-vous (minutes, 0 = jamais)",
+        "default": 10,
+        "min": 0,
+        "max": 240,
+        "step": 5
+      },
+      {
+        "key": "showCompact",
+        "type": "boolean",
+        "label": "Afficher le prochain rendez-vous dans la pilule de l'île",
+        "default": true
+      },
+      {
+        "key": "compactWithinMin",
+        "type": "number",
+        "label": "… quand il commence dans moins de (minutes)",
+        "default": 30,
+        "min": 5,
+        "max": 240,
+        "step": 5
+      }
     ]
   },
-  "views": ["compact", "expanded"],
-  "commands": ["upcoming", "reload"],
+  "views": [
+    "compact",
+    "expanded"
+  ],
+  "commands": [
+    "upcoming",
+    "reload"
+  ],
   "events": {
-    "emits": ["agenda.changed", "agenda.reminder"],
-    "listens": ["agenda.changed", "agenda.reminder"]
+    "emits": [
+      "agenda.changed",
+      "agenda.reminder"
+    ],
+    "listens": [
+      "agenda.changed",
+      "agenda.reminder"
+    ]
   }
 }

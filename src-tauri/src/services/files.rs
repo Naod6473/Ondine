@@ -80,16 +80,51 @@ pub fn move_to(src: &Path, dest: &Path) -> Result<(), String> {
     }
     match fs::rename(src, dest) {
         Ok(()) => Ok(()),
-        Err(_) => {
-            // Autre disque (ou autre raison) : copie puis Corbeille.
-            copy_recursive(src, dest).map_err(|e| format!("déplacement impossible : {e}"))?;
+        // Autre disque : Windows refuse le renommage. On copie, puis l'original
+        // part à la Corbeille. Toute autre erreur (fichier ouvert, accès
+        // refusé…) est rapportée telle quelle.
+        Err(e) if is_other_disk(&e) => {
+            if !crate::platform::has_recycle_bin(src) {
+                return Err(no_bin(src));
+            }
+            if let Err(e) = copy_recursive(src, dest) {
+                // Copie ratée (disque plein…) : l'original n'a pas bougé. Notre
+                // copie incomplète part à la Corbeille si son lecteur en a une ;
+                // sinon on la laisse et on le dit (jamais de suppression définitive).
+                if dest.exists() {
+                    if crate::platform::has_recycle_bin(dest) && trash::delete(dest).is_ok() {
+                        return Err(format!("déplacement impossible : {e}"));
+                    }
+                    return Err(format!("déplacement impossible : {e} (copie incomplète laissée dans {})", dest.display()));
+                }
+                return Err(format!("déplacement impossible : {e}"));
+            }
             trash::delete(src).map_err(|e| format!("copié, mais l'original n'a pas pu aller à la Corbeille : {e}"))
         }
+        Err(e) => Err(format!("déplacement impossible : {e}")),
     }
 }
 
-/// Envoie des fichiers à la Corbeille.
+/// L'erreur de `fs::rename` qui veut dire « autre disque » (ERROR_NOT_SAME_DEVICE
+/// = 17 sous Windows, EXDEV = 18 ailleurs).
+fn is_other_disk(e: &io::Error) -> bool {
+    let code = if cfg!(windows) { 17 } else { 18 };
+    e.raw_os_error() == Some(code)
+}
+
+fn no_bin(path: &Path) -> String {
+    format!(
+        "{} est sur un lecteur sans Corbeille (clé USB, réseau…) : l'île ne supprime jamais définitivement, fais-le toi-même si tu es sûr",
+        path.display()
+    )
+}
+
+/// Envoie des fichiers à la Corbeille. Refusé en bloc si l'un d'eux est sur un
+/// lecteur sans Corbeille : Windows le supprimerait définitivement.
 pub fn to_trash(paths: &[PathBuf]) -> Result<(), String> {
+    if let Some(p) = paths.iter().find(|p| !crate::platform::has_recycle_bin(p)) {
+        return Err(no_bin(p));
+    }
     trash::delete_all(paths).map_err(|e| format!("Corbeille : {e}"))
 }
 

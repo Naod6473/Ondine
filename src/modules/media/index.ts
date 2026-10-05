@@ -107,11 +107,17 @@ export const media: IslandModule = {
         artworkId = state.artwork;
         artworkUrl = null;
         if (playing) {
+          const asked = state.artwork;
+          let url: string | null = null;
           try {
-            artworkUrl = (await api.invoke<{ url: string | null }>("artwork")).url;
+            url = (await api.invoke<{ url: string | null }>("artwork")).url;
           } catch {
-            artworkUrl = null; // pas de pochette : la note de musique la remplace
+            url = null; // pas de pochette : la note de musique la remplace
           }
+          // Deux changements de piste rapides : la réponse de l'ancienne
+          // pochette peut arriver après la nouvelle. On ne garde que la bonne.
+          if (asked !== artworkId) return;
+          artworkUrl = url;
         }
       }
 

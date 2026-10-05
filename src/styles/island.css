@@ -450,17 +450,10 @@ body {
   gap: 2px;
 }
 
-/* ── Module hello ────────────────────────────────────────────────────────── */
-
 .view-expanded h3 {
   margin: 0 0 4px;
   font-size: 15px;
 }
-.hello-out {
-  margin-top: 8px;
-  color: var(--muted);
-}
-
 @media (prefers-reduced-motion: reduce) {
   :root {
     --speed: 1ms;
@@ -597,6 +590,12 @@ body {
 }
 .media-eq.on i:nth-child(3) {
   animation-delay: -600ms;
+}
+/* Animations réduites : l'égaliseur reste immobile. */
+@media (prefers-reduced-motion: reduce) {
+  .media-eq.on i {
+    animation: none;
+  }
 }
 @keyframes media-eq {
   from {
@@ -2095,4 +2094,29 @@ body {
   margin: 0;
   color: #ff8a8a;
   font-size: 12px;
+}
+
+/* Étagère : un bouton qui attend son second clic (« Confirmer ? »). */
+.shelf-bar .confirming,
+.shelf-actions .confirming {
+  color: #ffcf4a;
+  font-size: 12px;
+  width: auto;
+  padding: 0 8px;
+}
+
+/* ── Icônes en image (logos des agents, voir src/island/icon.ts) ─────────── */
+
+/* Même taille qu'un emoji à côté : elles suivent la taille du texte. */
+.icon-img {
+  width: 1.3em;
+  height: 1.3em;
+  vertical-align: -0.28em;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.35));
+  pointer-events: none;
+}
+.agents-logo {
+  font-size: 14px;
+  line-height: 1;
 }

@@ -2,14 +2,14 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    // « island.exe notify … » : un outil (hook de Claude Code…) prévient l'île
+    // « ondine.exe notify … » : un outil (hook de Claude Code…) prévient l'île
     // déjà ouverte. On n'ouvre PAS une deuxième île : on envoie et on s'arrête.
     match std::env::args().nth(1).as_deref() {
-        Some("notify") => return island_lib::notify_cli(),
-        // « island.exe mcp » : un agent (Claude Code, Codex, Gemini) nous parle en MCP.
-        Some("mcp") => return island_lib::mcp_cli(),
-        Some("permission") => return island_lib::permission_cli(),
+        Some("notify") => return ondine_lib::notify_cli(),
+        // « ondine.exe mcp » : un agent (Claude Code, Codex, Gemini) nous parle en MCP.
+        Some("mcp") => return ondine_lib::mcp_cli(),
+        Some("permission") => return ondine_lib::permission_cli(),
         _ => {}
     }
-    island_lib::run()
+    ondine_lib::run()
 }

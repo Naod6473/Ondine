@@ -13,6 +13,7 @@
 //
 // Rien n'est envoyé hors de l'ordinateur ni écrit dans le journal.
 
+use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -56,8 +57,8 @@ impl RustModule for Media {
 
     fn invoke(&self, _ctx: &ModuleContext, command: &str, _args: Value) -> Result<Value, String> {
         match command {
-            "state" => Ok(payload(&self.state.lock().unwrap())),
-            "artwork" => Ok(json!({ "url": self.state.lock().unwrap().artwork })),
+            "state" => Ok(payload(&self.state.locked())),
+            "artwork" => Ok(json!({ "url": self.state.locked().artwork })),
             "toggle" => media::control(Control::TogglePlayPause).map(|_| Value::Null),
             "next" => media::control(Control::Next).map(|_| Value::Null),
             "previous" => media::control(Control::Previous).map(|_| Value::Null),
@@ -81,8 +82,8 @@ fn watch(app: AppHandle, state: Arc<Mutex<State>>) {
 
         // Module désactivé (ou mis à l'écart) : on ne regarde rien.
         if !super::is_active(&app, ID) {
-            if state.lock().unwrap().current.take().is_some() {
-                bus::emit(&app, ID, "media.changed", payload(&state.lock().unwrap()));
+            if state.locked().current.take().is_some() {
+                bus::emit(&app, ID, "media.changed", payload(&state.locked()));
             }
             manager = None;
             continue;
@@ -118,7 +119,7 @@ fn watch(app: AppHandle, state: Arc<Mutex<State>>) {
 /// Compare avec l'état précédent et publie si quelque chose a changé.
 fn update(app: &AppHandle, state: &Arc<Mutex<State>>, manager: &media::Manager, now: Option<NowPlaying>) {
     let (new_track, publish) = {
-        let s = state.lock().unwrap();
+        let s = state.locked();
         let new_track = match (&s.current, &now) {
             (Some(a), Some(b)) => a.app != b.app || a.title != b.title || a.artist != b.artist || a.album != b.album,
             (None, None) => false,
@@ -132,7 +133,7 @@ fn update(app: &AppHandle, state: &Arc<Mutex<State>>, manager: &media::Manager, 
     // Nouveau morceau : on lit sa pochette (hors du verrou, ça peut prendre un instant).
     let artwork = if new_track && now.is_some() { read_artwork(manager) } else { None };
 
-    let mut s = state.lock().unwrap();
+    let mut s = state.locked();
     if new_track {
         s.artwork_id += 1;
         s.artwork = artwork;

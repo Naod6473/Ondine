@@ -43,6 +43,17 @@ impl Shell {
         }
     }
 
+    /// Windows Terminal lit « ; » comme un séparateur de commandes, même au
+    /// milieu d'un chemin : un dossier nommé « x; cmd /c calc » lancerait une
+    /// seconde commande. Pour un tel dossier, on ouvre PowerShell à la place.
+    fn safe_for(self, dir: &Path) -> Self {
+        if self == Self::WindowsTerminal && dir.display().to_string().contains(';') {
+            Self::PowerShell
+        } else {
+            self
+        }
+    }
+
     /// Les paramètres pour une ouverture normale (le dossier est donné à
     /// part, comme dossier de travail du programme).
     fn args(self, dir: &Path) -> Vec<String> {
@@ -97,6 +108,7 @@ impl RustModule for Terminal {
                     .unwrap_or("powershell");
                 let shell = Shell::parse(shell_name)?;
                 let dir = start_dir(ctx, &args, &settings)?;
+                let shell = shell.safe_for(&dir);
                 let admin = args.get("admin").and_then(Value::as_bool).unwrap_or(false);
 
                 if admin {
@@ -175,6 +187,13 @@ mod tests {
             Shell::PowerShell.admin_params(dir),
             r#"-NoLogo -NoExit -Command "Set-Location -LiteralPath 'C:\Users\Simon\Mes projets\l''île'""#
         );
+    }
+
+    #[test]
+    fn a_semicolon_never_reaches_windows_terminal() {
+        assert_eq!(Shell::WindowsTerminal.safe_for(Path::new(r"C:\x; cmd /c calc")), Shell::PowerShell);
+        assert_eq!(Shell::WindowsTerminal.safe_for(Path::new(r"C:\Projets")), Shell::WindowsTerminal);
+        assert_eq!(Shell::Cmd.safe_for(Path::new(r"C:\a;b")), Shell::Cmd);
     }
 
     #[test]

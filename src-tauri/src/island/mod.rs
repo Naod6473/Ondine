@@ -14,6 +14,7 @@
 // côté Rust et on bascule ce réglage quand elle entre ou sort de la forme de l'île.
 // Technique reprise de Coucou (github.com/Louis-CFM/coucou, MIT).
 
+use crate::sync::LockExt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -87,7 +88,7 @@ impl PollGate {
     }
 
     pub fn set_rect(&self, rect: IslandRect) {
-        *self.rect.lock().unwrap() = rect;
+        *self.rect.locked() = rect;
     }
 
     pub fn set_active(&self, on: bool) {
@@ -166,7 +167,7 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
 /// Après un changement de taille : la fenêtre reprend la souris, et le prochain
 /// tour de lecture décide à nouveau d'après la position de la souris.
 pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
-    let _guard = gate.flag_lock.lock().unwrap();
+    let _guard = gate.flag_lock.locked();
     if let Some(win) = window(app) {
         let _ = win.set_ignore_cursor_events(false);
     }
@@ -178,7 +179,7 @@ pub fn refresh_click_through(app: &AppHandle, gate: &PollGate) {
 fn screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
     let pref = app
         .try_state::<crate::Shared>()
-        .map(|s| s.settings.lock().unwrap().general.screen.clone())
+        .map(|s| s.settings.locked().general.screen.clone())
         .unwrap_or_else(|| "primary".into());
     let m = target_monitor(app, &pref)?;
     let p = m.position();
@@ -259,7 +260,7 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
             }
             last = (x, y);
 
-            let r = *gate.rect.lock().unwrap();
+            let r = *gate.rect.locked();
             let on_island = r.w > 0.0
                 && x >= r.x - HIT_MARGIN
                 && x <= r.x + r.w + HIT_MARGIN
@@ -272,7 +273,7 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
             let over_panel = x >= 0.0 && x <= PANEL_W && y >= 0.0 && y <= PANEL_H;
             let accept = on_island || (down && over_panel);
             {
-                let _guard = gate.flag_lock.lock().unwrap();
+                let _guard = gate.flag_lock.locked();
                 // L'île a pu être réduite entre-temps : la bande doit toujours prendre la souris.
                 if !gate.collapsed.load(Ordering::Relaxed) && gate.ignoring.load(Ordering::Relaxed) == accept {
                     gate.ignoring.store(!accept, Ordering::Relaxed);

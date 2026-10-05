@@ -1,7 +1,7 @@
 // Module « Accès distants » (phase Outils IT) : des favoris Bureau à distance
 // (RDP) et SSH, ouverts en un clic depuis l'île ou le lanceur.
 //
-// Les favoris sont enregistrés dans %APPDATA%\Island\remote.json : un nom,
+// Les favoris sont enregistrés dans %APPDATA%\Ondine\remote.json : un nom,
 // le type (rdp / ssh), l'adresse, éventuellement un port et un utilisateur.
 // JAMAIS de mot de passe : Windows (mstsc) et ssh gèrent eux-mêmes
 // l'authentification.
@@ -16,6 +16,7 @@
 // « Tester » ouvre une simple connexion TCP vers le port (3389 ou 22 par
 // défaut) pour savoir si le serveur répond : rien n'est envoyé.
 
+use crate::sync::LockExt;
 use std::net::{TcpStream, ToSocketAddrs};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -95,17 +96,17 @@ impl RustModule for Remote {
     }
 
     fn start(&self, _app: &AppHandle) {
-        *self.data.lock().unwrap() = load();
+        *self.data.locked() = load();
     }
 
     fn invoke(&self, ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
         match command {
-            "list" => Ok(json!({ "favorites": self.data.lock().unwrap().favorites })),
+            "list" => Ok(json!({ "favorites": self.data.locked().favorites })),
             // { id?, name, kind, host, port?, user? } : sans id = nouveau favori.
             "save" => {
                 let fav = read_favorite(&args)?;
                 let id = {
-                    let mut d = self.data.lock().unwrap();
+                    let mut d = self.data.locked();
                     match args.get("id").and_then(Value::as_u64) {
                         Some(id) => {
                             let slot = d.favorites.iter_mut().find(|f| f.id == id).ok_or("favori introuvable")?;
@@ -129,7 +130,7 @@ impl RustModule for Remote {
             "delete" => {
                 let id = arg_id(&args)?;
                 let (index, fav) = {
-                    let mut d = self.data.lock().unwrap();
+                    let mut d = self.data.locked();
                     let index = d.favorites.iter().position(|f| f.id == id).ok_or("favori introuvable")?;
                     (index, d.favorites.remove(index))
                 };
@@ -140,7 +141,7 @@ impl RustModule for Remote {
                     DEFAULT_WINDOW,
                     Box::new(move || {
                         {
-                            let mut d = data.lock().unwrap();
+                            let mut d = data.locked();
                             let at = index.min(d.favorites.len());
                             d.favorites.insert(at, fav);
                         }
@@ -193,7 +194,7 @@ impl RustModule for Remote {
 
 impl Remote {
     fn find(&self, id: u64) -> Result<Favorite, String> {
-        let d = self.data.lock().unwrap();
+        let d = self.data.locked();
         d.favorites.iter().find(|f| f.id == id).cloned().ok_or_else(|| "favori introuvable".into())
     }
 }
@@ -285,11 +286,24 @@ fn read_favorite(args: &Value) -> Result<Favorite, String> {
 }
 
 /// Un nom de serveur (srv-01.domaine.local), une IPv4 ou une IPv6.
+/// Les crochets ne sont permis qu'autour d'une IPv6 (« [fe80::1] ») ; on
+/// vérifie ce qu'il y a DEDANS, car c'est ce qui sera donné à ssh ou mstsc :
+/// jamais de « - » au début (ssh le prendrait pour une option, ex. « [-v] »).
 pub(super) fn check_host(host: &str) -> Result<(), String> {
-    let ok_char = |c: char| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_' | ':' | '[' | ']');
-    let first_ok = host.starts_with(|c: char| c.is_ascii_alphanumeric() || c == '[');
-    if host.is_empty() || host.len() > 253 || !first_ok || !host.chars().all(ok_char) {
-        return Err("adresse invalide : lettres, chiffres, « . », « - » et « : » seulement".into());
+    let invalid = || Err("adresse invalide : lettres, chiffres, « . », « - » et « : » seulement".to_string());
+    let inner = match host.strip_prefix('[') {
+        Some(rest) => match rest.strip_suffix(']') {
+            Some(ipv6) if ipv6.contains(':') => ipv6,
+            _ => return invalid(),
+        },
+        None => host,
+    };
+    let ok_char = |c: char| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_' | ':');
+    // Jamais de « - » au début (ssh le lirait comme une option) ; « : » est
+    // permis pour une adresse IPv6 comme « ::1 ».
+    let first_ok = inner.starts_with(|c: char| c.is_ascii_alphanumeric() || c == ':');
+    if inner.is_empty() || host.len() > 253 || !first_ok || !inner.chars().all(ok_char) {
+        return invalid();
     }
     Ok(())
 }
@@ -313,7 +327,7 @@ fn arg_id(args: &Value) -> Result<u64, String> {
 /// nom et le type, pas l'adresse.
 fn changed(app: &AppHandle, data: &Shared) {
     let list: Vec<Value> = {
-        let d = data.lock().unwrap();
+        let d = data.locked();
         if let Err(e) = save(&d) {
             log::warn(format!("accès distants : enregistrement impossible : {e}"));
         }
@@ -372,6 +386,10 @@ mod tests {
         assert!(check_host("-oProxyCommand=calc").is_err());
         assert!(check_host("srv 01").is_err());
         assert!(check_host("srv;calc").is_err());
+        assert!(check_host("[-v]").is_err());
+        assert!(check_host("[-F.ssh_evil]").is_err());
+        assert!(check_host("[srv]").is_err());
+        assert!(check_host("srv]").is_err());
         assert!(check_host("").is_err());
     }
 

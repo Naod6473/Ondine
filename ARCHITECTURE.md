@@ -1,6 +1,6 @@
-# Architecture d'Island
+# Architecture d'Ondine
 
-Island est une appli Windows 10/11 qui vit en haut au centre de l'écran : une
+Ondine est une appli Windows 10/11 qui vit en haut au centre de l'écran : une
 « île » noire et une icône dans la zone de notification, rien dans la barre des
 tâches. Pile : **Tauri 2** (WebView2) + **Rust** pour le système, **TypeScript +
 Vite sans framework** pour l'interface.
@@ -23,7 +23,7 @@ island/
 ├─ scripts/gen-icons.mjs      dessine l'icône de l'appli (npm run icons)
 ├─ mascots/                   UNE MASCOTTE = UN DOSSIER (manifest.json + fichiers)
 │  ├─ placeholder/            la mascotte provisoire, dessinée en code
-│  └─ goutte/                 la goutte en planches de sprites (mascotte par défaut)
+│  └─ goutte/                 la goutte : une image par émotion, animations, fondus (par défaut)
 ├─ src/                       ── FRONT (TypeScript) ──
 │  ├─ main.ts                 démarrage de la fenêtre de l'île
 │  ├─ core/                   le socle partagé par tout le front
@@ -54,8 +54,7 @@ island/
 │  │  ├─ notes/               Notes rapides et to-do (phase 6)
 │  │  ├─ agenda/              Prochain rendez-vous depuis un .ics (phase 6)
 │  │  ├─ terminal/            Ouvrir cmd / PowerShell en un clic (phase 7)
-│  │  ├─ media/               Musique en cours de lecture (phase 3)
-│  │  └─ hello/               module d'exemple : manifest.json + index.ts
+│  │  └─ media/               Musique en cours de lecture (phase 3)
 │  ├─ settings/               fenêtre de réglages (formulaires générés)
 │  ├─ annotate/               fenêtre d'annotation (dessin sur une capture)
 │  └─ styles/                 island.css, settings.css
@@ -68,7 +67,7 @@ island/
       ├─ island/mod.rs        placement multi-écrans/DPI, clics traversants, souris
       ├─ platform/            tout le Win32 (windows.rs) ; other.rs = bouchons ; media.rs = SMTC ; ocr.rs = OCR
       ├─ services/            réglages, journal, identifiants, bus, annulation, confidentialité, fichiers, ics
-      └─ modules/             registre des modules Rust + shelf.rs, clipboard.rs, capture.rs, notes.rs, agenda.rs, terminal.rs, media.rs, hello.rs
+      └─ modules/             registre des modules Rust + shelf.rs, clipboard.rs, capture.rs, notes.rs, agenda.rs, terminal.rs, media.rs
 ```
 
 ## L'île
@@ -169,7 +168,7 @@ Lu à la fois par le front (import) et par le Rust (`include_str!`).
 
 ```jsonc
 {
-  "id": "hello",                      // minuscules, chiffres, tirets
+  "id": "hello",                      // minuscules, chiffres, tirets (exemple fictif)
   "name": "Bonjour", "icon": "👋", "description": "…", "version": "0.1.0",
   "permissions": [],                  // files, clipboard, network, claude-api, credentials
   "settings": { "version": 1, "fields": [
@@ -223,10 +222,10 @@ Ce qui est vérifié, et où :
 
 ### Ajouter un module
 
-1. Crée `src/modules/<id>/manifest.json` (copie celui de `hello`).
+1. Crée `src/modules/<id>/manifest.json` (copie celui de `terminal`, un module simple).
 2. Crée `src/modules/<id>/index.ts` qui exporte un `IslandModule`.
 3. Ajoute-le dans `src/modules/index.ts`.
-4. S'il a du code Rust : crée `src-tauri/src/modules/<id>.rs` (copie `hello.rs`),
+4. S'il a du code Rust : crée `src-tauri/src/modules/<id>.rs` (copie `terminal.rs`),
    ajoute `mod <id>;` en haut de `modules/mod.rs` et une ligne dans
    `Registry::new()`.
 5. `npm run tauri dev` : le module apparaît dans l'île et dans Réglages → Modules.
@@ -246,11 +245,13 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `app.ready` | île | la mascotte se réveille |
 | `island.state` `{from,to}` | île | |
 | `island.files-dropped` `{count,target}` | île | la mascotte mange |
-| `task.started` / `task.finished` / `task.failed` | modules | working / celebrate / annoyed |
+| `task.started` / `task.finished` / `task.failed` | modules | working / success (sinon celebrate) / error (sinon annoyed) |
 | `claude.thinking` / `claude.done` | modules Claude (phase 8) | thinking / idle |
 | `notify.alert` / `notify.alert-end` | île | alert |
 | `mascot.clicked`, `mascot.hover-long` | île | annoyed, dizzy / love |
 | `mascot.play` `{animation}` | réglages | joue une animation |
+| `mascot.emote` `{emotion}` | tout module | montre cette émotion (un état, ex. `sad`), si la mascotte l'a |
+| `agents.ask`, `agents.event` « waiting » | Agents IA | question (la goutte violette et son « ? ») |
 | `mascot.state` | mascotte | |
 | `undo.offered` / `undo.done` / `undo.expired` | service d'annulation | bouton « Annuler » |
 | `module.crashed` | Rust | l'île prévient |
@@ -287,16 +288,16 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 
 ## Services communs (`src-tauri/src/services/`)
 
-- **Réglages** (`settings.rs`) : `%APPDATA%\Island\settings.json`, champ
+- **Réglages** (`settings.rs`) : `%APPDATA%\Ondine\settings.json`, champ
   `version` + fonction `migrate` pour faire évoluer le format ; écriture atomique ;
   un fichier abîmé est mis de côté, jamais effacé ; export dans
-  `%APPDATA%\Island\exports\`, import depuis Réglages → Sauvegarde (refusé s'il
+  `%APPDATA%\Ondine\exports\`, import depuis Réglages → Sauvegarde (refusé s'il
   vient d'une version plus récente).
 - **Identifiants** (`credentials.rs`) : Gestionnaire d'identifiants Windows
   (crate `keyring` 3). Liste fermée de clés (`anthropic-api-key`). Le front peut
   demander si une clé existe, en enregistrer ou en supprimer une, **jamais** la
   relire. Seul un module Rust avec la permission `credentials` peut la lire.
-- **Journal** (`log.rs`) : `%LOCALAPPDATA%\Island\logs\island.log`, niveaux
+- **Journal** (`log.rs`) : `%LOCALAPPDATA%\Ondine\logs\ondine.log`, niveaux
   error/warn/info/debug (réglable), rotation à 1 Mo (3 anciens gardés), chaque
   ligne passe par `redact` qui masque ce qui ressemble à une clé. Règle : ne jamais
   journaliser de clé, de mot de passe, de texte copié ni de contenu de fichier.
@@ -320,7 +321,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 
 ```
 bus ──▶ MascotController (mascot-state.ts) ──▶ MascotRenderer (renderer.ts)
-             états + règles du manifeste            canvas-code | spritesheet | lottie | rive
+             états + règles du manifeste            canvas-code | spritesheet | poses | lottie | rive
 ```
 
 - **Contrat `MascotRenderer`** : `mount`, `play(animation)`, `setState`,
@@ -346,17 +347,35 @@ bus ──▶ MascotController (mascot-state.ts) ──▶ MascotRenderer (rende
 ```
 
 - **États** : idle, wake, sleep, happy, annoyed, dizzy, thinking, working,
-  alert, eating, celebrate, love, bored. Humeurs : neutral, happy, grumpy, tired.
+  alert, eating, celebrate, love, bored, et les émotions de la goutte v2 :
+  success, question, error, warning, info, sad, worried, surprise, shy, calm,
+  wink. Un état que la mascotte n'a pas retombe sur `fallback` (et le contrôleur
+  choisit l'ancien état équivalent quand il y en a un). Humeurs : neutral,
+  happy, grumpy, tired.
 - **Déclencheurs** : voir le tableau du bus ; plus l'inactivité (bored après
   `mascot.boredAfterSecs`, sleep après `mascot.sleepAfterSecs`) et le réveil
   dès que la souris revient sur l'île.
 - **Moteurs branchés** : `canvas-code` (la goutte provisoire, `mascots/placeholder/`)
-  et `spritesheet` (`mascots/goutte/`). Une planche = une ligne d'images de même
+  et `spritesheet` (aucune mascotte ne l'utilise pour l'instant). Une planche = une ligne d'images de même
   largeur. `"mode": "gaze"` choisit l'image d'après la souris (de la première,
   regard à gauche, à la dernière, regard à droite) et `nearFile` donne la planche
   « de près ». En attendant une vraie planche par état, `effect` (breathe, bounce,
   jump, shake, wobble…) anime le corps par du code et `overlay` (zzz, confetti,
   hearts…) dessine un effet autour.
+- **Moteur `poses`** (`mascots/goutte/`, `src/mascot/renderers/poses.ts`) : une
+  image 256 × 256 par émotion, toutes cadrées pareil (même ligne de base). Le
+  manifeste a une table `poses` : `"joie": { "file": "joie.png", "eyes": [...],
+  "blink": "closed" }`. `eyes` = les yeux blancs (centre et rayons) où le code
+  dessine les pupilles qui suivent la souris ; `blink` = la pose montrée quand
+  la paupière arrive en bas. Une animation choisit `"pose"`, ou `"poses"` +
+  `"poseMs"` pour une suite (agacée → colère), et peut ajouter `"look"` (`up`,
+  `spin`), `"wide"`, `"variants"` (au repos, une variante passe de temps en
+  temps) et `"fadeMs"`. Une animation dessinée image par image (bulle, glitch,
+  danse…) est une suite de poses `"poses": ["danse-1", …]` : en boucle si
+  l'animation boucle, avec un fondu court (≈ 40 % de `poseMs`) entre deux images. Changer de pose = un **fondu** (280 ms par défaut) : les
+  deux images sont mélangées en mode `lighter` dans un calque hors écran, ce qui
+  donne un vrai mélange de couleurs. Avec « réduire les animations », le corps
+  ne bouge plus et les yeux ne clignent plus, mais le fondu reste.
 - **Ajouter ta mascotte** : crée `mascots/<id>/` avec `manifest.json` et ses
   fichiers, relance l'appli, choisis-la dans Réglages → Mascotte et teste chaque
   animation. Un manifeste invalide est signalé, et l'île garde la provisoire.
@@ -431,7 +450,7 @@ et l'accès à Windows dans `src-tauri/src/platform/windows.rs` (« Presse-papie
   récent en haut, sans doublons, 50 copies par défaut (réglage), 100 000
   caractères au plus par copie. Recherche sans tenir compte des majuscules,
   faite en Rust ; le front ne reçoit qu'un aperçu de 300 caractères.
-- **Épinglés et snippets** : enregistrés dans `%APPDATA%\Island\clipboard.json`
+- **Épinglés et snippets** : enregistrés dans `%APPDATA%\Ondine\clipboard.json`
   (écriture via un fichier temporaire renommé). Un fichier abîmé est mis de
   côté, jamais effacé.
 - **Coller** : le Rust met le texte dans le presse-papiers, rend le clavier à la
@@ -462,7 +481,7 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   (réglage) et gardé pour l'onglet ; le journal ne note que le nombre de
   caractères.
 - **Enregistrer** : PNG (crate `image`) dans le dossier choisi, sinon
-  `Images\Island` (dossier connu `FOLDERID_Pictures`, OneDrive compris). Le
+  `Images\Ondine` (dossier connu `FOLDERID_Pictures`, OneDrive compris). Le
   dossier passe par `check_path` (dossiers exclus) ; « Annuler » envoie le
   fichier à la Corbeille.
 - **Vers l'étagère** : enregistre le PNG puis publie `shelf.add` ; l'Étagère
@@ -500,7 +519,7 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
 
 ### Module Notes (`src/modules/notes/`, `src-tauri/src/modules/notes.rs`)
 
-- Données dans `%APPDATA%\Island\notes.json` (écriture atomique ; un fichier
+- Données dans `%APPDATA%\Ondine\notes.json` (écriture atomique ; un fichier
   abîmé est mis de côté). Supprimer une note ou des tâches propose « Annuler »
   et les remet à leur place.
 - La liste des tâches garde un élément HTML par tâche (repéré par son numéro) :
@@ -551,7 +570,7 @@ dans l'ordre). Fichiers : `model.rs` (la forme d'une règle, sa validation, le
 renommage), `mod.rs` (commandes, exécution, annulation), `watch.rs` (le fil
 qui surveille dossiers et lecteurs).
 
-- Stockage : `%APPDATA%\Island\rules.json` (écriture atomique ; un fichier
+- Stockage : `%APPDATA%\Ondine\rules.json` (écriture atomique ; un fichier
   abîmé est mis de côté, pas écrasé). L'historique (« Récemment ») reste en
   mémoire.
 - Déclencheurs :
@@ -634,7 +653,7 @@ s'il n'existe pas ou est désactivé).
 
 ### Module Accès distants (`src/modules/remote/`, `src-tauri/src/modules/remote.rs`)
 
-- Favoris RDP et SSH dans `%APPDATA%\Island\remote.json` : nom, type,
+- Favoris RDP et SSH dans `%APPDATA%\Ondine\remote.json` : nom, type,
   adresse, port, utilisateur (SSH). Jamais de mot de passe. Supprimer
   propose « Annuler ».
 - Deux programmes seulement : `mstsc.exe /v:serveur[:port]` (`/f` si le
@@ -671,7 +690,7 @@ s'il n'existe pas ou est désactivé).
 
 Les outils extérieurs préviennent l'île par une porte d'entrée locale.
 
-- `island.exe notify [--source x] [--title t] [--message m]` (`main.rs` →
+- `ondine.exe notify [--source x] [--title t] [--message m]` (`main.rs` →
   `cli.rs`) : ne démarre PAS l'île. Lit l'entrée standard si un programme
   l'envoie (le JSON d'un hook), emballe le tout en
   `{v, source, title?, message?, hook?}` et l'envoie par le canal
@@ -694,7 +713,7 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   journal ne note que le type d'événement. Historique : 30 derniers, en
   mémoire seulement.
 - Configuration proposée (`hook_config`, bouton « Copier la configuration ») :
-  forme `command` + `args` (Claude Code lance island.exe directement, sans
+  forme `command` + `args` (Claude Code lance ondine.exe directement, sans
   Git Bash ni PowerShell, donc aucun échappement du chemin).
 - Lancer Claude Code (`launch_claude {path? | index?}`, permission `files`) :
   `cmd.exe /k claude` dans le dossier (cmd trouve `claude.exe` ou `claude.cmd`
@@ -724,22 +743,22 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   (`outil:session_id`) avec son état (`working`, `waiting`, `done`, `idle`
   après 1 h sans nouvelles) et depuis quand ; oubliée 2 h après sa dernière
   nouvelle ou à `SessionEnd`.
-- « Y aller » (`focus {session}`) : `island.exe notify` envoie aussi les
+- « Y aller » (`focus {session}`) : `ondine.exe notify` envoie aussi les
   numéros de ses programmes parents (`ancestor_pids`, jusqu'à l'île ou
   l'Explorateur exclus) et sa console si elle est visible. L'île cherche la
   première fenêtre visible de ces programmes (`EnumWindows`), la restaure si
   elle est réduite, puis la passe devant (`SetForegroundWindow`, précédé d'un
   appui sur Alt pour que Windows l'autorise). Ces numéros ne servent qu'à ça.
-- L'île comme serveur MCP (`island.exe mcp`, `cli.rs`) : un petit serveur
+- L'île comme serveur MCP (`ondine.exe mcp`, `cli.rs`) : un petit serveur
   MCP en stdio (JSON-RPC, une ligne par message ; versions 2024-11-05,
   2025-03-26 et 2025-06-18). Ne démarre pas l'île : il passe chaque appel
   par le même canal, devenu « dans les deux sens » (une ligne de demande,
   éventuellement une ligne de réponse). Quatre outils :
-  - `island_notify {title, message?}` → message dans l'historique ;
-  - `island_progress {title?, step, total}` → `agents.progress`, une
+  - `ondine_notify {title, message?}` → message dans l'historique ;
+  - `ondine_progress {title?, step, total}` → `agents.progress`, une
     notification discrète remplacée à chaque étape ;
-  - `island_timer {minutes 1–180}` → `timer.start` ;
-  - `island_ask {question, options 2–4, timeout_minutes 1–25}` →
+  - `ondine_timer {minutes 1–180}` → `timer.start` ;
+  - `ondine_ask {question, options 2–4, timeout_minutes 1–25}` →
     `agents.ask`, une alerte qui reste affichée avec un bouton par choix (et
     dans l'onglet). Le clic (`answer {id, choice}`) renvoie `{"answer": "…"}`
     à l'agent ; sans clic avant le délai : `{"answer": null, "reason": …}`.
@@ -752,7 +771,7 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
     -- "chemin" mcp` ; Codex `[mcp_servers.island]` avec
     `tool_timeout_sec = 1800` (défaut 60 s, trop court pour une question) ;
     Gemini `mcpServers.island` avec `timeout` 1 800 000 ms (défaut 10 min).
-- Autoriser / Refuser depuis l'île (`island.exe permission --source
+- Autoriser / Refuser depuis l'île (`ondine.exe permission --source
   claude-code|codex`, hook `PermissionRequest`, réglage `permissions`
   **désactivé par défaut**) :
   - le hook envoie seulement le nom de l'outil et un résumé d'une ligne
@@ -769,7 +788,7 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
     `permissionWait`). Délai du hook : 330 s ;
   - si l'agent n'attend plus (réponse donnée dans le terminal, hook coupé),
     `PeekNamedPipe` le voit et l'alerte devient « Réglé ailleurs » ; même
-    chose pour `island_ask` ;
+    chose pour `ondine_ask` ;
   - Gemini CLI : impossible (un hook peut refuser, pas autoriser).
 - Mode concentration (`quiet_start {minutes: 25 | 60 | 120 | 0}`, 0 = jusqu'à
   `quiet_stop`) : les notifications des agents sont gardées (`held`, 100 au

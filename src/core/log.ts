@@ -1,5 +1,5 @@
 // Journal côté front : écrit dans le même fichier que le Rust
-// (%LOCALAPPDATA%\Island\logs\island.log), avec la source "ui:<qui>".
+// (%LOCALAPPDATA%\Ondine\logs\ondine.log), avec la source "ui:<qui>".
 // Jamais de contenu sensible (texte copié, contenu de fichier, clé…).
 
 import { Bridge } from "./bridge";

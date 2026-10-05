@@ -11,6 +11,7 @@
 // La cible ne lit QUE la liste des chemins (format CF_HDROP), jamais le contenu
 // des fichiers, et la transmet au front par l'événement "file-drag".
 
+use crate::sync::LockExt;
 use std::cell::Cell;
 use std::ffi::OsString;
 use std::os::windows::ffi::OsStringExt;
@@ -60,7 +61,7 @@ pub fn install(app: &AppHandle, window_hwnd: HWND, label: &'static str) {
     unsafe {
         let _ = EnumChildWindows(Some(window_hwnd), Some(collect_render_widgets), LPARAM(&mut found as *mut Vec<HWND> as isize));
     }
-    let mut installed = INSTALLED.lock().unwrap();
+    let mut installed = INSTALLED.locked();
     for hwnd in found {
         if installed.contains(&(hwnd.0 as isize)) {
             continue;

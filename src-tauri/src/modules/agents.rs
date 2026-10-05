@@ -2,7 +2,7 @@
 // l'île, et l'île te prévient.
 //
 // Chemin d'un message :
-//   hook de Claude Code → « island.exe notify --source claude-code » (cli.rs)
+//   hook de Claude Code → « ondine.exe notify --source claude-code » (cli.rs)
 //   → canal local de l'île (named pipe, réservé à ton compte Windows)
 //   → ce module, qui comprend l'événement et publie sur le bus :
 //       agents.event      → le front affiche une notification et l'historique ;
@@ -21,6 +21,7 @@
 // d'événement, jamais son contenu. L'historique reste en mémoire (perdu à la
 // fermeture de l'île).
 
+use crate::sync::LockExt;
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::path::{Path, PathBuf};
@@ -44,6 +45,8 @@ const MAX_TEXT: usize = 300;
 const SESSION_TIMEOUT: Duration = Duration::from_secs(60 * 60);
 /// Une session finie (ou muette) disparaît du tableau après ce temps.
 const SESSION_FORGET: Duration = Duration::from_secs(2 * 60 * 60);
+/// Au plus ce nombre de sessions dans le tableau (au-delà, la plus ancienne part).
+const MAX_SESSIONS: usize = 30;
 /// Au plus ce nombre de messages par seconde (au-delà : ignorés).
 const MAX_PER_SECOND: usize = 10;
 
@@ -89,15 +92,13 @@ struct State {
     sessions: HashMap<String, Session>,
     /// Arrivées récentes (limite de débit).
     recent: VecDeque<Instant>,
-    /// Les questions posées par un agent (outil MCP « island_ask »), en
+    /// Les questions posées par un agent (outil MCP « ondine_ask »), en
     /// attente de ton clic, par numéro.
     asks: HashMap<u64, Ask>,
     next_ask: u64,
     /// Mode concentration : jusqu'à quand (ms ; u64::MAX = jusqu'à ce que tu
     /// l'arrêtes). Pendant ce temps, les notifications attendent dans `held`.
     quiet_until: Option<u64>,
-    /// Change à chaque démarrage (le fil de fin ignore une ancienne concentration).
-    quiet_gen: u64,
     held: Vec<Event>,
 }
 
@@ -110,7 +111,7 @@ impl State {
 /// Une question en attente : le canal pour répondre à l'agent, et les choix.
 struct Ask {
     reply: std::fs::File,
-    /// "question" (outil MCP island_ask) ou "permission" (Autoriser / Refuser).
+    /// "question" (outil MCP ondine_ask) ou "permission" (Autoriser / Refuser).
     kind: &'static str,
     who: String,
     question: String,
@@ -124,6 +125,9 @@ struct Ask {
     session: String,
     /// Jusqu'à quand (ms) : ensuite, l'agent reçoit « pas de réponse ».
     until: u64,
+    /// Quand l'écran « Vraiment autoriser ? » a été montré (commande "arm").
+    /// « Autoriser » n'est accepté qu'après, voir `allow_is_confirmed`.
+    armed: Option<Instant>,
 }
 
 impl State {
@@ -148,22 +152,48 @@ impl RustModule for Agents {
         // Le fil qui écoute le canal.
         let (a, s) = (app.clone(), self.state.clone());
         std::thread::spawn(move || {
-            let result = platform::serve_agents_pipe(MAX_MESSAGE, |bytes, reply| {
-                let handled = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| route(&a, &s, &bytes, reply)));
+            let (pa, ps) = (a.clone(), s.clone());
+            let result = platform::serve_agents_pipe(MAX_MESSAGE, move |bytes, reply| {
+                let handled = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| route(&pa, &ps, &bytes, reply)));
                 if handled.is_err() {
                     log::warn("agents : message illisible ignoré");
                 }
             });
             if let Err(e) = result {
                 log::warn(format!("agents : {e}"));
+                // Visible aussi dans l'île : les hooks et le serveur MCP ne
+                // marcheront pas (le nom du canal est peut-être pris par un
+                // autre programme). On laisse l'île finir de démarrer d'abord.
+                std::thread::sleep(Duration::from_secs(3));
+                let event = Event {
+                    at: now_ms(),
+                    source: "island".into(),
+                    kind: "info",
+                    title: "Agents IA : canal indisponible".into(),
+                    body: "Les hooks et le serveur MCP ne peuvent pas joindre l'île. Redémarre l'île ; si ça continue, un autre programme occupe peut-être le canal.".into(),
+                    project: String::new(),
+                    session: String::new(),
+                };
+                publish_info(&a, &s, event);
             }
         });
-        // Le fil qui range les sessions muettes depuis longtemps.
+        // Un seul fil d'entretien : toutes les 5 s il regarde si la
+        // concentration est finie, et chaque minute il range les sessions
+        // muettes depuis longtemps.
         let (a, s) = (app.clone(), self.state.clone());
+        let mut tick = 0u32;
         std::thread::spawn(move || loop {
-            std::thread::sleep(Duration::from_secs(60));
+            std::thread::sleep(Duration::from_secs(5));
+            let quiet_over = s.locked().quiet_until.is_some_and(|until| now_ms() >= until);
+            if quiet_over {
+                quiet_stop(&a, &s);
+            }
+            tick += 1;
+            if !tick.is_multiple_of(12) {
+                continue;
+            }
             let emptied = {
-                let mut st = s.lock().unwrap();
+                let mut st = s.locked();
                 let before = st.working();
                 for session in st.sessions.values_mut() {
                     let quiet = session.updated.map_or(true, |t| t.elapsed() >= SESSION_TIMEOUT);
@@ -194,7 +224,7 @@ impl RustModule for Agents {
     fn invoke(&self, ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
         match command {
             "history" => {
-                let st = self.state.lock().unwrap();
+                let st = self.state.locked();
                 let mut asks: Vec<Value> = st
                     .asks
                     .iter()
@@ -207,7 +237,7 @@ impl RustModule for Agents {
             // { minutes: 0 | 25 | 60 | 120 } : la concentration (0 = jusqu'à l'arrêt).
             "quiet_start" => {
                 let minutes = args.get("minutes").and_then(Value::as_u64).unwrap_or(0).min(8 * 60);
-                quiet_start(ctx.app, &self.state, minutes);
+                quiet_start(&self.state, minutes);
                 ctx.emit("agents.quiet", json!({ "on": true }));
                 ctx.emit("agents.changed", Value::Null);
                 Ok(Value::Null)
@@ -221,14 +251,16 @@ impl RustModule for Agents {
                 let id = args.get("id").and_then(Value::as_u64).ok_or("question manquante")?;
                 let choice = args.get("choice").and_then(Value::as_u64).ok_or("choix manquant")? as usize;
                 let mut ask = {
-                    let mut st = self.state.lock().unwrap();
+                    let mut st = self.state.locked();
                     let ask = st.asks.get(&id).ok_or("cette question n'attend plus (délai dépassé ?)")?;
                     if choice >= ask.options.len() {
                         return Err("choix inconnu".into());
                     }
-                    // Autoriser une action d'un agent : seulement après la confirmation.
-                    if ask.answers[choice] == "allow" && args.get("confirmed") != Some(&Value::Bool(true)) {
-                        return Err("autorisation non confirmée".into());
+                    // Autoriser une action d'un agent : seulement après la confirmation,
+                    // vérifiée ici (et pas seulement dans l'interface).
+                    if ask.answers[choice] == "allow" {
+                        let confirmed = args.get("confirmed") == Some(&Value::Bool(true));
+                        allow_is_confirmed(confirmed, ask.armed, Instant::now())?;
                     }
                     st.asks.remove(&id).unwrap()
                 };
@@ -239,11 +271,23 @@ impl RustModule for Agents {
                 ctx.emit("agents.changed", Value::Null);
                 Ok(Value::Null)
             }
+            // { id } : l'écran « Vraiment autoriser ? » vient de s'afficher.
+            // On note l'heure : « Oui, autoriser » ne sera accepté qu'ensuite.
+            "arm" => {
+                let id = args.get("id").and_then(Value::as_u64).ok_or("question manquante")?;
+                let mut st = self.state.locked();
+                let ask = st.asks.get_mut(&id).ok_or("cette question n'attend plus (délai dépassé ?)")?;
+                if ask.kind != "permission" {
+                    return Err("rien à autoriser".into());
+                }
+                ask.armed = Some(Instant::now());
+                Ok(Value::Null)
+            }
             // { session } : fait passer devant la fenêtre de cette session.
             "focus" => {
                 let id = args.get("session").and_then(Value::as_str).ok_or("session manquante")?;
                 let (hwnd, pids) = {
-                    let st = self.state.lock().unwrap();
+                    let st = self.state.locked();
                     let s = st.sessions.get(id).ok_or("session inconnue (terminée ?)")?;
                     (s.hwnd, s.pids.clone())
                 };
@@ -353,7 +397,11 @@ fn tools(ctx: &ModuleContext) -> Vec<&'static str> {
 fn launch(ctx: &ModuleContext, tool: Tool, dir: &Path) -> Result<(), String> {
     ctx.require("files")?;
     let in_wt = ctx.settings().get("claudeIn").and_then(Value::as_str) == Some("wt");
-    let (program, args) = agent_command(tool, dir, in_wt);
+    // Le chemin complet du programme, trouvé dans le PATH (jamais dans le
+    // projet) ; s'il n'est pas installé, le mot seul : la console affiche
+    // alors le message d'erreur de Windows.
+    let word = platform::find_program(tool.word()).map(|p| p.display().to_string()).unwrap_or_else(|| tool.word().to_string());
+    let (program, args) = agent_command(&word, dir, in_wt);
     // La console doit pouvoir passer devant l'île.
     platform::forget_previous_foreground();
     platform::spawn_console(program, &args, dir)?;
@@ -361,11 +409,10 @@ fn launch(ctx: &ModuleContext, tool: Tool, dir: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// « cmd /k claude » (ou codex, gemini) : cmd trouve le programme dans le
-/// PATH (.exe ou .cmd d'une installation npm), et la fenêtre reste ouverte
-/// s'il n'est pas installé (on lit alors le message d'erreur de Windows).
-fn agent_command(tool: Tool, dir: &Path, in_wt: bool) -> (&'static str, Vec<String>) {
-    let cmd = ["cmd.exe".to_string(), "/k".into(), tool.word().into()];
+/// « cmd /k <chemin de claude> » (ou codex, gemini) : la fenêtre reste
+/// ouverte s'il n'est pas installé (on lit alors le message d'erreur de Windows).
+fn agent_command(word: &str, dir: &Path, in_wt: bool) -> (&'static str, Vec<String>) {
+    let cmd = ["cmd.exe".to_string(), "/k".into(), word.into()];
     // Windows Terminal lit « ; » comme un séparateur de commandes : un dossier
     // qui en contient s'ouvre dans une console classique.
     if in_wt && !dir.display().to_string().contains(';') {
@@ -407,7 +454,7 @@ fn sorted_sessions(st: &State) -> Vec<Session> {
 
 /// Pas plus de MAX_PER_SECOND messages par seconde (au-delà : ignorés).
 fn allow(state: &Shared) -> bool {
-    let mut st = state.lock().unwrap();
+    let mut st = state.locked();
     st.recent.retain(|t| t.elapsed() < Duration::from_secs(1));
     if st.recent.len() >= MAX_PER_SECOND {
         return false;
@@ -416,8 +463,8 @@ fn allow(state: &Shared) -> bool {
     true
 }
 
-/// Un message du canal : une demande MCP (« island.exe mcp ») ou un hook
-/// (« island.exe notify »). `reply` sert seulement à répondre à une question.
+/// Un message du canal : une demande MCP (« ondine.exe mcp ») ou un hook
+/// (« ondine.exe notify »). `reply` sert seulement à répondre à une question.
 fn route(app: &AppHandle, state: &Shared, bytes: &[u8], reply: std::fs::File) {
     let msg = serde_json::from_slice::<Value>(bytes).unwrap_or(Value::Null);
     if msg["source"] == "mcp" && msg["request"].is_object() {
@@ -430,14 +477,14 @@ fn route(app: &AppHandle, state: &Shared, bytes: &[u8], reply: std::fs::File) {
     }
 }
 
-// ── Les outils MCP (« island.exe mcp ») ──────────────────────────────────────
+// ── Les outils MCP (« ondine.exe mcp ») ──────────────────────────────────────
 //
 // Un agent (Claude Code, Codex, Gemini) qui a branché l'île comme serveur MCP
 // peut l'appeler de lui-même :
-//   - island_notify   : un message (« Les tests passent ») ;
-//   - island_progress : « étape 3 sur 7 » ;
-//   - island_timer    : lance le minuteur de l'île ;
-//   - island_ask      : te pose une question à choix, et attend ton clic.
+//   - ondine_notify   : un message (« Les tests passent ») ;
+//   - ondine_progress : « étape 3 sur 7 » ;
+//   - ondine_timer    : lance le minuteur de l'île ;
+//   - ondine_ask      : te pose une question à choix, et attend ton clic.
 // Comme pour les hooks, ce sont des TEXTES À AFFICHER : rien n'est exécuté.
 // La réponse renvoyée à l'agent est seulement le texte du choix cliqué.
 
@@ -500,7 +547,7 @@ fn mcp_request(app: &AppHandle, state: &Shared, msg: &Value, reply: std::fs::Fil
                 return refuse(reply, "Il faut une question et 2 à 4 options.");
             }
             let secs = req["timeoutSecs"].as_u64().unwrap_or(600).clamp(60, 1500);
-            let ask = Ask { reply, kind: "question", who, question, detail: String::new(), answers: options.clone(), options, session: String::new(), until: 0 };
+            let ask = Ask { reply, kind: "question", who, question, detail: String::new(), answers: options.clone(), options, session: String::new(), until: 0, armed: None };
             if let Err(reply) = open_ask(app, state, ask, secs) {
                 refuse(reply, "Trop de questions en attente dans l'île.");
             }
@@ -509,7 +556,7 @@ fn mcp_request(app: &AppHandle, state: &Shared, msg: &Value, reply: std::fs::Fil
     }
 }
 
-// ── Autoriser / Refuser depuis l'île (« island.exe permission ») ─────────────
+// ── Autoriser / Refuser depuis l'île (« ondine.exe permission ») ─────────────
 //
 // Désactivé par défaut. Une fois activé, quand Claude Code ou Codex va te
 // demander la permission d'utiliser un outil, l'île affiche l'outil et ce
@@ -525,7 +572,7 @@ fn permission_request(app: &AppHandle, state: &Shared, msg: &Value, mut reply: s
     }
     let settings = super::with_context(app, ID, |ctx| ctx.settings()).unwrap_or_default();
     // Réglage coupé, ou concentration : la question passe tout de suite au terminal.
-    if settings.get("permissions").and_then(Value::as_bool) != Some(true) || state.lock().unwrap().quiet() {
+    if settings.get("permissions").and_then(Value::as_bool) != Some(true) || state.locked().quiet() {
         return pass(&mut reply);
     }
     let secs = settings.get("permissionWait").and_then(Value::as_str).and_then(|s| s.parse::<u64>().ok()).unwrap_or(60).clamp(15, 300);
@@ -537,7 +584,7 @@ fn permission_request(app: &AppHandle, state: &Shared, msg: &Value, mut reply: s
     if !session.is_empty() {
         let pids: Vec<u32> = msg["pids"].as_array().into_iter().flatten().filter_map(Value::as_u64).filter_map(|p| u32::try_from(p).ok()).take(8).collect();
         let hwnd = msg["hwnd"].as_i64().unwrap_or(0) as isize;
-        let mut st = state.lock().unwrap();
+        let mut st = state.locked();
         if let Some(sess) = st.sessions.get_mut(&session) {
             if !pids.is_empty() || hwnd != 0 {
                 sess.pids = pids;
@@ -563,6 +610,7 @@ fn permission_request(app: &AppHandle, state: &Shared, msg: &Value, mut reply: s
         answers: vec!["allow".into(), "deny".into(), String::new()],
         session,
         until: 0,
+        armed: None,
     };
     if let Err(mut reply) = open_ask(app, state, ask, secs) {
         pass(&mut reply);
@@ -574,28 +622,32 @@ fn permission_request(app: &AppHandle, state: &Shared, msg: &Value, mut reply: s
 /// secondes sans clic l'agent reçoit « pas de réponse ».
 /// Erreur (le canal rendu) : trop de questions en attente.
 fn open_ask(app: &AppHandle, state: &Shared, mut ask: Ask, secs: u64) -> Result<(), std::fs::File> {
-    let id = {
-        let mut st = state.lock().unwrap();
+    let (id, shown) = {
+        let mut st = state.locked();
         if st.asks.len() >= MAX_ASKS {
             return Err(ask.reply);
         }
         st.next_ask += 1;
         ask.until = now_ms() + secs * 1000;
-        // Pendant la concentration, la question attend dans l'onglet sans s'ouvrir en grand.
-        if !st.quiet() {
-            super::with_context(app, ID, |ctx| ctx.emit("agents.ask", ask_json(st.next_ask, &ask)));
-        }
         let id = st.next_ask;
+        // Pendant la concentration, la question attend dans l'onglet sans s'ouvrir en grand.
+        let shown = (!st.quiet()).then(|| ask_json(id, &ask));
         st.asks.insert(id, ask);
-        id
+        (id, shown)
     };
-    super::with_context(app, ID, |ctx| ctx.emit("agents.changed", Value::Null));
+    // On publie après avoir rendu le verrou (un abonné pourrait vouloir le reprendre).
+    super::with_context(app, ID, |ctx| {
+        if let Some(payload) = shown {
+            ctx.emit("agents.ask", payload);
+        }
+        ctx.emit("agents.changed", Value::Null);
+    });
     let (a, s) = (app.clone(), state.clone());
     std::thread::spawn(move || {
         let deadline = Instant::now() + Duration::from_secs(secs);
         loop {
             std::thread::sleep(Duration::from_secs(1));
-            let mut st = s.lock().unwrap();
+            let mut st = s.locked();
             let Some(ask) = st.asks.get(&id) else { return }; // déjà répondu
             let gone = !platform::pipe_client_alive(&ask.reply);
             let expired = Instant::now() >= deadline;
@@ -629,7 +681,7 @@ fn ask_json(id: u64, a: &Ask) -> Value {
 /// Ajoute un message libre à l'historique et le montre.
 fn publish_info(app: &AppHandle, state: &Shared, event: Event) {
     {
-        let mut st = state.lock().unwrap();
+        let mut st = state.locked();
         st.history.push_front(event.clone());
         st.history.truncate(MAX_HISTORY);
     }
@@ -642,7 +694,7 @@ fn publish_info(app: &AppHandle, state: &Shared, event: Event) {
 /// Montre la notification, ou la garde pour le résumé pendant la concentration.
 fn show_or_hold(ctx: &ModuleContext, state: &Shared, event: &Event) {
     {
-        let mut st = state.lock().unwrap();
+        let mut st = state.locked();
         if st.quiet() {
             if st.held.len() < 100 {
                 st.held.push(event.clone());
@@ -661,32 +713,19 @@ fn show_or_hold(ctx: &ModuleContext, state: &Shared, event: &Event) {
 // directement au terminal. À la fin : un seul résumé.
 
 /// Démarre la concentration pour `minutes` (0 = jusqu'à ce que tu l'arrêtes).
-fn quiet_start(app: &AppHandle, state: &Shared, minutes: u64) {
-    let gen = {
-        let mut st = state.lock().unwrap();
-        st.quiet_until = Some(if minutes == 0 { u64::MAX } else { now_ms() + minutes * 60_000 });
-        st.quiet_gen += 1;
-        st.quiet_gen
-    };
-    if minutes > 0 {
-        let (a, s) = (app.clone(), state.clone());
-        std::thread::spawn(move || {
-            std::thread::sleep(Duration::from_secs(minutes * 60));
-            if s.lock().unwrap().quiet_gen == gen {
-                quiet_stop(&a, &s);
-            }
-        });
-    }
+/// La fin est surveillée par le fil d'entretien (voir `start`).
+fn quiet_start(state: &Shared, minutes: u64) {
+    let mut st = state.locked();
+    st.quiet_until = Some(if minutes == 0 { u64::MAX } else { now_ms().saturating_add(minutes.saturating_mul(60_000)) });
 }
 
 /// Arrête la concentration et montre le résumé de ce qui s'est passé.
 fn quiet_stop(app: &AppHandle, state: &Shared) {
     let text = {
-        let mut st = state.lock().unwrap();
+        let mut st = state.locked();
         if st.quiet_until.take().is_none() {
             return;
         }
-        st.quiet_gen += 1;
         let held = std::mem::take(&mut st.held);
         let waiting: Vec<&'static str> = st.sessions.values().filter(|s| s.state == "waiting").map(|s| who(&s.source)).collect();
         summary(&held, &waiting, st.asks.len())
@@ -735,7 +774,30 @@ fn summary(held: &[Event], waiting: &[&str], asks: usize) -> Option<String> {
     if parts.is_empty() { None } else { Some(parts.join(" · ")) }
 }
 
-/// La ligne renvoyée à « island.exe mcp » : `{"answer": "…" | null, "reason"?: "…"}`.
+/// Le délai minimum entre l'écran de confirmation et « Oui, autoriser » :
+/// un vrai second clic, pas deux appels collés.
+const ARM_MIN: Duration = Duration::from_millis(300);
+/// Au-delà, la confirmation est trop vieille : il faut la redemander.
+const ARM_MAX: Duration = Duration::from_secs(60);
+
+/// « Autoriser » passe en deux temps, vérifiés côté Rust : la commande "arm"
+/// (écran « Vraiment autoriser ? »), puis "answer" avec `confirmed`, entre
+/// 300 ms et 60 s plus tard.
+fn allow_is_confirmed(confirmed: bool, armed: Option<Instant>, now: Instant) -> Result<(), String> {
+    let Some(at) = armed else {
+        return Err("autorisation non confirmée".into());
+    };
+    let waited = now.saturating_duration_since(at);
+    if !confirmed || waited < ARM_MIN {
+        return Err("autorisation non confirmée".into());
+    }
+    if waited > ARM_MAX {
+        return Err("confirmation trop ancienne : clique de nouveau sur « Autoriser… »".into());
+    }
+    Ok(())
+}
+
+/// La ligne renvoyée à « ondine.exe mcp » : `{"answer": "…" | null, "reason"?: "…"}`.
 /// Si l'agent est parti entre-temps, l'écriture échoue sans bruit.
 fn answer_line(reply: &mut std::fs::File, answer: Option<&str>, reason: Option<&str>) {
     use std::io::Write;
@@ -746,7 +808,7 @@ fn answer_line(reply: &mut std::fs::File, answer: Option<&str>, reason: Option<&
     let _ = reply.write_all(format!("{line}\n").as_bytes());
 }
 
-/// Le nom de l'outil donné par « island.exe mcp » (claude-code, codex…),
+/// Le nom de l'outil donné par « ondine.exe mcp » (claude-code, codex…),
 /// réduit aux caractères sûrs.
 fn client_source(raw: &str) -> String {
     let s: String = raw.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-').take(30).collect::<String>().to_lowercase();
@@ -775,7 +837,7 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
 
     // Qui est au travail ? (la mascotte réfléchit tant qu'au moins une session travaille)
     let (started, finished, already_shown) = {
-        let mut st = state.lock().unwrap();
+        let mut st = state.locked();
         let was_busy = st.working() > 0;
         if event.kind == "ended" {
             st.sessions.remove(&event.session);
@@ -785,6 +847,14 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
                 "waiting" => "waiting",
                 _ => "done",
             };
+            // Une nouvelle session alors que le tableau est plein : la plus
+            // ancienne (dernier signe de vie) laisse sa place.
+            if !st.sessions.contains_key(&event.session) && st.sessions.len() >= MAX_SESSIONS {
+                let oldest = st.sessions.iter().min_by_key(|(_, s)| s.updated).map(|(k, _)| k.clone());
+                if let Some(k) = oldest {
+                    st.sessions.remove(&k);
+                }
+            }
             let entry = st.sessions.entry(event.session.clone()).or_insert_with(|| Session {
                 id: event.session.clone(),
                 source: event.source.clone(),
@@ -830,7 +900,7 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
                 ctx.emit("claude.done", Value::Null);
             }
             // (pas de fête pendant la concentration)
-            if event.kind == "done" && !state.lock().unwrap().quiet() {
+            if event.kind == "done" && !state.locked().quiet() {
                 ctx.emit("task.finished", json!({ "label": event.title }));
             }
         }
@@ -888,7 +958,7 @@ fn understand(msg: &Value, at: u64) -> Option<Event> {
     });
 
     match event {
-        // Pas de hook : un message libre (« island.exe notify --title … --message … »).
+        // Pas de hook : un message libre (« ondine.exe notify --title … --message … »).
         None => {
             if hook.is_object() {
                 return None; // un JSON inconnu : ignoré
@@ -972,7 +1042,7 @@ fn hook_config(tool: &str, exe: &str) -> Result<String, String> {
 }
 
 /// Claude Code (settings.json). Forme « programme + paramètres » (`command` +
-/// `args`) : Claude Code lance directement island.exe, sans Git Bash ni
+/// `args`) : Claude Code lance directement ondine.exe, sans Git Bash ni
 /// PowerShell, donc rien à échapper dans le chemin (même avec des espaces).
 fn claude_config(exe: &str) -> String {
     let entry = json!([{ "hooks": [{ "type": "command", "command": exe, "args": ["notify", "--source", "claude-code"] }] }]);
@@ -992,7 +1062,7 @@ fn claude_config(exe: &str) -> String {
 fn codex_config(exe: &str) -> String {
     let command = format!("\"{exe}\" notify --source codex");
     let toml = format!("\"{}\"", command.replace('\\', "\\\\").replace('"', "\\\""));
-    let mut out = String::from("# Island : Codex prévient l'île (à coller dans %USERPROFILE%\\.codex\\config.toml)\n");
+    let mut out = String::from("# Ondine : Codex prévient l'île (à coller dans %USERPROFILE%\\.codex\\config.toml)\n");
     for event in ["UserPromptSubmit", "PermissionRequest", "Stop", "SessionEnd"] {
         out.push_str(&format!("\n[[hooks.{event}]]\n[[hooks.{event}.hooks]]\ntype = \"command\"\ncommand = {toml}\n"));
     }
@@ -1004,7 +1074,7 @@ fn codex_config(exe: &str) -> String {
 /// dans le chemin se double), et `$input |` pour lui passer le JSON reçu.
 fn gemini_config(exe: &str) -> String {
     let command = format!("$input | & '{}' notify --source gemini", exe.replace('\'', "''"));
-    let entry = json!([{ "matcher": "*", "hooks": [{ "name": "island", "type": "command", "command": command, "timeout": 5000 }] }]);
+    let entry = json!([{ "matcher": "*", "hooks": [{ "name": "ondine", "type": "command", "command": command, "timeout": 5000 }] }]);
     let config = json!({
         "hooks": {
             "BeforeAgent": entry,
@@ -1028,7 +1098,7 @@ fn permission_config(tool: &str, exe: &str) -> Result<String, String> {
         "codex" => {
             let command = format!("\"{exe}\" permission --source codex");
             let toml = format!("\"{}\"", command.replace('\\', "\\\\").replace('"', "\\\""));
-            Ok(format!("# Island : Autoriser / Refuser depuis l'île (à coller dans %USERPROFILE%\\.codex\\config.toml)\n\n[[hooks.PermissionRequest]]\n[[hooks.PermissionRequest.hooks]]\ntype = \"command\"\ncommand = {toml}\ntimeout = 330\n"))
+            Ok(format!("# Ondine : Autoriser / Refuser depuis l'île (à coller dans %USERPROFILE%\\.codex\\config.toml)\n\n[[hooks.PermissionRequest]]\n[[hooks.PermissionRequest.hooks]]\ntype = \"command\"\ncommand = {toml}\ntimeout = 330\n"))
         }
         // Gemini CLI : un hook peut refuser ou laisser demander, mais pas autoriser.
         "gemini" => Err("Gemini CLI ne laisse pas un hook autoriser un outil : réponds dans son terminal.".into()),
@@ -1036,19 +1106,19 @@ fn permission_config(tool: &str, exe: &str) -> Result<String, String> {
     }
 }
 
-/// Brancher l'île comme serveur MCP (« island.exe mcp »), pour chaque outil.
-/// La question (`island_ask`) peut attendre ton clic jusqu'à 30 min : on
+/// Brancher l'île comme serveur MCP (« ondine.exe mcp »), pour chaque outil.
+/// La question (`ondine_ask`) peut attendre ton clic jusqu'à 30 min : on
 /// relève le délai que l'outil accorde à un appel quand il le permet.
 fn mcp_config(tool: &str, exe: &str) -> Result<String, String> {
     match tool {
         // Une commande à taper une fois (le chemin entre guillemets : cmd ou PowerShell).
-        "claude-code" => Ok(format!("claude mcp add --scope user island -- \"{exe}\" mcp")),
+        "claude-code" => Ok(format!("claude mcp add --scope user ondine -- \"{exe}\" mcp")),
         "codex" => {
             let path = format!("\"{}\"", exe.replace('\\', "\\\\").replace('"', "\\\""));
-            Ok(format!("# Island comme serveur MCP (à coller dans %USERPROFILE%\\.codex\\config.toml)\n\n[mcp_servers.island]\ncommand = {path}\nargs = [\"mcp\"]\ntool_timeout_sec = 1800\n"))
+            Ok(format!("# Ondine comme serveur MCP (à coller dans %USERPROFILE%\\.codex\\config.toml)\n\n[mcp_servers.ondine]\ncommand = {path}\nargs = [\"mcp\"]\ntool_timeout_sec = 1800\n"))
         }
         "gemini" => {
-            let config = json!({ "mcpServers": { "island": { "command": exe, "args": ["mcp"], "timeout": 1_800_000 } } });
+            let config = json!({ "mcpServers": { "ondine": { "command": exe, "args": ["mcp"], "timeout": 1_800_000 } } });
             Ok(serde_json::to_string_pretty(&config).unwrap_or_default())
         }
         other => Err(format!("outil inconnu : {other}")),
@@ -1106,23 +1176,23 @@ mod tests {
 
     #[test]
     fn permission_configs() {
-        let exe = r"C:\Program Files\Island\island.exe";
+        let exe = r"C:\Program Files\Ondine\ondine.exe";
         let claude: Value = serde_json::from_str(&permission_config("claude-code", exe).unwrap()).unwrap();
         let hook = &claude["hooks"]["PermissionRequest"][0]["hooks"][0];
         assert_eq!((hook["command"].as_str(), hook["args"][0].as_str(), hook["timeout"].as_u64()), (Some(exe), Some("permission"), Some(330)));
         let codex = permission_config("codex", exe).unwrap();
-        assert!(codex.contains(r#"command = "\"C:\\Program Files\\Island\\island.exe\" permission --source codex""#), "{codex}");
+        assert!(codex.contains(r#"command = "\"C:\\Program Files\\Ondine\\ondine.exe\" permission --source codex""#), "{codex}");
         assert!(permission_config("gemini", exe).is_err());
     }
 
     #[test]
     fn mcp_configs() {
-        let exe = r"C:\Program Files\Island\island.exe";
-        assert_eq!(mcp_config("claude-code", exe).unwrap(), r#"claude mcp add --scope user island -- "C:\Program Files\Island\island.exe" mcp"#);
+        let exe = r"C:\Program Files\Ondine\ondine.exe";
+        assert_eq!(mcp_config("claude-code", exe).unwrap(), r#"claude mcp add --scope user ondine -- "C:\Program Files\Ondine\ondine.exe" mcp"#);
         let codex = mcp_config("codex", exe).unwrap();
-        assert!(codex.contains(r#"command = "C:\\Program Files\\Island\\island.exe""#), "{codex}");
+        assert!(codex.contains(r#"command = "C:\\Program Files\\Ondine\\ondine.exe""#), "{codex}");
         let gemini: Value = serde_json::from_str(&mcp_config("gemini", exe).unwrap()).unwrap();
-        assert_eq!(gemini["mcpServers"]["island"]["command"], exe);
+        assert_eq!(gemini["mcpServers"]["ondine"]["command"], exe);
         assert!(mcp_config("x", exe).is_err());
     }
 
@@ -1132,7 +1202,7 @@ mod tests {
         assert_eq!(client_source("$(rm)"), "rm");
         assert_eq!(client_source(""), "agent");
         assert_eq!(who("codex"), "Codex");
-        // La ligne renvoyée à « island.exe mcp » : du JSON sur une ligne.
+        // La ligne renvoyée à « ondine.exe mcp » : du JSON sur une ligne.
         let path = std::env::temp_dir().join(format!("island-answer-{}.txt", std::process::id()));
         let mut f = std::fs::File::create(&path).unwrap();
         answer_line(&mut f, Some("Oui \"vraiment\"\nfin"), None);
@@ -1146,12 +1216,23 @@ mod tests {
     }
 
     #[test]
+    fn allow_needs_two_steps() {
+        let t = Instant::now();
+        let later = |ms| t + Duration::from_millis(ms);
+        assert!(allow_is_confirmed(true, None, later(1000)).is_err()); // jamais armé
+        assert!(allow_is_confirmed(false, Some(t), later(1000)).is_err()); // pas confirmé
+        assert!(allow_is_confirmed(true, Some(t), later(50)).is_err()); // trop rapide
+        assert!(allow_is_confirmed(true, Some(t), later(1000)).is_ok());
+        assert!(allow_is_confirmed(true, Some(t), later(61_000)).is_err()); // trop vieux
+    }
+
+    #[test]
     fn agent_command_lines() {
         let dir = Path::new(r"C:\Projets\Mon appli");
-        assert_eq!(agent_command(Tool::Claude, dir, false), ("cmd.exe", vec!["/k".to_string(), "claude".to_string()]));
-        let (p, a) = agent_command(Tool::Codex, dir, true);
-        assert_eq!((p, a[1].as_str(), a[2].as_str(), a[4].as_str()), ("wt.exe", r"C:\Projets\Mon appli", "cmd.exe", "codex"));
-        assert_eq!(agent_command(Tool::Gemini, Path::new(r"C:\a;b"), true).0, "cmd.exe");
+        assert_eq!(agent_command("claude", dir, false), ("cmd.exe", vec!["/k".to_string(), "claude".to_string()]));
+        let (p, a) = agent_command(r"C:\npm\codex.cmd", dir, true);
+        assert_eq!((p, a[1].as_str(), a[2].as_str(), a[4].as_str()), ("wt.exe", r"C:\Projets\Mon appli", "cmd.exe", r"C:\npm\codex.cmd"));
+        assert_eq!(agent_command("gemini", Path::new(r"C:\a;b"), true).0, "cmd.exe");
         assert!(Tool::parse("calc").is_err());
     }
 
@@ -1172,20 +1253,20 @@ mod tests {
 
     #[test]
     fn codex_and_gemini_configs() {
-        let exe = r"C:\Program Files\Island\island.exe";
+        let exe = r"C:\Program Files\Ondine\ondine.exe";
         let c = codex_config(exe);
-        assert!(c.contains(r#"command = "\"C:\\Program Files\\Island\\island.exe\" notify --source codex""#), "{c}");
+        assert!(c.contains(r#"command = "\"C:\\Program Files\\Ondine\\ondine.exe\" notify --source codex""#), "{c}");
         assert!(c.contains("[[hooks.PermissionRequest.hooks]]"));
-        let g: Value = serde_json::from_str(&gemini_config(r"C:\Users\O'Neil\island.exe")).unwrap();
-        assert_eq!(g["hooks"]["AfterAgent"][0]["hooks"][0]["command"], r"$input | & 'C:\Users\O''Neil\island.exe' notify --source gemini");
+        let g: Value = serde_json::from_str(&gemini_config(r"C:\Users\O'Neil\ondine.exe")).unwrap();
+        assert_eq!(g["hooks"]["AfterAgent"][0]["hooks"][0]["command"], r"$input | & 'C:\Users\O''Neil\ondine.exe' notify --source gemini");
         assert!(hook_config("chatgpt-web", exe).is_err());
     }
 
     #[test]
     fn config_runs_the_exe_with_args() {
-        let c: Value = serde_json::from_str(&claude_config(r"C:\Program Files\Island\island.exe")).unwrap();
+        let c: Value = serde_json::from_str(&claude_config(r"C:\Program Files\Ondine\ondine.exe")).unwrap();
         let h = &c["hooks"]["Stop"][0]["hooks"][0];
-        assert_eq!(h["command"], r"C:\Program Files\Island\island.exe");
+        assert_eq!(h["command"], r"C:\Program Files\Ondine\ondine.exe");
         assert_eq!(h["args"], json!(["notify", "--source", "claude-code"]));
     }
 }

@@ -2,7 +2,7 @@
   "id": "notes",
   "name": "Notes",
   "icon": "📝",
-  "description": "Notes rapides et liste de choses à faire. Tout est enregistré sur ton ordinateur (%APPDATA%\\Island\\notes.json). Supprimer propose « Annuler ».",
+  "description": "Notes rapides et liste de choses à faire. Tout est enregistré sur ton ordinateur (%APPDATA%\\Ondine\\notes.json). Supprimer propose « Annuler ».",
   "version": "0.1.0",
   "permissions": [],
   "settings": {

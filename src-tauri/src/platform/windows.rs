@@ -3,6 +3,7 @@
 // Plusieurs techniques viennent de Coucou (github.com/Louis-CFM/coucou, licence MIT),
 // qui les a mises au point sur la même pile Tauri 2 + WebView2.
 
+use crate::sync::LockExt;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Mutex;
@@ -21,20 +22,37 @@ use super::LocalTime;
 
 // ── Dossiers ──────────────────────────────────────────────────────────────────
 
-/// %APPDATA%\Island : les réglages.
-pub fn config_dir() -> PathBuf {
-    std::env::var_os("APPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("Island")
+/// Le dossier `name` dans %APPDATA% ou %LOCALAPPDATA%.
+fn app_dir(var: &str, name: &str) -> PathBuf {
+    std::env::var_os(var).map(PathBuf::from).unwrap_or_else(|| PathBuf::from(".")).join(name)
 }
 
-/// %LOCALAPPDATA%\Island : le journal.
+/// %APPDATA%\Ondine : les réglages.
+pub fn config_dir() -> PathBuf {
+    app_dir("APPDATA", "Ondine")
+}
+
+/// %LOCALAPPDATA%\Ondine : le journal.
 pub fn local_dir() -> PathBuf {
-    std::env::var_os("LOCALAPPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("Island")
+    app_dir("LOCALAPPDATA", "Ondine")
+}
+
+/// L'appli s'appelait « Island » : au premier lancement d'Ondine, on renomme
+/// ses anciens dossiers (réglages, notes, favoris, journal) pour ne rien perdre.
+/// Rien n'est supprimé ; si « Ondine » existe déjà, on ne touche à rien.
+/// Renvoie ce qui s'est passé, pour le journal (qui n'est pas encore ouvert).
+pub fn migrate_old_dirs() -> Vec<String> {
+    let mut done = Vec::new();
+    for var in ["APPDATA", "LOCALAPPDATA"] {
+        let (old, new) = (app_dir(var, "Island"), app_dir(var, "Ondine"));
+        if old.is_dir() && !new.exists() {
+            match std::fs::rename(&old, &new) {
+                Ok(()) => done.push(format!("dossier %{var}%\\Island renommé en Ondine")),
+                Err(e) => done.push(format!("dossier %{var}%\\Island non renommé : {e}")),
+            }
+        }
+    }
+    done
 }
 
 pub fn local_time() -> LocalTime {
@@ -103,7 +121,7 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
         if activating {
             let fg = GetForegroundWindow();
             if fg != hwnd {
-                *PREVIOUS_FOREGROUND.lock().unwrap() = fg.0 as isize;
+                *PREVIOUS_FOREGROUND.locked() = fg.0 as isize;
             }
         }
         let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
@@ -114,7 +132,7 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
         };
         SetWindowLongPtrW(hwnd, GWL_EXSTYLE, want);
         if !activating {
-            let prev = std::mem::take(&mut *PREVIOUS_FOREGROUND.lock().unwrap());
+            let prev = std::mem::take(&mut *PREVIOUS_FOREGROUND.locked());
             if prev != 0 && GetForegroundWindow() == hwnd {
                 let _ = SetForegroundWindow(HWND(prev as *mut _));
             }
@@ -302,12 +320,43 @@ pub fn spawn_console(program: &str, args: &[String], dir: &std::path::Path) -> R
     std::process::Command::new(program)
         .args(args)
         .current_dir(dir)
+        // cmd.exe ne cherchera pas les programmes dans le dossier ouvert (un
+        // « claude.cmd » piégé dans un projet ne doit jamais être lancé).
+        .env("NoDefaultCurrentDirectoryInExePath", "1")
         .creation_flags(CREATE_NEW_CONSOLE)
         .spawn()
         .map(|_| ())
         .map_err(|e| match e.kind() {
             std::io::ErrorKind::NotFound => format!("{program} n'est pas installé sur ce PC"),
             _ => format!("{program} ne s'ouvre pas : {e}"),
+        })
+}
+
+/// Le chemin complet d'un programme installé (« claude » → …\npm\claude.cmd),
+/// cherché dans le PATH seulement : `where.exe` tourne depuis le dossier
+/// système, jamais depuis un dossier de projet. `None` s'il n'est pas installé.
+pub fn find_program(name: &str) -> Option<PathBuf> {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let system = std::env::var("SystemRoot").map(|r| PathBuf::from(r).join("System32")).ok()?;
+    let out = Command::new(system.join("where.exe"))
+        .arg(name)
+        .current_dir(&system)
+        .env("NoDefaultCurrentDirectoryInExePath", "1")
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    // Plusieurs réponses possibles (claude, claude.cmd, claude.ps1…) : la
+    // première que cmd sait lancer.
+    String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .map(|l| PathBuf::from(l.trim()))
+        .find(|p| {
+            let ext = p.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
+            p.is_absolute() && matches!(ext.as_str(), "exe" | "cmd" | "bat" | "com") && p.is_file()
         })
 }
 
@@ -382,6 +431,27 @@ pub fn drives(known: &[DriveInfo]) -> Vec<DriveInfo> {
         out.push(DriveInfo { root, label: String::from_utf16_lossy(&name[..len]), removable: kind == 2 });
     }
     out
+}
+
+/// Ce chemin est-il sur un lecteur qui a une Corbeille ? Windows n'en a que
+/// sur les disques fixes : une clé USB (amovible), un partage réseau, un CD ou
+/// un disque en mémoire n'en ont pas, et « supprimer » y serait définitif.
+/// (Un disque fixe dont la Corbeille est désactivée ou pleine : Windows
+/// affiche lui-même un avertissement avant toute suppression définitive.)
+pub fn has_recycle_bin(path: &std::path::Path) -> bool {
+    use ::windows::core::HSTRING;
+    use ::windows::Win32::Storage::FileSystem::{GetDriveTypeW, GetVolumePathNameW};
+
+    // La racine du volume (« E:\ », ou le dossier où un disque est monté).
+    let mut root = [0u16; 261];
+    let wide = HSTRING::from(path.as_os_str());
+    if unsafe { GetVolumePathNameW(&wide, &mut root) }.is_err() {
+        return false; // inconnu : on refuse plutôt que de risquer
+    }
+    let len = root.iter().position(|&c| c == 0).unwrap_or(root.len());
+    let root = HSTRING::from_wide(&root[..len]);
+    // 3 = disque fixe (DRIVE_FIXED).
+    unsafe { GetDriveTypeW(&root) == 3 }
 }
 
 /// Attend (au plus `max`) que Ctrl, Alt, Maj et Windows soient relâchées :
@@ -459,7 +529,7 @@ pub fn shortcut_target(lnk: &std::path::Path) -> Option<PathBuf> {
 /// L'île ne rendra PAS le focus à la fenêtre d'avant en se fermant : le
 /// programme qu'on vient de lancer doit pouvoir passer devant.
 pub fn forget_previous_foreground() {
-    *PREVIOUS_FOREGROUND.lock().unwrap() = 0;
+    *PREVIOUS_FOREGROUND.locked() = 0;
 }
 
 // ── Infos système ────────────────────────────────────────────────────────────
@@ -554,30 +624,106 @@ pub fn reverse_dns(ip: std::net::Ipv4Addr) -> Option<String> {
 }
 
 // ── Porte d'entrée locale (« island notify ») ────────────────────────────────
+//
+// Sécurité du canal (audit du 5 octobre 2026) :
+//   - son nom contient le SID du compte Windows (unique, contrairement au nom
+//     d'utilisateur) ;
+//   - côté île, ses droits (DACL) n'autorisent QUE ce compte : un autre
+//     utilisateur ne peut ni s'y connecter ni le lire ;
+//   - côté client (ondine.exe notify / mcp / permission), on vérifie avant
+//     d'envoyer quoi que ce soit que l'autre bout est bien un « ondine.exe »
+//     lancé par le même compte : un programme qui aurait créé le canal avant
+//     l'île ne peut donc pas recevoir les demandes ni répondre « allow » ;
+//   - le client interdit au serveur d'agir en son nom (niveau « identification »).
 
-/// Le nom du canal (named pipe) par lequel les outils parlent à l'île. Un nom
-/// par utilisateur Windows ; les droits par défaut de Windows ne laissent
-/// écrire que le compte qui l'a créé.
-pub fn agents_pipe_name() -> String {
-    let user: String = std::env::var("USERNAME").unwrap_or_default().chars().filter(|c| c.is_ascii_alphanumeric()).collect();
-    format!(r"\\.\pipe\island-agents-{user}")
+/// Le SID (texte « S-1-5-21-… ») du compte qui fait tourner un processus.
+unsafe fn process_user_sid(process: ::windows::Win32::Foundation::HANDLE) -> Option<String> {
+    use ::windows::core::PWSTR;
+    use ::windows::Win32::Foundation::{CloseHandle, LocalFree, HANDLE, HLOCAL};
+    use ::windows::Win32::Security::Authorization::ConvertSidToStringSidW;
+    use ::windows::Win32::Security::{GetTokenInformation, TokenUser, TOKEN_QUERY, TOKEN_USER};
+    use ::windows::Win32::System::Threading::OpenProcessToken;
+    unsafe {
+        let mut token = HANDLE::default();
+        OpenProcessToken(process, TOKEN_QUERY, &mut token).ok()?;
+        // Première demande : la taille ; seconde : le contenu. Tampon en u64
+        // pour que la structure (qui contient des pointeurs) soit bien alignée.
+        let mut len = 0u32;
+        let _ = GetTokenInformation(token, TokenUser, None, 0, &mut len);
+        let mut buf = vec![0u64; (len as usize).div_ceil(8).max(1)];
+        let read = GetTokenInformation(token, TokenUser, Some(buf.as_mut_ptr() as _), len, &mut len);
+        let _ = CloseHandle(token);
+        read.ok()?;
+        let user = &*(buf.as_ptr() as *const TOKEN_USER);
+        let mut text = PWSTR::null();
+        ConvertSidToStringSidW(user.User.Sid, &mut text).ok()?;
+        let sid = text.to_string().ok();
+        let _ = LocalFree(Some(HLOCAL(text.0 as _)));
+        sid
+    }
 }
+
+/// Le SID du compte courant (calculé une fois).
+fn own_sid() -> Option<String> {
+    use std::sync::OnceLock;
+    static SID: OnceLock<Option<String>> = OnceLock::new();
+    SID.get_or_init(|| unsafe { process_user_sid(::windows::Win32::System::Threading::GetCurrentProcess()) }).clone()
+}
+
+/// Le nom du canal (named pipe) par lequel les outils parlent à l'île : un par
+/// compte Windows (le SID n'a que des lettres, des chiffres et des tirets).
+pub fn agents_pipe_name() -> String {
+    let id = own_sid().unwrap_or_else(|| std::env::var("USERNAME").unwrap_or_default());
+    let id: String = id.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-').collect();
+    format!(r"\\.\pipe\ondine-agents-{id}")
+}
+
+/// Au plus tant de clients lus en même temps (les autres sont refusés).
+const PIPE_MAX_CLIENTS: usize = 8;
+/// Un client a ce temps pour envoyer sa ligne, sinon on raccroche.
+const PIPE_READ_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
 
 /// Écoute le canal pour toujours : chaque client envoie UNE ligne (au plus
 /// `max` octets). `on_message` reçoit les octets et le canal lui-même : il
 /// peut y écrire une réponse (une question posée par un agent), ou le laisser
-/// se fermer. Bloquant : à lancer dans un thread.
-pub fn serve_agents_pipe(max: usize, mut on_message: impl FnMut(Vec<u8>, std::fs::File)) -> Result<(), String> {
+/// se fermer. Chaque client est lu dans son propre fil, avec un délai : un
+/// client muet ne bloque pas les autres. Bloquant : à lancer dans un thread.
+///
+/// Renvoie une erreur seulement si le canal n'a jamais pu être créé (par
+/// exemple : un autre programme l'a créé avant l'île).
+pub fn serve_agents_pipe(
+    max: usize,
+    on_message: impl Fn(Vec<u8>, std::fs::File) + Send + Sync + 'static,
+) -> Result<(), String> {
     use std::io::{BufRead, Read};
-    use std::os::windows::io::{FromRawHandle, RawHandle};
+    use std::os::windows::io::{AsRawHandle, FromRawHandle, RawHandle};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
     use ::windows::core::HSTRING;
     use ::windows::Win32::Foundation::{ERROR_PIPE_CONNECTED, HANDLE};
+    use ::windows::Win32::Security::Authorization::{ConvertStringSecurityDescriptorToSecurityDescriptorW, SDDL_REVISION_1};
+    use ::windows::Win32::Security::{PSECURITY_DESCRIPTOR, SECURITY_ATTRIBUTES};
     use ::windows::Win32::Storage::FileSystem::{FILE_FLAG_FIRST_PIPE_INSTANCE, FILE_FLAGS_AND_ATTRIBUTES, PIPE_ACCESS_DUPLEX};
     use ::windows::Win32::System::Pipes::{
-        ConnectNamedPipe, CreateNamedPipeW, PIPE_READMODE_BYTE, PIPE_REJECT_REMOTE_CLIENTS, PIPE_TYPE_BYTE, PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
+        ConnectNamedPipe, CreateNamedPipeW, DisconnectNamedPipe, PIPE_READMODE_BYTE, PIPE_REJECT_REMOTE_CLIENTS, PIPE_TYPE_BYTE,
+        PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
     };
 
     let name = HSTRING::from(agents_pipe_name());
+    // Les droits du canal : accès complet pour ce compte, rien pour les autres
+    // (« P » : pas d'héritage de droits plus larges).
+    let sid = own_sid().ok_or("compte Windows introuvable")?;
+    let sddl = HSTRING::from(format!("D:P(A;;GA;;;{sid})"));
+    let mut sd = PSECURITY_DESCRIPTOR::default();
+    unsafe { ConvertStringSecurityDescriptorToSecurityDescriptorW(&sddl, SDDL_REVISION_1, &mut sd, None) }
+        .map_err(|e| format!("droits du canal : {e}"))?;
+    // (`sd` vit aussi longtemps que l'écoute : jamais libéré, c'est voulu.)
+    let attributes = SECURITY_ATTRIBUTES {
+        nLength: std::mem::size_of::<SECURITY_ATTRIBUTES>() as u32,
+        lpSecurityDescriptor: sd.0,
+        bInheritHandle: false.into(),
+    };
+
     // `first` : la toute première création échoue si le nom est déjà pris par
     // un autre programme (on refuse d'écouter à sa place).
     let create = |first: bool| -> Result<HANDLE, String> {
@@ -593,7 +739,7 @@ pub fn serve_agents_pipe(max: usize, mut on_message: impl FnMut(Vec<u8>, std::fs
                 4096,
                 max as u32,
                 0,
-                None,
+                Some(&attributes),
             )
         };
         if h.is_invalid() {
@@ -602,7 +748,24 @@ pub fn serve_agents_pipe(max: usize, mut on_message: impl FnMut(Vec<u8>, std::fs
             Ok(h)
         }
     };
+    // Une nouvelle instance ; si Windows refuse un instant, on réessaie (au
+    // lieu d'abandonner le canal jusqu'au redémarrage de l'île).
+    let create_again = || -> HANDLE {
+        let mut wait = 200;
+        loop {
+            match create(false) {
+                Ok(h) => return h,
+                Err(e) => {
+                    crate::services::log::warn(format!("agents : {e} (nouvel essai)"));
+                    std::thread::sleep(std::time::Duration::from_millis(wait));
+                    wait = (wait * 2).min(10_000);
+                }
+            }
+        }
+    };
 
+    let on_message = Arc::new(on_message);
+    let active = Arc::new(AtomicUsize::new(0));
     let mut next = create(true)?;
     loop {
         let current = next;
@@ -611,23 +774,46 @@ pub fn serve_agents_pipe(max: usize, mut on_message: impl FnMut(Vec<u8>, std::fs
             if e.code() != ERROR_PIPE_CONNECTED.to_hresult() {
                 // On referme et on recommence avec une instance neuve.
                 drop(unsafe { std::fs::File::from_raw_handle(current.0 as RawHandle) });
-                next = create(false)?;
+                next = create_again();
                 continue;
             }
         }
         // Une nouvelle instance AVANT de lire : le nom reste à nous.
-        next = create(false)?;
-        // `File` lit le canal et le referme quand il est détruit. On lit une
-        // ligne (jusqu'au retour à la ligne, ou jusqu'à ce que le client ferme).
+        next = create_again();
+        // `File` lit le canal et le referme quand il est détruit.
         let file = unsafe { std::fs::File::from_raw_handle(current.0 as RawHandle) };
-        let mut bytes = Vec::new();
-        let _ = std::io::BufReader::new((&file).take(max as u64 + 1)).read_until(b'\n', &mut bytes);
-        while bytes.last() == Some(&b'\n') || bytes.last() == Some(&b'\r') {
-            bytes.pop();
+        if active.load(Ordering::SeqCst) >= PIPE_MAX_CLIENTS {
+            continue; // trop de clients à la fois : celui-ci est refusé (fermé)
         }
-        if !bytes.is_empty() && bytes.len() <= max {
-            on_message(bytes, file);
-        }
+        // Une copie du canal pour le « chronomètre » : elle reste valide même
+        // si le fil de lecture a déjà refermé le sien.
+        let Ok(guard) = file.try_clone() else { continue };
+        active.fetch_add(1, Ordering::SeqCst);
+        let (on_message, active) = (on_message.clone(), active.clone());
+        std::thread::spawn(move || {
+            let (done, timer) = std::sync::mpsc::channel::<()>();
+            // Le chronomètre : sans ligne complète à temps, on raccroche, ce qui
+            // débloque la lecture en cours.
+            let watchdog = std::thread::spawn(move || {
+                if timer.recv_timeout(PIPE_READ_TIMEOUT).is_err() {
+                    let _ = unsafe { DisconnectNamedPipe(HANDLE(guard.as_raw_handle() as _)) };
+                }
+                drop(guard);
+            });
+            // On lit une ligne (jusqu'au retour à la ligne, ou jusqu'à ce que le
+            // client ferme).
+            let mut bytes = Vec::new();
+            let _ = std::io::BufReader::new((&file).take(max as u64 + 1)).read_until(b'\n', &mut bytes);
+            let _ = done.send(());
+            let _ = watchdog.join();
+            while bytes.last() == Some(&b'\n') || bytes.last() == Some(&b'\r') {
+                bytes.pop();
+            }
+            if !bytes.is_empty() && bytes.len() <= max {
+                on_message(bytes, file);
+            }
+            active.fetch_sub(1, Ordering::SeqCst);
+        });
     }
 }
 
@@ -641,13 +827,26 @@ pub fn pipe_client_alive(file: &std::fs::File) -> bool {
     unsafe { PeekNamedPipe(HANDLE(file.as_raw_handle() as _), None, 0, None, None, None).is_ok() }
 }
 
-/// Ouvre le canal de l'île (quelques essais rapides s'il est occupé).
+/// Ouvre le canal de l'île (quelques essais rapides s'il est occupé), puis
+/// vérifie qui est en face avant d'envoyer quoi que ce soit.
 fn open_agents_pipe() -> Result<std::fs::File, String> {
+    use std::os::windows::fs::OpenOptionsExt;
+    use ::windows::Win32::Storage::FileSystem::{SECURITY_IDENTIFICATION, SECURITY_SQOS_PRESENT};
     let name = agents_pipe_name();
     let mut last = String::new();
     for _ in 0..5 {
-        match std::fs::OpenOptions::new().read(true).write(true).open(&name) {
-            Ok(f) => return Ok(f),
+        // « Identification » : l'autre bout peut savoir qui nous sommes, mais
+        // jamais agir en notre nom.
+        match std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .security_qos_flags(SECURITY_SQOS_PRESENT.0 | SECURITY_IDENTIFICATION.0)
+            .open(&name)
+        {
+            Ok(f) => {
+                check_pipe_server(&f)?;
+                return Ok(f);
+            }
             Err(e) => {
                 last = e.to_string();
                 std::thread::sleep(std::time::Duration::from_millis(60));
@@ -657,14 +856,48 @@ fn open_agents_pipe() -> Result<std::fs::File, String> {
     Err(format!("l'île n'est pas ouverte ({last})"))
 }
 
-/// Côté client (« island.exe notify ») : envoie un message à l'île, si elle tourne.
+/// Le programme qui a créé le canal est-il bien l'île (« ondine.exe ») du même
+/// compte Windows ? Sinon on refuse : ce pourrait être un imposteur qui attend
+/// les demandes de permission pour répondre « allow ».
+fn check_pipe_server(pipe: &std::fs::File) -> Result<(), String> {
+    use std::os::windows::io::AsRawHandle;
+    use ::windows::core::PWSTR;
+    use ::windows::Win32::Foundation::{CloseHandle, HANDLE};
+    use ::windows::Win32::System::Pipes::GetNamedPipeServerProcessId;
+    use ::windows::Win32::System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION};
+    let refused = "canal refusé : ce n'est pas l'île de ton compte qui répond";
+    unsafe {
+        let mut pid = 0u32;
+        GetNamedPipeServerProcessId(HANDLE(pipe.as_raw_handle() as _), &mut pid).map_err(|_| refused)?;
+        let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).map_err(|_| refused)?;
+        let sid = process_user_sid(process);
+        let mut path = [0u16; 1024];
+        let mut len = path.len() as u32;
+        let exe = QueryFullProcessImageNameW(process, PROCESS_NAME_WIN32, PWSTR(path.as_mut_ptr()), &mut len)
+            .ok()
+            .map(|_| String::from_utf16_lossy(&path[..len as usize]));
+        let _ = CloseHandle(process);
+        let same_user = sid.is_some() && sid == own_sid();
+        let is_island = exe
+            .as_deref()
+            .and_then(|p| std::path::Path::new(p).file_name().map(|n| n.to_string_lossy().to_lowercase()))
+            .is_some_and(|n| n == "ondine.exe");
+        if same_user && is_island {
+            Ok(())
+        } else {
+            Err(refused.into())
+        }
+    }
+}
+
+/// Côté client (« ondine.exe notify ») : envoie un message à l'île, si elle tourne.
 pub fn send_agents_pipe(bytes: &[u8]) -> Result<(), String> {
     use std::io::Write;
     let mut f = open_agents_pipe()?;
     f.write_all(bytes).and_then(|_| f.write_all(b"\n")).map_err(|e| e.to_string())
 }
 
-/// Côté client (« island.exe mcp ») : envoie une demande et attend la réponse
+/// Côté client (« ondine.exe mcp ») : envoie une demande et attend la réponse
 /// de l'île (une ligne). Bloque jusqu'à la réponse ou la fermeture du canal.
 pub fn request_agents_pipe(bytes: &[u8]) -> Result<Vec<u8>, String> {
     use std::io::{BufRead, Write};
@@ -679,7 +912,7 @@ pub fn request_agents_pipe(bytes: &[u8]) -> Result<Vec<u8>, String> {
 
 /// Les programmes « au-dessus » de celui-ci (son parent, le parent du parent…),
 /// du plus proche au plus lointain, sans dépasser l'île elle-même. Appelé par
-/// « island.exe notify » : parmi eux se trouve le terminal où tourne l'agent.
+/// « ondine.exe notify » : parmi eux se trouve le terminal où tourne l'agent.
 pub fn ancestor_pids(max: usize) -> Vec<u32> {
     use ::windows::Win32::Foundation::CloseHandle;
     use ::windows::Win32::System::Diagnostics::ToolHelp::{CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS};
@@ -708,7 +941,7 @@ pub fn ancestor_pids(max: usize) -> Vec<u32> {
         }
         match table.get(&parent) {
             // On ne remonte pas au-delà de l'île (quand elle a lancé l'agent).
-            Some((_, name)) if name == "island.exe" || name == "explorer.exe" => break,
+            Some((_, name)) if name == "ondine.exe" || name == "explorer.exe" => break,
             Some(_) => out.push(parent),
             None => break,
         }

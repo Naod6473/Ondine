@@ -8,6 +8,7 @@
 // Rappel : jamais de suppression définitive. Supprimer = envoyer à la Corbeille
 // (voir services/files.rs).
 
+use crate::sync::LockExt;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -41,11 +42,11 @@ impl UndoService {
     pub fn offer(&self, app: &AppHandle, module: &str, label: &str, window: Duration, undo: UndoFn) -> u64 {
         self.forget_expired(app);
         let id = {
-            let mut next = self.next_id.lock().unwrap();
+            let mut next = self.next_id.locked();
             *next += 1;
             *next
         };
-        self.pending.lock().unwrap().insert(
+        self.pending.locked().insert(
             id,
             Pending { label: label.into(), module: module.into(), expires: Instant::now() + window, undo },
         );
@@ -69,7 +70,7 @@ impl UndoService {
 
     /// Défait l'action `id` si elle est encore dans son délai.
     pub fn run(&self, app: &AppHandle, id: u64) -> Result<String, String> {
-        let pending = self.pending.lock().unwrap().remove(&id);
+        let pending = self.pending.locked().remove(&id);
         let Some(p) = pending else {
             return Err("trop tard : l'action n'est plus annulable".into());
         };
@@ -94,7 +95,7 @@ impl UndoService {
         // On retire d'abord les actions expirées, PUIS on prévient le bus, verrou
         // relâché : un module qui réagit à "undo.expired" peut ainsi rappeler `offer`.
         let expired: Vec<u64> = {
-            let mut pending = self.pending.lock().unwrap();
+            let mut pending = self.pending.locked();
             let ids: Vec<u64> = pending.iter().filter(|(_, p)| p.expires <= now).map(|(id, _)| *id).collect();
             for id in &ids {
                 pending.remove(id);

@@ -1,7 +1,9 @@
 // Les effets dessinés autour d'une mascotte (Zzz, confettis, cœurs…), partagés
 // par tous les moteurs Canvas : la goutte provisoire et les planches de sprites.
 
-export type Overlay = "none" | "zzz" | "dots" | "bang" | "confetti" | "hearts" | "steam" | "sweat" | "stars";
+import type { Overlay } from "../types";
+
+export type { Overlay };
 
 const TAU = Math.PI * 2;
 
@@ -77,6 +79,34 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, overlay: Overlay, cx:
         ctx.fillStyle = colors[i % colors.length];
         ctx.fillRect(cx + rx * R * 1.6, cy - R * 1.4 + phase * R * 1.4, R * 0.1, R * 0.16);
       }
+      break;
+    }
+    case "question": {
+      // Un « ? » violet qui se balance doucement au-dessus de la tête.
+      ctx.fillStyle = "#b48cff";
+      ctx.font = `900 ${R * 0.75}px system-ui, sans-serif`;
+      ctx.translate(cx + R * 1.1, cy - R * 0.95 + Math.sin(t * 3) * R * 0.05);
+      ctx.rotate(Math.sin(t * 2) * 0.15);
+      ctx.fillText("?", 0, 0);
+      break;
+    }
+    case "check": {
+      // Une coche verte qui se trace, puis reste.
+      const k = Math.min(1, t / 0.45);
+      const x0 = cx + R * 0.85, y0 = cy - R * 0.75;
+      ctx.strokeStyle = "#5fe08a";
+      ctx.lineWidth = Math.max(2, R * 0.13);
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      const a = Math.min(1, k / 0.35); // premier trait (court), puis le long
+      ctx.lineTo(x0 + R * 0.15 * a, y0 + R * 0.15 * a);
+      if (k > 0.35) {
+        const b = (k - 0.35) / 0.65;
+        ctx.lineTo(x0 + R * 0.15 + R * 0.35 * b, y0 + R * 0.15 - R * 0.4 * b);
+      }
+      ctx.stroke();
       break;
     }
     case "none":

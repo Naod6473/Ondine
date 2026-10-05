@@ -35,9 +35,16 @@ export function validateManifest(m: MascotManifest, assets?: Record<string, stri
     for (const f of [a.source?.file, a.source?.nearFile]) {
       if (f && assets && !(f in assets)) problems.push(`${a.name} : fichier introuvable (${f})`);
     }
+    for (const pose of [a.source?.pose, ...(a.source?.poses ?? []), ...(a.source?.variants ?? [])]) {
+      if (pose && !m.poses?.[pose]) problems.push(`${a.name} : pose inconnue (${pose})`);
+    }
     for (const t of a.transitionsTo ?? []) {
       if (t !== "*" && !(m.animations ?? []).some((b) => b.name === t)) problems.push(`${a.name} : transition vers une animation inconnue (${t})`);
     }
+  }
+  for (const [name, pose] of Object.entries(m.poses ?? {})) {
+    if (assets && !(pose.file in assets)) problems.push(`pose ${name} : fichier introuvable (${pose.file})`);
+    if (pose.blink && !m.poses?.[pose.blink]) problems.push(`pose ${name} : pose de clignement inconnue (${pose.blink})`);
   }
   if (!names.has(m.fallback)) problems.push(`fallback inconnu : ${m.fallback}`);
   for (const [state, anim] of Object.entries(m.states ?? {})) {
@@ -58,9 +65,10 @@ export function mascotCatalog(): CatalogEntry[] {
   });
 }
 
-/** La mascotte demandée, sinon la provisoire. */
+/** La mascotte demandée, sinon la goutte (mascotte par défaut), sinon la provisoire. */
 export function findMascot(id: string): CatalogEntry | null {
   const all = mascotCatalog();
   const valid = (e: CatalogEntry) => e.problems.length === 0;
-  return all.find((e) => e.manifest.id === id && valid(e)) ?? all.find((e) => e.manifest.id === "placeholder") ?? null;
+  const byId = (wanted: string) => all.find((e) => e.manifest.id === wanted && valid(e));
+  return byId(id) ?? byId("goutte") ?? all.find((e) => e.manifest.id === "placeholder") ?? null;
 }

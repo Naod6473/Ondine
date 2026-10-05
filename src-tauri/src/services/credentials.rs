@@ -7,11 +7,19 @@
 // via ModuleContext::credential (voir modules/mod.rs).
 
 /// Toutes les clés que l'île accepte de stocker. Les autres sont refusées.
-pub const KNOWN_KEYS: &[&str] = &["anthropic-api-key"];
+pub const KNOWN_KEYS: &[&str] = &["anthropic-api-key", ICAL_URL];
+
+/// L'adresse secrète iCal d'un agenda en ligne (Google Agenda…) : c'est un
+/// mot de passe déguisé (qui l'a peut lire tout l'agenda), donc rangée ici.
+pub const ICAL_URL: &str = "agenda-ical-url";
 
 /// Nom sous lequel les clés apparaissent dans le Gestionnaire d'identifiants.
 #[cfg(windows)]
-const SERVICE: &str = "io.github.naod6473.island";
+const SERVICE: &str = "io.github.naod6473.ondine";
+/// L'ancien nom (quand l'appli s'appelait « Island ») : une clé enregistrée
+/// avant le renommage est recopiée sous le nouveau nom à la première lecture.
+#[cfg(windows)]
+const OLD_SERVICE: &str = "io.github.naod6473.island";
 
 fn check_key(key: &str) -> Result<(), String> {
     if KNOWN_KEYS.contains(&key) {
@@ -29,8 +37,18 @@ mod store {
         Entry::new(super::SERVICE, key).map_err(|e| e.to_string())
     }
 
+    fn old_entry(key: &str) -> Result<Entry, String> {
+        Entry::new(super::OLD_SERVICE, key).map_err(|e| e.to_string())
+    }
+
     pub fn get(key: &str) -> Option<String> {
-        entry(key).ok()?.get_password().ok().filter(|v| !v.is_empty())
+        if let Some(v) = entry(key).ok()?.get_password().ok().filter(|v| !v.is_empty()) {
+            return Some(v);
+        }
+        // Pas encore sous le nouveau nom : on regarde sous l'ancien, et on recopie.
+        let old = old_entry(key).ok()?.get_password().ok().filter(|v| !v.is_empty())?;
+        let _ = set(key, &old);
+        Some(old)
     }
 
     pub fn set(key: &str, value: &str) -> Result<(), String> {
@@ -38,10 +56,14 @@ mod store {
     }
 
     pub fn delete(key: &str) -> Result<(), String> {
-        match entry(key)?.delete_credential() {
-            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-            Err(e) => Err(e.to_string()),
+        // Les deux noms : sinon l'ancienne copie « reviendrait » à la lecture.
+        for e in [entry(key)?, old_entry(key)?] {
+            match e.delete_credential() {
+                Ok(()) | Err(keyring::Error::NoEntry) => {}
+                Err(e) => return Err(e.to_string()),
+            }
         }
+        Ok(())
     }
 }
 
@@ -76,10 +98,49 @@ pub fn set(key: &str, value: &str) -> Result<(), String> {
     if value.is_empty() {
         return delete(key);
     }
+    if key == ICAL_URL {
+        // Outlook et Apple donnent parfois « webcal:// » : c'est du https.
+        let url = match value.get(..9) {
+            Some(p) if p.eq_ignore_ascii_case("webcal://") => format!("https://{}", &value[9..]),
+            _ => value.to_string(),
+        };
+        check_ical_url(&url)?;
+        return store::set(key, &url);
+    }
     store::set(key, value)
+}
+
+/// Une adresse d'agenda : https seulement, sans espace, de longueur raisonnable.
+/// Le message d'erreur ne répète jamais l'adresse (elle est secrète).
+pub fn check_ical_url(url: &str) -> Result<(), String> {
+    let ok = url.len() <= 2000
+        && url.get(..8).is_some_and(|s| s.eq_ignore_ascii_case("https://"))
+        && url.len() > 8
+        && !url.chars().any(|c| c.is_whitespace() || c.is_control());
+    if ok {
+        Ok(())
+    } else {
+        Err("adresse refusée : il faut un lien qui commence par https:// (l'adresse secrète iCal de ton agenda)".into())
+    }
 }
 
 pub fn delete(key: &str) -> Result<(), String> {
     check_key(key)?;
     store::delete(key)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ical_url_must_be_https() {
+        assert!(check_ical_url("https://calendar.google.com/calendar/ical/x/private-y/basic.ics").is_ok());
+        assert!(check_ical_url("HTTPS://exemple.fr/a.ics").is_ok());
+        for bad in ["http://exemple.fr/a.ics", "https://", "file:///C:/a.ics", "https://a b", "webcal://x"] {
+            assert!(check_ical_url(bad).is_err(), "{bad}");
+        }
+        // Le message ne recopie jamais l'adresse.
+        assert!(!check_ical_url("http://secret-token").unwrap_err().contains("secret-token"));
+    }
 }

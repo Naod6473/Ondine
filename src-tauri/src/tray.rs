@@ -16,7 +16,7 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
     let menu = Menu::with_items(app, &[&open, &sep1, &settings, &logs, &sep2, &quit])?;
 
     let mut builder = TrayIconBuilder::with_id("island")
-        .tooltip("Island")
+        .tooltip("Ondine")
         .menu(&menu)
         .on_menu_event(|app: &AppHandle, event| match event.id.as_ref() {
             "quit" => app.exit(0),
