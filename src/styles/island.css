@@ -1,0 +1,316 @@
+/* L'île. Les tailles sont en px logiques ; la fenêtre fait 720 × 320 (panneau)
+   ou 240 × 6 (bande de réveil quand l'île est cachée). */
+
+:root {
+  --island-bg: #0c0d12;
+  --island-fg: #eef0f6;
+  --muted: #9aa0b4;
+  --accent: #7cc4ff;
+  --line: rgba(255, 255, 255, 0.08);
+  /* Doit suivre TRANSITION_MS dans island.ts. */
+  --speed: 280ms;
+  --ease: cubic-bezier(0.2, 0.9, 0.3, 1.08);
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  /* Transparent : seule la forme de l'île est visible. */
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+  font: 13px/1.35 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  color: var(--island-fg);
+}
+
+.island {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  background: var(--island-bg);
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  /* Une seule ligne, qui ne dépasse jamais la hauteur de l'île. */
+  grid-template-rows: minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  transition:
+    width var(--speed) var(--ease),
+    height var(--speed) var(--ease),
+    border-radius var(--speed) var(--ease),
+    padding var(--speed) var(--ease);
+}
+
+/* ── Les six états ───────────────────────────────────────────────────────── */
+
+.island[data-state="hidden"] {
+  width: 120px;
+  height: 0;
+  padding: 0;
+  border-radius: 0 0 6px 6px;
+}
+.island[data-state="peek"] {
+  width: 150px;
+  height: 8px;
+  padding: 0;
+  border-radius: 0 0 8px 8px;
+}
+.island[data-state="compact"] {
+  width: 340px;
+  height: 42px;
+  padding: 0 14px 0 8px;
+  border-radius: 0 0 21px 21px;
+}
+.island[data-state="expanded"] {
+  width: 640px;
+  height: 270px;
+  padding: 12px 14px 14px 12px;
+  border-radius: 0 0 26px 26px;
+  align-items: start;
+}
+.island[data-state="drop"] {
+  width: 520px;
+  height: 128px;
+  padding: 10px 14px;
+  border-radius: 0 0 24px 24px;
+  outline: 2px dashed rgba(124, 196, 255, 0.5);
+  outline-offset: -6px;
+}
+.island[data-state="alert"] {
+  width: 480px;
+  height: 104px;
+  padding: 10px 14px 10px 10px;
+  border-radius: 0 0 24px 24px;
+}
+
+/* ── La mascotte ─────────────────────────────────────────────────────────── */
+
+.mascot-slot {
+  width: 0;
+  height: 0;
+  cursor: pointer;
+  transition:
+    width var(--speed) var(--ease),
+    height var(--speed) var(--ease);
+}
+.island[data-state="compact"] .mascot-slot {
+  width: 32px;
+  height: 32px;
+}
+.island[data-state="expanded"] .mascot-slot {
+  width: 64px;
+  height: 64px;
+}
+.island[data-state="drop"] .mascot-slot,
+.island[data-state="alert"] .mascot-slot {
+  width: 72px;
+  height: 72px;
+}
+.island.no-mascot .mascot-slot {
+  display: none;
+}
+.island.no-mascot {
+  grid-template-columns: 1fr;
+}
+
+/* ── Contenu ─────────────────────────────────────────────────────────────── */
+
+.island-content {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  opacity: 1;
+  transition: opacity 160ms ease;
+}
+.island[data-state="hidden"] .island-content,
+.island[data-state="peek"] .island-content {
+  opacity: 0;
+}
+.island[data-state="expanded"] .island-content {
+  justify-content: flex-start;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.view-compact {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.view-expanded {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-top: 8px;
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+}
+.tabs .spacer {
+  flex: 1;
+}
+.tab {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+.tab.active {
+  color: var(--island-fg);
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--island-fg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+.btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.view-expanded .btn {
+  padding: 3px 9px;
+  font-size: 12px;
+}
+.btn.small {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.icon-btn {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.icon-btn:hover {
+  color: var(--island-fg);
+  background: rgba(255, 255, 255, 0.08);
+}
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+/* ── Notifications ───────────────────────────────────────────────────────── */
+
+.notif {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.notif-icon {
+  font-size: 15px;
+}
+.notif.big .notif-icon {
+  font-size: 22px;
+}
+.notif-text {
+  flex: 1;
+  min-width: 0;
+}
+.notif-title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.notif-body {
+  color: var(--muted);
+  font-size: 12px;
+}
+.notif:not(.big) .notif-body {
+  display: none;
+}
+.notif.big .notif-title {
+  white-space: normal;
+}
+.notif-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.notif.prio-critical .notif-title {
+  color: #ff8a8a;
+}
+.notif.prio-high .notif-title {
+  color: #ffcf4a;
+}
+.banner-slot .notif {
+  margin-top: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ── Dépôt ───────────────────────────────────────────────────────────────── */
+
+.drop-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  height: 100%;
+}
+.drop-target {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  transition: background 120ms ease, transform 120ms ease;
+}
+.drop-target.hover {
+  background: rgba(124, 196, 255, 0.22);
+  transform: scale(1.04);
+}
+.drop-icon {
+  font-size: 22px;
+}
+
+/* ── Module hello ────────────────────────────────────────────────────────── */
+
+.view-expanded h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+.hello-out {
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --speed: 1ms;
+  }
+}
