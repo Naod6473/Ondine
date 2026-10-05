@@ -24,6 +24,7 @@ pub struct MediaUse {
 /// Le nom lisible d'une clé du registre : « Zoom » pour
 /// « C:#Program Files#Zoom#bin#Zoom.exe », « WindowsCamera » pour
 /// « Microsoft.WindowsCamera_8wekyb3d8bbwe ».
+#[cfg_attr(not(windows), allow(dead_code))] // utilisé seulement sous Windows
 pub fn app_name(key: &str) -> String {
     if key.contains('#') {
         // Une appli « classique » : son chemin. On garde le nom du fichier sans .exe.
