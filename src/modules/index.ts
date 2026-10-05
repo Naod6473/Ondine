@@ -3,9 +3,10 @@
 // L'ordre ici est l'ordre des onglets dans l'île.
 
 import type { IslandModule } from "../core/module-types";
+import { capture } from "./capture";
 import { clipboard } from "./clipboard";
 import { hello } from "./hello";
 import { media } from "./media";
 import { shelf } from "./shelf";
 
-export const ALL_MODULES: IslandModule[] = [shelf, clipboard, media, hello];
+export const ALL_MODULES: IslandModule[] = [shelf, clipboard, capture, media, hello];

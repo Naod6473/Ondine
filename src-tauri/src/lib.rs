@@ -238,26 +238,27 @@ fn undo_run(app: AppHandle, undo: State<UndoService>, id: u64) -> Result<String,
 /// la seconde reste blanche sans aucune erreur. (Constat de Coucou.)
 const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";
 
-fn settings_page_url(app: &AppHandle) -> WebviewUrl {
+fn page_url(app: &AppHandle, page: &str) -> WebviewUrl {
     // En développement, les pages sont servies par Vite.
     #[cfg(dev)]
     if let Some(mut base) = app.config().build.dev_url.clone() {
-        base.set_path("/settings.html");
+        base.set_path(&format!("/{page}"));
         return WebviewUrl::External(base);
     }
     let _ = app;
-    WebviewUrl::App("settings.html".into())
+    WebviewUrl::App(page.into())
 }
 
-/// La fenêtre de réglages est créée cachée au démarrage, puis seulement montrée
-/// ou cachée : sous WebView2, une fenêtre créée plus tard peut rester blanche.
-fn create_settings_window(app: &AppHandle) {
-    let url = settings_page_url(app);
-    match WebviewWindowBuilder::new(app, "settings", url)
+/// Les fenêtres secondaires (réglages, annotation) sont créées cachées au
+/// démarrage, puis seulement montrées ou cachées : sous WebView2, une fenêtre
+/// créée plus tard peut rester blanche.
+fn create_hidden_window(app: &AppHandle, label: &str, page: &str, title: &str, size: (f64, f64), min: (f64, f64)) {
+    let url = page_url(app, page);
+    match WebviewWindowBuilder::new(app, label, url)
         .additional_browser_args(BROWSER_ARGS)
-        .title("Réglages — Island")
-        .inner_size(760.0, 720.0)
-        .min_inner_size(560.0, 480.0)
+        .title(title)
+        .inner_size(size.0, size.1)
+        .min_inner_size(min.0, min.1)
         .visible(false)
         .center()
         .build()
@@ -272,15 +273,26 @@ fn create_settings_window(app: &AppHandle) {
                 }
             });
         }
-        Err(err) => log::error(format!("fenêtre de réglages impossible à créer : {err}")),
+        Err(err) => log::error(format!("fenêtre « {label} » impossible à créer : {err}")),
     }
 }
 
-pub fn show_settings_window(app: &AppHandle) {
-    let Some(win) = app.get_webview_window("settings") else { return };
+/// Montre une fenêtre secondaire et lui donne le focus.
+pub fn show_window(app: &AppHandle, label: &str) {
+    let Some(win) = app.get_webview_window(label) else { return };
     let _ = win.unminimize();
     let _ = win.show();
     let _ = win.set_focus();
+}
+
+pub fn show_settings_window(app: &AppHandle) {
+    show_window(app, "settings");
+}
+
+/// La fenêtre qui appelle se cache (bouton « Fermer » de l'annotation).
+#[tauri::command]
+fn window_hide(window: tauri::Window) {
+    let _ = window.hide();
 }
 
 #[tauri::command]
@@ -337,13 +349,15 @@ pub fn run() {
             module_invoke,
             undo_run,
             settings_open_window,
+            window_hide,
             app_quit,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
             tray::build(&handle)?;
-            // Avant l'île : voir create_settings_window.
-            create_settings_window(&handle);
+            // Avant l'île : voir create_hidden_window.
+            create_hidden_window(&handle, "settings", "settings.html", "Réglages — Island", (760.0, 720.0), (560.0, 480.0));
+            create_hidden_window(&handle, "annotate", "annotate.html", "Annoter — Island", (1100.0, 760.0), (640.0, 420.0));
 
             if let Some(win) = island::window(&handle) {
                 platform::make_non_activating(&win);

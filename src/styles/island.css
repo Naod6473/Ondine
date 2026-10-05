@@ -8,8 +8,14 @@
   --accent: #7cc4ff;
   --line: rgba(255, 255, 255, 0.08);
   /* Doit suivre TRANSITION_MS dans island.ts. */
-  --speed: 280ms;
-  --ease: cubic-bezier(0.2, 0.9, 0.3, 1.08);
+  --speed: 420ms;
+  /* Un ressort : ça part vite, dépasse d'un poil (4 %) et se pose. Calculé
+     pour un ressort amorti (amortissement 0,72) ; linear() relie ces points. */
+  --ease: linear(0, 0.0637, 0.2088, 0.3833, 0.5542, 0.7031, 0.8222, 0.9106, 0.9712, 1.0089, 1.0293, 1.0375,
+    1.0378, 1.0336, 1.0272, 1.0205, 1.0143, 1.0091, 1.0051, 1.0022, 1.0003, 0.9992, 0.9987, 0.9985, 0.9986,
+    0.9988, 0.9991, 0.9993, 1);
+  /* Pour les petits éléments (boutons, libellés) : rapide, sans rebond. */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 html,
@@ -147,14 +153,23 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.view-expanded {
+/* Tous les contenus d'onglet dans la même case : pendant un changement,
+   l'ancien s'efface par-dessus le nouveau. */
+.view-stage {
   flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+}
+.view-expanded {
+  grid-area: 1 / 1;
   min-height: 0;
   overflow: auto;
   padding-top: 8px;
 }
 
 .tabs {
+  position: relative;
   display: flex;
   gap: 6px;
   align-items: center;
@@ -165,6 +180,10 @@ body {
   flex: 1;
 }
 .tab {
+  position: relative;
+  z-index: 1; /* au-dessus de la pastille */
+  display: inline-flex;
+  align-items: center;
   background: transparent;
   border: 1px solid transparent;
   color: var(--muted);
@@ -172,11 +191,52 @@ body {
   padding: 3px 10px;
   font: inherit;
   cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 200ms ease,
+    transform 300ms var(--ease);
+}
+.tab:hover {
+  color: var(--island-fg);
+}
+.tab:active {
+  transform: scale(0.92);
 }
 .tab.active {
   color: var(--island-fg);
-  border-color: var(--line);
-  background: rgba(255, 255, 255, 0.06);
+}
+.tab-label {
+  display: inline-block;
+  max-width: 140px;
+  margin-left: 5px;
+  overflow: hidden;
+  opacity: 1;
+  transition:
+    max-width var(--speed) var(--ease),
+    margin-left var(--speed) var(--ease),
+    opacity 220ms ease;
+}
+/* Beaucoup d'onglets : seul l'actif garde son nom. */
+.tabs.icons-only .tab:not(.active) .tab-label {
+  max-width: 0;
+  margin-left: 0;
+  opacity: 0;
+}
+/* La pastille de l'onglet actif : déplacée par tab-pill.ts. */
+.tab-pill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  z-index: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 0 1px var(--line);
+  transform-origin: center;
+  will-change: transform, width;
+  pointer-events: none;
 }
 
 .btn {
@@ -190,6 +250,17 @@ body {
 }
 .btn:hover {
   background: rgba(255, 255, 255, 0.14);
+}
+.btn,
+.icon-btn {
+  transition:
+    background 150ms ease,
+    color 150ms ease,
+    transform 300ms var(--ease);
+}
+.btn:active,
+.icon-btn:active {
+  transform: scale(0.93);
 }
 .view-expanded .btn {
   padding: 3px 9px;
@@ -588,6 +659,34 @@ body {
 }
 .clip-textarea {
   min-height: 110px;
+  resize: vertical;
+  white-space: pre-wrap;
+}
+
+/* ── Module Capture ──────────────────────────────────────────────────────── */
+
+.capture-actions {
+  display: flex;
+  flex-direction: column;
+}
+.capture-actions .btn-row {
+  align-items: center;
+  margin: 0 0 6px;
+}
+.capture-label {
+  font-size: 12px;
+  width: 120px;
+}
+.capture-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.capture-text {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 70px;
   resize: vertical;
   white-space: pre-wrap;
 }
