@@ -366,19 +366,24 @@ export class Island {
   private renderExpanded() {
     const tabs = this.registry.withView("expanded");
     const header = el("div", { class: "tabs" });
+    // Au-delà de 4 onglets, la place manque : les onglets inactifs ne montrent
+    // que leur icône (le nom apparaît au survol), l'onglet actif garde son nom.
+    const iconsOnly = tabs.length > 4;
     for (const t of tabs) {
       const m = t.module.manifest;
+      const active = m.id === this.activeTab;
       header.append(
         el(
           "button",
           {
-            class: `tab ${m.id === this.activeTab ? "active" : ""}`,
+            class: `tab ${active ? "active" : ""}`,
+            title: m.name,
             onclick: () => {
               this.activeTab = m.id;
               this.render(true);
             },
           },
-          `${m.icon} ${m.name}`,
+          iconsOnly && !active ? m.icon : `${m.icon} ${m.name}`,
         ),
       );
     }

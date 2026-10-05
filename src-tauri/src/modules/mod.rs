@@ -12,6 +12,7 @@
 //
 // Ajouter un module Rust : voir ARCHITECTURE.md, « Ajouter un module ».
 
+mod capture;
 mod clipboard;
 mod hello;
 mod media;
@@ -177,6 +178,7 @@ impl Registry {
             Box::new(shelf::Shelf::default()),
             Box::new(media::Media::default()),
             Box::new(clipboard::Clipboard::default()),
+            Box::new(capture::Capture::default()),
             Box::new(hello::Hello::default()),
         ];
 
@@ -234,6 +236,18 @@ pub fn is_active(app: &AppHandle, id: &str) -> bool {
     let Some(registry) = app.try_state::<Registry>() else { return false };
     let Some(entry) = registry.find(id) else { return false };
     enabled(app, id) && entry.failures.load(Ordering::Relaxed) < MAX_FAILURES
+}
+
+/// Pour un thread de fond : appelle `f` avec le contexte du module (permissions,
+/// réglages, annulation…). Ne fait rien (None) si le module est inactif.
+pub fn with_context<R>(app: &AppHandle, id: &str, f: impl FnOnce(&ModuleContext) -> R) -> Option<R> {
+    if !is_active(app, id) {
+        return None;
+    }
+    let registry = app.try_state::<Registry>()?;
+    let entry = registry.find(id)?;
+    let ctx = ModuleContext { app, manifest: &entry.manifest };
+    Some(f(&ctx))
 }
 
 /// Note un plantage ; au-delà de MAX_FAILURES, le module est mis à l'écart.
@@ -318,6 +332,12 @@ mod tests {
     fn clipboard_manifest_is_valid() {
         let m = check_manifest(clipboard::Clipboard::default().manifest_json()).unwrap();
         assert_eq!(m.id, "clipboard");
+    }
+
+    #[test]
+    fn capture_manifest_is_valid() {
+        let m = check_manifest(capture::Capture::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "capture");
     }
 
     #[test]

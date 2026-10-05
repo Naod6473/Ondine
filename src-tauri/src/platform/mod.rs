@@ -6,6 +6,8 @@
 
 // « En cours de lecture » (SMTC). Contient sa propre version Linux.
 pub mod media;
+// Lire le texte d'une image (OCR de Windows). Contient sa propre version Linux.
+pub mod ocr;
 
 #[cfg(windows)]
 mod drop_target;

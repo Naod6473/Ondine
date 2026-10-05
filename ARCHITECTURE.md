@@ -48,6 +48,7 @@ island/
 │  │  ├─ index.ts             LISTE DES MODULES (front)
 │  │  ├─ shelf/               Étagère et dépôt de fichiers (phase 2)
 │  │  ├─ clipboard/           Presse-papiers et snippets (phase 4)
+│  │  ├─ capture/             Captures d'écran et OCR (phase 5)
 │  │  ├─ media/               Musique en cours de lecture (phase 3)
 │  │  └─ hello/               module d'exemple : manifest.json + index.ts
 │  ├─ settings/               fenêtre de réglages (formulaires générés)
@@ -59,9 +60,9 @@ island/
       ├─ main.rs · lib.rs     démarrage + liste des commandes Tauri
       ├─ tray.rs              icône de la zone de notification
       ├─ island/mod.rs        placement multi-écrans/DPI, clics traversants, souris
-      ├─ platform/            tout le Win32 (windows.rs) ; other.rs = bouchons ; media.rs = SMTC
+      ├─ platform/            tout le Win32 (windows.rs) ; other.rs = bouchons ; media.rs = SMTC ; ocr.rs = OCR
       ├─ services/            réglages, journal, identifiants, bus, annulation, confidentialité, fichiers
-      └─ modules/             registre des modules Rust + shelf.rs, clipboard.rs, media.rs, hello.rs
+      └─ modules/             registre des modules Rust + shelf.rs, clipboard.rs, capture.rs, media.rs, hello.rs
 ```
 
 ## L'île
@@ -233,6 +234,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `module.crashed` | Rust | l'île prévient |
 | `shelf.changed` `{items}` | Étagère (Rust) | la vue de l'étagère se redessine |
 | `media.changed` `{playing, artwork}` | Musique (Rust) | la pilule et l'onglet Musique se mettent à jour |
+| `capture.done` `{action, ok, result, error}` | Capture (Rust) | notification ; l'onglet redemande le texte lu (`last`), qui n'est pas dans le message |
 | `clipboard.changed` `{count}` | Presse-papiers (Rust) | l'onglet redemande la liste (le message ne contient aucun texte copié) |
 
 ## Services communs (`src-tauri/src/services/`)
@@ -390,3 +392,30 @@ et l'accès à Windows dans `src-tauri/src/platform/windows.rs` (« Presse-papie
   supprimer un snippet proposent « Annuler ».
 - **Confidentialité** : aucun texte copié dans le journal ni sur le bus ; rien ne
   sort de l'ordinateur.
+
+## Module Capture (phase 5)
+
+Front : `src/modules/capture/index.ts`. Rust : `src-tauri/src/modules/capture.rs`,
+l'OCR dans `src-tauri/src/platform/ocr.rs`.
+
+- **Capturer** : on ne dessine pas notre propre sélection ; on ouvre l'outil de
+  Windows (`ShellExecuteW("ms-screenclip:")`, le même que Win+Maj+S). L'île se
+  replie d'abord (400 ms) pour ne pas être sur l'image. Un thread attend que le
+  compteur du presse-papiers change (2 minutes au plus) ; si ce qui arrive
+  n'est pas une image (capture annulée puis autre chose copié), il abandonne
+  sans rien dire. Une seule capture en attente à la fois.
+- **Lire le texte** : `Windows.Media.Ocr`, hors ligne, dans la langue du profil
+  (il faut le pack « Reconnaissance optique de caractères » de la langue,
+  installé en général avec elle). L'image est réduite si elle dépasse
+  `OcrEngine::MaxImageDimension`. Le texte est copié dans le presse-papiers
+  (réglage) et gardé pour l'onglet ; le journal ne note que le nombre de
+  caractères.
+- **Enregistrer** : PNG (crate `image`) dans le dossier choisi, sinon
+  `Images\Island` (dossier connu `FOLDERID_Pictures`, OneDrive compris). Le
+  dossier passe par `check_path` (dossiers exclus) ; « Annuler » envoie le
+  fichier à la Corbeille.
+- **Image déjà copiée** : les mêmes actions, sans ouvrir l'outil.
+- **Onglets** : à partir de 5 modules, les onglets inactifs n'affichent que
+  leur icône (le nom au survol).
+- `modules::with_context(app, id, f)` donne un `ModuleContext` à un thread de
+  fond (réglages, `check_path`, `offer_undo`) tant que le module est actif.

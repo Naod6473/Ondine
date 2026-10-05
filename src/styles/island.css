@@ -172,6 +172,7 @@ body {
   padding: 3px 10px;
   font: inherit;
   cursor: pointer;
+  white-space: nowrap;
 }
 .tab.active {
   color: var(--island-fg);
@@ -588,6 +589,34 @@ body {
 }
 .clip-textarea {
   min-height: 110px;
+  resize: vertical;
+  white-space: pre-wrap;
+}
+
+/* ── Module Capture ──────────────────────────────────────────────────────── */
+
+.capture-actions {
+  display: flex;
+  flex-direction: column;
+}
+.capture-actions .btn-row {
+  align-items: center;
+  margin: 0 0 6px;
+}
+.capture-label {
+  font-size: 12px;
+  width: 120px;
+}
+.capture-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.capture-text {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 70px;
   resize: vertical;
   white-space: pre-wrap;
 }

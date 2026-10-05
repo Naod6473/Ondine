@@ -262,3 +262,33 @@ pub fn paste_into_previous(app: &AppHandle) -> Result<(), String> {
         Err("Windows a refusé la frappe simulée".into())
     }
 }
+
+// ── Captures d'écran ──────────────────────────────────────────────────────────
+
+/// Ouvre l'outil de capture de Windows (le même que Win+Maj+S). L'image choisie
+/// arrive dans le presse-papiers. L'adresse `ms-screenclip:` est fixe : on
+/// n'ouvre jamais une adresse venue d'un fichier ou d'une page.
+pub fn launch_screen_snip() -> Result<(), String> {
+    use ::windows::core::w;
+    use ::windows::Win32::UI::Shell::ShellExecuteW;
+    use ::windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+    let result = unsafe { ShellExecuteW(None, w!("open"), w!("ms-screenclip:"), None, None, SW_SHOWNORMAL) };
+    // Windows : une valeur supérieure à 32 veut dire « réussi ».
+    if result.0 as isize > 32 {
+        Ok(())
+    } else {
+        Err(format!("l'outil Capture d'écran ne s'ouvre pas (code {})", result.0 as isize))
+    }
+}
+
+/// Le dossier « Images » de l'utilisateur (même s'il est déplacé dans OneDrive).
+pub fn pictures_dir() -> Option<PathBuf> {
+    use ::windows::Win32::System::Com::CoTaskMemFree;
+    use ::windows::Win32::UI::Shell::{FOLDERID_Pictures, SHGetKnownFolderPath, KF_FLAG_DEFAULT};
+    unsafe {
+        let raw = SHGetKnownFolderPath(&FOLDERID_Pictures, KF_FLAG_DEFAULT, None).ok()?;
+        let path = raw.to_string().ok().map(PathBuf::from);
+        CoTaskMemFree(Some(raw.0 as *const _));
+        path
+    }
+}

@@ -25,7 +25,10 @@ tauri-plugin-dialog = "2"
 # Corbeille de Windows : envoyer et restaurer (jamais de suppression définitive).
 trash = "5"
 # Presse-papiers (texte) depuis le Rust.
-arboard = { version = "3", default-features = false }
+# image-data : lire une image copiée (captures, phase 5).
+arboard = { version = "3", default-features = false, features = ["image-data"] }
+# Enregistrer les captures en PNG et réduire une image trop grande pour l'OCR.
+image = { version = "0.25", default-features = false, features = ["png"] }
 # Création d'archives .zip (compression « deflate » seulement).
 zip = { version = "2", default-features = false, features = ["deflate"] }
 # Encode la pochette d'album en texte (data URL) pour l'afficher dans l'île.
@@ -41,6 +44,10 @@ windows = { version = "0.61", features = [
   "Foundation",
   "Media_Control",
   "Storage_Streams",
+  # Lire le texte d'une image (OCR de Windows, hors ligne) : phase 5.
+  "Globalization",
+  "Graphics_Imaging",
+  "Media_Ocr",
   "Win32_Foundation",
   # Cible de dépôt de l'île (platform/drop_target.rs).
   "Win32_Graphics_Gdi",

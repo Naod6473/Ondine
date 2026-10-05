@@ -1,0 +1,33 @@
+{
+  "id": "capture",
+  "name": "Capture",
+  "icon": "✂️",
+  "description": "Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur ton ordinateur, hors ligne : l'image n'est envoyée nulle part.",
+  "version": "0.1.0",
+  "permissions": ["clipboard", "files"],
+  "settings": {
+    "version": 1,
+    "fields": [
+      {
+        "key": "copyText",
+        "type": "boolean",
+        "label": "Copier le texte lu dans le presse-papiers",
+        "default": true
+      },
+      {
+        "key": "folder",
+        "type": "folders",
+        "label": "Dossier des captures",
+        "help": "Vide : le dossier Images\\Island.",
+        "default": [],
+        "max": 1
+      }
+    ]
+  },
+  "views": ["expanded"],
+  "commands": ["snip", "ocr_clipboard", "save_clipboard", "last", "copy_last", "reveal"],
+  "events": {
+    "emits": ["capture.done"],
+    "listens": ["capture.done"]
+  }
+}

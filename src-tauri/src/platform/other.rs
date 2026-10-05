@@ -51,3 +51,9 @@ pub fn clipboard_is_sensitive() -> bool {
 pub fn paste_into_previous(_app: &AppHandle) -> Result<(), String> {
     Err("disponible seulement sous Windows".into())
 }
+pub fn launch_screen_snip() -> Result<(), String> {
+    Err("disponible seulement sous Windows".into())
+}
+pub fn pictures_dir() -> Option<PathBuf> {
+    Some(base("HOME").join("Pictures"))
+}
