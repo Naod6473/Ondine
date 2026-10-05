@@ -468,12 +468,93 @@ body {
   gap: 8px;
   min-width: 0;
 }
-.media-line {
+.media-cover-slot,
+.media-eq-slot {
+  display: flex;
+  flex: none;
+}
+/* Le titre : coupé par « … » s'il est court de peu, sinon il défile
+   lentement d'un bout à l'autre, avec une pause à chaque bout. */
+.marquee {
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.marquee-text {
+  display: inline-block;
+}
+.marquee.scrolling {
+  text-overflow: clip;
+  /* Les bords s'estompent pendant le défilement. */
+  mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%);
+}
+.marquee.scrolling .marquee-text {
+  padding-left: 6px;
+  animation: marquee var(--marquee-time, 8s) ease-in-out infinite alternate;
+}
+@keyframes marquee {
+  0%,
+  15% {
+    transform: translateX(0);
+  }
+  85%,
+  100% {
+    transform: translateX(var(--shift, 0));
+  }
+}
+/* Les petits boutons de la pilule. */
+.media-minis {
+  display: flex;
+  flex: none;
+  gap: 1px;
+}
+.media-minis[hidden] {
+  display: none;
+}
+.media-mini {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--island-fg);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    transform 160ms var(--ease, ease);
+}
+.media-mini svg {
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+  display: block;
+  margin: auto;
+}
+.media-mini:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+.media-mini:active:not(:disabled) {
+  transform: scale(0.88);
+}
+.media-mini:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+/* Animations réduites : pas de défilement, le titre est coupé par « … ». */
+@media (prefers-reduced-motion: reduce) {
+  .marquee.scrolling {
+    text-overflow: ellipsis;
+    mask-image: none;
+  }
+  .marquee.scrolling .marquee-text {
+    display: inline;
+    padding-left: 0;
+    animation: none;
+  }
 }
 .media-cover {
   flex: none;
