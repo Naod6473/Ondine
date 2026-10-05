@@ -27,6 +27,10 @@ npm run typecheck                       # TypeScript
 cd src-tauri; cargo test; cd ..         # tests Rust (réglages, bus, journal, chemins, modules)
 ```
 
+## Tests à faire
+
+La liste des tests et l'installation sur un autre PC : [TESTS.md](TESTS.md).
+
 ## Construire l'installateur
 
 ```powershell
