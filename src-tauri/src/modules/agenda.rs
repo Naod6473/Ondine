@@ -15,6 +15,7 @@
 // Rien n'est téléchargé : pour un agenda en ligne, il faut l'exporter en .ics
 // (un abonnement par adresse internet viendra peut-être plus tard).
 
+use crate::sync::LockExt;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
@@ -51,8 +52,9 @@ struct Loaded {
 #[derive(Default)]
 struct State {
     files: Vec<Loaded>,
-    /// Les événements de tous les fichiers réunis.
-    events: Vec<Event>,
+    /// Les événements de tous les fichiers réunis. Partagés (Arc) pour faire
+    /// les calculs sans garder le verrou.
+    events: Arc<Vec<Event>>,
     /// Un message par fichier qui n'a pas pu être lu (affiché dans l'onglet).
     errors: Vec<String>,
     /// La dernière liste publiée (pour ne publier que les changements).
@@ -82,12 +84,16 @@ impl RustModule for Agenda {
 
     fn invoke(&self, ctx: &ModuleContext, command: &str, _args: Value) -> Result<Value, String> {
         match command {
-            "upcoming" => Ok(listing(&self.state.lock().unwrap())),
+            "upcoming" => Ok(listing(&self.state.locked())),
             // Réglages changés ou bouton « Relire » : on relit tout de suite.
             "reload" => {
-                self.state.lock().unwrap().files.clear();
+                {
+                    let mut s = self.state.locked();
+                    s.files.clear();
+                    s.events = Arc::default();
+                }
                 refresh(ctx, &self.state);
-                Ok(listing(&self.state.lock().unwrap()))
+                Ok(listing(&self.state.locked()))
             }
             other => Err(format!("commande inconnue : {other}")),
         }
@@ -123,13 +129,24 @@ fn refresh(ctx: &ModuleContext, state: &Shared) {
         .unwrap_or_default();
     let reminder_min = settings.get("reminderMin").and_then(Value::as_i64).unwrap_or(10).clamp(0, 240);
 
-    let mut s = state.lock().unwrap();
-    load_files(ctx, &mut s, &paths);
+    // Lire les fichiers peut être lent (gros .ics, disque réseau) : on le fait
+    // sans tenir le verrou, pour que l'onglet reste fluide pendant ce temps.
+    let known: Vec<(PathBuf, Option<SystemTime>)> = state.locked().files.iter().map(|f| (f.path.clone(), f.modified)).collect();
+    if needs_reload(&known, &paths) {
+        let (files, events, errors) = load_files(ctx, &paths);
+        let mut s = state.locked();
+        s.files = files;
+        s.events = Arc::new(events);
+        s.errors = errors;
+    }
 
-    // Les prochains rendez-vous, de maintenant à dans 30 jours.
+    // Les prochains rendez-vous, de maintenant à dans 30 jours (calcul hors verrou aussi).
+    let events = state.locked().events.clone();
     let now = Local::now().naive_local();
-    let occ = ics::occurrences(&s.events, now, now + chrono::Duration::days(HORIZON_DAYS));
+    let occ = ics::occurrences(&events, now, now + chrono::Duration::days(HORIZON_DAYS));
     let upcoming: Vec<Value> = occ.iter().take(MAX_UPCOMING).map(to_json).collect();
+
+    let mut s = state.locked();
 
     // Rappels : un rendez-vous (pas une journée entière) qui commence dans
     // moins de `reminder_min` minutes, et pas encore rappelé.
@@ -163,14 +180,14 @@ fn refresh(ctx: &ModuleContext, state: &Shared) {
     }
 }
 
-/// (Re)lit les fichiers dont la liste ou la date de modification a changé.
-fn load_files(ctx: &ModuleContext, s: &mut State, paths: &[String]) {
-    let same_list = s.files.len() == paths.len() && s.files.iter().zip(paths).all(|(f, p)| f.path == PathBuf::from(p));
-    let unchanged = same_list && s.files.iter().all(|f| modified(&f.path) == f.modified);
-    if unchanged {
-        return;
-    }
+/// Faut-il relire ? Oui si la liste des fichiers ou une date de modification a changé.
+fn needs_reload(known: &[(PathBuf, Option<SystemTime>)], paths: &[String]) -> bool {
+    let same_list = known.len() == paths.len() && known.iter().zip(paths).all(|((p, _), raw)| p.as_path() == std::path::Path::new(raw));
+    !(same_list && known.iter().all(|(p, m)| modified(p) == *m))
+}
 
+/// Lit tous les fichiers : (fichiers lus, leurs événements réunis, erreurs).
+fn load_files(ctx: &ModuleContext, paths: &[String]) -> (Vec<Loaded>, Vec<Event>, Vec<String>) {
     let mut files = Vec::new();
     let mut errors = Vec::new();
     for raw in paths {
@@ -183,9 +200,8 @@ fn load_files(ctx: &ModuleContext, s: &mut State, paths: &[String]) {
             }
         }
     }
-    s.events = files.iter_mut().flat_map(|f| std::mem::take(&mut f.events)).collect();
-    s.files = files;
-    s.errors = errors;
+    let events = files.iter_mut().flat_map(|f| std::mem::take(&mut f.events)).collect();
+    (files, events, errors)
 }
 
 fn read_file(ctx: &ModuleContext, raw: &str) -> Result<Loaded, String> {

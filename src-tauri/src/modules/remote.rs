@@ -16,6 +16,7 @@
 // « Tester » ouvre une simple connexion TCP vers le port (3389 ou 22 par
 // défaut) pour savoir si le serveur répond : rien n'est envoyé.
 
+use crate::sync::LockExt;
 use std::net::{TcpStream, ToSocketAddrs};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -95,17 +96,17 @@ impl RustModule for Remote {
     }
 
     fn start(&self, _app: &AppHandle) {
-        *self.data.lock().unwrap() = load();
+        *self.data.locked() = load();
     }
 
     fn invoke(&self, ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
         match command {
-            "list" => Ok(json!({ "favorites": self.data.lock().unwrap().favorites })),
+            "list" => Ok(json!({ "favorites": self.data.locked().favorites })),
             // { id?, name, kind, host, port?, user? } : sans id = nouveau favori.
             "save" => {
                 let fav = read_favorite(&args)?;
                 let id = {
-                    let mut d = self.data.lock().unwrap();
+                    let mut d = self.data.locked();
                     match args.get("id").and_then(Value::as_u64) {
                         Some(id) => {
                             let slot = d.favorites.iter_mut().find(|f| f.id == id).ok_or("favori introuvable")?;
@@ -129,7 +130,7 @@ impl RustModule for Remote {
             "delete" => {
                 let id = arg_id(&args)?;
                 let (index, fav) = {
-                    let mut d = self.data.lock().unwrap();
+                    let mut d = self.data.locked();
                     let index = d.favorites.iter().position(|f| f.id == id).ok_or("favori introuvable")?;
                     (index, d.favorites.remove(index))
                 };
@@ -140,7 +141,7 @@ impl RustModule for Remote {
                     DEFAULT_WINDOW,
                     Box::new(move || {
                         {
-                            let mut d = data.lock().unwrap();
+                            let mut d = data.locked();
                             let at = index.min(d.favorites.len());
                             d.favorites.insert(at, fav);
                         }
@@ -193,7 +194,7 @@ impl RustModule for Remote {
 
 impl Remote {
     fn find(&self, id: u64) -> Result<Favorite, String> {
-        let d = self.data.lock().unwrap();
+        let d = self.data.locked();
         d.favorites.iter().find(|f| f.id == id).cloned().ok_or_else(|| "favori introuvable".into())
     }
 }
@@ -326,7 +327,7 @@ fn arg_id(args: &Value) -> Result<u64, String> {
 /// nom et le type, pas l'adresse.
 fn changed(app: &AppHandle, data: &Shared) {
     let list: Vec<Value> = {
-        let d = data.lock().unwrap();
+        let d = data.locked();
         if let Err(e) = save(&d) {
             log::warn(format!("accès distants : enregistrement impossible : {e}"));
         }

@@ -15,6 +15,7 @@
 //
 // Le manifeste est le même fichier que celui du front (src/modules/shelf/manifest.json).
 
+use crate::sync::LockExt;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -54,12 +55,12 @@ impl RustModule for Shelf {
                 // Retirer de l'étagère ne touche pas au fichier : pas de check_path
                 // (le fichier a pu disparaître entre-temps).
                 let paths = raw_paths(&args)?;
-                self.items.lock().unwrap().retain(|p| !paths.contains(p));
+                self.items.locked().retain(|p| !paths.contains(p));
                 changed(ctx.app, &self.items);
                 Ok(Value::Null)
             }
             "clear" => {
-                let before = std::mem::take(&mut *self.items.lock().unwrap());
+                let before = std::mem::take(&mut *self.items.locked());
                 changed(ctx.app, &self.items);
                 if !before.is_empty() {
                     let (items, app) = (self.items.clone(), ctx.app.clone());
@@ -68,7 +69,7 @@ impl RustModule for Shelf {
                         &format!("Étagère vidée ({n} élément(s))"),
                         DEFAULT_WINDOW,
                         Box::new(move || {
-                            *items.lock().unwrap() = before;
+                            *items.locked() = before;
                             changed(&app, &items);
                             Ok(())
                         }),
@@ -113,7 +114,7 @@ impl Shelf {
     fn add(&self, ctx: &ModuleContext, args: &Value) -> Result<usize, String> {
         let paths = checked_paths(ctx, args)?;
         let added = {
-            let mut items = self.items.lock().unwrap();
+            let mut items = self.items.locked();
             let mut added = 0;
             for p in paths {
                 if items.len() >= MAX_ITEMS {
@@ -151,7 +152,7 @@ impl Shelf {
                         errors.push(e);
                     }
                 }
-                items.lock().unwrap().extend(was_on_shelf);
+                items.locked().extend(was_on_shelf);
                 changed(&app, &items);
                 if errors.is_empty() { Ok(()) } else { Err(errors.join(" ; ")) }
             }),
@@ -310,7 +311,7 @@ fn folder_name(dir: &std::path::Path) -> String {
 
 /// Retire `paths` de l'étagère et renvoie ceux qui y étaient.
 fn take_from_shelf(items: &Items, paths: &[PathBuf]) -> Vec<PathBuf> {
-    let mut items = items.lock().unwrap();
+    let mut items = items.locked();
     let taken: Vec<PathBuf> = items.iter().filter(|p| paths.contains(p)).cloned().collect();
     items.retain(|p| !paths.contains(p));
     taken
@@ -318,7 +319,7 @@ fn take_from_shelf(items: &Items, paths: &[PathBuf]) -> Vec<PathBuf> {
 
 /// Remplace sur l'étagère chaque ancien chemin par le nouveau.
 fn rename_on_shelf<'a>(items: &Items, renames: impl Iterator<Item = (&'a PathBuf, &'a PathBuf)>) {
-    let mut items = items.lock().unwrap();
+    let mut items = items.locked();
     for (from, to) in renames {
         for p in items.iter_mut().filter(|p| *p == from) {
             *p = to.clone();
@@ -328,7 +329,7 @@ fn rename_on_shelf<'a>(items: &Items, renames: impl Iterator<Item = (&'a PathBuf
 
 /// La liste telle que le front l'affiche.
 fn list_json(items: &Items) -> Value {
-    let items = items.lock().unwrap();
+    let items = items.locked();
     let list: Vec<Value> = items
         .iter()
         .map(|p| {

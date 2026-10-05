@@ -20,6 +20,7 @@
 mod model;
 mod watch;
 
+use crate::sync::LockExt;
 use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
@@ -102,9 +103,26 @@ impl RustModule for Rules {
     }
 
     fn start(&self, app: &AppHandle) {
-        self.state.lock().unwrap().saved = load();
+        {
+            let mut s = self.state.locked();
+            s.saved = load();
+            // rules.json peut avoir été modifié à la main : chaque règle repasse
+            // les mêmes vérifications qu'à l'enregistrement. Une règle invalide
+            // est désactivée (pas effacée) et l'onglet dit pourquoi.
+            let mut bad = Vec::new();
+            for r in s.saved.rules.iter_mut() {
+                if let Err(e) = model::validate(r) {
+                    r.enabled = false;
+                    bad.push((r.id, format!("désactivée : {e}")));
+                }
+            }
+            for (id, e) in bad {
+                log::warn(format!("règles : règle n°{id} invalide dans rules.json, désactivée"));
+                s.errors.insert(id, e);
+            }
+        }
         let (tx, rx) = std::sync::mpsc::channel();
-        *self.to_watcher.lock().unwrap() = Some(tx.clone());
+        *self.to_watcher.locked() = Some(tx.clone());
         let (app2, state) = (app.clone(), self.state.clone());
         std::thread::spawn(move || watch::run(app2, state, tx, rx));
         apply_hotkeys(app, &self.state);
@@ -112,13 +130,13 @@ impl RustModule for Rules {
 
     fn invoke(&self, ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
         match command {
-            "list" => Ok(listing(&self.state.lock().unwrap())),
+            "list" => Ok(listing(&self.state.locked())),
             "save" => {
                 let mut rule: Rule = serde_json::from_value(args.get("rule").cloned().unwrap_or(Value::Null))
                     .map_err(|e| format!("règle illisible : {e}"))?;
                 check_rule(ctx, &rule)?;
                 let id = {
-                    let mut s = self.state.lock().unwrap();
+                    let mut s = self.state.locked();
                     if rule.id == 0 {
                         if s.saved.rules.len() >= model::MAX_RULES {
                             return Err(format!("au plus {} règles", model::MAX_RULES));
@@ -140,18 +158,18 @@ impl RustModule for Rules {
             "delete" => {
                 let id = arg_id(&args)?;
                 let (index, rule) = {
-                    let mut s = self.state.lock().unwrap();
+                    let mut s = self.state.locked();
                     let i = s.saved.rules.iter().position(|r| r.id == id).ok_or("règle introuvable")?;
                     (i, s.saved.rules.remove(i))
                 };
                 self.changed(ctx.app);
-                let (state, app, tx) = (self.state.clone(), ctx.app.clone(), self.to_watcher.lock().unwrap().clone());
+                let (state, app, tx) = (self.state.clone(), ctx.app.clone(), self.to_watcher.locked().clone());
                 ctx.offer_undo(
                     &format!("Règle « {} » supprimée", rule.name),
                     DEFAULT_WINDOW,
                     Box::new(move || {
                         {
-                            let mut s = state.lock().unwrap();
+                            let mut s = state.locked();
                             let at = index.min(s.saved.rules.len());
                             s.saved.rules.insert(at, rule);
                         }
@@ -165,7 +183,7 @@ impl RustModule for Rules {
                 let id = arg_id(&args)?;
                 let enabled = args.get("enabled").and_then(Value::as_bool).ok_or("paramètre « enabled » manquant")?;
                 {
-                    let mut s = self.state.lock().unwrap();
+                    let mut s = self.state.locked();
                     let r = s.saved.rules.iter_mut().find(|r| r.id == id).ok_or("règle introuvable")?;
                     r.enabled = enabled;
                     s.runs.remove(&id);
@@ -175,7 +193,7 @@ impl RustModule for Rules {
             }
             "pause" => {
                 let paused = args.get("paused").and_then(Value::as_bool).ok_or("paramètre « paused » manquant")?;
-                self.state.lock().unwrap().saved.paused = paused;
+                self.state.locked().saved.paused = paused;
                 self.changed(ctx.app);
                 Ok(Value::Null)
             }
@@ -197,7 +215,7 @@ impl RustModule for Rules {
 
     fn on_event(&self, ctx: &ModuleContext, msg: &BusMessage) {
         let rules: Vec<Rule> = {
-            let s = self.state.lock().unwrap();
+            let s = self.state.locked();
             if s.saved.paused {
                 return;
             }
@@ -216,14 +234,14 @@ impl RustModule for Rules {
 
 impl Rules {
     fn changed(&self, app: &AppHandle) {
-        changed(app, &self.state, self.to_watcher.lock().unwrap().as_ref());
+        changed(app, &self.state, self.to_watcher.locked().as_ref());
     }
 }
 
 /// Après une modification : enregistre, refait raccourcis et surveillance,
 /// prévient le front.
 fn changed(app: &AppHandle, state: &Shared, watcher: Option<&Sender<Msg>>) {
-    if let Err(e) = save(&state.lock().unwrap().saved) {
+    if let Err(e) = save(&state.locked().saved) {
         log::warn(format!("règles : enregistrement impossible : {e}"));
     }
     apply_hotkeys(app, state);
@@ -287,7 +305,7 @@ fn check_rule(ctx: &ModuleContext, rule: &Rule) -> Result<(), String> {
 fn apply_hotkeys(app: &AppHandle, state: &Shared) {
     let gs = app.global_shortcut();
     let (old, wanted): (Vec<String>, Vec<(u64, String)>) = {
-        let mut s = state.lock().unwrap();
+        let mut s = state.locked();
         let old = std::mem::take(&mut s.hotkeys);
         let active = super::is_active(app, ID) && !s.saved.paused;
         let wanted = s
@@ -335,7 +353,7 @@ fn apply_hotkeys(app: &AppHandle, state: &Shared) {
             }
         }
     }
-    let mut s = state.lock().unwrap();
+    let mut s = state.locked();
     s.hotkeys = registered;
     for (id, e) in errors {
         s.errors.insert(id, e);
@@ -345,7 +363,7 @@ fn apply_hotkeys(app: &AppHandle, state: &Shared) {
 fn on_hotkey(app: &AppHandle, state: &Shared, pressed: &Shortcut) {
     super::with_context(app, ID, |ctx| {
         let rules: Vec<Rule> = {
-            let s = state.lock().unwrap();
+            let s = state.locked();
             if s.saved.paused {
                 return;
             }
@@ -383,7 +401,7 @@ enum UndoStep {
 fn fire(ctx: &ModuleContext, state: &Shared, rule: &Rule, subject: Option<PathBuf>, label: &str) {
     // Trop de déclenchements : la règle se met en pause, et on prévient.
     let too_many = {
-        let mut s = state.lock().unwrap();
+        let mut s = state.locked();
         let now = Instant::now();
         let runs = s.runs.entry(rule.id).or_default();
         runs.retain(|t| now.duration_since(*t) < Duration::from_secs(60));
@@ -398,7 +416,7 @@ fn fire(ctx: &ModuleContext, state: &Shared, rule: &Rule, subject: Option<PathBu
         too_many
     };
     if too_many {
-        let _ = save(&state.lock().unwrap().saved);
+        let _ = save(&state.locked().saved);
         ctx.emit("rules.notify", json!({ "title": format!("Règle « {} » mise en pause", rule.name), "body": "Elle s'est déclenchée plus de 20 fois en une minute." }));
         record(ctx.app, state, rule, label, false, "mise en pause (trop de déclenchements)".into());
         return;
@@ -420,7 +438,7 @@ fn fire(ctx: &ModuleContext, state: &Shared, rule: &Rule, subject: Option<PathBu
 
 fn record(app: &AppHandle, state: &Shared, rule: &Rule, subject: &str, ok: bool, message: String) {
     {
-        let mut s = state.lock().unwrap();
+        let mut s = state.locked();
         s.history.push_front(HistoryEntry { at: now_ms(), rule: rule.name.clone(), subject: subject.into(), ok, message });
         s.history.truncate(HISTORY_LEN);
     }
@@ -511,6 +529,10 @@ fn run_action(
                 &format!("{:02}h{:02}", now.hour, now.minute),
             );
             let dir = src.parent().ok_or("dossier introuvable")?;
+            // Le nouveau nom reste dans le même dossier : pas de séparateur, pas de « .. ».
+            if new_name.contains(['/', '\\', ':']) || new_name == ".." || new_name == "." {
+                return Err("nom de fichier invalide".into());
+            }
             if file_name(&src) == new_name {
                 return Ok("nom inchangé".into());
             }
@@ -620,7 +642,7 @@ fn preview(rule: &Rule, path: Option<&Path>) -> Vec<String> {
 
 /// Les règles « fichier » qui s'appliquent à `path` (dossier + conditions).
 fn file_rules_for(state: &Shared, path: &Path) -> Vec<Rule> {
-    let s = state.lock().unwrap();
+    let s = state.locked();
     if s.saved.paused {
         return Vec::new();
     }
@@ -642,7 +664,7 @@ fn file_rules_for(state: &Shared, path: &Path) -> Vec<Rule> {
 
 /// Les règles « lecteur » (branché ou débranché) dont les conditions acceptent ce nom.
 fn drive_rules_for(state: &Shared, removed: bool, label: &str) -> Vec<Rule> {
-    let s = state.lock().unwrap();
+    let s = state.locked();
     if s.saved.paused {
         return Vec::new();
     }
@@ -661,7 +683,7 @@ fn drive_rules_for(state: &Shared, removed: bool, label: &str) -> Vec<Rule> {
 
 /// Les dossiers à surveiller : (dossier, avec sous-dossiers ?).
 fn watched_folders(state: &Shared) -> Vec<(u64, PathBuf, bool)> {
-    let s = state.lock().unwrap();
+    let s = state.locked();
     if s.saved.paused {
         return Vec::new();
     }
@@ -677,7 +699,7 @@ fn watched_folders(state: &Shared) -> Vec<(u64, PathBuf, bool)> {
 }
 
 fn set_error(state: &Shared, id: u64, error: Option<String>) {
-    let mut s = state.lock().unwrap();
+    let mut s = state.locked();
     match error {
         Some(e) => s.errors.insert(id, e),
         None => s.errors.remove(&id),
@@ -686,14 +708,14 @@ fn set_error(state: &Shared, id: u64, error: Option<String>) {
 
 /// Ce fichier vient-il d'être produit par une règle ? (anti-boucle)
 fn recently_produced(state: &Shared, path: &Path) -> bool {
-    let mut s = state.lock().unwrap();
+    let mut s = state.locked();
     let now = Instant::now();
     s.produced.retain(|(_, t)| now.duration_since(*t) < PRODUCED_TTL);
     s.produced.iter().any(|(p, _)| same_path(p, path))
 }
 
 fn mark_produced(state: &Shared, path: &Path) {
-    state.lock().unwrap().produced.push((path.to_path_buf(), Instant::now()));
+    state.locked().produced.push((path.to_path_buf(), Instant::now()));
 }
 
 /// `path` est-il dans `folder` (directement, ou plus bas si `sub`) ?

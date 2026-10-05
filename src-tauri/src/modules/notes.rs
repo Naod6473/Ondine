@@ -9,6 +9,7 @@
 // le message "notes.changed" ne contient que des nombres ; le front redemande
 // la liste.
 
+use crate::sync::LockExt;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -76,19 +77,19 @@ impl RustModule for Notes {
     }
 
     fn start(&self, _app: &AppHandle) {
-        *self.data.lock().unwrap() = load();
+        *self.data.locked() = load();
     }
 
     fn invoke(&self, ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
         match command {
             "list" => {
-                let d = self.data.lock().unwrap();
+                let d = self.data.locked();
                 Ok(json!({ "notes": d.notes, "todos": d.todos }))
             }
             "note_save" => {
                 let text = arg_text(&args, MAX_NOTE_CHARS)?;
                 let id = {
-                    let mut d = self.data.lock().unwrap();
+                    let mut d = self.data.locked();
                     match args.get("id").and_then(Value::as_u64) {
                         Some(id) => {
                             let note = d.notes.iter_mut().find(|n| n.id == id).ok_or("note introuvable")?;
@@ -113,7 +114,7 @@ impl RustModule for Notes {
             "note_delete" => {
                 let id = arg_id(&args)?;
                 let (index, note) = {
-                    let mut d = self.data.lock().unwrap();
+                    let mut d = self.data.locked();
                     let index = d.notes.iter().position(|n| n.id == id).ok_or("note introuvable")?;
                     (index, d.notes.remove(index))
                 };
@@ -124,7 +125,7 @@ impl RustModule for Notes {
                     DEFAULT_WINDOW,
                     Box::new(move || {
                         {
-                            let mut d = data.lock().unwrap();
+                            let mut d = data.locked();
                             let at = index.min(d.notes.len());
                             d.notes.insert(at, note);
                         }
@@ -137,7 +138,7 @@ impl RustModule for Notes {
             "todo_add" => {
                 let text = arg_text(&args, MAX_TODO_CHARS)?;
                 let id = {
-                    let mut d = self.data.lock().unwrap();
+                    let mut d = self.data.locked();
                     if d.todos.len() >= MAX_TODOS {
                         return Err(format!("au plus {MAX_TODOS} tâches"));
                     }
@@ -151,7 +152,7 @@ impl RustModule for Notes {
             "todo_toggle" => {
                 let id = arg_id(&args)?;
                 let done = {
-                    let mut d = self.data.lock().unwrap();
+                    let mut d = self.data.locked();
                     let todo = d.todos.iter_mut().find(|t| t.id == id).ok_or("tâche introuvable")?;
                     todo.done = !todo.done;
                     todo.done
@@ -167,7 +168,7 @@ impl RustModule for Notes {
                 let id = arg_id(&args)?;
                 let text = arg_text(&args, MAX_TODO_CHARS)?;
                 {
-                    let mut d = self.data.lock().unwrap();
+                    let mut d = self.data.locked();
                     let todo = d.todos.iter_mut().find(|t| t.id == id).ok_or("tâche introuvable")?;
                     todo.text = text;
                 }
@@ -177,7 +178,7 @@ impl RustModule for Notes {
             "todo_delete" => {
                 let id = arg_id(&args)?;
                 let removed = {
-                    let mut d = self.data.lock().unwrap();
+                    let mut d = self.data.locked();
                     let index = d.todos.iter().position(|t| t.id == id).ok_or("tâche introuvable")?;
                     vec![(index, d.todos.remove(index))]
                 };
@@ -186,7 +187,7 @@ impl RustModule for Notes {
             }
             "todo_clear_done" => {
                 let removed: Vec<(usize, Todo)> = {
-                    let mut d = self.data.lock().unwrap();
+                    let mut d = self.data.locked();
                     let all = std::mem::take(&mut d.todos);
                     let mut removed = Vec::new();
                     for (i, t) in all.into_iter().enumerate() {
@@ -221,7 +222,7 @@ impl Notes {
             DEFAULT_WINDOW,
             Box::new(move || {
                 {
-                    let mut d = data.lock().unwrap();
+                    let mut d = data.locked();
                     restore(&mut d.todos, removed);
                 }
                 changed(&app, &data);
@@ -243,7 +244,7 @@ fn restore<T>(list: &mut Vec<T>, mut removed: Vec<(usize, T)>) {
 /// Enregistre, puis prévient le front (sans aucun texte dans le message).
 fn changed(app: &AppHandle, data: &Shared) {
     let (notes, todos, open) = {
-        let d = data.lock().unwrap();
+        let d = data.locked();
         if let Err(e) = save(&d) {
             log::warn(format!("notes : enregistrement impossible : {e}"));
         }

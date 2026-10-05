@@ -3,6 +3,7 @@
 // Plusieurs techniques viennent de Coucou (github.com/Louis-CFM/coucou, licence MIT),
 // qui les a mises au point sur la même pile Tauri 2 + WebView2.
 
+use crate::sync::LockExt;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Mutex;
@@ -103,7 +104,7 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
         if activating {
             let fg = GetForegroundWindow();
             if fg != hwnd {
-                *PREVIOUS_FOREGROUND.lock().unwrap() = fg.0 as isize;
+                *PREVIOUS_FOREGROUND.locked() = fg.0 as isize;
             }
         }
         let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
@@ -114,7 +115,7 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
         };
         SetWindowLongPtrW(hwnd, GWL_EXSTYLE, want);
         if !activating {
-            let prev = std::mem::take(&mut *PREVIOUS_FOREGROUND.lock().unwrap());
+            let prev = std::mem::take(&mut *PREVIOUS_FOREGROUND.locked());
             if prev != 0 && GetForegroundWindow() == hwnd {
                 let _ = SetForegroundWindow(HWND(prev as *mut _));
             }
@@ -415,6 +416,27 @@ pub fn drives(known: &[DriveInfo]) -> Vec<DriveInfo> {
     out
 }
 
+/// Ce chemin est-il sur un lecteur qui a une Corbeille ? Windows n'en a que
+/// sur les disques fixes : une clé USB (amovible), un partage réseau, un CD ou
+/// un disque en mémoire n'en ont pas, et « supprimer » y serait définitif.
+/// (Un disque fixe dont la Corbeille est désactivée ou pleine : Windows
+/// affiche lui-même un avertissement avant toute suppression définitive.)
+pub fn has_recycle_bin(path: &std::path::Path) -> bool {
+    use ::windows::core::HSTRING;
+    use ::windows::Win32::Storage::FileSystem::{GetDriveTypeW, GetVolumePathNameW};
+
+    // La racine du volume (« E:\ », ou le dossier où un disque est monté).
+    let mut root = [0u16; 261];
+    let wide = HSTRING::from(path.as_os_str());
+    if unsafe { GetVolumePathNameW(&wide, &mut root) }.is_err() {
+        return false; // inconnu : on refuse plutôt que de risquer
+    }
+    let len = root.iter().position(|&c| c == 0).unwrap_or(root.len());
+    let root = HSTRING::from_wide(&root[..len]);
+    // 3 = disque fixe (DRIVE_FIXED).
+    unsafe { GetDriveTypeW(&root) == 3 }
+}
+
 /// Attend (au plus `max`) que Ctrl, Alt, Maj et Windows soient relâchées :
 /// après un raccourci comme Ctrl+Alt+V, envoyer Ctrl+V pendant qu'Alt est
 /// encore enfoncée donnerait… Ctrl+Alt+V.
@@ -490,7 +512,7 @@ pub fn shortcut_target(lnk: &std::path::Path) -> Option<PathBuf> {
 /// L'île ne rendra PAS le focus à la fenêtre d'avant en se fermant : le
 /// programme qu'on vient de lancer doit pouvoir passer devant.
 pub fn forget_previous_foreground() {
-    *PREVIOUS_FOREGROUND.lock().unwrap() = 0;
+    *PREVIOUS_FOREGROUND.locked() = 0;
 }
 
 // ── Infos système ────────────────────────────────────────────────────────────

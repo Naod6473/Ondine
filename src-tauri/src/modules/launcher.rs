@@ -11,6 +11,7 @@
 // moment de l'ouvrir (`check_path` : dossiers exclus), et les fichiers
 // exécutables (.exe, .bat, .ps1…) ne sont jamais proposés comme « récents ».
 
+use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -40,6 +41,10 @@ const HOTKEYS: &[&str] = &["Alt+Space", "Ctrl+Space", "Ctrl+Alt+Space", "Ctrl+Sh
 const EXECUTABLE: &[&str] = &[
     "exe", "com", "bat", "cmd", "ps1", "psm1", "vbs", "vbe", "js", "jse", "wsf", "wsh", "hta", "msi", "msp", "scr", "cpl", "lnk", "url",
     "reg", "jar", "pif", "appref-ms", "application",
+    // Langages de script s'ils sont installés, consoles, installeurs et
+    // formats que Windows « exécute » à l'ouverture.
+    "py", "pyw", "pyc", "pl", "rb", "ahk", "au3", "vb", "ws", "msc", "inf", "chm", "gadget", "diagcab", "settingcontent-ms",
+    "msix", "msixbundle", "appx", "appxbundle", "appinstaller", "xbap", "website", "scf",
 ];
 
 /// Outils Windows proposés en plus des applications (liste fixe : nom affiché, ce qu'on ouvre).
@@ -118,14 +123,14 @@ impl RustModule for Launcher {
     fn invoke(&self, ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
         match command {
             "entries" => {
-                let stale = self.state.lock().unwrap().scanned.is_none_or(|t| t.elapsed() > RESCAN_AFTER);
+                let stale = self.state.locked().scanned.is_none_or(|t| t.elapsed() > RESCAN_AFTER);
                 if stale {
                     let entries = scan(ctx);
-                    let mut s = self.state.lock().unwrap();
+                    let mut s = self.state.locked();
                     s.entries = entries;
                     s.scanned = Some(Instant::now());
                 }
-                let s = self.state.lock().unwrap();
+                let s = self.state.locked();
                 let items: Vec<Value> = s
                     .entries
                     .iter()
@@ -136,7 +141,7 @@ impl RustModule for Launcher {
             "launch" => {
                 let id = args.get("id").and_then(Value::as_u64).ok_or("entrée manquante")?;
                 let entry = {
-                    let s = self.state.lock().unwrap();
+                    let s = self.state.locked();
                     s.entries.iter().find(|e| u64::from(e.id) == id).cloned()
                 };
                 let entry = entry.ok_or("cette entrée n'existe plus, recherche à nouveau")?;
@@ -173,7 +178,7 @@ fn hotkey_loop(app: AppHandle, state: Shared) {
     loop {
         let step = catch_unwind(AssertUnwindSafe(|| {
             let wanted = super::with_context(&app, ID, |ctx| wanted_hotkey(ctx)).unwrap_or_default();
-            let current = state.lock().unwrap().hotkey.clone();
+            let current = state.locked().hotkey.clone();
             if wanted != current {
                 apply_hotkey(&app, &state, &current, &wanted);
             }
@@ -227,7 +232,7 @@ fn apply_hotkey(app: &AppHandle, state: &Shared, current: &str, wanted: &str) {
             error = Some(msg);
         }
     }
-    let mut s = state.lock().unwrap();
+    let mut s = state.locked();
     // Même en cas d'échec, on note le raccourci voulu : on ne réessaie pas
     // chaque seconde (on réessaiera quand le réglage changera).
     s.hotkey = wanted.to_string();

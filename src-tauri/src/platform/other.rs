@@ -116,6 +116,9 @@ pub fn reverse_dns(_ip: std::net::Ipv4Addr) -> Option<String> {
     None
 }
 
+pub fn has_recycle_bin(_path: &std::path::Path) -> bool {
+    true
+}
 pub fn find_program(_name: &str) -> Option<std::path::PathBuf> {
     None
 }

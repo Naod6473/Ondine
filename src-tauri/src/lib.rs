@@ -13,8 +13,10 @@ mod island;
 mod modules;
 mod platform;
 mod services;
+mod sync;
 mod tray;
 
+use crate::sync::LockExt;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
@@ -50,7 +52,7 @@ struct BootInfo {
 
 #[tauri::command]
 fn boot(app: AppHandle, shared: State<Shared>, registry: State<Registry>) -> BootInfo {
-    let settings = shared.settings.lock().unwrap().clone();
+    let settings = shared.settings.locked().clone();
     BootInfo {
         screen: island::screen_info(&app, &settings.general.screen),
         settings,
@@ -63,7 +65,7 @@ fn boot(app: AppHandle, shared: State<Shared>, registry: State<Registry>) -> Boo
 /// Applique et enregistre de nouveaux réglages, puis prévient toutes les fenêtres.
 fn apply_settings(app: &AppHandle, shared: &Shared, new: Settings) -> Result<(), String> {
     let screen_changed = {
-        let mut current = shared.settings.lock().unwrap();
+        let mut current = shared.settings.locked();
         let changed = current.general.screen != new.general.screen;
         *current = new.clone();
         changed
@@ -85,7 +87,7 @@ fn settings_save(app: AppHandle, shared: State<Shared>, settings: Settings) -> R
 /// Écrit une copie des réglages dans %APPDATA%\Island\exports et ouvre ce dossier.
 #[tauri::command]
 fn settings_export(shared: State<Shared>) -> Result<String, String> {
-    let current = shared.settings.lock().unwrap().clone();
+    let current = shared.settings.locked().clone();
     let file = settings::export(&current)?;
     if let Some(dir) = file.parent() {
         platform::reveal_folder(dir);
@@ -157,7 +159,7 @@ async fn dialog_pick_file(window: Window, title: Option<String>, extensions: Vec
 /// s'endort. Sinon → panneau et lecture à 60 Hz.
 #[tauri::command]
 fn island_set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) {
-    let pref = shared.settings.lock().unwrap().general.screen.clone();
+    let pref = shared.settings.locked().general.screen.clone();
     shared.gate.collapsed.store(collapsed, Ordering::Relaxed);
     island::apply_geometry(&app, &pref, collapsed);
     island::refresh_click_through(&app, &shared.gate);
@@ -183,7 +185,7 @@ fn island_set_focus(app: AppHandle, focused: bool) {
 
 #[tauri::command]
 fn island_reposition(app: AppHandle, shared: State<Shared>) {
-    let pref = shared.settings.lock().unwrap().general.screen.clone();
+    let pref = shared.settings.locked().general.screen.clone();
     island::apply_geometry(&app, &pref, shared.gate.collapsed.load(Ordering::Relaxed));
 }
 

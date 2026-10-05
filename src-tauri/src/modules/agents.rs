@@ -21,6 +21,7 @@
 // d'événement, jamais son contenu. L'historique reste en mémoire (perdu à la
 // fermeture de l'île).
 
+use crate::sync::LockExt;
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::path::{Path, PathBuf};
@@ -44,6 +45,8 @@ const MAX_TEXT: usize = 300;
 const SESSION_TIMEOUT: Duration = Duration::from_secs(60 * 60);
 /// Une session finie (ou muette) disparaît du tableau après ce temps.
 const SESSION_FORGET: Duration = Duration::from_secs(2 * 60 * 60);
+/// Au plus ce nombre de sessions dans le tableau (au-delà, la plus ancienne part).
+const MAX_SESSIONS: usize = 30;
 /// Au plus ce nombre de messages par seconde (au-delà : ignorés).
 const MAX_PER_SECOND: usize = 10;
 
@@ -96,8 +99,6 @@ struct State {
     /// Mode concentration : jusqu'à quand (ms ; u64::MAX = jusqu'à ce que tu
     /// l'arrêtes). Pendant ce temps, les notifications attendent dans `held`.
     quiet_until: Option<u64>,
-    /// Change à chaque démarrage (le fil de fin ignore une ancienne concentration).
-    quiet_gen: u64,
     held: Vec<Event>,
 }
 
@@ -176,12 +177,23 @@ impl RustModule for Agents {
                 publish_info(&a, &s, event);
             }
         });
-        // Le fil qui range les sessions muettes depuis longtemps.
+        // Un seul fil d'entretien : toutes les 5 s il regarde si la
+        // concentration est finie, et chaque minute il range les sessions
+        // muettes depuis longtemps.
         let (a, s) = (app.clone(), self.state.clone());
+        let mut tick = 0u32;
         std::thread::spawn(move || loop {
-            std::thread::sleep(Duration::from_secs(60));
+            std::thread::sleep(Duration::from_secs(5));
+            let quiet_over = s.locked().quiet_until.is_some_and(|until| now_ms() >= until);
+            if quiet_over {
+                quiet_stop(&a, &s);
+            }
+            tick += 1;
+            if !tick.is_multiple_of(12) {
+                continue;
+            }
             let emptied = {
-                let mut st = s.lock().unwrap();
+                let mut st = s.locked();
                 let before = st.working();
                 for session in st.sessions.values_mut() {
                     let quiet = session.updated.map_or(true, |t| t.elapsed() >= SESSION_TIMEOUT);
@@ -212,7 +224,7 @@ impl RustModule for Agents {
     fn invoke(&self, ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
         match command {
             "history" => {
-                let st = self.state.lock().unwrap();
+                let st = self.state.locked();
                 let mut asks: Vec<Value> = st
                     .asks
                     .iter()
@@ -225,7 +237,7 @@ impl RustModule for Agents {
             // { minutes: 0 | 25 | 60 | 120 } : la concentration (0 = jusqu'à l'arrêt).
             "quiet_start" => {
                 let minutes = args.get("minutes").and_then(Value::as_u64).unwrap_or(0).min(8 * 60);
-                quiet_start(ctx.app, &self.state, minutes);
+                quiet_start(&self.state, minutes);
                 ctx.emit("agents.quiet", json!({ "on": true }));
                 ctx.emit("agents.changed", Value::Null);
                 Ok(Value::Null)
@@ -239,7 +251,7 @@ impl RustModule for Agents {
                 let id = args.get("id").and_then(Value::as_u64).ok_or("question manquante")?;
                 let choice = args.get("choice").and_then(Value::as_u64).ok_or("choix manquant")? as usize;
                 let mut ask = {
-                    let mut st = self.state.lock().unwrap();
+                    let mut st = self.state.locked();
                     let ask = st.asks.get(&id).ok_or("cette question n'attend plus (délai dépassé ?)")?;
                     if choice >= ask.options.len() {
                         return Err("choix inconnu".into());
@@ -263,7 +275,7 @@ impl RustModule for Agents {
             // On note l'heure : « Oui, autoriser » ne sera accepté qu'ensuite.
             "arm" => {
                 let id = args.get("id").and_then(Value::as_u64).ok_or("question manquante")?;
-                let mut st = self.state.lock().unwrap();
+                let mut st = self.state.locked();
                 let ask = st.asks.get_mut(&id).ok_or("cette question n'attend plus (délai dépassé ?)")?;
                 if ask.kind != "permission" {
                     return Err("rien à autoriser".into());
@@ -275,7 +287,7 @@ impl RustModule for Agents {
             "focus" => {
                 let id = args.get("session").and_then(Value::as_str).ok_or("session manquante")?;
                 let (hwnd, pids) = {
-                    let st = self.state.lock().unwrap();
+                    let st = self.state.locked();
                     let s = st.sessions.get(id).ok_or("session inconnue (terminée ?)")?;
                     (s.hwnd, s.pids.clone())
                 };
@@ -442,7 +454,7 @@ fn sorted_sessions(st: &State) -> Vec<Session> {
 
 /// Pas plus de MAX_PER_SECOND messages par seconde (au-delà : ignorés).
 fn allow(state: &Shared) -> bool {
-    let mut st = state.lock().unwrap();
+    let mut st = state.locked();
     st.recent.retain(|t| t.elapsed() < Duration::from_secs(1));
     if st.recent.len() >= MAX_PER_SECOND {
         return false;
@@ -560,7 +572,7 @@ fn permission_request(app: &AppHandle, state: &Shared, msg: &Value, mut reply: s
     }
     let settings = super::with_context(app, ID, |ctx| ctx.settings()).unwrap_or_default();
     // Réglage coupé, ou concentration : la question passe tout de suite au terminal.
-    if settings.get("permissions").and_then(Value::as_bool) != Some(true) || state.lock().unwrap().quiet() {
+    if settings.get("permissions").and_then(Value::as_bool) != Some(true) || state.locked().quiet() {
         return pass(&mut reply);
     }
     let secs = settings.get("permissionWait").and_then(Value::as_str).and_then(|s| s.parse::<u64>().ok()).unwrap_or(60).clamp(15, 300);
@@ -572,7 +584,7 @@ fn permission_request(app: &AppHandle, state: &Shared, msg: &Value, mut reply: s
     if !session.is_empty() {
         let pids: Vec<u32> = msg["pids"].as_array().into_iter().flatten().filter_map(Value::as_u64).filter_map(|p| u32::try_from(p).ok()).take(8).collect();
         let hwnd = msg["hwnd"].as_i64().unwrap_or(0) as isize;
-        let mut st = state.lock().unwrap();
+        let mut st = state.locked();
         if let Some(sess) = st.sessions.get_mut(&session) {
             if !pids.is_empty() || hwnd != 0 {
                 sess.pids = pids;
@@ -610,28 +622,32 @@ fn permission_request(app: &AppHandle, state: &Shared, msg: &Value, mut reply: s
 /// secondes sans clic l'agent reçoit « pas de réponse ».
 /// Erreur (le canal rendu) : trop de questions en attente.
 fn open_ask(app: &AppHandle, state: &Shared, mut ask: Ask, secs: u64) -> Result<(), std::fs::File> {
-    let id = {
-        let mut st = state.lock().unwrap();
+    let (id, shown) = {
+        let mut st = state.locked();
         if st.asks.len() >= MAX_ASKS {
             return Err(ask.reply);
         }
         st.next_ask += 1;
         ask.until = now_ms() + secs * 1000;
-        // Pendant la concentration, la question attend dans l'onglet sans s'ouvrir en grand.
-        if !st.quiet() {
-            super::with_context(app, ID, |ctx| ctx.emit("agents.ask", ask_json(st.next_ask, &ask)));
-        }
         let id = st.next_ask;
+        // Pendant la concentration, la question attend dans l'onglet sans s'ouvrir en grand.
+        let shown = (!st.quiet()).then(|| ask_json(id, &ask));
         st.asks.insert(id, ask);
-        id
+        (id, shown)
     };
-    super::with_context(app, ID, |ctx| ctx.emit("agents.changed", Value::Null));
+    // On publie après avoir rendu le verrou (un abonné pourrait vouloir le reprendre).
+    super::with_context(app, ID, |ctx| {
+        if let Some(payload) = shown {
+            ctx.emit("agents.ask", payload);
+        }
+        ctx.emit("agents.changed", Value::Null);
+    });
     let (a, s) = (app.clone(), state.clone());
     std::thread::spawn(move || {
         let deadline = Instant::now() + Duration::from_secs(secs);
         loop {
             std::thread::sleep(Duration::from_secs(1));
-            let mut st = s.lock().unwrap();
+            let mut st = s.locked();
             let Some(ask) = st.asks.get(&id) else { return }; // déjà répondu
             let gone = !platform::pipe_client_alive(&ask.reply);
             let expired = Instant::now() >= deadline;
@@ -665,7 +681,7 @@ fn ask_json(id: u64, a: &Ask) -> Value {
 /// Ajoute un message libre à l'historique et le montre.
 fn publish_info(app: &AppHandle, state: &Shared, event: Event) {
     {
-        let mut st = state.lock().unwrap();
+        let mut st = state.locked();
         st.history.push_front(event.clone());
         st.history.truncate(MAX_HISTORY);
     }
@@ -678,7 +694,7 @@ fn publish_info(app: &AppHandle, state: &Shared, event: Event) {
 /// Montre la notification, ou la garde pour le résumé pendant la concentration.
 fn show_or_hold(ctx: &ModuleContext, state: &Shared, event: &Event) {
     {
-        let mut st = state.lock().unwrap();
+        let mut st = state.locked();
         if st.quiet() {
             if st.held.len() < 100 {
                 st.held.push(event.clone());
@@ -697,32 +713,19 @@ fn show_or_hold(ctx: &ModuleContext, state: &Shared, event: &Event) {
 // directement au terminal. À la fin : un seul résumé.
 
 /// Démarre la concentration pour `minutes` (0 = jusqu'à ce que tu l'arrêtes).
-fn quiet_start(app: &AppHandle, state: &Shared, minutes: u64) {
-    let gen = {
-        let mut st = state.lock().unwrap();
-        st.quiet_until = Some(if minutes == 0 { u64::MAX } else { now_ms() + minutes * 60_000 });
-        st.quiet_gen += 1;
-        st.quiet_gen
-    };
-    if minutes > 0 {
-        let (a, s) = (app.clone(), state.clone());
-        std::thread::spawn(move || {
-            std::thread::sleep(Duration::from_secs(minutes * 60));
-            if s.lock().unwrap().quiet_gen == gen {
-                quiet_stop(&a, &s);
-            }
-        });
-    }
+/// La fin est surveillée par le fil d'entretien (voir `start`).
+fn quiet_start(state: &Shared, minutes: u64) {
+    let mut st = state.locked();
+    st.quiet_until = Some(if minutes == 0 { u64::MAX } else { now_ms().saturating_add(minutes.saturating_mul(60_000)) });
 }
 
 /// Arrête la concentration et montre le résumé de ce qui s'est passé.
 fn quiet_stop(app: &AppHandle, state: &Shared) {
     let text = {
-        let mut st = state.lock().unwrap();
+        let mut st = state.locked();
         if st.quiet_until.take().is_none() {
             return;
         }
-        st.quiet_gen += 1;
         let held = std::mem::take(&mut st.held);
         let waiting: Vec<&'static str> = st.sessions.values().filter(|s| s.state == "waiting").map(|s| who(&s.source)).collect();
         summary(&held, &waiting, st.asks.len())
@@ -834,7 +837,7 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
 
     // Qui est au travail ? (la mascotte réfléchit tant qu'au moins une session travaille)
     let (started, finished, already_shown) = {
-        let mut st = state.lock().unwrap();
+        let mut st = state.locked();
         let was_busy = st.working() > 0;
         if event.kind == "ended" {
             st.sessions.remove(&event.session);
@@ -844,6 +847,14 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
                 "waiting" => "waiting",
                 _ => "done",
             };
+            // Une nouvelle session alors que le tableau est plein : la plus
+            // ancienne (dernier signe de vie) laisse sa place.
+            if !st.sessions.contains_key(&event.session) && st.sessions.len() >= MAX_SESSIONS {
+                let oldest = st.sessions.iter().min_by_key(|(_, s)| s.updated).map(|(k, _)| k.clone());
+                if let Some(k) = oldest {
+                    st.sessions.remove(&k);
+                }
+            }
             let entry = st.sessions.entry(event.session.clone()).or_insert_with(|| Session {
                 id: event.session.clone(),
                 source: event.source.clone(),
@@ -889,7 +900,7 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
                 ctx.emit("claude.done", Value::Null);
             }
             // (pas de fête pendant la concentration)
-            if event.kind == "done" && !state.lock().unwrap().quiet() {
+            if event.kind == "done" && !state.locked().quiet() {
                 ctx.emit("task.finished", json!({ "label": event.title }));
             }
         }

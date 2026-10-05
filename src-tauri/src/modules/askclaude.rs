@@ -15,6 +15,7 @@
 //   - la réponse de Claude est du TEXTE À AFFICHER : rien n'est exécuté ;
 //   - le journal ne note que la taille de l'envoi, jamais son contenu.
 
+use crate::sync::LockExt;
 use std::sync::Mutex;
 use std::time::Duration;
 
@@ -49,6 +50,10 @@ struct Prepared {
     text: Option<String>,
     /// (type, contenu en base64)
     image: Option<(&'static str, String)>,
+    /// Le modèle et la consigne montrés dans l'aperçu : ce sont eux qui
+    /// partent, même si les réglages changent entre l'aperçu et l'envoi.
+    model: String,
+    instruction: String,
 }
 
 #[derive(Default)]
@@ -83,23 +88,23 @@ impl RustModule for AskClaude {
                     (None, None) => return Err("rien à préparer".into()),
                 };
                 let id = {
-                    let mut n = self.next.lock().unwrap();
+                    let mut n = self.next.locked();
                     *n += 1;
                     *n
                 };
-                let prepared = Prepared { id, name, text, image };
-                let preview = preview(&prepared, ctx);
-                *self.prepared.lock().unwrap() = Some(prepared);
+                let prepared = Prepared { id, name, text, image, model: model(ctx), instruction: instruction(ctx) };
+                let preview = preview(&prepared);
+                *self.prepared.locked() = Some(prepared);
                 Ok(preview)
             }
             // { id, question } : envoie le contenu préparé n° id.
             "send" => {
                 ctx.require("claude-api")?;
                 let id = args.get("id").and_then(Value::as_u64).ok_or("rien de préparé")?;
-                let prepared = self.prepared.lock().unwrap().clone().filter(|p| p.id == id).ok_or("l'aperçu a changé : vérifie ce qui part, puis renvoie")?;
+                let prepared = self.prepared.locked().clone().filter(|p| p.id == id).ok_or("l'aperçu a changé : vérifie ce qui part, puis renvoie")?;
                 let question: String = args.get("question").and_then(Value::as_str).unwrap_or("").trim().chars().take(MAX_QUESTION).collect();
                 let key = ctx.credential("anthropic-api-key")?.ok_or("Pas de clé API Anthropic : ajoute-la dans Réglages → Identifiants.")?;
-                let body = request_body(&prepared, &question, &model(ctx), max_tokens(ctx), &instruction(ctx));
+                let body = request_body(&prepared, &question, &prepared.model, max_tokens(ctx), &prepared.instruction);
                 ctx.log_info(format!("demande envoyée à Claude ({} octets)", body.to_string().len()));
                 let answer = call_api(&key, &body)?;
                 Ok(answer)
@@ -157,15 +162,15 @@ fn read_file(ctx: &ModuleContext, raw: &str) -> Result<(String, Option<String>, 
 }
 
 /// L'aperçu : tout ce qui partira, en entier.
-fn preview(p: &Prepared, ctx: &ModuleContext) -> Value {
+fn preview(p: &Prepared) -> Value {
     json!({
         "id": p.id,
         "name": p.name,
         "text": p.text,
         "image": p.image.as_ref().map(|(media, data)| format!("data:{media};base64,{data}")),
         "bytes": p.text.as_ref().map(|t| t.len()).unwrap_or(0) + p.image.as_ref().map(|(_, d)| d.len() * 3 / 4).unwrap_or(0),
-        "model": model(ctx),
-        "instruction": instruction(ctx),
+        "model": p.model,
+        "instruction": p.instruction,
         "destination": "api.anthropic.com",
     })
 }
@@ -240,7 +245,7 @@ mod tests {
 
     #[test]
     fn body_marks_the_document() {
-        let p = Prepared { id: 1, name: "a\"b.log".into(), text: Some("Erreur 42".into()), image: Some(("image/png", "QUJD".into())) };
+        let p = Prepared { id: 1, name: "a\"b.log".into(), text: Some("Erreur 42".into()), image: Some(("image/png", "QUJD".into())), model: String::new(), instruction: String::new() };
         let b = request_body(&p, "", "claude-sonnet-5-5", 1024, "sys");
         let content = b["messages"][0]["content"].as_array().unwrap();
         assert_eq!(content[0]["source"]["media_type"], "image/png");
@@ -264,7 +269,7 @@ mod tests {
     #[test]
     #[ignore]
     fn real_call_with_a_wrong_key() {
-        let p = Prepared { id: 1, name: "t".into(), text: Some("x".into()), image: None };
+        let p = Prepared { id: 1, name: "t".into(), text: Some("x".into()), image: None, model: String::new(), instruction: String::new() };
         let err = call_api("sk-ant-fausse", &request_body(&p, "", MODELS[0], 16, "s")).unwrap_err();
         assert!(err.starts_with("clé API refusée"), "{err}");
     }

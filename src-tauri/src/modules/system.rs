@@ -14,6 +14,7 @@
 // « Copier pour le support » met dans le presse-papiers un résumé à coller
 // dans un ticket. Le journal ne contient jamais ces informations.
 
+use crate::sync::LockExt;
 use std::collections::HashSet;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::{Arc, Mutex};
@@ -81,7 +82,7 @@ fn watch(app: AppHandle, state: Shared) {
     let mut sys = System::new();
     sys.refresh_cpu_all(); // le nom du processeur et le nombre de cœurs
     {
-        let mut s = state.lock().unwrap();
+        let mut s = state.locked();
         s.cpu_brand = sys.cpus().first().map(|c| c.brand().trim().to_string()).unwrap_or_default();
         s.cpu_cores = sys.cpus().len();
     }
@@ -95,7 +96,7 @@ fn watch(app: AppHandle, state: Shared) {
             sys.refresh_cpu_usage();
             sys.refresh_memory();
             {
-                let mut s = state.lock().unwrap();
+                let mut s = state.locked();
                 s.cpu_usage = sys.global_cpu_usage();
                 s.mem_total = sys.total_memory();
                 s.mem_used = sys.used_memory();
@@ -124,7 +125,7 @@ fn check_disks(ctx: &ModuleContext, state: &Shared) {
         }
         let mount = d.mount_point().display().to_string();
         let free_pct = d.available_space() as f64 * 100.0 / d.total_space() as f64;
-        let mut s = state.lock().unwrap();
+        let mut s = state.locked();
         if free_pct < threshold {
             if s.warned.insert(mount.clone()) {
                 ctx.emit(
@@ -143,7 +144,7 @@ fn check_disks(ctx: &ModuleContext, state: &Shared) {
 
 fn snapshot(state: &Shared) -> Value {
     let (cpu_usage, cpu_brand, cpu_cores, mem_total, mem_used) = {
-        let s = state.lock().unwrap();
+        let s = state.locked();
         (s.cpu_usage, s.cpu_brand.clone(), s.cpu_cores, s.mem_total, s.mem_used)
     };
 

@@ -28,6 +28,7 @@ mod shelf;
 mod system;
 mod terminal;
 
+use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
@@ -129,7 +130,7 @@ impl ModuleContext<'_> {
     /// Les réglages de ce module (tels qu'enregistrés ; le front y a mis les valeurs par défaut).
     pub fn settings(&self) -> Map<String, Value> {
         let shared = self.app.state::<crate::Shared>();
-        let s = shared.settings.lock().unwrap();
+        let s = shared.settings.locked();
         s.modules.get(self.id()).map(|m| m.values.clone()).unwrap_or_default()
     }
 
@@ -137,7 +138,7 @@ impl ModuleContext<'_> {
     pub fn check_path(&self, raw: &str) -> Result<std::path::PathBuf, String> {
         self.require("files")?;
         let shared = self.app.state::<crate::Shared>();
-        let s = shared.settings.lock().unwrap();
+        let s = shared.settings.locked();
         privacy::check_path(&s, raw)
     }
 
@@ -248,7 +249,7 @@ fn check_manifest(text: &str) -> Result<Manifest, String> {
 }
 
 fn enabled(app: &AppHandle, id: &str) -> bool {
-    app.state::<crate::Shared>().settings.lock().unwrap().module_enabled(id)
+    app.state::<crate::Shared>().settings.locked().module_enabled(id)
 }
 
 /// Le module est-il activé ET pas mis à l'écart ? Pour les threads de fond.

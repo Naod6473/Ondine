@@ -228,14 +228,17 @@ fn parse_duration(value: &str) -> Option<Duration> {
         }
         let n: i64 = number.parse().ok()?;
         number.clear();
-        total += match (c, in_time) {
-            ('W', false) => Duration::weeks(n),
-            ('D', false) => Duration::days(n),
-            ('H', true) => Duration::hours(n),
-            ('M', true) => Duration::minutes(n),
-            ('S', true) => Duration::seconds(n),
+        // Les versions « try_ » renvoient None au lieu de planter sur une
+        // valeur démesurée (un .ics piégé avec « P99999999999999W »).
+        let part = match (c, in_time) {
+            ('W', false) => Duration::try_weeks(n),
+            ('D', false) => Duration::try_days(n),
+            ('H', true) => Duration::try_hours(n),
+            ('M', true) => Duration::try_minutes(n),
+            ('S', true) => Duration::try_seconds(n),
             _ => return None,
-        };
+        }?;
+        total = total.checked_add(&part)?;
     }
     Some(if negative { -total } else { total })
 }
@@ -324,7 +327,8 @@ pub fn occurrences(events: &[Event], from: NaiveDateTime, to: NaiveDateTime) -> 
         match &ev.rule {
             None => push_if_visible(&mut out, ev, start, length, from, to),
             Some(rule) => {
-                for s in expand(rule, start, from - length, to) {
+                let skip_before = from.checked_sub_signed(length).unwrap_or(start);
+                for s in expand(rule, start, skip_before, to) {
                     if ev.exdates.contains(&s) || replaced.contains(&s) {
                         continue;
                     }
@@ -354,7 +358,8 @@ fn event_length(ev: &Event, start: NaiveDateTime) -> Duration {
 }
 
 fn push_if_visible(out: &mut Vec<Occurrence>, ev: &Event, start: NaiveDateTime, length: Duration, from: NaiveDateTime, to: NaiveDateTime) {
-    let end = start + length;
+    // Une durée démesurée qui dépasserait les dates possibles : ignorée.
+    let Some(end) = start.checked_add_signed(length) else { return };
     // Visible si l'occurrence n'est pas finie au début de la période et commence avant sa fin.
     // (Un rendez-vous sans durée est visible tant que son heure n'est pas passée.)
     let not_over = if length.is_zero() { end >= from } else { end > from };
@@ -393,17 +398,23 @@ fn expand(rule: &Rule, start: NaiveDateTime, skip_before: NaiveDateTime, to: Nai
     };
 
     // Pour chaque « période » (jour, semaine, mois ou année n° step), les jours retenus.
+    // Tous les calculs sont « checked » : un INTERVAL énorme (un .ics piégé)
+    // dépasse les dates possibles, et on s'arrête au lieu de planter.
     for step in first_step..first_step.saturating_add(MAX_STEPS) {
         let Some(n) = step.checked_mul(rule.interval) else { break };
         let mut days: Vec<NaiveDate> = match rule.freq {
-            Freq::Daily => vec![start.date() + Duration::days(n as i64)],
+            Freq::Daily => match add_days(start.date(), n as i64) {
+                Some(d) => vec![d],
+                None => break,
+            },
             Freq::Weekly => {
                 // Semaine commençant le lundi (WKST=MO, la valeur par défaut).
-                let monday = start.date() - Duration::days(start.weekday().num_days_from_monday() as i64) + Duration::weeks(n as i64);
+                let offset = start.weekday().num_days_from_monday() as i64;
+                let Some(monday) = add_days(start.date(), -offset).and_then(|d| add_days(d, (n as i64).checked_mul(7)?)) else { break };
                 if rule.by_day.is_empty() {
-                    vec![monday + Duration::days(start.weekday().num_days_from_monday() as i64)]
+                    add_days(monday, offset).into_iter().collect()
                 } else {
-                    rule.by_day.iter().map(|(_, d)| monday + Duration::days(d.num_days_from_monday() as i64)).collect()
+                    rule.by_day.iter().filter_map(|(_, d)| add_days(monday, d.num_days_from_monday() as i64)).collect()
                 }
             }
             Freq::Monthly => {
@@ -415,7 +426,7 @@ fn expand(rule: &Rule, start: NaiveDateTime, skip_before: NaiveDateTime, to: Nai
                 }
             }
             Freq::Yearly => {
-                let Some(first) = first_of_month(start.date(), n * 12) else { break };
+                let Some(first) = n.checked_mul(12).and_then(|m| first_of_month(start.date(), m)) else { break };
                 first.with_day(start.day()).into_iter().collect() // le 29 février : seulement les années bissextiles
             }
         };
@@ -435,6 +446,11 @@ fn expand(rule: &Rule, start: NaiveDateTime, skip_before: NaiveDateTime, to: Nai
         }
     }
     out
+}
+
+/// `date` + `days` jours, ou None si on sort des dates possibles.
+fn add_days(date: NaiveDate, days: i64) -> Option<NaiveDate> {
+    date.checked_add_signed(Duration::try_days(days)?)
 }
 
 /// Le 1er du mois, `months` mois après celui de `date`.
@@ -532,6 +548,17 @@ mod tests {
         );
         let occ = occurrences(&parse(&text), dt("2026-10-01 00:00"), dt("2027-01-01 00:00"));
         assert_eq!(starts(&occ), ["2026-10-05 09:00", "2026-10-12 09:00", "2026-10-14 09:00", "2026-10-19 09:00"]);
+    }
+
+    #[test]
+    fn a_trapped_ics_does_not_panic() {
+        let text = "BEGIN:VEVENT\r\nUID:x\r\nDTSTART:20261005T080000\r\nDURATION:P99999999999999W\r\n\
+                    RRULE:FREQ=WEEKLY;INTERVAL=100000000\r\nEND:VEVENT\r\n\
+                    BEGIN:VEVENT\r\nUID:y\r\nDTSTART:20261005T080000\r\nRRULE:FREQ=YEARLY;INTERVAL=4000000000\r\nEND:VEVENT\r\n\
+                    BEGIN:VEVENT\r\nUID:z\r\nDTSTART:20261005T080000\r\nRRULE:FREQ=DAILY;INTERVAL=4000000000\r\nEND:VEVENT\r\n";
+        let events = parse(text);
+        let _ = occurrences(&events, dt("2026-10-01 00:00"), dt("2030-01-01 00:00"));
+        assert_eq!(parse_duration("P99999999999999W"), None);
     }
 
     #[test]

@@ -17,6 +17,7 @@
 //
 // Le manifeste est le même fichier que celui du front (src/modules/clipboard/manifest.json).
 
+use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -95,7 +96,7 @@ impl RustModule for Clipboard {
     }
 
     fn start(&self, app: &AppHandle) {
-        *self.store.lock().unwrap() = load();
+        *self.store.locked() = load();
         let (app, store) = (app.clone(), self.store.clone());
         std::thread::spawn(move || watch(app, store));
     }
@@ -105,13 +106,13 @@ impl RustModule for Clipboard {
         match command {
             "list" => {
                 let query = args.get("query").and_then(Value::as_str).unwrap_or("");
-                Ok(list_json(&self.store.lock().unwrap(), query))
+                Ok(list_json(&self.store.locked(), query))
             }
             "pin" => {
                 let id = arg_id(&args, "id")?;
                 let pinned = args.get("pinned").and_then(Value::as_bool).unwrap_or(true);
                 {
-                    let mut s = self.store.lock().unwrap();
+                    let mut s = self.store.locked();
                     let clip = s.clips.iter_mut().find(|c| c.id == id).ok_or("élément introuvable")?;
                     clip.pinned = pinned;
                     let max = max_items(ctx);
@@ -171,7 +172,7 @@ impl RustModule for Clipboard {
 impl Clipboard {
     /// Le texte désigné par `args.id` (une copie) ou `args.snippet` (un snippet).
     fn text_of(&self, args: &Value) -> Result<String, String> {
-        let s = self.store.lock().unwrap();
+        let s = self.store.locked();
         if let Some(id) = args.get("snippet").and_then(Value::as_u64) {
             return s.snippets.iter().find(|n| n.id == id).map(|n| n.text.clone()).ok_or("snippet introuvable".into());
         }
@@ -182,7 +183,7 @@ impl Clipboard {
     /// Retire une copie. Annuler = la remettre à sa place.
     fn delete(&self, ctx: &ModuleContext, id: u64) -> Result<Value, String> {
         let (index, clip) = {
-            let mut s = self.store.lock().unwrap();
+            let mut s = self.store.locked();
             let index = s.clips.iter().position(|c| c.id == id).ok_or("élément introuvable")?;
             (index, s.clips.remove(index))
         };
@@ -193,7 +194,7 @@ impl Clipboard {
             DEFAULT_WINDOW,
             Box::new(move || {
                 {
-                    let mut s = store.lock().unwrap();
+                    let mut s = store.locked();
                     // Le même texte a pu être recopié entre-temps : pas de doublon.
                     if !s.clips.iter().any(|c| c.text == clip.text) {
                         let at = index.min(s.clips.len());
@@ -210,7 +211,7 @@ impl Clipboard {
     /// Vide l'historique, sauf les éléments épinglés. Annuler = tout remettre.
     fn clear(&self, ctx: &ModuleContext) -> Result<Value, String> {
         let removed: Vec<Clip> = {
-            let mut s = self.store.lock().unwrap();
+            let mut s = self.store.locked();
             let (kept, removed) = std::mem::take(&mut s.clips).into_iter().partition(|c| c.pinned);
             s.clips = kept;
             removed
@@ -227,7 +228,7 @@ impl Clipboard {
             DEFAULT_WINDOW,
             Box::new(move || {
                 {
-                    let mut s = store.lock().unwrap();
+                    let mut s = store.locked();
                     // Les copies faites depuis restent en haut ; les anciennes reviennent dessous.
                     for clip in removed {
                         if !s.clips.iter().any(|c| c.text == clip.text) {
@@ -260,7 +261,7 @@ impl Clipboard {
             return Err(format!("texte trop long (au plus {MAX_CHARS} caractères)"));
         }
         let id = {
-            let mut s = self.store.lock().unwrap();
+            let mut s = self.store.locked();
             match args.get("id").and_then(Value::as_u64) {
                 Some(id) => {
                     let snippet = s.snippets.iter_mut().find(|n| n.id == id).ok_or("snippet introuvable")?;
@@ -285,7 +286,7 @@ impl Clipboard {
     /// Supprime un snippet. Annuler = le remettre.
     fn snippet_delete(&self, ctx: &ModuleContext, id: u64) -> Result<Value, String> {
         let (index, snippet) = {
-            let mut s = self.store.lock().unwrap();
+            let mut s = self.store.locked();
             let index = s.snippets.iter().position(|n| n.id == id).ok_or("snippet introuvable")?;
             (index, s.snippets.remove(index))
         };
@@ -296,7 +297,7 @@ impl Clipboard {
             DEFAULT_WINDOW,
             Box::new(move || {
                 {
-                    let mut s = store.lock().unwrap();
+                    let mut s = store.locked();
                     let at = index.min(s.snippets.len());
                     s.snippets.insert(at, snippet);
                 }
@@ -337,7 +338,7 @@ fn watch(app: AppHandle, store: Shared) {
                 return;
             }
             let max = max_items_of(&app);
-            if remember(&mut store.lock().unwrap(), text, now_ms(), max) {
+            if remember(&mut store.locked(), text, now_ms(), max) {
                 changed(&app, &store);
             }
         }));
@@ -437,7 +438,7 @@ fn preview(text: &str) -> String {
 /// aucun texte copié : le front redemande la liste.
 fn changed(app: &AppHandle, store: &Shared) {
     let (count, saved) = {
-        let s = store.lock().unwrap();
+        let s = store.locked();
         let saved = Saved {
             pinned: s.clips.iter().filter(|c| c.pinned).cloned().collect(),
             snippets: s.snippets.clone(),
@@ -460,7 +461,7 @@ fn max_items(ctx: &ModuleContext) -> usize {
 fn max_items_of(app: &AppHandle) -> usize {
     use tauri::Manager;
     let shared = app.state::<crate::Shared>();
-    let s = shared.settings.lock().unwrap();
+    let s = shared.settings.locked();
     read_max(s.modules.get(ID).and_then(|m| m.values.get("maxItems")))
 }
 
