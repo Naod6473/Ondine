@@ -23,7 +23,7 @@ interface SavedFile {
 }
 
 interface Done {
-  action: "ocr" | "save";
+  action: "ocr" | "save" | "shelf";
   ok: boolean;
   result?: OcrSummary | SavedFile;
   error?: string;
@@ -61,14 +61,16 @@ function report(api: ModuleApi, done: Done) {
     void loadLast(api);
   } else {
     const r = done.result as SavedFile;
-    api.notify({ title: "Capture enregistrée", body: r.name, icon: "💾", priority: "normal", key: "capture" });
+    const onShelf = done.action === "shelf";
+    api.notify({ title: onShelf ? "Capture posée sur l'étagère" : "Capture enregistrée", body: r.name, icon: onShelf ? "🧺" : "💾", priority: "normal", key: "capture" });
   }
 }
 
 /** Une action sur l'image déjà copiée (le résultat arrive tout de suite). */
-async function onClipboard(api: ModuleApi, action: "ocr" | "save") {
+async function onClipboard(api: ModuleApi, action: "ocr" | "save" | "shelf") {
   try {
-    const result = await api.invoke<OcrSummary | SavedFile>(action === "ocr" ? "ocr_clipboard" : "save_clipboard");
+    const command = { ocr: "ocr_clipboard", save: "save_clipboard", shelf: "shelf_clipboard" }[action];
+    const result = await api.invoke<OcrSummary | SavedFile>(command);
     report(api, { action, ok: true, result });
   } catch (err) {
     report(api, { action, ok: false, error: errorText(err) });
@@ -76,7 +78,7 @@ async function onClipboard(api: ModuleApi, action: "ocr" | "save") {
 }
 
 /** Ouvre l'outil de capture de Windows ; le résultat arrivera par "capture.done". */
-async function snip(api: ModuleApi, then: "ocr" | "save") {
+async function snip(api: ModuleApi, then: "ocr" | "save" | "shelf") {
   api.closeIsland(); // l'île ne doit pas être sur la capture
   try {
     await api.invoke("snip", { then });
@@ -105,7 +107,8 @@ export const capture: IslandModule = {
           { class: "btn-row" },
           el("span", { class: "muted capture-label" }, "Capturer une zone :"),
           button("🔤 Lire le texte", "Ouvre l'outil de capture de Windows, puis lit le texte de la zone choisie", () => snip(api, "ocr")),
-          button("💾 Enregistrer en PNG", "Ouvre l'outil de capture de Windows, puis enregistre la zone choisie", () => snip(api, "save")),
+          button("💾 Enregistrer", "Ouvre l'outil de capture de Windows, puis enregistre la zone choisie en PNG", () => snip(api, "save")),
+          button("🧺 Étagère", "Ouvre l'outil de capture de Windows, puis enregistre la zone et la pose sur l'étagère", () => snip(api, "shelf")),
         ),
         el(
           "div",
@@ -113,7 +116,8 @@ export const capture: IslandModule = {
           el("span", { class: "muted capture-label" }, "Image déjà copiée :"),
           button("🔤 Lire le texte", "Lit le texte de l'image du presse-papiers", () => onClipboard(api, "ocr")),
           button("💾 Enregistrer", "Enregistre l'image du presse-papiers en PNG", () => onClipboard(api, "save")),
-          button("📂 Dernière capture", "Montre la dernière capture enregistrée dans l'Explorateur", async () => {
+          button("🧺 Étagère", "Enregistre l'image du presse-papiers et la pose sur l'étagère", () => onClipboard(api, "shelf")),
+          button("📂", "Montre la dernière capture enregistrée dans l'Explorateur", async () => {
             try {
               await api.invoke("reveal");
             } catch (err) {

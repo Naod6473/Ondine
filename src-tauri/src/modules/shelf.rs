@@ -23,6 +23,7 @@ use tauri::AppHandle;
 
 use super::{ModuleContext, RustModule};
 use crate::services::undo::DEFAULT_WINDOW;
+use crate::services::bus::BusMessage;
 use crate::services::{bus, files};
 
 /// Au-delà, on refuse d'ajouter : l'étagère est un endroit de passage.
@@ -46,22 +47,7 @@ impl RustModule for Shelf {
         match command {
             "list" => Ok(list_json(&self.items)),
             "add" => {
-                let paths = checked_paths(ctx, &args)?;
-                let added = {
-                    let mut items = self.items.lock().unwrap();
-                    let mut added = 0;
-                    for p in paths {
-                        if items.len() >= MAX_ITEMS {
-                            break;
-                        }
-                        if !items.contains(&p) {
-                            items.push(p);
-                            added += 1;
-                        }
-                    }
-                    added
-                };
-                changed(ctx.app, &self.items);
+                let added = self.add(ctx, &args)?;
                 Ok(json!({ "added": added }))
             }
             "remove" => {
@@ -110,9 +96,40 @@ impl RustModule for Shelf {
             other => Err(format!("commande inconnue : {other}")),
         }
     }
+
+    /// "shelf.add" `{paths}` : un autre module (ex. Capture) pose des fichiers
+    /// sur l'étagère. Les chemins sont validés comme ceux du glisser-déposer.
+    fn on_event(&self, ctx: &ModuleContext, msg: &BusMessage) {
+        if msg.topic == "shelf.add" {
+            if let Err(e) = self.add(ctx, &msg.payload) {
+                ctx.log_warn(format!("ajout à l'étagère refusé : {e}"));
+            }
+        }
+    }
 }
 
 impl Shelf {
+    /// Pose des chemins sur l'étagère (chacun validé) et renvoie combien sont nouveaux.
+    fn add(&self, ctx: &ModuleContext, args: &Value) -> Result<usize, String> {
+        let paths = checked_paths(ctx, args)?;
+        let added = {
+            let mut items = self.items.lock().unwrap();
+            let mut added = 0;
+            for p in paths {
+                if items.len() >= MAX_ITEMS {
+                    break;
+                }
+                if !items.contains(&p) {
+                    items.push(p);
+                    added += 1;
+                }
+            }
+            added
+        };
+        changed(ctx.app, &self.items);
+        Ok(added)
+    }
+
     /// Corbeille. Annuler = ressortir chaque élément de la Corbeille.
     fn trash(&self, ctx: &ModuleContext, args: &Value) -> Result<Value, String> {
         let paths = checked_paths(ctx, args)?;

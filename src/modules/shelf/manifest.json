@@ -33,6 +33,6 @@
   "commands": ["list", "add", "remove", "clear", "copy_paths", "trash", "copy_to", "move_to", "compress", "reveal"],
   "events": {
     "emits": ["shelf.changed", "task.started", "task.finished", "task.failed"],
-    "listens": ["shelf.changed"]
+    "listens": ["shelf.changed", "shelf.add"]
   }
 }

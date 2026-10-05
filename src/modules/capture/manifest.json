@@ -25,9 +25,9 @@
     ]
   },
   "views": ["expanded"],
-  "commands": ["snip", "ocr_clipboard", "save_clipboard", "last", "copy_last", "reveal"],
+  "commands": ["snip", "ocr_clipboard", "save_clipboard", "shelf_clipboard", "last", "copy_last", "reveal"],
   "events": {
-    "emits": ["capture.done"],
+    "emits": ["capture.done", "shelf.add"],
     "listens": ["capture.done"]
   }
 }

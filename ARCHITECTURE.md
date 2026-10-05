@@ -251,6 +251,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `shelf.changed` `{items}` | Étagère (Rust) | la vue de l'étagère se redessine |
 | `media.changed` `{playing, artwork}` | Musique (Rust) | la pilule et l'onglet Musique se mettent à jour |
 | `capture.done` `{action, ok, result, error}` | Capture (Rust) | notification ; l'onglet redemande le texte lu (`last`), qui n'est pas dans le message |
+| `shelf.add` `{paths}` | Capture (Rust) | l'Étagère valide les chemins et les pose sur l'étagère |
 | `clipboard.changed` `{count}` | Presse-papiers (Rust) | l'onglet redemande la liste (le message ne contient aucun texte copié) |
 
 ## Services communs (`src-tauri/src/services/`)
@@ -430,6 +431,8 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   `Images\Island` (dossier connu `FOLDERID_Pictures`, OneDrive compris). Le
   dossier passe par `check_path` (dossiers exclus) ; « Annuler » envoie le
   fichier à la Corbeille.
+- **Vers l'étagère** : enregistre le PNG puis publie `shelf.add` ; l'Étagère
+  (qui écoute ce sujet) valide le chemin et le pose sur l'étagère.
 - **Image déjà copiée** : les mêmes actions, sans ouvrir l'outil.
 - **Onglets** : à partir de 5 modules, les onglets inactifs n'affichent que
   leur icône (le nom au survol).

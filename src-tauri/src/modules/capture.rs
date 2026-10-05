@@ -53,6 +53,8 @@ pub struct Capture {
 enum Then {
     Ocr,
     Save,
+    /// Enregistrer, puis poser le fichier sur l'étagère.
+    Shelf,
 }
 
 impl Then {
@@ -60,6 +62,7 @@ impl Then {
         match self {
             Then::Ocr => "ocr",
             Then::Save => "save",
+            Then::Shelf => "shelf",
         }
     }
 }
@@ -75,6 +78,7 @@ impl RustModule for Capture {
             "snip" => {
                 let then = match args.get("then").and_then(Value::as_str) {
                     Some("save") => Then::Save,
+                    Some("shelf") => Then::Shelf,
                     _ => Then::Ocr,
                 };
                 self.snip(ctx.app, then)?;
@@ -82,6 +86,7 @@ impl RustModule for Capture {
             }
             "ocr_clipboard" => run(ctx, &self.state, Then::Ocr),
             "save_clipboard" => run(ctx, &self.state, Then::Save),
+            "shelf_clipboard" => run(ctx, &self.state, Then::Shelf),
             "last" => Ok(json!({ "result": self.state.lock().unwrap().text })),
             "copy_last" => {
                 let text = self.state.lock().unwrap().text.as_ref().map(|t| t.text.clone()).ok_or("aucun texte lu")?;
@@ -172,10 +177,14 @@ fn run(ctx: &ModuleContext, state: &Arc<Mutex<State>>, then: Then) -> Result<Val
             state.lock().unwrap().text = Some(result);
             Ok(out)
         }
-        Then::Save => {
+        Then::Save | Then::Shelf => {
             let path = save_png(ctx, width, height, &bytes)?;
             let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
             ctx.log_info("capture enregistrée");
+            if matches!(then, Then::Shelf) {
+                // Les modules ne s'appellent pas : on passe par le bus.
+                ctx.emit("shelf.add", json!({ "paths": [path.display().to_string()] }));
+            }
             state.lock().unwrap().saved = Some(path.clone());
             let undo_path = path.clone();
             let undo_id = ctx.offer_undo(
