@@ -1074,9 +1074,9 @@ option {
 
 /* Icônes en image (logos des agents, voir src/island/icon.ts). */
 .icon-img {
-  width: 1.15em;
-  height: 1.15em;
-  vertical-align: -0.2em;
+  width: 1.3em;
+  height: 1.3em;
+  vertical-align: -0.28em;
   object-fit: contain;
   filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.2));
   pointer-events: none;
