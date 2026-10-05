@@ -35,6 +35,10 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 # Encode la pochette d'album en texte (data URL) pour l'afficher dans l'île.
 base64 = "0.22"
+# Surveillance de dossiers (règles de la phase 7). Version 8 : la 9 est encore en préversion.
+notify = "8"
+# Raccourcis clavier globaux (plugin officiel de Tauri, version 2 : la 3 est en alpha).
+tauri-plugin-global-shortcut = "2"
 
 [target.'cfg(windows)'.dependencies]
 # Gestionnaire d'identifiants Windows. Version 3 volontairement : la 4 a changé d'API.
@@ -67,6 +71,10 @@ windows = { version = "0.61", features = [
   "Win32_System_WinRT",
   "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_WindowsAndMessaging",
+  # Règles (phase 7) : lecteurs branchés (lettres, nom du volume), sans
+  # fenêtre « pas de disque dans le lecteur ».
+  "Win32_Storage_FileSystem",
+  "Win32_System_Diagnostics_Debug",
 ] }
 
 [profile.release]

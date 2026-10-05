@@ -53,6 +53,7 @@ island/
 │  │  ├─ timer/               Minuteur, Pomodoro, chrono (phase 6, front seulement)
 │  │  ├─ notes/               Notes rapides et to-do (phase 6)
 │  │  ├─ agenda/              Prochain rendez-vous depuis un .ics (phase 6)
+│  │  ├─ terminal/            Ouvrir cmd / PowerShell en un clic (phase 7)
 │  │  ├─ media/               Musique en cours de lecture (phase 3)
 │  │  └─ hello/               module d'exemple : manifest.json + index.ts
 │  ├─ settings/               fenêtre de réglages (formulaires générés)
@@ -67,7 +68,7 @@ island/
       ├─ island/mod.rs        placement multi-écrans/DPI, clics traversants, souris
       ├─ platform/            tout le Win32 (windows.rs) ; other.rs = bouchons ; media.rs = SMTC ; ocr.rs = OCR
       ├─ services/            réglages, journal, identifiants, bus, annulation, confidentialité, fichiers, ics
-      └─ modules/             registre des modules Rust + shelf.rs, clipboard.rs, capture.rs, notes.rs, agenda.rs, media.rs, hello.rs
+      └─ modules/             registre des modules Rust + shelf.rs, clipboard.rs, capture.rs, notes.rs, agenda.rs, terminal.rs, media.rs, hello.rs
 ```
 
 ## L'île
@@ -262,6 +263,15 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `notes.changed` `{notes, todos, open}` | Notes (Rust) | l'onglet redemande la liste (que des nombres dans le message) |
 | `agenda.changed` `{count, next, errors, version}` | Agenda (Rust) | l'onglet et la pilule redemandent la liste (`upcoming`) |
 | `agenda.reminder` `{key, minutes}` | Agenda (Rust) | notification « Dans 10 min : … » (île en alerte) |
+| `rules.changed` | Règles (Rust) | l'onglet et l'éditeur redemandent la liste (`list`) |
+| `rules.edit` `{id}` | onglet Règles | la fenêtre de réglages ouvre l'éditeur (id 0 = nouvelle règle) |
+| `rules.notify` `{title, body}` | Règles (Rust) | notification ⚡ |
+| `rules.open-island` `{tab}` | Règles (Rust) | `api.openIsland(tab)` |
+| `terminal.open` `{path?}` | Règles (Rust) | le Terminal s'ouvre (dans le dossier donné, validé) |
+| `timer.start` `{minutes}` | Règles (Rust) | le Minuteur repart sur cette durée |
+| `clipboard.paste-plain` | Règles (Rust) | le Presse-papiers colle le texte sans mise en forme |
+| `launcher.open` | Lanceur (Rust, raccourci global) | l'île s'ouvre sur l'onglet Lanceur, recherche prête |
+| `launcher.hotkey-error` `{text}` | Lanceur (Rust) | notification : raccourci déjà pris |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -453,6 +463,11 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   (`annotate_export`). Le Rust le décode (ce qui le valide), puis le copie,
   l'enregistre ou le pose sur l'étagère.
 - **Image déjà copiée** : les mêmes actions, sans ouvrir l'outil.
+- **Ordre des onglets** : réglage `island.tabOrder` (liste d'ids ; vide = ordre
+  d'origine ; un module absent se met à la fin). On le change en glissant un
+  onglet dans l'île (`src/island/tab-drag.ts` : l'onglet suit la souris, les
+  voisins s'écartent en animation FLIP, la pastille suit) ou dans Réglages →
+  Modules (glisser ou ↑ ↓). Calculs dans `src/core/tab-order.ts`.
 - **Onglets** : à partir de 5 modules, les onglets inactifs n'affichent que
   leur icône (le nom au survol).
 - `modules::with_context(app, id, f)` donne un `ModuleContext` à un thread de
@@ -499,3 +514,85 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
 - Pilule : « Dans 12 min · Titre » quand un rendez-vous approche
   (`compactWithinMin`), puis « En cours » avec une barre qui se remplit.
 
+## Phase 7 : automatisation
+
+### Module Terminal (`src/modules/terminal/`, `src-tauri/src/modules/terminal.rs`)
+
+- Ouvre `cmd.exe`, `powershell.exe`, `pwsh.exe` ou `wt.exe` (liste fermée,
+  réglage « Terminal à ouvrir »), dans une nouvelle fenêtre de console
+  (`CREATE_NEW_CONSOLE`), dans le dossier de départ (réglage, sinon le dossier
+  utilisateur).
+- « Admin » : `ShellExecuteW` avec le verbe `runas` (Windows affiche la
+  confirmation UAC). Un programme lancé ainsi démarre dans System32 : le
+  dossier est passé en paramètre (`cd /d "…"` ou `Set-Location -LiteralPath '…'`).
+  Un chemin Windows ne peut pas contenir `"`, et l'apostrophe est doublée pour
+  PowerShell : le nom du dossier ne peut pas devenir une commande.
+- L'île ne tape jamais de commande : le seul paramètre est le dossier, validé
+  par `check_path`.
+- Cible de dépôt « Terminal ici » : un dossier déposé → terminal dedans ; un
+  fichier → dans son dossier.
+
+### Module Règles (`src/modules/rules/`, `src-tauri/src/modules/rules/`)
+
+Une règle = **Quand** (déclencheur) · **Si** (conditions) · **Alors** (actions
+dans l'ordre). Fichiers : `model.rs` (la forme d'une règle, sa validation, le
+renommage), `mod.rs` (commandes, exécution, annulation), `watch.rs` (le fil
+qui surveille dossiers et lecteurs).
+
+- Stockage : `%APPDATA%\Island\rules.json` (écriture atomique ; un fichier
+  abîmé est mis de côté, pas écrasé). L'historique (« Récemment ») reste en
+  mémoire.
+- Déclencheurs :
+  - **fichier** : crate `notify` 8 sur le dossier choisi. Un fichier n'est
+    traité que quand sa taille ne bouge plus depuis 1,5 s (téléchargements) ;
+    `.crdownload`, `.part`, `.tmp`, `~$…` sont ignorés ; un fichier que l'île
+    vient de produire est ignoré 30 s (pas de boucle).
+  - **lecteur branché / débranché** : `GetLogicalDrives` toutes les 2 s
+    (lecteurs amovibles et fixes ; le premier passage ne fait que noter).
+  - **raccourci global** : `tauri-plugin-global-shortcut` 2 (touches
+    « physiques » `KeyV`, avec Ctrl, Alt ou Super). Un raccourci déjà pris
+    affiche une erreur sur la règle.
+  - **événement de l'île** : `capture.done`, `timer.done`, `agenda.reminder`,
+    `task.finished`.
+- Actions : déplacer, copier, renommer (`{nom} {date} {heure}`, extension
+  gardée), Corbeille, étagère, montrer dans l'Explorateur, terminal,
+  notification, ouvrir l'île, minuteur, coller sans mise en forme. Pas
+  d'action « lancer un programme ».
+- Sécurité : chaque dossier passe par `check_path` (dossiers exclus) ; la
+  destination ne peut pas être dans le dossier surveillé ; déplacer, renommer
+  et Corbeille sont regroupés en **un** « Annuler » ; plus de 20 déclenchements
+  par minute → la règle se désactive et prévient.
+- « 🧪 Tester » (`preview`) déroule la règle sur un fichier choisi sans rien
+  toucher.
+- Front : l'onglet de l'île (liste, interrupteurs, pause générale, historique)
+  et la section « Règles » de la fenêtre de réglages
+  (`src/settings/rules-editor.ts`).
+
+### Module Lanceur (`src/modules/launcher/`, `src-tauri/src/modules/launcher.rs`)
+
+- Raccourci global au choix dans une liste fixe (Alt+Espace par défaut, ou
+  aucun). Un fil vérifie chaque seconde que le raccourci réservé correspond au
+  réglage et au module activé. Pressé → `launcher.open` → l'île s'ouvre sur
+  l'onglet, prend le focus clavier, la recherche est sélectionnée.
+- Entrées trouvées par le Rust (relues au plus toutes les 30 s) :
+  - applications : raccourcis `.lnk`/`.url` des deux menus Démarrer
+    (`%ProgramData%` et `%APPDATA%`), sans les désinstalleurs ;
+  - outils Windows : une liste FIXE (Services, Gestionnaire de périphériques,
+    Observateur d'événements, Connexions réseau, Registre…) ;
+  - fichiers récents : les raccourcis de `%APPDATA%\Microsoft\Windows\Recent`,
+    dont la cible est lue avec `IShellLinkW` (COM, dans un fil à part). Chaque
+    cible passe par `check_path` (dossiers exclus) ; les exécutables (.exe,
+    .bat, .ps1…) ne sont jamais proposés. Réglage pour tout masquer.
+- Le front n'envoie qu'un numéro d'entrée (`launch {id}`), jamais un chemin.
+  Ouverture : `ShellExecuteW("open")`, comme un double-clic. Avant, l'île
+  « oublie » la fenêtre d'avant (`forget_previous_foreground`) pour que le
+  programme lancé passe devant au lieu de se faire voler le focus.
+- Actions de l'île (front) : chaque onglet, « 10 min » → minuteur
+  (`timer.start`), « Ouvrir un terminal » (`terminal.open`), réglages.
+- Tri (`search.ts`) : début du nom > début d'un mot > initiales (« gdp ») >
+  contenu > lettres dans l'ordre ; sans accents ni majuscules.
+
+### `api.openIsland(tab?)`
+
+Un module peut demander d'ouvrir l'île, éventuellement sur un onglet (ignoré
+s'il n'existe pas ou est désactivé).

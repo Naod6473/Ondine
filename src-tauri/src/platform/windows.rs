@@ -292,3 +292,172 @@ pub fn pictures_dir() -> Option<PathBuf> {
         path
     }
 }
+
+/// Ouvre un programme console (cmd, PowerShell…) dans SA PROPRE fenêtre,
+/// dans le dossier `dir`. Utilisé par le module Terminal.
+pub fn spawn_console(program: &str, args: &[String], dir: &std::path::Path) -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
+    // CREATE_NEW_CONSOLE : une nouvelle fenêtre de console, détachée de l'île.
+    const CREATE_NEW_CONSOLE: u32 = 0x0000_0010;
+    std::process::Command::new(program)
+        .args(args)
+        .current_dir(dir)
+        .creation_flags(CREATE_NEW_CONSOLE)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| match e.kind() {
+            std::io::ErrorKind::NotFound => format!("{program} n'est pas installé sur ce PC"),
+            _ => format!("{program} ne s'ouvre pas : {e}"),
+        })
+}
+
+/// Ouvre un programme EN ADMINISTRATEUR : Windows affiche sa fenêtre de
+/// confirmation (UAC). `params` = la ligne de paramètres, déjà prête.
+pub fn run_as_admin(program: &str, params: &str) -> Result<(), String> {
+    use ::windows::core::{w, HSTRING};
+    use ::windows::Win32::UI::Shell::ShellExecuteW;
+    use ::windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+    let (file, params) = (HSTRING::from(program), HSTRING::from(params));
+    let result = unsafe { ShellExecuteW(None, w!("runas"), &file, &params, None, SW_SHOWNORMAL) };
+    match result.0 as isize {
+        r if r > 32 => Ok(()),
+        // 5 = accès refusé : en général, on a cliqué « Non » dans la fenêtre UAC.
+        5 => Err("ouverture en administrateur annulée".into()),
+        2 | 3 => Err(format!("{program} n'est pas installé sur ce PC")),
+        r => Err(format!("{program} ne s'ouvre pas en administrateur (code {r})")),
+    }
+}
+
+/// Le dossier de l'utilisateur (C:\Users\<nom>).
+pub fn home_dir() -> PathBuf {
+    std::env::var_os("USERPROFILE").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("C:\\"))
+}
+
+/// Un lecteur (C:\, E:\…) tel que vu par les règles « clé USB branchée ».
+#[derive(Debug, Clone, PartialEq)]
+pub struct DriveInfo {
+    /// "E:\\"
+    pub root: String,
+    /// Le nom du volume (« KINGSTON »), vide s'il n'en a pas.
+    pub label: String,
+    /// Clé USB, carte SD… (lecteur amovible). Un disque USB peut aussi se
+    /// présenter comme « fixe » : les règles ne filtrent pas là-dessus.
+    pub removable: bool,
+}
+
+/// Les lecteurs présents. `known` : ceux déjà vus, pour ne demander le nom
+/// du volume (lent sur un lecteur vide) qu'aux nouveaux.
+pub fn drives(known: &[DriveInfo]) -> Vec<DriveInfo> {
+    use ::windows::core::HSTRING;
+    use ::windows::Win32::Storage::FileSystem::{GetDriveTypeW, GetLogicalDrives, GetVolumeInformationW};
+    use ::windows::Win32::System::Diagnostics::Debug::{SetThreadErrorMode, SEM_FAILCRITICALERRORS};
+
+    // Un lecteur de cartes vide ne doit pas ouvrir la fenêtre « Insérez un disque ».
+    unsafe {
+        let _ = SetThreadErrorMode(SEM_FAILCRITICALERRORS, None);
+    }
+    let mask = unsafe { GetLogicalDrives() };
+    let mut out = Vec::new();
+    for i in 0..26u32 {
+        if mask & (1 << i) == 0 {
+            continue;
+        }
+        let root = format!("{}:\\", (b'A' + i as u8) as char);
+        if let Some(k) = known.iter().find(|d| d.root == root) {
+            out.push(k.clone());
+            continue;
+        }
+        let wide = HSTRING::from(root.as_str());
+        // 2 = amovible, 3 = disque fixe ; on ignore le réseau (4), les CD (5)…
+        let kind = unsafe { GetDriveTypeW(&wide) };
+        if kind != 2 && kind != 3 {
+            continue;
+        }
+        let mut name = [0u16; 261];
+        // Pas de média (lecteur de cartes vide) : on l'ignore.
+        if unsafe { GetVolumeInformationW(&wide, Some(&mut name), None, None, None, None) }.is_err() {
+            continue;
+        }
+        let len = name.iter().position(|&c| c == 0).unwrap_or(name.len());
+        out.push(DriveInfo { root, label: String::from_utf16_lossy(&name[..len]), removable: kind == 2 });
+    }
+    out
+}
+
+/// Attend (au plus `max`) que Ctrl, Alt, Maj et Windows soient relâchées :
+/// après un raccourci comme Ctrl+Alt+V, envoyer Ctrl+V pendant qu'Alt est
+/// encore enfoncée donnerait… Ctrl+Alt+V.
+pub fn wait_modifiers_released(max: std::time::Duration) {
+    use ::windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_CONTROL, VK_LWIN, VK_MENU, VK_RWIN, VK_SHIFT};
+    let start = std::time::Instant::now();
+    let held = || {
+        [VK_CONTROL, VK_MENU, VK_SHIFT, VK_LWIN, VK_RWIN]
+            .iter()
+            // Le bit de poids fort = la touche est enfoncée en ce moment.
+            .any(|vk| unsafe { GetAsyncKeyState(vk.0 as i32) } < 0)
+    };
+    while held() && start.elapsed() < max {
+        std::thread::sleep(std::time::Duration::from_millis(15));
+    }
+}
+
+// ── Lanceur rapide ───────────────────────────────────────────────────────────
+
+/// Ouvre un raccourci, un fichier ou un outil Windows « comme un double-clic »
+/// (ShellExecute, verbe « open »). Le lanceur n'appelle cette fonction qu'avec
+/// des chemins qu'il a trouvés lui-même (menu Démarrer, fichiers récents) ou
+/// avec sa liste fixe d'outils Windows : jamais avec un texte tapé.
+pub fn shell_open(target: &str) -> Result<(), String> {
+    use ::windows::core::{w, HSTRING};
+    use ::windows::Win32::UI::Shell::ShellExecuteW;
+    use ::windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+    let file = HSTRING::from(target);
+    let result = unsafe { ShellExecuteW(None, w!("open"), &file, None, None, SW_SHOWNORMAL) };
+    match result.0 as isize {
+        r if r > 32 => Ok(()),
+        2 | 3 => Err("introuvable (déplacé ou supprimé ?)".into()),
+        5 => Err("accès refusé".into()),
+        31 => Err("aucune application n'ouvre ce type de fichier".into()),
+        r => Err(format!("ne s'ouvre pas (code {r})")),
+    }
+}
+
+/// Lance `f` avec COM prêt sur ce thread (il en faut pour lire un raccourci
+/// .lnk). À appeler depuis un thread à soi, pas depuis le thread principal.
+pub fn with_com<R>(f: impl FnOnce() -> R) -> R {
+    use ::windows::Win32::System::Com::{CoInitializeEx, CoUninitialize, COINIT_APARTMENTTHREADED};
+    let hr = unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED) };
+    let result = f();
+    // On ne « défait » COM que si c'est nous qui l'avons initialisé.
+    if hr.is_ok() {
+        unsafe { CoUninitialize() };
+    }
+    result
+}
+
+/// La cible d'un raccourci .lnk (« C:\…\rapport.pdf »), ou None. Il faut COM
+/// (voir `with_com`). On lit seulement le chemin : rien n'est lancé.
+pub fn shortcut_target(lnk: &std::path::Path) -> Option<PathBuf> {
+    use ::windows::core::{Interface, HSTRING};
+    use ::windows::Win32::System::Com::{CoCreateInstance, IPersistFile, CLSCTX_INPROC_SERVER, STGM_READ};
+    use ::windows::Win32::UI::Shell::{IShellLinkW, ShellLink};
+    unsafe {
+        let link: IShellLinkW = CoCreateInstance(&ShellLink, None, CLSCTX_INPROC_SERVER).ok()?;
+        let file: IPersistFile = link.cast().ok()?;
+        file.Load(&HSTRING::from(lnk.as_os_str()), STGM_READ).ok()?;
+        let mut buf = [0u16; 1024];
+        // 0 = pas de drapeau : le chemin tel qu'enregistré dans le raccourci.
+        link.GetPath(&mut buf, std::ptr::null_mut(), 0).ok()?;
+        let len = buf.iter().position(|&c| c == 0).unwrap_or(buf.len());
+        if len == 0 {
+            return None; // raccourci vers autre chose qu'un fichier (Panneau de configuration…)
+        }
+        Some(PathBuf::from(String::from_utf16_lossy(&buf[..len])))
+    }
+}
+
+/// L'île ne rendra PAS le focus à la fenêtre d'avant en se fermant : le
+/// programme qu'on vient de lancer doit pouvoir passer devant.
+pub fn forget_previous_foreground() {
+    *PREVIOUS_FOREGROUND.lock().unwrap() = 0;
+}

@@ -16,9 +16,12 @@ mod agenda;
 mod capture;
 mod clipboard;
 mod hello;
+mod launcher;
 mod media;
+mod rules;
 mod notes;
 mod shelf;
+mod terminal;
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -183,6 +186,9 @@ impl Registry {
             Box::new(capture::Capture::default()),
             Box::new(notes::Notes::default()),
             Box::new(agenda::Agenda::default()),
+            Box::new(terminal::Terminal),
+            Box::new(rules::Rules::default()),
+            Box::new(launcher::Launcher::default()),
             Box::new(hello::Hello::default()),
         ];
 
@@ -354,6 +360,24 @@ mod tests {
     fn agenda_manifest_is_valid() {
         let m = check_manifest(agenda::Agenda::default().manifest_json()).unwrap();
         assert_eq!(m.id, "agenda");
+    }
+
+    #[test]
+    fn launcher_manifest_is_valid() {
+        let m = check_manifest(launcher::Launcher::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "launcher");
+    }
+
+    #[test]
+    fn terminal_manifest_is_valid() {
+        let m = check_manifest(terminal::Terminal.manifest_json()).unwrap();
+        assert_eq!(m.id, "terminal");
+    }
+
+    #[test]
+    fn rules_manifest_is_valid() {
+        let m = check_manifest(rules::Rules::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "rules");
     }
 
     #[test]

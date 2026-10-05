@@ -34,6 +34,8 @@ export class ModuleRegistry {
   onCompactChange: () => void = () => {};
   /** Un module demande à refermer l'île. */
   onCloseRequest: () => void = () => {};
+  /** Un module demande à ouvrir l'île (éventuellement sur un onglet). */
+  onOpenRequest: (tab?: string) => void = () => {};
 
   constructor(
     private readonly all: IslandModule[],
@@ -70,6 +72,11 @@ export class ModuleRegistry {
   }
 
   /** Modules actifs ayant une vue de ce type, dans l'ordre de déclaration. */
+  /** Les ids de tous les modules connus (actifs ou non), dans l'ordre d'origine. */
+  allIds(): string[] {
+    return this.all.map((m) => m.manifest.id);
+  }
+
   withView(kind: Exclude<ViewKind, "drop">): Running[] {
     return [...this.running.values()].filter((r) => {
       if (!r.module.views?.[kind]) return false;
@@ -241,6 +248,7 @@ export class ModuleRegistry {
       },
       refreshCompact: () => self.onCompactChange(),
       closeIsland: () => self.onCloseRequest(),
+      openIsland: (tab?: string) => self.onOpenRequest(tab),
       log: logger(id),
     };
   }

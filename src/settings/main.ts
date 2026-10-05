@@ -8,12 +8,14 @@ import { Bridge, IS_TAURI, windowLabel } from "../core/bridge";
 import { Bus } from "../core/bus";
 import { errorText } from "../core/log";
 import { settingsStore } from "../core/settings-store";
+import { applyTabOrder, mergeOrder } from "../core/tab-order";
 import type { Settings } from "../core/types";
 import { clear, el } from "../island/dom";
 import { mascotCatalog } from "../mascot/catalog";
 import { createRenderer, type MascotRenderer } from "../mascot/renderer";
 import { ALL_MODULES } from "../modules";
 import { settingsForm } from "./form";
+import { connectRules, rulesSection } from "./rules-editor";
 
 const PERMISSION_LABELS: Record<string, string> = {
   files: "Accès aux fichiers",
@@ -26,6 +28,7 @@ const PERMISSION_LABELS: Record<string, string> = {
 const SECTIONS = [
   { id: "general", label: "Général" },
   { id: "modules", label: "Modules" },
+  { id: "rules", label: "Règles" },
   { id: "mascot", label: "Mascotte" },
   { id: "privacy", label: "Confidentialité" },
   { id: "credentials", label: "Identifiants" },
@@ -44,6 +47,17 @@ async function start() {
   await settingsStore.connect(boot?.settings ?? null);
   bus = new Bus(windowLabel("settings"));
   await bus.connect();
+  // Section « Règles » : l'onglet de l'île peut demander d'ouvrir l'éditeur.
+  connectRules(
+    bus,
+    () => {
+      section = "rules";
+      render();
+    },
+    () => {
+      if (section === "rules") render();
+    },
+  );
   // Si les réglages changent ailleurs (import…), on redessine.
   settingsStore.onChange(() => {
     // Ne pas redessiner pendant qu'on tape dans un champ.
@@ -79,7 +93,7 @@ function render() {
   }
   const main = el("main", {});
   if (!IS_TAURI) main.append(el("p", { class: "note" }, "Aperçu dans un navigateur : rien n'est enregistré."));
-  ({ general, modules, mascot, privacy, credentials, backup })[section](main);
+  ({ general, modules, rules: rulesSection, mascot, privacy, credentials, backup })[section](main);
   app.append(nav, main);
 }
 
@@ -141,9 +155,70 @@ function general(main: HTMLElement) {
   );
 }
 
+/**
+ * L'ordre des onglets : glisser une ligne (ou ses flèches ↑ ↓). On peut aussi
+ * glisser les onglets directement dans l'île.
+ */
+function tabOrder(main: HTMLElement) {
+  const withTab = ALL_MODULES.filter((m) => m.views?.expanded).map((m) => m.manifest);
+  const ordered = applyTabOrder(withTab, (m) => m.id, settingsStore.current.island.tabOrder ?? []);
+  const list = el("ol", { class: "order-list" });
+  const saveOrder = (ids: string[]) => {
+    const all = applyTabOrder(ALL_MODULES.map((m) => m.manifest.id), (id) => id, settingsStore.current.island.tabOrder ?? []);
+    save((d) => (d.island.tabOrder = mergeOrder(ids, all)));
+  };
+  const idsShown = () => [...list.children].map((li) => (li as HTMLElement).dataset.id!);
+  let dragged: HTMLElement | null = null;
+
+  ordered.forEach((man, i) => {
+    const move = (delta: number) => {
+      const ids = ordered.map((m) => m.id);
+      const [id] = ids.splice(i, 1);
+      ids.splice(i + delta, 0, id);
+      saveOrder(ids);
+    };
+    const li = el(
+      "li",
+      { class: `order-item${settingsStore.moduleEnabled(man.id) ? "" : " off"}`, draggable: "true", "data-id": man.id },
+      el("span", { class: "order-grip", title: "Glisser pour déplacer" }, "⠿"),
+      el("span", { class: "card-icon" }, man.icon),
+      el("span", { class: "order-name" }, man.name, settingsStore.moduleEnabled(man.id) ? null : el("span", { class: "muted" }, " (désactivé)")),
+      el("button", { class: "btn small", title: "Monter", disabled: i === 0, onclick: () => move(-1) }, "↑"),
+      el("button", { class: "btn small", title: "Descendre", disabled: i === ordered.length - 1, onclick: () => move(1) }, "↓"),
+    );
+    li.addEventListener("dragstart", (e) => {
+      dragged = li;
+      li.classList.add("dragging");
+      e.dataTransfer?.setData("text/plain", man.id);
+    });
+    li.addEventListener("dragover", (e) => {
+      if (!dragged || dragged === li) return;
+      e.preventDefault();
+      const r = li.getBoundingClientRect();
+      list.insertBefore(dragged, e.clientY < r.top + r.height / 2 ? li : li.nextSibling);
+    });
+    li.addEventListener("dragend", () => {
+      li.classList.remove("dragging");
+      dragged = null;
+      const ids = idsShown();
+      if (ids.join(",") !== ordered.map((m) => m.id).join(",")) saveOrder(ids);
+    });
+    list.append(li);
+  });
+
+  main.append(
+    el("h3", {}, "Ordre des onglets"),
+    el("p", { class: "muted" }, "Glisse une ligne, ou utilise ↑ ↓. Tu peux aussi faire glisser les onglets directement dans l'île."),
+    list,
+    el("div", { class: "btn-row" }, el("button", { class: "btn", onclick: () => save((d) => (d.island.tabOrder = [])) }, "Ordre d'origine")),
+  );
+}
+
 function modules(main: HTMLElement) {
   main.append(el("h2", {}, "Modules"));
-  for (const m of ALL_MODULES) {
+  tabOrder(main);
+  main.append(el("h3", {}, "Réglages des modules"));
+  for (const m of applyTabOrder(ALL_MODULES, (x) => x.manifest.id, settingsStore.current.island.tabOrder ?? [])) {
     const man = m.manifest;
     const enabled = settingsStore.moduleEnabled(man.id);
     const card = el("section", { class: "card" });

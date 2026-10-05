@@ -12,12 +12,14 @@ import { logger } from "../core/log";
 import type { ModuleRegistry } from "../core/module-registry";
 import { isAlert, type IslandNotification, type NotificationQueue } from "../core/notifications";
 import { settingsStore } from "../core/settings-store";
+import { applyTabOrder, mergeOrder } from "../core/tab-order";
 import type { Settings } from "../core/types";
 import { findMascot } from "../mascot/catalog";
 import { MascotController } from "../mascot/mascot-state";
 import { createRenderer } from "../mascot/renderer";
 import { clear, el } from "./dom";
 import { IslandStateMachine, type IslandState } from "./island-state";
+import { enableTabDrag, flip } from "./tab-drag";
 import { reducedMotion, TabPill } from "./tab-pill";
 
 const log = logger("island");
@@ -47,6 +49,8 @@ export class Island {
 
   /** Ce qui est affiché dans `content`, pour ne pas tout redessiner sans raison. */
   private renderedKey = "";
+  /** L'ordre des onglets affiché (ids séparés par des virgules). */
+  private tabOrderShown = "";
   private unmountView: () => void = () => {};
   /** Onglet (id de module) ouvert dans la vue agrandie. */
   private activeTab: string | null = null;
@@ -95,6 +99,11 @@ export class Island {
     // Sans `force` : on ne redessine que si le module affiché en compact change.
     this.registry.onCompactChange = () => this.render();
     this.registry.onCloseRequest = () => this.fsm.close();
+    this.registry.onOpenRequest = (tab) => {
+      if (tab && this.orderedTabs().some((t) => t.module.manifest.id === tab)) this.activeTab = tab;
+      this.fsm.open();
+      this.render(true);
+    };
     settingsStore.onChange((s) => this.applySettings(s));
     this.applySettings(settingsStore.current);
     this.wireInputs();
@@ -106,6 +115,7 @@ export class Island {
 
   private applySettings(s: Settings) {
     this.fsm.timings = timingsFrom(s);
+    this.reorderTabs();
     this.notifications.defaultDurationMs = s.island.notificationSecs * 1000;
     const wanted = s.mascot.enabled ? s.mascot.id : "";
     if (wanted !== this.mascotId) {
@@ -319,7 +329,7 @@ export class Island {
     this.shell.dataset.state = state;
 
     // Choix de l'onglet de la vue agrandie : le dernier ouvert s'il est encore là.
-    const tabs = this.registry.withView("expanded");
+    const tabs = this.orderedTabs();
     if (!tabs.some((t) => t.module.manifest.id === this.activeTab)) this.activeTab = tabs[0]?.module.manifest.id ?? null;
 
     const compactOwner = state === "compact" ? (this.registry.withView("compact")[0]?.module.manifest.id ?? "") : "";
@@ -382,8 +392,13 @@ export class Island {
     this.unmountView = this.registry.mountView(first.module.manifest.id, "compact", slot);
   }
 
+  /** Les modules qui ont un onglet, dans l'ordre choisi par l'utilisateur. */
+  private orderedTabs() {
+    return applyTabOrder(this.registry.withView("expanded"), (t) => t.module.manifest.id, settingsStore.current.island.tabOrder ?? []);
+  }
+
   private renderExpanded() {
-    const tabs = this.registry.withView("expanded");
+    const tabs = this.orderedTabs();
     const header = el("div", { class: "tabs" });
     // Au-delà de 4 onglets, la place manque : les onglets inactifs ne montrent
     // que leur icône (le nom apparaît au survol), l'onglet actif garde son nom.
@@ -393,7 +408,7 @@ export class Island {
       const m = t.module.manifest;
       const button = el(
         "button",
-        { class: `tab ${m.id === this.activeTab ? "active" : ""}`, title: m.name, onclick: () => this.switchTab(m.id) },
+        { class: `tab ${m.id === this.activeTab ? "active" : ""}`, "data-id": m.id, title: `${m.name} (glisser pour déplacer)`, onclick: () => this.switchTab(m.id) },
         el("span", { class: "tab-icon" }, m.icon),
         el("span", { class: "tab-label" }, m.name),
       );
@@ -406,6 +421,19 @@ export class Island {
       el("button", { class: "icon-btn", title: "Réduire (Échap pour fermer)", onclick: () => this.fsm.shrink() }, "▴"),
     );
     const pill = new TabPill(header);
+    // Glisser un onglet le déplace ; le nouvel ordre est enregistré.
+    enableTabDrag(header, {
+      onMove: () => {
+        const active = this.activeTab ? buttons.get(this.activeTab) : undefined;
+        if (active) pill.moveTo(active);
+      },
+      onDrop: (order) => {
+        this.tabOrderShown = order.join(",");
+        const all = applyTabOrder(this.registry.allIds(), (id) => id, settingsStore.current.island.tabOrder ?? []);
+        void settingsStore.update((d) => (d.island.tabOrder = mergeOrder(order, all)));
+      },
+    });
+    this.tabOrderShown = tabs.map((t) => t.module.manifest.id).join(",");
     const banner = el("div", { class: "banner-slot" });
     // La « scène » garde la place du contenu : pendant un changement d'onglet,
     // l'ancien contenu s'efface par-dessus le nouveau.
@@ -432,6 +460,27 @@ export class Island {
         ),
       );
     }
+  }
+
+  /**
+   * L'ordre des onglets a changé dans les réglages (autre fenêtre) : on les
+   * déplace sur place, en les faisant glisser jusqu'à leur nouvelle place.
+   */
+  private reorderTabs() {
+    const ui = this.expandedUi;
+    if (!ui) return;
+    const ids = this.orderedTabs().map((t) => t.module.manifest.id);
+    if (ids.join(",") === this.tabOrderShown) return;
+    if (ids.length !== ui.tabs.size || ids.some((id) => !ui.tabs.has(id))) return this.render(true);
+    this.tabOrderShown = ids.join(",");
+    const header = ui.pill.el.parentElement!;
+    const buttons = ids.map((id) => ui.tabs.get(id)!);
+    const before = new Map(buttons.map((b) => [b, b.offsetLeft]));
+    const spacer = header.querySelector(".spacer");
+    for (const b of buttons) header.insertBefore(b, spacer);
+    flip(buttons, before);
+    const active = this.activeTab ? ui.tabs.get(this.activeTab) : undefined;
+    if (active) ui.pill.moveTo(active);
   }
 
   /**

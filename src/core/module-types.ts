@@ -70,6 +70,11 @@ export interface ModuleApi {
    * Sans effet pendant une alerte ou un glisser-déposer.
    */
   closeIsland(): void;
+  /**
+   * Ouvre l'île en grand, sur l'onglet `tab` (id de module) s'il est donné et
+   * actif. Sans effet pendant une alerte ou un glisser-déposer.
+   */
+  openIsland(tab?: string): void;
   log: Logger;
 }
 

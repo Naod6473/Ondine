@@ -57,3 +57,42 @@ pub fn launch_screen_snip() -> Result<(), String> {
 pub fn pictures_dir() -> Option<PathBuf> {
     Some(base("HOME").join("Pictures"))
 }
+
+pub fn spawn_console(_program: &str, _args: &[String], _dir: &std::path::Path) -> Result<(), String> {
+    Err("disponible seulement sous Windows".into())
+}
+
+pub fn run_as_admin(_program: &str, _params: &str) -> Result<(), String> {
+    Err("disponible seulement sous Windows".into())
+}
+
+pub fn home_dir() -> PathBuf {
+    base("HOME")
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct DriveInfo {
+    pub root: String,
+    pub label: String,
+    pub removable: bool,
+}
+
+pub fn drives(_known: &[DriveInfo]) -> Vec<DriveInfo> {
+    Vec::new()
+}
+
+pub fn wait_modifiers_released(_max: std::time::Duration) {}
+
+pub fn shell_open(_target: &str) -> Result<(), String> {
+    Err("disponible seulement sous Windows".into())
+}
+
+pub fn with_com<R>(f: impl FnOnce() -> R) -> R {
+    f()
+}
+
+pub fn shortcut_target(_lnk: &std::path::Path) -> Option<PathBuf> {
+    None
+}
+
+pub fn forget_previous_foreground() {}

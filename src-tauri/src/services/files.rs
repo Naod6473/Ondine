@@ -204,6 +204,29 @@ pub fn reveal(path: &Path) -> Result<(), String> {
     }
 }
 
+/// Ouvre un dossier (ou la racine d'un lecteur) dans l'Explorateur.
+pub fn open_folder(path: &Path) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // Même remarque que `reveal` : un chemin Windows ne contient pas de guillemet.
+        // La racine d'un lecteur (« E:\ ») s'écrit sans guillemets : « \" »
+        // serait lu comme un guillemet échappé.
+        let text = path.display().to_string();
+        let arg = if text.ends_with('\\') { text } else { format!("\"{text}\"") };
+        std::process::Command::new("explorer.exe")
+            .raw_arg(arg)
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| format!("Explorateur : {e}"))
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = path;
+        Err("disponible seulement sous Windows".into())
+    }
+}
+
 /// Met du texte dans le presse-papiers.
 pub fn copy_text(text: &str) -> Result<(), String> {
     let mut clipboard = arboard::Clipboard::new().map_err(|e| format!("presse-papiers indisponible : {e}"))?;

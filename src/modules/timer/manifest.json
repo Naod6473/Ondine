@@ -21,6 +21,6 @@
   "commands": [],
   "events": {
     "emits": ["timer.done", "task.finished"],
-    "listens": []
+    "listens": ["timer.start"]
   }
 }

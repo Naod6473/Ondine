@@ -46,6 +46,9 @@ pub struct IslandPrefs {
     pub collapse_secs: f64,
     /// Durée d'affichage par défaut d'une notification.
     pub notification_secs: f64,
+    /// L'ordre des onglets (ids de modules) choisi par l'utilisateur ; vide =
+    /// l'ordre d'origine. Un module absent de la liste se met après les autres.
+    pub tab_order: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -94,7 +97,7 @@ impl Default for General {
 
 impl Default for IslandPrefs {
     fn default() -> Self {
-        Self { collapse_secs: 1.5, notification_secs: 6.0 }
+        Self { collapse_secs: 1.5, notification_secs: 6.0, tab_order: Vec::new() }
     }
 }
 
@@ -222,6 +225,13 @@ mod tests {
         assert_eq!(s.island.collapse_secs, 1.5);
         assert_eq!(s.island.notification_secs, 3.0);
         assert_eq!(s.version, CURRENT_VERSION);
+    }
+
+    #[test]
+    fn tab_order_is_kept_and_optional() {
+        assert!(parse(r#"{ "version": 2, "island": { "collapseSecs": 2 } }"#).unwrap().island.tab_order.is_empty());
+        let s = parse(r#"{ "version": 2, "island": { "tabOrder": ["notes", "shelf"] } }"#).unwrap();
+        assert_eq!(s.island.tab_order, ["notes", "shelf"]);
     }
 
     #[test]
