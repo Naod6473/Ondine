@@ -123,6 +123,7 @@
     "launch",
     "focus",
     "answer",
+    "arm",
     "copy_mcp",
     "quiet_start",
     "quiet_stop"

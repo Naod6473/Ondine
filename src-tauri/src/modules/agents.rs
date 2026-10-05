@@ -124,6 +124,9 @@ struct Ask {
     session: String,
     /// Jusqu'à quand (ms) : ensuite, l'agent reçoit « pas de réponse ».
     until: u64,
+    /// Quand l'écran « Vraiment autoriser ? » a été montré (commande "arm").
+    /// « Autoriser » n'est accepté qu'après, voir `allow_is_confirmed`.
+    armed: Option<Instant>,
 }
 
 impl State {
@@ -148,14 +151,29 @@ impl RustModule for Agents {
         // Le fil qui écoute le canal.
         let (a, s) = (app.clone(), self.state.clone());
         std::thread::spawn(move || {
-            let result = platform::serve_agents_pipe(MAX_MESSAGE, |bytes, reply| {
-                let handled = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| route(&a, &s, &bytes, reply)));
+            let (pa, ps) = (a.clone(), s.clone());
+            let result = platform::serve_agents_pipe(MAX_MESSAGE, move |bytes, reply| {
+                let handled = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| route(&pa, &ps, &bytes, reply)));
                 if handled.is_err() {
                     log::warn("agents : message illisible ignoré");
                 }
             });
             if let Err(e) = result {
                 log::warn(format!("agents : {e}"));
+                // Visible aussi dans l'île : les hooks et le serveur MCP ne
+                // marcheront pas (le nom du canal est peut-être pris par un
+                // autre programme). On laisse l'île finir de démarrer d'abord.
+                std::thread::sleep(Duration::from_secs(3));
+                let event = Event {
+                    at: now_ms(),
+                    source: "island".into(),
+                    kind: "info",
+                    title: "Agents IA : canal indisponible".into(),
+                    body: "Les hooks et le serveur MCP ne peuvent pas joindre l'île. Redémarre l'île ; si ça continue, un autre programme occupe peut-être le canal.".into(),
+                    project: String::new(),
+                    session: String::new(),
+                };
+                publish_info(&a, &s, event);
             }
         });
         // Le fil qui range les sessions muettes depuis longtemps.
@@ -226,9 +244,11 @@ impl RustModule for Agents {
                     if choice >= ask.options.len() {
                         return Err("choix inconnu".into());
                     }
-                    // Autoriser une action d'un agent : seulement après la confirmation.
-                    if ask.answers[choice] == "allow" && args.get("confirmed") != Some(&Value::Bool(true)) {
-                        return Err("autorisation non confirmée".into());
+                    // Autoriser une action d'un agent : seulement après la confirmation,
+                    // vérifiée ici (et pas seulement dans l'interface).
+                    if ask.answers[choice] == "allow" {
+                        let confirmed = args.get("confirmed") == Some(&Value::Bool(true));
+                        allow_is_confirmed(confirmed, ask.armed, Instant::now())?;
                     }
                     st.asks.remove(&id).unwrap()
                 };
@@ -237,6 +257,18 @@ impl RustModule for Agents {
                 ctx.log_info("réponse envoyée à un agent");
                 ctx.emit("agents.ask.closed", json!({ "id": id, "expired": false }));
                 ctx.emit("agents.changed", Value::Null);
+                Ok(Value::Null)
+            }
+            // { id } : l'écran « Vraiment autoriser ? » vient de s'afficher.
+            // On note l'heure : « Oui, autoriser » ne sera accepté qu'ensuite.
+            "arm" => {
+                let id = args.get("id").and_then(Value::as_u64).ok_or("question manquante")?;
+                let mut st = self.state.lock().unwrap();
+                let ask = st.asks.get_mut(&id).ok_or("cette question n'attend plus (délai dépassé ?)")?;
+                if ask.kind != "permission" {
+                    return Err("rien à autoriser".into());
+                }
+                ask.armed = Some(Instant::now());
                 Ok(Value::Null)
             }
             // { session } : fait passer devant la fenêtre de cette session.
@@ -353,7 +385,11 @@ fn tools(ctx: &ModuleContext) -> Vec<&'static str> {
 fn launch(ctx: &ModuleContext, tool: Tool, dir: &Path) -> Result<(), String> {
     ctx.require("files")?;
     let in_wt = ctx.settings().get("claudeIn").and_then(Value::as_str) == Some("wt");
-    let (program, args) = agent_command(tool, dir, in_wt);
+    // Le chemin complet du programme, trouvé dans le PATH (jamais dans le
+    // projet) ; s'il n'est pas installé, le mot seul : la console affiche
+    // alors le message d'erreur de Windows.
+    let word = platform::find_program(tool.word()).map(|p| p.display().to_string()).unwrap_or_else(|| tool.word().to_string());
+    let (program, args) = agent_command(&word, dir, in_wt);
     // La console doit pouvoir passer devant l'île.
     platform::forget_previous_foreground();
     platform::spawn_console(program, &args, dir)?;
@@ -361,11 +397,10 @@ fn launch(ctx: &ModuleContext, tool: Tool, dir: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// « cmd /k claude » (ou codex, gemini) : cmd trouve le programme dans le
-/// PATH (.exe ou .cmd d'une installation npm), et la fenêtre reste ouverte
-/// s'il n'est pas installé (on lit alors le message d'erreur de Windows).
-fn agent_command(tool: Tool, dir: &Path, in_wt: bool) -> (&'static str, Vec<String>) {
-    let cmd = ["cmd.exe".to_string(), "/k".into(), tool.word().into()];
+/// « cmd /k <chemin de claude> » (ou codex, gemini) : la fenêtre reste
+/// ouverte s'il n'est pas installé (on lit alors le message d'erreur de Windows).
+fn agent_command(word: &str, dir: &Path, in_wt: bool) -> (&'static str, Vec<String>) {
+    let cmd = ["cmd.exe".to_string(), "/k".into(), word.into()];
     // Windows Terminal lit « ; » comme un séparateur de commandes : un dossier
     // qui en contient s'ouvre dans une console classique.
     if in_wt && !dir.display().to_string().contains(';') {
@@ -500,7 +535,7 @@ fn mcp_request(app: &AppHandle, state: &Shared, msg: &Value, reply: std::fs::Fil
                 return refuse(reply, "Il faut une question et 2 à 4 options.");
             }
             let secs = req["timeoutSecs"].as_u64().unwrap_or(600).clamp(60, 1500);
-            let ask = Ask { reply, kind: "question", who, question, detail: String::new(), answers: options.clone(), options, session: String::new(), until: 0 };
+            let ask = Ask { reply, kind: "question", who, question, detail: String::new(), answers: options.clone(), options, session: String::new(), until: 0, armed: None };
             if let Err(reply) = open_ask(app, state, ask, secs) {
                 refuse(reply, "Trop de questions en attente dans l'île.");
             }
@@ -563,6 +598,7 @@ fn permission_request(app: &AppHandle, state: &Shared, msg: &Value, mut reply: s
         answers: vec!["allow".into(), "deny".into(), String::new()],
         session,
         until: 0,
+        armed: None,
     };
     if let Err(mut reply) = open_ask(app, state, ask, secs) {
         pass(&mut reply);
@@ -733,6 +769,29 @@ fn summary(held: &[Event], waiting: &[&str], asks: usize) -> Option<String> {
         parts.push(if infos == 1 { "1 message".into() } else { format!("{infos} messages") });
     }
     if parts.is_empty() { None } else { Some(parts.join(" · ")) }
+}
+
+/// Le délai minimum entre l'écran de confirmation et « Oui, autoriser » :
+/// un vrai second clic, pas deux appels collés.
+const ARM_MIN: Duration = Duration::from_millis(300);
+/// Au-delà, la confirmation est trop vieille : il faut la redemander.
+const ARM_MAX: Duration = Duration::from_secs(60);
+
+/// « Autoriser » passe en deux temps, vérifiés côté Rust : la commande "arm"
+/// (écran « Vraiment autoriser ? »), puis "answer" avec `confirmed`, entre
+/// 300 ms et 60 s plus tard.
+fn allow_is_confirmed(confirmed: bool, armed: Option<Instant>, now: Instant) -> Result<(), String> {
+    let Some(at) = armed else {
+        return Err("autorisation non confirmée".into());
+    };
+    let waited = now.saturating_duration_since(at);
+    if !confirmed || waited < ARM_MIN {
+        return Err("autorisation non confirmée".into());
+    }
+    if waited > ARM_MAX {
+        return Err("confirmation trop ancienne : clique de nouveau sur « Autoriser… »".into());
+    }
+    Ok(())
 }
 
 /// La ligne renvoyée à « island.exe mcp » : `{"answer": "…" | null, "reason"?: "…"}`.
@@ -1146,12 +1205,23 @@ mod tests {
     }
 
     #[test]
+    fn allow_needs_two_steps() {
+        let t = Instant::now();
+        let later = |ms| t + Duration::from_millis(ms);
+        assert!(allow_is_confirmed(true, None, later(1000)).is_err()); // jamais armé
+        assert!(allow_is_confirmed(false, Some(t), later(1000)).is_err()); // pas confirmé
+        assert!(allow_is_confirmed(true, Some(t), later(50)).is_err()); // trop rapide
+        assert!(allow_is_confirmed(true, Some(t), later(1000)).is_ok());
+        assert!(allow_is_confirmed(true, Some(t), later(61_000)).is_err()); // trop vieux
+    }
+
+    #[test]
     fn agent_command_lines() {
         let dir = Path::new(r"C:\Projets\Mon appli");
-        assert_eq!(agent_command(Tool::Claude, dir, false), ("cmd.exe", vec!["/k".to_string(), "claude".to_string()]));
-        let (p, a) = agent_command(Tool::Codex, dir, true);
-        assert_eq!((p, a[1].as_str(), a[2].as_str(), a[4].as_str()), ("wt.exe", r"C:\Projets\Mon appli", "cmd.exe", "codex"));
-        assert_eq!(agent_command(Tool::Gemini, Path::new(r"C:\a;b"), true).0, "cmd.exe");
+        assert_eq!(agent_command("claude", dir, false), ("cmd.exe", vec!["/k".to_string(), "claude".to_string()]));
+        let (p, a) = agent_command(r"C:\npm\codex.cmd", dir, true);
+        assert_eq!((p, a[1].as_str(), a[2].as_str(), a[4].as_str()), ("wt.exe", r"C:\Projets\Mon appli", "cmd.exe", r"C:\npm\codex.cmd"));
+        assert_eq!(agent_command("gemini", Path::new(r"C:\a;b"), true).0, "cmd.exe");
         assert!(Tool::parse("calc").is_err());
     }
 

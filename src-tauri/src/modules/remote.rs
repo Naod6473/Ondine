@@ -285,11 +285,24 @@ fn read_favorite(args: &Value) -> Result<Favorite, String> {
 }
 
 /// Un nom de serveur (srv-01.domaine.local), une IPv4 ou une IPv6.
+/// Les crochets ne sont permis qu'autour d'une IPv6 (« [fe80::1] ») ; on
+/// vérifie ce qu'il y a DEDANS, car c'est ce qui sera donné à ssh ou mstsc :
+/// jamais de « - » au début (ssh le prendrait pour une option, ex. « [-v] »).
 pub(super) fn check_host(host: &str) -> Result<(), String> {
-    let ok_char = |c: char| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_' | ':' | '[' | ']');
-    let first_ok = host.starts_with(|c: char| c.is_ascii_alphanumeric() || c == '[');
-    if host.is_empty() || host.len() > 253 || !first_ok || !host.chars().all(ok_char) {
-        return Err("adresse invalide : lettres, chiffres, « . », « - » et « : » seulement".into());
+    let invalid = || Err("adresse invalide : lettres, chiffres, « . », « - » et « : » seulement".to_string());
+    let inner = match host.strip_prefix('[') {
+        Some(rest) => match rest.strip_suffix(']') {
+            Some(ipv6) if ipv6.contains(':') => ipv6,
+            _ => return invalid(),
+        },
+        None => host,
+    };
+    let ok_char = |c: char| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_' | ':');
+    // Jamais de « - » au début (ssh le lirait comme une option) ; « : » est
+    // permis pour une adresse IPv6 comme « ::1 ».
+    let first_ok = inner.starts_with(|c: char| c.is_ascii_alphanumeric() || c == ':');
+    if inner.is_empty() || host.len() > 253 || !first_ok || !inner.chars().all(ok_char) {
+        return invalid();
     }
     Ok(())
 }
@@ -372,6 +385,10 @@ mod tests {
         assert!(check_host("-oProxyCommand=calc").is_err());
         assert!(check_host("srv 01").is_err());
         assert!(check_host("srv;calc").is_err());
+        assert!(check_host("[-v]").is_err());
+        assert!(check_host("[-F.ssh_evil]").is_err());
+        assert!(check_host("[srv]").is_err());
+        assert!(check_host("srv]").is_err());
         assert!(check_host("").is_err());
     }
 

@@ -99,8 +99,15 @@ function showPermission(api: ModuleApi, q: Ask) {
   });
 }
 
+/** Prévient l'île que l'écran de confirmation s'affiche : « Oui, autoriser »
+ *  n'est accepté qu'après (vérifié côté Rust). */
+function arm(api: ModuleApi, id: number) {
+  api.invoke("arm", { id }).catch(() => undefined); // question expirée : « answer » le dira
+}
+
 /** La confirmation : on relit ce qu'on autorise avant de dire oui. */
 function confirmPermission(api: ModuleApi, q: Ask) {
+  arm(api, q.id);
   api.notify({
     title: `Confirmer : ${q.who} peut le faire ?`,
     body: q.detail || q.question,
@@ -407,12 +414,14 @@ export const agents: IslandModule = {
                 : el("button", { class: "btn small", onclick: api.handler(() => answer(api, q.id, i)) }, o),
             ),
           );
-        const confirm = () =>
+        const confirm = () => {
+          arm(api, q.id);
           buttons.replaceChildren(
             el("span", { class: "agents-confirm" }, "Vraiment autoriser ?"),
             el("button", { class: "btn small primary", onclick: api.handler(() => answer(api, q.id, 0, true)) }, "Oui, autoriser"),
             el("button", { class: "btn small", onclick: api.handler(plain) }, "Retour"),
           );
+        };
         plain();
         return el(
           "li",
