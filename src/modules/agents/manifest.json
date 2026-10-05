@@ -2,7 +2,7 @@
   "id": "agents",
   "name": "Agents IA",
   "icon": "🤖",
-  "description": "Lance Claude Code, Codex ou Gemini CLI dans un de tes projets en un clic. Un tableau montre les sessions en cours ; « Y aller » ramène devant la bonne fenêtre. Claude Code, Codex et Gemini CLI préviennent l'île : « attend ta permission », « a fini ». Ils passent par la commande « island.exe notify » et un canal local réservé à ton compte Windows : rien ne passe par Internet. L'île affiche les messages, n'exécute jamais rien, ne décide jamais à ta place, et ne lit ni ce que tu tapes ni les réponses de l'IA.",
+  "description": "Lance Claude Code, Codex ou Gemini CLI dans un de tes projets en un clic. Un tableau montre les sessions en cours ; « Y aller » ramène devant la bonne fenêtre. Claude Code, Codex et Gemini CLI préviennent l'île : « attend ta permission », « a fini ». Ils passent par la commande « island.exe notify » et un canal local réservé à ton compte Windows : rien ne passe par Internet. Branchée comme serveur MCP, l'île laisse aussi l'agent t'envoyer un message, une progression, lancer le minuteur ou te poser une question à choix. L'île affiche les messages, n'exécute jamais rien, ne décide jamais à ta place, et ne lit ni ce que tu tapes ni les réponses de l'IA.",
   "version": "0.1.0",
   "permissions": [
     "clipboard",
@@ -66,6 +66,13 @@
         "default": true
       },
       {
+        "key": "mcp",
+        "type": "boolean",
+        "label": "Accepter les outils MCP (message, progression, minuteur, question)",
+        "help": "Utilisé seulement si tu as ajouté l'île comme serveur MCP dans ton agent.",
+        "default": true
+      },
+      {
         "key": "mascot",
         "type": "boolean",
         "label": "La mascotte réfléchit pendant que Claude travaille",
@@ -83,7 +90,9 @@
     "test",
     "projects",
     "launch",
-    "focus"
+    "focus",
+    "answer",
+    "copy_mcp"
   ],
   "events": {
     "emits": [
@@ -92,12 +101,19 @@
       "claude.done",
       "task.finished",
       "agents.projects",
-      "agents.changed"
+      "agents.changed",
+      "agents.ask",
+      "agents.ask.closed",
+      "agents.progress",
+      "timer.start"
     ],
     "listens": [
       "agents.event",
       "agents.launch",
-      "agents.changed"
+      "agents.changed",
+      "agents.ask",
+      "agents.ask.closed",
+      "agents.progress"
     ]
   }
 }

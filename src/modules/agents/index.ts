@@ -23,6 +23,16 @@ interface AgentEvent {
   session: string;
 }
 
+/** Une question posée par un agent (outil MCP « island_ask »). */
+interface Ask {
+  id: number;
+  who: string;
+  question: string;
+  options: string[];
+  /** Jusqu'à quand (ms). */
+  until: number;
+}
+
 interface Session {
   id: string;
   source: string;
@@ -58,6 +68,21 @@ async function goTo(api: ModuleApi, session: string) {
   }
 }
 
+/** Envoie ton choix à l'agent qui attend. */
+async function answer(api: ModuleApi, id: number, choice: number) {
+  try {
+    await api.invoke("answer", { id, choice });
+  } catch (err) {
+    api.notify({ title: "Réponse non envoyée", body: errorText(err), icon: "⚠️", priority: "low", key: `agents-ask-${id}` });
+  }
+}
+
+/** « ▰▰▰▱▱▱ » : une petite barre en texte. */
+function bar(step: number, total: number): string {
+  const full = Math.round((step / total) * 10);
+  return "▰".repeat(full) + "▱".repeat(10 - full);
+}
+
 /** « à l'instant », « il y a 5 min », sinon l'heure. */
 function ago(ms: number): string {
   const s = (Date.now() - ms) / 1000;
@@ -87,18 +112,59 @@ export const agents: IslandModule = {
         actions: e.session ? [{ label: "↗ Y aller", run: () => goTo(api, e.session) }] : undefined,
       });
     });
+    // Un agent te pose une question (MCP) : elle reste affichée jusqu'à ton clic.
+    api.on("agents.ask", (msg) => {
+      const q = msg.payload as Ask | null;
+      if (!q?.question) return;
+      api.notify({
+        title: `${q.who} te demande`,
+        body: q.question,
+        icon: "❓",
+        priority: "high",
+        sticky: true,
+        key: `agents-ask-${q.id}`,
+        actions: q.options.map((label, i) => ({ label, run: () => answer(api, q.id, i) })),
+      });
+    });
+    api.on("agents.ask.closed", (msg) => {
+      const c = msg.payload as { id: number; expired: boolean } | null;
+      if (!c) return;
+      api.notify({
+        title: c.expired ? "Question restée sans réponse" : "Réponse envoyée",
+        body: c.expired ? "L'agent continue sans ta réponse." : undefined,
+        icon: c.expired ? "⌛" : "✔️",
+        priority: "low",
+        durationMs: 2500,
+        key: `agents-ask-${c.id}`,
+      });
+    });
+    // Un agent annonce où il en est (MCP) : une notification discrète, remplacée à chaque étape.
+    api.on("agents.progress", (msg) => {
+      const p = msg.payload as { source: string; who: string; title: string; step: number; total: number } | null;
+      if (!p?.total) return;
+      const finished = p.step >= p.total;
+      api.notify({
+        // Dans le bandeau, seul le titre se voit : on y met « 3/7 ».
+        title: `${p.who} · ${p.title || (finished ? "terminé" : "en cours")} · ${p.step}/${p.total}`,
+        body: `${bar(p.step, p.total)}  ${p.step} / ${p.total}`,
+        icon: finished ? "✅" : "⏳",
+        priority: finished ? "normal" : "low",
+        key: `agents-progress-${p.source}`,
+      });
+    });
     api.on("agents.changed", () => redraws.forEach((r) => r()));
   },
 
   views: {
     expanded(root, api: ModuleApi) {
+      const asks = el("ul", { class: "agents-asks" });
       const board = el("ul", { class: "agents-board" });
       const list = el("ul", { class: "agents-list" });
       const status = el("p", { class: "muted agents-status" });
       const guide = el("details", { class: "agents-guide" });
       const launch = el("div", { class: "agents-launch" });
       root.append(
-        el("div", { class: "agents" }, launch, status, board, el("div", { class: "muted agents-subtitle" }, "Derniers messages"), list, guide),
+        el("div", { class: "agents" }, launch, asks, status, board, el("div", { class: "muted agents-subtitle" }, "Derniers messages"), list, guide),
       );
 
       // ── Lancer un agent ────────────────────────────────────────────────────
@@ -184,6 +250,28 @@ export const agents: IslandModule = {
         },
         "📋 Copier la configuration",
       );
+      // Brancher l'île comme serveur MCP : l'agent peut alors l'appeler de lui-même.
+      const MCP_STEPS: Record<Tool, string> = {
+        "claude-code": "Colle la commande dans un terminal (une seule fois), puis relance Claude Code.",
+        codex: "Colle les lignes à la fin de %USERPROFILE%\\.codex\\config.toml, puis relance Codex.",
+        gemini: "Fusionne le bloc « mcpServers » dans %USERPROFILE%\\.gemini\\settings.json, puis relance Gemini CLI.",
+      };
+      const mcpSteps = el("p", { class: "muted agents-mcp-steps" });
+      const copyMcp = el(
+        "button",
+        {
+          class: "btn small",
+          onclick: api.handler(async () => {
+            try {
+              await api.invoke("copy_mcp", { tool });
+              api.notify({ title: "Configuration MCP copiée", body: MCP_STEPS[tool], icon: "📋", priority: "low", key: "agents-copied" });
+            } catch (err) {
+              api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "agents-error" });
+            }
+          }),
+        },
+        "🔌 Copier la config MCP",
+      );
       const test = el("button", { class: "btn small", title: "Fait comme si Claude venait de finir", onclick: api.handler(() => api.invoke("test")) }, "Essayer");
       const drawGuide = () => {
         toolButtons.forEach((b) => b.classList.toggle("active", b.dataset.tool === tool));
@@ -192,17 +280,22 @@ export const agents: IslandModule = {
           el("li", {}, "Ouvre ", el("code", {}, TOOLS[tool].file), ". ", TOOLS[tool].steps),
           el("li", {}, "Chaque hook lance : ", exe),
         );
+        mcpSteps.textContent =
+          "En plus (facultatif) : branche l'île comme serveur MCP. L'agent pourra alors t'envoyer un message, sa progression, lancer le minuteur, ou te poser une question à choix que tu réponds d'un clic. " +
+          MCP_STEPS[tool];
       };
       guide.append(
         el("summary", {}, "Brancher Claude Code, Codex ou Gemini"),
         el("div", { class: "net-chips agents-tools" }, ...toolButtons),
         steps,
         el("div", { class: "btn-row" }, copy, test),
+        mcpSteps,
+        el("div", { class: "btn-row" }, copyMcp),
       );
       drawGuide();
 
       const draw = async () => {
-        let data: { events: AgentEvent[]; working: number; sessions: Session[] };
+        let data: { events: AgentEvent[]; working: number; sessions: Session[]; asks: Ask[] };
         try {
           data = await api.invoke("history");
         } catch {
@@ -213,6 +306,18 @@ export const agents: IslandModule = {
           ? [data.working ? `🧠 ${data.working} au travail` : "", waiting ? `✋ ${waiting} t'attend${waiting > 1 ? "ent" : ""}` : ""].filter(Boolean).join(" · ") ||
             "Personne ne travaille en ce moment."
           : "Aucune session pour l'instant.";
+        // Les questions en attente (aussi après avoir fermé leur notification).
+        asks.replaceChildren(
+          ...(data.asks ?? []).map((q) =>
+            el(
+              "li",
+              { class: "agents-ask" },
+              el("div", {}, el("b", {}, `❓ ${q.who} te demande`), el("small", { class: "muted" }, ` · encore ${Math.max(1, Math.ceil((q.until - Date.now()) / 60000))} min`)),
+              el("div", { class: "agents-ask-q" }, q.question),
+              el("div", { class: "btn-row" }, ...q.options.map((o, i) => el("button", { class: "btn small", onclick: api.handler(() => answer(api, q.id, i)) }, o))),
+            ),
+          ),
+        );
         // Le tableau « En cours » : un clic ramène la fenêtre de la session.
         board.replaceChildren(
           ...data.sessions.map((x) => {

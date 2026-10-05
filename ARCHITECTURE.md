@@ -279,6 +279,9 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `agents.projects` `{tools, projects: [{index, name}]}` | Agents IA (Rust) | le Lanceur propose « Claude Code · projet », « Codex · projet »… |
 | `agents.launch` `{tool, index?}` | Lanceur (front) | Agents IA ouvre cet agent dans ce projet |
 | `agents.changed` | Agents IA (Rust) | l'onglet redessine le tableau des sessions |
+| `agents.ask` `{id, who, question, options, timeoutSecs}` | Agents IA (Rust, outil MCP) | alerte avec un bouton par choix |
+| `agents.ask.closed` `{id, expired}` | Agents IA (Rust) | remplace l'alerte par « Réponse envoyée » ou « sans réponse » |
+| `agents.progress` `{source, who, title, step, total}` | Agents IA (Rust, outil MCP) | notification « 3/7 » remplacée à chaque étape |
 | `claude.thinking` / `claude.done` | Agents IA (Rust) | la mascotte réfléchit tant qu'une session de Claude Code travaille |
 
 ## Services communs (`src-tauri/src/services/`)
@@ -673,7 +676,7 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   `{v, source, title?, message?, hook?}` et l'envoie par le canal
   `\\.\pipe\island-agents-<utilisateur>`, puis s'arrête avec le code 0, sans
   rien écrire (un hook ne doit jamais bloquer Claude Code).
-- Le canal (`platform::serve_agents_pipe`) : entrée seulement, jamais depuis
+- Le canal (`platform::serve_agents_pipe`) : une ligne par connexion, jamais depuis
   le réseau (`PIPE_REJECT_REMOTE_CLIENTS`), première instance exclusive
   (`FILE_FLAG_FIRST_PIPE_INSTANCE` : on refuse d'écouter si un autre programme
   a pris le nom), droits Windows par défaut (seul le compte qui l'a créé peut
@@ -726,3 +729,25 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   première fenêtre visible de ces programmes (`EnumWindows`), la restaure si
   elle est réduite, puis la passe devant (`SetForegroundWindow`, précédé d'un
   appui sur Alt pour que Windows l'autorise). Ces numéros ne servent qu'à ça.
+- L'île comme serveur MCP (`island.exe mcp`, `cli.rs`) : un petit serveur
+  MCP en stdio (JSON-RPC, une ligne par message ; versions 2024-11-05,
+  2025-03-26 et 2025-06-18). Ne démarre pas l'île : il passe chaque appel
+  par le même canal, devenu « dans les deux sens » (une ligne de demande,
+  éventuellement une ligne de réponse). Quatre outils :
+  - `island_notify {title, message?}` → message dans l'historique ;
+  - `island_progress {title?, step, total}` → `agents.progress`, une
+    notification discrète remplacée à chaque étape ;
+  - `island_timer {minutes 1–180}` → `timer.start` ;
+  - `island_ask {question, options 2–4, timeout_minutes 1–25}` →
+    `agents.ask`, une alerte qui reste affichée avec un bouton par choix (et
+    dans l'onglet). Le clic (`answer {id, choice}`) renvoie `{"answer": "…"}`
+    à l'agent ; sans clic avant le délai : `{"answer": null, "reason": …}`.
+    5 questions en attente au plus. Délai plafonné à 25 min parce que Claude
+    Code coupe un outil stdio muet après 30 min.
+  - Réglage « Accepter les outils MCP » (activé par défaut) ; sinon l'agent
+    reçoit un refus poli. Comme pour les hooks : du texte à afficher, rien
+    n'est exécuté, la réponse est seulement le texte du choix cliqué.
+  - Configuration (`copy_mcp {tool}`) : `claude mcp add --scope user island
+    -- "chemin" mcp` ; Codex `[mcp_servers.island]` avec
+    `tool_timeout_sec = 1800` (défaut 60 s, trop court pour une question) ;
+    Gemini `mcpServers.island` avec `timeout` 1 800 000 ms (défaut 10 min).

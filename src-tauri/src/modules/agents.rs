@@ -89,6 +89,20 @@ struct State {
     sessions: HashMap<String, Session>,
     /// Arrivées récentes (limite de débit).
     recent: VecDeque<Instant>,
+    /// Les questions posées par un agent (outil MCP « island_ask »), en
+    /// attente de ton clic, par numéro.
+    asks: HashMap<u64, Ask>,
+    next_ask: u64,
+}
+
+/// Une question en attente : le canal pour répondre à l'agent, et les choix.
+struct Ask {
+    reply: std::fs::File,
+    who: String,
+    question: String,
+    options: Vec<String>,
+    /// Jusqu'à quand (ms) : ensuite, l'agent reçoit « pas de réponse ».
+    until: u64,
 }
 
 impl State {
@@ -113,8 +127,8 @@ impl RustModule for Agents {
         // Le fil qui écoute le canal.
         let (a, s) = (app.clone(), self.state.clone());
         std::thread::spawn(move || {
-            let result = platform::serve_agents_pipe(MAX_MESSAGE, |bytes| {
-                let handled = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| receive(&a, &s, &bytes)));
+            let result = platform::serve_agents_pipe(MAX_MESSAGE, |bytes, reply| {
+                let handled = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| route(&a, &s, &bytes, reply)));
                 if handled.is_err() {
                     log::warn("agents : message illisible ignoré");
                 }
@@ -160,7 +174,31 @@ impl RustModule for Agents {
         match command {
             "history" => {
                 let st = self.state.lock().unwrap();
-                Ok(json!({ "events": st.history, "working": st.working(), "sessions": sorted_sessions(&st) }))
+                let mut asks: Vec<Value> = st
+                    .asks
+                    .iter()
+                    .map(|(id, a)| json!({ "id": id, "who": a.who, "question": a.question, "options": a.options, "until": a.until }))
+                    .collect();
+                asks.sort_by_key(|a| a["id"].as_u64());
+                Ok(json!({ "events": st.history, "working": st.working(), "sessions": sorted_sessions(&st), "asks": asks }))
+            }
+            // { id, choice } : ta réponse à une question d'un agent (le numéro du choix).
+            "answer" => {
+                let id = args.get("id").and_then(Value::as_u64).ok_or("question manquante")?;
+                let choice = args.get("choice").and_then(Value::as_u64).ok_or("choix manquant")? as usize;
+                let mut ask = {
+                    let mut st = self.state.lock().unwrap();
+                    let ask = st.asks.get(&id).ok_or("cette question n'attend plus (délai dépassé ?)")?;
+                    if choice >= ask.options.len() {
+                        return Err("choix inconnu".into());
+                    }
+                    st.asks.remove(&id).unwrap()
+                };
+                answer_line(&mut ask.reply, Some(&ask.options[choice]), None);
+                ctx.log_info("réponse envoyée à un agent");
+                ctx.emit("agents.ask.closed", json!({ "id": id, "expired": false }));
+                ctx.emit("agents.changed", Value::Null);
+                Ok(Value::Null)
             }
             // { session } : fait passer devant la fenêtre de cette session.
             "focus" => {
@@ -180,6 +218,13 @@ impl RustModule for Agents {
                 ctx.require("clipboard")?;
                 let tool = args.get("tool").and_then(Value::as_str).unwrap_or("claude-code");
                 files::copy_text(&hook_config(tool, &exe_path())?)?;
+                Ok(Value::Null)
+            }
+            // { tool } : la configuration MCP de cet outil, dans le presse-papiers.
+            "copy_mcp" => {
+                ctx.require("clipboard")?;
+                let tool = args.get("tool").and_then(Value::as_str).unwrap_or("claude-code");
+                files::copy_text(&mcp_config(tool, &exe_path())?)?;
                 Ok(Value::Null)
             }
             // Les projets du réglage (ceux qui existent encore) et les agents
@@ -319,17 +364,175 @@ fn sorted_sessions(st: &State) -> Vec<Session> {
 
 // ── Recevoir un message ──────────────────────────────────────────────────────
 
-fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
-    if !super::is_active(app, ID) {
-        return; // module désactivé : on ignore
+/// Pas plus de MAX_PER_SECOND messages par seconde (au-delà : ignorés).
+fn allow(state: &Shared) -> bool {
+    let mut st = state.lock().unwrap();
+    st.recent.retain(|t| t.elapsed() < Duration::from_secs(1));
+    if st.recent.len() >= MAX_PER_SECOND {
+        return false;
     }
+    st.recent.push_back(Instant::now());
+    true
+}
+
+/// Un message du canal : une demande MCP (« island.exe mcp ») ou un hook
+/// (« island.exe notify »). `reply` sert seulement à répondre à une question.
+fn route(app: &AppHandle, state: &Shared, bytes: &[u8], reply: std::fs::File) {
+    let msg = serde_json::from_slice::<Value>(bytes).unwrap_or(Value::Null);
+    if msg["source"] == "mcp" && msg["request"].is_object() {
+        mcp_request(app, state, &msg, reply);
+    } else {
+        drop(reply); // un hook n'attend pas de réponse
+        receive(app, state, bytes);
+    }
+}
+
+// ── Les outils MCP (« island.exe mcp ») ──────────────────────────────────────
+//
+// Un agent (Claude Code, Codex, Gemini) qui a branché l'île comme serveur MCP
+// peut l'appeler de lui-même :
+//   - island_notify   : un message (« Les tests passent ») ;
+//   - island_progress : « étape 3 sur 7 » ;
+//   - island_timer    : lance le minuteur de l'île ;
+//   - island_ask      : te pose une question à choix, et attend ton clic.
+// Comme pour les hooks, ce sont des TEXTES À AFFICHER : rien n'est exécuté.
+// La réponse renvoyée à l'agent est seulement le texte du choix cliqué.
+
+/// Au plus ce nombre de questions en attente en même temps.
+const MAX_ASKS: usize = 5;
+const MAX_OPTION: usize = 60;
+
+fn mcp_request(app: &AppHandle, state: &Shared, msg: &Value, reply: std::fs::File) {
+    let req = &msg["request"];
+    let tool = req["tool"].as_str().unwrap_or("");
+    // Refus poli (seule une question attend une réponse ; sinon on ferme).
+    let refuse = |mut reply: std::fs::File, reason: &str| {
+        if tool == "ask" {
+            answer_line(&mut reply, None, Some(reason));
+        }
+    };
+    if !super::is_active(app, ID) {
+        return refuse(reply, "Le module Agents IA de l'île est désactivé.");
+    }
+    let enabled = super::with_context(app, ID, |ctx| ctx.settings().get("mcp").and_then(Value::as_bool).unwrap_or(true)).unwrap_or(false);
+    if !enabled {
+        return refuse(reply, "L'utilisateur a désactivé les outils MCP de l'île.");
+    }
+    if !allow(state) {
+        return refuse(reply, "Trop de demandes en même temps.");
+    }
+    let source = client_source(msg["client"].as_str().unwrap_or(""));
+    let who = who(&source).to_string();
+    let text = |k: &str, max: usize| clean(req[k].as_str().unwrap_or(""), max);
+    log::debug(format!("agents : outil MCP {tool} ({source})"));
+
+    match tool {
+        "notify" => {
+            let title = text("title", MAX_TEXT);
+            if title.is_empty() {
+                return;
+            }
+            let event = Event { at: now_ms(), source, kind: "info", title, body: text("message", MAX_TEXT), project: String::new(), session: String::new() };
+            publish_info(app, state, event);
+        }
+        "progress" => {
+            let (step, total) = (req["step"].as_u64().unwrap_or(0), req["total"].as_u64().unwrap_or(0));
+            if total == 0 || step > total || total > 1000 {
+                return;
+            }
+            super::with_context(app, ID, |ctx| {
+                ctx.emit("agents.progress", json!({ "source": source, "who": who, "title": text("title", 120), "step": step, "total": total }))
+            });
+        }
+        "timer" => {
+            let Some(minutes) = req["minutes"].as_u64().filter(|m| (1..=180).contains(m)) else { return };
+            super::with_context(app, ID, |ctx| ctx.emit("timer.start", json!({ "minutes": minutes })));
+            let title = format!("{who} a lancé un minuteur de {minutes} min");
+            publish_info(app, state, Event { at: now_ms(), source, kind: "info", title, body: String::new(), project: String::new(), session: String::new() });
+        }
+        "ask" => {
+            let question = text("question", MAX_TEXT);
+            let options: Vec<String> = req["options"].as_array().into_iter().flatten().filter_map(Value::as_str).map(|o| clean(o, MAX_OPTION)).filter(|o| !o.is_empty()).take(4).collect();
+            if question.is_empty() || options.len() < 2 {
+                return refuse(reply, "Il faut une question et 2 à 4 options.");
+            }
+            let secs = req["timeoutSecs"].as_u64().unwrap_or(600).clamp(60, 1500);
+            let id = {
+                let mut st = state.lock().unwrap();
+                if st.asks.len() >= MAX_ASKS {
+                    drop(st);
+                    return refuse(reply, "Trop de questions en attente dans l'île.");
+                }
+                st.next_ask += 1;
+                let id = st.next_ask;
+                let until = now_ms() + secs * 1000;
+                st.asks.insert(id, Ask { reply, who: who.clone(), question: question.clone(), options: options.clone(), until });
+                id
+            };
+            super::with_context(app, ID, |ctx| {
+                ctx.emit("agents.ask", json!({ "id": id, "who": who, "question": question, "options": options, "timeoutSecs": secs }));
+                ctx.emit("agents.changed", Value::Null);
+            });
+            // Le délai : sans clic, l'agent reçoit « pas de réponse » et continue.
+            let (a, s) = (app.clone(), state.clone());
+            std::thread::spawn(move || {
+                std::thread::sleep(Duration::from_secs(secs));
+                if let Some(mut ask) = s.lock().unwrap().asks.remove(&id) {
+                    answer_line(&mut ask.reply, None, Some("Pas de réponse de l'utilisateur à temps : continue sans, ou repose la question plus tard."));
+                    super::with_context(&a, ID, |ctx| {
+                        ctx.emit("agents.ask.closed", json!({ "id": id, "expired": true }));
+                        ctx.emit("agents.changed", Value::Null);
+                    });
+                }
+            });
+        }
+        _ => {}
+    }
+}
+
+/// Ajoute un message libre à l'historique et le montre.
+fn publish_info(app: &AppHandle, state: &Shared, event: Event) {
     {
         let mut st = state.lock().unwrap();
-        st.recent.retain(|t| t.elapsed() < Duration::from_secs(1));
-        if st.recent.len() >= MAX_PER_SECOND {
-            return;
-        }
-        st.recent.push_back(Instant::now());
+        st.history.push_front(event.clone());
+        st.history.truncate(MAX_HISTORY);
+    }
+    super::with_context(app, ID, |ctx| {
+        ctx.emit("agents.event", serde_json::to_value(&event).unwrap_or(Value::Null));
+        ctx.emit("agents.changed", Value::Null);
+    });
+}
+
+/// La ligne renvoyée à « island.exe mcp » : `{"answer": "…" | null, "reason"?: "…"}`.
+/// Si l'agent est parti entre-temps, l'écriture échoue sans bruit.
+fn answer_line(reply: &mut std::fs::File, answer: Option<&str>, reason: Option<&str>) {
+    use std::io::Write;
+    let mut line = json!({ "answer": answer });
+    if let Some(r) = reason {
+        line["reason"] = json!(r);
+    }
+    let _ = reply.write_all(format!("{line}\n").as_bytes());
+}
+
+/// Le nom de l'outil donné par « island.exe mcp » (claude-code, codex…),
+/// réduit aux caractères sûrs.
+fn client_source(raw: &str) -> String {
+    let s: String = raw.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-').take(30).collect::<String>().to_lowercase();
+    if s.is_empty() { "agent".into() } else { s }
+}
+
+fn who(source: &str) -> &'static str {
+    match source {
+        "claude-code" => "Claude",
+        "codex" => "Codex",
+        "gemini" => "Gemini",
+        _ => "L'agent",
+    }
+}
+
+fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
+    if !super::is_active(app, ID) || !allow(state) {
+        return; // module désactivé, ou trop de messages : on ignore
     }
     let Ok(msg) = serde_json::from_slice::<Value>(bytes) else { return };
     let Some(event) = understand(&msg, now_ms()) else { return };
@@ -436,12 +639,7 @@ fn understand(msg: &Value, at: u64) -> Option<Event> {
         project: project_name(hook["cwd"].as_str().unwrap_or("")),
         session: format!("{source}:{}", clean(session, 80)),
     };
-    let who = match source.as_str() {
-        "claude-code" => "Claude",
-        "codex" => "Codex",
-        "gemini" => "Gemini",
-        _ => "L'agent",
-    };
+    let who = who(&source);
     let done = |ev: &mut Event| {
         ev.kind = "done";
         ev.title = format!("{who} a fini");
@@ -582,6 +780,25 @@ fn gemini_config(exe: &str) -> String {
     serde_json::to_string_pretty(&config).unwrap_or_default()
 }
 
+/// Brancher l'île comme serveur MCP (« island.exe mcp »), pour chaque outil.
+/// La question (`island_ask`) peut attendre ton clic jusqu'à 30 min : on
+/// relève le délai que l'outil accorde à un appel quand il le permet.
+fn mcp_config(tool: &str, exe: &str) -> Result<String, String> {
+    match tool {
+        // Une commande à taper une fois (le chemin entre guillemets : cmd ou PowerShell).
+        "claude-code" => Ok(format!("claude mcp add --scope user island -- \"{exe}\" mcp")),
+        "codex" => {
+            let path = format!("\"{}\"", exe.replace('\\', "\\\\").replace('"', "\\\""));
+            Ok(format!("# Island comme serveur MCP (à coller dans %USERPROFILE%\\.codex\\config.toml)\n\n[mcp_servers.island]\ncommand = {path}\nargs = [\"mcp\"]\ntool_timeout_sec = 1800\n"))
+        }
+        "gemini" => {
+            let config = json!({ "mcpServers": { "island": { "command": exe, "args": ["mcp"], "timeout": 1_800_000 } } });
+            Ok(serde_json::to_string_pretty(&config).unwrap_or_default())
+        }
+        other => Err(format!("outil inconnu : {other}")),
+    }
+}
+
 fn now_ms() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
 }
@@ -619,6 +836,36 @@ mod tests {
         assert_eq!((e.source.as_str(), e.title.as_str()), ("masauvegarde", "Terminée sans erreur"));
         assert!(understand(&json!({ "source": "x" }), 0).is_none());
         assert_eq!(clean(&"a".repeat(400), 10).chars().count(), 10);
+    }
+
+    #[test]
+    fn mcp_configs() {
+        let exe = r"C:\Program Files\Island\island.exe";
+        assert_eq!(mcp_config("claude-code", exe).unwrap(), r#"claude mcp add --scope user island -- "C:\Program Files\Island\island.exe" mcp"#);
+        let codex = mcp_config("codex", exe).unwrap();
+        assert!(codex.contains(r#"command = "C:\\Program Files\\Island\\island.exe""#), "{codex}");
+        let gemini: Value = serde_json::from_str(&mcp_config("gemini", exe).unwrap()).unwrap();
+        assert_eq!(gemini["mcpServers"]["island"]["command"], exe);
+        assert!(mcp_config("x", exe).is_err());
+    }
+
+    #[test]
+    fn mcp_answers_and_clients() {
+        assert_eq!(client_source("Claude-Code"), "claude-code");
+        assert_eq!(client_source("$(rm)"), "rm");
+        assert_eq!(client_source(""), "agent");
+        assert_eq!(who("codex"), "Codex");
+        // La ligne renvoyée à « island.exe mcp » : du JSON sur une ligne.
+        let path = std::env::temp_dir().join(format!("island-answer-{}.txt", std::process::id()));
+        let mut f = std::fs::File::create(&path).unwrap();
+        answer_line(&mut f, Some("Oui \"vraiment\"\nfin"), None);
+        answer_line(&mut f, None, Some("trop tard"));
+        drop(f);
+        let text = std::fs::read_to_string(&path).unwrap();
+        let _ = std::fs::remove_file(&path);
+        let lines: Vec<Value> = text.lines().map(|l| serde_json::from_str(l).unwrap()).collect();
+        assert_eq!(lines[0]["answer"], "Oui \"vraiment\"\nfin");
+        assert_eq!((lines[1]["answer"].clone(), lines[1]["reason"].clone()), (Value::Null, json!("trop tard")));
     }
 
     #[test]

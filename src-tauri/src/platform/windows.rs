@@ -563,15 +563,16 @@ pub fn agents_pipe_name() -> String {
     format!(r"\\.\pipe\island-agents-{user}")
 }
 
-/// Écoute le canal pour toujours : chaque client envoie un message (au plus
-/// `max` octets) puis ferme. `on_message` reçoit les octets. Bloquant : à
-/// lancer dans un thread.
-pub fn serve_agents_pipe(max: usize, mut on_message: impl FnMut(Vec<u8>)) -> Result<(), String> {
-    use std::io::Read;
+/// Écoute le canal pour toujours : chaque client envoie UNE ligne (au plus
+/// `max` octets). `on_message` reçoit les octets et le canal lui-même : il
+/// peut y écrire une réponse (une question posée par un agent), ou le laisser
+/// se fermer. Bloquant : à lancer dans un thread.
+pub fn serve_agents_pipe(max: usize, mut on_message: impl FnMut(Vec<u8>, std::fs::File)) -> Result<(), String> {
+    use std::io::{BufRead, Read};
     use std::os::windows::io::{FromRawHandle, RawHandle};
     use ::windows::core::HSTRING;
     use ::windows::Win32::Foundation::{ERROR_PIPE_CONNECTED, HANDLE};
-    use ::windows::Win32::Storage::FileSystem::{FILE_FLAG_FIRST_PIPE_INSTANCE, FILE_FLAGS_AND_ATTRIBUTES, PIPE_ACCESS_INBOUND};
+    use ::windows::Win32::Storage::FileSystem::{FILE_FLAG_FIRST_PIPE_INSTANCE, FILE_FLAGS_AND_ATTRIBUTES, PIPE_ACCESS_DUPLEX};
     use ::windows::Win32::System::Pipes::{
         ConnectNamedPipe, CreateNamedPipeW, PIPE_READMODE_BYTE, PIPE_REJECT_REMOTE_CLIENTS, PIPE_TYPE_BYTE, PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
     };
@@ -580,7 +581,8 @@ pub fn serve_agents_pipe(max: usize, mut on_message: impl FnMut(Vec<u8>)) -> Res
     // `first` : la toute première création échoue si le nom est déjà pris par
     // un autre programme (on refuse d'écouter à sa place).
     let create = |first: bool| -> Result<HANDLE, String> {
-        let flags = if first { PIPE_ACCESS_INBOUND | FILE_FLAG_FIRST_PIPE_INSTANCE } else { PIPE_ACCESS_INBOUND | FILE_FLAGS_AND_ATTRIBUTES(0) };
+        // Dans les deux sens : l'île peut répondre (« ask »).
+        let flags = if first { PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE } else { PIPE_ACCESS_DUPLEX | FILE_FLAGS_AND_ATTRIBUTES(0) };
         let h = unsafe {
             CreateNamedPipeW(
                 &name,
@@ -588,7 +590,7 @@ pub fn serve_agents_pipe(max: usize, mut on_message: impl FnMut(Vec<u8>)) -> Res
                 // Octets bruts, bloquant, et jamais depuis une autre machine.
                 PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
                 PIPE_UNLIMITED_INSTANCES,
-                0,
+                4096,
                 max as u32,
                 0,
                 None,
@@ -615,32 +617,52 @@ pub fn serve_agents_pipe(max: usize, mut on_message: impl FnMut(Vec<u8>)) -> Res
         }
         // Une nouvelle instance AVANT de lire : le nom reste à nous.
         next = create(false)?;
-        // `File` lit le canal et le referme quand il est détruit.
+        // `File` lit le canal et le referme quand il est détruit. On lit une
+        // ligne (jusqu'au retour à la ligne, ou jusqu'à ce que le client ferme).
         let file = unsafe { std::fs::File::from_raw_handle(current.0 as RawHandle) };
         let mut bytes = Vec::new();
-        let _ = file.take(max as u64 + 1).read_to_end(&mut bytes);
+        let _ = std::io::BufReader::new((&file).take(max as u64 + 1)).read_until(b'\n', &mut bytes);
+        while bytes.last() == Some(&b'\n') || bytes.last() == Some(&b'\r') {
+            bytes.pop();
+        }
         if !bytes.is_empty() && bytes.len() <= max {
-            on_message(bytes);
+            on_message(bytes, file);
         }
     }
 }
 
-/// Côté client (« island.exe notify ») : envoie un message à l'île, si elle
-/// tourne. Quelques essais rapides si le canal est occupé.
-pub fn send_agents_pipe(bytes: &[u8]) -> Result<(), String> {
-    use std::io::Write;
+/// Ouvre le canal de l'île (quelques essais rapides s'il est occupé).
+fn open_agents_pipe() -> Result<std::fs::File, String> {
     let name = agents_pipe_name();
     let mut last = String::new();
     for _ in 0..5 {
-        match std::fs::OpenOptions::new().write(true).open(&name) {
-            Ok(mut f) => return f.write_all(bytes).map_err(|e| e.to_string()),
+        match std::fs::OpenOptions::new().read(true).write(true).open(&name) {
+            Ok(f) => return Ok(f),
             Err(e) => {
                 last = e.to_string();
                 std::thread::sleep(std::time::Duration::from_millis(60));
             }
         }
     }
-    Err(format!("l'île ne répond pas ({last})"))
+    Err(format!("l'île n'est pas ouverte ({last})"))
+}
+
+/// Côté client (« island.exe notify ») : envoie un message à l'île, si elle tourne.
+pub fn send_agents_pipe(bytes: &[u8]) -> Result<(), String> {
+    use std::io::Write;
+    let mut f = open_agents_pipe()?;
+    f.write_all(bytes).and_then(|_| f.write_all(b"\n")).map_err(|e| e.to_string())
+}
+
+/// Côté client (« island.exe mcp ») : envoie une demande et attend la réponse
+/// de l'île (une ligne). Bloque jusqu'à la réponse ou la fermeture du canal.
+pub fn request_agents_pipe(bytes: &[u8]) -> Result<Vec<u8>, String> {
+    use std::io::{BufRead, Write};
+    let mut f = open_agents_pipe()?;
+    f.write_all(bytes).and_then(|_| f.write_all(b"\n")).map_err(|e| e.to_string())?;
+    let mut reply = Vec::new();
+    std::io::BufReader::new(f).read_until(b'\n', &mut reply).map_err(|e| e.to_string())?;
+    Ok(reply)
 }
 
 // ── Retrouver la fenêtre d'un agent (Claude Code, Codex…) ────────────────────

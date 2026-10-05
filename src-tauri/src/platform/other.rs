@@ -116,11 +116,15 @@ pub fn reverse_dns(_ip: std::net::Ipv4Addr) -> Option<String> {
     None
 }
 
-pub fn serve_agents_pipe(_max: usize, _on_message: impl FnMut(Vec<u8>)) -> Result<(), String> {
+pub fn serve_agents_pipe(_max: usize, _on_message: impl FnMut(Vec<u8>, std::fs::File)) -> Result<(), String> {
     Err("disponible seulement sous Windows".into())
 }
 
 pub fn send_agents_pipe(_bytes: &[u8]) -> Result<(), String> {
+    Err("disponible seulement sous Windows".into())
+}
+
+pub fn request_agents_pipe(_bytes: &[u8]) -> Result<Vec<u8>, String> {
     Err("disponible seulement sous Windows".into())
 }
 

@@ -337,6 +337,11 @@ pub fn notify_cli() {
     cli::notify(std::env::args().skip(2).collect());
 }
 
+/// `island.exe mcp` : l'île comme serveur MCP pour les agents (voir cli.rs).
+pub fn mcp_cli() {
+    cli::mcp();
+}
+
 pub fn run() {
     let loaded = settings::load();
     log::set_min_level(log::Level::parse(&loaded.general.log_level));

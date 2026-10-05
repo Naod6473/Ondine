@@ -343,6 +343,23 @@ body {
   gap: 4px;
   align-items: center;
 }
+/* Une question à choix : le texte en haut, les boutons dessous (l'alerte grandit). */
+.notif.many {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.notif.many .notif-text {
+  flex-basis: calc(100% - 40px);
+}
+.notif.many .notif-actions {
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.island[data-state="alert"]:has(.notif.many) {
+  width: 580px;
+  height: 150px;
+}
 .notif.prio-critical .notif-title {
   color: #ff8a8a;
 }
@@ -1884,6 +1901,28 @@ body {
 .agents-subtitle {
   font-size: 11px;
   margin-top: 2px;
+}
+/* Les questions posées par un agent (MCP) */
+.agents-asks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.agents-asks:empty {
+  display: none;
+}
+.agents-ask {
+  padding: 8px 10px;
+  border-radius: 11px;
+  background: rgba(255, 196, 0, 0.12);
+  border: 1px solid rgba(255, 196, 0, 0.3);
+}
+.agents-ask-q {
+  margin: 4px 0 6px;
+  overflow-wrap: anywhere;
 }
 .agents-board {
   list-style: none;

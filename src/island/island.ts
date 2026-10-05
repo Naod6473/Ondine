@@ -592,7 +592,8 @@ export class Island {
     actions.append(el("button", { class: "icon-btn", title: "Fermer", onclick: () => this.notifications.dismiss(n.id) }, "×"));
     return el(
       "div",
-      { class: `notif ${big ? "big" : ""} prio-${n.priority}` },
+      // Plusieurs boutons (une question à choix) : ils passent sur leur propre ligne.
+      { class: `notif ${big ? "big" : ""} ${(n.actions?.length ?? 0) > 1 ? "many" : ""} prio-${n.priority}` },
       el("span", { class: "notif-icon" }, n.icon ?? "•"),
       el("div", { class: "notif-text" }, el("div", { class: "notif-title" }, n.title), n.body ? el("div", { class: "notif-body" }, n.body) : null),
       actions,
