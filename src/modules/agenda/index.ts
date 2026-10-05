@@ -145,6 +145,30 @@ export const agenda: IslandModule = {
     // Fichiers changés dans les réglages : on relit tout de suite.
     const off = api.onSettingsChange(() => void refresh(api, "reload"));
 
+    // Le récap du soir : à l'heure choisie, une fois par jour, les rendez-vous de
+    // demain (et Ondine qui bâille). Rien si l'heure vaut 0.
+    let recapDay = "";
+    const recap = window.setInterval(() => {
+      const hour = Number(api.settings().recapHour ?? 18);
+      const now = new Date();
+      const today = now.toDateString();
+      if (!hour || now.getHours() !== hour || recapDay === today) return;
+      recapDay = today;
+      const tomorrow = dayStart(Date.now()) + 24 * 60 * MINUTE;
+      const list = listing.events.filter((e) => e.start >= tomorrow && e.start < tomorrow + 24 * 60 * MINUTE);
+      const first = list.find((e) => !e.allDay) ?? list[0];
+      api.emit("mascot.emote", { emotion: "sleep" });
+      api.notify({
+        title: list.length ? `Demain : ${list.length} rendez-vous` : "Demain : aucun rendez-vous",
+        body: first ? `${first.allDay ? "Toute la journée" : `Le premier à ${hhmm(first.start)}`} : ${first.title}` : "Bonne soirée !",
+        icon: "🌙",
+        priority: "normal",
+        key: "agenda-recap",
+        durationMs: 15_000,
+        actions: list.length ? [{ label: "Voir", run: () => api.openIsland("agenda") }] : undefined,
+      });
+    }, MINUTE);
+
     // La pilule dépend de l'heure : on vérifie régulièrement si elle doit changer.
     let wasSoon: string | null = null;
     const interval = window.setInterval(() => {
@@ -159,6 +183,7 @@ export const agenda: IslandModule = {
     return () => {
       off();
       window.clearInterval(interval);
+      window.clearInterval(recap);
     };
   },
 

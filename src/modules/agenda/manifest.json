@@ -56,6 +56,15 @@
         "min": 5,
         "max": 240,
         "step": 5
+      },
+      {
+        "key": "recapHour",
+        "type": "number",
+        "label": "Récap du soir : les rendez-vous de demain à (heure, 0 = jamais)",
+        "default": 18,
+        "min": 0,
+        "max": 23,
+        "step": 1
       }
     ]
   },
@@ -70,7 +79,8 @@
   "events": {
     "emits": [
       "agenda.changed",
-      "agenda.reminder"
+      "agenda.reminder",
+      "mascot.emote"
     ],
     "listens": [
       "agenda.changed",
