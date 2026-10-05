@@ -53,6 +53,7 @@ island/
 │  │  ├─ timer/               Minuteur, Pomodoro, chrono (phase 6, front seulement)
 │  │  ├─ notes/               Notes rapides et to-do (phase 6)
 │  │  ├─ agenda/              Prochain rendez-vous depuis un .ics (phase 6)
+│  │  ├─ terminal/            Ouvrir cmd / PowerShell en un clic (phase 7)
 │  │  ├─ media/               Musique en cours de lecture (phase 3)
 │  │  └─ hello/               module d'exemple : manifest.json + index.ts
 │  ├─ settings/               fenêtre de réglages (formulaires générés)
@@ -67,7 +68,7 @@ island/
       ├─ island/mod.rs        placement multi-écrans/DPI, clics traversants, souris
       ├─ platform/            tout le Win32 (windows.rs) ; other.rs = bouchons ; media.rs = SMTC ; ocr.rs = OCR
       ├─ services/            réglages, journal, identifiants, bus, annulation, confidentialité, fichiers, ics
-      └─ modules/             registre des modules Rust + shelf.rs, clipboard.rs, capture.rs, notes.rs, agenda.rs, media.rs, hello.rs
+      └─ modules/             registre des modules Rust + shelf.rs, clipboard.rs, capture.rs, notes.rs, agenda.rs, terminal.rs, media.rs, hello.rs
 ```
 
 ## L'île
@@ -498,4 +499,22 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   locale de l'ordinateur (juste si l'agenda est dans le même fuseau).
 - Pilule : « Dans 12 min · Titre » quand un rendez-vous approche
   (`compactWithinMin`), puis « En cours » avec une barre qui se remplit.
+
+## Phase 7 : automatisation
+
+### Module Terminal (`src/modules/terminal/`, `src-tauri/src/modules/terminal.rs`)
+
+- Ouvre `cmd.exe`, `powershell.exe`, `pwsh.exe` ou `wt.exe` (liste fermée,
+  réglage « Terminal à ouvrir »), dans une nouvelle fenêtre de console
+  (`CREATE_NEW_CONSOLE`), dans le dossier de départ (réglage, sinon le dossier
+  utilisateur).
+- « Admin » : `ShellExecuteW` avec le verbe `runas` (Windows affiche la
+  confirmation UAC). Un programme lancé ainsi démarre dans System32 : le
+  dossier est passé en paramètre (`cd /d "…"` ou `Set-Location -LiteralPath '…'`).
+  Un chemin Windows ne peut pas contenir `"`, et l'apostrophe est doublée pour
+  PowerShell : le nom du dossier ne peut pas devenir une commande.
+- L'île ne tape jamais de commande : le seul paramètre est le dossier, validé
+  par `check_path`.
+- Cible de dépôt « Terminal ici » : un dossier déposé → terminal dedans ; un
+  fichier → dans son dossier.
 

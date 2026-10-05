@@ -1,0 +1,30 @@
+{
+  "id": "terminal",
+  "name": "Terminal",
+  "icon": "🖥️",
+  "description": "Ouvre cmd, PowerShell, PowerShell 7 ou Windows Terminal en un clic, dans le dossier de ton choix (aussi en administrateur). Dépose un dossier sur l'île pour y ouvrir un terminal. L'île ne tape jamais de commande à ta place.",
+  "version": "0.1.0",
+  "permissions": ["files"],
+  "settings": {
+    "version": 1,
+    "fields": [
+      {
+        "key": "shell",
+        "type": "select",
+        "label": "Terminal à ouvrir",
+        "default": "powershell",
+        "options": [
+          { "value": "powershell", "label": "Windows PowerShell" },
+          { "value": "cmd", "label": "Invite de commandes (cmd)" },
+          { "value": "pwsh", "label": "PowerShell 7 (pwsh, s'il est installé)" },
+          { "value": "wt", "label": "Windows Terminal (s'il est installé)" }
+        ]
+      },
+      { "key": "folder", "type": "folders", "label": "Dossier de départ", "help": "Vide = ton dossier utilisateur (C:\\Users\\…).", "default": [], "max": 1 },
+      { "key": "showDrop", "type": "boolean", "label": "Proposer « Terminal ici » quand on dépose un dossier sur l'île", "default": true }
+    ]
+  },
+  "views": ["expanded", "drop"],
+  "commands": ["open", "start_dir"],
+  "events": { "emits": [], "listens": [] }
+}

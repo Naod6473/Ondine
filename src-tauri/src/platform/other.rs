@@ -57,3 +57,15 @@ pub fn launch_screen_snip() -> Result<(), String> {
 pub fn pictures_dir() -> Option<PathBuf> {
     Some(base("HOME").join("Pictures"))
 }
+
+pub fn spawn_console(_program: &str, _args: &[String], _dir: &std::path::Path) -> Result<(), String> {
+    Err("disponible seulement sous Windows".into())
+}
+
+pub fn run_as_admin(_program: &str, _params: &str) -> Result<(), String> {
+    Err("disponible seulement sous Windows".into())
+}
+
+pub fn home_dir() -> PathBuf {
+    base("HOME")
+}

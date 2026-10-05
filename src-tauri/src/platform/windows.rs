@@ -292,3 +292,43 @@ pub fn pictures_dir() -> Option<PathBuf> {
         path
     }
 }
+
+/// Ouvre un programme console (cmd, PowerShell…) dans SA PROPRE fenêtre,
+/// dans le dossier `dir`. Utilisé par le module Terminal.
+pub fn spawn_console(program: &str, args: &[String], dir: &std::path::Path) -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
+    // CREATE_NEW_CONSOLE : une nouvelle fenêtre de console, détachée de l'île.
+    const CREATE_NEW_CONSOLE: u32 = 0x0000_0010;
+    std::process::Command::new(program)
+        .args(args)
+        .current_dir(dir)
+        .creation_flags(CREATE_NEW_CONSOLE)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| match e.kind() {
+            std::io::ErrorKind::NotFound => format!("{program} n'est pas installé sur ce PC"),
+            _ => format!("{program} ne s'ouvre pas : {e}"),
+        })
+}
+
+/// Ouvre un programme EN ADMINISTRATEUR : Windows affiche sa fenêtre de
+/// confirmation (UAC). `params` = la ligne de paramètres, déjà prête.
+pub fn run_as_admin(program: &str, params: &str) -> Result<(), String> {
+    use ::windows::core::{w, HSTRING};
+    use ::windows::Win32::UI::Shell::ShellExecuteW;
+    use ::windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+    let (file, params) = (HSTRING::from(program), HSTRING::from(params));
+    let result = unsafe { ShellExecuteW(None, w!("runas"), &file, &params, None, SW_SHOWNORMAL) };
+    match result.0 as isize {
+        r if r > 32 => Ok(()),
+        // 5 = accès refusé : en général, on a cliqué « Non » dans la fenêtre UAC.
+        5 => Err("ouverture en administrateur annulée".into()),
+        2 | 3 => Err(format!("{program} n'est pas installé sur ce PC")),
+        r => Err(format!("{program} ne s'ouvre pas en administrateur (code {r})")),
+    }
+}
+
+/// Le dossier de l'utilisateur (C:\Users\<nom>).
+pub fn home_dir() -> PathBuf {
+    std::env::var_os("USERPROFILE").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("C:\\"))
+}

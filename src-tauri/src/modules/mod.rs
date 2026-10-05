@@ -19,6 +19,7 @@ mod hello;
 mod media;
 mod notes;
 mod shelf;
+mod terminal;
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -183,6 +184,7 @@ impl Registry {
             Box::new(capture::Capture::default()),
             Box::new(notes::Notes::default()),
             Box::new(agenda::Agenda::default()),
+            Box::new(terminal::Terminal),
             Box::new(hello::Hello::default()),
         ];
 
@@ -354,6 +356,12 @@ mod tests {
     fn agenda_manifest_is_valid() {
         let m = check_manifest(agenda::Agenda::default().manifest_json()).unwrap();
         assert_eq!(m.id, "agenda");
+    }
+
+    #[test]
+    fn terminal_manifest_is_valid() {
+        let m = check_manifest(terminal::Terminal.manifest_json()).unwrap();
+        assert_eq!(m.id, "terminal");
     }
 
     #[test]
