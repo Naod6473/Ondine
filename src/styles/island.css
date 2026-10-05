@@ -850,3 +850,151 @@ body {
   gap: 14px;
   font-size: 12px;
 }
+
+/* ── Module Notes ────────────────────────────────────────────────────────── */
+
+.notes-add {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 6px;
+}
+.todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 4px;
+  border-radius: 8px;
+}
+.todo-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.todo-check {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--muted);
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transition:
+    background 220ms ease,
+    border-color 220ms ease,
+    transform 360ms var(--ease);
+}
+.todo-check::after {
+  content: "";
+  position: absolute;
+  left: 4.5px;
+  top: 1.5px;
+  width: 4px;
+  height: 8px;
+  border: solid #0c0d12;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform 300ms var(--ease);
+}
+.todo-check:active {
+  transform: scale(0.85);
+}
+.todo-item.done .todo-check {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.todo-item.done .todo-check::after {
+  transform: rotate(45deg) scale(1);
+}
+.todo-text {
+  flex: 0 1 auto; /* aussi large que le texte : le trait qui barre s'arrête au bout */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* Le trait qui barre se dessine de gauche à droite. */
+  background: linear-gradient(currentColor, currentColor) no-repeat 0 55% / 0 1px;
+  transition:
+    background-size 320ms var(--ease-out),
+    color 220ms ease;
+}
+.todo-item.done .todo-text {
+  color: var(--muted);
+  background-size: 100% 1px;
+}
+.todo-edit {
+  flex: 1;
+  min-width: 0;
+}
+.todo-del {
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.todo-item:hover .todo-del {
+  opacity: 1;
+}
+.notes-foot {
+  align-items: center;
+  justify-content: space-between;
+}
+.note-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.note-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  min-height: 62px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--island-fg);
+  font: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    background 150ms ease,
+    transform 300ms var(--ease);
+}
+.note-card:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+.note-card:active {
+  transform: scale(0.97);
+}
+.note-card b,
+.note-card span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.note-card small {
+  margin-top: auto;
+  font-size: 10px;
+}
+.note-bar {
+  align-items: center;
+  margin-top: 0;
+}
+.note-bar .spacer {
+  flex: 1;
+}
+.note-status {
+  font-size: 11px;
+}
+.note-editor {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 120px;
+  resize: none;
+  white-space: pre-wrap;
+}
