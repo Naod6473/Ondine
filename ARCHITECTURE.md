@@ -23,8 +23,7 @@ island/
 ├─ scripts/gen-icons.mjs      dessine l'icône de l'appli (npm run icons)
 ├─ mascots/                   UNE MASCOTTE = UN DOSSIER (manifest.json + fichiers)
 │  ├─ placeholder/            la mascotte provisoire, dessinée en code
-│  ├─ goutte/                 la goutte v2 : une image par émotion, fondus (par défaut)
-│  └─ goutte-v1/              la première goutte, en planches de sprites
+│  └─ goutte/                 la goutte : une image par émotion, animations, fondus (par défaut)
 ├─ src/                       ── FRONT (TypeScript) ──
 │  ├─ main.ts                 démarrage de la fenêtre de l'île
 │  ├─ core/                   le socle partagé par tout le front
@@ -358,7 +357,7 @@ bus ──▶ MascotController (mascot-state.ts) ──▶ MascotRenderer (rende
   `mascot.boredAfterSecs`, sleep après `mascot.sleepAfterSecs`) et le réveil
   dès que la souris revient sur l'île.
 - **Moteurs branchés** : `canvas-code` (la goutte provisoire, `mascots/placeholder/`)
-  et `spritesheet` (`mascots/goutte/`). Une planche = une ligne d'images de même
+  et `spritesheet` (aucune mascotte ne l'utilise pour l'instant). Une planche = une ligne d'images de même
   largeur. `"mode": "gaze"` choisit l'image d'après la souris (de la première,
   regard à gauche, à la dernière, regard à droite) et `nearFile` donne la planche
   « de près ». En attendant une vraie planche par état, `effect` (breathe, bounce,

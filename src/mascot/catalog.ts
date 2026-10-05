@@ -65,9 +65,10 @@ export function mascotCatalog(): CatalogEntry[] {
   });
 }
 
-/** La mascotte demandée, sinon la provisoire. */
+/** La mascotte demandée, sinon la goutte (mascotte par défaut), sinon la provisoire. */
 export function findMascot(id: string): CatalogEntry | null {
   const all = mascotCatalog();
   const valid = (e: CatalogEntry) => e.problems.length === 0;
-  return all.find((e) => e.manifest.id === id && valid(e)) ?? all.find((e) => e.manifest.id === "placeholder") ?? null;
+  const byId = (wanted: string) => all.find((e) => e.manifest.id === wanted && valid(e));
+  return byId(id) ?? byId("goutte") ?? all.find((e) => e.manifest.id === "placeholder") ?? null;
 }
