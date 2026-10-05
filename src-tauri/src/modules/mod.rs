@@ -17,6 +17,7 @@ mod agents;
 mod askclaude;
 mod capture;
 mod clipboard;
+mod controls;
 mod launcher;
 mod media;
 mod nettools;
@@ -197,6 +198,7 @@ impl Registry {
             Box::new(system::SystemInfo::default()),
             Box::new(remote::Remote::default()),
             Box::new(nettools::NetTools),
+            Box::new(controls::Controls),
             Box::new(agents::Agents::default()),
             Box::new(askclaude::AskClaude::default()),
         ];

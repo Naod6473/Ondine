@@ -4,6 +4,12 @@
 // windows.rs est la vraie implémentation ; other.rs ne sert qu'à ce que le code
 // compile ailleurs (vérifications sur Linux), il ne fait presque rien.
 
+// Volume des haut-parleurs et du micro (Core Audio). Contient sa propre version Linux.
+pub mod audio;
+// Luminosité des écrans (portable : WMI ; externes : DDC/CI). Contient sa propre version Linux.
+pub mod brightness;
+// Wi-Fi, Bluetooth, mode avion (Windows.Devices.Radios). Contient sa propre version Linux.
+pub mod radios;
 // « En cours de lecture » (SMTC). Contient sa propre version Linux.
 pub mod media;
 // Lire le texte d'une image (OCR de Windows). Contient sa propre version Linux.

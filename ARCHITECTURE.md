@@ -688,6 +688,34 @@ s'il n'existe pas ou est désactivé).
 - `dns {host}` : nom → adresses par le résolveur de Windows ; une IPv4 →
   son nom (`GetNameInfoW`, recherche inverse).
 
+### Module Contrôles (`src/modules/controls/`, `src-tauri/src/modules/controls.rs`, `src-tauri/src/platform/audio.rs`)
+
+- Volume et coupure des haut-parleurs et du micro **par défaut** de Windows,
+  par Core Audio (`IMMDeviceEnumerator::GetDefaultAudioEndpoint` →
+  `IAudioEndpointVolume`). Aucune permission : rien n'est lu ni envoyé.
+- `state` → `{speakers, microphone}` (`{volume 0-100, muted}` ou `null` sans
+  périphérique) ; `set_volume {device, volume}` ; `set_muted {device, muted}`.
+- Vue façon centre de contrôle, en verre liquide, sans défilement : à gauche
+  une carte de pastilles (radios, mode avion, micro coupé), à droite des
+  piliers verticaux (son, micro, un par écran) faits maison (`role="slider"`,
+  pointeur + flèches du clavier). Le front relit le son chaque seconde
+  (touches du clavier, autre appli) ; pendant un glissé, au plus un envoi
+  toutes les 60 ms (150 ms pour un écran) et le pilier n'est pas écrasé.
+- Luminosité (`platform/brightness.rs`) : `screens` → `[{id, name,
+  brightness}]` (relu toutes les 5 s, c'est lent) ; `set_brightness {id,
+  brightness}`. `internal` = écran du portable par WMI (`root\WMI`,
+  `WmiMonitorBrightness` / `WmiMonitorBrightnessMethods.WmiSetBrightness`) ;
+  `ext-N` = écran externe par DDC/CI (dxva2 `GetMonitorBrightness` /
+  `SetMonitorBrightness`, N = rang parmi les écrans physiques, un verrou
+  évite deux dialogues à la fois). Un écran qui ne répond pas n'est pas listé.
+- Radios (`platform/radios.rs`, WinRT `Windows.Devices.Radios`) : `radios` →
+  `[{kind: wifi|bluetooth|mobile, on, disabled}]` (relu toutes les 2 s) ;
+  `set_radio {kind, on}` (demande `RequestAccessAsync` puis `SetStateAsync` sur
+  chaque radio de la famille) ; `set_airplane {on}`. Pas d'API publique pour le
+  vrai mode avion : on éteint tout en retenant ce qui était allumé, et on le
+  rallume à la sortie (Wi-Fi + Bluetooth si l'île a redémarré entre-temps).
+  NON VÉRIFIÉ : que Windows autorise une appli classique (hors Store).
+
 ## Agents IA (`src/modules/agents/`, `src-tauri/src/modules/agents.rs`, `src-tauri/src/cli.rs`)
 
 Les outils extérieurs préviennent l'île par une porte d'entrée locale.
