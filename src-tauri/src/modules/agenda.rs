@@ -41,8 +41,8 @@ const ID: &str = "agenda";
 const MAX_FILES: usize = 5;
 /// Un .ics plus gros est refusé (un agenda de plusieurs années tient en 1 à 5 Mo).
 const MAX_FILE_BYTES: u64 = 20 * 1024 * 1024;
-/// Combien de jours à l'avance on regarde, et combien de rendez-vous au plus.
-const HORIZON_DAYS: i64 = 30;
+/// Combien de jours à l'avance on regarde (réglage « horizonDays »), et combien de rendez-vous au plus.
+const HORIZON_DEFAULT: i64 = 60;
 const MAX_UPCOMING: usize = 30;
 const TICK: Duration = Duration::from_secs(15);
 /// L'agenda en ligne est retéléchargé à cet intervalle.
@@ -157,6 +157,7 @@ fn refresh(ctx: &ModuleContext, state: &Shared) {
         .map(|a| a.iter().filter_map(Value::as_str).take(MAX_FILES).map(String::from).collect())
         .unwrap_or_default();
     let reminder_min = settings.get("reminderMin").and_then(Value::as_i64).unwrap_or(10).clamp(0, 240);
+    let horizon = settings.get("horizonDays").and_then(Value::as_i64).unwrap_or(HORIZON_DEFAULT).clamp(1, 365);
 
     // Lire les fichiers peut être lent (gros .ics, disque réseau) : on le fait
     // sans tenir le verrou, pour que l'onglet reste fluide pendant ce temps.
@@ -171,13 +172,13 @@ fn refresh(ctx: &ModuleContext, state: &Shared) {
 
     refresh_online(ctx, state);
 
-    // Les prochains rendez-vous, de maintenant à dans 30 jours (calcul hors verrou aussi).
+    // Les prochains rendez-vous, de maintenant à dans `horizon` jours (calcul hors verrou aussi).
     let (events, online) = {
         let s = state.locked();
         (s.events.clone(), s.online.clone())
     };
     let now = Local::now().naive_local();
-    let to = now + chrono::Duration::days(HORIZON_DAYS);
+    let to = now + chrono::Duration::days(horizon);
     let mut occ = ics::occurrences(&events, now, to);
     occ.extend(ics::occurrences(&online, now, to));
     occ.sort_by(|a, b| a.start.cmp(&b.start).then_with(|| a.summary.cmp(&b.summary)));

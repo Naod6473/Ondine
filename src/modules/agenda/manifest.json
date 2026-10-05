@@ -24,6 +24,16 @@
         ]
       },
       {
+        "key": "horizonDays",
+        "type": "number",
+        "label": "Afficher les rendez-vous des prochains (jours)",
+        "help": "Jusqu'où regarder dans le futur : 60 jours par défaut, jusqu'à un an.",
+        "default": 60,
+        "min": 7,
+        "max": 365,
+        "step": 1
+      },
+      {
         "key": "reminderMin",
         "type": "number",
         "label": "Rappel avant un rendez-vous (minutes, 0 = jamais)",

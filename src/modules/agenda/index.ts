@@ -215,7 +215,7 @@ export const agenda: IslandModule = {
         for (const e of errors) body.append(el("p", { class: "agenda-error" }, `⚠️ ${e}`));
 
         if (!events.length) {
-          body.append(el("p", { class: "muted agenda-none" }, "Rien de prévu dans les 30 prochains jours. 🌴"));
+          body.append(el("p", { class: "muted agenda-none" }, `Rien de prévu dans les ${Number(api.settings().horizonDays ?? 60)} prochains jours. 🌴`));
         } else {
           // La carte du prochain rendez-vous (ou de celui en cours).
           const next = events.find((m) => !m.allDay) ?? events[0];
