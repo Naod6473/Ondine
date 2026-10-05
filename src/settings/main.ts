@@ -420,7 +420,7 @@ function general(main: HTMLElement) {
     group("L'île", [
       row(
         "Sur quel écran ?",
-        choice(s.general.screen, [["primary", "Écran principal"], ["cursor", "Celui de la souris"]], (v) => save((d) => (d.general.screen = v as Settings["general"]["screen"]))),
+        choice(s.general.screen, [["primary", "Écran principal"], ["cursor", "Suit la souris"]], (v) => save((d) => (d.general.screen = v as Settings["general"]["screen"]))),
         "Seulement si tu as plusieurs écrans : l'île reste sur l'écran principal, ou suit l'écran où se trouve ta souris.",
       ),
       row(
