@@ -70,6 +70,11 @@ export class ModuleRegistry {
   }
 
   /** Modules actifs ayant une vue de ce type, dans l'ordre de déclaration. */
+  /** Les ids de tous les modules connus (actifs ou non), dans l'ordre d'origine. */
+  allIds(): string[] {
+    return this.all.map((m) => m.manifest.id);
+  }
+
   withView(kind: Exclude<ViewKind, "drop">): Running[] {
     return [...this.running.values()].filter((r) => {
       if (!r.module.views?.[kind]) return false;

@@ -1201,3 +1201,16 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ── Glisser un onglet pour le déplacer (tab-drag.ts) ────────────────────── */
+
+.tabs.dragging .tab {
+  cursor: grabbing;
+}
+.tab.dragged {
+  z-index: 2;
+  color: var(--island-fg);
+  /* Le déplacement suit la souris : pas de transition sur transform ici. */
+  transition: color 200ms ease;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
+}

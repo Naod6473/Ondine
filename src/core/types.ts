@@ -12,6 +12,8 @@ export interface Settings {
     /** Replier l'île quand la souris n'est plus dessus depuis ce nombre de secondes. */
     collapseSecs: number;
     notificationSecs: number;
+    /** L'ordre des onglets (ids de modules) ; vide = l'ordre d'origine. */
+    tabOrder: string[];
   };
   mascot: {
     enabled: boolean;
@@ -30,7 +32,7 @@ export function defaultSettings(): Settings {
   return {
     version: 2,
     general: { screen: "primary", logLevel: "info" },
-    island: { collapseSecs: 1.5, notificationSecs: 6 },
+    island: { collapseSecs: 1.5, notificationSecs: 6, tabOrder: [] },
     mascot: { enabled: true, id: "goutte", boredAfterSecs: 60, sleepAfterSecs: 180 },
     privacy: { excludedFolders: [] },
     modules: {},

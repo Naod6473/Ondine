@@ -165,3 +165,46 @@ input[type="number"] {
   border-radius: 20px;
   background: #0c0d12;
 }
+
+/* Ordre des onglets */
+.order-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  max-width: 420px;
+}
+.order-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  margin-bottom: 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  cursor: grab;
+  transition:
+    box-shadow 160ms ease,
+    opacity 160ms ease;
+}
+.order-item .card-icon {
+  font-size: 18px;
+}
+.order-item.off {
+  opacity: 0.6;
+}
+.order-item.dragging {
+  opacity: 0.5;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+}
+.order-grip {
+  color: var(--muted, #888);
+  font-size: 16px;
+}
+.order-name {
+  flex: 1;
+}
+.order-item .btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}

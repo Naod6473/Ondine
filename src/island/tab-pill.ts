@@ -72,9 +72,11 @@ export class TabPill {
     this.frame = 0;
   }
 
-  /** Bords gauche et droit de l'onglet, relatifs au conteneur. */
+  /** Bords gauche et droit de l'onglet, relatifs au conteneur (+ son
+   *  décalage s'il est en train d'être glissé, voir tab-drag.ts). */
   private edges(tab: HTMLElement) {
-    return { l: tab.offsetLeft, r: tab.offsetLeft + tab.offsetWidth };
+    const l = tab.offsetLeft + Number(tab.dataset.dragX ?? 0);
+    return { l, r: l + tab.offsetWidth };
   }
 
   private tick = (now: number) => {

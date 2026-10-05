@@ -454,6 +454,11 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   (`annotate_export`). Le Rust le décode (ce qui le valide), puis le copie,
   l'enregistre ou le pose sur l'étagère.
 - **Image déjà copiée** : les mêmes actions, sans ouvrir l'outil.
+- **Ordre des onglets** : réglage `island.tabOrder` (liste d'ids ; vide = ordre
+  d'origine ; un module absent se met à la fin). On le change en glissant un
+  onglet dans l'île (`src/island/tab-drag.ts` : l'onglet suit la souris, les
+  voisins s'écartent en animation FLIP, la pastille suit) ou dans Réglages →
+  Modules (glisser ou ↑ ↓). Calculs dans `src/core/tab-order.ts`.
 - **Onglets** : à partir de 5 modules, les onglets inactifs n'affichent que
   leur icône (le nom au survol).
 - `modules::with_context(app, id, f)` donne un `ModuleContext` à un thread de
