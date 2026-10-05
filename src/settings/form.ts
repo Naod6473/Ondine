@@ -4,6 +4,7 @@
 
 import type { SettingField } from "../core/module-types";
 import { coerce } from "../core/settings-store";
+import { Bridge, IS_TAURI } from "../core/bridge";
 import { el } from "../island/dom";
 
 export function settingsForm(
@@ -50,6 +51,9 @@ export function settingsForm(
         input = txt;
         break;
       }
+      case "folders":
+        input = foldersInput(field.max ?? 20, Array.isArray(current) ? (current as string[]) : [], (v) => onChange(field.key, v));
+        break;
     }
     form.append(
       el(
@@ -62,4 +66,45 @@ export function settingsForm(
     );
   }
   return form;
+}
+
+/** Une liste de dossiers : chacun avec « × », plus un bouton « Ajouter un dossier… ». */
+function foldersInput(max: number, initial: string[], onChange: (folders: string[]) => void): HTMLElement {
+  let folders = [...initial];
+  const box = el("div", { class: "folders-input" });
+  const draw = () => {
+    box.replaceChildren();
+    const list = el("ul", { class: "folders" });
+    for (const folder of folders) {
+      list.append(
+        el(
+          "li",
+          {},
+          el("code", {}, folder),
+          el("button", { class: "icon-btn", title: "Retirer", onclick: () => update(folders.filter((f) => f !== folder)) }, "×"),
+        ),
+      );
+    }
+    if (!folders.length) list.append(el("li", { class: "muted" }, "Aucun dossier."));
+    const add = el(
+      "button",
+      {
+        class: "btn",
+        disabled: !IS_TAURI || folders.length >= max,
+        onclick: async () => {
+          const picked = await Bridge.pickFolder("Ajouter un dossier favori");
+          if (picked && !folders.includes(picked)) update([...folders, picked]);
+        },
+      },
+      "Ajouter un dossier…",
+    );
+    box.append(list, add);
+  };
+  const update = (next: string[]) => {
+    folders = next;
+    onChange(folders);
+    draw();
+  };
+  draw();
+  return box;
 }

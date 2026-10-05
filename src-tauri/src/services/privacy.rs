@@ -24,7 +24,7 @@ pub fn check_path(settings: &Settings, raw: &str) -> Result<PathBuf, String> {
     if !path.is_absolute() {
         return Err("chemin refusé : il doit être absolu".into());
     }
-    let real = std::fs::canonicalize(path).map_err(|_| "chemin introuvable".to_string())?;
+    let real = simplify(std::fs::canonicalize(path).map_err(|_| "chemin introuvable".to_string())?);
     if is_excluded(settings, &real) {
         return Err("chemin refusé : il se trouve dans un dossier exclu".into());
     }
@@ -37,10 +37,28 @@ pub fn is_excluded(settings: &Settings, real: &Path) -> bool {
     settings.privacy.excluded_folders.iter().any(|folder| {
         // Un dossier exclu qui n'existe plus ne peut rien contenir.
         match std::fs::canonicalize(folder) {
-            Ok(excluded) => real.starts_with(&excluded),
+            Ok(excluded) => real.starts_with(simplify(excluded)),
             Err(_) => false,
         }
     })
+}
+
+/// Sous Windows, `canonicalize` renvoie des chemins « étendus » (`\\?\C:\…`) que
+/// l'Explorateur et l'utilisateur ne connaissent pas. On les ramène à la forme
+/// habituelle (`C:\…`, ou `\\serveur\partage\…` pour un dossier réseau).
+pub fn simplify(path: PathBuf) -> PathBuf {
+    let text = path.to_string_lossy();
+    if let Some(rest) = text.strip_prefix(r"\\?\UNC\") {
+        return PathBuf::from(format!(r"\\{rest}"));
+    }
+    if let Some(rest) = text.strip_prefix(r"\\?\") {
+        // Seulement « lettre de lecteur + : », pour ne rien casser d'autre.
+        let b = rest.as_bytes();
+        if b.len() >= 2 && b[0].is_ascii_alphabetic() && b[1] == b':' {
+            return PathBuf::from(rest);
+        }
+    }
+    path
 }
 
 /// Vérifie qu'un dossier ajouté à la liste d'exclusion existe vraiment.
@@ -55,6 +73,13 @@ pub fn check_folder(raw: &str) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn extended_paths_are_simplified() {
+        assert_eq!(simplify(PathBuf::from(r"\\?\C:\Users\a")), PathBuf::from(r"C:\Users\a"));
+        assert_eq!(simplify(PathBuf::from(r"\\?\UNC\srv\share")), PathBuf::from(r"\\srv\share"));
+        assert_eq!(simplify(PathBuf::from("/tmp/x")), PathBuf::from("/tmp/x"));
+    }
 
     #[test]
     fn relative_paths_are_refused() {

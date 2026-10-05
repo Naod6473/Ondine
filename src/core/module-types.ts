@@ -19,7 +19,9 @@ export type SettingField =
   | { key: string; type: "string"; label: string; help?: string; default: string; maxLength?: number }
   | { key: string; type: "number"; label: string; help?: string; default: number; min?: number; max?: number; step?: number }
   | { key: string; type: "boolean"; label: string; help?: string; default: boolean }
-  | { key: string; type: "select"; label: string; help?: string; default: string; options: { value: string; label: string }[] };
+  | { key: string; type: "select"; label: string; help?: string; default: string; options: { value: string; label: string }[] }
+  /** Une liste de dossiers, choisis avec la boîte « Choisir un dossier » de Windows. */
+  | { key: string; type: "folders"; label: string; help?: string; default: string[]; max?: number };
 
 export interface ModuleManifest {
   id: string;
@@ -77,6 +79,10 @@ export interface IslandModule {
   views?: {
     compact?: ViewMount;
     expanded?: ViewMount;
-    drop?: DropTarget[];
+    /**
+     * Les cibles de dépôt. Une liste fixe, ou une fonction appelée à chaque
+     * glisser (pour des cibles qui dépendent des réglages, comme des favoris).
+     */
+    drop?: DropTarget[] | ((api: ModuleApi) => DropTarget[]);
   };
 }

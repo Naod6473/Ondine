@@ -80,6 +80,11 @@ export function coerce(field: SettingField, value: unknown): unknown {
       return field.options.some((o) => o.value === value) ? value : field.default;
     case "string":
       return typeof value === "string" ? value.slice(0, field.maxLength ?? 500) : field.default;
+    case "folders": {
+      if (!Array.isArray(value)) return [...field.default];
+      const folders = value.filter((v): v is string => typeof v === "string" && v.length > 0 && v.length < 1000);
+      return [...new Set(folders)].slice(0, field.max ?? 20);
+    }
   }
 }
 

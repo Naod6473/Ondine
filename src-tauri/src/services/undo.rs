@@ -6,7 +6,7 @@
 // devient définitive (et on oublie comment la défaire).
 //
 // Rappel : jamais de suppression définitive. Supprimer = envoyer à la Corbeille
-// (un service dédié arrivera avec la phase 2, Étagère et dépôt de fichiers).
+// (voir services/files.rs).
 
 use std::collections::HashMap;
 use std::sync::Mutex;
