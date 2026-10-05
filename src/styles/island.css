@@ -2900,3 +2900,8 @@ body[data-edge="right"] .privacy-dot {
     animation: none;
   }
 }
+
+/* Mode présentation : l'île cachée ne laisse plus rien voir au bord de l'écran. */
+body.presenting .island[data-state="hidden"] {
+  opacity: 0;
+}

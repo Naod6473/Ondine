@@ -39,6 +39,8 @@ const LONG_HOVER_MS = 2500;
 const PEEK_IDLE_MS = 20_000;
 /** On se demande toutes les… si c'est le moment. */
 const PEEK_CHECK_MS = 15_000;
+/** Mode présentation : on regarde toutes les… si une appli est en plein écran. */
+const PRESENTATION_CHECK_MS = 4000;
 
 function timingsFrom(s: Settings) {
   return {
@@ -81,6 +83,8 @@ export class Island {
   /** Ondine qui pend au bord de l'écran (mascot/hang.ts), et sa dernière visite. */
   private hanger: Hanger;
   private lastPeek = Date.now();
+  /** Une présentation ou une appli plein écran est en cours : l'île se fait oublier. */
+  private presenting = false;
 
   constructor(
     private readonly root: HTMLElement,
@@ -100,6 +104,7 @@ export class Island {
       onShowChange: (on) => this.onHangChange(on),
     });
     window.setInterval(() => void this.maybePeek(), PEEK_CHECK_MS);
+    window.setInterval(() => void this.checkPresentation(), PRESENTATION_CHECK_MS);
     // Dans un navigateur (npm run dev) : window.ondinePeek() la fait venir tout de suite.
     // Et window.ondineBus.emit("controls.media-use", { mic: ["Zoom"], cam: [] }) simule un message.
     if (!IS_TAURI) Object.assign(window, { ondinePeek: () => this.hanger.show(), ondineBus: this.bus });
@@ -261,7 +266,7 @@ export class Island {
     }
     // Île cachée : la fenêtre n'est qu'une bande de 6 px. Le Rust surveille la
     // souris et prévient quand elle touche cette bande.
-    void onTauriEvent("wake-enter", () => this.fsm.state === "hidden" && this.fsm.pointerEnter());
+    void onTauriEvent("wake-enter", () => this.fsm.state === "hidden" && !this.presenting && this.fsm.pointerEnter());
     void onTauriEvent("wake-leave", () => this.fsm.state === "hidden" && this.fsm.pointerLeave());
 
     // Étirer l'île par son bord intérieur, la déplacer par son bord extérieur (gestures.ts).
@@ -360,6 +365,30 @@ export class Island {
     this.hanger.show();
   }
 
+  /**
+   * Mode présentation (réglage « presentationQuiet ») : pendant un diaporama
+   * PowerPoint, une vidéo ou un jeu en plein écran (Windows le signale), l'île
+   * se cache, la souris au bord ne la réveille plus, et les notifications
+   * attendent. À la fin, elles arrivent, avec un petit résumé.
+   */
+  private async checkPresentation() {
+    const wanted = settingsStore.current.island.presentationQuiet ?? true;
+    const desk = wanted ? await Bridge.deskState() : null;
+    const busy = !!desk?.busy;
+    if (busy === this.presenting) return;
+    this.presenting = busy;
+    document.body.classList.toggle("presenting", busy);
+    if (busy) {
+      this.hanger.hide(true);
+      if (this.fsm.state !== "hidden") this.fsm.close();
+      this.notifications.pause(true);
+    } else {
+      const n = this.notifications.waiting();
+      this.notifications.pause(false);
+      if (n > 1) this.notifications.push({ moduleId: "island", title: `${n} notifications pendant ta présentation`, icon: "🎬", priority: "low", key: "presentation-summary" });
+    }
+  }
+
   /** Ondine arrive au bord (la fenêtre doit être assez grande) ou repart. */
   private onHangChange(on: boolean) {
     if (on) sounds.drop();
@@ -387,6 +416,8 @@ export class Island {
       const h = this.hanger.rect();
       if (h && x >= h.left && x <= h.right && y >= h.top && y <= h.bottom) return;
     }
+    // Présentation en cours : la souris au bord ne réveille pas l'île.
+    if (this.presenting && this.fsm.state === "hidden") return;
     // Dans l'appli, l'île cachée est gérée par la bande de réveil (ci-dessus).
     if (this.fsm.state === "hidden" && IS_TAURI && !this.hanger.showing) return;
     const r = this.shell.getBoundingClientRect();

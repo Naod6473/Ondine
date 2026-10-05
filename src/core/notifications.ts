@@ -10,7 +10,9 @@
 //   - "high" et "critical" font passer l'île en état `alert` ; "low" et "normal"
 //     s'affichent dans l'île compacte, sans la forcer à s'ouvrir en grand ;
 //   - même `key` = même sujet : la nouvelle remplace l'ancienne (pas de doublons) ;
-//   - au plus MAX_QUEUE en attente : au-delà, la moins prioritaire est abandonnée.
+//   - au plus MAX_QUEUE en attente : au-delà, la moins prioritaire est abandonnée ;
+//   - en pause (mode présentation), seules les "critical" s'affichent ; les
+//     autres attendent la fin de la pause.
 
 export type Priority = "low" | "normal" | "high" | "critical";
 
@@ -52,6 +54,7 @@ export class NotificationQueue {
   private shown: IslandNotification | null = null;
   private timer: number | null = null;
   private nextId = 1;
+  private paused = false;
 
   /** Durée par défaut (ms), mise à jour depuis les réglages. */
   defaultDurationMs = 6000;
@@ -76,7 +79,7 @@ export class NotificationQueue {
         this.clearTimer();
       }
     }
-    // Plus prioritaire que l'affichée : elle passe devant.
+    // Plus prioritaire que l'affichée : elle passe devant (sauf en pause, s'il ne s'agit pas d'une critique).
     if (this.shown && RANK[n.priority] > RANK[this.shown.priority]) {
       this.queue.unshift(this.shown);
       this.shown = null;
@@ -87,6 +90,28 @@ export class NotificationQueue {
     if (this.queue.length > MAX_QUEUE) this.queue.pop();
     if (!this.shown) this.showNext();
     return n.id;
+  }
+
+  /**
+   * Met la file en pause (true) : plus rien ne s'affiche sauf "critical", et
+   * celle affichée retourne en file. À la reprise (false), elles arrivent.
+   */
+  pause(on: boolean) {
+    if (on === this.paused) return;
+    this.paused = on;
+    if (on && this.shown && this.shown.priority !== "critical") {
+      this.queue.unshift(this.shown);
+      this.shown = null;
+      this.clearTimer();
+      this.onShow(null);
+    } else if (!on && !this.shown) {
+      this.showNext();
+    }
+  }
+
+  /** Combien attendent (pour le résumé à la fin d'une présentation). */
+  waiting(): number {
+    return this.queue.length;
   }
 
   /** Ferme une notification (affichée ou en attente). */
@@ -105,7 +130,9 @@ export class NotificationQueue {
   }
 
   private showNext() {
-    this.shown = this.queue.shift() ?? null;
+    // En pause, seules les critiques passent.
+    const i = this.paused ? this.queue.findIndex((q) => q.priority === "critical") : 0;
+    this.shown = i >= 0 ? (this.queue.splice(i, 1)[0] ?? null) : null;
     if (this.shown && !this.shown.sticky) {
       const id = this.shown.id;
       this.timer = window.setTimeout(() => this.dismiss(id), this.shown.durationMs ?? this.defaultDurationMs);
