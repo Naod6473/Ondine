@@ -98,6 +98,33 @@ const actions = {
     }),
 };
 
+/**
+ * Un bouton en deux clics : le premier le transforme en « Confirmer ? »
+ * pendant quelques secondes, le second lance l'action. Pour ce qui touche
+ * tes fichiers d'un coup (Corbeille, compresser tout).
+ */
+function confirmButton(api: ModuleApi, cls: string, label: string, title: string, run: () => unknown): HTMLElement {
+  const b = el("button", { class: cls, title }, label);
+  let timer: number | undefined;
+  const reset = () => {
+    window.clearTimeout(timer);
+    timer = undefined;
+    b.textContent = label;
+    b.classList.remove("confirming");
+  };
+  b.onclick = api.handler(() => {
+    if (timer === undefined) {
+      b.textContent = "Confirmer ?";
+      b.classList.add("confirming");
+      timer = window.setTimeout(reset, 4000);
+      return;
+    }
+    reset();
+    return run();
+  });
+  return b;
+}
+
 /** Lâcher sur un favori : copie ou déplacement selon le réglage. */
 function toFavorite(api: ModuleApi, paths: string[], folder: string) {
   return api.settings().favoriteAction === "move" ? actions.moveTo(api, paths, folder) : actions.copyTo(api, paths, folder);
@@ -166,8 +193,8 @@ export const shelf: IslandModule = {
           button("📦 Déplacer vers…", "Déplacer tout vers un dossier", () => actions.moveTo(api, all())),
           // Un favori = le nom du dossier ; copier ou déplacer dépend du réglage.
     ...favorites.map((f) => button(`⭐ ${baseName(f)}`, f, () => toFavorite(api, all(), f))),
-          button("🗜️", "Tout compresser", () => actions.compress(api, all())),
-          button("🗑️", "Tout envoyer à la Corbeille", () => actions.trash(api, all())),
+          confirmButton(api, "btn small", "🗜️", "Tout compresser", () => actions.compress(api, all())),
+          confirmButton(api, "btn small", "🗑️", "Tout envoyer à la Corbeille", () => actions.trash(api, all())),
           button("Vider", "Retirer tout de l'étagère (les fichiers ne bougent pas)", () =>
             attempt(api, "Vider l'étagère", () => api.invoke("clear").then(() => {})),
           ),
@@ -190,7 +217,7 @@ export const shelf: IslandModule = {
                   ? el("button", { class: "icon-btn", title: "Montrer dans l'Explorateur", onclick: api.handler(() => attempt(api, "Explorateur", () => api.invoke("reveal", { paths: one }).then(() => {}))) }, "📂")
                   : null,
                 item.exists ? el("button", { class: "icon-btn", title: "Copier le chemin", onclick: api.handler(() => actions.copyPaths(api, one)) }, "📋") : null,
-                item.exists ? el("button", { class: "icon-btn", title: "Envoyer à la Corbeille", onclick: api.handler(() => actions.trash(api, one)) }, "🗑️") : null,
+                item.exists ? confirmButton(api, "icon-btn", "🗑️", "Envoyer à la Corbeille", () => actions.trash(api, one)) : null,
                 el(
                   "button",
                   { class: "icon-btn", title: "Retirer de l'étagère", onclick: api.handler(() => attempt(api, "Retirer", () => api.invoke("remove", { paths: one }).then(() => {}))) },

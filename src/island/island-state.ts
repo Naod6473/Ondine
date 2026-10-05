@@ -43,6 +43,8 @@ export class IslandStateMachine {
   state: IslandState = "hidden";
   /** La souris est-elle sur l'île ? */
   hovering = false;
+  /** Une alerte arrivée pendant un glisser, à montrer dès qu'il est fini. */
+  private alertWaiting = false;
   /** État auquel revenir après `drop` ou `alert`. */
   private resume: IslandState = "hidden";
   /** Une notification est affichée : l'île compacte reste ouverte pour qu'on puisse la lire. */
@@ -103,31 +105,48 @@ export class IslandStateMachine {
 
   dragEnter() {
     if (this.state === "drop") return;
-    if (this.state !== "alert") this.resume = this.state;
+    // Une alerte affichée revient une fois le glisser fini.
+    if (this.state === "alert") this.alertWaiting = true;
+    else this.resume = this.state;
     this.go("drop");
   }
 
   dragLeave() {
     if (this.state !== "drop") return;
+    if (this.showWaitingAlert()) return;
     this.go(this.resume);
     this.scheduleCollapse();
   }
 
   dropped() {
     if (this.state !== "drop") return;
+    if (this.showWaitingAlert()) return;
     this.go("compact");
     this.scheduleCollapse();
   }
 
   /** Une notification prioritaire arrive. */
   alertStart() {
-    if (this.state === "drop") return; // on ne coupe pas un glisser en cours
+    // On ne coupe pas un glisser en cours : l'alerte attend sa fin.
+    if (this.state === "drop") {
+      this.alertWaiting = true;
+      return;
+    }
     if (this.state !== "alert") this.resume = this.state;
     this.go("alert");
   }
 
+  /** Après un glisser : l'alerte arrivée (ou affichée) entre-temps, s'il y en a une. */
+  private showWaitingAlert(): boolean {
+    if (!this.alertWaiting) return false;
+    this.alertWaiting = false;
+    this.go("alert");
+    return true;
+  }
+
   /** Plus d'alerte à afficher. */
   alertEnd() {
+    this.alertWaiting = false;
     if (this.state !== "alert") return;
     this.go(this.resume === "hidden" || this.resume === "peek" ? "compact" : this.resume);
     this.scheduleCollapse();

@@ -62,13 +62,22 @@ export class ModuleRegistry {
 
   /** Démarre les modules activés, arrête les autres. Appelé aussi à chaque changement de réglages. */
   sync() {
+    let changed = false;
     for (const module of this.all) {
       const id = module.manifest.id;
       const wanted = settingsStore.moduleEnabled(id) && !this.benched.has(id);
-      if (wanted && !this.running.has(id)) this.start(module);
-      if (!wanted && this.running.has(id)) this.stop(id);
+      if (wanted && !this.running.has(id)) {
+        this.start(module);
+        changed = true;
+      }
+      if (!wanted && this.running.has(id)) {
+        this.stop(id);
+        changed = true;
+      }
     }
-    this.onChange();
+    // On ne redessine l'île que si un module a démarré ou s'est arrêté : un
+    // simple réglage modifié ne doit pas effacer ce que tu es en train de taper.
+    if (changed) this.onChange();
   }
 
   /** Modules actifs ayant une vue de ce type, dans l'ordre de déclaration. */
@@ -135,7 +144,7 @@ export class ModuleRegistry {
     try {
       await target.onDrop(paths, r.api);
     } catch (err) {
-      this.fail(moduleId, err, `dépôt ${target.id}`);
+      this.failOrTell(moduleId, err, `dépôt ${target.id}`);
     }
   }
 
@@ -167,6 +176,18 @@ export class ModuleRegistry {
     } catch (err) {
       this.fail(id, err, what);
     }
+  }
+
+  /**
+   * Une erreur renvoyée par le Rust (un simple texte : « presse-papiers
+   * occupé », « fichier introuvable »…) n'est pas un plantage : on l'affiche
+   * et c'est tout. Seule une vraie exception JavaScript compte comme plantage.
+   */
+  private failOrTell(id: string, err: unknown, what: string) {
+    if (typeof err !== "string") return this.fail(id, err, what);
+    const name = this.all.find((m) => m.manifest.id === id)?.manifest.name ?? id;
+    log.info(`${id} : ${what} refusé par le Rust`);
+    this.notifications.push({ moduleId: id, title: name, body: err, icon: "⚠️", priority: "low", key: `error-${id}` });
   }
 
   private fail(id: string, err: unknown, what: string) {
@@ -240,9 +261,9 @@ export class ModuleRegistry {
         return (...args) => {
           try {
             const r = fn(...args);
-            if (r instanceof Promise) r.catch((err) => self.fail(id, err, "action"));
+            if (r instanceof Promise) r.catch((err) => self.failOrTell(id, err, "action"));
           } catch (err) {
-            self.fail(id, err, "action");
+            self.failOrTell(id, err, "action");
           }
         };
       },

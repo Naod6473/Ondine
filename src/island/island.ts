@@ -271,8 +271,9 @@ export class Island {
 
   /** La cible sous ce point. La position de Tauri est en pixels physiques (à vérifier sur ta machine). */
   private dropTargetAt(pos: { x: number; y: number } | undefined) {
+    // Même avec une seule cible, il faut lâcher dessus : lâcher ailleurs sur
+    // l'île ne doit rien déclencher (la cible pourrait être la Corbeille).
     const targets = this.registry.dropTargets();
-    if (targets.length === 1) return targets[0];
     if (!pos) return null;
     const dpr = window.devicePixelRatio || 1;
     const hit = document.elementFromPoint(pos.x / dpr, pos.y / dpr)?.closest<HTMLElement>("[data-drop-index]");

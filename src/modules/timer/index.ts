@@ -11,7 +11,7 @@
 import manifest from "./manifest.json";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
-import { TabPill } from "../../island/tab-pill";
+import { reducedMotion, TabPill } from "../../island/tab-pill";
 
 // ── Les trois compteurs ──────────────────────────────────────────────────────
 
@@ -310,7 +310,7 @@ export const timerModule: IslandModule = {
         if (animate) pill.moveTo(segButtons.get(id)!);
         body.replaceChildren();
         update = { timer: drawTimer, pomodoro: drawPomodoro, stopwatch: drawStopwatch }[id]();
-        if (animate) {
+        if (animate && !reducedMotion()) {
           body.animate([{ opacity: 0, transform: "translateY(4px)" }, { opacity: 1, transform: "none" }], {
             duration: 260,
             easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
