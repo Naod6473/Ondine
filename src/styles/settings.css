@@ -1082,3 +1082,15 @@ option {
   filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.2));
   pointer-events: none;
 }
+
+/* ── Windows 11 : fond Mica ────────────────────────────────────────────────
+   Windows peint lui-même le fond de la fenêtre (le fond d'écran flouté et
+   teinté, clair ou sombre). La page laisse donc son fond transparent, et les
+   taches de couleur ne font plus qu'une lueur légère par-dessus. */
+html.mica,
+html.mica body {
+  background: transparent;
+}
+html.mica .blob {
+  opacity: 0.22;
+}

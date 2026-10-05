@@ -55,6 +55,11 @@ pub fn migrate_old_dirs() -> Vec<String> {
     done
 }
 
+/// Windows 11 (build 22000 ou plus) : le seul à savoir peindre le fond Mica.
+pub fn supports_mica() -> bool {
+    sysinfo::System::kernel_version().and_then(|b| b.trim().parse::<u32>().ok()).is_some_and(|build| build >= 22000)
+}
+
 pub fn local_time() -> LocalTime {
     let t = unsafe { GetLocalTime() };
     LocalTime {
