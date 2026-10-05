@@ -71,6 +71,8 @@ export interface GestureHooks {
   onMoveStart(): void;
   /** Un étirement a eu lieu (pour un petit son, une réaction d'Ondine…). */
   onStretch?(amount: number): void;
+  /** On lâche après un étirement de `amount` px (pour un petit « boïng »). */
+  onRelease?(amount: number): void;
 }
 
 /**
@@ -179,7 +181,10 @@ export function enableGestures(shell: HTMLElement, hooks: GestureHooks): () => b
     if (!mode) return;
     mode = null;
     shell.classList.remove("stretching");
-    if (moved) settle();
+    if (moved) {
+      hooks.onRelease?.(Math.abs(pos.s) + Math.abs(pos.t));
+      settle();
+    }
   };
   shell.addEventListener("pointerup", release);
   shell.addEventListener("pointercancel", release);

@@ -22,7 +22,9 @@ import { clear, el } from "./dom";
 import { icon } from "./icon";
 import { IslandStateMachine, type IslandState } from "./island-state";
 import { enableGestures, grabZone, type Edge } from "./gestures";
+import { sounds, setSoundPrefs } from "./sounds";
 import { enableTabDrag, flip } from "./tab-drag";
+import { applyTheme } from "./themes";
 import { reducedMotion, TabPill } from "./tab-pill";
 
 const log = logger("island");
@@ -150,6 +152,8 @@ export class Island {
     // Le bord et la place de l'île : la forme s'adapte en CSS (island.css).
     document.body.dataset.edge = s.island.edge ?? "top";
     document.body.dataset.align = s.island.align ?? "center";
+    applyTheme(s.island.theme ?? "nuit", s.island.color ?? "");
+    setSoundPrefs(s.island.sounds ?? true, s.island.soundVolume ?? 0.5);
     this.reorderTabs();
     this.notifications.defaultDurationMs = s.island.notificationSecs * 1000;
     const wanted = s.mascot.enabled ? s.mascot.id : "";
@@ -198,6 +202,9 @@ export class Island {
     if (to === "expanded") void Bridge.islandSetFocus(true);
     if (from === "expanded") void Bridge.islandSetFocus(false);
     if (to !== "hidden") this.mascot?.activity();
+    // Petits sons : une bulle qui monte à l'ouverture, qui redescend à la fermeture.
+    if (to === "expanded") sounds.open();
+    else if (from === "expanded") sounds.close();
     this.render();
   }
 
@@ -222,7 +229,10 @@ export class Island {
       edge: () => this.edge(),
       enabled: () => ["peek", "compact", "expanded", "alert"].includes(this.fsm.state),
       onMoveStart: () => this.startMove(),
+      onRelease: (amount) => amount > 8 && sounds.boing(),
     });
+    // Un « tic » doux sur chaque bouton de l'île.
+    this.shell.addEventListener("click", (e) => (e.target as HTMLElement).closest("button") && sounds.tap(), true);
     // Au survol, le pointeur montre ce qu'on peut faire sur les bords.
     this.shell.addEventListener("pointermove", (e) => {
       if (e.buttons) return;
@@ -309,6 +319,7 @@ export class Island {
 
   /** Ondine arrive au bord (la fenêtre doit être assez grande) ou repart. */
   private onHangChange(on: boolean) {
+    if (on) sounds.drop();
     if (this.fsm.state === "hidden") void Bridge.islandSetCollapsed(!on);
     requestAnimationFrame(() => this.pushRect());
   }
@@ -379,6 +390,7 @@ export class Island {
         const target = this.dropTargetAt(e.position);
         this.highlightDropTarget(undefined);
         this.fsm.dropped();
+        if (paths.length) sounds.drop();
         this.bus.emit("island.files-dropped", { count: paths.length, target: target?.target.id ?? null });
         if (target) void this.registry.drop(target.moduleId, target.target, paths);
         else if (paths.length) {

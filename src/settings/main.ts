@@ -19,7 +19,9 @@ import { applyTabOrder, mergeOrder } from "../core/tab-order";
 import type { Settings } from "../core/types";
 import { el } from "../island/dom";
 import { icon as iconNode } from "../island/icon";
+import { sounds, setSoundPrefs } from "../island/sounds";
 import { reducedMotion } from "../island/tab-pill";
+import { THEMES, themeFor } from "../island/themes";
 import { mascotCatalog } from "../mascot/catalog";
 import { createRenderer, type MascotRenderer } from "../mascot/renderer";
 import { ALL_MODULES } from "../modules";
@@ -58,6 +60,15 @@ const ISLAND_PAGES: Page[] = [
     sub: "L'écran, le repli de l'île, les notifications et le journal.",
     keywords: ["Sur quel écran ?", "Replier l'île", "Durée des notifications", "Bord de l'écran", "Niveau du journal", "Dossier du journal"],
     render: general,
+  },
+  {
+    id: "look",
+    group: "L'île",
+    icon: "🎨",
+    label: "Apparence",
+    sub: "La couleur de l'île et ses petits sons.",
+    keywords: ["Thème", "Couleur de l'île", "Couleur personnalisée", "Sons de clic", "Volume des sons"],
+    render: look,
   },
   {
     id: "tabs",
@@ -458,6 +469,66 @@ function general(main: HTMLElement) {
       ],
       "Le journal reste sur ton PC (%LOCALAPPDATA%\\Ondine\\logs). Il ne contient jamais de clé ni de contenu de fichier.",
     ),
+  );
+}
+
+/** La couleur de l'île (thèmes tout faits ou couleur choisie) et les petits sons. */
+function look(main: HTMLElement) {
+  const s = settingsStore.current;
+  const swatch = (id: string, name: string) => {
+    const t = themeFor(id, s.island.color);
+    const b = el(
+      "button",
+      { class: `swatch ${s.island.theme === id ? "active" : ""}`, title: name, "aria-pressed": String(s.island.theme === id), onclick: () => save((d) => (d.island.theme = id), true) },
+      el("span", { class: "swatch-dot" }, el("i", {})),
+      el("span", { class: "swatch-name" }, name),
+    );
+    const dot = b.querySelector<HTMLElement>(".swatch-dot")!;
+    dot.style.background = t.bg;
+    dot.querySelector<HTMLElement>("i")!.style.background = t.accent;
+    return b;
+  };
+  const picker = el("input", { type: "color", class: "color-input", "aria-label": "Couleur personnalisée" }) as HTMLInputElement;
+  picker.value = s.island.color || "#0c0d12";
+  picker.addEventListener("change", () =>
+    save((d) => {
+      d.island.color = picker.value;
+      d.island.theme = "custom";
+    }, true),
+  );
+  setSoundPrefs(s.island.sounds, s.island.soundVolume);
+  main.append(
+    group("Thème", [wideRow(null, el("div", { class: "swatches" }, ...THEMES.map((t) => swatch(t.id, t.name)), swatch("custom", "Personnalisée")), undefined, "Thème")]),
+    group(
+      null,
+      [row("Couleur personnalisée", picker, "Choisis n'importe quelle couleur : si elle est trop claire, l'île l'assombrit juste assez pour que le texte reste lisible.")],
+    ),
+    group("Sons", [
+      row("Sons de clic", toggle(s.island.sounds, (v) => save((d) => (d.island.sounds = v)), "Sons de clic"), "De petits « plop » à l'ouverture, à la fermeture et sur les boutons. Fabriqués sur place, sans fichier."),
+      row(
+        "Volume des sons",
+        stepper(Math.round(s.island.soundVolume * 100), 5, 100, (v) => save((d) => (d.island.soundVolume = v / 100)), 5, "%"),
+      ),
+      row(
+        "Écouter",
+        el(
+          "button",
+          {
+            class: "btn small",
+            onclick: () => {
+              const cur = settingsStore.current.island;
+              setSoundPrefs(true, cur.soundVolume);
+              sounds.open();
+              window.setTimeout(() => sounds.tap(), 300);
+              window.setTimeout(() => sounds.drop(), 600);
+              window.setTimeout(() => sounds.close(), 950);
+              window.setTimeout(() => setSoundPrefs(cur.sounds, cur.soundVolume), 1300);
+            },
+          },
+          "▶ Essayer",
+        ),
+      ),
+    ]),
   );
 }
 
