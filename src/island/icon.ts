@@ -47,6 +47,8 @@ const IMAGES: Record<string, string> = {
   "logo:claude": claudeLogo,
   "logo:gemini": geminiLogo,
 };
+// Codex : une icône à nous (un « codex », livre de code), pas le logo d'OpenAI.
+if (byName("codex")) IMAGES["logo:codex"] = byName("codex");
 for (const [emoji, name] of Object.entries(BY_EMOJI)) {
   const url = byName(name);
   if (url) IMAGES[emoji] = url;
@@ -72,12 +74,12 @@ export function icon(name: string): Node {
 
 /**
  * L'icône d'un agent IA, d'après son nom (« claude », « claude-code »,
- * « gemini », « codex »…). Codex n'a pas encore de logo : un terminal.
+ * « gemini », « codex »…).
  */
 export function agentIcon(tool: string): string {
   const t = tool.toLowerCase();
   if (t.includes("claude")) return "logo:claude";
   if (t.includes("gemini")) return "logo:gemini";
-  if (t.includes("codex")) return "⌨️";
+  if (t.includes("codex")) return "logo:codex";
   return "🤖";
 }
