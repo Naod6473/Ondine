@@ -2,19 +2,55 @@
 // lanceur, réglages, cibles de dépôt).
 //
 // Une icône reste une simple chaîne :
-//   - un emoji (« 📅 ») est affiché tel quel, comme du texte ;
-//   - « logo:claude » désigne une image fournie avec l'île (voir IMAGES).
-// Ainsi les manifestes et les notifications ne changent pas de forme : pour
-// remplacer un emoji par une image, il suffit d'ajouter l'image ici.
+//   - un emoji qui a son image (« 📅 » → src/assets/icons/agenda.webp) est
+//     affiché en image, partout où il apparaît ;
+//   - un autre emoji est affiché tel quel, comme du texte ;
+//   - « logo:claude » désigne un logo fourni avec l'île.
+// Ainsi les manifestes et les notifications ne changent pas : pour donner une
+// image à un emoji, il suffit d'ajouter une ligne dans BY_EMOJI.
 
 import claudeLogo from "../assets/logos/claude.svg?url";
 import geminiLogo from "../assets/logos/gemini.svg?url";
 
-/** Les images connues. Une clé absente retombe sur FALLBACK. */
+// Toutes les images de src/assets/icons, par nom de fichier (« agenda »…).
+// Vite les copie avec l'appli et nous donne leur adresse.
+const files = import.meta.glob<string>("../assets/icons/*.webp", { eager: true, query: "?url", import: "default" });
+const byName = (name: string) => files[`../assets/icons/${name}.webp`];
+
+/** L'emoji d'origine → le nom de son image (icônes dessinées pour l'île). */
+const BY_EMOJI: Record<string, string> = {
+  "📅": "agenda",
+  "🤖": "agents",
+  "💬": "askclaude",
+  "✂️": "capture",
+  "📋": "clipboard",
+  "🚀": "launcher",
+  "🎵": "media",
+  "🌐": "nettools",
+  "📝": "notes",
+  "📡": "remote",
+  "⚡": "rules",
+  "🧺": "shelf",
+  "📊": "system",
+  "🖥️": "terminal",
+  "⏱️": "timer",
+  "⚙️": "general",
+  "🗂️": "tabs",
+  "💧": "mascot",
+  "🛡️": "privacy",
+  "🔑": "credentials",
+  "💾": "backup",
+};
+
+/** Les images connues. Une clé « logo: » absente retombe sur FALLBACK. */
 const IMAGES: Record<string, string> = {
   "logo:claude": claudeLogo,
   "logo:gemini": geminiLogo,
 };
+for (const [emoji, name] of Object.entries(BY_EMOJI)) {
+  const url = byName(name);
+  if (url) IMAGES[emoji] = url;
+}
 
 /** Si une image manque (logo pas encore fourni), on montre ceci. */
 const FALLBACK = "✳️";

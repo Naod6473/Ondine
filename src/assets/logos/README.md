@@ -6,3 +6,9 @@
   Relire leurs règles de marque avant toute distribution de l'île.
 - Codex : pas encore de logo (Simple Icons n'a plus celui d'OpenAI), `src/island/icon.ts`
   affiche ⌨️ en attendant.
+
+# Icônes des modules (`../icons/*.webp`)
+
+Dessinées pour l'île (générées par Simon avec GPT), découpées et réduites en 128 px.
+`mascot.webp` reprend l'icône de l'appli (la goutte). Associées aux emojis dans
+`src/island/icon.ts` (BY_EMOJI).
