@@ -1,13 +1,308 @@
 {
   "id": "goutte",
   "name": "Goutte",
-  "version": "0.1.0",
-  "renderer": "spritesheet",
+  "version": "0.2.0",
+  "renderer": "poses",
   "fallback": "idle",
+  "poses": {
+    "open": {
+      "file": "open.png",
+      "eyes": [
+        {
+          "cx": 83.0,
+          "cy": 143.0,
+          "rx": 21.0,
+          "ry": 22.0
+        },
+        {
+          "cx": 171.0,
+          "cy": 143.0,
+          "rx": 21.0,
+          "ry": 22.0
+        }
+      ],
+      "blink": "closed"
+    },
+    "closed": {
+      "file": "closed.png"
+    },
+    "mouth": {
+      "file": "mouth.png",
+      "eyes": [
+        {
+          "cx": 83.0,
+          "cy": 142.0,
+          "rx": 21.0,
+          "ry": 22.0
+        },
+        {
+          "cx": 170.5,
+          "cy": 141.5,
+          "rx": 21.5,
+          "ry": 22.5
+        }
+      ],
+      "blink": "laugh"
+    },
+    "laugh": {
+      "file": "laugh.png"
+    },
+    "validation": {
+      "file": "validation.png",
+      "eyes": [
+        {
+          "cx": 81.5,
+          "cy": 142.5,
+          "rx": 21.0,
+          "ry": 22.0
+        },
+        {
+          "cx": 169.5,
+          "cy": 142.5,
+          "rx": 21.0,
+          "ry": 22.0
+        }
+      ]
+    },
+    "question": {
+      "file": "question.png",
+      "eyes": [
+        {
+          "cx": 83.0,
+          "cy": 143.5,
+          "rx": 20.5,
+          "ry": 22.0
+        },
+        {
+          "cx": 172.0,
+          "cy": 143.5,
+          "rx": 21.5,
+          "ry": 22.0
+        }
+      ]
+    },
+    "agacee": {
+      "file": "agacee.png",
+      "eyes": [
+        {
+          "cx": 82.0,
+          "cy": 143.5,
+          "rx": 20.5,
+          "ry": 22.0
+        },
+        {
+          "cx": 169.5,
+          "cy": 143.5,
+          "rx": 21.0,
+          "ry": 22.0
+        }
+      ]
+    },
+    "oups": {
+      "file": "oups.png",
+      "eyes": [
+        {
+          "cx": 82.0,
+          "cy": 144.0,
+          "rx": 20.5,
+          "ry": 21.5
+        },
+        {
+          "cx": 168.5,
+          "cy": 144.0,
+          "rx": 21.0,
+          "ry": 21.5
+        }
+      ]
+    },
+    "colere": {
+      "file": "colere.png",
+      "eyes": [
+        {
+          "cx": 83.0,
+          "cy": 143.0,
+          "rx": 21.5,
+          "ry": 22.5
+        },
+        {
+          "cx": 172.0,
+          "cy": 142.5,
+          "rx": 21.5,
+          "ry": 22.0
+        }
+      ]
+    },
+    "erreur": {
+      "file": "erreur.png",
+      "eyes": [
+        {
+          "cx": 82.5,
+          "cy": 142.5,
+          "rx": 21.0,
+          "ry": 22.0
+        },
+        {
+          "cx": 171.5,
+          "cy": 143.5,
+          "rx": 21.0,
+          "ry": 22.0
+        }
+      ]
+    },
+    "surprise": {
+      "file": "surprise.png",
+      "eyes": [
+        {
+          "cx": 82.0,
+          "cy": 142.5,
+          "rx": 20.5,
+          "ry": 22.0
+        },
+        {
+          "cx": 169.5,
+          "cy": 142.5,
+          "rx": 21.0,
+          "ry": 22.0
+        }
+      ]
+    },
+    "confusion": {
+      "file": "confusion.png",
+      "eyes": [
+        {
+          "cx": 83.0,
+          "cy": 142.0,
+          "rx": 20.5,
+          "ry": 21.5
+        },
+        {
+          "cx": 171.5,
+          "cy": 142.0,
+          "rx": 21.0,
+          "ry": 21.5
+        }
+      ]
+    },
+    "triste": {
+      "file": "triste.png",
+      "eyes": [
+        {
+          "cx": 82.5,
+          "cy": 143.5,
+          "rx": 21.0,
+          "ry": 21.0
+        },
+        {
+          "cx": 170.5,
+          "cy": 143.5,
+          "rx": 21.0,
+          "ry": 21.0
+        }
+      ]
+    },
+    "inquiet": {
+      "file": "inquiet.png",
+      "eyes": [
+        {
+          "cx": 81.5,
+          "cy": 144.0,
+          "rx": 20.0,
+          "ry": 20.5
+        },
+        {
+          "cx": 170.0,
+          "cy": 144.0,
+          "rx": 20.5,
+          "ry": 20.5
+        }
+      ]
+    },
+    "joie": {
+      "file": "joie.png"
+    },
+    "clin": {
+      "file": "clin.png",
+      "eyes": [
+        {
+          "cx": 168.5,
+          "cy": 142.5,
+          "rx": 21.0,
+          "ry": 21.0
+        }
+      ]
+    },
+    "fatigue": {
+      "file": "fatigue.png"
+    },
+    "sommeil": {
+      "file": "sommeil.png"
+    },
+    "reveil": {
+      "file": "reveil.png"
+    },
+    "victoire": {
+      "file": "victoire.png"
+    },
+    "attention": {
+      "file": "attention.png",
+      "eyes": [
+        {
+          "cx": 82.5,
+          "cy": 142.0,
+          "rx": 21.0,
+          "ry": 22.5
+        },
+        {
+          "cx": 169.5,
+          "cy": 142.0,
+          "rx": 21.0,
+          "ry": 22.5
+        }
+      ]
+    },
+    "info": {
+      "file": "info.png",
+      "eyes": [
+        {
+          "cx": 82.0,
+          "cy": 142.0,
+          "rx": 20.5,
+          "ry": 21.5
+        },
+        {
+          "cx": 170.0,
+          "cy": 142.0,
+          "rx": 20.5,
+          "ry": 21.5
+        }
+      ]
+    },
+    "timide": {
+      "file": "timide.png",
+      "eyes": [
+        {
+          "cx": 82.5,
+          "cy": 142.5,
+          "rx": 21.0,
+          "ry": 22.0
+        },
+        {
+          "cx": 170.0,
+          "cy": 142.0,
+          "rx": 21.5,
+          "ry": 21.5
+        }
+      ]
+    },
+    "calme": {
+      "file": "calme.png"
+    }
+  },
   "states": {
     "idle": "idle",
     "wake": "wake",
     "sleep": "sleep",
+    "bored": "bored",
     "happy": "happy",
     "annoyed": "annoyed",
     "dizzy": "dizzy",
@@ -17,17 +312,28 @@
     "eating": "eating",
     "celebrate": "celebrate",
     "love": "love",
-    "bored": "bored"
+    "success": "success",
+    "question": "question",
+    "error": "error",
+    "warning": "warning",
+    "info": "info",
+    "sad": "sad",
+    "worried": "worried",
+    "surprise": "surprise",
+    "shy": "shy",
+    "calm": "calm",
+    "wink": "wink"
   },
   "animations": [
     {
       "name": "idle",
       "source": {
-        "file": "regard-loin.png",
-        "nearFile": "regard-pres.png",
-        "frames": 7,
-        "mode": "gaze",
-        "effect": "breathe"
+        "pose": "open",
+        "effect": "breathe",
+        "variants": [
+          "clin",
+          "calme"
+        ]
       },
       "durationMs": 4000,
       "loop": true,
@@ -39,13 +345,14 @@
     {
       "name": "wake",
       "source": {
-        "file": "regard-loin.png",
-        "nearFile": "regard-pres.png",
-        "frames": 7,
-        "mode": "gaze",
+        "poses": [
+          "reveil",
+          "open"
+        ],
+        "poseMs": 500,
         "effect": "wake"
       },
-      "durationMs": 900,
+      "durationMs": 1000,
       "loop": false,
       "priority": 2,
       "transitionsTo": [
@@ -56,10 +363,7 @@
     {
       "name": "sleep",
       "source": {
-        "file": "regard-loin.png",
-        "nearFile": "regard-pres.png",
-        "frames": 7,
-        "mode": "gaze",
+        "pose": "sommeil",
         "effect": "sleep",
         "overlay": "zzz"
       },
@@ -67,17 +371,26 @@
       "loop": true,
       "priority": 1,
       "transitionsTo": [
-        "wake",
-        "alert"
+        "*"
+      ]
+    },
+    {
+      "name": "bored",
+      "source": {
+        "pose": "fatigue",
+        "effect": "sigh"
+      },
+      "durationMs": 3000,
+      "loop": true,
+      "priority": 0,
+      "transitionsTo": [
+        "*"
       ]
     },
     {
       "name": "happy",
       "source": {
-        "file": "regard-loin.png",
-        "nearFile": "regard-pres.png",
-        "frames": 7,
-        "mode": "gaze",
+        "pose": "joie",
         "effect": "bounce"
       },
       "durationMs": 1200,
@@ -90,14 +403,15 @@
     {
       "name": "annoyed",
       "source": {
-        "file": "regard-loin.png",
-        "nearFile": "regard-pres.png",
-        "frames": 7,
-        "mode": "gaze",
+        "poses": [
+          "agacee",
+          "colere"
+        ],
+        "poseMs": 700,
         "effect": "shake",
         "overlay": "steam"
       },
-      "durationMs": 1400,
+      "durationMs": 1800,
       "loop": false,
       "priority": 3,
       "transitionsTo": [
@@ -107,10 +421,8 @@
     {
       "name": "dizzy",
       "source": {
-        "file": "regard-loin.png",
-        "nearFile": "regard-pres.png",
-        "frames": 7,
-        "mode": "gaze",
+        "pose": "confusion",
+        "look": "spin",
         "effect": "wobble",
         "overlay": "stars"
       },
@@ -124,10 +436,8 @@
     {
       "name": "thinking",
       "source": {
-        "file": "regard-loin.png",
-        "nearFile": "regard-pres.png",
-        "frames": 7,
-        "mode": "gaze",
+        "pose": "open",
+        "look": "up",
         "effect": "breathe",
         "overlay": "dots"
       },
@@ -141,10 +451,7 @@
     {
       "name": "working",
       "source": {
-        "file": "regard-loin.png",
-        "nearFile": "regard-pres.png",
-        "frames": 7,
-        "mode": "gaze",
+        "pose": "open",
         "effect": "bob",
         "overlay": "sweat"
       },
@@ -158,10 +465,8 @@
     {
       "name": "alert",
       "source": {
-        "file": "regard-loin.png",
-        "nearFile": "regard-pres.png",
-        "frames": 7,
-        "mode": "gaze",
+        "pose": "surprise",
+        "wide": true,
         "effect": "pulse",
         "overlay": "bang"
       },
@@ -175,13 +480,22 @@
     {
       "name": "eating",
       "source": {
-        "file": "regard-loin.png",
-        "nearFile": "regard-pres.png",
-        "frames": 7,
-        "mode": "gaze",
+        "poses": [
+          "mouth",
+          "open",
+          "mouth",
+          "open",
+          "mouth",
+          "open",
+          "mouth",
+          "open",
+          "joie"
+        ],
+        "poseMs": 150,
+        "fadeMs": 60,
         "effect": "chomp"
       },
-      "durationMs": 1400,
+      "durationMs": 1600,
       "loop": false,
       "priority": 3,
       "transitionsTo": [
@@ -192,10 +506,7 @@
     {
       "name": "celebrate",
       "source": {
-        "file": "regard-loin.png",
-        "nearFile": "regard-pres.png",
-        "frames": 7,
-        "mode": "gaze",
+        "pose": "victoire",
         "effect": "jump",
         "overlay": "confetti"
       },
@@ -209,10 +520,7 @@
     {
       "name": "love",
       "source": {
-        "file": "regard-loin.png",
-        "nearFile": "regard-pres.png",
-        "frames": 7,
-        "mode": "gaze",
+        "pose": "timide",
         "effect": "sway",
         "overlay": "hearts"
       },
@@ -224,17 +532,157 @@
       ]
     },
     {
-      "name": "bored",
+      "name": "success",
       "source": {
-        "file": "regard-loin.png",
-        "nearFile": "regard-pres.png",
-        "frames": 7,
-        "mode": "gaze",
+        "pose": "validation",
+        "effect": "bounce",
+        "overlay": "check"
+      },
+      "durationMs": 2000,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "question",
+      "source": {
+        "pose": "question",
+        "look": "up",
+        "effect": "sway",
+        "overlay": "question"
+      },
+      "durationMs": 4000,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "error",
+      "source": {
+        "poses": [
+          "oups",
+          "erreur"
+        ],
+        "poseMs": 500,
+        "effect": "flinch",
+        "overlay": "sweat"
+      },
+      "durationMs": 2600,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "warning",
+      "source": {
+        "pose": "attention",
+        "wide": true,
+        "effect": "pulse",
+        "overlay": "bang"
+      },
+      "durationMs": 2400,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "info",
+      "source": {
+        "pose": "info",
+        "effect": "bounce"
+      },
+      "durationMs": 1800,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "sad",
+      "source": {
+        "pose": "triste",
         "effect": "sigh"
       },
       "durationMs": 3000,
-      "loop": true,
-      "priority": 0,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "worried",
+      "source": {
+        "pose": "inquiet",
+        "effect": "sway",
+        "overlay": "sweat"
+      },
+      "durationMs": 2600,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "surprise",
+      "source": {
+        "pose": "surprise",
+        "wide": true,
+        "effect": "flinch"
+      },
+      "durationMs": 1400,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "shy",
+      "source": {
+        "pose": "timide",
+        "effect": "sway"
+      },
+      "durationMs": 2400,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "calm",
+      "source": {
+        "pose": "calme",
+        "effect": "breathe"
+      },
+      "durationMs": 3000,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "wink",
+      "source": {
+        "pose": "clin",
+        "effect": "bounce",
+        "overlay": "stars"
+      },
+      "durationMs": 1300,
+      "loop": false,
+      "priority": 2,
       "transitionsTo": [
         "*"
       ]

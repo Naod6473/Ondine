@@ -1,0 +1,243 @@
+{
+  "id": "goutte-v1",
+  "name": "Goutte (première version)",
+  "version": "0.1.0",
+  "renderer": "spritesheet",
+  "fallback": "idle",
+  "states": {
+    "idle": "idle",
+    "wake": "wake",
+    "sleep": "sleep",
+    "happy": "happy",
+    "annoyed": "annoyed",
+    "dizzy": "dizzy",
+    "thinking": "thinking",
+    "working": "working",
+    "alert": "alert",
+    "eating": "eating",
+    "celebrate": "celebrate",
+    "love": "love",
+    "bored": "bored"
+  },
+  "animations": [
+    {
+      "name": "idle",
+      "source": {
+        "file": "regard-loin.png",
+        "nearFile": "regard-pres.png",
+        "frames": 7,
+        "mode": "gaze",
+        "effect": "breathe"
+      },
+      "durationMs": 4000,
+      "loop": true,
+      "priority": 0,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "wake",
+      "source": {
+        "file": "regard-loin.png",
+        "nearFile": "regard-pres.png",
+        "frames": 7,
+        "mode": "gaze",
+        "effect": "wake"
+      },
+      "durationMs": 900,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "next": "idle"
+    },
+    {
+      "name": "sleep",
+      "source": {
+        "file": "regard-loin.png",
+        "nearFile": "regard-pres.png",
+        "frames": 7,
+        "mode": "gaze",
+        "effect": "sleep",
+        "overlay": "zzz"
+      },
+      "durationMs": 3200,
+      "loop": true,
+      "priority": 1,
+      "transitionsTo": [
+        "wake",
+        "alert"
+      ]
+    },
+    {
+      "name": "happy",
+      "source": {
+        "file": "regard-loin.png",
+        "nearFile": "regard-pres.png",
+        "frames": 7,
+        "mode": "gaze",
+        "effect": "bounce"
+      },
+      "durationMs": 1200,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "annoyed",
+      "source": {
+        "file": "regard-loin.png",
+        "nearFile": "regard-pres.png",
+        "frames": 7,
+        "mode": "gaze",
+        "effect": "shake",
+        "overlay": "steam"
+      },
+      "durationMs": 1400,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "dizzy",
+      "source": {
+        "file": "regard-loin.png",
+        "nearFile": "regard-pres.png",
+        "frames": 7,
+        "mode": "gaze",
+        "effect": "wobble",
+        "overlay": "stars"
+      },
+      "durationMs": 2600,
+      "loop": false,
+      "priority": 4,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "thinking",
+      "source": {
+        "file": "regard-loin.png",
+        "nearFile": "regard-pres.png",
+        "frames": 7,
+        "mode": "gaze",
+        "effect": "breathe",
+        "overlay": "dots"
+      },
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 1,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "working",
+      "source": {
+        "file": "regard-loin.png",
+        "nearFile": "regard-pres.png",
+        "frames": 7,
+        "mode": "gaze",
+        "effect": "bob",
+        "overlay": "sweat"
+      },
+      "durationMs": 1200,
+      "loop": true,
+      "priority": 1,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "alert",
+      "source": {
+        "file": "regard-loin.png",
+        "nearFile": "regard-pres.png",
+        "frames": 7,
+        "mode": "gaze",
+        "effect": "pulse",
+        "overlay": "bang"
+      },
+      "durationMs": 1500,
+      "loop": true,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "eating",
+      "source": {
+        "file": "regard-loin.png",
+        "nearFile": "regard-pres.png",
+        "frames": 7,
+        "mode": "gaze",
+        "effect": "chomp"
+      },
+      "durationMs": 1400,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "next": "happy"
+    },
+    {
+      "name": "celebrate",
+      "source": {
+        "file": "regard-loin.png",
+        "nearFile": "regard-pres.png",
+        "frames": 7,
+        "mode": "gaze",
+        "effect": "jump",
+        "overlay": "confetti"
+      },
+      "durationMs": 2200,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "love",
+      "source": {
+        "file": "regard-loin.png",
+        "nearFile": "regard-pres.png",
+        "frames": 7,
+        "mode": "gaze",
+        "effect": "sway",
+        "overlay": "hearts"
+      },
+      "durationMs": 2400,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "bored",
+      "source": {
+        "file": "regard-loin.png",
+        "nearFile": "regard-pres.png",
+        "frames": 7,
+        "mode": "gaze",
+        "effect": "sigh"
+      },
+      "durationMs": 3000,
+      "loop": true,
+      "priority": 0,
+      "transitionsTo": [
+        "*"
+      ]
+    }
+  ]
+}

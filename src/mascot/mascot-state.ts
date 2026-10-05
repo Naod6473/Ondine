@@ -9,8 +9,11 @@
 //     (idle, ou working/thinking si une tâche est en cours).
 //
 // Événements écoutés (voir ARCHITECTURE.md pour la liste complète) :
-//   app.ready → wake               task.started → working     task.finished → celebrate
-//   task.failed → annoyed          claude.thinking → thinking  claude.done → idle
+//   app.ready → wake               task.started → working
+//   task.finished → success (sinon celebrate)                  task.failed → error (sinon annoyed)
+//   claude.thinking → thinking     claude.done → idle
+//   agents.ask → question (sinon alert)                        agents.event « waiting » → question
+//   mascot.emote {emotion} → cette émotion (si la mascotte l'a)
 //   island.files-dropped → eating  notify.alert → alert       notify.alert-end → idle
 //   mascot.clicked ×3 rapides → annoyed, ×6 → dizzy           mascot.hover-long → love
 //   inactivité → bored puis sleep  activité pendant sleep → wake
@@ -18,7 +21,7 @@
 
 import type { Bus } from "../core/bus";
 import type { MascotRenderer } from "./renderer";
-import type { AnimationSpec, MascotManifest, MascotState, Mood } from "./types";
+import { MASCOT_STATES, type AnimationSpec, type MascotManifest, type MascotState, type Mood } from "./types";
 
 export interface MascotTimings {
   boredAfterMs: number;
@@ -89,6 +92,16 @@ export class MascotController {
     this.renderer.play(anim);
   }
 
+  /** Cette mascotte a-t-elle une animation propre pour cet état ? */
+  private has(state: MascotState): boolean {
+    return !!this.manifest.states[state];
+  }
+
+  /** Demande `state` si la mascotte sait le jouer, sinon `instead` (les anciennes mascottes). */
+  private requestOr(state: MascotState, instead: MascotState): boolean {
+    return this.request(this.has(state) ? state : instead);
+  }
+
   private animationFor(state: MascotState): AnimationSpec | undefined {
     const name = this.manifest.states[state] ?? this.manifest.fallback;
     return this.manifest.animations.find((a) => a.name === name);
@@ -154,11 +167,11 @@ export class MascotController {
     on("task.finished", () => {
       this.tasks = Math.max(0, this.tasks - 1);
       this.setMood("happy", 30_000);
-      this.request("celebrate");
+      this.requestOr("success", "celebrate");
     });
     on("task.failed", () => {
       this.tasks = Math.max(0, this.tasks - 1);
-      this.request("annoyed");
+      this.requestOr("error", "annoyed");
     });
     on("claude.thinking", () => {
       this.thinking = true;
@@ -167,6 +180,14 @@ export class MascotController {
     on("claude.done", () => {
       this.thinking = false;
       this.request(this.baseState());
+    });
+    // Un agent pose une question ou attend ta permission : la goutte s'interroge.
+    on("agents.ask", () => this.requestOr("question", "alert"));
+    on("agents.event", (e: { kind?: string } | null) => e?.kind === "waiting" && this.has("question") && this.request("question"));
+    // N'importe quel module peut montrer une émotion : bus.emit("mascot.emote", { emotion: "sad" }).
+    on("mascot.emote", (p: { emotion?: string } | null) => {
+      const want = p?.emotion as MascotState | undefined;
+      if (want && (MASCOT_STATES as readonly string[]).includes(want) && this.has(want)) this.request(want);
     });
     on("island.files-dropped", () => {
       this.activity();
