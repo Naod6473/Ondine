@@ -15,6 +15,7 @@ import { settingsStore } from "../core/settings-store";
 import { applyTabOrder, mergeOrder } from "../core/tab-order";
 import type { Settings } from "../core/types";
 import { findMascot } from "../mascot/catalog";
+import { Hanger } from "../mascot/hang";
 import { MascotController } from "../mascot/mascot-state";
 import { createRenderer } from "../mascot/renderer";
 import { clear, el } from "./dom";
@@ -32,6 +33,10 @@ const TRANSITION_MS = 420;
 const EDGE_ZONE = { len: 240, depth: 14 };
 /** Survol prolongé de la mascotte → `love`. */
 const LONG_HOVER_MS = 2500;
+/** Ondine vient pendre au bord seulement si personne n'a touché le PC depuis… */
+const PEEK_IDLE_MS = 20_000;
+/** On se demande toutes les… si c'est le moment. */
+const PEEK_CHECK_MS = 15_000;
 
 function timingsFrom(s: Settings) {
   return {
@@ -67,6 +72,9 @@ export class Island {
   private hoverMascotFired = false;
   /** Le dernier appui sur l'île était un geste (étirer, déplacer), pas un clic. */
   private wasGesture: () => boolean = () => false;
+  /** Ondine qui pend au bord de l'écran (mascot/hang.ts), et sa dernière visite. */
+  private hanger: Hanger;
+  private lastPeek = Date.now();
 
   constructor(
     private readonly root: HTMLElement,
@@ -78,6 +86,16 @@ export class Island {
     this.fsm.onTransition = (from, to) => this.onTransition(from, to);
     this.shell.append(this.mascotSlot, this.content);
     this.root.append(this.shell);
+    this.hanger = new Hanger(this.root, {
+      edge: () => this.edge(),
+      align: () => document.body.dataset.align ?? "center",
+      entry: () => (this.mascotId ? findMascot(this.mascotId) : null),
+      onClick: () => this.fsm.open(),
+      onShowChange: (on) => this.onHangChange(on),
+    });
+    window.setInterval(() => void this.maybePeek(), PEEK_CHECK_MS);
+    // Dans un navigateur (npm run dev) : window.ondinePeek() la fait venir tout de suite.
+    if (!IS_TAURI) (window as unknown as { ondinePeek: () => void }).ondinePeek = () => this.hanger.show();
 
     this.notifications.defaultDurationMs = settingsStore.current.island.notificationSecs * 1000;
     let wasAlert = false;
@@ -118,6 +136,10 @@ export class Island {
     this.applySettings(settingsStore.current);
     this.wireInputs();
     this.wireUndo();
+    // Bouton « Faire venir Ondine » des réglages.
+    this.bus.on("mascot.peek-now", () => {
+      if (this.fsm.state === "hidden") this.hanger.show();
+    });
     this.render(true);
   }
 
@@ -164,6 +186,8 @@ export class Island {
     if (from === "hidden") {
       // On agrandit d'abord la fenêtre, puis l'île s'anime dedans.
       void Bridge.islandSetCollapsed(false);
+      // Ondine pendait au bord : elle remonte, l'île arrive.
+      this.hanger.hide();
     }
     if (to === "hidden") {
       // On laisse l'animation de fermeture se finir avant de réduire la fenêtre.
@@ -267,15 +291,50 @@ export class Island {
     void Bridge.islandDragStart();
   }
 
+  /**
+   * C'est peut-être le moment pour Ondine de venir pendre au bord : île cachée,
+   * réglage activé, personne au clavier depuis un moment, pas de présentation,
+   * et pas de visite depuis `peekEveryMins`. Un peu de hasard en plus.
+   */
+  private async maybePeek() {
+    const s = settingsStore.current;
+    if (!s.mascot.enabled || !s.mascot.peek || this.fsm.state !== "hidden" || this.hanger.showing) return;
+    if (Date.now() - this.lastPeek < (s.mascot.peekEveryMins ?? 5) * 60_000) return;
+    const desk = await Bridge.deskState();
+    if (!desk || desk.busy || desk.idleMs < PEEK_IDLE_MS) return;
+    if (Math.random() < 0.4) return;
+    this.lastPeek = Date.now();
+    this.hanger.show();
+  }
+
+  /** Ondine arrive au bord (la fenêtre doit être assez grande) ou repart. */
+  private onHangChange(on: boolean) {
+    if (this.fsm.state === "hidden") void Bridge.islandSetCollapsed(!on);
+    requestAnimationFrame(() => this.pushRect());
+  }
+
   private pushRect() {
+    // Île cachée et Ondine au bord : seul son petit rectangle prend la souris.
+    const hang = this.fsm.state === "hidden" ? this.hanger.rect() : null;
+    if (hang) {
+      void Bridge.islandSetRect(hang.left, hang.top, hang.width, hang.height);
+      return;
+    }
     const r = this.shell.getBoundingClientRect();
     void Bridge.islandSetRect(r.left, r.top, r.width, r.height);
   }
 
   /** Position de la souris (px logiques de la fenêtre). */
   private pointer(x: number, y: number) {
+    // Ondine pend au bord : elle suit la souris des yeux. Sur elle, la souris
+    // ne réveille pas l'île (on veut pouvoir cliquer dessus).
+    if (this.hanger.showing) {
+      this.hanger.lookAt(x, y);
+      const h = this.hanger.rect();
+      if (h && x >= h.left && x <= h.right && y >= h.top && y <= h.bottom) return;
+    }
     // Dans l'appli, l'île cachée est gérée par la bande de réveil (ci-dessus).
-    if (this.fsm.state === "hidden" && IS_TAURI) return;
+    if (this.fsm.state === "hidden" && IS_TAURI && !this.hanger.showing) return;
     const r = this.shell.getBoundingClientRect();
     const margin = 8;
     const inIsland = x >= r.left - margin && x <= r.right + margin && y >= r.top - margin && y <= r.bottom + margin;

@@ -160,3 +160,12 @@ pub fn migrate_old_dirs() -> Vec<String> {
 pub fn supports_mica() -> bool {
     false
 }
+
+/// Hors Windows : on ne sait pas, on dit « personne n'est là depuis longtemps ».
+pub fn idle_ms() -> u64 {
+    u64::MAX / 2
+}
+
+pub fn presentation_busy() -> bool {
+    false
+}

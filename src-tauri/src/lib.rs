@@ -198,6 +198,20 @@ fn island_drag_start(app: AppHandle, shared: State<Shared>) {
     island::drag_start(&app, &shared.gate);
 }
 
+/// Ce que fait la personne devant l'écran : depuis quand elle n'a rien touché,
+/// et si une présentation ou une appli plein écran est en cours.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DeskState {
+    idle_ms: u64,
+    busy: bool,
+}
+
+#[tauri::command]
+fn desk_state() -> DeskState {
+    DeskState { idle_ms: platform::idle_ms(), busy: platform::presentation_busy() }
+}
+
 #[tauri::command]
 fn island_reposition(app: AppHandle, shared: State<Shared>) {
     let pref = shared.settings.locked().general.screen.clone();
@@ -413,6 +427,7 @@ pub fn run() {
             island_set_focus,
             island_reposition,
             island_drag_start,
+            desk_state,
             log_write,
             logs_open_folder,
             credential_exists,

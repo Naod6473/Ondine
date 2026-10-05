@@ -87,6 +87,26 @@ pub fn cursor_physical() -> Option<(f64, f64)> {
     Some((p.x as f64, p.y as f64))
 }
 
+/// Depuis combien de millisecondes personne n'a touché ni la souris ni le clavier.
+pub fn idle_ms() -> u64 {
+    use ::windows::Win32::System::SystemInformation::GetTickCount;
+    use ::windows::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
+    let mut info = LASTINPUTINFO { cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32, dwTime: 0 };
+    if !unsafe { GetLastInputInfo(&mut info) }.as_bool() {
+        return 0;
+    }
+    // Les deux compteurs tournent sur 32 bits : wrapping_sub gère le passage par zéro.
+    unsafe { GetTickCount() }.wrapping_sub(info.dwTime) as u64
+}
+
+/// Vrai pendant une présentation ou une appli en plein écran (jeu, vidéo,
+/// diaporama PowerPoint) : Windows lui-même retient alors ses notifications.
+pub fn presentation_busy() -> bool {
+    use ::windows::Win32::UI::Shell::SHQueryUserNotificationState;
+    // 2 = appli plein écran, 3 = Direct3D plein écran, 4 = mode présentation.
+    matches!(unsafe { SHQueryUserNotificationState() }.map(|s| s.0), Ok(2..=4))
+}
+
 /// Vrai tant que le bouton gauche est enfoncé : le seul signal qu'un glisser
 /// de fichier commence peut-être, avant qu'il n'atteigne la fenêtre.
 pub fn left_button_down() -> bool {
