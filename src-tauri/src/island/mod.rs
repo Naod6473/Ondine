@@ -464,9 +464,60 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
     });
 }
 
+// ── Raccourci clavier global : ouvrir / fermer l'île ─────────────────────────
+
+/** Les raccourcis proposés dans les réglages (les autres sont refusés). */
+pub const HOTKEYS: &[&str] = &["Ctrl+Alt+O", "Ctrl+Shift+O", "Alt+Shift+O", "Ctrl+Alt+I"];
+
+/// Le raccourci actuellement enregistré auprès de Windows ("" = aucun).
+static HOTKEY: Mutex<String> = Mutex::new(String::new());
+
+/// Enregistre le raccourci de l'île (ou le retire si `wanted` est vide ou
+/// inconnu). Un appui envoie "hotkey" à l'île, qui s'ouvre ou se referme.
+pub fn apply_hotkey(app: &AppHandle, wanted: &str) {
+    use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
+    let wanted = if HOTKEYS.contains(&wanted) { wanted } else { "" };
+    let mut current = HOTKEY.locked();
+    if *current == wanted {
+        return;
+    }
+    let gs = app.global_shortcut();
+    if !current.is_empty() {
+        let _ = gs.unregister(current.as_str());
+    }
+    *current = wanted.to_string();
+    if wanted.is_empty() {
+        return;
+    }
+    let result = gs.on_shortcut(wanted, |app, _shortcut, event| {
+        // Au relâchement : pas de répétition si on garde les touches enfoncées.
+        if event.state == ShortcutState::Released {
+            let _ = app.emit_to(WINDOW_LABEL, "hotkey", ());
+        }
+    });
+    if let Err(e) = result {
+        let text = e.to_string();
+        let msg = if text.contains("already registered") {
+            format!("{wanted} est déjà pris par un autre logiciel : choisis un autre raccourci dans Réglages > Général")
+        } else {
+            format!("le raccourci {wanted} est refusé : {text}")
+        };
+        log::warn(format!("île : {msg}"));
+        let _ = app.emit_to(WINDOW_LABEL, "hotkey-error", msg);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::snap;
+
+    #[test]
+    fn island_hotkeys_parse() {
+        use tauri_plugin_global_shortcut::Shortcut;
+        for k in super::HOTKEYS {
+            assert!(k.parse::<Shortcut>().is_ok(), "{k}");
+        }
+    }
 
     #[test]
     fn snaps_to_nearest_edge_and_magnets() {

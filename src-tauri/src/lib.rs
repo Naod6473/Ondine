@@ -79,6 +79,7 @@ fn apply_settings(app: &AppHandle, shared: &Shared, new: Settings) -> Result<(),
     };
     settings::save(&new)?;
     log::set_min_level(log::Level::parse(&new.general.log_level));
+    island::apply_hotkey(app, &new.island.hotkey);
     if screen_changed {
         island::apply_geometry(app, &new.general.screen, shared.gate.collapsed.load(Ordering::Relaxed));
     }
@@ -454,6 +455,7 @@ pub fn run() {
                 let _ = win.show();
             }
             gate.collapsed.store(true, Ordering::Relaxed);
+            island::apply_hotkey(&handle, &loaded.island.hotkey);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
             // Travail de fond des modules (ex. : Musique surveille le lecteur).
             handle.state::<Registry>().start_all(&handle);

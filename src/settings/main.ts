@@ -58,7 +58,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "⚙️",
     label: "Général",
     sub: "L'écran, le repli de l'île, les notifications et le journal.",
-    keywords: ["Sur quel écran ?", "Replier l'île", "Durée des notifications", "Bord de l'écran", "Niveau du journal", "Dossier du journal"],
+    keywords: ["Sur quel écran ?", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Niveau du journal", "Dossier du journal"],
     render: general,
   },
   {
@@ -442,6 +442,15 @@ function general(main: HTMLElement) {
         "Quand la souris n'est plus dessus, après ce délai.",
       ),
       row("Durée des notifications", stepper(s.island.notificationSecs, 2, 60, (v) => save((d) => (d.island.notificationSecs = v)), 1, "s")),
+      row(
+        "Raccourci pour ouvrir l'île",
+        choice(
+          s.island.hotkey || "off",
+          [["Ctrl+Alt+O", "Ctrl+Alt+O"], ["Ctrl+Shift+O", "Ctrl+Maj+O"], ["Alt+Shift+O", "Alt+Maj+O"], ["Ctrl+Alt+I", "Ctrl+Alt+I"], ["off", "Aucun"]],
+          (v) => save((d) => (d.island.hotkey = v === "off" ? "" : v)),
+        ),
+        "Partout dans Windows : un appui ouvre l'île, un second la referme.",
+      ),
       row(
         "Bord de l'écran",
         choice(s.island.edge, [["top", "En haut"], ["left", "À gauche"], ["right", "À droite"]], (v) =>

@@ -261,6 +261,9 @@ export class Island {
 
     void onDragDrop((e) => this.onDrag(e));
     void onTauriEvent<string>("tray", (id) => id === "open" && this.fsm.open());
+    // Le raccourci clavier de l'île (Ctrl+Alt+O par défaut) : ouvre, ou referme.
+    void onTauriEvent("hotkey", () => (this.fsm.state === "expanded" ? this.fsm.close() : this.fsm.open()));
+    void onTauriEvent<string>("hotkey-error", (text) => this.notifications.push({ moduleId: "island", title: text, icon: "⌨️", priority: "normal" }));
     void onTauriEvent("screen-changed", () => void Bridge.islandReposition());
     // Fin d'un déplacement : l'île s'est posée sur un bord.
     void onTauriEvent("island-drag-end", () => {
