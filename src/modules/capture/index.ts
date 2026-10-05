@@ -22,8 +22,11 @@ interface SavedFile {
   path: string;
 }
 
+type Action = "ocr" | "save" | "shelf" | "annotate";
+
 interface Done {
-  action: "ocr" | "save" | "shelf";
+  /** "copy" : l'image annotée a été copiée (fenêtre d'annotation). */
+  action: Action | "copy";
   ok: boolean;
   result?: OcrSummary | SavedFile;
   error?: string;
@@ -49,6 +52,12 @@ function report(api: ModuleApi, done: Done) {
     api.notify({ title: done.action === "ocr" ? "Lecture du texte impossible" : "Enregistrement impossible", body: done.error, icon: "⚠️", priority: "normal", key: "capture" });
     return;
   }
+  // Annoter : la fenêtre d'annotation s'ouvre, rien à dire de plus.
+  if (done.action === "annotate") return;
+  if (done.action === "copy") {
+    api.notify({ title: "Image annotée copiée", icon: "📋", priority: "low", key: "capture" });
+    return;
+  }
   if (done.action === "ocr") {
     const r = done.result as OcrSummary;
     api.notify({
@@ -67,9 +76,9 @@ function report(api: ModuleApi, done: Done) {
 }
 
 /** Une action sur l'image déjà copiée (le résultat arrive tout de suite). */
-async function onClipboard(api: ModuleApi, action: "ocr" | "save" | "shelf") {
+async function onClipboard(api: ModuleApi, action: Action) {
   try {
-    const command = { ocr: "ocr_clipboard", save: "save_clipboard", shelf: "shelf_clipboard" }[action];
+    const command = { ocr: "ocr_clipboard", save: "save_clipboard", shelf: "shelf_clipboard", annotate: "annotate_clipboard" }[action];
     const result = await api.invoke<OcrSummary | SavedFile>(command);
     report(api, { action, ok: true, result });
   } catch (err) {
@@ -78,7 +87,7 @@ async function onClipboard(api: ModuleApi, action: "ocr" | "save" | "shelf") {
 }
 
 /** Ouvre l'outil de capture de Windows ; le résultat arrivera par "capture.done". */
-async function snip(api: ModuleApi, then: "ocr" | "save" | "shelf") {
+async function snip(api: ModuleApi, then: Action) {
   api.closeIsland(); // l'île ne doit pas être sur la capture
   try {
     await api.invoke("snip", { then });
@@ -106,16 +115,18 @@ export const capture: IslandModule = {
           "div",
           { class: "btn-row" },
           el("span", { class: "muted capture-label" }, "Capturer une zone :"),
-          button("🔤 Lire le texte", "Ouvre l'outil de capture de Windows, puis lit le texte de la zone choisie", () => snip(api, "ocr")),
-          button("💾 Enregistrer", "Ouvre l'outil de capture de Windows, puis enregistre la zone choisie en PNG", () => snip(api, "save")),
+          button("🔤 Texte", "Ouvre l'outil de capture de Windows, puis lit le texte de la zone choisie", () => snip(api, "ocr")),
+          button("✏️ Annoter", "Ouvre l'outil de capture de Windows, puis la zone choisie dans la fenêtre d'annotation", () => snip(api, "annotate")),
+          button("💾 PNG", "Ouvre l'outil de capture de Windows, puis enregistre la zone choisie en PNG", () => snip(api, "save")),
           button("🧺 Étagère", "Ouvre l'outil de capture de Windows, puis enregistre la zone et la pose sur l'étagère", () => snip(api, "shelf")),
         ),
         el(
           "div",
           { class: "btn-row" },
           el("span", { class: "muted capture-label" }, "Image déjà copiée :"),
-          button("🔤 Lire le texte", "Lit le texte de l'image du presse-papiers", () => onClipboard(api, "ocr")),
-          button("💾 Enregistrer", "Enregistre l'image du presse-papiers en PNG", () => onClipboard(api, "save")),
+          button("🔤 Texte", "Lit le texte de l'image du presse-papiers", () => onClipboard(api, "ocr")),
+          button("✏️ Annoter", "Ouvre l'image du presse-papiers dans la fenêtre d'annotation", () => onClipboard(api, "annotate")),
+          button("💾 PNG", "Enregistre l'image du presse-papiers en PNG", () => onClipboard(api, "save")),
           button("🧺 Étagère", "Enregistre l'image du presse-papiers et la pose sur l'étagère", () => onClipboard(api, "shelf")),
           button("📂", "Montre la dernière capture enregistrée dans l'Explorateur", async () => {
             try {

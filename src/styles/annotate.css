@@ -1,0 +1,225 @@
+/* La fenêtre d'annotation : sombre, comme l'île. */
+
+:root {
+  --bg: #0c0d12;
+  --panel: #16181f;
+  --fg: #eef0f6;
+  --muted: #9aa0b4;
+  --accent: #7cc4ff;
+  --line: rgba(255, 255, 255, 0.08);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Même ressort que l'île (island.css). */
+  --spring: linear(0, 0.0637, 0.2088, 0.3833, 0.5542, 0.7031, 0.8222, 0.9106, 0.9712, 1.0089, 1.0293, 1.0375,
+    1.0378, 1.0336, 1.0272, 1.0205, 1.0143, 1.0091, 1.0051, 1.0022, 1.0003, 0.9992, 0.9987, 0.9985, 0.9986,
+    0.9988, 0.9991, 0.9993, 1);
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font: 13px/1.35 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  user-select: none;
+  overflow: hidden;
+}
+#app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Barre d'outils ──────────────────────────────────────────────────────── */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.spacer {
+  flex: 1;
+}
+.group {
+  position: relative; /* pour la pastille de l'outil actif */
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+}
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  transition:
+    background 150ms ease,
+    color 150ms ease,
+    transform 300ms var(--spring);
+}
+button:active {
+  transform: scale(0.9);
+}
+.tool {
+  position: relative;
+  z-index: 1;
+  width: 32px;
+  height: 28px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 15px;
+}
+.tool:hover,
+.tool.active {
+  color: var(--fg);
+}
+.tab-pill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  z-index: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  transform-origin: center;
+  will-change: transform, width;
+  pointer-events: none;
+}
+.swatch {
+  width: 22px;
+  height: 22px;
+  margin: 3px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25) inset;
+}
+.swatch.active {
+  transform: scale(1.18);
+  box-shadow:
+    0 0 0 2px var(--bg),
+    0 0 0 4px var(--c);
+}
+.size {
+  width: 30px;
+  height: 28px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+}
+.size i {
+  display: block;
+  width: var(--s);
+  height: var(--s);
+  border-radius: 50%;
+  background: var(--muted);
+  transition: background 150ms ease;
+}
+.size.active {
+  background: rgba(255, 255, 255, 0.1);
+}
+.size.active i {
+  background: var(--fg);
+}
+.action {
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--line);
+}
+.action:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.action.ghost {
+  background: transparent;
+}
+
+/* ── Image ───────────────────────────────────────────────────────────────── */
+
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.05) 1px, transparent 0) 0 0 / 18px 18px;
+}
+.board {
+  border-radius: 10px;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 0 0 1px var(--line);
+  cursor: crosshair;
+  touch-action: none;
+}
+.board[data-tool="text"] {
+  cursor: text;
+}
+.empty {
+  color: var(--muted);
+}
+.text-input {
+  position: absolute;
+  min-width: 120px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px dashed rgba(255, 255, 255, 0.4);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-weight: 600;
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  outline: none;
+  user-select: text;
+}
+
+/* ── Message ─────────────────────────────────────────────────────────────── */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translate(-50%, 20px) scale(0.9);
+  opacity: 0;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(30, 33, 42, 0.95);
+  border: 1px solid var(--line);
+  pointer-events: none;
+}
+.toast.error {
+  color: #ffb4ab;
+}
+.toast.show {
+  animation: toast 2400ms var(--ease) forwards;
+}
+@keyframes toast {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 20px) scale(0.9);
+  }
+  12%,
+  80% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  .toast.show {
+    transition: none !important;
+    animation-duration: 1ms !important;
+  }
+}

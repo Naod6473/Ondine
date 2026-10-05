@@ -61,6 +61,8 @@ export const Bridge = {
   /** Boîte « Choisir un dossier » de Windows. null si on annule (ou hors de l'appli). */
   pickFolder: (title?: string) => call<string | null>("dialog_pick_folder", { title: title ?? null }),
   openSettingsWindow: () => call<void>("settings_open_window"),
+  /** Cache la fenêtre qui appelle (fenêtre d'annotation). */
+  windowHide: () => call<void>("window_hide"),
 
   // Fenêtre de l'île
   islandSetCollapsed: (collapsed: boolean) => call<void>("island_set_collapsed", { collapsed }),

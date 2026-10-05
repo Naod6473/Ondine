@@ -19,6 +19,7 @@ island/
 ├─ package.json · vite.config.ts · tsconfig.json
 ├─ index.html                 page de l'île
 ├─ settings.html              page de la fenêtre de réglages
+├─ annotate.html              page de la fenêtre d'annotation des captures
 ├─ scripts/gen-icons.mjs      dessine l'icône de l'appli (npm run icons)
 ├─ mascots/                   UNE MASCOTTE = UN DOSSIER (manifest.json + fichiers)
 │  ├─ placeholder/            la mascotte provisoire, dessinée en code
@@ -52,6 +53,7 @@ island/
 │  │  ├─ media/               Musique en cours de lecture (phase 3)
 │  │  └─ hello/               module d'exemple : manifest.json + index.ts
 │  ├─ settings/               fenêtre de réglages (formulaires générés)
+│  ├─ annotate/               fenêtre d'annotation (dessin sur une capture)
 │  └─ styles/                 island.css, settings.css
 └─ src-tauri/                 ── BACKEND (Rust) ──
    ├─ tauri.conf.json         fenêtre de l'île, sécurité (CSP), installateur
@@ -433,6 +435,13 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   fichier à la Corbeille.
 - **Vers l'étagère** : enregistre le PNG puis publie `shelf.add` ; l'Étagère
   (qui écoute ce sujet) valide le chemin et le pose sur l'étagère.
+- **Annoter** : l'image (en PNG) est gardée par le Rust et la fenêtre
+  « annotate » s'ouvre (créée cachée au démarrage, comme les réglages : sous
+  WebView2 une fenêtre créée plus tard peut rester blanche). Elle lit l'image
+  (`annotate_image`), dessine des formes (flèche, rectangle, crayon,
+  surligneur, texte ; Annuler/Rétablir), puis renvoie le PNG fini
+  (`annotate_export`). Le Rust le décode (ce qui le valide), puis le copie,
+  l'enregistre ou le pose sur l'étagère.
 - **Image déjà copiée** : les mêmes actions, sans ouvrir l'outil.
 - **Onglets** : à partir de 5 modules, les onglets inactifs n'affichent que
   leur icône (le nom au survol).

@@ -2,6 +2,6 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Ce que les fenêtres de l'île ont le droit de faire. Tout ce qui touche au système passe par les commandes Rust de l'île.",
-  "windows": ["island", "settings"],
+  "windows": ["island", "settings", "annotate"],
   "permissions": ["core:default"]
 }

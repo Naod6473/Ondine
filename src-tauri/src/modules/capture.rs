@@ -20,8 +20,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use base64::engine::general_purpose::STANDARD as BASE64;
+use base64::Engine;
 use serde_json::{json, Value};
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 
 use super::{ModuleContext, RustModule};
 use crate::platform::{self, ocr};
@@ -29,6 +31,10 @@ use crate::services::undo::DEFAULT_WINDOW;
 use crate::services::{bus, files, log};
 
 const ID: &str = "capture";
+/// La fenêtre d'annotation (créée cachée au démarrage, voir lib.rs).
+const ANNOTATE_WINDOW: &str = "annotate";
+/// Taille maximale d'une image annotée qui revient du front (en base64, ~60 Mo).
+const MAX_EXPORT_BASE64: usize = 80 * 1024 * 1024;
 /// Combien de temps on attend que tu choisisses la zone.
 const SNIP_TIMEOUT: Duration = Duration::from_secs(120);
 
@@ -39,6 +45,8 @@ struct State {
     text: Option<ocr::OcrText>,
     /// Le dernier fichier enregistré (pour « Montrer dans l'Explorateur »).
     saved: Option<PathBuf>,
+    /// L'image ouverte dans la fenêtre d'annotation (en PNG).
+    to_annotate: Option<Vec<u8>>,
 }
 
 #[derive(Default)]
@@ -55,6 +63,8 @@ enum Then {
     Save,
     /// Enregistrer, puis poser le fichier sur l'étagère.
     Shelf,
+    /// Ouvrir l'image dans la fenêtre d'annotation.
+    Annotate,
 }
 
 impl Then {
@@ -63,6 +73,7 @@ impl Then {
             Then::Ocr => "ocr",
             Then::Save => "save",
             Then::Shelf => "shelf",
+            Then::Annotate => "annotate",
         }
     }
 }
@@ -79,6 +90,7 @@ impl RustModule for Capture {
                 let then = match args.get("then").and_then(Value::as_str) {
                     Some("save") => Then::Save,
                     Some("shelf") => Then::Shelf,
+                    Some("annotate") => Then::Annotate,
                     _ => Then::Ocr,
                 };
                 self.snip(ctx.app, then)?;
@@ -87,6 +99,12 @@ impl RustModule for Capture {
             "ocr_clipboard" => run(ctx, &self.state, Then::Ocr),
             "save_clipboard" => run(ctx, &self.state, Then::Save),
             "shelf_clipboard" => run(ctx, &self.state, Then::Shelf),
+            "annotate_clipboard" => run(ctx, &self.state, Then::Annotate),
+            "annotate_image" => {
+                let png = self.state.lock().unwrap().to_annotate.clone().ok_or("aucune image à annoter")?;
+                Ok(json!({ "url": format!("data:image/png;base64,{}", BASE64.encode(png)) }))
+            }
+            "annotate_export" => self.annotate_export(ctx, &args),
             "last" => Ok(json!({ "result": self.state.lock().unwrap().text })),
             "copy_last" => {
                 let text = self.state.lock().unwrap().text.as_ref().map(|t| t.text.clone()).ok_or("aucun texte lu")?;
@@ -105,6 +123,37 @@ impl RustModule for Capture {
 }
 
 impl Capture {
+    /// L'image annotée revient de la fenêtre d'annotation, en PNG : on la
+    /// copie, l'enregistre, ou l'enregistre et la pose sur l'étagère.
+    fn annotate_export(&self, ctx: &ModuleContext, args: &Value) -> Result<Value, String> {
+        let encoded = args.get("png").and_then(Value::as_str).ok_or("image manquante")?;
+        if encoded.len() > MAX_EXPORT_BASE64 {
+            return Err("image trop grande".into());
+        }
+        let png = BASE64.decode(encoded).map_err(|_| "image illisible".to_string())?;
+        // On vérifie que c'est bien une image PNG, et on la décode (ce qui la valide).
+        let rgba = image::load_from_memory_with_format(&png, image::ImageFormat::Png)
+            .map_err(|e| format!("image illisible : {e}"))?
+            .to_rgba8();
+        let (action, result) = match args.get("then").and_then(Value::as_str) {
+            Some("copy") => {
+                let mut clipboard = arboard::Clipboard::new().map_err(|e| format!("presse-papiers indisponible : {e}"))?;
+                clipboard
+                    .set_image(arboard::ImageData {
+                        width: rgba.width() as usize,
+                        height: rgba.height() as usize,
+                        bytes: rgba.as_raw().into(),
+                    })
+                    .map_err(|e| format!("presse-papiers : {e}"))?;
+                ("copy", json!({}))
+            }
+            Some("shelf") => ("shelf", saved_json(ctx, &self.state, &png, true)?),
+            _ => ("save", saved_json(ctx, &self.state, &png, false)?),
+        };
+        bus::emit(ctx.app, ID, "capture.done", json!({ "action": action, "ok": true, "result": result }));
+        Ok(result)
+    }
+
     /// Ouvre l'outil de capture de Windows, puis attend l'image dans un thread.
     fn snip(&self, app: &AppHandle, then: Then) -> Result<(), String> {
         if self.waiting.swap(true, Ordering::SeqCst) {
@@ -178,23 +227,44 @@ fn run(ctx: &ModuleContext, state: &Arc<Mutex<State>>, then: Then) -> Result<Val
             Ok(out)
         }
         Then::Save | Then::Shelf => {
-            let path = save_png(ctx, width, height, &bytes)?;
-            let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
-            ctx.log_info("capture enregistrée");
-            if matches!(then, Then::Shelf) {
-                // Les modules ne s'appellent pas : on passe par le bus.
-                ctx.emit("shelf.add", json!({ "paths": [path.display().to_string()] }));
-            }
-            state.lock().unwrap().saved = Some(path.clone());
-            let undo_path = path.clone();
-            let undo_id = ctx.offer_undo(
-                &format!("« {name} » enregistrée"),
-                DEFAULT_WINDOW,
-                Box::new(move || files::to_trash(&[undo_path])),
-            );
-            Ok(json!({ "name": name, "path": path.display().to_string(), "undoId": undo_id }))
+            let png = encode_png(width, height, &bytes)?;
+            saved_json(ctx, state, &png, matches!(then, Then::Shelf))
+        }
+        Then::Annotate => {
+            state.lock().unwrap().to_annotate = Some(encode_png(width, height, &bytes)?);
+            // La fenêtre d'annotation relit l'image quand elle reçoit "annotate-load".
+            crate::show_window(ctx.app, ANNOTATE_WINDOW);
+            let _ = ctx.app.emit_to(ANNOTATE_WINDOW, "annotate-load", ());
+            Ok(json!({ "width": width, "height": height }))
         }
     }
+}
+
+/// Enregistre le PNG, le pose sur l'étagère si demandé, propose « Annuler ».
+fn saved_json(ctx: &ModuleContext, state: &Arc<Mutex<State>>, png: &[u8], to_shelf: bool) -> Result<Value, String> {
+    let path = save_png(ctx, png)?;
+    let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+    ctx.log_info("capture enregistrée");
+    if to_shelf {
+        // Les modules ne s'appellent pas : on passe par le bus.
+        ctx.emit("shelf.add", json!({ "paths": [path.display().to_string()] }));
+    }
+    state.lock().unwrap().saved = Some(path.clone());
+    let undo_path = path.clone();
+    let undo_id = ctx.offer_undo(
+        &format!("« {name} » enregistrée"),
+        DEFAULT_WINDOW,
+        Box::new(move || files::to_trash(&[undo_path])),
+    );
+    Ok(json!({ "name": name, "path": path.display().to_string(), "undoId": undo_id }))
+}
+
+/// Pixels RGBA → fichier PNG en mémoire.
+fn encode_png(width: u32, height: u32, rgba: &[u8]) -> Result<Vec<u8>, String> {
+    let mut out = std::io::Cursor::new(Vec::new());
+    image::write_buffer_with_format(&mut out, rgba, width, height, image::ExtendedColorType::Rgba8, image::ImageFormat::Png)
+        .map_err(|e| format!("encodage PNG impossible : {e}"))?;
+    Ok(out.into_inner())
 }
 
 /// L'image du presse-papiers : (largeur, hauteur, pixels RGBA).
@@ -207,8 +277,8 @@ fn read_image() -> Result<(u32, u32, Vec<u8>), String> {
     Ok((image.width as u32, image.height as u32, image.bytes.into_owned()))
 }
 
-/// Enregistre l'image en PNG dans le dossier des captures et renvoie son chemin.
-fn save_png(ctx: &ModuleContext, width: u32, height: u32, bytes: &[u8]) -> Result<PathBuf, String> {
+/// Écrit le PNG dans le dossier des captures et renvoie son chemin.
+fn save_png(ctx: &ModuleContext, png: &[u8]) -> Result<PathBuf, String> {
     let dir = capture_dir(ctx)?;
     let t = platform::local_time();
     let name = format!(
@@ -216,8 +286,7 @@ fn save_png(ctx: &ModuleContext, width: u32, height: u32, bytes: &[u8]) -> Resul
         t.year, t.month, t.day, t.hour, t.minute, t.second
     );
     let path = files::unique_dest(&dir, name.as_ref());
-    image::save_buffer(&path, bytes, width, height, image::ExtendedColorType::Rgba8)
-        .map_err(|e| format!("enregistrement impossible : {e}"))?;
+    std::fs::write(&path, png).map_err(|e| format!("enregistrement impossible : {e}"))?;
     Ok(path)
 }
 
@@ -256,8 +325,10 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("a.png");
         let pixels = vec![200u8; 3 * 2 * 4];
-        image::save_buffer(&path, &pixels, 3, 2, image::ExtendedColorType::Rgba8).unwrap();
+        std::fs::write(&path, super::encode_png(3, 2, &pixels).unwrap()).unwrap();
         let bytes = std::fs::read(&path).unwrap();
         assert_eq!(&bytes[1..4], b"PNG");
+        let back = image::open(&path).unwrap().to_rgba8();
+        assert_eq!((back.width(), back.height()), (3, 2));
     }
 }
