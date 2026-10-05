@@ -2201,3 +2201,122 @@ body {
   font-size: 14px;
   line-height: 1;
 }
+
+/* ---- Contrôles : volume des haut-parleurs et du micro ---- */
+.ctl {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 4px;
+}
+.ctl-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 4px;
+}
+.ctl-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ctl-mute {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--island-fg);
+  cursor: pointer;
+  transition:
+    background 200ms ease,
+    color 200ms ease,
+    transform 300ms var(--ease);
+}
+.ctl-mute svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  margin: auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ctl-mute:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+}
+.ctl-mute:active:not(:disabled) {
+  transform: scale(0.88);
+}
+/* Coupé : le bouton s'allume en rouge doux, comme sur un téléphone. */
+.ctl-row.muted-dev .ctl-mute {
+  background: rgba(255, 92, 92, 0.85);
+  border-color: transparent;
+  color: #fff;
+}
+.ctl-value {
+  flex: none;
+  width: 48px;
+  text-align: right;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+/* Le curseur : une grande pilule de verre qui se remplit de blanc
+   (--v = le pourcentage, posé par le code). */
+.ctl-slider {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 13px;
+  border: 1px solid var(--line);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.92) 0 var(--v, 0%), rgba(255, 255, 255, 0.08) var(--v, 0%) 100%);
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    transform 300ms var(--ease),
+    opacity 200ms ease;
+}
+.ctl-slider:active {
+  transform: scaleY(1.12);
+}
+/* Le « bouton » du curseur est invisible : c'est le remplissage qui parle. */
+.ctl-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 2px;
+  height: 26px;
+  background: transparent;
+}
+.ctl-row.muted-dev .ctl-slider {
+  opacity: 0.45;
+}
+.ctl-missing {
+  display: none;
+  font-size: 12px;
+}
+.ctl-row.absent .ctl-slider,
+.ctl-row.absent .ctl-value {
+  display: none;
+}
+.ctl-row.absent .ctl-missing {
+  display: inline;
+}
+.ctl-row.absent .ctl-mute {
+  opacity: 0.4;
+  cursor: default;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ctl-slider,
+  .ctl-mute {
+    transition: none;
+  }
+  .ctl-slider:active {
+    transform: none;
+  }
+}

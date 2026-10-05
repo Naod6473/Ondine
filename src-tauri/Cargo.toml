@@ -90,6 +90,11 @@ windows = { version = "0.61", features = [
   "Win32_System_IO",
   "Win32_System_Diagnostics_ToolHelp",
   "Win32_System_Console",
+  # Contrôles : volume des haut-parleurs et du micro (Core Audio).
+  "Win32_Media_Audio",
+  "Win32_Media_Audio_Endpoints",
+  # (requis par IMMDevice::Activate)
+  "Win32_System_Variant",
 ] }
 
 [profile.release]

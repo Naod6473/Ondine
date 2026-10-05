@@ -688,6 +688,17 @@ s'il n'existe pas ou est désactivé).
 - `dns {host}` : nom → adresses par le résolveur de Windows ; une IPv4 →
   son nom (`GetNameInfoW`, recherche inverse).
 
+### Module Contrôles (`src/modules/controls/`, `src-tauri/src/modules/controls.rs`, `src-tauri/src/platform/audio.rs`)
+
+- Volume et coupure des haut-parleurs et du micro **par défaut** de Windows,
+  par Core Audio (`IMMDeviceEnumerator::GetDefaultAudioEndpoint` →
+  `IAudioEndpointVolume`). Aucune permission : rien n'est lu ni envoyé.
+- `state` → `{speakers, microphone}` (`{volume 0-100, muted}` ou `null` sans
+  périphérique) ; `set_volume {device, volume}` ; `set_muted {device, muted}`.
+- Le front relit l'état chaque seconde tant que l'onglet est ouvert (touches
+  du clavier, autre appli) ; pendant un glissé, au plus un envoi toutes les
+  60 ms et le curseur n'est pas écrasé.
+
 ## Agents IA (`src/modules/agents/`, `src-tauri/src/modules/agents.rs`, `src-tauri/src/cli.rs`)
 
 Les outils extérieurs préviennent l'île par une porte d'entrée locale.
