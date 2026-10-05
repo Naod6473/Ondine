@@ -17,8 +17,10 @@
 //   peek     --clic-->                    expanded
 //   peek     --souris partie (300 ms)-->  hidden
 //   compact  --clic-->                    expanded
-//   compact  --souris partie (réglage compactHideSecs)--> hidden
-//   expanded --souris partie (réglage expandedCollapseSecs)--> compact
+//   compact  --souris partie (réglage collapseSecs)--> hidden
+//            (pas tant qu'une notification est affichée : voir `hold`)
+//   expanded --souris partie (réglage collapseSecs)--> hidden
+//            (ou compact si une notification est affichée)
 //   expanded --clic sur la mascotte / bouton réduire--> compact
 //   (tous)   --Échap-->                   hidden (ou ferme l'alerte si alert)
 //   (tous)   --fichier glissé dessus-->   drop   (on retient l'état d'avant)
@@ -33,8 +35,8 @@ export type IslandState = "hidden" | "peek" | "compact" | "expanded" | "drop" | 
 export interface IslandTimings {
   peekToCompactMs: number;
   peekToHiddenMs: number;
-  compactHideMs: number;
-  expandedCollapseMs: number;
+  /** Délai avant repli quand la souris n'est plus sur l'île (réglage collapseSecs). */
+  collapseMs: number;
 }
 
 export class IslandStateMachine {
@@ -43,6 +45,8 @@ export class IslandStateMachine {
   hovering = false;
   /** État auquel revenir après `drop` ou `alert`. */
   private resume: IslandState = "hidden";
+  /** Une notification est affichée : l'île compacte reste ouverte pour qu'on puisse la lire. */
+  private holding = false;
   private timer: number | null = null;
 
   /** Appelé à chaque transition. */
@@ -123,6 +127,17 @@ export class IslandStateMachine {
     this.scheduleCollapse();
   }
 
+  /**
+   * Une notification est (ou n'est plus) affichée. Tant qu'elle l'est, l'île
+   * compacte ne se replie pas : c'est la notification qui décide de sa durée.
+   */
+  hold(on: boolean) {
+    if (on === this.holding) return;
+    this.holding = on;
+    if (on && this.state === "compact") this.cancelTimer();
+    if (!on) this.scheduleCollapse();
+  }
+
   /** Une notification normale : on montre l'île compacte si elle était cachée. */
   showCompact() {
     if (this.state === "hidden" || this.state === "peek") {
@@ -137,18 +152,17 @@ export class IslandStateMachine {
   private scheduleCollapse() {
     this.cancelTimer();
     if (this.hovering) return;
+    if (this.holding && this.state === "compact") return;
     switch (this.state) {
       case "peek":
         this.later(this.timings.peekToHiddenMs, () => this.go("hidden"));
         break;
       case "compact":
-        this.later(this.timings.compactHideMs, () => this.go("hidden"));
+        this.later(this.timings.collapseMs, () => this.go("hidden"));
         break;
       case "expanded":
-        this.later(this.timings.expandedCollapseMs, () => {
-          this.go("compact");
-          this.scheduleCollapse();
-        });
+        // D'un coup jusqu'à cachée, sauf si une notification attend d'être lue.
+        this.later(this.timings.collapseMs, () => this.go(this.holding ? "compact" : "hidden"));
         break;
       default:
         break; // hidden, drop, alert : rien à programmer

@@ -32,8 +32,7 @@ function timingsFrom(s: Settings) {
   return {
     peekToCompactMs: 350,
     peekToHiddenMs: 300,
-    compactHideMs: s.island.compactHideSecs * 1000,
-    expandedCollapseMs: s.island.expandedCollapseSecs * 1000,
+    collapseMs: s.island.collapseSecs * 1000,
   };
 }
 
@@ -82,6 +81,8 @@ export class Island {
         if (n) this.fsm.showCompact();
       }
       wasAlert = alert;
+      // Notification normale affichée : l'île ne se replie pas avant sa fin.
+      this.fsm.hold(!!n && !alert);
       this.render();
     };
 
@@ -224,6 +225,8 @@ export class Island {
   }
 
   private onDrag(e: DragDropEvent) {
+    // Diagnostic : le type d'événement seulement, jamais les chemins.
+    if (e.type !== "over") log.info(`glisser-déposer : ${e.type} (état ${this.fsm.state})`);
     switch (e.type) {
       case "enter":
         this.fsm.dragEnter();

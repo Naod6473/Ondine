@@ -110,8 +110,9 @@ change d'échelle (vérifié deux fois par seconde).
 | peek → compact | survol maintenu 350 ms |
 | peek → expanded, compact → expanded | clic |
 | peek → hidden | souris partie depuis 300 ms |
-| compact → hidden | souris partie depuis `island.compactHideSecs` |
-| expanded → compact | souris partie depuis `island.expandedCollapseSecs`, ou bouton ▴ |
+| compact → hidden | souris partie depuis `island.collapseSecs` (1,5 s par défaut), sauf pendant une notification |
+| expanded → hidden | souris partie depuis `island.collapseSecs` (→ compact si une notification est affichée) |
+| expanded → compact | bouton ▴ |
 | tout → hidden | Échap (en `alert`, Échap ferme seulement l'alerte) |
 | tout → drop | un fichier entre ; l'état d'avant est retenu |
 | drop → état d'avant | le glisser sort de l'île |
