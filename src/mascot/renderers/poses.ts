@@ -41,6 +41,37 @@ function layer(): { c: HTMLCanvasElement; x: CanvasRenderingContext2D } {
   return { c, x: c.getContext("2d")! };
 }
 
+/** Une copie d'un canvas (avant de le redimensionner, ce qui l'efface). */
+function copyOf(c: HTMLCanvasElement): HTMLCanvasElement {
+  const k = document.createElement("canvas");
+  k.width = c.width;
+  k.height = c.height;
+  k.getContext("2d")!.drawImage(c, 0, 0);
+  return k;
+}
+
+/**
+ * Garde seulement les yeux bien décrits dans le manifeste : des nombres, dans
+ * la case, assez grands pour une pupille. Un œil mal décrit est ignoré (avec un
+ * avertissement) au lieu de faire planter le dessin.
+ */
+function validPoses(poses: Record<string, PoseSpec>): Record<string, PoseSpec> {
+  const out: Record<string, PoseSpec> = {};
+  for (const [name, pose] of Object.entries(poses)) {
+    const eyes = (pose.eyes ?? []).filter((e) => {
+      const ok =
+        [e?.cx, e?.cy, e?.rx, e?.ry].every((v) => typeof v === "number" && Number.isFinite(v)) &&
+        e.cx >= 0 && e.cx <= CELL && e.cy >= 0 && e.cy <= CELL &&
+        e.rx > PUPIL_R + 2 && e.ry > PUPIL_R + 2 && e.rx < CELL / 2 && e.ry < CELL / 2;
+      if (!ok) console.warn(`[mascotte] œil mal décrit dans la pose « ${name} » : ignoré`);
+      return ok;
+    });
+    const blink = pose.blink && poses[pose.blink] ? pose.blink : undefined;
+    out[name] = { ...pose, eyes, blink };
+  }
+  return out;
+}
+
 /** Accélère puis ralentit (fondu plus doux qu'une ligne droite). */
 const smooth = (k: number) => k * k * (3 - 2 * k);
 
@@ -49,7 +80,10 @@ export class PosesRenderer implements MascotRenderer {
   private ctx = this.canvas.getContext("2d")!;
   private observer: ResizeObserver | null = null;
   private raf = 0;
-  private reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  // « Réduire les animations » : suivi en direct (le réglage Windows peut changer).
+  private motionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)") ?? null;
+  private reduced = this.motionQuery?.matches ?? false;
+  private onMotionChange = () => (this.reduced = this.motionQuery?.matches ?? false);
 
   private poses: Record<string, PoseSpec>;
   private images = new Map<string, HTMLImageElement>();
@@ -89,7 +123,7 @@ export class PosesRenderer implements MascotRenderer {
     private readonly manifest: MascotManifest,
     assets: Record<string, string>,
   ) {
-    this.poses = manifest.poses ?? {};
+    this.poses = validPoses(manifest.poses ?? {});
     // On charge toutes les poses tout de suite : aucun trou au premier changement.
     for (const [name, pose] of Object.entries(this.poses)) {
       const url = assets[pose.file];
@@ -111,8 +145,17 @@ export class PosesRenderer implements MascotRenderer {
     this.observer = new ResizeObserver(() => this.resize());
     this.observer.observe(container);
     this.resize();
+    this.motionQuery?.addEventListener("change", this.onMotionChange);
+    let warned = false;
     const loop = () => {
-      this.frame(performance.now());
+      // Une erreur dans une image ne doit pas arrêter la goutte : on la note
+      // une fois et on continue à l'image suivante.
+      try {
+        this.frame(performance.now());
+      } catch (err) {
+        if (!warned) console.warn("[mascotte] erreur de dessin", err);
+        warned = true;
+      }
       this.raf = requestAnimationFrame(loop);
     };
     this.raf = requestAnimationFrame(loop);
@@ -142,6 +185,7 @@ export class PosesRenderer implements MascotRenderer {
 
   destroy() {
     cancelAnimationFrame(this.raf);
+    this.motionQuery?.removeEventListener("change", this.onMotionChange);
     this.observer?.disconnect();
     this.canvas.remove();
     this.endCallbacks = [];
@@ -161,14 +205,25 @@ export class PosesRenderer implements MascotRenderer {
     return Math.min(this.canvas.width, this.canvas.height) * 0.84;
   }
 
-  /** Les calques sont à la taille d'affichage : net, et pas plus de travail que nécessaire. */
+  /**
+   * Les calques sont à la taille d'affichage : net, et pas plus de travail que
+   * nécessaire. Changer la taille d'un canvas l'efface : si l'île change de
+   * taille pendant un fondu, on recopie l'ancienne image (mise à l'échelle) pour
+   * que la goutte continue à se fondre au lieu d'apparaître depuis le vide.
+   */
   private fitLayers(size: number) {
     const res = Math.max(16, Math.min(512, Math.ceil(size)));
     if (res === this.res) return;
+    const old = this.res;
     this.res = res;
     for (const l of [this.live, this.from, this.mix]) {
+      const keep = old > 0 && l !== this.live ? copyOf(l.c) : null;
       l.c.width = res;
       l.c.height = res;
+      if (keep) {
+        l.x.imageSmoothingQuality = "high";
+        l.x.drawImage(keep, 0, 0, res, res);
+      }
     }
   }
 
@@ -318,9 +373,10 @@ export class PosesRenderer implements MascotRenderer {
     if (!spec || !img?.complete || img.naturalWidth === 0) return;
 
     // Clignement : quand la paupière dessinée arrive en bas, on montre la vraie pose yeux fermés.
-    if (this.blink >= 0.8 && spec.blink && this.images.get(spec.blink)?.complete) {
-      name = spec.blink;
-      img = this.images.get(name)!;
+    const closed = spec.blink ? this.images.get(spec.blink) : undefined;
+    if (this.blink >= 0.8 && closed?.complete && closed.naturalWidth > 0) {
+      name = spec.blink!;
+      img = closed;
       spec = this.poses[name] ?? { file: "" };
     }
 
