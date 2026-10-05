@@ -87,6 +87,12 @@ export class IslandStateMachine {
     this.go("expanded");
   }
 
+  /** Un module demande à refermer l'île (pas pendant une alerte ou un glisser). */
+  close() {
+    if (this.state === "alert" || this.state === "drop" || this.state === "hidden") return;
+    this.go("hidden");
+  }
+
   /** Renvoie vrai si Échap a été utilisé ici. */
   escape(): "dismiss-alert" | "closed" | null {
     if (this.state === "alert") return "dismiss-alert";

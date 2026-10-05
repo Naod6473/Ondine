@@ -63,6 +63,11 @@ export interface ModuleApi {
    * musique vient de démarrer). L'île change de vue compacte si besoin.
    */
   refreshCompact(): void;
+  /**
+   * Referme l'île (ex. : après avoir collé un texte dans l'appli d'avant).
+   * Sans effet pendant une alerte ou un glisser-déposer.
+   */
+  closeIsland(): void;
   log: Logger;
 }
 

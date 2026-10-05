@@ -161,3 +161,104 @@ pub fn is_elevated() -> bool {
     }
 }
 
+
+// ── Presse-papiers ────────────────────────────────────────────────────────────
+
+/// Numéro qui change à chaque nouvelle copie (n'importe quelle appli).
+/// Le lire ne touche pas au contenu du presse-papiers.
+pub fn clipboard_sequence() -> u32 {
+    unsafe { ::windows::Win32::System::DataExchange::GetClipboardSequenceNumber() }
+}
+
+/// La copie actuelle est-elle marquée « sensible » par l'appli qui l'a faite ?
+///
+/// Les gestionnaires de mots de passe (KeePass, Bitwarden, 1Password…) ajoutent
+/// à leurs copies des formats convenus avec Windows pour dire « ne pas garder » :
+///   - `ExcludeClipboardContentFromMonitorProcessing` : ne pas surveiller du tout ;
+///   - `Clipboard Viewer Ignore` : ancienne convention, même sens ;
+///   - `CanIncludeInClipboardHistory` = 0 : ne pas mettre dans l'historique.
+/// Dans le doute (presse-papiers occupé), on répond « sensible » : mieux vaut
+/// rater une copie que garder un mot de passe.
+pub fn clipboard_is_sensitive() -> bool {
+    use ::windows::core::w;
+    use ::windows::Win32::Foundation::HGLOBAL;
+    use ::windows::Win32::System::DataExchange::{
+        CloseClipboard, GetClipboardData, IsClipboardFormatAvailable, OpenClipboard, RegisterClipboardFormatW,
+    };
+    use ::windows::Win32::System::Memory::{GlobalLock, GlobalSize, GlobalUnlock};
+    unsafe {
+        for name in [w!("ExcludeClipboardContentFromMonitorProcessing"), w!("Clipboard Viewer Ignore")] {
+            let format = RegisterClipboardFormatW(name);
+            if format != 0 && IsClipboardFormatAvailable(format).is_ok() {
+                return true;
+            }
+        }
+        let format = RegisterClipboardFormatW(w!("CanIncludeInClipboardHistory"));
+        if format == 0 || IsClipboardFormatAvailable(format).is_err() {
+            return false;
+        }
+        // Le format est là : il faut lire sa valeur (un nombre de 4 octets).
+        // Le presse-papiers peut être occupé un court instant par une autre appli.
+        let mut opened = false;
+        for _ in 0..5 {
+            if OpenClipboard(None).is_ok() {
+                opened = true;
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        if !opened {
+            return true;
+        }
+        let mut allowed = false;
+        if let Ok(handle) = GetClipboardData(format) {
+            let global = HGLOBAL(handle.0);
+            let ptr = GlobalLock(global) as *const u32;
+            if !ptr.is_null() && GlobalSize(global) >= 4 {
+                allowed = *ptr != 0;
+            }
+            let _ = GlobalUnlock(global);
+        }
+        let _ = CloseClipboard();
+        !allowed
+    }
+}
+
+/// Rend la main à la fenêtre qui l'avait avant l'île, puis y colle (Ctrl+V).
+///
+/// Le texte doit déjà être dans le presse-papiers. On simule seulement l'appui
+/// sur Ctrl+V, exactement comme si tu le tapais.
+pub fn paste_into_previous(app: &AppHandle) -> Result<(), String> {
+    use ::windows::Win32::UI::Input::KeyboardAndMouse::{
+        SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP, VIRTUAL_KEY,
+        VK_CONTROL, VK_V,
+    };
+    let island = app.get_webview_window(crate::island::WINDOW_LABEL).and_then(|w| {
+        let hwnd = hwnd_of(&w);
+        // L'île ne garde plus le clavier : la fenêtre d'avant le reprend.
+        set_activating(&w, false);
+        hwnd
+    });
+    // Laisse à Windows le temps de redonner le clavier à l'autre fenêtre.
+    std::thread::sleep(std::time::Duration::from_millis(150));
+    let foreground = unsafe { GetForegroundWindow() };
+    if foreground.0.is_null() || Some(foreground) == island {
+        return Err("aucune fenêtre où coller".into());
+    }
+    let key = |vk: VIRTUAL_KEY, flags: KEYBD_EVENT_FLAGS| INPUT {
+        r#type: INPUT_KEYBOARD,
+        Anonymous: INPUT_0 { ki: KEYBDINPUT { wVk: vk, wScan: 0, dwFlags: flags, time: 0, dwExtraInfo: 0 } },
+    };
+    let inputs = [
+        key(VK_CONTROL, KEYBD_EVENT_FLAGS(0)),
+        key(VK_V, KEYBD_EVENT_FLAGS(0)),
+        key(VK_V, KEYEVENTF_KEYUP),
+        key(VK_CONTROL, KEYEVENTF_KEYUP),
+    ];
+    let sent = unsafe { SendInput(&inputs, std::mem::size_of::<INPUT>() as i32) };
+    if sent as usize == inputs.len() {
+        Ok(())
+    } else {
+        Err("Windows a refusé la frappe simulée".into())
+    }
+}

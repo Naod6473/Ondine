@@ -32,6 +32,8 @@ export class ModuleRegistry {
   onChange: () => void = () => {};
   /** Prévient l'île qu'un module veut peut-être (ou ne veut plus) la vue compacte. */
   onCompactChange: () => void = () => {};
+  /** Un module demande à refermer l'île. */
+  onCloseRequest: () => void = () => {};
 
   constructor(
     private readonly all: IslandModule[],
@@ -238,6 +240,7 @@ export class ModuleRegistry {
         };
       },
       refreshCompact: () => self.onCompactChange(),
+      closeIsland: () => self.onCloseRequest(),
       log: logger(id),
     };
   }

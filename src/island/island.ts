@@ -89,6 +89,7 @@ export class Island {
     this.registry.onChange = () => this.render(true);
     // Sans `force` : on ne redessine que si le module affiché en compact change.
     this.registry.onCompactChange = () => this.render();
+    this.registry.onCloseRequest = () => this.fsm.close();
     settingsStore.onChange((s) => this.applySettings(s));
     this.applySettings(settingsStore.current);
     this.wireInputs();

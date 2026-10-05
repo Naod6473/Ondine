@@ -47,6 +47,7 @@ island/
 │  ├─ modules/
 │  │  ├─ index.ts             LISTE DES MODULES (front)
 │  │  ├─ shelf/               Étagère et dépôt de fichiers (phase 2)
+│  │  ├─ clipboard/           Presse-papiers et snippets (phase 4)
 │  │  ├─ media/               Musique en cours de lecture (phase 3)
 │  │  └─ hello/               module d'exemple : manifest.json + index.ts
 │  ├─ settings/               fenêtre de réglages (formulaires générés)
@@ -60,7 +61,7 @@ island/
       ├─ island/mod.rs        placement multi-écrans/DPI, clics traversants, souris
       ├─ platform/            tout le Win32 (windows.rs) ; other.rs = bouchons ; media.rs = SMTC
       ├─ services/            réglages, journal, identifiants, bus, annulation, confidentialité, fichiers
-      └─ modules/             registre des modules Rust + shelf.rs, media.rs, hello.rs
+      └─ modules/             registre des modules Rust + shelf.rs, clipboard.rs, media.rs, hello.rs
 ```
 
 ## L'île
@@ -176,7 +177,8 @@ Ce qui est vérifié, et où :
   la vue dans un élément ; `drop` : une liste de cibles de dépôt, ou une
   fonction `(api) => cibles` appelée à chaque glisser quand les cibles dépendent
   des réglages, comme les favoris de l'Étagère). Tout passe par
-  `api` : `emit`, `on`, `invoke`, `settings`, `notify`, `handler`, `log`.
+  `api` : `emit`, `on`, `invoke`, `settings`, `notify`, `handler`, `log`, et
+  `closeIsland()` pour refermer l'île (ex. : après avoir collé un texte).
 - **Rust** (facultatif, `src-tauri/src/modules/<id>.rs`) implémente
   `RustModule` : `invoke(ctx, commande, args)`, `on_event(ctx, message)` et
   `start(app)`, appelé une fois au démarrage pour lancer un travail de fond
@@ -231,6 +233,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `module.crashed` | Rust | l'île prévient |
 | `shelf.changed` `{items}` | Étagère (Rust) | la vue de l'étagère se redessine |
 | `media.changed` `{playing, artwork}` | Musique (Rust) | la pilule et l'onglet Musique se mettent à jour |
+| `clipboard.changed` `{count}` | Presse-papiers (Rust) | l'onglet redemande la liste (le message ne contient aucun texte copié) |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -356,3 +359,34 @@ et l'accès à Windows dans `src-tauri/src/platform/media.rs`.
   (notification basse), désactivable dans les réglages.
 - **Confidentialité** : le module ne fait que lire ce que Windows expose déjà ;
   rien ne sort de l'ordinateur, aucun titre n'est écrit dans le journal.
+
+## Module Presse-papiers (phase 4)
+
+Front : `src/modules/clipboard/index.ts`. Rust : `src-tauri/src/modules/clipboard.rs`,
+et l'accès à Windows dans `src-tauri/src/platform/windows.rs` (« Presse-papiers »).
+
+- **Voir les copies** : un thread lit toutes les 400 ms le compteur de copies de
+  Windows (`GetClipboardSequenceNumber`). Lire ce compteur ne touche pas au
+  contenu ; on ne lit le texte (crate `arboard`) que quand il change.
+- **Copies sensibles** : avant de lire, on regarde si l'appli d'origine a
+  ajouté un des formats convenus pour « ne pas garder » :
+  `ExcludeClipboardContentFromMonitorProcessing`, `Clipboard Viewer Ignore`, ou
+  `CanIncludeInClipboardHistory` = 0 (ce que font KeePass, Bitwarden,
+  1Password…). Si oui, la copie n'est jamais lue. Presse-papiers occupé pendant
+  la vérification = considéré sensible.
+- **Historique** : en mémoire seulement (disparaît à la fermeture), le plus
+  récent en haut, sans doublons, 50 copies par défaut (réglage), 100 000
+  caractères au plus par copie. Recherche sans tenir compte des majuscules,
+  faite en Rust ; le front ne reçoit qu'un aperçu de 300 caractères.
+- **Épinglés et snippets** : enregistrés dans `%APPDATA%\Island\clipboard.json`
+  (écriture via un fichier temporaire renommé). Un fichier abîmé est mis de
+  côté, jamais effacé.
+- **Coller** : le Rust met le texte dans le presse-papiers, rend le clavier à la
+  fenêtre d'avant l'île (`set_activating(false)`), attend 150 ms, vérifie que
+  la fenêtre au premier plan n'est pas l'île, puis simule Ctrl+V (`SendInput`).
+  « Coller sans mise en forme » remet le texte actuel seul (les formats riches
+  disparaissent) avant de coller.
+- **Annuler** : retirer une copie, vider l'historique (les épinglés restent) et
+  supprimer un snippet proposent « Annuler ».
+- **Confidentialité** : aucun texte copié dans le journal ni sur le bus ; rien ne
+  sort de l'ordinateur.

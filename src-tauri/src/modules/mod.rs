@@ -12,6 +12,7 @@
 //
 // Ajouter un module Rust : voir ARCHITECTURE.md, « Ajouter un module ».
 
+mod clipboard;
 mod hello;
 mod media;
 mod shelf;
@@ -175,6 +176,7 @@ impl Registry {
         let modules: Vec<Box<dyn RustModule>> = vec![
             Box::new(shelf::Shelf::default()),
             Box::new(media::Media::default()),
+            Box::new(clipboard::Clipboard::default()),
             Box::new(hello::Hello::default()),
         ];
 
@@ -310,6 +312,12 @@ mod tests {
     fn media_manifest_is_valid() {
         let m = check_manifest(media::Media::default().manifest_json()).unwrap();
         assert_eq!(m.id, "media");
+    }
+
+    #[test]
+    fn clipboard_manifest_is_valid() {
+        let m = check_manifest(clipboard::Clipboard::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "clipboard");
     }
 
     #[test]
