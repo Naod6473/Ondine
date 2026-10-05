@@ -2017,3 +2017,82 @@ body {
     animation: none;
   }
 }
+
+/* ── Demander à Claude ───────────────────────────────────────────────────── */
+
+.ask {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ask-input,
+.ask-question {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+.ask-warn {
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(255, 196, 0, 0.12);
+  font-size: 12px;
+}
+.ask-outgoing,
+.ask-answer {
+  padding: 8px 10px;
+  border-radius: 11px;
+  border: 1px solid rgba(124, 196, 255, 0.3);
+  background: rgba(124, 196, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+.ask-answer {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+}
+.ask-outgoing-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ask-field {
+  overflow-wrap: anywhere;
+}
+.ask-doc {
+  margin: 0;
+  max-height: 140px;
+  overflow: auto;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ask-image {
+  max-width: 100%;
+  max-height: 140px;
+  object-fit: contain;
+  align-self: flex-start;
+  border-radius: 8px;
+}
+.ask-answer-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.ask-error {
+  margin: 0;
+  color: #ff8a8a;
+  font-size: 12px;
+}

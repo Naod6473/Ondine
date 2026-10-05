@@ -1,0 +1,30 @@
+{
+  "id": "askclaude",
+  "name": "Demander à Claude",
+  "icon": "💬",
+  "description": "Colle une erreur, ou dépose un fichier texte ou une capture sur l'île, pose ta question : Claude répond. ENVOIE DU CONTENU À L'API CLAUDE (api.anthropic.com) : avant chaque envoi, l'île te montre exactement ce qui part, et rien ne part sans ton clic. Les dossiers exclus sont refusés. La clé API reste dans le Gestionnaire d'identifiants Windows. La réponse est seulement affichée : rien n'est exécuté.",
+  "version": "0.1.0",
+  "permissions": ["claude-api", "credentials", "files", "clipboard"],
+  "settings": {
+    "version": 1,
+    "fields": [
+      {
+        "key": "model",
+        "type": "select",
+        "label": "Modèle",
+        "default": "claude-sonnet-5-5",
+        "options": [
+          { "value": "claude-sonnet-5-5", "label": "Claude Sonnet 5.5 (équilibré)" },
+          { "value": "claude-opus-5-5", "label": "Claude Opus 5.5 (le plus fort, plus cher)" },
+          { "value": "claude-haiku-4-5-20251001", "label": "Claude Haiku 4.5 (rapide, économique)" }
+        ]
+      },
+      { "key": "maxTokens", "type": "number", "label": "Longueur maximale de la réponse (jetons)", "default": 1024, "min": 256, "max": 4096, "step": 256 },
+      { "key": "instruction", "type": "string", "label": "Consigne donnée à Claude", "help": "Vide = « Réponds en français, simplement et brièvement… ». Elle est montrée avant chaque envoi.", "default": "", "maxLength": 500 },
+      { "key": "showDrop", "type": "boolean", "label": "Proposer « Demander à Claude » quand on dépose un fichier sur l'île", "default": true }
+    ]
+  },
+  "views": ["expanded", "drop"],
+  "commands": ["status", "prepare", "send", "copy"],
+  "events": { "emits": [], "listens": [] }
+}

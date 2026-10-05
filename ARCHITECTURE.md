@@ -778,3 +778,30 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   permission passent tout de suite au terminal. À la fin : `agents.quiet
   {on: false, summary}`, une seule notification (« Claude a fini 2 tâches ·
   Codex t'attend · 1 question en attente »). En mémoire seulement.
+
+## Demander à Claude (`src/modules/askclaude/`, `src-tauri/src/modules/askclaude.rs`)
+
+Une erreur collée, un fichier texte ou une image (capture), une question :
+Claude répond par l'API Messages d'Anthropic (`POST
+https://api.anthropic.com/v1/messages`, en-tête `anthropic-version:
+2023-06-01`, client HTTP `ureq` 3).
+
+- Permissions : `claude-api` (déclarée et affichée dans les réglages),
+  `credentials` (lire `anthropic-api-key`, dans le Rust seulement), `files`,
+  `clipboard`.
+- Deux temps : `prepare {text | path}` lit le contenu (texte ≤ 100 Ko en
+  UTF-8, ou image png/jpg/gif/webp ≤ 3,7 Mo ; chemins validés par
+  `check_path`, donc dossiers exclus refusés), le GARDE côté Rust et renvoie
+  l'aperçu complet (texte entier, image, consigne, modèle, destination). Puis
+  `send {id, question}` envoie exactement ce contenu préparé (refusé si
+  l'aperçu a changé). Rien ne part sans ce clic.
+- Le texte est envoyé balisé `<document nom="…">…</document>` après la
+  question : un document à lire, pas des instructions.
+- `status` → `{hasKey, model}` : le front sait seulement si la clé existe.
+- Réglages : modèle (Sonnet 5.5 par défaut, Opus 5.5, Haiku 4.5), longueur
+  maximale (256 à 4096 jetons), consigne (montrée avant l'envoi), dépôt.
+- La réponse est affichée en texte (jamais en HTML), copiable. Le journal ne
+  note que la taille de l'envoi. Erreurs de l'API traduites (401 clé refusée,
+  429 trop de demandes, 529 surchargée).
+- Dépôt sur l'île : « Demander à Claude » prépare le fichier et ouvre l'onglet
+  sur l'aperçu.
