@@ -23,7 +23,7 @@ island/
 ├─ scripts/gen-icons.mjs      dessine l'icône de l'appli (npm run icons)
 ├─ mascots/                   UNE MASCOTTE = UN DOSSIER (manifest.json + fichiers)
 │  ├─ placeholder/            la mascotte provisoire, dessinée en code
-│  └─ goutte/                 la goutte en planches de sprites (mascotte par défaut)
+│  └─ goutte/                 la goutte : une image par émotion, animations, fondus (par défaut)
 ├─ src/                       ── FRONT (TypeScript) ──
 │  ├─ main.ts                 démarrage de la fenêtre de l'île
 │  ├─ core/                   le socle partagé par tout le front
@@ -246,11 +246,13 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `app.ready` | île | la mascotte se réveille |
 | `island.state` `{from,to}` | île | |
 | `island.files-dropped` `{count,target}` | île | la mascotte mange |
-| `task.started` / `task.finished` / `task.failed` | modules | working / celebrate / annoyed |
+| `task.started` / `task.finished` / `task.failed` | modules | working / success (sinon celebrate) / error (sinon annoyed) |
 | `claude.thinking` / `claude.done` | modules Claude (phase 8) | thinking / idle |
 | `notify.alert` / `notify.alert-end` | île | alert |
 | `mascot.clicked`, `mascot.hover-long` | île | annoyed, dizzy / love |
 | `mascot.play` `{animation}` | réglages | joue une animation |
+| `mascot.emote` `{emotion}` | tout module | montre cette émotion (un état, ex. `sad`), si la mascotte l'a |
+| `agents.ask`, `agents.event` « waiting » | Agents IA | question (la goutte violette et son « ? ») |
 | `mascot.state` | mascotte | |
 | `undo.offered` / `undo.done` / `undo.expired` | service d'annulation | bouton « Annuler » |
 | `module.crashed` | Rust | l'île prévient |
@@ -320,7 +322,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 
 ```
 bus ──▶ MascotController (mascot-state.ts) ──▶ MascotRenderer (renderer.ts)
-             états + règles du manifeste            canvas-code | spritesheet | lottie | rive
+             états + règles du manifeste            canvas-code | spritesheet | poses | lottie | rive
 ```
 
 - **Contrat `MascotRenderer`** : `mount`, `play(animation)`, `setState`,
@@ -346,17 +348,35 @@ bus ──▶ MascotController (mascot-state.ts) ──▶ MascotRenderer (rende
 ```
 
 - **États** : idle, wake, sleep, happy, annoyed, dizzy, thinking, working,
-  alert, eating, celebrate, love, bored. Humeurs : neutral, happy, grumpy, tired.
+  alert, eating, celebrate, love, bored, et les émotions de la goutte v2 :
+  success, question, error, warning, info, sad, worried, surprise, shy, calm,
+  wink. Un état que la mascotte n'a pas retombe sur `fallback` (et le contrôleur
+  choisit l'ancien état équivalent quand il y en a un). Humeurs : neutral,
+  happy, grumpy, tired.
 - **Déclencheurs** : voir le tableau du bus ; plus l'inactivité (bored après
   `mascot.boredAfterSecs`, sleep après `mascot.sleepAfterSecs`) et le réveil
   dès que la souris revient sur l'île.
 - **Moteurs branchés** : `canvas-code` (la goutte provisoire, `mascots/placeholder/`)
-  et `spritesheet` (`mascots/goutte/`). Une planche = une ligne d'images de même
+  et `spritesheet` (aucune mascotte ne l'utilise pour l'instant). Une planche = une ligne d'images de même
   largeur. `"mode": "gaze"` choisit l'image d'après la souris (de la première,
   regard à gauche, à la dernière, regard à droite) et `nearFile` donne la planche
   « de près ». En attendant une vraie planche par état, `effect` (breathe, bounce,
   jump, shake, wobble…) anime le corps par du code et `overlay` (zzz, confetti,
   hearts…) dessine un effet autour.
+- **Moteur `poses`** (`mascots/goutte/`, `src/mascot/renderers/poses.ts`) : une
+  image 256 × 256 par émotion, toutes cadrées pareil (même ligne de base). Le
+  manifeste a une table `poses` : `"joie": { "file": "joie.png", "eyes": [...],
+  "blink": "closed" }`. `eyes` = les yeux blancs (centre et rayons) où le code
+  dessine les pupilles qui suivent la souris ; `blink` = la pose montrée quand
+  la paupière arrive en bas. Une animation choisit `"pose"`, ou `"poses"` +
+  `"poseMs"` pour une suite (agacée → colère), et peut ajouter `"look"` (`up`,
+  `spin`), `"wide"`, `"variants"` (au repos, une variante passe de temps en
+  temps) et `"fadeMs"`. Une animation dessinée image par image (bulle, glitch,
+  danse…) est une suite de poses `"poses": ["danse-1", …]` : en boucle si
+  l'animation boucle, avec un fondu court (≈ 40 % de `poseMs`) entre deux images. Changer de pose = un **fondu** (280 ms par défaut) : les
+  deux images sont mélangées en mode `lighter` dans un calque hors écran, ce qui
+  donne un vrai mélange de couleurs. Avec « réduire les animations », le corps
+  ne bouge plus et les yeux ne clignent plus, mais le fondu reste.
 - **Ajouter ta mascotte** : crée `mascots/<id>/` avec `manifest.json` et ses
   fichiers, relance l'appli, choisis-la dans Réglages → Mascotte et teste chaque
   animation. Un manifeste invalide est signalé, et l'île garde la provisoire.
