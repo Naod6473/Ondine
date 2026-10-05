@@ -86,6 +86,24 @@ async function control(api: ModuleApi, command: "toggle" | "next" | "previous") 
   }
 }
 
+/** Les pictogrammes des petits boutons de la pilule, dessinés en SVG (nets à toute taille). */
+const GLYPHS = {
+  previous: "M6 5h2v14H6zM20 5v14L9 12z",
+  next: "M16 5h2v14h-2zM4 5v14l11-7z",
+  play: "M7 4.5v15L20 12z",
+  pause: "M6 5h4v14H6zM14 5h4v14h-4z",
+};
+function glyph(kind: keyof typeof GLYPHS): SVGSVGElement {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS(ns, "path");
+  path.setAttribute("d", GLYPHS[kind]);
+  svg.append(path);
+  return svg;
+}
+
 /** Trois petites barres qui dansent quand la musique joue. */
 function equalizer(): HTMLElement {
   const on = playing?.status === "playing";
@@ -158,23 +176,71 @@ export const media: IslandModule = {
   views: {
     compactWhen: (api) => hasTrack() && Boolean(api.settings().showCompact),
 
-    compact(root) {
+    compact(root, api) {
+      // La pilule est construite une fois, puis mise à jour : le titre qui
+      // défile ne recommence pas à chaque message du lecteur.
+      const text = el("span", { class: "marquee-text" });
+      const box = el("span", { class: "marquee" }, text);
+      const mini = (icon: SVGSVGElement, title: string, command: "toggle" | "next" | "previous") =>
+        el("button", { class: "media-mini", title, "aria-label": title, onclick: api.handler(() => control(api, command)) }, icon) as HTMLButtonElement;
+      const prev = mini(glyph("previous"), "Précédent", "previous");
+      const play = mini(glyph("play"), "Lecture", "toggle");
+      const next = mini(glyph("next"), "Suivant", "next");
+      const controls = el("span", { class: "media-minis" }, prev, play, next);
+      const coverSlot = el("span", { class: "media-cover-slot" });
+      const eqSlot = el("span", { class: "media-eq-slot" });
+      root.append(el("div", { class: "media-compact" }, coverSlot, box, controls, eqSlot));
+
+      // Le titre défile seulement s'il est trop long pour la pilule.
+      const measure = () => {
+        const overflow = text.scrollWidth - box.clientWidth;
+        const scroll = overflow > 4;
+        box.classList.toggle("scrolling", scroll);
+        if (scroll) {
+          box.style.setProperty("--shift", `-${overflow + 12}px`);
+          // Environ 30 px par seconde, avec une pause à chaque bout.
+          box.style.setProperty("--marquee-time", `${Math.max(6, (overflow + 12) / 30 + 3).toFixed(1)}s`);
+        }
+      };
+      const sizes = new ResizeObserver(measure);
+      sizes.observe(box);
+
+      let shown = "";
+      let shownArtwork: string | null | undefined;
       const draw = () => {
-        root.replaceChildren();
         if (!playing) return;
-        root.append(
-          el(
-            "div",
-            { class: "media-compact" },
-            cover("small"),
-            el("span", { class: "media-line" }, el("b", {}, playing.title), playing.artist ? ` · ${playing.artist}` : ""),
-            equalizer(),
-          ),
-        );
+        const p = playing;
+        const line = p.artist ? `${p.title} · ${p.artist}` : p.title;
+        if (line !== shown) {
+          shown = line;
+          text.textContent = line;
+          box.title = line;
+          box.classList.remove("scrolling"); // l'animation repart du début
+          requestAnimationFrame(measure);
+        }
+        if (artworkUrl !== shownArtwork) {
+          shownArtwork = artworkUrl;
+          coverSlot.replaceChildren(cover("small"));
+        }
+        const on = p.status === "playing";
+        if (play.dataset.on !== String(on)) {
+          play.dataset.on = String(on);
+          play.replaceChildren(glyph(on ? "pause" : "play"));
+        }
+        play.title = on ? "Pause" : "Lecture";
+        play.setAttribute("aria-label", play.title);
+        play.disabled = !p.canToggle;
+        prev.disabled = !p.canPrevious;
+        next.disabled = !p.canNext;
+        controls.hidden = !api.settings().compactControls;
+        eqSlot.replaceChildren(equalizer());
       };
       draw();
       redraws.add(draw);
-      return () => redraws.delete(draw);
+      return () => {
+        redraws.delete(draw);
+        sizes.disconnect();
+      };
     },
 
     expanded(root, api) {
