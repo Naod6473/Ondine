@@ -15,6 +15,7 @@
 //   agents.ask → question (sinon alert)                        agents.event « waiting » → question
 //   mascot.emote {emotion} → cette émotion (si la mascotte l'a)
 //   island.files-dropped → eating  notify.alert → alert       notify.alert-end → idle
+//   notify.shown → une petite réaction selon la notification (voir REACTIONS)
 //   mascot.clicked ×3 rapides → annoyed, ×6 → dizzy           mascot.hover-long → love
 //   inactivité → bored puis sleep  activité pendant sleep → wake
 //   mascot.play {animation} → joue cette animation (tests depuis les réglages)
@@ -22,6 +23,24 @@
 import type { Bus } from "../core/bus";
 import type { MascotRenderer } from "./renderer";
 import { MASCOT_STATES, type AnimationSpec, type MascotManifest, type MascotState, type Mood } from "./types";
+
+/**
+ * Comment Ondine réagit à une notification : d'abord selon le module qui
+ * l'envoie, sinon selon son icône. Absent : pas de réaction.
+ */
+const REACTIONS_BY_MODULE: Record<string, MascotState> = {
+  agenda: "worried", // un rendez-vous approche
+};
+const REACTIONS_BY_ICON: Record<string, MascotState> = {
+  "⚠️": "warning", // quelque chose n'a pas marché
+  "📋": "wink", // copié
+  "🎵": "happy", // un nouveau morceau
+  "✅": "happy",
+  "🧺": "happy",
+  "💬": "info",
+};
+/** Pas deux réactions à des notifications à moins de ce délai (une rafale ne fait pas danser Ondine sans fin). */
+const REACTION_GAP_MS = 4000;
 
 export interface MascotTimings {
   boredAfterMs: number;
@@ -37,6 +56,7 @@ export class MascotController {
   private tasks = 0;
   private thinking = false;
   private moodUntil = 0;
+  private lastReaction = 0;
   private inactivityTimer: number;
   private offs: (() => void)[] = [];
 
@@ -194,10 +214,24 @@ export class MascotController {
       this.request("eating");
     });
     on("notify.alert", () => this.request("alert"));
+    on("notify.shown", (n: { moduleId?: string; icon?: string } | null) => this.react(n?.moduleId ?? "", n?.icon ?? ""));
+    // Le mode concentration commence : Ondine se calme.
+    on("agents.quiet", (q: { on?: boolean } | null) => q?.on && this.has("calm") && this.request("calm"));
     on("notify.alert-end", () => this.state === "alert" && this.request(this.baseState(), true));
     on("mascot.hover-long", () => this.request("love"));
     on("mascot.clicked", () => this.onClick());
     on("mascot.play", (p: { animation?: string }) => p?.animation && this.playAnimation(p.animation));
+  }
+
+  /** Une petite réaction à une notification (si la mascotte a l'émotion, et pas trop souvent). */
+  private react(moduleId: string, icon: string) {
+    const want = REACTIONS_BY_MODULE[moduleId] ?? REACTIONS_BY_ICON[icon];
+    if (!want || !this.has(want)) return;
+    // Pendant une tâche ou une réflexion de Claude, on ne coupe pas pour si peu.
+    if (this.tasks > 0 || this.thinking || this.state === "sleep") return;
+    const now = Date.now();
+    if (now - this.lastReaction < REACTION_GAP_MS) return;
+    if (this.request(want)) this.lastReaction = now;
   }
 
   /** Clics répétés : 3 en moins de 2 s → annoyed, 6 → dizzy. Un seul → happy. */

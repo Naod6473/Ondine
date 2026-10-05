@@ -248,6 +248,8 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `task.started` / `task.finished` / `task.failed` | modules | working / success (sinon celebrate) / error (sinon annoyed) |
 | `claude.thinking` / `claude.done` | modules Claude (phase 8) | thinking / idle |
 | `notify.alert` / `notify.alert-end` | île | alert |
+| `notify.shown` `{moduleId, icon, priority}` | île | petite réaction : Agenda → worried, ⚠️ → warning, 📋 → wink, 🎵 ✅ 🧺 → happy, 💬 → info (au plus une toutes les 4 s, pas pendant une tâche) |
+| `agents.quiet` `{on: true}` | agents | calm |
 | `mascot.clicked`, `mascot.hover-long` | île | annoyed, dizzy / love |
 | `mascot.play` `{animation}` | réglages | joue une animation |
 | `mascot.emote` `{emotion}` | tout module | montre cette émotion (un état, ex. `sad`), si la mascotte l'a |
