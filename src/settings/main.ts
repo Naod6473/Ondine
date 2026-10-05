@@ -56,7 +56,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "⚙️",
     label: "Général",
     sub: "L'écran, le repli de l'île, les notifications et le journal.",
-    keywords: ["Écran de l'île", "Replier l'île", "Durée des notifications", "Niveau du journal", "Dossier du journal"],
+    keywords: ["Sur quel écran ?", "Replier l'île", "Durée des notifications", "Niveau du journal", "Dossier du journal"],
     render: general,
   },
   {
@@ -419,9 +419,9 @@ function general(main: HTMLElement) {
   main.append(
     group("L'île", [
       row(
-        "Écran de l'île",
-        choice(s.general.screen, [["primary", "Principal"], ["cursor", "Sous la souris"]], (v) => save((d) => (d.general.screen = v as Settings["general"]["screen"]))),
-        "Sur plusieurs écrans : celui où l'île apparaît.",
+        "Sur quel écran ?",
+        choice(s.general.screen, [["primary", "Écran principal"], ["cursor", "Celui de la souris"]], (v) => save((d) => (d.general.screen = v as Settings["general"]["screen"]))),
+        "Seulement si tu as plusieurs écrans : l'île reste sur l'écran principal, ou suit l'écran où se trouve ta souris.",
       ),
       row(
         "Replier l'île",
