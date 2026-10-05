@@ -31,6 +31,21 @@ interface Listing {
   errors: string[];
   /** Nombre de fichiers lus avec succès. */
   files: number;
+  /** Un agenda en ligne (adresse iCal) est branché. */
+  online?: boolean;
+  /** Combien d'événements ont été lus en tout, et la date du plus récent. */
+  read?: number;
+  latest?: string | null;
+}
+
+/** « 1 fichier · agenda en ligne · 245 événements lus (le plus récent : 12/03/2026) · 0 à venir » */
+function sourcesLine(files: number, online: boolean | undefined, read: number | undefined, latest: string | null | undefined, upcoming: number): string {
+  const parts: string[] = [];
+  if (files) parts.push(files > 1 ? `${files} fichiers` : "1 fichier");
+  if (online) parts.push("agenda en ligne");
+  if (read !== undefined) parts.push(`${read} événement${read > 1 ? "s" : ""} lu${read > 1 ? "s" : ""}${latest ? ` (le plus récent : ${latest})` : ""}`);
+  parts.push(`${upcoming} à venir`);
+  return parts.join(" · ");
 }
 
 let listing: Listing = { events: [], errors: [], files: 0 };
@@ -176,10 +191,10 @@ export const agenda: IslandModule = {
       let first = true;
 
       const draw = () => {
-        const { events, errors, files } = listing;
+        const { events, errors, files, online, read, latest } = listing;
         body.replaceChildren();
 
-        if (!files && !errors.length) {
+        if (!files && !online && !errors.length) {
           body.append(
             el(
               "div",
@@ -241,7 +256,7 @@ export const agenda: IslandModule = {
           el(
             "div",
             { class: "btn-row agenda-foot" },
-            el("span", { class: "muted" }, `${files} fichier(s) · ${events.length} rendez-vous`),
+            el("span", { class: "muted" }, sourcesLine(files, online, read, latest, events.length)),
             el("button", { class: "btn small", title: "Relire les fichiers .ics", onclick: api.handler(() => refresh(api, "reload")) }, "🔄 Relire"),
           ),
         );

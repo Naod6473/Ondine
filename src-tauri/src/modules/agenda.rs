@@ -119,9 +119,19 @@ impl RustModule for Agenda {
 fn listing(state: &State) -> Value {
     let mut errors = state.errors.clone();
     errors.extend(state.online_error.clone());
-    // « files » : combien de sources sont branchées (fichiers + agenda en ligne).
-    let sources = state.files.len() + usize::from(state.online_key != 0);
-    json!({ "events": state.upcoming, "errors": errors, "files": sources })
+    // Pour comprendre un agenda « vide » : combien d'événements ont été lus,
+    // et la date du plus récent (un export ancien s'arrête dans le passé).
+    let all = state.events.iter().chain(state.online.iter());
+    let read = state.events.len() + state.online.len();
+    let latest = all.filter_map(|e| e.start).max().map(|t| t.format("%d/%m/%Y").to_string());
+    json!({
+        "events": state.upcoming,
+        "errors": errors,
+        "files": state.files.len(),
+        "online": state.online_key != 0,
+        "read": read,
+        "latest": latest,
+    })
 }
 
 /// La boucle du thread de fond.
