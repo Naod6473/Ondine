@@ -8,6 +8,7 @@
 //   modules/      ← le registre des modules Rust et les modules eux-mêmes
 //   platform/     ← tout ce qui touche à Win32
 
+mod cli;
 mod island;
 mod modules;
 mod platform;
@@ -329,6 +330,12 @@ fn app_quit(app: AppHandle) {
 }
 
 // ── Démarrage ────────────────────────────────────────────────────────────────
+
+/// `island.exe notify …` : appelé par un autre outil (hook de Claude Code…),
+/// envoie un message à l'île déjà ouverte puis s'arrête. Voir cli.rs.
+pub fn notify_cli() {
+    cli::notify(std::env::args().skip(2).collect());
+}
 
 pub fn run() {
     let loaded = settings::load();

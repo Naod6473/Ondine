@@ -223,6 +223,14 @@ body {
 .tabs.dense .tab {
   padding: 3px 7px;
 }
+.tabs.tight .tab {
+  padding: 3px 4px;
+}
+.tabs.tight .tab-label {
+  max-width: 62px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .tabs.icons-only .tab:not(.active) .tab-label {
   max-width: 0;
   margin-left: 0;
@@ -1787,5 +1795,66 @@ body {
   .net-graph i {
     animation: none;
     transition: none;
+  }
+}
+
+/* Agents IA */
+.agents {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.agents-status {
+  margin: 0;
+  font-size: 12px;
+}
+.agents-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.agents-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  border-radius: 9px;
+  animation: agents-in 320ms var(--ease);
+}
+.agents-item.waiting {
+  background: rgba(255, 198, 92, 0.09);
+}
+.agents-empty {
+  padding: 4px 8px;
+}
+@keyframes agents-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.agents-guide {
+  font-size: 12px;
+}
+.agents-guide summary {
+  cursor: pointer;
+  color: var(--muted, rgba(255, 255, 255, 0.55));
+}
+.agents-guide ol {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+.agents-guide code {
+  font-size: 11px;
+  user-select: text;
+  overflow-wrap: anywhere;
+}
+.agents-exe {
+  display: block;
+  margin-top: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .agents-item {
+    animation: none;
   }
 }

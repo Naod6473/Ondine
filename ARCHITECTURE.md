@@ -275,6 +275,8 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `system.disk-low` `{mount, freePct, freeGb}` | Système (Rust, toutes les 30 s) | notification 💽 : disque presque plein |
 | `remote.changed` `{favorites: [{id, name, kind}]}` | Accès distants (Rust, et front au démarrage) | le Lanceur met à jour ses serveurs (sans les adresses) |
 | `remote.connect` `{id}` | Lanceur (front) | Accès distants ouvre ce favori |
+| `agents.event` `{source, kind, title, body, project, at}` | Agents IA (Rust) | notification (✋ « attend ta permission » en priorité haute, ✅ « a fini ») et historique |
+| `claude.thinking` / `claude.done` | Agents IA (Rust) | la mascotte réfléchit tant qu'une session de Claude Code travaille |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -657,3 +659,33 @@ s'il n'existe pas ou est désactivé).
   réponse : éteinte ou pare-feu). Raccourcis : 443, 80, 3389, 22, 445, 53.
 - `dns {host}` : nom → adresses par le résolveur de Windows ; une IPv4 →
   son nom (`GetNameInfoW`, recherche inverse).
+
+## Agents IA (`src/modules/agents/`, `src-tauri/src/modules/agents.rs`, `src-tauri/src/cli.rs`)
+
+Les outils extérieurs préviennent l'île par une porte d'entrée locale.
+
+- `island.exe notify [--source x] [--title t] [--message m]` (`main.rs` →
+  `cli.rs`) : ne démarre PAS l'île. Lit l'entrée standard si un programme
+  l'envoie (le JSON d'un hook), emballe le tout en
+  `{v, source, title?, message?, hook?}` et l'envoie par le canal
+  `\\.\pipe\island-agents-<utilisateur>`, puis s'arrête avec le code 0, sans
+  rien écrire (un hook ne doit jamais bloquer Claude Code).
+- Le canal (`platform::serve_agents_pipe`) : entrée seulement, jamais depuis
+  le réseau (`PIPE_REJECT_REMOTE_CLIENTS`), première instance exclusive
+  (`FILE_FLAG_FIRST_PIPE_INSTANCE` : on refuse d'écouter si un autre programme
+  a pris le nom), droits Windows par défaut (seul le compte qui l'a créé peut
+  écrire). 64 Ko au plus par message, 10 messages par seconde au plus.
+- Hooks de Claude Code compris (`understand`) :
+  - `UserPromptSubmit` → la session travaille (le texte tapé n'est jamais lu) ;
+  - `Notification` → « attend ta permission » (`permission_prompt`) ou « attend
+    ta réponse » (`idle_prompt`, `elicitation_dialog`, `agent_needs_input`) ;
+    les autres types (connexion, quotas…) sont ignorés ;
+  - `Stop` → « a fini » (`last_assistant_message` n'est jamais lu) ;
+  - `SessionEnd` → la session est oubliée. Une session muette depuis 1 h aussi.
+- Tout arrivage est du texte à afficher : tronqué, sans caractères de
+  contrôle, le dossier réduit à son nom. Rien n'est exécuté ni ouvert. Le
+  journal ne note que le type d'événement. Historique : 30 derniers, en
+  mémoire seulement.
+- Configuration proposée (`hook_config`, bouton « Copier la configuration ») :
+  forme `command` + `args` (Claude Code lance island.exe directement, sans
+  Git Bash ni PowerShell, donc aucun échappement du chemin).

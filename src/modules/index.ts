@@ -15,7 +15,8 @@ import { shelf } from "./shelf";
 import { system } from "./system";
 import { remote } from "./remote";
 import { nettools } from "./nettools";
+import { agents } from "./agents";
 import { terminal } from "./terminal";
 import { timerModule } from "./timer";
 
-export const ALL_MODULES: IslandModule[] = [shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, launcher, rules, media, hello];
+export const ALL_MODULES: IslandModule[] = [shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, agents, launcher, rules, media, hello];

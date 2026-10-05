@@ -115,3 +115,11 @@ pub fn ping(_ip: std::net::Ipv4Addr, _timeout_ms: u32) -> Result<Option<(u32, u8
 pub fn reverse_dns(_ip: std::net::Ipv4Addr) -> Option<String> {
     None
 }
+
+pub fn serve_agents_pipe(_max: usize, _on_message: impl FnMut(Vec<u8>)) -> Result<(), String> {
+    Err("disponible seulement sous Windows".into())
+}
+
+pub fn send_agents_pipe(_bytes: &[u8]) -> Result<(), String> {
+    Err("disponible seulement sous Windows".into())
+}

@@ -406,6 +406,8 @@ export class Island {
     // Encore plus d'onglets : on les resserre, pour que ⚙ reste toujours visible
     // (en attendant le défilement à la souris prévu plus tard).
     if (tabs.length > 8) header.classList.add("dense");
+    // Et au-delà de 12 : encore plus serrés, nom de l'onglet actif raccourci.
+    if (tabs.length > 12) header.classList.add("tight");
     const buttons = new Map<string, HTMLElement>();
     for (const t of tabs) {
       const m = t.module.manifest;

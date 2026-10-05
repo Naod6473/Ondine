@@ -81,6 +81,8 @@ windows = { version = "0.61", features = [
   "Win32_System_Power",
   "Win32_NetworkManagement_IpHelper",
   "Win32_Networking_WinSock",
+  "Win32_System_Pipes",
+  "Win32_System_IO",
 ] }
 
 [profile.release]

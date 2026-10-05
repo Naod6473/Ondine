@@ -552,3 +552,93 @@ pub fn reverse_dns(ip: std::net::Ipv4Addr) -> Option<String> {
         Some(String::from_utf16_lossy(&name[..len]))
     }
 }
+
+// ── Porte d'entrée locale (« island notify ») ────────────────────────────────
+
+/// Le nom du canal (named pipe) par lequel les outils parlent à l'île. Un nom
+/// par utilisateur Windows ; les droits par défaut de Windows ne laissent
+/// écrire que le compte qui l'a créé.
+pub fn agents_pipe_name() -> String {
+    let user: String = std::env::var("USERNAME").unwrap_or_default().chars().filter(|c| c.is_ascii_alphanumeric()).collect();
+    format!(r"\\.\pipe\island-agents-{user}")
+}
+
+/// Écoute le canal pour toujours : chaque client envoie un message (au plus
+/// `max` octets) puis ferme. `on_message` reçoit les octets. Bloquant : à
+/// lancer dans un thread.
+pub fn serve_agents_pipe(max: usize, mut on_message: impl FnMut(Vec<u8>)) -> Result<(), String> {
+    use std::io::Read;
+    use std::os::windows::io::{FromRawHandle, RawHandle};
+    use ::windows::core::HSTRING;
+    use ::windows::Win32::Foundation::{ERROR_PIPE_CONNECTED, HANDLE};
+    use ::windows::Win32::Storage::FileSystem::{FILE_FLAG_FIRST_PIPE_INSTANCE, FILE_FLAGS_AND_ATTRIBUTES, PIPE_ACCESS_INBOUND};
+    use ::windows::Win32::System::Pipes::{
+        ConnectNamedPipe, CreateNamedPipeW, PIPE_READMODE_BYTE, PIPE_REJECT_REMOTE_CLIENTS, PIPE_TYPE_BYTE, PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
+    };
+
+    let name = HSTRING::from(agents_pipe_name());
+    // `first` : la toute première création échoue si le nom est déjà pris par
+    // un autre programme (on refuse d'écouter à sa place).
+    let create = |first: bool| -> Result<HANDLE, String> {
+        let flags = if first { PIPE_ACCESS_INBOUND | FILE_FLAG_FIRST_PIPE_INSTANCE } else { PIPE_ACCESS_INBOUND | FILE_FLAGS_AND_ATTRIBUTES(0) };
+        let h = unsafe {
+            CreateNamedPipeW(
+                &name,
+                flags,
+                // Octets bruts, bloquant, et jamais depuis une autre machine.
+                PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
+                PIPE_UNLIMITED_INSTANCES,
+                0,
+                max as u32,
+                0,
+                None,
+            )
+        };
+        if h.is_invalid() {
+            Err(format!("canal indisponible : {}", ::windows::core::Error::from_win32()))
+        } else {
+            Ok(h)
+        }
+    };
+
+    let mut next = create(true)?;
+    loop {
+        let current = next;
+        // Attend un client. « Déjà connecté » n'est pas une erreur.
+        if let Err(e) = unsafe { ConnectNamedPipe(current, None) } {
+            if e.code() != ERROR_PIPE_CONNECTED.to_hresult() {
+                // On referme et on recommence avec une instance neuve.
+                drop(unsafe { std::fs::File::from_raw_handle(current.0 as RawHandle) });
+                next = create(false)?;
+                continue;
+            }
+        }
+        // Une nouvelle instance AVANT de lire : le nom reste à nous.
+        next = create(false)?;
+        // `File` lit le canal et le referme quand il est détruit.
+        let file = unsafe { std::fs::File::from_raw_handle(current.0 as RawHandle) };
+        let mut bytes = Vec::new();
+        let _ = file.take(max as u64 + 1).read_to_end(&mut bytes);
+        if !bytes.is_empty() && bytes.len() <= max {
+            on_message(bytes);
+        }
+    }
+}
+
+/// Côté client (« island.exe notify ») : envoie un message à l'île, si elle
+/// tourne. Quelques essais rapides si le canal est occupé.
+pub fn send_agents_pipe(bytes: &[u8]) -> Result<(), String> {
+    use std::io::Write;
+    let name = agents_pipe_name();
+    let mut last = String::new();
+    for _ in 0..5 {
+        match std::fs::OpenOptions::new().write(true).open(&name) {
+            Ok(mut f) => return f.write_all(bytes).map_err(|e| e.to_string()),
+            Err(e) => {
+                last = e.to_string();
+                std::thread::sleep(std::time::Duration::from_millis(60));
+            }
+        }
+    }
+    Err(format!("l'île ne répond pas ({last})"))
+}
