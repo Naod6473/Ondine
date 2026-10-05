@@ -2,7 +2,7 @@
   "id": "agents",
   "name": "Agents IA",
   "icon": "🤖",
-  "description": "Lance Claude Code dans un de tes projets en un clic. Claude Code (et d'autres outils) préviennent l'île : « Claude attend ta permission », « Claude a fini ». Ils passent par la commande « island.exe notify » et un canal local réservé à ton compte Windows : rien ne passe par Internet. L'île affiche les messages, n'exécute jamais rien, et ne lit jamais ce que tu tapes dans Claude.",
+  "description": "Lance Claude Code dans un de tes projets en un clic. Claude Code, Codex et Gemini CLI préviennent l'île : « attend ta permission », « a fini ». Ils passent par la commande « island.exe notify » et un canal local réservé à ton compte Windows : rien ne passe par Internet. L'île affiche les messages, n'exécute jamais rien, ne décide jamais à ta place, et ne lit ni ce que tu tapes ni les réponses de l'IA.",
   "version": "0.1.0",
   "permissions": [
     "clipboard",

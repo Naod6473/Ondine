@@ -1868,3 +1868,10 @@ body {
   font-weight: 600;
   margin-right: 2px;
 }
+.agents-tools {
+  margin: 6px 0 2px;
+}
+.net-chip.active {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--island-fg);
+}

@@ -699,3 +699,16 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   Dossiers : réglage « Projets » (8 au plus, validés par `check_path`), la
   boîte « Choisir un dossier », sinon le dossier utilisateur. Seul le mot
   `claude` est tapé.
+- Codex et Gemini CLI (`--source codex` / `--source gemini`) :
+  - Codex : hooks `UserPromptSubmit`, `PermissionRequest` (« attend ta
+    permission », avec le nom de l'outil), `Stop`, `SessionEnd`, lancés par
+    `cmd /C` (config.toml, approuvés une fois par l'utilisateur dans
+    `/hooks`). L'ancien réglage `notify` marche aussi : son JSON
+    (`agent-turn-complete`) arrive en dernier paramètre, `cli.rs` le prend.
+  - Gemini CLI (0.26+) : hooks `BeforeAgent`, `AfterAgent`, `Notification`
+    (`ToolPermission`), `SessionEnd`, lancés par PowerShell :
+    `$input | & 'chemin' notify --source gemini` (`$input` passe le JSON reçu).
+  - Les deux attendent du JSON sur la sortie : `cli.rs` écrit `{}` (aucune
+    décision ; l'île ne répond jamais à la place de l'utilisateur).
+  - `prompt`, `prompt_response`, `last_assistant_message`, `tool_input` ne
+    sont jamais lus.

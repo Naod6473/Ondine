@@ -129,10 +129,12 @@ impl RustModule for Agents {
                 Ok(json!({ "events": st.history, "working": st.working.len() }))
             }
             // La configuration à coller dans Claude Code (avec le chemin de CE programme).
-            "hook_config" => Ok(json!({ "exe": exe_path(), "json": hook_config(&exe_path()) })),
+            "hook_config" => Ok(json!({ "exe": exe_path() })),
+            // { tool: "claude-code" | "codex" | "gemini" }
             "copy_config" => {
                 ctx.require("clipboard")?;
-                files::copy_text(&hook_config(&exe_path()))?;
+                let tool = args.get("tool").and_then(Value::as_str).unwrap_or("claude-code");
+                files::copy_text(&hook_config(tool, &exe_path())?)?;
                 Ok(Value::Null)
             }
             // Les projets du réglage (ceux qui existent encore), pour les boutons.
@@ -280,6 +282,15 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
 }
 
 /// Le message reçu → un événement à afficher (None : rien à faire).
+///
+/// Trois outils compris (`source`) :
+///   - claude-code : hooks UserPromptSubmit, Notification, Stop, SessionEnd ;
+///   - codex : hooks UserPromptSubmit, PermissionRequest, Stop, SessionEnd,
+///     et l'ancien réglage `notify` (JSON « agent-turn-complete ») ;
+///   - gemini : hooks BeforeAgent, Notification (ToolPermission), AfterAgent,
+///     SessionEnd.
+/// Les textes de l'utilisateur (prompt) et les réponses de l'IA ne sont
+/// jamais lus.
 fn understand(msg: &Value, at: u64) -> Option<Event> {
     let text = |v: &Value| clean(v.as_str().unwrap_or(""), MAX_TEXT);
     let source = {
@@ -287,6 +298,7 @@ fn understand(msg: &Value, at: u64) -> Option<Event> {
         if s.is_empty() { "outil".to_string() } else { s.to_lowercase() }
     };
     let hook = &msg["hook"];
+    let session = hook["session_id"].as_str().or(hook["thread-id"].as_str()).unwrap_or(&source);
     let mut ev = Event {
         at,
         source: source.clone(),
@@ -294,13 +306,31 @@ fn understand(msg: &Value, at: u64) -> Option<Event> {
         title: text(&msg["title"]),
         body: text(&msg["message"]),
         project: project_name(hook["cwd"].as_str().unwrap_or("")),
-        session: clean(hook["session_id"].as_str().unwrap_or(&source), 80),
+        session: clean(session, 80),
     };
-    let who = if source == "claude-code" { "Claude" } else { "L'agent" };
+    let who = match source.as_str() {
+        "claude-code" => "Claude",
+        "codex" => "Codex",
+        "gemini" => "Gemini",
+        _ => "L'agent",
+    };
+    let done = |ev: &mut Event| {
+        ev.kind = "done";
+        ev.title = format!("{who} a fini");
+    };
 
-    match hook["hook_event_name"].as_str() {
+    // L'ancien `notify` de Codex : pas de hook_event_name, mais un « type ».
+    let event = hook["hook_event_name"].as_str().or(match hook["type"].as_str() {
+        Some("agent-turn-complete") => Some("Stop"),
+        _ => None,
+    });
+
+    match event {
         // Pas de hook : un message libre (« island.exe notify --title … --message … »).
         None => {
+            if hook.is_object() {
+                return None; // un JSON inconnu : ignoré
+            }
             if ev.title.is_empty() && ev.body.is_empty() {
                 return None;
             }
@@ -308,19 +338,25 @@ fn understand(msg: &Value, at: u64) -> Option<Event> {
                 ev.title = std::mem::take(&mut ev.body);
             }
         }
-        Some("UserPromptSubmit") => ev.kind = "working", // le texte tapé n'est PAS lu
-        Some("Stop") => {
-            ev.kind = "done";
-            ev.title = format!("{who} a fini");
-        }
+        // Au travail (le texte tapé n'est PAS lu).
+        Some("UserPromptSubmit") | Some("BeforeAgent") => ev.kind = "working",
+        // A fini (la réponse de l'IA n'est PAS lue).
+        Some("Stop") | Some("AfterAgent") => done(&mut ev),
         Some("SessionEnd") => ev.kind = "ended",
+        // Codex demande une autorisation : on affiche quel outil, sans décider à ta place.
+        Some("PermissionRequest") => {
+            ev.kind = "waiting";
+            ev.title = format!("{who} attend ta permission");
+            let tool = text(&hook["tool_name"]);
+            ev.body = if tool.is_empty() { String::new() } else { format!("pour {tool}") };
+        }
         Some("Notification") => {
             ev.kind = "waiting";
             let message = text(&hook["message"]);
             let ntype = hook["notification_type"].as_str().unwrap_or("");
             let lower = message.to_lowercase();
             ev.title = match ntype {
-                "permission_prompt" => format!("{who} attend ta permission"),
+                "permission_prompt" | "ToolPermission" => format!("{who} attend ta permission"),
                 "idle_prompt" | "elicitation_dialog" | "elicitation_url_dialog" | "agent_needs_input" => format!("{who} attend ta réponse"),
                 // Connexion réussie, quotas, réponses déjà données… : rien à signaler.
                 "" => {
@@ -363,18 +399,56 @@ fn exe_path() -> String {
     std::env::current_exe().map(|p| p.display().to_string()).unwrap_or_default()
 }
 
-/// Le bloc « hooks » à mettre dans le settings.json de Claude Code.
-///
-/// Forme « programme + paramètres » (`command` + `args`) : Claude Code lance
-/// directement island.exe, sans passer par Git Bash ou PowerShell, donc rien à
-/// échapper dans le chemin (même avec des espaces).
-fn hook_config(exe: &str) -> String {
+/// La configuration à coller, pour chaque outil.
+fn hook_config(tool: &str, exe: &str) -> Result<String, String> {
+    match tool {
+        "claude-code" => Ok(claude_config(exe)),
+        "codex" => Ok(codex_config(exe)),
+        "gemini" => Ok(gemini_config(exe)),
+        other => Err(format!("outil inconnu : {other}")),
+    }
+}
+
+/// Claude Code (settings.json). Forme « programme + paramètres » (`command` +
+/// `args`) : Claude Code lance directement island.exe, sans Git Bash ni
+/// PowerShell, donc rien à échapper dans le chemin (même avec des espaces).
+fn claude_config(exe: &str) -> String {
     let entry = json!([{ "hooks": [{ "type": "command", "command": exe, "args": ["notify", "--source", "claude-code"] }] }]);
     let config = json!({
         "hooks": {
             "Notification": entry,
             "Stop": entry,
             "UserPromptSubmit": entry,
+        }
+    });
+    serde_json::to_string_pretty(&config).unwrap_or_default()
+}
+
+/// Codex (config.toml). Ses hooks sont lancés par cmd.exe (`cmd /C …`) : le
+/// chemin entre guillemets doubles. En TOML, la chaîne est écrite avec ses
+/// « \ » et « " » échappés.
+fn codex_config(exe: &str) -> String {
+    let command = format!("\"{exe}\" notify --source codex");
+    let toml = format!("\"{}\"", command.replace('\\', "\\\\").replace('"', "\\\""));
+    let mut out = String::from("# Island : Codex prévient l'île (à coller dans %USERPROFILE%\\.codex\\config.toml)\n");
+    for event in ["UserPromptSubmit", "PermissionRequest", "Stop", "SessionEnd"] {
+        out.push_str(&format!("\n[[hooks.{event}]]\n[[hooks.{event}.hooks]]\ntype = \"command\"\ncommand = {toml}\n"));
+    }
+    out
+}
+
+/// Gemini CLI (settings.json). Ses hooks sont lancés par PowerShell : `&` pour
+/// lancer un programme dont le chemin est entre apostrophes (une apostrophe
+/// dans le chemin se double), et `$input |` pour lui passer le JSON reçu.
+fn gemini_config(exe: &str) -> String {
+    let command = format!("$input | & '{}' notify --source gemini", exe.replace('\'', "''"));
+    let entry = json!([{ "matcher": "*", "hooks": [{ "name": "island", "type": "command", "command": command, "timeout": 5000 }] }]);
+    let config = json!({
+        "hooks": {
+            "BeforeAgent": entry,
+            "AfterAgent": entry,
+            "Notification": entry,
+            "SessionEnd": entry,
         }
     });
     serde_json::to_string_pretty(&config).unwrap_or_default()
@@ -429,8 +503,34 @@ mod tests {
     }
 
     #[test]
+    fn other_tools_are_understood() {
+        let codex = |v: Value| understand(&json!({ "source": "codex", "hook": v }), 0);
+        let e = codex(json!({ "type": "agent-turn-complete", "thread-id": "t1", "cwd": "C:\\p\\api", "last-assistant-message": "secret" })).unwrap();
+        assert_eq!((e.kind, e.title.as_str(), e.session.as_str()), ("done", "Codex a fini", "t1"));
+        assert!(!e.body.contains("secret"));
+        let e = codex(json!({ "hook_event_name": "PermissionRequest", "tool_name": "Bash", "tool_input": { "command": "rm -rf /" } })).unwrap();
+        assert_eq!((e.title.as_str(), e.body.as_str()), ("Codex attend ta permission", "pour Bash"));
+        let gem = |v: Value| understand(&json!({ "source": "gemini", "hook": v }), 0);
+        assert_eq!(gem(json!({ "hook_event_name": "AfterAgent", "prompt_response": "x" })).unwrap().title, "Gemini a fini");
+        assert_eq!(gem(json!({ "hook_event_name": "Notification", "notification_type": "ToolPermission", "message": "Allow?" })).unwrap().title, "Gemini attend ta permission");
+        assert_eq!(gem(json!({ "hook_event_name": "BeforeAgent", "prompt": "x" })).unwrap().kind, "working");
+        assert!(gem(json!({ "type": "inconnu" })).is_none());
+    }
+
+    #[test]
+    fn codex_and_gemini_configs() {
+        let exe = r"C:\Program Files\Island\island.exe";
+        let c = codex_config(exe);
+        assert!(c.contains(r#"command = "\"C:\\Program Files\\Island\\island.exe\" notify --source codex""#), "{c}");
+        assert!(c.contains("[[hooks.PermissionRequest.hooks]]"));
+        let g: Value = serde_json::from_str(&gemini_config(r"C:\Users\O'Neil\island.exe")).unwrap();
+        assert_eq!(g["hooks"]["AfterAgent"][0]["hooks"][0]["command"], r"$input | & 'C:\Users\O''Neil\island.exe' notify --source gemini");
+        assert!(hook_config("chatgpt-web", exe).is_err());
+    }
+
+    #[test]
     fn config_runs_the_exe_with_args() {
-        let c: Value = serde_json::from_str(&hook_config(r"C:\Program Files\Island\island.exe")).unwrap();
+        let c: Value = serde_json::from_str(&claude_config(r"C:\Program Files\Island\island.exe")).unwrap();
         let h = &c["hooks"]["Stop"][0]["hooks"][0];
         assert_eq!(h["command"], r"C:\Program Files\Island\island.exe");
         assert_eq!(h["args"], json!(["notify", "--source", "claude-code"]));

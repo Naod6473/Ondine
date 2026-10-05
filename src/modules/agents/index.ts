@@ -89,14 +89,39 @@ export const agents: IslandModule = {
         () => {},
       );
 
+      // ── Brancher un outil : Claude Code, Codex ou Gemini CLI ───────────────
+      type Tool = "claude-code" | "codex" | "gemini";
+      const TOOLS: Record<Tool, { name: string; file: string; steps: string }> = {
+        "claude-code": {
+          name: "Claude Code",
+          file: "%USERPROFILE%\\.claude\\settings.json",
+          steps: "Colle le bloc « hooks » (fusionne-le s'il en existe déjà un), puis relance Claude Code.",
+        },
+        codex: {
+          name: "Codex",
+          file: "%USERPROFILE%\\.codex\\config.toml",
+          steps: "Colle les lignes à la fin du fichier, relance Codex, puis tape /hooks pour les approuver (Codex le demande une fois).",
+        },
+        gemini: {
+          name: "Gemini CLI",
+          file: "%USERPROFILE%\\.gemini\\settings.json",
+          steps: "Colle le bloc « hooks » (version 0.26 ou plus récente), puis relance Gemini CLI.",
+        },
+      };
+      let tool: Tool = "claude-code";
+      const exe = el("code", { class: "agents-exe" });
+      const steps = el("ol", {});
+      const toolButtons = (Object.keys(TOOLS) as Tool[]).map((t) =>
+        el("button", { class: "net-chip", "data-tool": t, onclick: api.handler(() => ((tool = t), drawGuide())) }, TOOLS[t].name),
+      );
       const copy = el(
         "button",
         {
           class: "btn small primary",
           onclick: api.handler(async () => {
             try {
-              await api.invoke("copy_config");
-              api.notify({ title: "Configuration copiée", body: "Colle-la dans le settings.json de Claude Code.", icon: "📋", priority: "low", key: "agents-copied" });
+              await api.invoke("copy_config", { tool });
+              api.notify({ title: "Configuration copiée", body: `Colle-la dans ${TOOLS[tool].file}.`, icon: "📋", priority: "low", key: "agents-copied" });
             } catch (err) {
               api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "agents-error" });
             }
@@ -105,18 +130,21 @@ export const agents: IslandModule = {
         "📋 Copier la configuration",
       );
       const test = el("button", { class: "btn small", title: "Fait comme si Claude venait de finir", onclick: api.handler(() => api.invoke("test")) }, "Essayer");
-      const exe = el("code", { class: "agents-exe" });
+      const drawGuide = () => {
+        toolButtons.forEach((b) => b.classList.toggle("active", b.dataset.tool === tool));
+        steps.replaceChildren(
+          el("li", {}, "Copie la configuration."),
+          el("li", {}, "Ouvre ", el("code", {}, TOOLS[tool].file), ". ", TOOLS[tool].steps),
+          el("li", {}, "Chaque hook lance : ", exe),
+        );
+      };
       guide.append(
-        el("summary", {}, "Brancher Claude Code"),
-        el(
-          "ol",
-          {},
-          el("li", {}, "Copie la configuration (les hooks « Notification », « Stop » et « UserPromptSubmit »)."),
-          el("li", {}, "Ouvre ", el("code", {}, "%USERPROFILE%\\.claude\\settings.json"), " et colle le bloc « hooks » (fusionne-le s'il en existe déjà un)."),
-          el("li", {}, "Relance Claude Code. Chaque hook lance : ", exe),
-        ),
+        el("summary", {}, "Brancher Claude Code, Codex ou Gemini"),
+        el("div", { class: "net-chips agents-tools" }, ...toolButtons),
+        steps,
         el("div", { class: "btn-row" }, copy, test),
       );
+      drawGuide();
 
       const draw = async () => {
         let data: { events: AgentEvent[]; working: number };
@@ -126,7 +154,7 @@ export const agents: IslandModule = {
           return; // hors de l'appli
         }
         status.textContent =
-          data.working > 0 ? `🧠 Claude travaille (${data.working} session${data.working > 1 ? "s" : ""})` : "Aucun agent au travail pour l'instant.";
+          data.working > 0 ? `🧠 Au travail : ${data.working} session${data.working > 1 ? "s" : ""}` : "Aucun agent au travail pour l'instant.";
         list.replaceChildren(
           ...(data.events.length
             ? data.events.map((e) =>
@@ -148,8 +176,8 @@ export const agents: IslandModule = {
       };
 
       void api.invoke<{ exe: string }>("hook_config").then(
-        (c) => (exe.textContent = `${c.exe} notify --source claude-code`),
-        () => (exe.textContent = "island.exe notify --source claude-code"),
+        (c) => (exe.textContent = `${c.exe} notify`),
+        () => (exe.textContent = "island.exe notify"),
       );
       redraws.add(draw);
       void draw();

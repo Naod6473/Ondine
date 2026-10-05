@@ -7,9 +7,14 @@
 // petit JSON, l'envoie par le canal local de l'île (named pipe, réservé à
 // l'utilisateur Windows courant, jamais depuis le réseau), puis s'arrête.
 //
-// Il se termine TOUJOURS avec le code 0 et sans rien écrire : un hook de
-// Claude Code ne doit jamais être bloqué ou ralenti parce que l'île est
-// fermée.
+// L'ancien `notify` de Codex donne son JSON comme DERNIER PARAMÈTRE (pas
+// sur l'entrée standard) : un paramètre qui est un objet JSON est donc lu
+// comme le hook.
+//
+// Il se termine TOUJOURS avec le code 0 : un hook ne doit jamais être bloqué
+// ou ralenti parce que l'île est fermée. Il n'écrit rien, sauf « {} » pour
+// Codex et Gemini, qui attendent du JSON sur la sortie (« {} » = aucune
+// décision : l'île observe, elle ne répond jamais à la place de l'utilisateur).
 
 use std::io::{IsTerminal, Read};
 
@@ -23,6 +28,9 @@ pub const MAX_MESSAGE: usize = 64 * 1024;
 pub fn notify(args: Vec<String>) {
     let message = build(&args, read_stdin());
     let _ = platform::send_agents_pipe(message.to_string().as_bytes());
+    if matches!(message["source"].as_str(), Some("codex") | Some("gemini")) {
+        println!("{{}}");
+    }
 }
 
 /// L'entrée standard, si un programme nous l'envoie (pas si on tape la
@@ -46,6 +54,13 @@ fn build(args: &[String], stdin: Option<String>) -> Value {
             "--source" => "source",
             "--title" => "title",
             "--message" => "message",
+            // Un objet JSON en paramètre : le hook (ancien `notify` de Codex).
+            other if other.starts_with('{') => {
+                if let Ok(v @ Value::Object(_)) = serde_json::from_str::<Value>(other) {
+                    out["hook"] = v;
+                }
+                continue;
+            }
             _ => continue, // option inconnue : ignorée
         };
         if let Some(value) = it.next() {
@@ -55,7 +70,7 @@ fn build(args: &[String], stdin: Option<String>) -> Value {
     if let Some(text) = stdin.filter(|t| !t.trim().is_empty()) {
         // Du JSON (un hook) → tel quel ; sinon, du texte → le message.
         match serde_json::from_str::<Value>(&text) {
-            Ok(v) if v.is_object() => out["hook"] = v,
+            Ok(v) if v.is_object() && out.get("hook").is_none() => out["hook"] = v,
             _ if out.get("message").is_none() => out["message"] = json!(text.trim()),
             _ => {}
         }
@@ -76,6 +91,12 @@ mod tests {
         let m = build(&args(&["--source", "claude-code"]), Some(r#"{"hook_event_name":"Stop","cwd":"C:\\x"}"#.into()));
         assert_eq!(m["source"], "claude-code");
         assert_eq!(m["hook"]["hook_event_name"], "Stop");
+    }
+
+    #[test]
+    fn codex_json_as_last_argument() {
+        let m = build(&args(&["--source", "codex", r#"{"type":"agent-turn-complete","turn-id":"1"}"#]), None);
+        assert_eq!(m["hook"]["type"], "agent-turn-complete");
     }
 
     #[test]
