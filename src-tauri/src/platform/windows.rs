@@ -332,3 +332,71 @@ pub fn run_as_admin(program: &str, params: &str) -> Result<(), String> {
 pub fn home_dir() -> PathBuf {
     std::env::var_os("USERPROFILE").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("C:\\"))
 }
+
+/// Un lecteur (C:\, E:\…) tel que vu par les règles « clé USB branchée ».
+#[derive(Debug, Clone, PartialEq)]
+pub struct DriveInfo {
+    /// "E:\\"
+    pub root: String,
+    /// Le nom du volume (« KINGSTON »), vide s'il n'en a pas.
+    pub label: String,
+    /// Clé USB, carte SD… (lecteur amovible). Un disque USB peut aussi se
+    /// présenter comme « fixe » : les règles ne filtrent pas là-dessus.
+    pub removable: bool,
+}
+
+/// Les lecteurs présents. `known` : ceux déjà vus, pour ne demander le nom
+/// du volume (lent sur un lecteur vide) qu'aux nouveaux.
+pub fn drives(known: &[DriveInfo]) -> Vec<DriveInfo> {
+    use ::windows::core::HSTRING;
+    use ::windows::Win32::Storage::FileSystem::{GetDriveTypeW, GetLogicalDrives, GetVolumeInformationW};
+    use ::windows::Win32::System::Diagnostics::Debug::{SetThreadErrorMode, SEM_FAILCRITICALERRORS};
+
+    // Un lecteur de cartes vide ne doit pas ouvrir la fenêtre « Insérez un disque ».
+    unsafe {
+        let _ = SetThreadErrorMode(SEM_FAILCRITICALERRORS, None);
+    }
+    let mask = unsafe { GetLogicalDrives() };
+    let mut out = Vec::new();
+    for i in 0..26u32 {
+        if mask & (1 << i) == 0 {
+            continue;
+        }
+        let root = format!("{}:\\", (b'A' + i as u8) as char);
+        if let Some(k) = known.iter().find(|d| d.root == root) {
+            out.push(k.clone());
+            continue;
+        }
+        let wide = HSTRING::from(root.as_str());
+        // 2 = amovible, 3 = disque fixe ; on ignore le réseau (4), les CD (5)…
+        let kind = unsafe { GetDriveTypeW(&wide) };
+        if kind != 2 && kind != 3 {
+            continue;
+        }
+        let mut name = [0u16; 261];
+        // Pas de média (lecteur de cartes vide) : on l'ignore.
+        if unsafe { GetVolumeInformationW(&wide, Some(&mut name), None, None, None, None) }.is_err() {
+            continue;
+        }
+        let len = name.iter().position(|&c| c == 0).unwrap_or(name.len());
+        out.push(DriveInfo { root, label: String::from_utf16_lossy(&name[..len]), removable: kind == 2 });
+    }
+    out
+}
+
+/// Attend (au plus `max`) que Ctrl, Alt, Maj et Windows soient relâchées :
+/// après un raccourci comme Ctrl+Alt+V, envoyer Ctrl+V pendant qu'Alt est
+/// encore enfoncée donnerait… Ctrl+Alt+V.
+pub fn wait_modifiers_released(max: std::time::Duration) {
+    use ::windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_CONTROL, VK_LWIN, VK_MENU, VK_RWIN, VK_SHIFT};
+    let start = std::time::Instant::now();
+    let held = || {
+        [VK_CONTROL, VK_MENU, VK_SHIFT, VK_LWIN, VK_RWIN]
+            .iter()
+            // Le bit de poids fort = la touche est enfoncée en ce moment.
+            .any(|vk| unsafe { GetAsyncKeyState(vk.0 as i32) } < 0)
+    };
+    while held() && start.elapsed() < max {
+        std::thread::sleep(std::time::Duration::from_millis(15));
+    }
+}

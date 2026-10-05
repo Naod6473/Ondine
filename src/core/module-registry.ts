@@ -34,6 +34,8 @@ export class ModuleRegistry {
   onCompactChange: () => void = () => {};
   /** Un module demande à refermer l'île. */
   onCloseRequest: () => void = () => {};
+  /** Un module demande à ouvrir l'île (éventuellement sur un onglet). */
+  onOpenRequest: (tab?: string) => void = () => {};
 
   constructor(
     private readonly all: IslandModule[],
@@ -246,6 +248,7 @@ export class ModuleRegistry {
       },
       refreshCompact: () => self.onCompactChange(),
       closeIsland: () => self.onCloseRequest(),
+      openIsland: (tab?: string) => self.onOpenRequest(tab),
       log: logger(id),
     };
   }

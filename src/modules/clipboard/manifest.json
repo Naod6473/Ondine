@@ -24,6 +24,6 @@
   "commands": ["list", "pin", "delete", "clear", "copy", "paste", "paste_plain", "snippet_save", "snippet_delete"],
   "events": {
     "emits": ["clipboard.changed"],
-    "listens": ["clipboard.changed"]
+    "listens": ["clipboard.changed", "clipboard.paste-plain"]
   }
 }

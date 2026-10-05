@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use serde_json::{json, Value};
 
 use super::{ModuleContext, RustModule};
+use crate::services::bus::BusMessage;
 use crate::platform;
 
 /// Les terminaux connus. Toute autre valeur est refusée.
@@ -58,7 +59,12 @@ impl Shell {
     /// Un chemin Windows ne peut pas contenir de « " », donc les guillemets
     /// ci-dessous ne peuvent pas être cassés par le nom du dossier.
     fn admin_params(self, dir: &Path) -> String {
-        let d = dir.display().to_string();
+        let mut d = dir.display().to_string();
+        // La racine d'un lecteur (« E:\ ») : « \" » serait lu comme un guillemet
+        // échappé ; « E:\. » désigne le même dossier sans ce piège.
+        if d.ends_with('\\') {
+            d.push('.');
+        }
         match self {
             Self::Cmd => format!("/k cd /d \"{d}\""),
             // Entre apostrophes, PowerShell ne remplace rien ($, `…) ; une
@@ -110,6 +116,19 @@ impl RustModule for Terminal {
             other => Err(format!("commande inconnue : {other}")),
         }
     }
+
+    /// "terminal.open" `{path?}` : une règle demande un terminal (par exemple à
+    /// la racine d'une clé USB). Même chemin que le bouton : terminal du
+    /// réglage, dossier validé.
+    fn on_event(&self, ctx: &ModuleContext, msg: &BusMessage) {
+        if msg.topic != "terminal.open" {
+            return;
+        }
+        let args = json!({ "path": msg.payload.get("path").cloned().unwrap_or(Value::Null) });
+        if let Err(e) = self.invoke(ctx, "open", args) {
+            ctx.log_warn(format!("terminal demandé par une règle : {e}"));
+        }
+    }
 }
 
 /// Le dossier où ouvrir : celui demandé (un fichier déposé → son dossier),
@@ -156,6 +175,11 @@ mod tests {
             Shell::PowerShell.admin_params(dir),
             r#"-NoLogo -NoExit -Command "Set-Location -LiteralPath 'C:\Users\Simon\Mes projets\l''île'""#
         );
+    }
+
+    #[test]
+    fn drive_root_is_not_an_escaped_quote() {
+        assert_eq!(Shell::WindowsTerminal.admin_params(Path::new("E:\\")), r#"-d "E:\.""#);
     }
 
     #[test]

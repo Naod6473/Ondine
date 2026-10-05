@@ -128,6 +128,15 @@ input[type="number"] {
 .btn:hover {
   border-color: var(--accent);
 }
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 .btn-row,
 .inline {
   display: flex;
@@ -207,4 +216,83 @@ input[type="number"] {
 .order-item .btn:disabled {
   opacity: 0.35;
   cursor: default;
+}
+
+/* Règles « Quand… si… alors… » */
+.rule-block h3 {
+  margin: 4px 0 4px;
+}
+.rule-block .field:last-child {
+  border-bottom: 0;
+}
+.rule-folder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.rule-path {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--muted);
+}
+.rule-hotkey {
+  width: 220px;
+  text-align: center;
+  cursor: pointer;
+}
+.rule-hotkey:focus {
+  outline: 2px solid var(--accent);
+}
+.rule-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.rule-action-n {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  background: var(--accent);
+  color: #fff;
+  flex: none;
+}
+.rule-action-body {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  min-width: 0;
+}
+.rule-action-body .help {
+  flex-basis: 100%;
+}
+.rule-action .btn {
+  padding: 3px 8px;
+}
+.rule-add {
+  margin-top: 10px;
+}
+.rule-card.off {
+  opacity: 0.6;
+}
+.rule-summary {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+.rule-preview ol {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+.rule-templates .btn {
+  text-align: left;
 }

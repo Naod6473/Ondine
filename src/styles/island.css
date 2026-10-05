@@ -1214,3 +1214,137 @@ body {
   transition: color 200ms ease;
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
 }
+
+/* ── Module Règles ───────────────────────────────────────────────────────── */
+
+.rules {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rules-head {
+  align-items: center;
+  margin: 0;
+}
+.rules-pause {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+.rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: opacity 300ms var(--ease);
+}
+.rules-list.paused {
+  opacity: 0.45;
+}
+.rules-empty {
+  margin: 4px 2px;
+  font-size: 12px;
+}
+.rule-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  transition:
+    background 160ms ease,
+    opacity 300ms var(--ease);
+}
+.rule-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.rule-row.off {
+  opacity: 0.55;
+}
+.rule-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--island-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rule-main span {
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rule-error {
+  color: #ffb4a8;
+}
+/* Petit interrupteur : la pastille glisse avec le ressort de l'île. */
+.switch-mini {
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 18px;
+}
+.switch-mini input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+.switch-mini i {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  transition: background 220ms ease;
+}
+.switch-mini i::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform var(--speed) var(--ease);
+}
+.switch-mini input:checked + i {
+  background: var(--accent);
+}
+.switch-mini input:checked + i::after {
+  transform: translateX(12px);
+}
+.rules-history {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 11px;
+}
+.rules-history-title {
+  margin-top: 2px;
+  font-weight: 600;
+}
+.rules-history-row {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+.rules-history-row.bad {
+  color: #ffb4a8;
+}
+.rules-history-msg {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

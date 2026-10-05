@@ -349,6 +349,8 @@ pub fn run() {
         }))
         // Boîte « Choisir un dossier » (utilisée seulement depuis le Rust, voir dialog_pick_folder).
         .plugin(tauri_plugin_dialog::init())
+        // Raccourcis clavier globaux : réservés par le module Règles (Rust seulement).
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(Shared { settings: Mutex::new(loaded.clone()), gate: gate.clone() })
         .manage(Registry::new())
         .manage(UndoService::default())

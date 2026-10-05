@@ -26,5 +26,5 @@
   },
   "views": ["expanded", "drop"],
   "commands": ["open", "start_dir"],
-  "events": { "emits": [], "listens": [] }
+  "events": { "emits": [], "listens": ["terminal.open"] }
 }

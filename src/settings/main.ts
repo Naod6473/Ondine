@@ -15,6 +15,7 @@ import { mascotCatalog } from "../mascot/catalog";
 import { createRenderer, type MascotRenderer } from "../mascot/renderer";
 import { ALL_MODULES } from "../modules";
 import { settingsForm } from "./form";
+import { connectRules, rulesSection } from "./rules-editor";
 
 const PERMISSION_LABELS: Record<string, string> = {
   files: "Accès aux fichiers",
@@ -27,6 +28,7 @@ const PERMISSION_LABELS: Record<string, string> = {
 const SECTIONS = [
   { id: "general", label: "Général" },
   { id: "modules", label: "Modules" },
+  { id: "rules", label: "Règles" },
   { id: "mascot", label: "Mascotte" },
   { id: "privacy", label: "Confidentialité" },
   { id: "credentials", label: "Identifiants" },
@@ -45,6 +47,17 @@ async function start() {
   await settingsStore.connect(boot?.settings ?? null);
   bus = new Bus(windowLabel("settings"));
   await bus.connect();
+  // Section « Règles » : l'onglet de l'île peut demander d'ouvrir l'éditeur.
+  connectRules(
+    bus,
+    () => {
+      section = "rules";
+      render();
+    },
+    () => {
+      if (section === "rules") render();
+    },
+  );
   // Si les réglages changent ailleurs (import…), on redessine.
   settingsStore.onChange(() => {
     // Ne pas redessiner pendant qu'on tape dans un champ.
@@ -80,7 +93,7 @@ function render() {
   }
   const main = el("main", {});
   if (!IS_TAURI) main.append(el("p", { class: "note" }, "Aperçu dans un navigateur : rien n'est enregistré."));
-  ({ general, modules, mascot, privacy, credentials, backup })[section](main);
+  ({ general, modules, rules: rulesSection, mascot, privacy, credentials, backup })[section](main);
   app.append(nav, main);
 }
 

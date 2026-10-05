@@ -99,6 +99,11 @@ export class Island {
     // Sans `force` : on ne redessine que si le module affiché en compact change.
     this.registry.onCompactChange = () => this.render();
     this.registry.onCloseRequest = () => this.fsm.close();
+    this.registry.onOpenRequest = (tab) => {
+      if (tab && this.orderedTabs().some((t) => t.module.manifest.id === tab)) this.activeTab = tab;
+      this.fsm.open();
+      this.render(true);
+    };
     settingsStore.onChange((s) => this.applySettings(s));
     this.applySettings(settingsStore.current);
     this.wireInputs();

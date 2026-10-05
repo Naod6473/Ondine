@@ -29,7 +29,8 @@ use tauri::AppHandle;
 use super::{ModuleContext, RustModule};
 use crate::platform;
 use crate::services::undo::DEFAULT_WINDOW;
-use crate::services::{bus, files, log};
+use crate::services::bus::{self, BusMessage};
+use crate::services::{files, log};
 
 const ID: &str = "clipboard";
 /// Tous les combien on regarde le compteur de Windows.
@@ -144,6 +145,26 @@ impl RustModule for Clipboard {
             "snippet_delete" => self.snippet_delete(ctx, arg_id(&args, "id")?),
             other => Err(format!("commande inconnue : {other}")),
         }
+    }
+
+    /// "clipboard.paste-plain" : demandé par une règle (raccourci clavier).
+    /// On attend que l'utilisateur ait relâché Ctrl/Alt/Maj, puis on colle le
+    /// texte seul dans la fenêtre active. Dans un thread : le bus n'attend pas.
+    fn on_event(&self, ctx: &ModuleContext, msg: &BusMessage) {
+        if msg.topic != "clipboard.paste-plain" {
+            return;
+        }
+        let app = ctx.app.clone();
+        std::thread::spawn(move || {
+            platform::wait_modifiers_released(Duration::from_secs(1));
+            let result = read_text()
+                .ok_or_else(|| "le presse-papiers ne contient pas de texte".to_string())
+                .and_then(|text| files::copy_text(&text))
+                .and_then(|_| platform::paste_into_previous(&app));
+            if let Err(e) = result {
+                log::warn(format!("coller sans mise en forme : {e}"));
+            }
+        });
     }
 }
 

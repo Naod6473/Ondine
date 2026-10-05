@@ -231,6 +231,15 @@ export const timerModule: IslandModule = {
   setup(api) {
     reset(pomodoro.clock, phaseMs(api, "work"));
     const interval = window.setInterval(() => tick(api), 250);
+    // Une règle (raccourci, événement…) lance un minuteur.
+    const offStart = api.on("timer.start", (msg) => {
+      const minutes = Number((msg.payload as { minutes?: number } | null)?.minutes);
+      if (!(minutes >= 1 && minutes <= 180)) return;
+      reset(timer, minutes * 60_000);
+      start(timer);
+      pane = "timer";
+      api.refreshCompact();
+    });
     // Durée de travail changée dans les réglages : prise en compte si la séance n'a pas commencé.
     const off = api.onSettingsChange(() => {
       if (!pomodoro.started) reset(pomodoro.clock, phaseMs(api, pomodoro.phase));
@@ -239,6 +248,7 @@ export const timerModule: IslandModule = {
     return () => {
       window.clearInterval(interval);
       off();
+      offStart();
     };
   },
 

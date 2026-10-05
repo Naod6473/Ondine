@@ -69,3 +69,16 @@ pub fn run_as_admin(_program: &str, _params: &str) -> Result<(), String> {
 pub fn home_dir() -> PathBuf {
     base("HOME")
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct DriveInfo {
+    pub root: String,
+    pub label: String,
+    pub removable: bool,
+}
+
+pub fn drives(_known: &[DriveInfo]) -> Vec<DriveInfo> {
+    Vec::new()
+}
+
+pub fn wait_modifiers_released(_max: std::time::Duration) {}

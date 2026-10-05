@@ -17,6 +17,7 @@ mod capture;
 mod clipboard;
 mod hello;
 mod media;
+mod rules;
 mod notes;
 mod shelf;
 mod terminal;
@@ -185,6 +186,7 @@ impl Registry {
             Box::new(notes::Notes::default()),
             Box::new(agenda::Agenda::default()),
             Box::new(terminal::Terminal),
+            Box::new(rules::Rules::default()),
             Box::new(hello::Hello::default()),
         ];
 
@@ -362,6 +364,12 @@ mod tests {
     fn terminal_manifest_is_valid() {
         let m = check_manifest(terminal::Terminal.manifest_json()).unwrap();
         assert_eq!(m.id, "terminal");
+    }
+
+    #[test]
+    fn rules_manifest_is_valid() {
+        let m = check_manifest(rules::Rules::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "rules");
     }
 
     #[test]
