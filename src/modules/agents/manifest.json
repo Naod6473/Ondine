@@ -2,7 +2,7 @@
   "id": "agents",
   "name": "Agents IA",
   "icon": "🤖",
-  "description": "Lance Claude Code dans un de tes projets en un clic. Claude Code, Codex et Gemini CLI préviennent l'île : « attend ta permission », « a fini ». Ils passent par la commande « island.exe notify » et un canal local réservé à ton compte Windows : rien ne passe par Internet. L'île affiche les messages, n'exécute jamais rien, ne décide jamais à ta place, et ne lit ni ce que tu tapes ni les réponses de l'IA.",
+  "description": "Lance Claude Code, Codex ou Gemini CLI dans un de tes projets en un clic. Un tableau montre les sessions en cours ; « Y aller » ramène devant la bonne fenêtre. Claude Code, Codex et Gemini CLI préviennent l'île : « attend ta permission », « a fini ». Ils passent par la commande « island.exe notify » et un canal local réservé à ton compte Windows : rien ne passe par Internet. L'île affiche les messages, n'exécute jamais rien, ne décide jamais à ta place, et ne lit ni ce que tu tapes ni les réponses de l'IA.",
   "version": "0.1.0",
   "permissions": [
     "clipboard",
@@ -14,7 +14,7 @@
       {
         "key": "projects",
         "type": "folders",
-        "label": "Projets pour Claude Code",
+        "label": "Projets pour les agents",
         "help": "Un bouton par projet dans l'onglet et dans le lanceur. Vide = ton dossier utilisateur.",
         "default": [],
         "max": 8
@@ -22,7 +22,7 @@
       {
         "key": "claudeIn",
         "type": "select",
-        "label": "Ouvrir Claude Code dans",
+        "label": "Ouvrir les agents dans",
         "default": "console",
         "options": [
           {
@@ -34,6 +34,24 @@
             "label": "Windows Terminal (s'il est installé)"
           }
         ]
+      },
+      {
+        "key": "launchClaude",
+        "type": "boolean",
+        "label": "Proposer Claude Code",
+        "default": true
+      },
+      {
+        "key": "launchCodex",
+        "type": "boolean",
+        "label": "Proposer Codex",
+        "default": true
+      },
+      {
+        "key": "launchGemini",
+        "type": "boolean",
+        "label": "Proposer Gemini CLI",
+        "default": true
       },
       {
         "key": "notifyWaiting",
@@ -64,7 +82,8 @@
     "copy_config",
     "test",
     "projects",
-    "launch_claude"
+    "launch",
+    "focus"
   ],
   "events": {
     "emits": [
@@ -72,11 +91,13 @@
       "claude.thinking",
       "claude.done",
       "task.finished",
-      "agents.projects"
+      "agents.projects",
+      "agents.changed"
     ],
     "listens": [
       "agents.event",
-      "agents.launch"
+      "agents.launch",
+      "agents.changed"
     ]
   }
 }

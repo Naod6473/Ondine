@@ -276,8 +276,9 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `remote.changed` `{favorites: [{id, name, kind}]}` | Accès distants (Rust, et front au démarrage) | le Lanceur met à jour ses serveurs (sans les adresses) |
 | `remote.connect` `{id}` | Lanceur (front) | Accès distants ouvre ce favori |
 | `agents.event` `{source, kind, title, body, project, at}` | Agents IA (Rust) | notification (✋ « attend ta permission » en priorité haute, ✅ « a fini ») et historique |
-| `agents.projects` `{projects: [{index, name}]}` | Agents IA (Rust) | le Lanceur propose « Claude Code · projet » |
-| `agents.launch` `{index?}` | Lanceur (front) | Agents IA ouvre Claude Code dans ce projet |
+| `agents.projects` `{tools, projects: [{index, name}]}` | Agents IA (Rust) | le Lanceur propose « Claude Code · projet », « Codex · projet »… |
+| `agents.launch` `{tool, index?}` | Lanceur (front) | Agents IA ouvre cet agent dans ce projet |
+| `agents.changed` | Agents IA (Rust) | l'onglet redessine le tableau des sessions |
 | `claude.thinking` / `claude.done` | Agents IA (Rust) | la mascotte réfléchit tant qu'une session de Claude Code travaille |
 
 ## Services communs (`src-tauri/src/services/`)
@@ -712,3 +713,16 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
     décision ; l'île ne répond jamais à la place de l'utilisateur).
   - `prompt`, `prompt_response`, `last_assistant_message`, `tool_input` ne
     sont jamais lus.
+- Lancer un agent (`launch {tool, path? | index?}`) : `claude`, `codex` ou
+  `gemini` (liste fermée, enum `Tool`), même mécanisme que ci-dessus.
+  Réglages « Proposer Claude Code / Codex / Gemini CLI ».
+- Tableau des sessions (`history` → `sessions`) : une ligne par session
+  (`outil:session_id`) avec son état (`working`, `waiting`, `done`, `idle`
+  après 1 h sans nouvelles) et depuis quand ; oubliée 2 h après sa dernière
+  nouvelle ou à `SessionEnd`.
+- « Y aller » (`focus {session}`) : `island.exe notify` envoie aussi les
+  numéros de ses programmes parents (`ancestor_pids`, jusqu'à l'île ou
+  l'Explorateur exclus) et sa console si elle est visible. L'île cherche la
+  première fenêtre visible de ces programmes (`EnumWindows`), la restaure si
+  elle est réduite, puis la passe devant (`SetForegroundWindow`, précédé d'un
+  appui sur Alt pour que Windows l'autorise). Ces numéros ne servent qu'à ça.

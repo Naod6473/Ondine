@@ -123,3 +123,15 @@ pub fn serve_agents_pipe(_max: usize, _on_message: impl FnMut(Vec<u8>)) -> Resul
 pub fn send_agents_pipe(_bytes: &[u8]) -> Result<(), String> {
     Err("disponible seulement sous Windows".into())
 }
+
+pub fn ancestor_pids(_max: usize) -> Vec<u32> {
+    vec![]
+}
+
+pub fn own_console_window() -> isize {
+    0
+}
+
+pub fn focus_agent_window(_hwnd: isize, _pids: &[u32]) -> Result<(), String> {
+    Err("disponible seulement sous Windows".into())
+}

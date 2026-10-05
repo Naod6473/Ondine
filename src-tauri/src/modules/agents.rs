@@ -42,6 +42,8 @@ const MAX_TEXT: usize = 300;
 /// Une session de Claude sans nouvelles depuis ce temps est considérée finie
 /// (si on l'a interrompue, Claude Code n'envoie pas toujours « Stop »).
 const SESSION_TIMEOUT: Duration = Duration::from_secs(60 * 60);
+/// Une session finie (ou muette) disparaît du tableau après ce temps.
+const SESSION_FORGET: Duration = Duration::from_secs(2 * 60 * 60);
 /// Au plus ce nombre de messages par seconde (au-delà : ignorés).
 const MAX_PER_SECOND: usize = 10;
 
@@ -56,17 +58,43 @@ struct Event {
     title: String,
     body: String,
     project: String,
-    #[serde(skip)]
+    /// La session (« outil:numéro ») : sert au bouton « Y aller ».
     session: String,
+}
+
+/// Une session d'agent, pour le tableau « En cours ».
+#[derive(Debug, Clone, Serialize)]
+struct Session {
+    id: String,
+    source: String,
+    project: String,
+    /// "working" (au travail), "waiting" (t'attend), "done" (a fini), "idle"
+    /// (plus de nouvelles depuis longtemps).
+    state: &'static str,
+    /// Depuis quand (ms) elle est dans cet état.
+    since: u64,
+    #[serde(skip)]
+    updated: Option<Instant>,
+    /// Pour retrouver sa fenêtre : les programmes au-dessus du hook, et sa console.
+    #[serde(skip)]
+    pids: Vec<u32>,
+    #[serde(skip)]
+    hwnd: isize,
 }
 
 #[derive(Default)]
 struct State {
     history: VecDeque<Event>,
-    /// Sessions de Claude au travail → dernière nouvelle.
-    working: HashMap<String, Instant>,
+    /// Les sessions connues, par identifiant.
+    sessions: HashMap<String, Session>,
     /// Arrivées récentes (limite de débit).
     recent: VecDeque<Instant>,
+}
+
+impl State {
+    fn working(&self) -> usize {
+        self.sessions.values().filter(|s| s.state == "working").count()
+    }
 }
 
 type Shared = Arc<Mutex<State>>;
@@ -95,15 +123,21 @@ impl RustModule for Agents {
                 log::warn(format!("agents : {e}"));
             }
         });
-        // Le fil qui oublie les sessions muettes depuis longtemps.
+        // Le fil qui range les sessions muettes depuis longtemps.
         let (a, s) = (app.clone(), self.state.clone());
         std::thread::spawn(move || loop {
             std::thread::sleep(Duration::from_secs(60));
             let emptied = {
                 let mut st = s.lock().unwrap();
-                let before = st.working.len();
-                st.working.retain(|_, t| t.elapsed() < SESSION_TIMEOUT);
-                before > 0 && st.working.is_empty()
+                let before = st.working();
+                for session in st.sessions.values_mut() {
+                    let quiet = session.updated.map_or(true, |t| t.elapsed() >= SESSION_TIMEOUT);
+                    if session.state == "working" && quiet {
+                        session.state = "idle"; // interrompue sans « Stop », sans doute
+                    }
+                }
+                st.sessions.retain(|_, s| s.updated.is_some_and(|t| t.elapsed() < SESSION_FORGET));
+                before > 0 && st.working() == 0
             };
             if emptied {
                 super::with_context(&a, ID, |ctx| ctx.emit("claude.done", Value::Null));
@@ -111,14 +145,14 @@ impl RustModule for Agents {
         });
     }
 
-    /// "agents.launch" `{index?}` : le lanceur demande Claude Code.
+    /// "agents.launch" `{tool?, index?}` : le lanceur demande un agent.
     fn on_event(&self, ctx: &ModuleContext, msg: &BusMessage) {
         if msg.topic != "agents.launch" {
             return;
         }
-        let args = json!({ "index": msg.payload.get("index").cloned().unwrap_or(Value::Null) });
-        if let Err(e) = self.invoke(ctx, "launch_claude", args) {
-            ctx.log_warn(format!("Claude Code demandé par le lanceur : {e}"));
+        let get = |k: &str| msg.payload.get(k).cloned().unwrap_or(Value::Null);
+        if let Err(e) = self.invoke(ctx, "launch", json!({ "tool": get("tool"), "index": get("index") })) {
+            ctx.log_warn(format!("agent demandé par le lanceur : {e}"));
         }
     }
 
@@ -126,7 +160,18 @@ impl RustModule for Agents {
         match command {
             "history" => {
                 let st = self.state.lock().unwrap();
-                Ok(json!({ "events": st.history, "working": st.working.len() }))
+                Ok(json!({ "events": st.history, "working": st.working(), "sessions": sorted_sessions(&st) }))
+            }
+            // { session } : fait passer devant la fenêtre de cette session.
+            "focus" => {
+                let id = args.get("session").and_then(Value::as_str).ok_or("session manquante")?;
+                let (hwnd, pids) = {
+                    let st = self.state.lock().unwrap();
+                    let s = st.sessions.get(id).ok_or("session inconnue (terminée ?)")?;
+                    (s.hwnd, s.pids.clone())
+                };
+                platform::focus_agent_window(hwnd, &pids)?;
+                Ok(Value::Null)
             }
             // La configuration à coller dans Claude Code (avec le chemin de CE programme).
             "hook_config" => Ok(json!({ "exe": exe_path() })),
@@ -137,21 +182,27 @@ impl RustModule for Agents {
                 files::copy_text(&hook_config(tool, &exe_path())?)?;
                 Ok(Value::Null)
             }
-            // Les projets du réglage (ceux qui existent encore), pour les boutons.
+            // Les projets du réglage (ceux qui existent encore) et les agents
+            // proposés, pour les boutons.
             "projects" => {
                 let list = projects(ctx);
+                let tools = tools(ctx);
                 // Le lanceur s'en sert aussi (seulement le numéro et le nom).
-                ctx.emit("agents.projects", json!({ "projects": list.iter().enumerate().map(|(i, p)| json!({ "index": i, "name": folder_name(p) })).collect::<Vec<_>>() }));
-                Ok(json!({ "projects": list.iter().map(|p| json!({ "path": p.display().to_string(), "name": folder_name(p) })).collect::<Vec<_>>() }))
+                ctx.emit(
+                    "agents.projects",
+                    json!({ "tools": tools, "projects": list.iter().enumerate().map(|(i, p)| json!({ "index": i, "name": folder_name(p) })).collect::<Vec<_>>() }),
+                );
+                Ok(json!({ "tools": tools, "projects": list.iter().map(|p| json!({ "path": p.display().to_string(), "name": folder_name(p) })).collect::<Vec<_>>() }))
             }
-            // { path? } ou { index? } : ouvre Claude Code dans ce dossier.
-            "launch_claude" => {
+            // { tool, path? | index? } : ouvre cet agent dans ce dossier.
+            "launch" => {
+                let tool = Tool::parse(args.get("tool").and_then(Value::as_str).unwrap_or("claude"))?;
                 let dir = match (args.get("path").and_then(Value::as_str), args.get("index").and_then(Value::as_u64)) {
                     (Some(path), _) => folder_of(ctx.check_path(path)?),
                     (None, Some(i)) => projects(ctx).into_iter().nth(i as usize).ok_or("projet introuvable")?,
                     (None, None) => projects(ctx).into_iter().next().unwrap_or_else(platform::home_dir),
                 };
-                launch_claude(ctx, &dir)?;
+                launch(ctx, tool, &dir)?;
                 Ok(json!({ "dir": dir.display().to_string() }))
             }
             // « Essayer » : comme si Claude venait de finir.
@@ -165,7 +216,7 @@ impl RustModule for Agents {
     }
 }
 
-// ── Lancer Claude Code ───────────────────────────────────────────────────────
+// ── Lancer un agent (Claude Code, Codex, Gemini CLI) ───────────────────────────────────────────────────────
 
 /// Les dossiers de projets du réglage, validés (les disparus sont ignorés).
 fn projects(ctx: &ModuleContext) -> Vec<PathBuf> {
@@ -174,22 +225,61 @@ fn projects(ctx: &ModuleContext) -> Vec<PathBuf> {
     raw.iter().filter_map(Value::as_str).filter_map(|p| ctx.check_path(p).ok()).filter(|p| p.is_dir()).take(8).collect()
 }
 
-fn launch_claude(ctx: &ModuleContext, dir: &Path) -> Result<(), String> {
+/// Les agents qu'on sait lancer. Seul ce mot est tapé dans la console.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Tool {
+    Claude,
+    Codex,
+    Gemini,
+}
+
+impl Tool {
+    fn parse(s: &str) -> Result<Self, String> {
+        match s {
+            "claude" => Ok(Self::Claude),
+            "codex" => Ok(Self::Codex),
+            "gemini" => Ok(Self::Gemini),
+            other => Err(format!("agent inconnu : {other}")),
+        }
+    }
+
+    /// La commande tapée (claude.exe / claude.cmd, codex.cmd, gemini.cmd… : cmd trouve).
+    fn word(self) -> &'static str {
+        match self {
+            Self::Claude => "claude",
+            Self::Codex => "codex",
+            Self::Gemini => "gemini",
+        }
+    }
+}
+
+/// Les agents proposés (réglages « Proposer … »), dans l'ordre.
+fn tools(ctx: &ModuleContext) -> Vec<&'static str> {
+    let settings = ctx.settings();
+    let on = |k: &str| settings.get(k).and_then(Value::as_bool).unwrap_or(true);
+    [("claude", "launchClaude"), ("codex", "launchCodex"), ("gemini", "launchGemini")]
+        .into_iter()
+        .filter(|(_, key)| on(key))
+        .map(|(t, _)| t)
+        .collect()
+}
+
+fn launch(ctx: &ModuleContext, tool: Tool, dir: &Path) -> Result<(), String> {
     ctx.require("files")?;
     let in_wt = ctx.settings().get("claudeIn").and_then(Value::as_str) == Some("wt");
-    let (program, args) = claude_command(dir, in_wt);
+    let (program, args) = agent_command(tool, dir, in_wt);
     // La console doit pouvoir passer devant l'île.
     platform::forget_previous_foreground();
     platform::spawn_console(program, &args, dir)?;
-    ctx.log_info(format!("ouvre Claude Code dans {}", dir.display()));
+    ctx.log_info(format!("ouvre {} dans {}", tool.word(), dir.display()));
     Ok(())
 }
 
-/// « cmd /k claude » : cmd trouve claude.exe ou claude.cmd (installation npm)
-/// dans le PATH, et la fenêtre reste ouverte si Claude n'est pas installé
-/// (on lit alors le message d'erreur de Windows).
-fn claude_command(dir: &Path, in_wt: bool) -> (&'static str, Vec<String>) {
-    let cmd = ["cmd.exe".to_string(), "/k".into(), "claude".into()];
+/// « cmd /k claude » (ou codex, gemini) : cmd trouve le programme dans le
+/// PATH (.exe ou .cmd d'une installation npm), et la fenêtre reste ouverte
+/// s'il n'est pas installé (on lit alors le message d'erreur de Windows).
+fn agent_command(tool: Tool, dir: &Path, in_wt: bool) -> (&'static str, Vec<String>) {
+    let cmd = ["cmd.exe".to_string(), "/k".into(), tool.word().into()];
     // Windows Terminal lit « ; » comme un séparateur de commandes : un dossier
     // qui en contient s'ouvre dans une console classique.
     if in_wt && !dir.display().to_string().contains(';') {
@@ -213,6 +303,20 @@ fn folder_of(path: PathBuf) -> PathBuf {
     path.parent().map(Path::to_path_buf).unwrap_or(path)
 }
 
+/// Le tableau : d'abord celles qui t'attendent, puis au travail, puis le reste ;
+/// les plus récentes d'abord.
+fn sorted_sessions(st: &State) -> Vec<Session> {
+    let rank = |s: &Session| match s.state {
+        "waiting" => 0,
+        "working" => 1,
+        "done" => 2,
+        _ => 3,
+    };
+    let mut list: Vec<Session> = st.sessions.values().cloned().collect();
+    list.sort_by(|a, b| rank(a).cmp(&rank(b)).then(b.since.cmp(&a.since)));
+    list
+}
+
 // ── Recevoir un message ──────────────────────────────────────────────────────
 
 fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
@@ -230,24 +334,46 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
     let Ok(msg) = serde_json::from_slice::<Value>(bytes) else { return };
     let Some(event) = understand(&msg, now_ms()) else { return };
     log::debug(format!("agents : {} ({})", event.kind, event.source));
+    // Où est sa fenêtre ? (de simples numéros ; rien n'est lancé avec)
+    let pids: Vec<u32> = msg["pids"].as_array().into_iter().flatten().filter_map(Value::as_u64).filter_map(|p| u32::try_from(p).ok()).take(8).collect();
+    let hwnd = msg["hwnd"].as_i64().unwrap_or(0) as isize;
 
     // Qui est au travail ? (la mascotte réfléchit tant qu'au moins une session travaille)
     let (started, finished) = {
         let mut st = state.lock().unwrap();
-        let was_busy = !st.working.is_empty();
-        match event.kind {
-            "working" => {
-                st.working.insert(event.session.clone(), Instant::now());
+        let was_busy = st.working() > 0;
+        if event.kind == "ended" {
+            st.sessions.remove(&event.session);
+        } else if event.kind != "info" {
+            let state_name = match event.kind {
+                "working" => "working",
+                "waiting" => "waiting",
+                _ => "done",
+            };
+            let entry = st.sessions.entry(event.session.clone()).or_insert_with(|| Session {
+                id: event.session.clone(),
+                source: event.source.clone(),
+                project: event.project.clone(),
+                state: state_name,
+                since: event.at,
+                updated: None,
+                pids: vec![],
+                hwnd: 0,
+            });
+            if entry.state != state_name {
+                entry.state = state_name;
+                entry.since = event.at;
             }
-            "done" | "ended" => {
-                st.working.remove(&event.session);
+            if !event.project.is_empty() {
+                entry.project = event.project.clone();
             }
-            "waiting" => {
-                st.working.remove(&event.session); // il attend : il ne travaille plus
+            if !pids.is_empty() || hwnd != 0 {
+                entry.pids = pids;
+                entry.hwnd = hwnd;
             }
-            _ => {}
+            entry.updated = Some(Instant::now());
         }
-        let busy = !st.working.is_empty();
+        let busy = st.working() > 0;
         if matches!(event.kind, "waiting" | "done" | "info") {
             st.history.push_front(event.clone());
             st.history.truncate(MAX_HISTORY);
@@ -266,7 +392,7 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
                 ctx.emit("claude.done", Value::Null);
             }
             if event.kind == "done" {
-                ctx.emit("task.finished", json!({ "label": "Claude a fini" }));
+                ctx.emit("task.finished", json!({ "label": event.title }));
             }
         }
         let wanted = match event.kind {
@@ -278,6 +404,8 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
         if wanted {
             ctx.emit("agents.event", serde_json::to_value(&event).unwrap_or(Value::Null));
         }
+        // Le tableau des sessions a peut-être changé.
+        ctx.emit("agents.changed", Value::Null);
     });
 }
 
@@ -306,7 +434,7 @@ fn understand(msg: &Value, at: u64) -> Option<Event> {
         title: text(&msg["title"]),
         body: text(&msg["message"]),
         project: project_name(hook["cwd"].as_str().unwrap_or("")),
-        session: clean(session, 80),
+        session: format!("{source}:{}", clean(session, 80)),
     };
     let who = match source.as_str() {
         "claude-code" => "Claude",
@@ -469,7 +597,7 @@ mod tests {
     #[test]
     fn claude_events_are_understood() {
         let e = hook(json!({ "hook_event_name": "Notification", "message": "Claude needs your permission to use Bash", "session_id": "s1", "cwd": "C:\\Projets\\Island\\" })).unwrap();
-        assert_eq!((e.kind, e.title.as_str(), e.project.as_str(), e.session.as_str()), ("waiting", "Claude attend ta permission", "Island", "s1"));
+        assert_eq!((e.kind, e.title.as_str(), e.project.as_str(), e.session.as_str()), ("waiting", "Claude attend ta permission", "Island", "claude-code:s1"));
         let e = hook(json!({ "hook_event_name": "Notification", "notification_type": "idle_prompt", "message": "Claude is waiting for your input" })).unwrap();
         assert_eq!(e.title, "Claude attend ta réponse");
         assert!(hook(json!({ "hook_event_name": "Notification", "notification_type": "auth_success", "message": "ok" })).is_none());
@@ -494,19 +622,20 @@ mod tests {
     }
 
     #[test]
-    fn claude_command_lines() {
+    fn agent_command_lines() {
         let dir = Path::new(r"C:\Projets\Mon appli");
-        assert_eq!(claude_command(dir, false), ("cmd.exe", vec!["/k".to_string(), "claude".to_string()]));
-        let (p, a) = claude_command(dir, true);
-        assert_eq!((p, a[1].as_str(), a[2].as_str()), ("wt.exe", r"C:\Projets\Mon appli", "cmd.exe"));
-        assert_eq!(claude_command(Path::new(r"C:\a;b"), true).0, "cmd.exe");
+        assert_eq!(agent_command(Tool::Claude, dir, false), ("cmd.exe", vec!["/k".to_string(), "claude".to_string()]));
+        let (p, a) = agent_command(Tool::Codex, dir, true);
+        assert_eq!((p, a[1].as_str(), a[2].as_str(), a[4].as_str()), ("wt.exe", r"C:\Projets\Mon appli", "cmd.exe", "codex"));
+        assert_eq!(agent_command(Tool::Gemini, Path::new(r"C:\a;b"), true).0, "cmd.exe");
+        assert!(Tool::parse("calc").is_err());
     }
 
     #[test]
     fn other_tools_are_understood() {
         let codex = |v: Value| understand(&json!({ "source": "codex", "hook": v }), 0);
         let e = codex(json!({ "type": "agent-turn-complete", "thread-id": "t1", "cwd": "C:\\p\\api", "last-assistant-message": "secret" })).unwrap();
-        assert_eq!((e.kind, e.title.as_str(), e.session.as_str()), ("done", "Codex a fini", "t1"));
+        assert_eq!((e.kind, e.title.as_str(), e.session.as_str()), ("done", "Codex a fini", "codex:t1"));
         assert!(!e.body.contains("secret"));
         let e = codex(json!({ "hook_event_name": "PermissionRequest", "tool_name": "Bash", "tool_input": { "command": "rm -rf /" } })).unwrap();
         assert_eq!((e.title.as_str(), e.body.as_str()), ("Codex attend ta permission", "pour Bash"));

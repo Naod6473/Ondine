@@ -26,7 +26,11 @@ use crate::platform;
 pub const MAX_MESSAGE: usize = 64 * 1024;
 
 pub fn notify(args: Vec<String>) {
-    let message = build(&args, read_stdin());
+    let mut message = build(&args, read_stdin());
+    // Pour « Y aller » : les programmes au-dessus de nous (le terminal de
+    // l'agent en fait partie) et notre console, si elle est visible.
+    message["pids"] = json!(platform::ancestor_pids(8));
+    message["hwnd"] = json!(platform::own_console_window());
     let _ = platform::send_agents_pipe(message.to_string().as_bytes());
     if matches!(message["source"].as_str(), Some("codex") | Some("gemini")) {
         println!("{{}}");

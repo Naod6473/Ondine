@@ -1875,3 +1875,75 @@ body {
   background: rgba(255, 255, 255, 0.14);
   color: var(--island-fg);
 }
+.agents-launch-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--line);
+  margin: 0 2px;
+}
+.agents-subtitle {
+  font-size: 11px;
+  margin-top: 2px;
+}
+.agents-board {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.agents-session {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--island-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    transform 300ms var(--ease);
+}
+.agents-session:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.agents-session:active {
+  transform: scale(0.98);
+}
+.agents-session small {
+  margin-left: auto;
+}
+.agents-session.waiting {
+  background: rgba(255, 198, 92, 0.09);
+}
+.agents-go {
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.agents-session:hover .agents-go {
+  opacity: 0.7;
+}
+/* Le point d'état : vert qui respire (au travail), orange (t'attend), gris (fini). */
+.agents-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  background: rgba(255, 255, 255, 0.3);
+}
+.agents-session.working .agents-dot {
+  background: #5ee08a;
+  animation: remote-breathe 1.4s ease-in-out infinite;
+}
+.agents-session.waiting .agents-dot {
+  background: #ffc65c;
+  box-shadow: 0 0 6px rgba(255, 198, 92, 0.7);
+}
+@media (prefers-reduced-motion: reduce) {
+  .agents-session.working .agents-dot {
+    animation: none;
+  }
+}

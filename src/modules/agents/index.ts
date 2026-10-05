@@ -1,10 +1,11 @@
-// Module « Agents IA » : Claude Code (et d'autres outils) préviennent l'île.
+// Module « Agents IA » : Claude Code, Codex et Gemini CLI préviennent l'île.
 //
 // Le Rust (src-tauri/src/modules/agents.rs) écoute le canal local, comprend
-// les hooks de Claude Code et publie « agents.event ». Ici : la notification
-// dans l'île, les boutons pour lancer Claude Code dans un projet, l'historique
-// des derniers messages, et la marche à suivre pour brancher Claude Code
-// (copier la configuration, essayer).
+// les hooks et publie « agents.event » (une notification) et « agents.changed »
+// (le tableau des sessions a bougé). Ici : la notification avec « Y aller »
+// (ramène la fenêtre de l'agent devant), les boutons pour lancer un agent
+// dans un projet, le tableau « En cours », les derniers messages, et la marche
+// à suivre pour brancher chaque outil.
 
 import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
@@ -19,10 +20,43 @@ interface AgentEvent {
   title: string;
   body: string;
   project: string;
+  session: string;
 }
+
+interface Session {
+  id: string;
+  source: string;
+  project: string;
+  state: "working" | "waiting" | "done" | "idle";
+  since: number;
+}
+
+/** Les agents qu'on sait lancer (réglages « Proposer … »). */
+type LaunchTool = "claude" | "codex" | "gemini";
+const LAUNCH_NAMES: Record<LaunchTool, string> = { claude: "Claude Code", codex: "Codex", gemini: "Gemini CLI" };
+/** Le nom affiché d'une source de hooks. */
+const SOURCE_NAMES: Record<string, string> = { "claude-code": "Claude", codex: "Codex", gemini: "Gemini" };
+/** L'agent choisi pour « Lancer » (gardé tant que l'île est ouverte). */
+let chosenTool: LaunchTool = "claude";
 
 const ICON: Record<AgentEvent["kind"], string> = { waiting: "✋", done: "✅", info: "💬" };
 const redraws = new Set<() => void>();
+
+/** « 4 min », « 1 h 05 » : depuis combien de temps. */
+function duration(ms: number): string {
+  const m = Math.max(0, Math.floor((Date.now() - ms) / 60000));
+  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")}`;
+}
+
+/** Ramène devant la fenêtre de cette session (erreur affichée sans bruit). */
+async function goTo(api: ModuleApi, session: string) {
+  try {
+    await api.invoke("focus", { session });
+    api.closeIsland();
+  } catch (err) {
+    api.notify({ title: "Fenêtre introuvable", body: errorText(err), icon: "🔎", priority: "low", key: "agents-focus" });
+  }
+}
 
 /** « à l'instant », « il y a 5 min », sinon l'heure. */
 function ago(ms: number): string {
@@ -49,43 +83,64 @@ export const agents: IslandModule = {
         icon: ICON[e.kind] ?? "🤖",
         // Claude attend : l'île s'ouvre pour te le dire ; le reste reste discret.
         priority: e.kind === "waiting" ? "high" : "normal",
-        key: `agents-${e.source}-${e.project}`,
+        key: `agents-${e.session}`,
+        actions: e.session ? [{ label: "↗ Y aller", run: () => goTo(api, e.session) }] : undefined,
       });
-      redraws.forEach((r) => r());
     });
+    api.on("agents.changed", () => redraws.forEach((r) => r()));
   },
 
   views: {
     expanded(root, api: ModuleApi) {
+      const board = el("ul", { class: "agents-board" });
       const list = el("ul", { class: "agents-list" });
       const status = el("p", { class: "muted agents-status" });
       const guide = el("details", { class: "agents-guide" });
       const launch = el("div", { class: "agents-launch" });
-      root.append(el("div", { class: "agents" }, launch, status, list, guide));
+      root.append(
+        el("div", { class: "agents" }, launch, status, board, el("div", { class: "muted agents-subtitle" }, "Derniers messages"), list, guide),
+      );
 
-      // ── Lancer Claude Code ─────────────────────────────────────────────────
+      // ── Lancer un agent ────────────────────────────────────────────────────
       const start = (args: Record<string, unknown>) =>
         api.handler(async () => {
           try {
-            await api.invoke("launch_claude", args);
+            await api.invoke("launch", { tool: chosenTool, ...args });
             api.closeIsland();
           } catch (err) {
-            api.notify({ title: "Claude Code", body: errorText(err), icon: "⚠️", priority: "low", key: "agents-error" });
+            api.notify({ title: LAUNCH_NAMES[chosenTool], body: errorText(err), icon: "⚠️", priority: "low", key: "agents-error" });
           }
         });
       const pick = api.handler(async () => {
-        const path = await Bridge.pickFolder("Ouvrir Claude Code dans…");
+        const path = await Bridge.pickFolder(`Ouvrir ${LAUNCH_NAMES[chosenTool]} dans…`);
         if (path) await start({ path })();
       });
-      void api.invoke<{ projects: { path: string; name: string }[] }>("projects").then(
-        ({ projects }) =>
-          launch.replaceChildren(
-            el("span", { class: "agents-launch-title" }, "▶ Claude Code"),
-            ...(projects.length
-              ? projects.map((p, i) => el("button", { class: "btn small", title: `Ouvrir Claude Code dans ${p.path}`, onclick: start({ index: i }) }, `📁 ${p.name}`))
-              : [el("button", { class: "btn small primary", title: "Dans ton dossier utilisateur", onclick: start({}) }, "Lancer")]),
-            el("button", { class: "btn small", title: "Choisir le dossier du projet", onclick: pick }, "Autre dossier…"),
-          ),
+      const drawLaunch = (tools: LaunchTool[], projects: { path: string; name: string }[]) => {
+        if (!tools.includes(chosenTool)) chosenTool = tools[0] ?? "claude";
+        if (!tools.length) return launch.replaceChildren();
+        // Un agent proposé seulement : pas besoin de choisir.
+        const chips =
+          tools.length > 1
+            ? tools.map((t) =>
+                el(
+                  "button",
+                  { class: `net-chip${t === chosenTool ? " active" : ""}`, onclick: api.handler(() => ((chosenTool = t), drawLaunch(tools, projects))) },
+                  LAUNCH_NAMES[t],
+                ),
+              )
+            : [el("span", { class: "agents-launch-title" }, LAUNCH_NAMES[chosenTool])];
+        launch.replaceChildren(
+          el("span", { class: "agents-launch-title" }, "▶"),
+          ...chips,
+          el("span", { class: "agents-launch-sep" }),
+          ...(projects.length
+            ? projects.map((p, i) => el("button", { class: "btn small", title: `Ouvrir ${LAUNCH_NAMES[chosenTool]} dans ${p.path}`, onclick: start({ index: i }) }, `📁 ${p.name}`))
+            : [el("button", { class: "btn small primary", title: "Dans ton dossier utilisateur", onclick: start({}) }, "Lancer")]),
+          el("button", { class: "btn small", title: "Choisir le dossier du projet", onclick: pick }, "Autre dossier…"),
+        );
+      };
+      void api.invoke<{ tools: LaunchTool[]; projects: { path: string; name: string }[] }>("projects").then(
+        ({ tools, projects }) => drawLaunch(tools, projects),
         () => {},
       );
 
@@ -147,14 +202,41 @@ export const agents: IslandModule = {
       drawGuide();
 
       const draw = async () => {
-        let data: { events: AgentEvent[]; working: number };
+        let data: { events: AgentEvent[]; working: number; sessions: Session[] };
         try {
           data = await api.invoke("history");
         } catch {
           return; // hors de l'appli
         }
-        status.textContent =
-          data.working > 0 ? `🧠 Au travail : ${data.working} session${data.working > 1 ? "s" : ""}` : "Aucun agent au travail pour l'instant.";
+        const waiting = data.sessions.filter((x) => x.state === "waiting").length;
+        status.textContent = data.sessions.length
+          ? [data.working ? `🧠 ${data.working} au travail` : "", waiting ? `✋ ${waiting} t'attend${waiting > 1 ? "ent" : ""}` : ""].filter(Boolean).join(" · ") ||
+            "Personne ne travaille en ce moment."
+          : "Aucune session pour l'instant.";
+        // Le tableau « En cours » : un clic ramène la fenêtre de la session.
+        board.replaceChildren(
+          ...data.sessions.map((x) => {
+            const what = {
+              working: `travaille depuis ${duration(x.since)}`,
+              waiting: `t'attend depuis ${duration(x.since)}`,
+              done: `a fini ${ago(x.since)}`,
+              idle: "sans nouvelles",
+            }[x.state];
+            return el(
+              "li",
+              {},
+              el(
+                "button",
+                { class: `agents-session ${x.state}`, title: "Revenir à sa fenêtre", onclick: api.handler(() => goTo(api, x.id)) },
+                el("i", { class: "agents-dot" }),
+                el("b", {}, SOURCE_NAMES[x.source] ?? x.source),
+                el("span", {}, x.project || "—"),
+                el("small", { class: "muted" }, what),
+                el("span", { class: "agents-go" }, "↗"),
+              ),
+            );
+          }),
+        );
         list.replaceChildren(
           ...(data.events.length
             ? data.events.map((e) =>
