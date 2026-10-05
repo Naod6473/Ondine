@@ -1,12 +1,14 @@
-// Module « Contrôles » : Wi-Fi, Bluetooth et mode avion, le volume des
-// haut-parleurs et du micro, et la luminosité des écrans.
+// Module « Contrôles » : Wi-Fi, Bluetooth, mode avion, micro coupé, et des
+// piliers verticaux pour le son, le micro et la luminosité des écrans.
+//
+// Façon centre de contrôle de l'iPhone, en verre liquide : à gauche une carte
+// de pastilles rondes (interrupteurs), à droite des « piliers » qu'on remplit
+// en glissant de bas en haut. Tout tient dans la vue de l'île, sans défiler.
 //
 // Le Rust (src-tauri/src/modules/controls.rs) lit et change les réglages de
-// Windows. Ici : une ligne par périphérique, avec un grand curseur façon
-// centre de contrôle (et un bouton « couper » pour le son). Tant que l'onglet
-// est ouvert, on relit le son chaque seconde (le volume a pu changer avec les
-// touches du clavier), les radios toutes les 2 s et les écrans toutes les 5 s
-// (leur réponse est lente).
+// Windows. Tant que l'onglet est ouvert, on relit le son chaque seconde (le
+// volume a pu changer avec les touches du clavier), les radios toutes les 2 s
+// et les écrans toutes les 5 s (leur réponse est lente).
 
 import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
@@ -43,11 +45,13 @@ interface Screen {
 const SOUND_REFRESH_MS = 1000;
 const SCREENS_REFRESH_MS = 5000;
 const RADIOS_REFRESH_MS = 2000;
-/** Pendant qu'on fait glisser un curseur, au plus un envoi tous les… (le son réagit vite, un écran externe non). */
+/** Pendant qu'on fait glisser un pilier, au plus un envoi tous les… (le son réagit vite, un écran externe non). */
 const SOUND_SEND_MS = 60;
 const SCREEN_SEND_MS = 150;
+/** Un appui sur une flèche du clavier change la valeur de… */
+const KEY_STEP = 5;
 
-/** Les pictogrammes en SVG (nets à toute taille, comme ceux de la musique). */
+/** Les pictogrammes en SVG (nets à toute taille). */
 const GLYPHS = {
   speakers: "M4 9h4l5-4v14l-5-4H4zM16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12",
   speakersOff: "M4 9h4l5-4v14l-5-4H4zM16.5 9.5l5 5M21.5 9.5l-5 5",
@@ -71,105 +75,157 @@ function glyph(kind: keyof typeof GLYPHS): SVGSVGElement {
   return svg;
 }
 
+const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+
 /**
- * Un curseur 0-100 qui appelle `send` pendant qu'on le fait glisser, au plus
- * une fois tous les `everyMs` (le dernier mouvement part toujours).
- * `dragging()` dit si la main est dessus : on n'écrase pas sa valeur.
+ * Un pilier vertical qu'on remplit de bas en haut (0 à 100).
+ * Souris : on appuie et on glisse ; clavier : flèches, Début, Fin.
+ * `onMove` dessine tout de suite ; `send` part au plus une fois tous les
+ * `everyMs` pendant le glissé (le dernier mouvement part toujours).
  */
-function slider(label: string, everyMs: number, onMove: (value: number) => void, send: (value: number) => void) {
-  const input = el("input", { class: "ctl-slider", type: "range", min: "0", max: "100", step: "1", "aria-label": label }) as HTMLInputElement;
+function pillar(opts: { label: string; color: string; everyMs: number; icon: Node; onMove: (v: number) => void; send: (v: number) => void }) {
+  const fill = el("div", { class: "ctl-fill" });
+  const value = el("span", { class: "ctl-pct" });
+  const iconBox = el("span", { class: "ctl-pill-icon" }, opts.icon);
+  const pill = el(
+    "div",
+    { class: "ctl-pill", role: "slider", tabindex: "0", "aria-label": opts.label, "aria-valuemin": "0", "aria-valuemax": "100" },
+    fill,
+    value,
+    iconBox,
+  );
+  pill.style.setProperty("--tint", opts.color);
+
   let held = false;
   let lastSent = 0;
   let pending: number | undefined;
-  input.addEventListener("pointerdown", () => (held = true));
-  input.addEventListener("pointerup", () => (held = false));
-  input.addEventListener("change", () => (held = false));
-  input.addEventListener("input", () => {
-    const value = Number(input.value);
-    onMove(value);
+
+  const move = (v: number) => {
+    opts.onMove(v);
     window.clearTimeout(pending);
     const go = () => {
       lastSent = Date.now();
-      send(value);
+      opts.send(v);
     };
-    const wait = everyMs - (Date.now() - lastSent);
+    const wait = opts.everyMs - (Date.now() - lastSent);
     if (wait <= 0) go();
     else pending = window.setTimeout(go, wait);
+  };
+  /** La valeur sous le pointeur : 0 en bas du pilier, 100 en haut. */
+  const fromPointer = (e: PointerEvent) => {
+    const r = pill.getBoundingClientRect();
+    return clamp(((r.bottom - e.clientY) / r.height) * 100);
+  };
+
+  pill.addEventListener("pointerdown", (e) => {
+    if (pill.classList.contains("off")) return;
+    held = true;
+    pill.classList.add("held");
+    pill.setPointerCapture(e.pointerId);
+    move(fromPointer(e));
   });
+  pill.addEventListener("pointermove", (e) => {
+    if (held) move(fromPointer(e));
+  });
+  const release = () => {
+    held = false;
+    pill.classList.remove("held");
+  };
+  pill.addEventListener("pointerup", release);
+  pill.addEventListener("pointercancel", release);
+  pill.addEventListener("keydown", (e) => {
+    if (pill.classList.contains("off")) return;
+    const now = Number(pill.getAttribute("aria-valuenow") ?? 0);
+    const keys: Record<string, number> = { ArrowUp: now + KEY_STEP, ArrowRight: now + KEY_STEP, ArrowDown: now - KEY_STEP, ArrowLeft: now - KEY_STEP, Home: 0, End: 100 };
+    if (!(e.key in keys)) return;
+    e.preventDefault();
+    move(clamp(keys[e.key]));
+  });
+
   return {
-    input,
+    pill,
+    iconBox,
     dragging: () => held,
-    /** Montre une valeur (le remplissage suit : voir .ctl-slider dans island.css). */
-    show(value: number) {
-      input.value = String(value);
-      input.style.setProperty("--v", `${value}%`);
+    /** Montre une valeur (le remplissage glisse en douceur : voir .ctl-fill). */
+    show(v: number, text = `${v} %`) {
+      pill.style.setProperty("--v", `${v}%`);
+      pill.setAttribute("aria-valuenow", String(v));
+      pill.setAttribute("aria-valuetext", text);
+      value.textContent = text;
+    },
+    /** Pas de périphérique : pilier grisé, inutilisable. */
+    setOff(off: boolean) {
+      pill.classList.toggle("off", off);
+      pill.setAttribute("aria-disabled", String(off));
     },
   };
 }
 
-/** Une ligne « bouton couper + curseur + pourcentage » pour le son ou le micro. */
-function deviceRow(api: ModuleApi, device: DeviceId, label: string) {
+/** Un pilier + son nom dessous. */
+function column(pill: HTMLElement, name: string) {
+  const caption = el("span", { class: "ctl-caption" }, name);
+  return { node: el("div", { class: "ctl-col" }, pill, caption), caption };
+}
+
+/** Le pilier du son ou du micro. Pour le son, l'icône du bas est un bouton « couper ». */
+function devicePillar(api: ModuleApi, device: DeviceId, onState: (level: Level | null) => void) {
+  const label = device === "speakers" ? "Son" : "Micro";
   const off = device === "speakers" ? "speakersOff" : "microphoneOff";
   const fail = (err: unknown) => api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "controls-error" });
-  const mute = el("button", { class: "ctl-mute", type: "button" }) as HTMLButtonElement;
-  const value = el("span", { class: "ctl-value" });
-  const missing = el("span", { class: "ctl-missing muted" }, device === "speakers" ? "Aucune sortie audio" : "Aucun micro branché");
-
   let current: Level | null = null;
 
   const paint = (level: Level) => {
-    bar.show(level.volume);
-    value.textContent = level.muted ? "coupé" : `${level.volume} %`;
-    row.classList.toggle("muted-dev", level.muted);
-    const title = level.muted ? `Réactiver : ${label}` : `Couper : ${label}`;
-    mute.title = title;
-    mute.setAttribute("aria-label", title);
-    mute.setAttribute("aria-pressed", String(level.muted));
-    mute.replaceChildren(glyph(level.muted ? off : device));
+    p.show(level.volume, level.muted ? "coupé" : `${level.volume} %`);
+    p.pill.classList.toggle("muted-dev", level.muted);
+    p.iconBox.replaceChildren(glyph(level.muted ? off : device));
+    onState(level);
   };
 
-  const bar = slider(
-    `Volume : ${label}`,
-    SOUND_SEND_MS,
-    (volume) => {
-      // Bouger le curseur réactive le son, comme dans Windows.
+  const p = pillar({
+    label: `Volume : ${label.toLowerCase()}`,
+    color: device === "speakers" ? "#3d8bff" : "#8a6cff",
+    everyMs: SOUND_SEND_MS,
+    icon: glyph(device),
+    onMove: (volume) => {
+      // Monter le volume réactive le son, comme dans Windows.
       const wasMuted = current?.muted ?? false;
       const muted = wasMuted && volume === 0;
       if (wasMuted && !muted) api.invoke("set_muted", { device, muted: false }).catch(fail);
       current = { volume, muted };
       paint(current);
     },
-    (volume) => api.invoke("set_volume", { device, volume }).catch(fail),
-  );
-  const row = el("div", { class: "ctl-row", "data-device": device }, mute, bar.input, value, missing);
+    send: (volume) => api.invoke("set_volume", { device, volume }).catch(fail),
+  });
 
-  mute.addEventListener(
-    "click",
-    api.handler(async () => {
-      if (!current) return;
-      current = { ...current, muted: !current.muted };
-      paint(current);
-      try {
-        await api.invoke("set_muted", { device, muted: current.muted });
-      } catch (err) {
-        fail(err);
-      }
-    }),
-  );
+  const toggleMute = async () => {
+    if (!current) return;
+    current = { ...current, muted: !current.muted };
+    paint(current);
+    await api.invoke("set_muted", { device, muted: current.muted });
+  };
 
+  // Son : un clic sur l'icône du bas coupe / réactive (sans faire bouger le pilier).
+  if (device === "speakers") {
+    p.iconBox.classList.add("ctl-mute");
+    p.iconBox.title = "Couper / réactiver le son";
+    p.iconBox.addEventListener("pointerdown", (e) => e.stopPropagation());
+    p.iconBox.addEventListener("click", api.handler(() => toggleMute().catch(fail)));
+  }
+
+  const col = column(p.pill, label);
   return {
-    node: row,
-    /** Nouvel état lu dans Windows (null = pas de périphérique). */
+    node: col.node,
+    toggleMute,
     update(level: Level | null) {
-      row.classList.toggle("absent", !level);
-      mute.disabled = !level;
-      bar.input.disabled = !level;
+      p.setOff(!level);
+      col.caption.textContent = level ? label : device === "speakers" ? "Pas de son" : "Pas de micro";
       if (!level) {
         current = null;
+        onState(null);
         return;
       }
-      // Pendant un glissé, c'est la main qui décide : on n'écrase pas le curseur.
-      if (bar.dragging()) return;
+      // Pendant un glissé, c'est la main qui décide : on n'écrase pas le pilier.
+      if (p.dragging()) return;
       if (current && current.volume === level.volume && current.muted === level.muted) return;
       current = level;
       paint(level);
@@ -177,56 +233,54 @@ function deviceRow(api: ModuleApi, device: DeviceId, label: string) {
   };
 }
 
-/** Une ligne « soleil + curseur + pourcentage » pour un écran. */
-function screenRow(api: ModuleApi, screen: Screen) {
+/** Le pilier de luminosité d'un écran. */
+function screenPillar(api: ModuleApi, screen: Screen) {
   const fail = (err: unknown) => api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "controls-error" });
-  const value = el("span", { class: "ctl-value" });
-  const bar = slider(
-    `Luminosité : ${screen.name}`,
-    SCREEN_SEND_MS,
-    (level) => {
-      bar.show(level);
-      value.textContent = `${level} %`;
-    },
-    (level) => api.invoke("set_brightness", { id: screen.id, brightness: level }).catch(fail),
-  );
-  const icon = el("span", { class: "ctl-icon", title: screen.name }, glyph("sun"));
-  const name = el("span", { class: "ctl-name" }, screen.name);
-  const node = el("div", { class: "ctl-row" }, icon, name, bar.input, value);
+  const p = pillar({
+    label: `Luminosité : ${screen.name}`,
+    color: "#ffb31f",
+    everyMs: SCREEN_SEND_MS,
+    icon: glyph("sun"),
+    onMove: (v) => p.show(v),
+    send: (v) => api.invoke("set_brightness", { id: screen.id, brightness: v }).catch(fail),
+  });
+  const col = column(p.pill, "Écran");
+  col.caption.title = screen.name;
   return {
-    node,
+    node: col.node,
+    /** Plusieurs écrans : on les nomme (« Écran intégré », « DELL U2720Q »). */
+    named(on: boolean) {
+      col.caption.textContent = on ? screen.name : "Écran";
+    },
     update(s: Screen) {
-      icon.title = s.name;
-      name.textContent = s.name;
-      if (bar.dragging()) return;
-      bar.show(s.brightness);
-      value.textContent = `${s.brightness} %`;
+      if (!p.dragging()) p.show(s.brightness);
     },
   };
 }
 
-const RADIO_NAMES: Record<RadioKind | "airplane", string> = {
-  wifi: "Wi-Fi",
-  bluetooth: "Bluetooth",
-  mobile: "Données mobiles",
-  airplane: "Mode avion",
-};
+const TILE_NAMES = { wifi: "Wi-Fi", bluetooth: "Bluetooth", mobile: "Mobile", airplane: "Avion", mic: "Micro" } as const;
+type TileId = keyof typeof TILE_NAMES;
 
-/** Les pastilles rondes « Wi-Fi / Bluetooth / Mode avion », comme le centre de contrôle. */
-function radioTiles(api: ModuleApi) {
+/** La carte de pastilles rondes : radios, mode avion, micro coupé. */
+function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>) {
   const fail = (err: unknown) => api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "controls-error" });
-  const box = el("div", { class: "ctl-radios" });
-  const tiles = new Map<string, HTMLButtonElement>();
+  const card = el("div", { class: "ctl-card ctl-toggles" });
+  const tiles = new Map<TileId, HTMLButtonElement>();
   let busy = false;
 
-  const tile = (id: RadioKind | "airplane", onClick: (wanted: boolean) => Promise<unknown>) => {
-    const button = el("button", { class: "ctl-radio", type: "button", "data-kind": id }, el("span", { class: "ctl-radio-dot" }, glyph(id)), el("span", {}, RADIO_NAMES[id])) as HTMLButtonElement;
+  const tile = (id: TileId, icon: keyof typeof GLYPHS, onClick: (wanted: boolean) => Promise<unknown>) => {
+    const button = el(
+      "button",
+      { class: "ctl-toggle", type: "button", "data-kind": id },
+      el("span", { class: "ctl-dot" }, glyph(icon)),
+      el("span", { class: "ctl-toggle-name" }, TILE_NAMES[id]),
+    ) as HTMLButtonElement;
     button.addEventListener(
       "click",
       api.handler(async () => {
         if (busy) return;
         busy = true;
-        // L'interrupteur bascule tout de suite ; la prochaine lecture corrige si Windows a refusé.
+        // La pastille bascule tout de suite ; la prochaine lecture corrige si Windows a refusé.
         const wanted = button.classList.toggle("on");
         try {
           await onClick(wanted);
@@ -242,19 +296,22 @@ function radioTiles(api: ModuleApi) {
     return button;
   };
 
-  let shown = "";
+  const mic = tile("mic", "microphoneOff", () => onMicToggle());
+  let shown: string | null = null;
+
   return {
-    node: box,
-    update(list: Radio[]) {
+    node: card,
+    /** Les radios présentes (la carte se refait si la liste change). */
+    radios(list: Radio[]) {
       if (busy) return;
-      // Les pastilles à montrer : celles des radios présentes, plus le mode avion.
       const key = list.map((r) => r.kind).join(",");
       if (key !== shown) {
         shown = key;
-        tiles.clear();
-        box.replaceChildren(
-          ...list.map((r) => tile(r.kind, (on) => api.invoke("set_radio", { kind: r.kind, on }))),
-          ...(list.length ? [tile("airplane", (on) => api.invoke("set_airplane", { on }))] : []),
+        for (const id of [...tiles.keys()]) if (id !== "mic") tiles.delete(id);
+        card.replaceChildren(
+          ...list.map((r) => tile(r.kind, r.kind, (on) => api.invoke("set_radio", { kind: r.kind, on }))),
+          ...(list.length ? [tile("airplane", "airplane", (on) => api.invoke("set_airplane", { on }))] : []),
+          mic,
         );
       }
       for (const r of list) {
@@ -262,11 +319,10 @@ function radioTiles(api: ModuleApi) {
         if (!button) continue;
         button.classList.toggle("on", r.on);
         button.disabled = r.disabled;
-        const state = r.disabled ? "bloqué sur ce PC" : r.on ? "activé" : "désactivé";
-        button.title = `${RADIO_NAMES[r.kind]} : ${state}`;
+        button.title = `${TILE_NAMES[r.kind]} : ${r.disabled ? "bloqué sur ce PC" : r.on ? "activé" : "désactivé"}`;
         button.setAttribute("aria-pressed", String(r.on));
       }
-      // « Mode avion » : toutes les radios utilisables sont éteintes.
+      // « Mode avion » : toutes les radios sont éteintes.
       const airplane = tiles.get("airplane");
       if (airplane) {
         const on = list.length > 0 && list.every((r) => !r.on);
@@ -274,6 +330,15 @@ function radioTiles(api: ModuleApi) {
         airplane.title = on ? "Mode avion : tout est coupé" : "Mode avion : couper Wi-Fi, Bluetooth…";
         airplane.setAttribute("aria-pressed", String(on));
       }
+    },
+    /** La pastille « Micro » s'allume (en rouge) quand le micro est coupé. */
+    mic(level: Level | null) {
+      if (busy) return;
+      mic.disabled = !level;
+      const muted = level?.muted ?? false;
+      mic.classList.toggle("on", muted);
+      mic.title = !level ? "Aucun micro" : muted ? "Micro coupé : cliquer pour le réactiver" : "Couper le micro";
+      mic.setAttribute("aria-pressed", String(muted));
     },
   };
 }
@@ -283,26 +348,13 @@ export const controls: IslandModule = {
 
   views: {
     expanded(root, api: ModuleApi) {
-      const radios = radioTiles(api);
-      const speakers = deviceRow(api, "speakers", "haut-parleurs");
-      const microphone = deviceRow(api, "microphone", "micro");
-      // Les écrans arrivent après la première lecture (et peuvent changer : un écran branché).
-      const screensTitle = el("div", { class: "ctl-title muted" }, "Luminosité");
+      // Le micro apparaît deux fois (pastille + pilier) : le pilier tient la pastille à jour.
+      const speakers = devicePillar(api, "speakers", () => {});
+      const microphone = devicePillar(api, "microphone", (level) => toggles.mic(level));
+      const toggles = toggleCard(api, () => microphone.toggleMute());
       const screensBox = el("div", { class: "ctl-screens" });
-      screensTitle.hidden = true;
-      root.append(
-        el(
-          "div",
-          { class: "ctl" },
-          radios.node,
-          el("div", { class: "ctl-title muted" }, "Son"),
-          speakers.node,
-          el("div", { class: "ctl-title muted" }, "Micro"),
-          microphone.node,
-          screensTitle,
-          screensBox,
-        ),
-      );
+      root.append(el("div", { class: "ctl" }, toggles.node, el("div", { class: "ctl-card ctl-pillars" }, speakers.node, microphone.node, screensBox)));
+      toggles.radios([]);
 
       let alive = true;
       const refreshSound = async () => {
@@ -316,54 +368,52 @@ export const controls: IslandModule = {
         }
       };
 
-      const rows = new Map<string, ReturnType<typeof screenRow>>();
+      const refreshRadios = async () => {
+        try {
+          const list = await api.invoke<Radio[]>("radios");
+          if (alive) toggles.radios(list);
+        } catch {
+          // hors de l'appli, ou Windows ne liste pas les radios : seulement le micro
+        }
+      };
+
+      const pillars = new Map<string, ReturnType<typeof screenPillar>>();
       let screensKey = "";
       const refreshScreens = async () => {
         try {
           const list = await api.invoke<Screen[]>("screens");
           if (!alive) return;
-          // La liste des écrans a changé (branché, débranché) : on refait les lignes.
+          // La liste des écrans a changé (branché, débranché) : on refait les piliers.
           const key = list.map((s) => s.id).join(",");
           if (key !== screensKey) {
             screensKey = key;
-            rows.clear();
+            pillars.clear();
             screensBox.replaceChildren(
               ...list.map((s) => {
-                const row = screenRow(api, s);
-                rows.set(s.id, row);
-                return row.node;
+                const p = screenPillar(api, s);
+                p.named(list.length > 1);
+                pillars.set(s.id, p);
+                return p.node;
               }),
             );
-            // Un seul écran : pas besoin de son nom ; plusieurs : on les nomme.
-            screensBox.classList.toggle("named", list.length > 1);
-            screensTitle.hidden = list.length === 0;
           }
-          for (const s of list) rows.get(s.id)?.update(s);
+          for (const s of list) pillars.get(s.id)?.update(s);
         } catch {
-          // hors de l'appli : rien à montrer
-        }
-      };
-
-      const refreshRadios = async () => {
-        try {
-          const list = await api.invoke<Radio[]>("radios");
-          if (alive) radios.update(list);
-        } catch {
-          // hors de l'appli, ou Windows ne liste pas les radios : pas de pastilles
+          // hors de l'appli : pas d'écran
         }
       };
 
       void refreshRadios();
       void refreshSound();
       void refreshScreens();
-      const soundTimer = window.setInterval(() => void refreshSound(), SOUND_REFRESH_MS);
-      const screensTimer = window.setInterval(() => void refreshScreens(), SCREENS_REFRESH_MS);
-      const radiosTimer = window.setInterval(() => void refreshRadios(), RADIOS_REFRESH_MS);
+      const timers = [
+        window.setInterval(() => void refreshSound(), SOUND_REFRESH_MS),
+        window.setInterval(() => void refreshRadios(), RADIOS_REFRESH_MS),
+        window.setInterval(() => void refreshScreens(), SCREENS_REFRESH_MS),
+      ];
       return () => {
         alive = false;
-        window.clearInterval(soundTimer);
-        window.clearInterval(screensTimer);
-        window.clearInterval(radiosTimer);
+        timers.forEach((t) => window.clearInterval(t));
       };
     },
   },

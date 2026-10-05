@@ -2202,195 +2202,77 @@ body {
   line-height: 1;
 }
 
-/* ---- Contrôles : volume des haut-parleurs et du micro ---- */
+/* ---- Contrôles : façon centre de contrôle, en verre liquide ---- */
+/* Tout tient dans la hauteur de la vue : pas de défilement. */
 .ctl {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 2px 4px;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 2px 2px 4px;
 }
-.ctl-title {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-top: 4px;
+/* Une carte de verre : fond givré, liseré clair en haut, ombre douce. */
+.ctl-card {
+  position: relative;
+  border-radius: 24px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.04) 55%, rgba(255, 255, 255, 0.07));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 8px 22px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(18px) saturate(160%);
 }
-.ctl-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.ctl-mute {
+
+/* À gauche : les pastilles rondes, deux par ligne. */
+.ctl-toggles {
   flex: none;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--island-fg);
-  cursor: pointer;
-  transition:
-    background 200ms ease,
-    color 200ms ease,
-    transform 300ms var(--ease);
-}
-.ctl-mute svg {
-  width: 18px;
-  height: 18px;
-  display: block;
-  margin: auto;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.ctl-mute:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.18);
-}
-.ctl-mute:active:not(:disabled) {
-  transform: scale(0.88);
-}
-/* Coupé : le bouton s'allume en rouge doux, comme sur un téléphone. */
-.ctl-row.muted-dev .ctl-mute {
-  background: rgba(255, 92, 92, 0.85);
-  border-color: transparent;
-  color: #fff;
-}
-.ctl-value {
-  flex: none;
-  width: 48px;
-  text-align: right;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-/* Le curseur : une grande pilule de verre qui se remplit de blanc
-   (--v = le pourcentage, posé par le code). */
-.ctl-slider {
-  flex: 1;
-  min-width: 0;
-  height: 26px;
-  margin: 0;
-  appearance: none;
-  -webkit-appearance: none;
-  border-radius: 13px;
-  border: 1px solid var(--line);
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.92) 0 var(--v, 0%), rgba(255, 255, 255, 0.08) var(--v, 0%) 100%);
-  cursor: pointer;
-  overflow: hidden;
-  transition:
-    transform 300ms var(--ease),
-    opacity 200ms ease;
-}
-.ctl-slider:active {
-  transform: scaleY(1.12);
-}
-/* Le « bouton » du curseur est invisible : c'est le remplissage qui parle. */
-.ctl-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 2px;
-  height: 26px;
-  background: transparent;
-}
-.ctl-row.muted-dev .ctl-slider {
-  opacity: 0.45;
-}
-.ctl-missing {
-  display: none;
-  font-size: 12px;
-}
-.ctl-row.absent .ctl-slider,
-.ctl-row.absent .ctl-value {
-  display: none;
-}
-.ctl-row.absent .ctl-missing {
-  display: inline;
-}
-.ctl-row.absent .ctl-mute {
-  opacity: 0.4;
-  cursor: default;
-}
-@media (prefers-reduced-motion: reduce) {
-  .ctl-slider,
-  .ctl-mute {
-    transition: none;
-  }
-  .ctl-slider:active {
-    transform: none;
-  }
-}
-/* Le soleil devant un curseur de luminosité (pas un bouton). */
-.ctl-icon {
-  flex: none;
-  width: 34px;
-  height: 34px;
-  display: flex;
-}
-.ctl-icon svg {
-  width: 20px;
-  height: 20px;
-  margin: auto;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-}
-.ctl-screens {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-/* Le nom de l'écran, seulement s'il y en a plusieurs. */
-.ctl-name {
-  display: none;
-  flex: none;
-  width: 92px;
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ctl-screens.named .ctl-name {
-  display: inline;
-}
-/* Les pastilles Wi-Fi / Bluetooth / Mode avion : rondes, bleues quand c'est allumé. */
-.ctl-radios {
-  display: flex;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, 66px);
+  align-content: center;
   justify-content: center;
-  margin-bottom: 4px;
+  gap: 8px 10px;
+  padding: 10px 12px;
 }
-.ctl-radios:empty {
-  display: none;
-}
-.ctl-radio {
+.ctl-toggle {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
   border: 0;
+  padding: 0;
   background: none;
   color: var(--island-fg);
   font: inherit;
   font-size: 11px;
   cursor: pointer;
 }
-.ctl-radio-dot {
+.ctl-toggle-name {
+  max-width: 66px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ctl-dot {
+  position: relative;
   width: 44px;
   height: 44px;
   border-radius: 50%;
   display: flex;
   background: rgba(255, 255, 255, 0.1);
-  border: 1px solid var(--line);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.25);
   transition:
-    background 240ms ease,
-    color 240ms ease,
-    transform 360ms var(--ease);
+    background 260ms ease,
+    box-shadow 260ms ease,
+    color 260ms ease,
+    transform 380ms var(--ease);
 }
-.ctl-radio-dot svg {
-  width: 22px;
-  height: 22px;
+.ctl-dot svg {
+  width: 21px;
+  height: 21px;
   margin: auto;
   fill: none;
   stroke: currentColor;
@@ -2398,30 +2280,193 @@ body {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.ctl-radio:hover:not(:disabled) .ctl-radio-dot {
+.ctl-toggle:hover:not(:disabled) .ctl-dot {
   background: rgba(255, 255, 255, 0.18);
 }
-.ctl-radio:active:not(:disabled) .ctl-radio-dot {
-  transform: scale(0.88);
+.ctl-toggle:active:not(:disabled) .ctl-dot {
+  transform: scale(0.86);
 }
-.ctl-radio.on .ctl-radio-dot {
-  background: #2f8cff;
-  border-color: transparent;
+/* Allumée : une bille de couleur brillante (reflet en haut, lueur autour). */
+.ctl-toggle.on .ctl-dot {
+  --glow: #2f8cff;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.55), transparent 55%),
+    var(--glow);
   color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 0 14px color-mix(in srgb, var(--glow) 70%, transparent);
 }
-/* Le mode avion allumé est orange, comme sur un téléphone. */
-.ctl-radio.on[data-kind="airplane"] .ctl-radio-dot {
-  background: #ff9f0a;
+.ctl-toggle.on[data-kind="wifi"] .ctl-dot {
+  --glow: #22c87a;
 }
-.ctl-radio:disabled {
-  opacity: 0.4;
+.ctl-toggle.on[data-kind="airplane"] .ctl-dot {
+  --glow: #ff9f0a;
+}
+.ctl-toggle.on[data-kind="mic"] .ctl-dot {
+  --glow: #ff4f4f;
+}
+.ctl-toggle:disabled {
+  opacity: 0.38;
   cursor: default;
 }
+
+/* À droite : les piliers (son, micro, écrans), côte à côte. */
+.ctl-pillars {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 14px 8px;
+}
+.ctl-screens {
+  display: contents;
+}
+.ctl-col {
+  flex: 0 1 92px;
+  min-width: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  min-height: 0;
+}
+.ctl-caption {
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Le pilier : un tube de verre qui se remplit de couleur par le bas
+   (--v = le pourcentage, --tint = la couleur ; posés par le code). */
+.ctl-pill {
+  position: relative;
+  flex: 1;
+  min-height: 60px;
+  border-radius: 20px;
+  overflow: hidden;
+  cursor: ns-resize;
+  touch-action: none;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 -6px 14px rgba(0, 0, 0, 0.25);
+  transition: transform 380ms var(--ease);
+  outline: none;
+}
+.ctl-pill:focus-visible {
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.6),
+    inset 0 -6px 14px rgba(0, 0, 0, 0.25);
+}
+/* Saisi : le pilier gonfle un peu, comme sur l'iPhone. */
+.ctl-pill.held {
+  transform: scale(1.04);
+}
+.ctl-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--v, 0%);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.28), transparent 40%, transparent 70%, rgba(255, 255, 255, 0.12)),
+    linear-gradient(to top, var(--tint), color-mix(in srgb, var(--tint) 65%, white));
+  box-shadow: 0 0 16px color-mix(in srgb, var(--tint) 55%, transparent);
+  transition:
+    height 220ms var(--ease),
+    background 260ms ease;
+}
+/* Pendant le glissé, le remplissage suit la souris sans retard. */
+.ctl-pill.held .ctl-fill {
+  transition: none;
+}
+/* Un reflet de verre par-dessus tout le pilier. */
+.ctl-pill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 30%);
+  pointer-events: none;
+}
+.ctl-pct {
+  position: absolute;
+  top: 8px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  z-index: 1;
+}
+.ctl-pill-icon {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  width: 30px;
+  height: 30px;
+  margin-left: -15px;
+  border-radius: 50%;
+  display: flex;
+  color: #fff;
+  z-index: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
+.ctl-pill-icon svg {
+  width: 20px;
+  height: 20px;
+  margin: auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* L'icône du son est un bouton « couper ». */
+.ctl-pill-icon.ctl-mute {
+  pointer-events: auto;
+  cursor: pointer;
+  transition:
+    background 200ms ease,
+    transform 300ms var(--ease);
+}
+.ctl-pill-icon.ctl-mute:hover {
+  background: rgba(0, 0, 0, 0.22);
+}
+.ctl-pill-icon.ctl-mute:active {
+  transform: scale(0.86);
+}
+/* Coupé : le remplissage devient gris. */
+.ctl-pill.muted-dev .ctl-fill {
+  --tint: #7c8191;
+  box-shadow: none;
+}
+/* Pas de périphérique : pilier éteint. */
+.ctl-pill.off {
+  opacity: 0.35;
+  cursor: default;
+}
+.ctl-pill.off .ctl-fill,
+.ctl-pill.off .ctl-pct {
+  visibility: hidden;
+}
 @media (prefers-reduced-motion: reduce) {
-  .ctl-radio-dot {
+  .ctl-dot,
+  .ctl-pill,
+  .ctl-fill,
+  .ctl-pill-icon.ctl-mute {
     transition: none;
   }
-  .ctl-radio:active .ctl-radio-dot {
+  .ctl-pill.held,
+  .ctl-toggle:active .ctl-dot {
     transform: none;
   }
 }

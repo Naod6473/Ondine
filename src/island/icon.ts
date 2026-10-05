@@ -20,6 +20,7 @@ const byName = (name: string) => files[`../assets/icons/${name}.webp`];
 /** L'emoji d'origine → le nom de son image (icônes dessinées pour l'île). */
 const BY_EMOJI: Record<string, string> = {
   "📅": "agenda",
+  "🎚️": "controls",
   "🤖": "agents",
   "💬": "askclaude",
   "✂️": "capture",

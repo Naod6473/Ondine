@@ -695,9 +695,12 @@ s'il n'existe pas ou est désactivé).
   `IAudioEndpointVolume`). Aucune permission : rien n'est lu ni envoyé.
 - `state` → `{speakers, microphone}` (`{volume 0-100, muted}` ou `null` sans
   périphérique) ; `set_volume {device, volume}` ; `set_muted {device, muted}`.
-- Le front relit l'état chaque seconde tant que l'onglet est ouvert (touches
-  du clavier, autre appli) ; pendant un glissé, au plus un envoi toutes les
-  60 ms et le curseur n'est pas écrasé.
+- Vue façon centre de contrôle, en verre liquide, sans défilement : à gauche
+  une carte de pastilles (radios, mode avion, micro coupé), à droite des
+  piliers verticaux (son, micro, un par écran) faits maison (`role="slider"`,
+  pointeur + flèches du clavier). Le front relit le son chaque seconde
+  (touches du clavier, autre appli) ; pendant un glissé, au plus un envoi
+  toutes les 60 ms (150 ms pour un écran) et le pilier n'est pas écrasé.
 - Luminosité (`platform/brightness.rs`) : `screens` → `[{id, name,
   brightness}]` (relu toutes les 5 s, c'est lent) ; `set_brightness {id,
   brightness}`. `internal` = écran du portable par WMI (`root\WMI`,
