@@ -18,6 +18,11 @@
 //
 // « Copier pour le support » met dans le presse-papiers un résumé à coller
 // dans un ticket. Le journal ne contient jamais ces informations.
+//
+// « Préparer un ticket » : ta description + ce résumé (+ l'image copiée, si tu
+// le demandes, par exemple une capture Win+Maj+S) dans un dossier
+// Documents\Ondine\Tickets\Ticket <date>, et le texte dans le presse-papiers.
+// Rien n'est envoyé : tu joins le dossier toi-même. Annulable (Corbeille).
 
 use crate::sync::LockExt;
 use std::collections::HashSet;
@@ -127,9 +132,11 @@ impl RustModule for SystemInfo {
         std::thread::spawn(move || watch(app, state));
     }
 
-    fn invoke(&self, ctx: &ModuleContext, command: &str, _args: Value) -> Result<Value, String> {
+    fn invoke(&self, ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
         match command {
             "snapshot" => Ok(snapshot(&self.state)),
+            // { description, withImage } → { folder }
+            "ticket" => ticket(ctx, &snapshot(&self.state), &args),
             "copy_support" => {
                 ctx.require("clipboard")?;
                 files::copy_text(&support_text(&snapshot(&self.state)))?;
@@ -319,6 +326,60 @@ fn uptime_text(secs: u64) -> String {
 }
 
 /// Le texte copié pour un ticket de support.
+/// Prépare le dossier du ticket (voir en tête de fichier).
+fn ticket(ctx: &ModuleContext, snap: &Value, args: &Value) -> Result<Value, String> {
+    ctx.require("files")?;
+    ctx.require("clipboard")?;
+    let description = args.get("description").and_then(Value::as_str).unwrap_or("").trim();
+    if description.is_empty() {
+        return Err("décris le problème en quelques mots".into());
+    }
+    if description.chars().count() > 5000 {
+        return Err("description trop longue (5000 caractères au plus)".into());
+    }
+    // L'image d'abord : si on la demande et qu'il n'y en a pas, on s'arrête avant d'écrire quoi que ce soit.
+    let png = if args.get("withImage").and_then(Value::as_bool).unwrap_or(false) {
+        if platform::clipboard_is_sensitive() {
+            return Err("le contenu copié est marqué sensible : on n'y touche pas".into());
+        }
+        let mut clipboard = arboard::Clipboard::new().map_err(|e| format!("presse-papiers indisponible : {e}"))?;
+        let img = clipboard.get_image().map_err(|_| "aucune image copiée : fais d'abord ta capture (Win+Maj+S)".to_string())?;
+        let mut out = std::io::Cursor::new(Vec::new());
+        image::write_buffer_with_format(&mut out, &img.bytes, img.width as u32, img.height as u32, image::ExtendedColorType::Rgba8, image::ImageFormat::Png)
+            .map_err(|e| format!("image illisible : {e}"))?;
+        Some(out.into_inner())
+    } else {
+        None
+    };
+
+    let base = platform::documents_dir().ok_or("dossier Documents introuvable")?.join("Ondine").join("Tickets");
+    std::fs::create_dir_all(&base).map_err(|e| format!("impossible de créer {} : {e}", base.display()))?;
+    let base = ctx.check_path(&base.display().to_string())?;
+    let t = platform::local_time();
+    let name = format!("Ticket {:04}-{:02}-{:02} {:02}.{:02}.{:02}", t.year, t.month, t.day, t.hour, t.minute, t.second);
+    let dir = files::unique_dest(&base, name.as_ref());
+    std::fs::create_dir(&dir).map_err(|e| format!("impossible de créer le dossier du ticket : {e}"))?;
+
+    let mut text = format!("Problème\r\n--------\r\n{}\r\n\r\nInfos du poste\r\n--------------\r\n{}", description.replace('\n', "\r\n"), support_text(snap));
+    if png.is_some() {
+        text.push_str("\r\n\r\nCapture jointe : capture.png");
+    }
+    let written = std::fs::write(dir.join("ticket.txt"), &text).and_then(|_| match &png {
+        Some(bytes) => std::fs::write(dir.join("capture.png"), bytes),
+        None => Ok(()),
+    });
+    if let Err(e) = written {
+        let _ = files::to_trash(std::slice::from_ref(&dir));
+        return Err(format!("écriture du ticket impossible : {e}"));
+    }
+    files::copy_text(&text)?;
+    let _ = files::open_folder(&dir);
+    log::info("système : ticket préparé");
+    let undo_dir = dir.clone();
+    ctx.offer_undo("Ticket préparé", crate::services::undo::DEFAULT_WINDOW, Box::new(move || files::to_trash(&[undo_dir])));
+    Ok(json!({ "folder": dir.display().to_string() }))
+}
+
 fn support_text(s: &Value) -> String {
     let str_of = |v: &Value| v.as_str().unwrap_or_default().to_string();
     let mut out = vec![

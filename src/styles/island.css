@@ -3018,3 +3018,17 @@ body.presenting .island[data-state="hidden"] {
 .pw-check input {
   accent-color: var(--accent);
 }
+
+/* Système : préparer un ticket. */
+.sys-ticket {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sys-ticket-text {
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  font: inherit;
+  font-size: 12px;
+}

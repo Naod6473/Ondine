@@ -409,6 +409,18 @@ pub fn pictures_dir() -> Option<PathBuf> {
     }
 }
 
+/// Le dossier « Documents » de l'utilisateur (même s'il est déplacé dans OneDrive).
+pub fn documents_dir() -> Option<PathBuf> {
+    use ::windows::Win32::System::Com::CoTaskMemFree;
+    use ::windows::Win32::UI::Shell::{FOLDERID_Documents, SHGetKnownFolderPath, KF_FLAG_DEFAULT};
+    unsafe {
+        let raw = SHGetKnownFolderPath(&FOLDERID_Documents, KF_FLAG_DEFAULT, None).ok()?;
+        let path = raw.to_string().ok().map(PathBuf::from);
+        CoTaskMemFree(Some(raw.0 as *const _));
+        path
+    }
+}
+
 /// Ouvre un programme console (cmd, PowerShell…) dans SA PROPRE fenêtre,
 /// dans le dossier `dir`. Utilisé par le module Terminal.
 pub fn spawn_console(program: &str, args: &[String], dir: &std::path::Path) -> Result<(), String> {
