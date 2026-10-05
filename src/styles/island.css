@@ -34,7 +34,9 @@ body {
   position: absolute;
   top: 0;
   left: 50%;
-  transform: translateX(-50%);
+  /* « translate » (et pas « transform ») : l'étirement (gestures.ts) peut alors
+     utiliser scale et rotate autour du bord de l'écran sans décaler l'île. */
+  translate: -50% 0;
   box-sizing: border-box;
   background: var(--island-bg);
   overflow: hidden;
@@ -2469,4 +2471,26 @@ body {
   .ctl-toggle:active .ctl-dot {
     transform: none;
   }
+}
+
+/* ── Jouer avec l'île (gestures.ts) ─────────────────────────────────────── */
+/* Une petite poignée apparaît quand la souris est sur le bord intérieur :
+   on peut tirer pour étirer l'île. */
+.island::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 36px;
+  height: 4px;
+  margin-left: -18px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.35);
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+.island.grab-inner::after,
+.island.stretching::after {
+  opacity: 1;
 }

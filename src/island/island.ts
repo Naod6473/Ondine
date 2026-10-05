@@ -20,6 +20,7 @@ import { createRenderer } from "../mascot/renderer";
 import { clear, el } from "./dom";
 import { icon } from "./icon";
 import { IslandStateMachine, type IslandState } from "./island-state";
+import { enableGestures, grabZone, type Edge } from "./gestures";
 import { enableTabDrag, flip } from "./tab-drag";
 import { reducedMotion, TabPill } from "./tab-pill";
 
@@ -64,6 +65,8 @@ export class Island {
   private collapseTimer: number | null = null;
   private hoverMascotSince = 0;
   private hoverMascotFired = false;
+  /** Le dernier appui sur l'île était un geste (étirer, déplacer), pas un clic. */
+  private wasGesture: () => boolean = () => false;
 
   constructor(
     private readonly root: HTMLElement,
@@ -187,12 +190,30 @@ export class Island {
     void onTauriEvent("wake-enter", () => this.fsm.state === "hidden" && this.fsm.pointerEnter());
     void onTauriEvent("wake-leave", () => this.fsm.state === "hidden" && this.fsm.pointerLeave());
 
+    // Étirer l'île par son bord intérieur, la déplacer par son bord extérieur (gestures.ts).
+    this.wasGesture = enableGestures(this.shell, {
+      edge: () => this.edge(),
+      enabled: () => ["peek", "compact", "expanded", "alert"].includes(this.fsm.state),
+      onMoveStart: () => this.startMove(),
+    });
+    // Au survol, le pointeur montre ce qu'on peut faire sur les bords.
+    this.shell.addEventListener("pointermove", (e) => {
+      if (e.buttons) return;
+      const zone = ["compact", "expanded", "alert"].includes(this.fsm.state) ? grabZone(this.shell, this.edge(), e.clientX, e.clientY) : null;
+      const along = this.edge() === "top" ? "ns-resize" : "ew-resize";
+      this.shell.style.cursor = zone === "outer" ? "grab" : zone === "inner" ? along : "";
+      this.shell.classList.toggle("grab-inner", zone === "inner");
+    });
+    this.shell.addEventListener("pointerleave", () => this.shell.classList.remove("grab-inner"));
+
     this.shell.addEventListener("click", (e) => {
+      if (this.wasGesture()) return;
       if ((e.target as HTMLElement).closest("button, input, select, textarea, a")) return;
       this.fsm.click();
     });
     this.mascotSlot.addEventListener("click", (e) => {
       e.stopPropagation();
+      if (this.wasGesture()) return;
       this.bus.emit("mascot.clicked");
     });
 
@@ -210,6 +231,15 @@ export class Island {
     new ResizeObserver(() => this.pushRect()).observe(this.shell);
     this.shell.addEventListener("transitionend", () => this.pushRect());
   }
+
+  /** Le bord de l'écran où se trouve l'île (posé sur <body> par applySettings). */
+  private edge(): Edge {
+    const e = document.body.dataset.edge;
+    return e === "left" || e === "right" ? e : "top";
+  }
+
+  /** On a attrapé l'île par son bord extérieur : on la déplace (étape suivante). */
+  private startMove() {}
 
   private pushRect() {
     const r = this.shell.getBoundingClientRect();
