@@ -34,12 +34,20 @@ base64 = "0.22"
 [target.'cfg(windows)'.dependencies]
 # Gestionnaire d'identifiants Windows. Version 3 volontairement : la 4 a changé d'API.
 keyring = { version = "3", features = ["windows-native"] }
+# Requis par la macro #[implement] (cible de dépôt) : même version que `windows`.
+windows-core = "0.61"
 windows = { version = "0.61", features = [
   # « En cours de lecture » (SMTC) : Media_Control, et Storage_Streams pour la pochette.
   "Foundation",
   "Media_Control",
   "Storage_Streams",
   "Win32_Foundation",
+  # Cible de dépôt de l'île (platform/drop_target.rs).
+  "Win32_Graphics_Gdi",
+  "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_SystemServices",
+  "Win32_UI_Shell",
   "Win32_Security",
   "Win32_System_Threading",
   "Win32_System_Ole",

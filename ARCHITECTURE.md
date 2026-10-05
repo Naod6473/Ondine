@@ -325,6 +325,12 @@ Front : `src/modules/shelf/index.ts`. Rust : `src-tauri/src/modules/shelf.rs`.
   la destination aussi. Un seul chemin refusé = rien n'est fait.
 - Une erreur normale (dossier exclu, fichier disparu) s'affiche dans l'île et ne
   compte pas comme un plantage du module.
+- **Recevoir les fichiers (Windows)** : WebView2 pose sur sa fenêtre intérieure
+  (`Chrome_RenderWidgetHostHWND`) une cible de dépôt qui refuse tout (🚫), et
+  celle de wry/Tauri ne prend pas le relais sur toutes les machines. L'île pose
+  donc la sienne à la place (`platform/drop_target.rs`), au premier clic, et
+  envoie au front l'événement `file-drag` (`enter`/`over`/`leave`/`drop`, chemins,
+  position en pixels physiques). Elle ne lit que la liste des chemins.
 - La boîte « Choisir un dossier » est la commande `dialog_pick_folder`
   (plugin officiel `tauri-plugin-dialog`), appelée depuis le Rust uniquement :
   les pages n'ont pas accès au plugin directement.

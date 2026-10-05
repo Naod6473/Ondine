@@ -9,13 +9,11 @@ use std::sync::Mutex;
 
 use tauri::{AppHandle, Manager, WebviewWindow};
 
-use ::windows::core::BOOL;
-use ::windows::Win32::Foundation::{HWND, LPARAM, POINT};
-use ::windows::Win32::System::Ole::RevokeDragDrop;
+use ::windows::Win32::Foundation::{HWND, POINT};
 use ::windows::Win32::System::SystemInformation::GetLocalTime;
 use ::windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
 use ::windows::Win32::UI::WindowsAndMessaging::{
-    EnumChildWindows, GetClassNameW, GetCursorPos, GetForegroundWindow, GetWindowLongPtrW,
+    GetCursorPos, GetForegroundWindow, GetWindowLongPtrW,
     SetForegroundWindow, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
 };
 
@@ -124,31 +122,13 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
     }
 }
 
-/// Laisse les fichiers glissés atteindre l'appli.
-///
-/// wry installe sa cible de dépôt une seule fois, à la création du webview.
-/// WebView2 crée ensuite `Chrome_RenderWidgetHostHWND` et y enregistre sa propre
-/// cible, qui refuse tout (curseur « interdit »). La révoquer laisse OLE retomber
-/// sur celle de wry, qui alimente les événements de glisser-déposer de Tauri.
-/// Sans effet si c'est déjà fait : on la relance à chaque début de glisser possible.
+/// Laisse les fichiers glissés atteindre l'île : pose notre propre cible de
+/// dépôt sur la fenêtre intérieure du webview (voir drop_target.rs). Sans effet
+/// si c'est déjà fait : on la relance à chaque début de glisser possible.
 pub fn unblock_webview_drops(app: &AppHandle) {
-    for label in [crate::island::WINDOW_LABEL, "settings"] {
-        let Some(win) = app.get_webview_window(label) else { continue };
-        let Some(hwnd) = hwnd_of(&win) else { continue };
-        // Les classes des fenêtres enfants rencontrées, pour le journal.
-        let mut seen: Vec<String> = Vec::new();
-        unsafe {
-            let _ = EnumChildWindows(Some(hwnd), Some(revoke_render_widget), LPARAM(&mut seen as *mut Vec<String> as isize));
-        }
-        // Diagnostic (glisser-déposer) : une ligne dans le journal quand ce qu'on
-        // trouve change, pas à chaque clic.
-        let summary = format!("{label} : {}", seen.join(", "));
-        let mut last = LAST_DROP_SUMMARY.lock().unwrap();
-        if !last.contains(&summary) {
-            crate::services::log::info(format!("glisser-déposer, fenêtres enfants de {summary}"));
-            last.push(summary);
-        }
-    }
+    let Some(win) = app.get_webview_window(crate::island::WINDOW_LABEL) else { return };
+    let Some(hwnd) = hwnd_of(&win) else { return };
+    super::drop_target::install(app, hwnd, crate::island::WINDOW_LABEL);
 }
 
 /// L'appli tourne-t-elle « en tant qu'administrateur » ?
@@ -181,19 +161,3 @@ pub fn is_elevated() -> bool {
     }
 }
 
-/// Ce que `unblock_webview_drops` a déjà écrit dans le journal.
-static LAST_DROP_SUMMARY: Mutex<Vec<String>> = Mutex::new(Vec::new());
-
-unsafe extern "system" fn revoke_render_widget(hwnd: HWND, seen: LPARAM) -> BOOL {
-    let seen = unsafe { &mut *(seen.0 as *mut Vec<String>) };
-    let mut name = [0u16; 64];
-    let len = unsafe { GetClassNameW(hwnd, &mut name) };
-    let class = String::from_utf16_lossy(&name[..len.max(0) as usize]);
-    if class == "Chrome_RenderWidgetHostHWND" {
-        let revoked = unsafe { RevokeDragDrop(hwnd) }.is_ok();
-        seen.push(format!("{class} (cible WebView2 {})", if revoked { "retirée" } else { "déjà retirée" }));
-    } else {
-        seen.push(class);
-    }
-    true.into()
-}
