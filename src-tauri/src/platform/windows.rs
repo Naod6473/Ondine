@@ -461,3 +461,94 @@ pub fn shortcut_target(lnk: &std::path::Path) -> Option<PathBuf> {
 pub fn forget_previous_foreground() {
     *PREVIOUS_FOREGROUND.lock().unwrap() = 0;
 }
+
+// ── Infos système ────────────────────────────────────────────────────────────
+
+/// L'état de la batterie (None : pas de batterie, PC fixe).
+#[derive(Debug, Clone)]
+pub struct Battery {
+    pub percent: Option<u8>,
+    pub charging: bool,
+    pub plugged: bool,
+}
+
+pub fn battery() -> Option<Battery> {
+    use ::windows::Win32::System::Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS};
+    let mut st = SYSTEM_POWER_STATUS::default();
+    unsafe { GetSystemPowerStatus(&mut st) }.ok()?;
+    // BatteryFlag : 128 = pas de batterie, 255 = inconnu. 8 = en charge.
+    if st.BatteryFlag == 128 || st.BatteryFlag == 255 {
+        return None;
+    }
+    Some(Battery {
+        // 255 = pourcentage inconnu.
+        percent: (st.BatteryLifePercent <= 100).then_some(st.BatteryLifePercent),
+        charging: st.BatteryFlag & 8 != 0,
+        plugged: st.ACLineStatus == 1,
+    })
+}
+
+// ── Outils réseau ────────────────────────────────────────────────────────────
+
+/// Un « ping » (écho ICMP) vers une adresse IPv4, sans droits administrateur
+/// (API IcmpSendEcho de Windows, celle qu'utilise ping.exe).
+/// Ok(Some((ms, ttl))) : réponse ; Ok(None) : pas de réponse à temps.
+pub fn ping(ip: std::net::Ipv4Addr, timeout_ms: u32) -> Result<Option<(u32, u8)>, String> {
+    use ::windows::Win32::NetworkManagement::IpHelper::{IcmpCloseHandle, IcmpCreateFile, IcmpSendEcho, ICMP_ECHO_REPLY};
+    let data = *b"ile-ping-ile-ping-ile-ping-ile-p"; // 32 octets, comme ping.exe
+    // La réponse : la structure, puis une copie des données, plus 8 octets de marge (doc Microsoft).
+    let mut buffer = vec![0u8; std::mem::size_of::<ICMP_ECHO_REPLY>() + data.len() + 8];
+    unsafe {
+        let handle = IcmpCreateFile().map_err(|e| format!("ping impossible : {e}"))?;
+        let count = IcmpSendEcho(
+            handle,
+            u32::from_ne_bytes(ip.octets()), // l'adresse « dans l'ordre du réseau »
+            data.as_ptr() as *const _,
+            data.len() as u16,
+            None,
+            buffer.as_mut_ptr() as *mut _,
+            buffer.len() as u32,
+            timeout_ms,
+        );
+        let _ = IcmpCloseHandle(handle);
+        if count == 0 {
+            return Ok(None); // délai dépassé, hôte injoignable…
+        }
+        let reply = std::ptr::read_unaligned(buffer.as_ptr() as *const ICMP_ECHO_REPLY);
+        // Status 0 = IP_SUCCESS ; sinon « destination injoignable », etc.
+        Ok((reply.Status == 0).then_some((reply.RoundTripTime, reply.Options.Ttl)))
+    }
+}
+
+/// Le nom DNS d'une adresse IPv4 (recherche inverse), s'il existe.
+pub fn reverse_dns(ip: std::net::Ipv4Addr) -> Option<String> {
+    use ::windows::Win32::Networking::WinSock::{
+        GetNameInfoW, WSAStartup, AF_INET, IN_ADDR, IN_ADDR_0, NI_NAMEREQD, SOCKADDR, SOCKADDR_IN, WSADATA, socklen_t,
+    };
+    unsafe {
+        // Windows demande d'« ouvrir » les sockets avant (sans effet si c'est déjà fait).
+        let mut wsa = WSADATA::default();
+        if WSAStartup(0x0202, &mut wsa) != 0 {
+            return None;
+        }
+        let addr = SOCKADDR_IN {
+            sin_family: AF_INET,
+            sin_port: 0,
+            sin_addr: IN_ADDR { S_un: IN_ADDR_0 { S_addr: u32::from_ne_bytes(ip.octets()) } },
+            sin_zero: [0; 8],
+        };
+        let mut name = [0u16; 1025];
+        let rc = GetNameInfoW(
+            &addr as *const SOCKADDR_IN as *const SOCKADDR,
+            socklen_t(std::mem::size_of::<SOCKADDR_IN>() as i32),
+            Some(&mut name),
+            None,
+            NI_NAMEREQD as i32, // pas de nom → échec, plutôt que l'adresse recopiée
+        );
+        if rc != 0 {
+            return None;
+        }
+        let len = name.iter().position(|&c| c == 0).unwrap_or(name.len());
+        Some(String::from_utf16_lossy(&name[..len]))
+    }
+}

@@ -272,6 +272,9 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `clipboard.paste-plain` | Règles (Rust) | le Presse-papiers colle le texte sans mise en forme |
 | `launcher.open` | Lanceur (Rust, raccourci global) | l'île s'ouvre sur l'onglet Lanceur, recherche prête |
 | `launcher.hotkey-error` `{text}` | Lanceur (Rust) | notification : raccourci déjà pris |
+| `system.disk-low` `{mount, freePct, freeGb}` | Système (Rust, toutes les 30 s) | notification 💽 : disque presque plein |
+| `remote.changed` `{favorites: [{id, name, kind}]}` | Accès distants (Rust, et front au démarrage) | le Lanceur met à jour ses serveurs (sans les adresses) |
+| `remote.connect` `{id}` | Lanceur (front) | Accès distants ouvre ce favori |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -596,3 +599,61 @@ qui surveille dossiers et lecteurs).
 
 Un module peut demander d'ouvrir l'île, éventuellement sur un onglet (ignoré
 s'il n'existe pas ou est désactivé).
+
+## Phase 8 : outils IT
+
+### Module Système (`src/modules/system/`, `src-tauri/src/modules/system.rs`)
+
+- Tout est lu sur le PC (crate `sysinfo` 0.39, `GetSystemPowerStatus` pour la
+  batterie) : rien ne part sur Internet, rien n'est écrit dans le journal.
+- Un fil de fond mesure processeur et mémoire toutes les 2 s (il faut deux
+  mesures espacées pour un pourcentage de processeur) quand le module est
+  actif, et les disques toutes les 30 s.
+- Disque fixe sous le seuil (réglage `diskAlertPct`, 10 % par défaut, 0 =
+  jamais) → `system.disk-low`, une seule fois par disque, de nouveau
+  seulement si la place est revenue au-dessus du seuil + 2 points.
+- Commandes : `snapshot` (nom du PC, utilisateur, Windows, durée depuis le
+  démarrage, processeur, mémoire, disques, cartes réseau avec IP et MAC,
+  batterie) et `copy_support` (permission `clipboard`) : le même résumé en
+  texte, à coller dans un ticket.
+- L'onglet : trois jauges rondes (processeur, mémoire, disque C:) qui glissent
+  d'une mesure à l'autre (`@property --p`), les infos utiles au support, puis
+  le détail des disques et du réseau. Rafraîchi toutes les 2 s, seulement
+  tant que l'onglet est ouvert.
+- Avec plus de 8 onglets, la barre d'onglets se resserre (`.tabs.dense`) en
+  attendant la navigation à la souris prévue plus tard.
+
+### Module Accès distants (`src/modules/remote/`, `src-tauri/src/modules/remote.rs`)
+
+- Favoris RDP et SSH dans `%APPDATA%\Island\remote.json` : nom, type,
+  adresse, port, utilisateur (SSH). Jamais de mot de passe. Supprimer
+  propose « Annuler ».
+- Deux programmes seulement : `mstsc.exe /v:serveur[:port]` (`/f` si le
+  réglage plein écran est coché) et `ssh.exe [-p port] [-l utilisateur]
+  serveur`, dans une console ou dans Windows Terminal (`wt.exe new-tab …`,
+  réglage). Chaque valeur est un paramètre séparé, sans interpréteur.
+- Validation (`check_host`, `check_user`) : lettres, chiffres et quelques
+  signes, ni espace ni « ; », jamais de « - » au début (sinon ssh lirait
+  une option comme `-oProxyCommand`, qui lance une commande).
+- Connexion rapide : on tape une adresse, on clique RDP ou SSH (validée de
+  la même façon), ★ pour l'enregistrer.
+- « Tester » (`probe`, permission `network`) : une connexion TCP vers le port
+  (3389 / 22 par défaut, 1,5 s au plus), rien n'est envoyé. Point vert avec
+  le temps de réponse, ou rouge.
+- Le journal note le type de connexion, jamais l'adresse.
+- Lanceur : il reçoit la liste par `remote.changed` (numéro, nom, type) et
+  demande l'ouverture par `remote.connect {id}`.
+
+### Module Réseau (`src/modules/nettools/`, `src-tauri/src/modules/nettools.rs`)
+
+- Permission `network`. L'adresse tapée passe par le même `check_host` que
+  les Accès distants ; le journal ne la contient pas.
+- `ping {host}` : un écho ICMP par `IcmpSendEcho` (iphlpapi, sans droits
+  administrateur), IPv4 seulement, 1 s au plus. Le front le répète chaque
+  seconde tant que l'onglet est ouvert : barres des 40 derniers temps
+  (rouge = perdu), perte, min / moyenne / max.
+- `port {host, port}` : connexion TCP (2 s au plus) → `open`, `closed`
+  (refusée : la machine répond mais rien n'écoute) ou `silent` (pas de
+  réponse : éteinte ou pare-feu). Raccourcis : 443, 80, 3389, 22, 445, 53.
+- `dns {host}` : nom → adresses par le résolveur de Windows ; une IPv4 →
+  son nom (`GetNameInfoW`, recherche inverse).

@@ -217,6 +217,12 @@ body {
     opacity 220ms ease;
 }
 /* Beaucoup d'onglets : seul l'actif garde son nom. */
+.tabs.dense {
+  gap: 1px;
+}
+.tabs.dense .tab {
+  padding: 3px 7px;
+}
 .tabs.icons-only .tab:not(.active) .tab-label {
   max-width: 0;
   margin-left: 0;
@@ -1422,4 +1428,364 @@ body {
 }
 .launch-foot.bad {
   color: #ffb4a8;
+}
+
+/* Système (Outils IT) */
+/* Pour que la jauge glisse d'une valeur à l'autre au lieu de sauter. */
+@property --p {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+.sys {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sys-top {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.sys-gauge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 78px;
+  flex: none;
+  text-align: center;
+}
+.sys-gauge small {
+  font-size: 11px;
+  white-space: nowrap;
+}
+.sys-ring {
+  --p: 0;
+  --c: var(--accent);
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(var(--c) calc(var(--p) * 1%), rgba(255, 255, 255, 0.08) 0);
+  /* Un anneau : on évide le centre. */
+  mask: radial-gradient(circle, transparent 0 21px, #000 22px);
+  -webkit-mask: radial-gradient(circle, transparent 0 21px, #000 22px);
+  transition:
+    --p 900ms var(--ease),
+    --c 300ms ease;
+}
+.sys-dial {
+  position: relative;
+  width: 60px;
+  height: 60px;
+}
+.sys-dial b {
+  /* Le texte est posé par-dessus, hors du masque. */
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.sys-ring[data-level="warn"] {
+  --c: #ffc65c;
+}
+.sys-ring[data-level="bad"] {
+  --c: #ff7a6b;
+}
+.sys-side {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sys-facts {
+  display: grid;
+  gap: 1px;
+}
+.sys-line {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 6px;
+}
+.sys-line span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+.sys-side .btn {
+  align-self: flex-start;
+}
+.sys-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 4px;
+}
+.sys-disk {
+  display: grid;
+  grid-template-columns: 130px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+}
+.sys-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.sys-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+  transition: width 900ms var(--ease);
+}
+.sys-disk[data-level="warn"] .sys-bar i {
+  background: #ffc65c;
+}
+.sys-disk[data-level="bad"] .sys-bar i {
+  background: #ff7a6b;
+}
+.sys-net {
+  display: grid;
+  grid-template-columns: 130px 1fr auto;
+  gap: 10px;
+  user-select: text;
+}
+.sys-net span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Accès distants (Outils IT) */
+.remote {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.remote-head {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.remote-quick {
+  flex: 1;
+  min-width: 0;
+}
+.remote-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.remote-item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.remote-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--island-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    transform 300ms var(--ease);
+}
+.remote-main:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.remote-main:active {
+  transform: scale(0.98);
+}
+.remote-item .icon-btn {
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.remote-item:hover .icon-btn,
+.remote-item .icon-btn:focus-visible {
+  opacity: 1;
+}
+/* Le point d'état : gris (pas testé), qui respire (test en cours), vert, rouge. */
+.remote-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  background: rgba(255, 255, 255, 0.25);
+  transition:
+    background 300ms ease,
+    box-shadow 300ms ease;
+}
+.remote-dot.wait {
+  animation: remote-breathe 1.1s ease-in-out infinite;
+}
+.remote-dot.up {
+  background: #5ee08a;
+  box-shadow: 0 0 6px rgba(94, 224, 138, 0.6);
+}
+.remote-dot.down {
+  background: #ff7a6b;
+}
+@keyframes remote-breathe {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .remote-dot.wait {
+    animation: none;
+  }
+}
+.remote-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+}
+.remote-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+.remote-field[hidden] {
+  display: none;
+}
+.remote-actions {
+  align-self: end;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 0;
+}
+.remote-actions small {
+  font-size: 11px;
+}
+
+/* Réseau (Outils IT) */
+.net {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.net-head {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.net-host {
+  flex: 1;
+  min-width: 0;
+}
+.net-port {
+  width: 58px;
+  flex: none;
+}
+.net-head .btn {
+  flex: none;
+}
+/* « Ping » ↔ « Arrêter » : même largeur, le champ d'adresse ne saute pas. */
+.net-head .btn:first-of-type {
+  min-width: 86px;
+}
+.net-chips {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.net-chip {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted, rgba(255, 255, 255, 0.55));
+  border-radius: 999px;
+  padding: 1px 8px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    transform 300ms var(--ease);
+}
+.net-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--island-fg);
+}
+.net-chip:active {
+  transform: scale(0.95);
+}
+.net-out p {
+  margin: 2px 0;
+}
+.net-ping-top {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.net-big {
+  font-size: 20px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.net-bad,
+.net-result.closed {
+  color: #ff9c8f;
+}
+.net-result.silent {
+  color: #ffc65c;
+}
+.net-result.open {
+  color: #7ee8a2;
+}
+.net-graph {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 44px;
+  margin: 6px 0 4px;
+}
+.net-graph i {
+  flex: 1;
+  max-width: 9px;
+  min-height: 2px;
+  border-radius: 2px 2px 1px 1px;
+  background: linear-gradient(to top, rgba(94, 224, 138, 0.55), #5ee08a);
+  transition: height 420ms var(--ease);
+  animation: net-grow 420ms var(--ease);
+}
+.net-graph i.lost {
+  background: rgba(255, 122, 107, 0.45);
+}
+@keyframes net-grow {
+  from {
+    transform: scaleY(0);
+    transform-origin: bottom;
+  }
+}
+.net-list {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  user-select: text;
+  font-variant-numeric: tabular-nums;
+}
+@media (prefers-reduced-motion: reduce) {
+  .net-graph i {
+    animation: none;
+    transition: none;
+  }
 }

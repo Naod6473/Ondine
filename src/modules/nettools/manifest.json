@@ -1,0 +1,22 @@
+{
+  "id": "nettools",
+  "name": "Réseau",
+  "icon": "🌐",
+  "description": "Ping en continu, test d'un port (ouvert, fermé ou bloqué) et recherche DNS, sans ouvrir de console. Seuls ces paquets de test partent, et seulement vers l'adresse que tu tapes.",
+  "version": "0.1.0",
+  "permissions": [
+    "network"
+  ],
+  "views": [
+    "expanded"
+  ],
+  "commands": [
+    "ping",
+    "port",
+    "dns"
+  ],
+  "events": {
+    "emits": [],
+    "listens": []
+  }
+}

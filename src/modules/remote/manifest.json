@@ -1,0 +1,31 @@
+{
+  "id": "remote",
+  "name": "Accès distants",
+  "icon": "📡",
+  "description": "Tes serveurs Bureau à distance (RDP) et SSH en favoris, ouverts en un clic depuis l'île ou le lanceur. Enregistrés sur ton ordinateur (%APPDATA%\\Island\\remote.json), sans aucun mot de passe. « Tester » vérifie seulement que le serveur répond.",
+  "version": "0.1.0",
+  "permissions": ["network"],
+  "settings": {
+    "version": 1,
+    "fields": [
+      {
+        "key": "sshIn",
+        "type": "select",
+        "label": "Ouvrir SSH dans",
+        "default": "console",
+        "options": [
+          { "value": "console", "label": "Une fenêtre de console" },
+          { "value": "wt", "label": "Windows Terminal (s'il est installé)" }
+        ]
+      },
+      { "key": "rdpFullscreen", "type": "boolean", "label": "Bureau à distance en plein écran", "default": false },
+      { "key": "probeOnOpen", "type": "boolean", "label": "Tester les serveurs à l'ouverture de l'onglet", "default": true }
+    ]
+  },
+  "views": ["expanded"],
+  "commands": ["list", "save", "delete", "connect", "probe"],
+  "events": {
+    "emits": ["remote.changed"],
+    "listens": ["remote.connect", "remote.changed"]
+  }
+}

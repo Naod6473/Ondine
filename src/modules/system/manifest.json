@@ -1,0 +1,20 @@
+{
+  "id": "system",
+  "name": "Système",
+  "icon": "📊",
+  "description": "L'état du PC d'un coup d'œil : processeur, mémoire, disques, adresses IP et MAC, batterie, version de Windows. Un bouton copie un résumé à coller dans un ticket de support. Prévient quand un disque est presque plein. Tout est lu sur le PC : rien ne part sur Internet.",
+  "version": "0.1.0",
+  "permissions": ["clipboard"],
+  "settings": {
+    "version": 1,
+    "fields": [
+      { "key": "diskAlertPct", "type": "number", "label": "Prévenir quand un disque a moins de (% de place libre, 0 = jamais)", "default": 10, "min": 0, "max": 50, "step": 1 }
+    ]
+  },
+  "views": ["expanded"],
+  "commands": ["snapshot", "copy_support"],
+  "events": {
+    "emits": ["system.disk-low"],
+    "listens": ["system.disk-low"]
+  }
+}

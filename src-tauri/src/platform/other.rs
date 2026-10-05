@@ -96,3 +96,22 @@ pub fn shortcut_target(_lnk: &std::path::Path) -> Option<PathBuf> {
 }
 
 pub fn forget_previous_foreground() {}
+
+#[derive(Debug, Clone)]
+pub struct Battery {
+    pub percent: Option<u8>,
+    pub charging: bool,
+    pub plugged: bool,
+}
+
+pub fn battery() -> Option<Battery> {
+    None
+}
+
+pub fn ping(_ip: std::net::Ipv4Addr, _timeout_ms: u32) -> Result<Option<(u32, u8)>, String> {
+    Err("disponible seulement sous Windows".into())
+}
+
+pub fn reverse_dns(_ip: std::net::Ipv4Addr) -> Option<String> {
+    None
+}

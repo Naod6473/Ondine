@@ -18,9 +18,12 @@ mod clipboard;
 mod hello;
 mod launcher;
 mod media;
+mod nettools;
 mod rules;
 mod notes;
+mod remote;
 mod shelf;
+mod system;
 mod terminal;
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -189,6 +192,9 @@ impl Registry {
             Box::new(terminal::Terminal),
             Box::new(rules::Rules::default()),
             Box::new(launcher::Launcher::default()),
+            Box::new(system::SystemInfo::default()),
+            Box::new(remote::Remote::default()),
+            Box::new(nettools::NetTools),
             Box::new(hello::Hello::default()),
         ];
 
@@ -366,6 +372,24 @@ mod tests {
     fn launcher_manifest_is_valid() {
         let m = check_manifest(launcher::Launcher::default().manifest_json()).unwrap();
         assert_eq!(m.id, "launcher");
+    }
+
+    #[test]
+    fn nettools_manifest_is_valid() {
+        let m = check_manifest(nettools::NetTools.manifest_json()).unwrap();
+        assert_eq!(m.id, "nettools");
+    }
+
+    #[test]
+    fn remote_manifest_is_valid() {
+        let m = check_manifest(remote::Remote::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "remote");
+    }
+
+    #[test]
+    fn system_manifest_is_valid() {
+        let m = check_manifest(system::SystemInfo::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "system");
     }
 
     #[test]
