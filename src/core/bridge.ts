@@ -74,6 +74,8 @@ export const Bridge = {
     call<void>("island_set_rect", { x, y, width, height }),
   islandSetFocus: (focused: boolean) => call<void>("island_set_focus", { focused }),
   islandReposition: () => call<void>("island_reposition"),
+  /** On attrape l'île : la fenêtre suit la souris jusqu'au lâcher, puis s'aimante à un bord. */
+  islandDragStart: () => call<void>("island_drag_start"),
 
   // Journal
   log: (level: string, source: string, message: string) => call<void>("log_write", { level, source, message }),

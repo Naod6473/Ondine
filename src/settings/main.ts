@@ -56,7 +56,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "⚙️",
     label: "Général",
     sub: "L'écran, le repli de l'île, les notifications et le journal.",
-    keywords: ["Sur quel écran ?", "Replier l'île", "Durée des notifications", "Niveau du journal", "Dossier du journal"],
+    keywords: ["Sur quel écran ?", "Replier l'île", "Durée des notifications", "Bord de l'écran", "Niveau du journal", "Dossier du journal"],
     render: general,
   },
   {
@@ -431,6 +431,17 @@ function general(main: HTMLElement) {
         "Quand la souris n'est plus dessus, après ce délai.",
       ),
       row("Durée des notifications", stepper(s.island.notificationSecs, 2, 60, (v) => save((d) => (d.island.notificationSecs = v)), 1, "s")),
+      row(
+        "Bord de l'écran",
+        choice(s.island.edge, [["top", "En haut"], ["left", "À gauche"], ["right", "À droite"]], (v) =>
+          save((d) => {
+            d.island.edge = v as Settings["island"]["edge"];
+            d.island.align = "center";
+            d.island.offset = 0.5;
+          }, true),
+        ),
+        "Tu peux aussi attraper l'île par son bord collé à l'écran et la poser ailleurs : elle s'aimante aux bords, aux coins et au centre.",
+      ),
     ]),
     group(
       "Journal",

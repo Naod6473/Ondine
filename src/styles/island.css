@@ -37,6 +37,9 @@ body {
   /* « translate » (et pas « transform ») : l'étirement (gestures.ts) peut alors
      utiliser scale et rotate autour du bord de l'écran sans décaler l'île. */
   translate: -50% 0;
+  /* L'arrondi (--r, posé par chaque état) va sur les coins qui ne touchent
+     pas le bord de l'écran : voir « L'île sur un côté » plus bas. */
+  border-radius: 0 0 var(--r, 0) var(--r, 0);
   box-sizing: border-box;
   background: var(--island-bg);
   overflow: hidden;
@@ -59,25 +62,25 @@ body {
   width: 120px;
   height: 0;
   padding: 0;
-  border-radius: 0 0 6px 6px;
+  --r: 6px;
 }
 .island[data-state="peek"] {
   width: 150px;
   height: 8px;
   padding: 0;
-  border-radius: 0 0 8px 8px;
+  --r: 8px;
 }
 .island[data-state="compact"] {
   width: 340px;
   height: 42px;
   padding: 0 14px 0 8px;
-  border-radius: 0 0 21px 21px;
+  --r: 21px;
 }
 .island[data-state="expanded"] {
   width: 640px;
   height: 270px;
   padding: 12px 14px 14px 12px;
-  border-radius: 0 0 26px 26px;
+  --r: 26px;
   align-items: start;
 }
 .island[data-state="drop"] {
@@ -85,7 +88,7 @@ body {
   width: 700px;
   height: 200px;
   padding: 10px 14px;
-  border-radius: 0 0 24px 24px;
+  --r: 24px;
   outline: 2px dashed rgba(124, 196, 255, 0.5);
   outline-offset: -6px;
 }
@@ -93,7 +96,7 @@ body {
   width: 480px;
   height: 104px;
   padding: 10px 14px 10px 10px;
-  border-radius: 0 0 24px 24px;
+  --r: 24px;
 }
 
 /* ── La mascotte ─────────────────────────────────────────────────────────── */
@@ -2493,4 +2496,109 @@ body {
 .island.grab-inner::after,
 .island.stretching::after {
   opacity: 1;
+}
+
+/* ── L'île ailleurs qu'en haut au centre (gestures.ts, island/mod.rs) ──── */
+/* <body data-edge="top|left|right" data-align="start|center|end"> */
+body[data-edge="top"][data-align="start"] .island {
+  left: 0;
+  translate: 0 0;
+  border-radius: 0 0 var(--r, 0) 0;
+}
+body[data-edge="top"][data-align="end"] .island {
+  left: auto;
+  right: 0;
+  translate: 0 0;
+  border-radius: 0 0 0 var(--r, 0);
+}
+body[data-edge="left"] .island,
+body[data-edge="right"] .island {
+  top: 50%;
+  translate: 0 -50%;
+}
+body[data-edge="left"] .island {
+  left: 0;
+  border-radius: 0 var(--r, 0) var(--r, 0) 0;
+}
+body[data-edge="right"] .island {
+  left: auto;
+  right: 0;
+  border-radius: var(--r, 0) 0 0 var(--r, 0);
+}
+body[data-edge="left"][data-align="start"] .island,
+body[data-edge="right"][data-align="start"] .island {
+  top: 0;
+  translate: 0 0;
+}
+body[data-edge="left"][data-align="end"] .island,
+body[data-edge="right"][data-align="end"] .island {
+  top: auto;
+  bottom: 0;
+  translate: 0 0;
+}
+body[data-edge="left"][data-align="start"] .island {
+  border-radius: 0 0 var(--r, 0) 0;
+}
+body[data-edge="left"][data-align="end"] .island {
+  border-radius: 0 var(--r, 0) 0 0;
+}
+body[data-edge="right"][data-align="start"] .island {
+  border-radius: 0 0 0 var(--r, 0);
+}
+body[data-edge="right"][data-align="end"] .island {
+  border-radius: var(--r, 0) 0 0 0;
+}
+/* Sur un côté, les petites formes sont verticales. */
+body[data-edge="left"] .island[data-state="hidden"],
+body[data-edge="right"] .island[data-state="hidden"] {
+  width: 0;
+  height: 120px;
+}
+body[data-edge="left"] .island[data-state="peek"],
+body[data-edge="right"] .island[data-state="peek"] {
+  width: 8px;
+  height: 150px;
+}
+/* La pilule compacte devient verticale : Ondine en haut, le contenu couché
+   dessous (tourné d'un quart de tour, il se lit de haut en bas). */
+body[data-edge="left"] .island[data-state="compact"],
+body[data-edge="right"] .island[data-state="compact"] {
+  width: 42px;
+  height: 340px;
+  padding: 6px 0;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto;
+  justify-items: center;
+  align-items: start;
+}
+body[data-edge="left"] .island[data-state="compact"] .island-content,
+body[data-edge="right"] .island[data-state="compact"] .island-content {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 18px);
+  width: 270px;
+  height: 34px;
+  translate: -50% -50%;
+  rotate: 90deg;
+}
+/* Le bord intérieur d'une île sur un côté : la poignée est verticale. */
+body[data-edge="left"] .island::after,
+body[data-edge="right"] .island::after {
+  left: auto;
+  bottom: auto;
+  top: 50%;
+  width: 4px;
+  height: 36px;
+  margin: -18px 0 0;
+}
+body[data-edge="left"] .island::after {
+  right: 4px;
+}
+body[data-edge="right"] .island::after {
+  left: 4px;
+}
+/* Pendant un déplacement, l'île se soulève un peu. */
+.island.moving {
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  cursor: grabbing;
 }

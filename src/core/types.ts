@@ -14,12 +14,30 @@ export interface Settings {
     notificationSecs: number;
     /** L'ordre des onglets (ids de modules) ; vide = l'ordre d'origine. */
     tabOrder: string[];
+    /** Le bord de l'écran où vit l'île. */
+    edge: "top" | "left" | "right";
+    /** Sa place le long du bord : coin de début, centre (à `offset`), coin de fin. */
+    align: "start" | "center" | "end";
+    /** Pour "center" : position du centre de l'île le long du bord (0 à 1). */
+    offset: number;
+    /** Thème de couleurs (src/island/themes.ts) ; "custom" = `color`. */
+    theme: string;
+    color: string;
+    sounds: boolean;
+    soundVolume: number;
+    /** Raccourci clavier global qui ouvre l'île ("" = aucun). */
+    hotkey: string;
+    /** Partage d'écran, plein écran : l'île se cache et garde les notifications pour après. */
+    presentationQuiet: boolean;
   };
   mascot: {
     enabled: boolean;
     id: string;
     boredAfterSecs: number;
     sleepAfterSecs: number;
+    /** Ondine vient pendre au bord de l'écran quand on ne fait rien. */
+    peek: boolean;
+    peekEveryMins: number;
   };
   privacy: {
     excludedFolders: string[];
@@ -32,8 +50,21 @@ export function defaultSettings(): Settings {
   return {
     version: 2,
     general: { screen: "primary", logLevel: "info" },
-    island: { collapseSecs: 1.5, notificationSecs: 6, tabOrder: [] },
-    mascot: { enabled: true, id: "goutte", boredAfterSecs: 60, sleepAfterSecs: 180 },
+    island: {
+      collapseSecs: 1.5,
+      notificationSecs: 6,
+      tabOrder: [],
+      edge: "top",
+      align: "center",
+      offset: 0.5,
+      theme: "nuit",
+      color: "#0c0d12",
+      sounds: true,
+      soundVolume: 0.5,
+      hotkey: "Ctrl+Alt+O",
+      presentationQuiet: true,
+    },
+    mascot: { enabled: true, id: "goutte", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5 },
     privacy: { excludedFolders: [] },
     modules: {},
   };

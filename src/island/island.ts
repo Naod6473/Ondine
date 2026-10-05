@@ -28,8 +28,8 @@ const log = logger("island");
 
 /** Durée des animations CSS de l'île (doit suivre --speed dans island.css). */
 const TRANSITION_MS = 420;
-/** Zone tout en haut au centre qui compte comme « survol » même si l'île est minuscule. */
-const TOP_ZONE = { w: 240, h: 14 };
+/** Zone au bord de l'écran qui compte comme « survol » même si l'île est minuscule. */
+const EDGE_ZONE = { len: 240, depth: 14 };
 /** Survol prolongé de la mascotte → `love`. */
 const LONG_HOVER_MS = 2500;
 
@@ -125,6 +125,9 @@ export class Island {
 
   private applySettings(s: Settings) {
     this.fsm.timings = timingsFrom(s);
+    // Le bord et la place de l'île : la forme s'adapte en CSS (island.css).
+    document.body.dataset.edge = s.island.edge ?? "top";
+    document.body.dataset.align = s.island.align ?? "center";
     this.reorderTabs();
     this.notifications.defaultDurationMs = s.island.notificationSecs * 1000;
     const wanted = s.mascot.enabled ? s.mascot.id : "";
@@ -225,6 +228,11 @@ export class Island {
     void onDragDrop((e) => this.onDrag(e));
     void onTauriEvent<string>("tray", (id) => id === "open" && this.fsm.open());
     void onTauriEvent("screen-changed", () => void Bridge.islandReposition());
+    // Fin d'un déplacement : l'île s'est posée sur un bord.
+    void onTauriEvent("island-drag-end", () => {
+      this.shell.classList.remove("moving");
+      this.pushRect();
+    });
 
     // La forme de l'île change (animation, contenu) : le Rust doit la connaître
     // pour décider où les clics passent au travers.
@@ -238,8 +246,26 @@ export class Island {
     return e === "left" || e === "right" ? e : "top";
   }
 
-  /** On a attrapé l'île par son bord extérieur : on la déplace (étape suivante). */
-  private startMove() {}
+  /** La bande au bord de l'écran, là où l'île se cache (pour le survol). */
+  private inEdgeZone(x: number, y: number): boolean {
+    const edge = this.edge();
+    const align = document.body.dataset.align ?? "center";
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const span = (len: number, p: number) => {
+      const start = align === "start" ? 0 : align === "end" ? len - EDGE_ZONE.len : (len - EDGE_ZONE.len) / 2;
+      return p >= start && p <= start + EDGE_ZONE.len;
+    };
+    if (edge === "left") return x <= EDGE_ZONE.depth && span(H, y);
+    if (edge === "right") return x >= W - EDGE_ZONE.depth && span(H, y);
+    return y <= EDGE_ZONE.depth && span(W, x);
+  }
+
+  /** On a attrapé l'île par son bord extérieur : le Rust déplace la fenêtre. */
+  private startMove() {
+    this.shell.classList.add("moving");
+    void Bridge.islandDragStart();
+  }
 
   private pushRect() {
     const r = this.shell.getBoundingClientRect();
@@ -253,9 +279,7 @@ export class Island {
     const r = this.shell.getBoundingClientRect();
     const margin = 8;
     const inIsland = x >= r.left - margin && x <= r.right + margin && y >= r.top - margin && y <= r.bottom + margin;
-    const zoneLeft = (window.innerWidth - TOP_ZONE.w) / 2;
-    const inTopZone = x >= zoneLeft && x <= zoneLeft + TOP_ZONE.w && y >= 0 && y <= TOP_ZONE.h;
-    const inside = inIsland || inTopZone;
+    const inside = inIsland || this.inEdgeZone(x, y);
     if (inside) this.fsm.pointerEnter();
     else this.fsm.pointerLeave();
 

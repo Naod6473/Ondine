@@ -69,7 +69,11 @@ fn boot(app: AppHandle, shared: State<Shared>, registry: State<Registry>) -> Boo
 fn apply_settings(app: &AppHandle, shared: &Shared, new: Settings) -> Result<(), String> {
     let screen_changed = {
         let mut current = shared.settings.locked();
-        let changed = current.general.screen != new.general.screen;
+        // L'écran, ou la place de l'île sur l'écran : il faut replacer la fenêtre.
+        let changed = current.general.screen != new.general.screen
+            || current.island.edge != new.island.edge
+            || current.island.align != new.island.align
+            || current.island.offset != new.island.offset;
         *current = new.clone();
         changed
     };
@@ -83,7 +87,8 @@ fn apply_settings(app: &AppHandle, shared: &Shared, new: Settings) -> Result<(),
 }
 
 #[tauri::command]
-fn settings_save(app: AppHandle, shared: State<Shared>, settings: Settings) -> Result<(), String> {
+fn settings_save(app: AppHandle, shared: State<Shared>, mut settings: Settings) -> Result<(), String> {
+    settings.sanitize();
     apply_settings(&app, &shared, settings)
 }
 
@@ -184,6 +189,13 @@ fn island_set_focus(app: AppHandle, focused: bool) {
     if focused {
         let _ = win.set_focus();
     }
+}
+
+/// On a attrapé l'île par son bord extérieur : la fenêtre suit la souris
+/// jusqu'au lâcher, puis s'aimante à un bord (island/mod.rs).
+#[tauri::command]
+fn island_drag_start(app: AppHandle, shared: State<Shared>) {
+    island::drag_start(&app, &shared.gate);
 }
 
 #[tauri::command]
@@ -400,6 +412,7 @@ pub fn run() {
             island_set_rect,
             island_set_focus,
             island_reposition,
+            island_drag_start,
             log_write,
             logs_open_folder,
             credential_exists,
