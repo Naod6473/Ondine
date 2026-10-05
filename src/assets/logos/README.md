@@ -4,8 +4,8 @@
   avec la couleur de la marque ajoutée.
 - Ce sont des marques déposées (Anthropic, Google) : usage personnel ici.
   Relire leurs règles de marque avant toute distribution de l'île.
-- Codex : pas encore de logo (Simple Icons n'a plus celui d'OpenAI), `src/island/icon.ts`
-  affiche ⌨️ en attendant.
+- Codex : pas de logo de marque. `../icons/codex.webp` est une icône originale
+  (un livre de code), générée par Simon avec GPT.
 
 # Icônes des modules (`../icons/*.webp`)
 
