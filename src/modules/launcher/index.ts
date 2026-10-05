@@ -13,6 +13,7 @@ import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { settingsStore } from "../../core/settings-store";
 import { el } from "../../island/dom";
+import { agentIcon, icon } from "../../island/icon";
 import { reducedMotion } from "../../island/tab-pill";
 import { ALL_MODULES } from "..";
 import { normalize, score } from "./search";
@@ -119,9 +120,9 @@ function islandActions(api: ModuleApi, query: string): Result[] {
         api.emit("agents.launch", index === undefined ? { tool } : { tool, index });
         close();
       };
-      if (!agentProjects.length) add(`agent-${tool}`, `Lancer ${name}`, "✳️", words, launch());
+      if (!agentProjects.length) add(`agent-${tool}`, `Lancer ${name}`, agentIcon(tool), words, launch());
       for (const p of agentProjects) {
-        add(`agent-${tool}-${p.index}`, `${name} · ${p.name}`, "✳️", words.map((w) => `${w} ${p.name}`).concat(words), launch(p.index));
+        add(`agent-${tool}-${p.index}`, `${name} · ${p.name}`, agentIcon(tool), words.map((w) => `${w} ${p.name}`).concat(words), launch(p.index));
       }
     }
   }
@@ -257,7 +258,7 @@ export const launcher: IslandModule = {
                   onclick: api.handler(() => run(r)),
                   onmousemove: () => selected !== i && select(i),
                 },
-                el("span", { class: "launch-icon" }, r.icon),
+                el("span", { class: "launch-icon" }, icon(r.icon)),
                 el("span", { class: "launch-text" }, el("b", {}, r.name), r.detail ? el("small", { class: "muted" }, r.detail) : null),
                 el("span", { class: "launch-tag" }, r.tag),
               ),

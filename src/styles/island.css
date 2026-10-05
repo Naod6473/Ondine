@@ -2104,3 +2104,19 @@ body {
   width: auto;
   padding: 0 8px;
 }
+
+/* ── Icônes en image (logos des agents, voir src/island/icon.ts) ─────────── */
+
+/* Même taille qu'un emoji à côté : elles suivent la taille du texte. */
+.icon-img {
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: -0.2em;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.35));
+  pointer-events: none;
+}
+.agents-logo {
+  font-size: 14px;
+  line-height: 1;
+}
