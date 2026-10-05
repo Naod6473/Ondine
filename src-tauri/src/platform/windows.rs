@@ -400,3 +400,64 @@ pub fn wait_modifiers_released(max: std::time::Duration) {
         std::thread::sleep(std::time::Duration::from_millis(15));
     }
 }
+
+// ── Lanceur rapide ───────────────────────────────────────────────────────────
+
+/// Ouvre un raccourci, un fichier ou un outil Windows « comme un double-clic »
+/// (ShellExecute, verbe « open »). Le lanceur n'appelle cette fonction qu'avec
+/// des chemins qu'il a trouvés lui-même (menu Démarrer, fichiers récents) ou
+/// avec sa liste fixe d'outils Windows : jamais avec un texte tapé.
+pub fn shell_open(target: &str) -> Result<(), String> {
+    use ::windows::core::{w, HSTRING};
+    use ::windows::Win32::UI::Shell::ShellExecuteW;
+    use ::windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+    let file = HSTRING::from(target);
+    let result = unsafe { ShellExecuteW(None, w!("open"), &file, None, None, SW_SHOWNORMAL) };
+    match result.0 as isize {
+        r if r > 32 => Ok(()),
+        2 | 3 => Err("introuvable (déplacé ou supprimé ?)".into()),
+        5 => Err("accès refusé".into()),
+        31 => Err("aucune application n'ouvre ce type de fichier".into()),
+        r => Err(format!("ne s'ouvre pas (code {r})")),
+    }
+}
+
+/// Lance `f` avec COM prêt sur ce thread (il en faut pour lire un raccourci
+/// .lnk). À appeler depuis un thread à soi, pas depuis le thread principal.
+pub fn with_com<R>(f: impl FnOnce() -> R) -> R {
+    use ::windows::Win32::System::Com::{CoInitializeEx, CoUninitialize, COINIT_APARTMENTTHREADED};
+    let hr = unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED) };
+    let result = f();
+    // On ne « défait » COM que si c'est nous qui l'avons initialisé.
+    if hr.is_ok() {
+        unsafe { CoUninitialize() };
+    }
+    result
+}
+
+/// La cible d'un raccourci .lnk (« C:\…\rapport.pdf »), ou None. Il faut COM
+/// (voir `with_com`). On lit seulement le chemin : rien n'est lancé.
+pub fn shortcut_target(lnk: &std::path::Path) -> Option<PathBuf> {
+    use ::windows::core::{Interface, HSTRING};
+    use ::windows::Win32::System::Com::{CoCreateInstance, IPersistFile, CLSCTX_INPROC_SERVER, STGM_READ};
+    use ::windows::Win32::UI::Shell::{IShellLinkW, ShellLink};
+    unsafe {
+        let link: IShellLinkW = CoCreateInstance(&ShellLink, None, CLSCTX_INPROC_SERVER).ok()?;
+        let file: IPersistFile = link.cast().ok()?;
+        file.Load(&HSTRING::from(lnk.as_os_str()), STGM_READ).ok()?;
+        let mut buf = [0u16; 1024];
+        // 0 = pas de drapeau : le chemin tel qu'enregistré dans le raccourci.
+        link.GetPath(&mut buf, std::ptr::null_mut(), 0).ok()?;
+        let len = buf.iter().position(|&c| c == 0).unwrap_or(buf.len());
+        if len == 0 {
+            return None; // raccourci vers autre chose qu'un fichier (Panneau de configuration…)
+        }
+        Some(PathBuf::from(String::from_utf16_lossy(&buf[..len])))
+    }
+}
+
+/// L'île ne rendra PAS le focus à la fenêtre d'avant en se fermant : le
+/// programme qu'on vient de lancer doit pouvoir passer devant.
+pub fn forget_previous_foreground() {
+    *PREVIOUS_FOREGROUND.lock().unwrap() = 0;
+}

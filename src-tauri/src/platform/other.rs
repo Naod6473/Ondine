@@ -82,3 +82,17 @@ pub fn drives(_known: &[DriveInfo]) -> Vec<DriveInfo> {
 }
 
 pub fn wait_modifiers_released(_max: std::time::Duration) {}
+
+pub fn shell_open(_target: &str) -> Result<(), String> {
+    Err("disponible seulement sous Windows".into())
+}
+
+pub fn with_com<R>(f: impl FnOnce() -> R) -> R {
+    f()
+}
+
+pub fn shortcut_target(_lnk: &std::path::Path) -> Option<PathBuf> {
+    None
+}
+
+pub fn forget_previous_foreground() {}

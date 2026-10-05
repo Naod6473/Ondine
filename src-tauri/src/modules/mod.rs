@@ -16,6 +16,7 @@ mod agenda;
 mod capture;
 mod clipboard;
 mod hello;
+mod launcher;
 mod media;
 mod rules;
 mod notes;
@@ -187,6 +188,7 @@ impl Registry {
             Box::new(agenda::Agenda::default()),
             Box::new(terminal::Terminal),
             Box::new(rules::Rules::default()),
+            Box::new(launcher::Launcher::default()),
             Box::new(hello::Hello::default()),
         ];
 
@@ -358,6 +360,12 @@ mod tests {
     fn agenda_manifest_is_valid() {
         let m = check_manifest(agenda::Agenda::default().manifest_json()).unwrap();
         assert_eq!(m.id, "agenda");
+    }
+
+    #[test]
+    fn launcher_manifest_is_valid() {
+        let m = check_manifest(launcher::Launcher::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "launcher");
     }
 
     #[test]

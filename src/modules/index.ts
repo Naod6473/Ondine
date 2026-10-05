@@ -7,6 +7,7 @@ import { agenda } from "./agenda";
 import { capture } from "./capture";
 import { clipboard } from "./clipboard";
 import { hello } from "./hello";
+import { launcher } from "./launcher";
 import { media } from "./media";
 import { notes } from "./notes";
 import { rules } from "./rules";
@@ -14,4 +15,4 @@ import { shelf } from "./shelf";
 import { terminal } from "./terminal";
 import { timerModule } from "./timer";
 
-export const ALL_MODULES: IslandModule[] = [shelf, clipboard, capture, timerModule, notes, agenda, terminal, rules, media, hello];
+export const ALL_MODULES: IslandModule[] = [shelf, clipboard, capture, timerModule, notes, agenda, terminal, launcher, rules, media, hello];

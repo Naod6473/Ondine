@@ -270,6 +270,8 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `terminal.open` `{path?}` | Règles (Rust) | le Terminal s'ouvre (dans le dossier donné, validé) |
 | `timer.start` `{minutes}` | Règles (Rust) | le Minuteur repart sur cette durée |
 | `clipboard.paste-plain` | Règles (Rust) | le Presse-papiers colle le texte sans mise en forme |
+| `launcher.open` | Lanceur (Rust, raccourci global) | l'île s'ouvre sur l'onglet Lanceur, recherche prête |
+| `launcher.hotkey-error` `{text}` | Lanceur (Rust) | notification : raccourci déjà pris |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -565,6 +567,30 @@ qui surveille dossiers et lecteurs).
 - Front : l'onglet de l'île (liste, interrupteurs, pause générale, historique)
   et la section « Règles » de la fenêtre de réglages
   (`src/settings/rules-editor.ts`).
+
+### Module Lanceur (`src/modules/launcher/`, `src-tauri/src/modules/launcher.rs`)
+
+- Raccourci global au choix dans une liste fixe (Alt+Espace par défaut, ou
+  aucun). Un fil vérifie chaque seconde que le raccourci réservé correspond au
+  réglage et au module activé. Pressé → `launcher.open` → l'île s'ouvre sur
+  l'onglet, prend le focus clavier, la recherche est sélectionnée.
+- Entrées trouvées par le Rust (relues au plus toutes les 30 s) :
+  - applications : raccourcis `.lnk`/`.url` des deux menus Démarrer
+    (`%ProgramData%` et `%APPDATA%`), sans les désinstalleurs ;
+  - outils Windows : une liste FIXE (Services, Gestionnaire de périphériques,
+    Observateur d'événements, Connexions réseau, Registre…) ;
+  - fichiers récents : les raccourcis de `%APPDATA%\Microsoft\Windows\Recent`,
+    dont la cible est lue avec `IShellLinkW` (COM, dans un fil à part). Chaque
+    cible passe par `check_path` (dossiers exclus) ; les exécutables (.exe,
+    .bat, .ps1…) ne sont jamais proposés. Réglage pour tout masquer.
+- Le front n'envoie qu'un numéro d'entrée (`launch {id}`), jamais un chemin.
+  Ouverture : `ShellExecuteW("open")`, comme un double-clic. Avant, l'île
+  « oublie » la fenêtre d'avant (`forget_previous_foreground`) pour que le
+  programme lancé passe devant au lieu de se faire voler le focus.
+- Actions de l'île (front) : chaque onglet, « 10 min » → minuteur
+  (`timer.start`), « Ouvrir un terminal » (`terminal.open`), réglages.
+- Tri (`search.ts`) : début du nom > début d'un mot > initiales (« gdp ») >
+  contenu > lettres dans l'ordre ; sans accents ni majuscules.
 
 ### `api.openIsland(tab?)`
 
