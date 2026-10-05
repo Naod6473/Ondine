@@ -450,17 +450,10 @@ body {
   gap: 2px;
 }
 
-/* ── Module hello ────────────────────────────────────────────────────────── */
-
 .view-expanded h3 {
   margin: 0 0 4px;
   font-size: 15px;
 }
-.hello-out {
-  margin-top: 8px;
-  color: var(--muted);
-}
-
 @media (prefers-reduced-motion: reduce) {
   :root {
     --speed: 1ms;

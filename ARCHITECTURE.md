@@ -54,8 +54,7 @@ island/
 │  │  ├─ notes/               Notes rapides et to-do (phase 6)
 │  │  ├─ agenda/              Prochain rendez-vous depuis un .ics (phase 6)
 │  │  ├─ terminal/            Ouvrir cmd / PowerShell en un clic (phase 7)
-│  │  ├─ media/               Musique en cours de lecture (phase 3)
-│  │  └─ hello/               module d'exemple : manifest.json + index.ts
+│  │  └─ media/               Musique en cours de lecture (phase 3)
 │  ├─ settings/               fenêtre de réglages (formulaires générés)
 │  ├─ annotate/               fenêtre d'annotation (dessin sur une capture)
 │  └─ styles/                 island.css, settings.css
@@ -68,7 +67,7 @@ island/
       ├─ island/mod.rs        placement multi-écrans/DPI, clics traversants, souris
       ├─ platform/            tout le Win32 (windows.rs) ; other.rs = bouchons ; media.rs = SMTC ; ocr.rs = OCR
       ├─ services/            réglages, journal, identifiants, bus, annulation, confidentialité, fichiers, ics
-      └─ modules/             registre des modules Rust + shelf.rs, clipboard.rs, capture.rs, notes.rs, agenda.rs, terminal.rs, media.rs, hello.rs
+      └─ modules/             registre des modules Rust + shelf.rs, clipboard.rs, capture.rs, notes.rs, agenda.rs, terminal.rs, media.rs
 ```
 
 ## L'île
@@ -169,7 +168,7 @@ Lu à la fois par le front (import) et par le Rust (`include_str!`).
 
 ```jsonc
 {
-  "id": "hello",                      // minuscules, chiffres, tirets
+  "id": "hello",                      // minuscules, chiffres, tirets (exemple fictif)
   "name": "Bonjour", "icon": "👋", "description": "…", "version": "0.1.0",
   "permissions": [],                  // files, clipboard, network, claude-api, credentials
   "settings": { "version": 1, "fields": [
@@ -223,10 +222,10 @@ Ce qui est vérifié, et où :
 
 ### Ajouter un module
 
-1. Crée `src/modules/<id>/manifest.json` (copie celui de `hello`).
+1. Crée `src/modules/<id>/manifest.json` (copie celui de `terminal`, un module simple).
 2. Crée `src/modules/<id>/index.ts` qui exporte un `IslandModule`.
 3. Ajoute-le dans `src/modules/index.ts`.
-4. S'il a du code Rust : crée `src-tauri/src/modules/<id>.rs` (copie `hello.rs`),
+4. S'il a du code Rust : crée `src-tauri/src/modules/<id>.rs` (copie `terminal.rs`),
    ajoute `mod <id>;` en haut de `modules/mod.rs` et une ligne dans
    `Registry::new()`.
 5. `npm run tauri dev` : le module apparaît dans l'île et dans Réglages → Modules.

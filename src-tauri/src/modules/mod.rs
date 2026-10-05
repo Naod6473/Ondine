@@ -17,7 +17,6 @@ mod agents;
 mod askclaude;
 mod capture;
 mod clipboard;
-mod hello;
 mod launcher;
 mod media;
 mod nettools;
@@ -200,7 +199,6 @@ impl Registry {
             Box::new(nettools::NetTools),
             Box::new(agents::Agents::default()),
             Box::new(askclaude::AskClaude::default()),
-            Box::new(hello::Hello::default()),
         ];
 
         let mut entries = Vec::new();
@@ -330,12 +328,6 @@ pub fn dispatch_event(app: &AppHandle, msg: &BusMessage) {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn hello_manifest_is_valid() {
-        let m = check_manifest(hello::Hello::default().manifest_json()).unwrap();
-        assert_eq!(m.id, "hello");
-    }
 
     #[test]
     fn shelf_manifest_is_valid() {
