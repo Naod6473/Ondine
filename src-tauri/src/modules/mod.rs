@@ -21,6 +21,7 @@ mod media;
 mod rules;
 mod notes;
 mod shelf;
+mod system;
 mod terminal;
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -189,6 +190,7 @@ impl Registry {
             Box::new(terminal::Terminal),
             Box::new(rules::Rules::default()),
             Box::new(launcher::Launcher::default()),
+            Box::new(system::SystemInfo::default()),
             Box::new(hello::Hello::default()),
         ];
 
@@ -366,6 +368,12 @@ mod tests {
     fn launcher_manifest_is_valid() {
         let m = check_manifest(launcher::Launcher::default().manifest_json()).unwrap();
         assert_eq!(m.id, "launcher");
+    }
+
+    #[test]
+    fn system_manifest_is_valid() {
+        let m = check_manifest(system::SystemInfo::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "system");
     }
 
     #[test]

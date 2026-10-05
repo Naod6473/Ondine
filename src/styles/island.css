@@ -217,6 +217,12 @@ body {
     opacity 220ms ease;
 }
 /* Beaucoup d'onglets : seul l'actif garde son nom. */
+.tabs.dense {
+  gap: 1px;
+}
+.tabs.dense .tab {
+  padding: 3px 7px;
+}
 .tabs.icons-only .tab:not(.active) .tab-label {
   max-width: 0;
   margin-left: 0;
@@ -1422,4 +1428,139 @@ body {
 }
 .launch-foot.bad {
   color: #ffb4a8;
+}
+
+/* Système (Outils IT) */
+/* Pour que la jauge glisse d'une valeur à l'autre au lieu de sauter. */
+@property --p {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+.sys {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sys-top {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.sys-gauge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 78px;
+  flex: none;
+  text-align: center;
+}
+.sys-gauge small {
+  font-size: 11px;
+  white-space: nowrap;
+}
+.sys-ring {
+  --p: 0;
+  --c: var(--accent);
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(var(--c) calc(var(--p) * 1%), rgba(255, 255, 255, 0.08) 0);
+  /* Un anneau : on évide le centre. */
+  mask: radial-gradient(circle, transparent 0 21px, #000 22px);
+  -webkit-mask: radial-gradient(circle, transparent 0 21px, #000 22px);
+  transition:
+    --p 900ms var(--ease),
+    --c 300ms ease;
+}
+.sys-dial {
+  position: relative;
+  width: 60px;
+  height: 60px;
+}
+.sys-dial b {
+  /* Le texte est posé par-dessus, hors du masque. */
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.sys-ring[data-level="warn"] {
+  --c: #ffc65c;
+}
+.sys-ring[data-level="bad"] {
+  --c: #ff7a6b;
+}
+.sys-side {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sys-facts {
+  display: grid;
+  gap: 1px;
+}
+.sys-line {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 6px;
+}
+.sys-line span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+.sys-side .btn {
+  align-self: flex-start;
+}
+.sys-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 4px;
+}
+.sys-disk {
+  display: grid;
+  grid-template-columns: 130px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+}
+.sys-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.sys-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+  transition: width 900ms var(--ease);
+}
+.sys-disk[data-level="warn"] .sys-bar i {
+  background: #ffc65c;
+}
+.sys-disk[data-level="bad"] .sys-bar i {
+  background: #ff7a6b;
+}
+.sys-net {
+  display: grid;
+  grid-template-columns: 130px 1fr auto;
+  gap: 10px;
+  user-select: text;
+}
+.sys-net span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

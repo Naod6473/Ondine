@@ -461,3 +461,29 @@ pub fn shortcut_target(lnk: &std::path::Path) -> Option<PathBuf> {
 pub fn forget_previous_foreground() {
     *PREVIOUS_FOREGROUND.lock().unwrap() = 0;
 }
+
+// ── Infos système ────────────────────────────────────────────────────────────
+
+/// L'état de la batterie (None : pas de batterie, PC fixe).
+#[derive(Debug, Clone)]
+pub struct Battery {
+    pub percent: Option<u8>,
+    pub charging: bool,
+    pub plugged: bool,
+}
+
+pub fn battery() -> Option<Battery> {
+    use ::windows::Win32::System::Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS};
+    let mut st = SYSTEM_POWER_STATUS::default();
+    unsafe { GetSystemPowerStatus(&mut st) }.ok()?;
+    // BatteryFlag : 128 = pas de batterie, 255 = inconnu. 8 = en charge.
+    if st.BatteryFlag == 128 || st.BatteryFlag == 255 {
+        return None;
+    }
+    Some(Battery {
+        // 255 = pourcentage inconnu.
+        percent: (st.BatteryLifePercent <= 100).then_some(st.BatteryLifePercent),
+        charging: st.BatteryFlag & 8 != 0,
+        plugged: st.ACLineStatus == 1,
+    })
+}

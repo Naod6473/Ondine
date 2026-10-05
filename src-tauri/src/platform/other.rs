@@ -96,3 +96,14 @@ pub fn shortcut_target(_lnk: &std::path::Path) -> Option<PathBuf> {
 }
 
 pub fn forget_previous_foreground() {}
+
+#[derive(Debug, Clone)]
+pub struct Battery {
+    pub percent: Option<u8>,
+    pub charging: bool,
+    pub plugged: bool,
+}
+
+pub fn battery() -> Option<Battery> {
+    None
+}

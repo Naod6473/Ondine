@@ -37,6 +37,8 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 base64 = "0.22"
 # Surveillance de dossiers (règles de la phase 7). Version 8 : la 9 est encore en préversion.
 notify = "8"
+# Infos système (phase Outils IT) : processeur, mémoire, disques, réseau.
+sysinfo = { version = "0.39", default-features = false, features = ["system", "disk", "network"] }
 # Raccourcis clavier globaux (plugin officiel de Tauri, version 2 : la 3 est en alpha).
 tauri-plugin-global-shortcut = "2"
 
@@ -75,6 +77,8 @@ windows = { version = "0.61", features = [
   # fenêtre « pas de disque dans le lecteur ».
   "Win32_Storage_FileSystem",
   "Win32_System_Diagnostics_Debug",
+  # Infos système : la batterie.
+  "Win32_System_Power",
 ] }
 
 [profile.release]

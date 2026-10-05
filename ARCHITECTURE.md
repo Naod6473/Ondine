@@ -272,6 +272,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `clipboard.paste-plain` | Règles (Rust) | le Presse-papiers colle le texte sans mise en forme |
 | `launcher.open` | Lanceur (Rust, raccourci global) | l'île s'ouvre sur l'onglet Lanceur, recherche prête |
 | `launcher.hotkey-error` `{text}` | Lanceur (Rust) | notification : raccourci déjà pris |
+| `system.disk-low` `{mount, freePct, freeGb}` | Système (Rust, toutes les 30 s) | notification 💽 : disque presque plein |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -596,3 +597,26 @@ qui surveille dossiers et lecteurs).
 
 Un module peut demander d'ouvrir l'île, éventuellement sur un onglet (ignoré
 s'il n'existe pas ou est désactivé).
+
+## Phase 8 : outils IT
+
+### Module Système (`src/modules/system/`, `src-tauri/src/modules/system.rs`)
+
+- Tout est lu sur le PC (crate `sysinfo` 0.39, `GetSystemPowerStatus` pour la
+  batterie) : rien ne part sur Internet, rien n'est écrit dans le journal.
+- Un fil de fond mesure processeur et mémoire toutes les 2 s (il faut deux
+  mesures espacées pour un pourcentage de processeur) quand le module est
+  actif, et les disques toutes les 30 s.
+- Disque fixe sous le seuil (réglage `diskAlertPct`, 10 % par défaut, 0 =
+  jamais) → `system.disk-low`, une seule fois par disque, de nouveau
+  seulement si la place est revenue au-dessus du seuil + 2 points.
+- Commandes : `snapshot` (nom du PC, utilisateur, Windows, durée depuis le
+  démarrage, processeur, mémoire, disques, cartes réseau avec IP et MAC,
+  batterie) et `copy_support` (permission `clipboard`) : le même résumé en
+  texte, à coller dans un ticket.
+- L'onglet : trois jauges rondes (processeur, mémoire, disque C:) qui glissent
+  d'une mesure à l'autre (`@property --p`), les infos utiles au support, puis
+  le détail des disques et du réseau. Rafraîchi toutes les 2 s, seulement
+  tant que l'onglet est ouvert.
+- Avec plus de 8 onglets, la barre d'onglets se resserre (`.tabs.dense`) en
+  attendant la navigation à la souris prévue plus tard.

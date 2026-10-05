@@ -403,6 +403,9 @@ export class Island {
     // Au-delà de 4 onglets, la place manque : les onglets inactifs ne montrent
     // que leur icône (le nom apparaît au survol), l'onglet actif garde son nom.
     if (tabs.length > 4) header.classList.add("icons-only");
+    // Encore plus d'onglets : on les resserre, pour que ⚙ reste toujours visible
+    // (en attendant le défilement à la souris prévu plus tard).
+    if (tabs.length > 8) header.classList.add("dense");
     const buttons = new Map<string, HTMLElement>();
     for (const t of tabs) {
       const m = t.module.manifest;
