@@ -10,6 +10,7 @@ import { controls } from "./controls";
 import { launcher } from "./launcher";
 import { media } from "./media";
 import { notes } from "./notes";
+import { pauses } from "./pauses";
 import { rules } from "./rules";
 import { shelf } from "./shelf";
 import { system } from "./system";
@@ -20,4 +21,4 @@ import { askclaude } from "./askclaude";
 import { terminal } from "./terminal";
 import { timerModule } from "./timer";
 
-export const ALL_MODULES: IslandModule[] = [shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, agents, askclaude, launcher, rules, media, controls];
+export const ALL_MODULES: IslandModule[] = [shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, agents, askclaude, launcher, rules, media, controls, pauses];
