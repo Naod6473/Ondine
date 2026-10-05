@@ -18,11 +18,12 @@ import { MascotController } from "../mascot/mascot-state";
 import { createRenderer } from "../mascot/renderer";
 import { clear, el } from "./dom";
 import { IslandStateMachine, type IslandState } from "./island-state";
+import { reducedMotion, TabPill } from "./tab-pill";
 
 const log = logger("island");
 
-/** Durée des animations CSS de l'île (doit suivre island.css). */
-const TRANSITION_MS = 280;
+/** Durée des animations CSS de l'île (doit suivre --speed dans island.css). */
+const TRANSITION_MS = 420;
 /** Zone tout en haut au centre qui compte comme « survol » même si l'île est minuscule. */
 const TOP_ZONE = { w: 240, h: 14 };
 /** Survol prolongé de la mascotte → `love`. */
@@ -49,6 +50,10 @@ export class Island {
   private unmountView: () => void = () => {};
   /** Onglet (id de module) ouvert dans la vue agrandie. */
   private activeTab: string | null = null;
+  /** La vue agrandie affichée : ses onglets, leur pastille et la zone du contenu. */
+  private expandedUi: { tabs: Map<string, HTMLElement>; pill: TabPill; stage: HTMLElement; body: HTMLElement } | null = null;
+  /** Dernier état dessiné, pour animer l'arrivée du contenu quand il change. */
+  private renderedState: IslandState | null = null;
   /** Cible de dépôt sous le curseur pendant un glisser. */
   private dropHover: HTMLElement | null = null;
   private collapseTimer: number | null = null;
@@ -326,6 +331,8 @@ export class Island {
     this.renderedKey = key;
     this.unmountView();
     this.unmountView = () => {};
+    this.expandedUi?.pill.stop();
+    this.expandedUi = null;
     clear(this.content);
 
     switch (state) {
@@ -346,6 +353,18 @@ export class Island {
         break;
     }
     this.renderBanner(n);
+
+    // Le contenu arrive en douceur quand l'île change de forme.
+    if (state !== this.renderedState && state !== "hidden" && state !== "peek" && !reducedMotion()) {
+      this.content.animate(
+        [
+          { opacity: 0, transform: "translateY(-6px) scale(0.98)", filter: "blur(4px)" },
+          { opacity: 1, transform: "none", filter: "blur(0)" },
+        ],
+        { duration: 320, delay: 60, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)", fill: "backwards" },
+      );
+    }
+    this.renderedState = state;
   }
 
   private renderCompact(n: IslandNotification | null) {
@@ -368,33 +387,38 @@ export class Island {
     const header = el("div", { class: "tabs" });
     // Au-delà de 4 onglets, la place manque : les onglets inactifs ne montrent
     // que leur icône (le nom apparaît au survol), l'onglet actif garde son nom.
-    const iconsOnly = tabs.length > 4;
+    if (tabs.length > 4) header.classList.add("icons-only");
+    const buttons = new Map<string, HTMLElement>();
     for (const t of tabs) {
       const m = t.module.manifest;
-      const active = m.id === this.activeTab;
-      header.append(
-        el(
-          "button",
-          {
-            class: `tab ${active ? "active" : ""}`,
-            title: m.name,
-            onclick: () => {
-              this.activeTab = m.id;
-              this.render(true);
-            },
-          },
-          iconsOnly && !active ? m.icon : `${m.icon} ${m.name}`,
-        ),
+      const button = el(
+        "button",
+        { class: `tab ${m.id === this.activeTab ? "active" : ""}`, title: m.name, onclick: () => this.switchTab(m.id) },
+        el("span", { class: "tab-icon" }, m.icon),
+        el("span", { class: "tab-label" }, m.name),
       );
+      buttons.set(m.id, button);
+      header.append(button);
     }
     header.append(
       el("span", { class: "spacer" }),
       el("button", { class: "icon-btn", title: "Réglages", onclick: () => void Bridge.openSettingsWindow() }, "⚙"),
       el("button", { class: "icon-btn", title: "Réduire (Échap pour fermer)", onclick: () => this.fsm.shrink() }, "▴"),
     );
+    const pill = new TabPill(header);
     const banner = el("div", { class: "banner-slot" });
+    // La « scène » garde la place du contenu : pendant un changement d'onglet,
+    // l'ancien contenu s'efface par-dessus le nouveau.
+    const stage = el("div", { class: "view-stage" });
     const body = el("div", { class: "view view-expanded" });
-    this.content.append(header, banner, body);
+    stage.append(body);
+    this.content.append(header, banner, stage);
+    this.expandedUi = { tabs: buttons, pill, stage, body };
+
+    const active = this.activeTab ? buttons.get(this.activeTab) : undefined;
+    // La pastille se place une fois la mise en page faite.
+    if (active) requestAnimationFrame(() => pill.jumpTo(active));
+
     if (this.activeTab) this.unmountView = this.registry.mountView(this.activeTab, "expanded", body);
     else {
       const benched = this.registry.benchedNames();
@@ -408,6 +432,66 @@ export class Island {
         ),
       );
     }
+  }
+
+  /**
+   * Change d'onglet sans tout redessiner : la pastille glisse jusqu'au nouvel
+   * onglet, l'ancien contenu s'efface d'un côté pendant que le nouveau arrive
+   * de l'autre (dans le sens du déplacement).
+   */
+  private switchTab(id: string) {
+    const ui = this.expandedUi;
+    if (!ui || id === this.activeTab || this.fsm.state !== "expanded") {
+      if (id !== this.activeTab) {
+        this.activeTab = id;
+        this.render(true);
+      }
+      return;
+    }
+    const ids = [...ui.tabs.keys()];
+    const direction = Math.sign(ids.indexOf(id) - ids.indexOf(this.activeTab ?? "")) || 1;
+
+    // Les onglets : seul l'actif garde son nom (la largeur s'anime en CSS).
+    for (const [tabId, button] of ui.tabs) button.classList.toggle("active", tabId === id);
+    ui.pill.moveTo(ui.tabs.get(id)!);
+
+    // Le contenu : on démonte l'ancien module, mais on garde son dessin le
+    // temps qu'il s'efface.
+    this.unmountView();
+    const old = ui.body;
+    const body = el("div", { class: "view view-expanded" });
+    ui.stage.append(body);
+    ui.body = body;
+    this.activeTab = id;
+    this.renderedKey = ["expanded", id, "", ""].join("|");
+    this.unmountView = this.registry.mountView(id, "expanded", body);
+
+    if (reducedMotion()) {
+      old.remove();
+      return;
+    }
+    old.classList.add("leaving");
+    old.style.pointerEvents = "none";
+    const ease = "cubic-bezier(0.2, 0.8, 0.2, 1)";
+    old
+      .animate(
+        [
+          { opacity: 1, transform: "none", filter: "blur(0)" },
+          { opacity: 0, transform: `translateX(${-direction * 18}px) scale(0.98)`, filter: "blur(6px)" },
+        ],
+        { duration: 220, easing: ease, fill: "forwards" },
+      )
+      .finished.then(
+        () => old.remove(),
+        () => old.remove(), // animation interrompue (île refermée) : on nettoie quand même
+      );
+    body.animate(
+      [
+        { opacity: 0, transform: `translateX(${direction * 24}px) scale(0.98)`, filter: "blur(6px)" },
+        { opacity: 1, transform: "none", filter: "blur(0)" },
+      ],
+      { duration: 380, delay: 40, easing: ease, fill: "backwards" },
+    );
   }
 
   private renderDrop() {

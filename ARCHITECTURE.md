@@ -128,6 +128,22 @@ Les transitions sont animées en CSS (`width`, `height`, `border-radius`, 280 ms
 dans `island.css`). Quand l'île se cache, la fenêtre ne redevient une bande
 qu'après la fin de l'animation.
 
+### Les animations
+
+- **Forme de l'île** : transitions CSS sur largeur, hauteur, arrondi, avec un
+  ressort (`--ease` en `linear()`, 420 ms, petit dépassement de 4 %).
+  `TRANSITION_MS` dans island.ts doit suivre `--speed`.
+- **Arrivée du contenu** quand l'état change : fondu, léger flou et glissement
+  (Web Animations API, dans `render`).
+- **Changement d'onglet** (`switchTab`) : on ne redessine pas toute la vue. La
+  pastille de l'onglet actif (`src/island/tab-pill.ts`) se déplace avec deux
+  ressorts, un par bord : le bord qui mène est raide, celui qui suit est mou,
+  donc la pastille s'étire puis se rétracte (effet « verre liquide »).
+  L'ancien contenu s'efface d'un côté pendant que le nouveau arrive de l'autre,
+  dans la même case de grille (`.view-stage`).
+- **Réduire les animations** (réglage d'accessibilité de Windows) : tout
+  devient instantané (`reducedMotion()`, `prefers-reduced-motion`).
+
 ### La file de notifications (`src/core/notifications.ts`)
 
 Un module **demande** l'attention (`api.notify({...})`), l'île **décide** :
