@@ -10,7 +10,10 @@
 //   - le fondu : quand la pose change, l'ancienne image s'efface pendant que la
 //     nouvelle apparaît (≈ 0,3 s). Les deux sont mélangées en mode « lighter »,
 //     ce qui donne un vrai mélange des couleurs (bleu → vert sans voile sombre) ;
-//   - les mouvements du corps (effects.ts) et les effets autour (overlays.ts).
+//   - les mouvements du corps (effects.ts) et les effets autour (overlays.ts) ;
+//   - l'humeur de fond (mascot-state.ts) : « tired » = paupières à moitié
+//     baissées (tard le soir, batterie faible), « grumpy » = une goutte de sueur
+//     qui perle sur le front (processeur à fond).
 //
 // Chaque image est dessinée d'abord dans un petit canvas hors écran (un
 // « calque »), puis le calque est posé sur l'île avec les mouvements du corps.
@@ -105,6 +108,8 @@ export class PosesRenderer implements MascotRenderer {
   private blinkStart = 0;
   private nextBlink = performance.now() + 2500;
   private doubleBlink = false;
+  /** L'humeur de fond (voir setMood). */
+  private mood: Mood = "neutral";
 
   // Petites variantes au repos (un clin d'œil, un air calme…).
   private variant: { pose: string; until: number } | null = null;
@@ -171,8 +176,10 @@ export class PosesRenderer implements MascotRenderer {
 
   setState(_state: MascotState) {}
 
-  setMood(_mood: Mood) {
-    // Les émotions sont des poses à part entière : pas d'humeur de fond ici.
+  setMood(mood: Mood) {
+    // Les émotions sont des poses à part entière ; l'humeur ajoute seulement
+    // des paupières lourdes (tired) ou une goutte de sueur (grumpy).
+    this.mood = mood;
   }
 
   lookAt(x: number | null, y: number | null) {
@@ -302,6 +309,8 @@ export class PosesRenderer implements MascotRenderer {
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(this.mix.c, -size / 2, -size, size, size);
     ctx.restore();
+
+    if (this.mood === "grumpy") this.drawSweat(ctx, baseX, baseY, size, t);
 
     const overlay = src.overlay ?? "none";
     if (overlay !== "none") drawOverlay(ctx, overlay, w / 2, baseY - size * 0.5, size * 0.42, this.reduced ? 0.5 : t);
@@ -433,9 +442,11 @@ export class PosesRenderer implements MascotRenderer {
     x.globalAlpha = 1;
 
     // La paupière descend, de la couleur de la goutte, avec un trait au bord.
-    if (this.blink > 0.01 && lid) {
+    // Fatiguée : elle reste à moitié baissée.
+    const lidLevel = Math.max(this.blink, this.mood === "tired" ? 0.4 : 0);
+    if (lidLevel > 0.01 && lid) {
       const top = e.cy - e.ry - 2;
-      const edge = top + (e.ry * 2 + 4) * Math.min(1, this.blink);
+      const edge = top + (e.ry * 2 + 4) * Math.min(1, lidLevel);
       const lg = x.createLinearGradient(0, top, 0, edge);
       lg.addColorStop(0, lid.top);
       lg.addColorStop(1, lid.bottom);
@@ -450,6 +461,38 @@ export class PosesRenderer implements MascotRenderer {
       x.stroke();
     }
     x.restore();
+  }
+
+  /**
+   * Une goutte de sueur qui perle sur le côté du front, glisse un peu, puis
+   * recommence (fixe si l'utilisateur réduit les animations).
+   */
+  private drawSweat(ctx: CanvasRenderingContext2D, baseX: number, baseY: number, size: number, t: number) {
+    const k = this.reduced ? 0.3 : (t % 2.4) / 2.4; // 0 → 1 en 2,4 s
+    const r = size * 0.055;
+    const x = baseX + size * 0.3;
+    const y = baseY - size * 0.72 + k * size * 0.12;
+    ctx.save();
+    ctx.globalAlpha = k < 0.15 ? k / 0.15 : k > 0.85 ? (1 - k) / 0.15 : 1;
+    ctx.beginPath();
+    // Une goutte : pointe en haut, ronde en bas.
+    ctx.moveTo(x, y - r * 1.9);
+    ctx.bezierCurveTo(x + r * 0.4, y - r, x + r, y - r * 0.3, x + r, y + r * 0.2);
+    ctx.arc(x, y + r * 0.2, r, 0, Math.PI);
+    ctx.bezierCurveTo(x - r, y - r * 0.3, x - r * 0.4, y - r, x, y - r * 1.9);
+    const g = ctx.createLinearGradient(x, y - r * 2, x, y + r * 1.2);
+    g.addColorStop(0, "#e8f8ff");
+    g.addColorStop(1, "#8fd3ff");
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.strokeStyle = "rgba(30, 80, 130, 0.55)";
+    ctx.lineWidth = Math.max(1, size * 0.008);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+    ctx.beginPath();
+    ctx.arc(x - r * 0.35, y + r * 0.05, r * 0.25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   /** Prend la couleur de la goutte juste au-dessus de chaque œil (une fois, au chargement). */

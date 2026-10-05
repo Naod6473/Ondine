@@ -19,8 +19,13 @@
 //   mascot.clicked ×3 rapides → annoyed, ×6 → dizzy           mascot.hover-long → love
 //   inactivité → bored puis sleep  activité pendant sleep → wake
 //   mascot.play {animation} → joue cette animation (tests depuis les réglages)
+//   Humeur suivant le PC (réglage « ondineMood » du module Système) :
+//   system.cpu-busy {on} → worried (elle transpire), humeur grognon tant que ça dure
+//   system.battery-low → sad, paupières lourdes ; system.battery-full → happy
+//   tard le soir (22 h – 6 h) → paupières lourdes au repos
 
 import type { Bus } from "../core/bus";
+import { settingsStore } from "../core/settings-store";
 import type { MascotRenderer } from "./renderer";
 import { MASCOT_STATES, type AnimationSpec, type MascotManifest, type MascotState, type Mood } from "./types";
 
@@ -39,6 +44,17 @@ const REACTIONS_BY_ICON: Record<string, MascotState> = {
   "🧺": "happy",
   "💬": "info",
 };
+/** L'humeur suit-elle le PC ? (réglage du module Système, activé par défaut) */
+function moodFollowsPc(): boolean {
+  return settingsStore.current.modules?.system?.values?.ondineMood !== false;
+}
+
+/** Tard le soir ou la nuit : Ondine a les paupières lourdes. */
+export function isLate(date = new Date()): boolean {
+  const h = date.getHours();
+  return h >= 22 || h < 6;
+}
+
 /** Pas deux réactions à des notifications à moins de ce délai (une rafale ne fait pas danser Ondine sans fin). */
 const REACTION_GAP_MS = 4000;
 
@@ -57,6 +73,8 @@ export class MascotController {
   private thinking = false;
   private moodUntil = 0;
   private lastReaction = 0;
+  /** Le processeur est à fond (message system.cpu-busy). */
+  private cpuBusy = false;
   private inactivityTimer: number;
   private offs: (() => void)[] = [];
 
@@ -163,12 +181,18 @@ export class MascotController {
     this.moodUntil = Date.now() + forMs;
   }
 
+  /** L'humeur « de fond », quand aucune humeur passagère n'est en cours. */
+  private baseMood(): Mood {
+    if (!moodFollowsPc()) return "neutral";
+    if (this.cpuBusy) return "grumpy";
+    if (isLate()) return "tired";
+    return "neutral";
+  }
+
   private checkInactivity() {
     const idleMs = Date.now() - this.lastActivity;
-    if (this.moodUntil && Date.now() > this.moodUntil) {
-      this.moodUntil = 0;
-      this.renderer.setMood("neutral");
-    }
+    if (this.moodUntil && Date.now() > this.moodUntil) this.moodUntil = 0;
+    if (!this.moodUntil) this.renderer.setMood(this.baseMood());
     if (this.tasks > 0 || this.thinking) return;
     if (idleMs > this.timings.sleepAfterMs && this.state !== "sleep") this.request("sleep");
     else if (idleMs > this.timings.boredAfterMs && this.state === "idle") this.request("bored");
@@ -220,6 +244,17 @@ export class MascotController {
     on("notify.alert-end", () => this.state === "alert" && this.request(this.baseState(), true));
     on("mascot.hover-long", () => this.request("love"));
     on("mascot.clicked", () => this.onClick());
+    // L'humeur suit le PC.
+    on("system.cpu-busy", (p: { on?: boolean } | null) => {
+      this.cpuBusy = !!p?.on;
+      if (this.cpuBusy && moodFollowsPc() && this.state !== "sleep") this.requestOr("worried", "annoyed");
+    });
+    on("system.battery-low", () => {
+      if (!moodFollowsPc()) return;
+      this.setMood("tired", 10 * 60_000);
+      this.requestOr("sad", "bored");
+    });
+    on("system.battery-full", () => moodFollowsPc() && this.request("happy"));
     on("mascot.play", (p: { animation?: string }) => p?.animation && this.playAnimation(p.animation));
   }
 

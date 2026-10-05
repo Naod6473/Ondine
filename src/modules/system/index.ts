@@ -85,6 +85,13 @@ export const system: IslandModule = {
         key: `disk-low-${p.mount}`,
       });
     });
+    api.on("system.battery-low", (msg) => {
+      const p = (msg.payload ?? {}) as { percent?: number };
+      api.notify({ title: "Batterie faible", body: `Plus que ${p.percent ?? "?"} % : pense à brancher le chargeur.`, icon: "🪫", priority: "normal", key: "battery" });
+    });
+    api.on("system.battery-full", () => {
+      api.notify({ title: "Batterie chargée", body: "Tu peux débrancher le chargeur.", icon: "🔋", priority: "low", key: "battery" });
+    });
   },
 
   views: {

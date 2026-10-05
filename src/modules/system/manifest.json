@@ -2,19 +2,64 @@
   "id": "system",
   "name": "Système",
   "icon": "📊",
-  "description": "L'état du PC d'un coup d'œil : processeur, mémoire, disques, adresses IP et MAC, batterie, version de Windows. Un bouton copie un résumé à coller dans un ticket de support. Prévient quand un disque est presque plein. Tout est lu sur le PC : rien ne part sur Internet.",
+  "description": "L'état du PC d'un coup d'œil : processeur, mémoire, disques, adresses IP et MAC, batterie, version de Windows. Un bouton copie un résumé à coller dans un ticket de support. Prévient quand un disque est presque plein, quand la batterie est faible ou chargée. Ondine transpire quand le processeur est à fond. Tout est lu sur le PC : rien ne part sur Internet.",
   "version": "0.1.0",
-  "permissions": ["clipboard"],
+  "permissions": [
+    "clipboard"
+  ],
   "settings": {
     "version": 1,
     "fields": [
-      { "key": "diskAlertPct", "type": "number", "label": "Prévenir quand un disque a moins de (% de place libre, 0 = jamais)", "default": 10, "min": 0, "max": 50, "step": 1 }
+      {
+        "key": "diskAlertPct",
+        "type": "number",
+        "label": "Prévenir quand un disque a moins de (% de place libre, 0 = jamais)",
+        "default": 10,
+        "min": 0,
+        "max": 50,
+        "step": 1
+      },
+      {
+        "key": "batteryLowPct",
+        "type": "number",
+        "label": "Prévenir quand la batterie descend à (%, 0 = jamais)",
+        "default": 20,
+        "min": 0,
+        "max": 50,
+        "step": 5
+      },
+      {
+        "key": "batteryFullAlert",
+        "type": "boolean",
+        "label": "Prévenir quand la batterie est chargée",
+        "default": true
+      },
+      {
+        "key": "ondineMood",
+        "type": "boolean",
+        "label": "L'humeur d'Ondine suit le PC (processeur à fond, batterie faible, heure tardive)",
+        "default": true
+      }
     ]
   },
-  "views": ["expanded"],
-  "commands": ["snapshot", "copy_support"],
+  "views": [
+    "expanded"
+  ],
+  "commands": [
+    "snapshot",
+    "copy_support"
+  ],
   "events": {
-    "emits": ["system.disk-low"],
-    "listens": ["system.disk-low"]
+    "emits": [
+      "system.disk-low",
+      "system.battery-low",
+      "system.battery-full",
+      "system.cpu-busy"
+    ],
+    "listens": [
+      "system.disk-low",
+      "system.battery-low",
+      "system.battery-full"
+    ]
   }
 }
