@@ -32,8 +32,7 @@ function timingsFrom(s: Settings) {
   return {
     peekToCompactMs: 350,
     peekToHiddenMs: 300,
-    compactHideMs: s.island.compactHideSecs * 1000,
-    expandedCollapseMs: s.island.expandedCollapseSecs * 1000,
+    collapseMs: s.island.collapseSecs * 1000,
   };
 }
 
@@ -82,10 +81,14 @@ export class Island {
         if (n) this.fsm.showCompact();
       }
       wasAlert = alert;
+      // Notification normale affichée : l'île ne se replie pas avant sa fin.
+      this.fsm.hold(!!n && !alert);
       this.render();
     };
 
     this.registry.onChange = () => this.render(true);
+    // Sans `force` : on ne redessine que si le module affiché en compact change.
+    this.registry.onCompactChange = () => this.render();
     settingsStore.onChange((s) => this.applySettings(s));
     this.applySettings(settingsStore.current);
     this.wireInputs();
@@ -222,6 +225,8 @@ export class Island {
   }
 
   private onDrag(e: DragDropEvent) {
+    // Diagnostic : le type d'événement seulement, jamais les chemins.
+    if (e.type !== "over") log.info(`glisser-déposer : ${e.type} (état ${this.fsm.state})`);
     switch (e.type) {
       case "enter":
         this.fsm.dragEnter();
@@ -311,7 +316,8 @@ export class Island {
     const tabs = this.registry.withView("expanded");
     if (!tabs.some((t) => t.module.manifest.id === this.activeTab)) this.activeTab = tabs[0]?.module.manifest.id ?? null;
 
-    const key = [state, state === "expanded" ? this.activeTab : "", state === "compact" || state === "alert" ? n?.id : ""].join("|");
+    const compactOwner = state === "compact" ? (this.registry.withView("compact")[0]?.module.manifest.id ?? "") : "";
+    const key = [state, state === "expanded" ? this.activeTab : "", state === "compact" || state === "alert" ? n?.id : "", compactOwner].join("|");
     if (key === this.renderedKey && !force) {
       this.renderBanner(n);
       return;

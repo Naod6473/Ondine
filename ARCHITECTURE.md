@@ -47,6 +47,7 @@ island/
 │  ├─ modules/
 │  │  ├─ index.ts             LISTE DES MODULES (front)
 │  │  ├─ shelf/               Étagère et dépôt de fichiers (phase 2)
+│  │  ├─ media/               Musique en cours de lecture (phase 3)
 │  │  └─ hello/               module d'exemple : manifest.json + index.ts
 │  ├─ settings/               fenêtre de réglages (formulaires générés)
 │  └─ styles/                 island.css, settings.css
@@ -57,9 +58,9 @@ island/
       ├─ main.rs · lib.rs     démarrage + liste des commandes Tauri
       ├─ tray.rs              icône de la zone de notification
       ├─ island/mod.rs        placement multi-écrans/DPI, clics traversants, souris
-      ├─ platform/            tout le Win32 (windows.rs) ; other.rs = bouchons
+      ├─ platform/            tout le Win32 (windows.rs) ; other.rs = bouchons ; media.rs = SMTC
       ├─ services/            réglages, journal, identifiants, bus, annulation, confidentialité, fichiers
-      └─ modules/             registre des modules Rust + shelf.rs, hello.rs
+      └─ modules/             registre des modules Rust + shelf.rs, media.rs, hello.rs
 ```
 
 ## L'île
@@ -109,8 +110,9 @@ change d'échelle (vérifié deux fois par seconde).
 | peek → compact | survol maintenu 350 ms |
 | peek → expanded, compact → expanded | clic |
 | peek → hidden | souris partie depuis 300 ms |
-| compact → hidden | souris partie depuis `island.compactHideSecs` |
-| expanded → compact | souris partie depuis `island.expandedCollapseSecs`, ou bouton ▴ |
+| compact → hidden | souris partie depuis `island.collapseSecs` (1,5 s par défaut), sauf pendant une notification |
+| expanded → hidden | souris partie depuis `island.collapseSecs` (→ compact si une notification est affichée) |
+| expanded → compact | bouton ▴ |
 | tout → hidden | Échap (en `alert`, Échap ferme seulement l'alerte) |
 | tout → drop | un fichier entre ; l'état d'avant est retenu |
 | drop → état d'avant | le glisser sort de l'île |
@@ -176,7 +178,14 @@ Ce qui est vérifié, et où :
   des réglages, comme les favoris de l'Étagère). Tout passe par
   `api` : `emit`, `on`, `invoke`, `settings`, `notify`, `handler`, `log`.
 - **Rust** (facultatif, `src-tauri/src/modules/<id>.rs`) implémente
-  `RustModule` : `invoke(ctx, commande, args)` et `on_event(ctx, message)`.
+  `RustModule` : `invoke(ctx, commande, args)`, `on_event(ctx, message)` et
+  `start(app)`, appelé une fois au démarrage pour lancer un travail de fond
+  (un thread qui vérifie `modules::is_active` à chaque tour et rattrape ses
+  propres paniques).
+- **Vue compacte** : l'île montre celle du premier module (ordre de
+  `src/modules/index.ts`) qui en a une à montrer. Un module peut dire « pas
+  maintenant » avec `views.compactWhen(api)`, et prévenir l'île que sa réponse a
+  changé avec `api.refreshCompact()`.
 
 ### Isolation : un module qui plante ne fait pas tomber l'île
 
@@ -221,6 +230,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `undo.offered` / `undo.done` / `undo.expired` | service d'annulation | bouton « Annuler » |
 | `module.crashed` | Rust | l'île prévient |
 | `shelf.changed` `{items}` | Étagère (Rust) | la vue de l'étagère se redessine |
+| `media.changed` `{playing, artwork}` | Musique (Rust) | la pilule et l'onglet Musique se mettent à jour |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -315,6 +325,34 @@ Front : `src/modules/shelf/index.ts`. Rust : `src-tauri/src/modules/shelf.rs`.
   la destination aussi. Un seul chemin refusé = rien n'est fait.
 - Une erreur normale (dossier exclu, fichier disparu) s'affiche dans l'île et ne
   compte pas comme un plantage du module.
+- **Recevoir les fichiers (Windows)** : WebView2 pose sur sa fenêtre intérieure
+  (`Chrome_RenderWidgetHostHWND`) une cible de dépôt qui refuse tout (🚫), et
+  celle de wry/Tauri ne prend pas le relais sur toutes les machines. L'île pose
+  donc la sienne à la place (`platform/drop_target.rs`), au premier clic, et
+  envoie au front l'événement `file-drag` (`enter`/`over`/`leave`/`drop`, chemins,
+  position en pixels physiques). Elle ne lit que la liste des chemins.
 - La boîte « Choisir un dossier » est la commande `dialog_pick_folder`
   (plugin officiel `tauri-plugin-dialog`), appelée depuis le Rust uniquement :
   les pages n'ont pas accès au plugin directement.
+
+## Module Musique (phase 3)
+
+Front : `src/modules/media/index.ts`. Rust : `src-tauri/src/modules/media.rs`,
+et l'accès à Windows dans `src-tauri/src/platform/media.rs`.
+
+- **Source** : les « System Media Transport Controls » (SMTC) de Windows, ce que
+  montre le panneau multimédia du système. Tout lecteur qui s'y déclare marche :
+  Spotify, Edge/Chrome/Firefox, VLC, Lecteur multimédia… Crate `windows` 0.61,
+  `Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager`.
+- **Surveillance** : un thread lit l'état une fois par seconde et publie
+  `media.changed` seulement si le titre, l'état, les boutons disponibles ou la
+  position (saut de plus de 2,5 s) changent. Le front fait avancer la barre
+  entre deux messages.
+- **Pochette** : lue une fois par morceau, gardée par le Rust en data URL
+  (4 Mo au plus), demandée par le front avec la commande `artwork` quand le
+  numéro `artwork` du message change (le bus limite les messages à 64 Ko).
+- **Vue compacte** seulement si quelque chose joue (`compactWhen`) ; sinon la
+  vue compacte du module suivant. Un nouveau morceau qui joue montre l'île
+  (notification basse), désactivable dans les réglages.
+- **Confidentialité** : le module ne fait que lire ce que Windows expose déjà ;
+  rien ne sort de l'ordinateur, aucun titre n'est écrit dans le journal.

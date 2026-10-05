@@ -58,6 +58,11 @@ export interface ModuleApi {
    * pour tous les `onclick` des vues.
    */
   handler<A extends unknown[]>(fn: (...args: A) => unknown): (...args: A) => void;
+  /**
+   * Prévient l'île que `compactWhen` a peut-être changé de réponse (ex. : la
+   * musique vient de démarrer). L'île change de vue compacte si besoin.
+   */
+  refreshCompact(): void;
   log: Logger;
 }
 
@@ -78,6 +83,13 @@ export interface IslandModule {
   setup?(api: ModuleApi): void | (() => void);
   views?: {
     compact?: ViewMount;
+    /**
+     * Facultatif : la vue compacte n'est proposée que si cette fonction répond
+     * true (ex. : Musique seulement quand quelque chose joue). L'île montre la
+     * vue compacte du premier module, dans l'ordre de src/modules/index.ts, qui
+     * en a une à montrer.
+     */
+    compactWhen?: (api: ModuleApi) => boolean;
     expanded?: ViewMount;
     /**
      * Les cibles de dépôt. Une liste fixe, ou une fonction appelée à chaque

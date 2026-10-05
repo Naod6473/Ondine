@@ -9,8 +9,8 @@ export interface Settings {
     logLevel: "error" | "warn" | "info" | "debug";
   };
   island: {
-    compactHideSecs: number;
-    expandedCollapseSecs: number;
+    /** Replier l'île quand la souris n'est plus dessus depuis ce nombre de secondes. */
+    collapseSecs: number;
     notificationSecs: number;
   };
   mascot: {
@@ -28,9 +28,9 @@ export interface Settings {
 /** Valeurs par défaut, identiques à celles du Rust (pour `npm run dev` dans un navigateur). */
 export function defaultSettings(): Settings {
   return {
-    version: 1,
+    version: 2,
     general: { screen: "primary", logLevel: "info" },
-    island: { compactHideSecs: 4, expandedCollapseSecs: 8, notificationSecs: 6 },
+    island: { collapseSecs: 1.5, notificationSecs: 6 },
     mascot: { enabled: true, id: "goutte", boredAfterSecs: 60, sleepAfterSecs: 180 },
     privacy: { excludedFolders: [] },
     modules: {},

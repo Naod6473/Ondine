@@ -95,8 +95,8 @@ function select(value: string, options: [string, string][], onChange: (v: string
   return s;
 }
 
-function number(value: number, min: number, max: number, onChange: (v: number) => void) {
-  const i = el("input", { type: "number", min, max, step: 1 }) as HTMLInputElement;
+function number(value: number, min: number, max: number, onChange: (v: number) => void, step = 1) {
+  const i = el("input", { type: "number", min, max, step }) as HTMLInputElement;
   i.value = String(value);
   i.addEventListener("change", () => {
     const v = Math.min(max, Math.max(min, Number(i.value) || min));
@@ -125,8 +125,10 @@ function general(main: HTMLElement) {
         save((d) => (d.general.screen = v as Settings["general"]["screen"])),
       ),
     ),
-    row("Cacher l'île compacte après (s)", number(s.island.compactHideSecs, 1, 60, (v) => save((d) => (d.island.compactHideSecs = v)))),
-    row("Réduire l'île agrandie après (s)", number(s.island.expandedCollapseSecs, 2, 120, (v) => save((d) => (d.island.expandedCollapseSecs = v)))),
+    row(
+      "Replier l'île quand la souris n'est plus dessus, après (s)",
+      number(s.island.collapseSecs, 0.5, 30, (v) => save((d) => (d.island.collapseSecs = v)), 0.5),
+    ),
     row("Durée des notifications (s)", number(s.island.notificationSecs, 2, 60, (v) => save((d) => (d.island.notificationSecs = v)))),
     row(
       "Niveau du journal",

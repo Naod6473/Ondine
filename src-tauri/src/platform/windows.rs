@@ -9,13 +9,11 @@ use std::sync::Mutex;
 
 use tauri::{AppHandle, Manager, WebviewWindow};
 
-use ::windows::core::BOOL;
-use ::windows::Win32::Foundation::{HWND, LPARAM, POINT};
-use ::windows::Win32::System::Ole::RevokeDragDrop;
+use ::windows::Win32::Foundation::{HWND, POINT};
 use ::windows::Win32::System::SystemInformation::GetLocalTime;
 use ::windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
 use ::windows::Win32::UI::WindowsAndMessaging::{
-    EnumChildWindows, GetClassNameW, GetCursorPos, GetForegroundWindow, GetWindowLongPtrW,
+    GetCursorPos, GetForegroundWindow, GetWindowLongPtrW,
     SetForegroundWindow, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
 };
 
@@ -124,28 +122,42 @@ pub fn set_activating(win: &WebviewWindow, activating: bool) {
     }
 }
 
-/// Laisse les fichiers glissés atteindre l'appli.
-///
-/// wry installe sa cible de dépôt une seule fois, à la création du webview.
-/// WebView2 crée ensuite `Chrome_RenderWidgetHostHWND` et y enregistre sa propre
-/// cible, qui refuse tout (curseur « interdit »). La révoquer laisse OLE retomber
-/// sur celle de wry, qui alimente les événements de glisser-déposer de Tauri.
-/// Sans effet si c'est déjà fait : on la relance à chaque début de glisser possible.
+/// Laisse les fichiers glissés atteindre l'île : pose notre propre cible de
+/// dépôt sur la fenêtre intérieure du webview (voir drop_target.rs). Sans effet
+/// si c'est déjà fait : on la relance à chaque début de glisser possible.
 pub fn unblock_webview_drops(app: &AppHandle) {
-    for label in [crate::island::WINDOW_LABEL, "settings"] {
-        let Some(win) = app.get_webview_window(label) else { continue };
-        let Some(hwnd) = hwnd_of(&win) else { continue };
-        unsafe {
-            let _ = EnumChildWindows(Some(hwnd), Some(revoke_render_widget), LPARAM(0));
+    let Some(win) = app.get_webview_window(crate::island::WINDOW_LABEL) else { return };
+    let Some(hwnd) = hwnd_of(&win) else { return };
+    super::drop_target::install(app, hwnd, crate::island::WINDOW_LABEL);
+}
+
+/// L'appli tourne-t-elle « en tant qu'administrateur » ?
+///
+/// Important pour le glisser-déposer : Windows interdit de glisser un fichier
+/// depuis une appli normale (l'Explorateur) vers une appli administrateur
+/// (curseur 🚫). C'est le cas si `npm run tauri dev` est lancé depuis un
+/// terminal ouvert « en tant qu'administrateur ».
+pub fn is_elevated() -> bool {
+    use ::windows::Win32::Foundation::{CloseHandle, HANDLE};
+    use ::windows::Win32::Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY};
+    use ::windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
+    unsafe {
+        let mut token = HANDLE::default();
+        if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token).is_err() {
+            return false;
         }
+        let mut info = TOKEN_ELEVATION::default();
+        let mut len = 0u32;
+        let ok = GetTokenInformation(
+            token,
+            TokenElevation,
+            Some(&mut info as *mut TOKEN_ELEVATION as *mut _),
+            std::mem::size_of::<TOKEN_ELEVATION>() as u32,
+            &mut len,
+        )
+        .is_ok();
+        let _ = CloseHandle(token);
+        ok && info.TokenIsElevated != 0
     }
 }
 
-unsafe extern "system" fn revoke_render_widget(hwnd: HWND, _: LPARAM) -> BOOL {
-    let mut name = [0u16; 64];
-    let len = unsafe { GetClassNameW(hwnd, &mut name) };
-    if len > 0 && String::from_utf16_lossy(&name[..len as usize]) == "Chrome_RenderWidgetHostHWND" {
-        let _ = unsafe { RevokeDragDrop(hwnd) };
-    }
-    true.into()
-}

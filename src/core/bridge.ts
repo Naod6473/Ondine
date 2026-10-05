@@ -46,6 +46,8 @@ export interface BootInfo {
   screen: ScreenInfo;
   version: string;
   rustModules: { id: string; crashed: boolean }[];
+  /** L'appli tourne en administrateur (glisser-déposer bloqué par Windows). */
+  elevated: boolean;
 }
 
 export const Bridge = {
@@ -105,5 +107,12 @@ export interface DragDropEvent {
 
 export async function onDragDrop(handler: (e: DragDropEvent) => void): Promise<() => void> {
   if (!IS_TAURI) return () => {};
-  return getCurrentWebview().onDragDropEvent((event) => handler(event.payload as DragDropEvent));
+  // Sous Windows, c'est la cible de dépôt de l'île (src-tauri/src/platform/drop_target.rs)
+  // qui envoie "file-drag". On écoute aussi celle de Tauri, au cas où elle marche.
+  const offOwn = await listen<DragDropEvent>("file-drag", (e) => handler(e.payload));
+  const offTauri = await getCurrentWebview().onDragDropEvent((event) => handler(event.payload as DragDropEvent));
+  return () => {
+    offOwn();
+    offTauri();
+  };
 }

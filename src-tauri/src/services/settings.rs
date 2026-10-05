@@ -16,7 +16,7 @@ use crate::platform;
 use crate::services::log;
 
 /// Version actuelle du schéma des réglages.
-pub const CURRENT_VERSION: u32 = 1;
+pub const CURRENT_VERSION: u32 = 2;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -42,10 +42,8 @@ pub struct General {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct IslandPrefs {
-    /// compact → hidden quand la souris est partie depuis ce nombre de secondes.
-    pub compact_hide_secs: f64,
-    /// expanded → compact quand la souris est partie depuis ce nombre de secondes.
-    pub expanded_collapse_secs: f64,
+    /// L'île se replie quand la souris n'est plus dessus depuis ce nombre de secondes.
+    pub collapse_secs: f64,
     /// Durée d'affichage par défaut d'une notification.
     pub notification_secs: f64,
 }
@@ -96,7 +94,7 @@ impl Default for General {
 
 impl Default for IslandPrefs {
     fn default() -> Self {
-        Self { compact_hide_secs: 4.0, expanded_collapse_secs: 8.0, notification_secs: 6.0 }
+        Self { collapse_secs: 1.5, notification_secs: 6.0 }
     }
 }
 
@@ -143,7 +141,15 @@ fn migrate(mut value: Value) -> Result<Value, String> {
             "ces réglages viennent d'une version plus récente de l'île (schéma {version}, ici {CURRENT_VERSION})"
         ));
     }
-    // (aucune migration pour l'instant : la version 1 est la première)
+    // Version 1 → 2 : les deux délais de repli (compacte 4 s, agrandie 8 s)
+    // deviennent un seul, plus court. On retire les anciens : le nouveau prend
+    // sa valeur par défaut.
+    if version < 2 {
+        if let Some(island) = value.get_mut("island").and_then(Value::as_object_mut) {
+            island.remove("compactHideSecs");
+            island.remove("expandedCollapseSecs");
+        }
+    }
     if let Some(obj) = value.as_object_mut() {
         obj.insert("version".into(), Value::from(CURRENT_VERSION));
     }
@@ -208,6 +214,14 @@ mod tests {
         assert_eq!(s.general.screen, "cursor");
         assert_eq!(s.general.log_level, "info");
         assert!(s.mascot.enabled);
+    }
+
+    #[test]
+    fn old_collapse_delays_are_replaced() {
+        let s = parse(r#"{ "version": 1, "island": { "compactHideSecs": 4, "expandedCollapseSecs": 8, "notificationSecs": 3 } }"#).unwrap();
+        assert_eq!(s.island.collapse_secs, 1.5);
+        assert_eq!(s.island.notification_secs, 3.0);
+        assert_eq!(s.version, CURRENT_VERSION);
     }
 
     #[test]

@@ -1,0 +1,21 @@
+{
+  "id": "media",
+  "name": "Musique",
+  "icon": "🎵",
+  "description": "Montre ce qui joue en ce moment (Spotify, navigateur, VLC… tout ce qui apparaît dans le panneau multimédia de Windows) avec lecture/pause, suivant et précédent. Lit seulement ce que Windows expose déjà ; rien ne sort de l'ordinateur.",
+  "version": "0.1.0",
+  "permissions": [],
+  "settings": {
+    "version": 1,
+    "fields": [
+      { "key": "announceTracks", "type": "boolean", "label": "Montrer l'île quand un nouveau morceau commence", "default": true },
+      { "key": "showCompact", "type": "boolean", "label": "Afficher le morceau dans la pilule de l'île", "default": true }
+    ]
+  },
+  "views": ["compact", "expanded"],
+  "commands": ["state", "artwork", "toggle", "next", "previous"],
+  "events": {
+    "emits": ["media.changed"],
+    "listens": ["media.changed"]
+  }
+}

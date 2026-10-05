@@ -1773,6 +1773,7 @@ name = "island"
 version = "0.1.0"
 dependencies = [
  "arboard",
+ "base64 0.22.1",
  "keyring",
  "serde",
  "serde_json",
@@ -1782,6 +1783,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "trash",
  "windows 0.61.3",
+ "windows-core 0.61.2",
  "zip",
 ]
 

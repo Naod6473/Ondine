@@ -30,6 +30,18 @@ async function start() {
   new Island(document.getElementById("root")!, bus, registry, notifications);
 
   registry.sync();
+  if (boot?.elevated) {
+    // Windows refuse le glisser-déposer d'une appli normale vers une appli administrateur.
+    notifications.push({
+      moduleId: "island",
+      title: "Island tourne en administrateur",
+      body: "Windows bloque alors le glisser-déposer depuis l'Explorateur. Relance-la depuis un terminal normal.",
+      icon: "🛡️",
+      priority: "high",
+      sticky: true,
+      key: "elevated",
+    });
+  }
   bus.emit("app.ready", { version: boot?.version ?? "dev" });
   log.info(`île prête (${boot?.version ?? "navigateur"})`);
 }

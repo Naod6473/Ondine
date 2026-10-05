@@ -364,3 +364,143 @@ body {
     --speed: 1ms;
   }
 }
+
+/* ── Module Musique ──────────────────────────────────────────────────────── */
+
+.media-compact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.media-line {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.media-cover {
+  flex: none;
+  object-fit: cover;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.media-cover.small {
+  width: 26px;
+  height: 26px;
+  font-size: 14px;
+}
+.media-cover.large {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  font-size: 44px;
+}
+.media-full {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding-top: 6px;
+}
+.media-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.media-title {
+  font-size: 16px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.media-artist,
+.media-app {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.media-app {
+  font-size: 11px;
+}
+.media-progress {
+  margin-top: 6px;
+}
+.media-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.media-bar-fill {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 500ms linear;
+}
+.media-times {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.media-controls {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.media-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--island-fg);
+  font-size: 16px;
+  cursor: pointer;
+}
+.media-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+.media-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+/* Trois barres qui dansent pendant la lecture. */
+.media-eq {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+  flex: none;
+}
+.media-eq i {
+  width: 3px;
+  height: 4px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+.media-eq.on i {
+  animation: media-eq 900ms ease-in-out infinite alternate;
+}
+.media-eq.on i:nth-child(2) {
+  animation-delay: -300ms;
+}
+.media-eq.on i:nth-child(3) {
+  animation-delay: -600ms;
+}
+@keyframes media-eq {
+  from {
+    height: 3px;
+  }
+  to {
+    height: 14px;
+  }
+}
