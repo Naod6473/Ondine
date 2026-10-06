@@ -172,6 +172,43 @@ function clipboard(query: string) {
   };
 }
 
+/**
+ * Le QR code du mode démo (bouton ▦ du Presse-papiers) : un vrai code, calculé
+ * une fois par clipboard_qr.rs, pour « https://ondine.pissits.com ». Le même
+ * pour toutes les copies de démo (le Rust n'est pas appelé en démo).
+ */
+const DEMO_QR_SIZE = 33;
+const DEMO_QR_PATH =
+  "M4 4h7v1h-7zM12 4h2v1h-2zM15 4h2v1h-2zM18 4h1v1h-1zM20 4h1v1h-1zM22 4h7v1h-7zM4 5h1v1h-1z" +
+  "M10 5h1v1h-1zM12 5h2v1h-2zM16 5h3v1h-3zM20 5h1v1h-1zM22 5h1v1h-1zM28 5h1v1h-1zM4 6h1v1h-1z" +
+  "M6 6h3v1h-3zM10 6h1v1h-1zM13 6h2v1h-2zM17 6h2v1h-2zM20 6h1v1h-1zM22 6h1v1h-1zM24 6h3v1h-3z" +
+  "M28 6h1v1h-1zM4 7h1v1h-1zM6 7h3v1h-3zM10 7h1v1h-1zM12 7h1v1h-1zM14 7h1v1h-1zM17 7h2v1h-2z" +
+  "M22 7h1v1h-1zM24 7h3v1h-3zM28 7h1v1h-1zM4 8h1v1h-1zM6 8h3v1h-3zM10 8h1v1h-1zM14 8h1v1h-1z" +
+  "M19 8h2v1h-2zM22 8h1v1h-1zM24 8h3v1h-3zM28 8h1v1h-1zM4 9h1v1h-1zM10 9h1v1h-1zM15 9h1v1h-1z" +
+  "M20 9h1v1h-1zM22 9h1v1h-1zM28 9h1v1h-1zM4 10h7v1h-7zM12 10h1v1h-1zM14 10h1v1h-1zM16 10h1v1h-1z" +
+  "M18 10h1v1h-1zM20 10h1v1h-1zM22 10h7v1h-7zM12 11h3v1h-3zM4 12h1v1h-1zM6 12h2v1h-2zM9 12h3v1h-3z" +
+  "M14 12h1v1h-1zM16 12h1v1h-1zM18 12h1v1h-1zM22 12h1v1h-1zM25 12h1v1h-1zM27 12h2v1h-2zM5 13h2v1h-2z" +
+  "M12 13h1v1h-1zM15 13h3v1h-3zM20 13h1v1h-1zM23 13h1v1h-1zM27 13h1v1h-1zM4 14h1v1h-1zM10 14h3v1h-3z" +
+  "M15 14h1v1h-1zM18 14h1v1h-1zM22 14h2v1h-2zM5 15h1v1h-1zM7 15h1v1h-1zM9 15h1v1h-1zM11 15h2v1h-2z" +
+  "M14 15h2v1h-2zM17 15h3v1h-3zM22 15h1v1h-1zM24 15h3v1h-3zM4 16h3v1h-3zM10 16h1v1h-1zM14 16h5v1h-5z" +
+  "M21 16h2v1h-2zM24 16h1v1h-1zM26 16h3v1h-3zM7 17h2v1h-2zM11 17h1v1h-1zM14 17h2v1h-2zM19 17h1v1h-1z" +
+  "M21 17h4v1h-4zM28 17h1v1h-1zM5 18h1v1h-1zM8 18h1v1h-1zM10 18h1v1h-1zM13 18h2v1h-2zM16 18h3v1h-3z" +
+  "M21 18h1v1h-1zM24 18h1v1h-1zM26 18h2v1h-2zM4 19h1v1h-1zM6 19h1v1h-1zM8 19h1v1h-1zM12 19h2v1h-2z" +
+  "M19 19h2v1h-2zM22 19h3v1h-3zM28 19h1v1h-1zM8 20h3v1h-3zM12 20h2v1h-2zM17 20h1v1h-1zM20 20h9v1h-9z" +
+  "M12 21h1v1h-1zM15 21h4v1h-4zM20 21h1v1h-1zM24 21h1v1h-1zM26 21h1v1h-1zM28 21h1v1h-1zM4 22h7v1h-7z" +
+  "M12 22h3v1h-3zM17 22h1v1h-1zM20 22h1v1h-1zM22 22h1v1h-1zM24 22h1v1h-1zM26 22h3v1h-3zM4 23h1v1h-1z" +
+  "M10 23h1v1h-1zM12 23h2v1h-2zM16 23h1v1h-1zM19 23h2v1h-2zM24 23h1v1h-1zM27 23h2v1h-2zM4 24h1v1h-1z" +
+  "M6 24h3v1h-3zM10 24h1v1h-1zM13 24h3v1h-3zM20 24h6v1h-6zM28 24h1v1h-1zM4 25h1v1h-1zM6 25h3v1h-3z" +
+  "M10 25h1v1h-1zM12 25h1v1h-1zM14 25h2v1h-2zM17 25h1v1h-1zM19 25h4v1h-4zM24 25h5v1h-5zM4 26h1v1h-1z" +
+  "M6 26h3v1h-3zM10 26h1v1h-1zM12 26h2v1h-2zM15 26h3v1h-3zM19 26h4v1h-4zM24 26h1v1h-1zM26 26h2v1h-2z" +
+  "M4 27h1v1h-1zM10 27h1v1h-1zM15 27h1v1h-1zM17 27h1v1h-1zM22 27h1v1h-1zM24 27h1v1h-1zM26 27h1v1h-1z" +
+  "M4 28h7v1h-7zM12 28h1v1h-1zM16 28h3v1h-3zM21 28h8v1h-8z";
+function demoQr() {
+  const n = DEMO_QR_SIZE;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges"><rect width="${n}" height="${n}" fill="#fff"/><path fill="#000" d="${DEMO_QR_PATH}"/></svg>`;
+  return { image: `data:image/svg+xml,${encodeURIComponent(svg)}`, size: n };
+}
+
 const SHELF = [
   { path: `${HOME}\\Documents\\Présentation.pptx`, name: "Présentation.pptx", isDir: false, exists: true },
   { path: `${HOME}\\Pictures\\Maquette du site.png`, name: "Maquette du site.png", isDir: false, exists: true },
@@ -359,6 +396,8 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     }
     case "clipboard.password_generate":
       return { password: "Vague-Corail-Lagune-27" };
+    case "clipboard.qr":
+      return demoQr();
     case "shelf.list":
       return { items: SHELF };
     case "shelf.add":

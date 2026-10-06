@@ -46,7 +46,9 @@
     "restore_link",
     "password_generate",
     "password_copy",
-    "search"
+    "search",
+    "qr",
+    "qr_copy"
   ],
   "events": {
     "emits": [

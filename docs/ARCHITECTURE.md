@@ -272,6 +272,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `shelf.add` `{paths}` | Capture (Rust) | l'Étagère valide les chemins et les pose sur l'étagère |
 | `clipboard.changed` `{count}` | Presse-papiers (Rust) | l'onglet redemande la liste (le message ne contient aucun texte copié) |
 | `timer.done` `{title}` | Minuteur (front) | (la notification et le son sont faits par le module) |
+| `timer.focus` `{on}` | Minuteur (front), mode concentration | l'île met ses notifications en attente pendant une séance de travail Pomodoro (sauf « critical » et celles du Minuteur), puis un résumé |
 | `notes.changed` `{notes, todos, open}` | Notes (Rust) | l'onglet redemande la liste (que des nombres dans le message) |
 | `agenda.changed` `{count, next, errors, version}` | Agenda (Rust) | l'onglet et la pilule redemandent la liste (`upcoming`) |
 | `agenda.reminder` `{key, minutes}` | Agenda (Rust) | notification « Dans 10 min : … » (île en alerte) |
@@ -472,6 +473,11 @@ et l'accès à Windows dans `src-tauri/src/platform/windows.rs` (« Presse-papie
   disparaissent) avant de coller.
 - **Annuler** : retirer une copie, vider l'historique (les épinglés restent) et
   supprimer un snippet proposent « Annuler ».
+- **QR code** (bouton ▦ d'une copie) : `clipboard_qr.rs` calcule la grille avec
+  le crate `qrcode` (sans ses options d'image), la dessine en SVG (affiché dans
+  l'île, data URL) ou en pixels (« Copier l'image », ~512 px, via arboard).
+  Niveau de correction M, 1 000 caractères au plus (au-delà, le code serait
+  trop serré pour un téléphone) : message clair sinon. Aucun service en ligne.
 - **Confidentialité** : aucun texte copié dans le journal ni sur le bus ; rien ne
   sort de l'ordinateur.
 
@@ -528,6 +534,16 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   (WebAudio, autorisé seulement après un premier clic dans l'île), et
   `task.finished` (la mascotte fait la fête).
 - Pilule : le temps qui reste et une barre de progression, tant que ça tourne.
+- Mode concentration (réglage `focusQuiet`, activé par défaut) : pendant une
+  séance de travail Pomodoro qui tourne, `timer.focus {on: true}` ; l'île met
+  la file de notifications en pause (raison « focus », `NotificationQueue.pause`
+  accepte plusieurs raisons qui se chevauchent, comme le mode présentation),
+  en laissant passer les « critical » et celles du Minuteur. Pause, passer,
+  réinitialiser, fin de séance ou module coupé : `{on: false}`, résumé
+  « N notifications pendant ta concentration ». « Ne pas déranger » de Windows
+  n'est PAS activé : pas d'API publique fiable (FocusSessionManager est une
+  fonction à accès limité, la clé de registre des notifications n'est relue
+  qu'au redémarrage du service, WNF n'est pas documenté).
 
 ### Module Notes (`src/modules/notes/`, `src-tauri/src/modules/notes.rs`)
 

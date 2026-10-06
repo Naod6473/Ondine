@@ -155,6 +155,7 @@ export class Island {
     jellyButtons(this.content);
     spotlight(this.shell);
     this.wirePrivacy();
+    this.wireFocus();
     // Bouton « Faire venir Ondine » des réglages.
     this.bus.on("mascot.peek-now", () => {
       if (this.fsm.state === "hidden") this.hanger.show();
@@ -394,8 +395,33 @@ export class Island {
       const n = this.notifications.waiting();
       this.notifications.pause(false);
       this.fsm.restore();
-      if (n > 1) this.notifications.push({ moduleId: "island", title: `${n} notifications pendant ta présentation`, icon: "🎬", priority: "low", key: "presentation-summary" });
+      // (Une concentration encore en cours fera le résumé à sa fin.)
+      if (n > 1 && !this.notifications.isPaused()) this.notifications.push({ moduleId: "island", title: `${n} notifications pendant ta présentation`, icon: "🎬", priority: "low", key: "presentation-summary" });
     }
+  }
+
+  /**
+   * Mode concentration : pendant une séance de travail Pomodoro (si le réglage
+   * du Minuteur est activé), le Minuteur publie "timer.focus" {on: true} et les
+   * notifications attendent, sauf les « critical » et celles du Minuteur
+   * lui-même (la fin de séance doit s'afficher). À la pause, à l'arrêt ou à la
+   * fin de la séance ({on: false}), elles arrivent, avec un petit résumé.
+   */
+  private wireFocus() {
+    this.bus.on("timer.focus", (msg) => {
+      const on = !!(msg.payload as { on?: boolean } | null)?.on;
+      if (on) {
+        this.notifications.pause(true, "focus", ["timer"]);
+        return;
+      }
+      if (!this.notifications.isPaused("focus")) return;
+      const n = this.notifications.waiting();
+      this.notifications.pause(false, "focus");
+      // (Une présentation encore en cours fera le résumé à sa fin.)
+      if (n > 1 && !this.notifications.isPaused()) {
+        this.notifications.push({ moduleId: "island", title: `${n} notifications pendant ta concentration`, icon: "🍅", priority: "low", key: "focus-summary" });
+      }
+    });
   }
 
   /** Ondine arrive au bord (la fenêtre doit être assez grande) ou repart. */

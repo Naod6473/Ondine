@@ -8,6 +8,10 @@
 //
 // « Coller » : le Rust met le texte dans le presse-papiers, rend la main à la
 // fenêtre où tu étais avant l'île, et y tape Ctrl+V. Puis l'île se referme.
+//
+// « QR code » : le Rust dessine le QR code de la copie (sur le PC, sans
+// Internet) et renvoie une image SVG ; on l'affiche en grand, pour la lire
+// avec l'appareil photo d'un téléphone.
 
 import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
@@ -131,11 +135,14 @@ export const clipboard: IslandModule = {
       let last: ListResult = { items: [], snippets: [], total: 0 };
       /** Le formulaire de snippet ouvert (on ne redessine pas par-dessus). */
       let editing: SnippetItem | "new" | null = null;
+      /** La copie montrée en QR code (même chose : on ne redessine pas par-dessus). */
+      let qrFor: ClipItem | null = null;
       let alive = true;
 
       const setTab = (tab: typeof view.tab) => {
         view.tab = tab;
         editing = null;
+        qrFor = null;
         for (const b of tabs.querySelectorAll<HTMLElement>(".tab")) b.classList.toggle("active", b.dataset.tab === tab);
         draw();
       };
@@ -147,13 +154,14 @@ export const clipboard: IslandModule = {
           return; // hors de l'appli (navigateur) : liste vide
         }
         // (L'onglet mot de passe ne se redessine pas : il garderait le même mot de passe affiché.)
-        if (alive && !editing && view.tab !== "password") draw();
+        if (alive && !editing && !qrFor && view.tab !== "password") draw();
       };
 
       // ── Le corps : la liste de l'onglet choisi ──
       const draw = () => {
         body.replaceChildren();
-        if (view.tab === "history") drawHistory();
+        if (view.tab === "history" && qrFor) drawQr(qrFor);
+        else if (view.tab === "history") drawHistory();
         else if (view.tab === "password") drawPassword();
         else if (editing) drawForm(editing);
         else drawSnippets();
@@ -197,6 +205,7 @@ export const clipboard: IslandModule = {
                   item.pinned ? "📍" : "📌",
                 ),
                 el("button", { class: "icon-btn", title: "Copier", onclick: api.handler(() => copy(api, { id: item.id })) }, "📋"),
+                el("button", { class: "icon-btn clip-qr", title: "QR code (pour l'ouvrir sur un téléphone)", onclick: api.handler(() => openQr(item)) }, "▦"),
                 el(
                   "button",
                   {
@@ -254,6 +263,55 @@ export const clipboard: IslandModule = {
           ),
         );
         body.append(list, footer);
+      };
+
+      // ── QR code d'une copie ──
+      const openQr = (item: ClipItem) => {
+        qrFor = item;
+        draw();
+      };
+      const closeQr = () => {
+        qrFor = null;
+        draw();
+      };
+
+      const drawQr = (item: ClipItem) => {
+        const box = el("div", { class: "clip-qr-box" }, el("p", { class: "muted" }, "…"));
+        const copyBtn = el(
+          "button",
+          {
+            class: "btn small primary",
+            title: "Copie l'image du QR code (noir sur blanc) dans le presse-papiers",
+            onclick: api.handler(async () => {
+              if (await attempt(api, "Copier le QR code", () => api.invoke("qr_copy", { id: item.id }))) {
+                api.notify({ title: "QR code copié", body: "Colle-le comme une image (Ctrl+V).", icon: "▦", priority: "low", key: "clipboard-copied" });
+              }
+            }),
+          },
+          "Copier l'image",
+        ) as HTMLButtonElement;
+        copyBtn.disabled = true;
+        body.append(
+          el(
+            "div",
+            { class: "clip-qr-view" },
+            box,
+            el("p", { class: "muted clip-qr-text" }, item.preview),
+            el("div", { class: "btn-row" }, copyBtn, el("button", { class: "btn small", onclick: api.handler(closeQr) }, "‹ Retour")),
+            el("p", { class: "muted tool-note" }, "Vise le code avec l'appareil photo de ton téléphone. Calculé sur ton PC : rien ne passe par Internet."),
+          ),
+        );
+        void (async () => {
+          try {
+            const r = await api.invoke<{ image: string; size: number }>("qr", { id: item.id });
+            if (qrFor !== item) return;
+            box.replaceChildren(el("img", { class: "clip-qr-img", src: r.image, alt: "QR code", draggable: "false" }));
+            copyBtn.disabled = false;
+          } catch (err) {
+            // Texte trop long, copie disparue… : on le dit à la place du code.
+            if (qrFor === item) box.replaceChildren(el("p", { class: "clip-qr-error" }, "⚠️ ", el("span", {}, errorText(err))));
+          }
+        })();
       };
 
       // ── Générateur de mots de passe ──
