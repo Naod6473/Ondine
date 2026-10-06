@@ -67,6 +67,17 @@ fn boot(app: AppHandle, shared: State<Shared>, registry: State<Registry>) -> Boo
 }
 
 /// Applique et enregistre de nouveaux réglages, puis prévient toutes les fenêtres.
+/// Lancement avec Windows (réglage `general.autostart`). Seulement depuis la
+/// version installée : `tauri dev` ne doit pas inscrire son exe de travail.
+fn apply_autostart(on: bool) {
+    if cfg!(debug_assertions) {
+        return;
+    }
+    if let Err(e) = platform::set_autostart(on) {
+        log::warn(format!("lancement avec Windows non modifié : {e}"));
+    }
+}
+
 fn apply_settings(app: &AppHandle, shared: &Shared, new: Settings) -> Result<(), String> {
     let screen_changed = {
         let mut current = shared.settings.locked();
@@ -79,6 +90,7 @@ fn apply_settings(app: &AppHandle, shared: &Shared, new: Settings) -> Result<(),
         changed
     };
     settings::save(&new)?;
+    apply_autostart(new.general.autostart);
     log::set_min_level(log::Level::parse(&new.general.log_level));
     island::apply_hotkey(app, &new.island.hotkey);
     if screen_changed {
@@ -479,6 +491,8 @@ pub fn run() {
                 let _ = win.show();
             }
             island::apply_hotkey(&handle, &loaded.island.hotkey);
+            // À chaque démarrage : l'exe a pu changer de place (réinstallation).
+            apply_autostart(loaded.general.autostart);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
             // Travail de fond des modules (ex. : Musique surveille le lecteur).
             handle.state::<Registry>().start_all(&handle);

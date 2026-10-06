@@ -119,6 +119,35 @@ pub fn system_language() -> &'static str {
     if langid & 0x3ff == 0x0c { "fr" } else { "en" }
 }
 
+/// Lancer Ondine à l'ouverture de session : une valeur « Ondine » dans
+/// HKCU\…\Run (celle que montre le Gestionnaire des tâches, onglet Démarrage).
+/// `on = false` la retire. Le désinstallateur la retire aussi (windows/hooks.nsh).
+pub fn set_autostart(on: bool) -> Result<(), String> {
+    use ::windows::core::HSTRING;
+    use ::windows::Win32::System::Registry::{RegDeleteKeyValueW, RegSetKeyValueW, HKEY_CURRENT_USER, REG_SZ};
+    const RUN: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
+    if !on {
+        // Déjà absente : rien à faire, ce n'est pas une erreur.
+        let _ = unsafe { RegDeleteKeyValueW(HKEY_CURRENT_USER, &HSTRING::from(RUN), &HSTRING::from("Ondine")) };
+        return Ok(());
+    }
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let command = format!("\"{}\"", exe.display());
+    let wide: Vec<u16> = command.encode_utf16().chain(Some(0)).collect();
+    unsafe {
+        RegSetKeyValueW(
+            HKEY_CURRENT_USER,
+            &HSTRING::from(RUN),
+            &HSTRING::from("Ondine"),
+            REG_SZ.0,
+            Some(wide.as_ptr() as *const _),
+            (wide.len() * 2) as u32,
+        )
+    }
+    .ok()
+    .map_err(|e| e.to_string())
+}
+
 /// Depuis combien de millisecondes personne n'a touché ni la souris ni le clavier.
 pub fn idle_ms() -> u64 {
     use ::windows::Win32::System::SystemInformation::GetTickCount;

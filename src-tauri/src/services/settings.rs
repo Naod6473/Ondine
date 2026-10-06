@@ -47,6 +47,8 @@ pub struct General {
     pub demo: bool,
     /// Chercher une nouvelle version au démarrage (puis chaque jour) et la proposer.
     pub auto_update: bool,
+    /// Lancer Ondine à l'ouverture de session Windows.
+    pub autostart: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -135,7 +137,7 @@ impl Default for Settings {
 
 impl Default for General {
     fn default() -> Self {
-        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into(), welcomed: false, demo: false, auto_update: true }
+        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into(), welcomed: false, demo: false, auto_update: true, autostart: true }
     }
 }
 

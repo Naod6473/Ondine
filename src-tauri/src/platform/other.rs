@@ -182,6 +182,9 @@ pub fn presentation_busy() -> bool {
     false
 }
 
+pub fn set_autostart(_on: bool) -> Result<(), String> {
+    Ok(())
+}
 pub fn system_language() -> &'static str {
     if std::env::var("LANG").unwrap_or_default().starts_with("fr") { "fr" } else { "en" }
 }

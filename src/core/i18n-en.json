@@ -858,6 +858,8 @@
 "Classique : sobre. Studio : façon vidéo de présentation, les éléments arrivent flous puis nets l'un après l'autre, les chiffres roulent, les boutons rebondissent comme de la gélatine.": "Classic: understated. Studio: like a product video, items arrive blurred then sharp one after another, numbers roll, buttons bounce like jelly.",
 "Mises à jour": "Updates",
 "Mises à jour automatiques": "Automatic updates",
+"Lancer avec Windows": "Start with Windows",
+"Ondine s'ouvre toute seule quand tu ouvres ta session.": "Ondine opens by itself when you sign in.",
 "Au démarrage puis une fois par jour, Ondine regarde sur GitHub si une nouvelle version existe et te la propose. Rien ne s'installe sans ton accord.": "At startup and then once a day, Ondine checks GitHub for a new version and offers it to you. Nothing is installed without your consent.",
 "Version installée": "Installed version",
 "Rechercher maintenant": "Check now",

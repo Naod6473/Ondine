@@ -15,6 +15,8 @@ export interface Settings {
     demo?: boolean;
     /** Chercher une nouvelle version au démarrage (puis chaque jour) et la proposer. */
     autoUpdate?: boolean;
+    /** Lancer Ondine à l'ouverture de session Windows. */
+    autostart?: boolean;
   };
   island: {
     /** Replier l'île quand la souris n'est plus dessus depuis ce nombre de secondes. */
@@ -63,7 +65,7 @@ export interface Settings {
 export function defaultSettings(): Settings {
   return {
     version: 2,
-    general: { screen: "primary", logLevel: "info", language: "auto", welcomed: false, demo: false, autoUpdate: true },
+    general: { screen: "primary", logLevel: "info", language: "auto", welcomed: false, demo: false, autoUpdate: true, autostart: true },
     island: {
       collapseSecs: 1.5,
       notificationSecs: 6,
