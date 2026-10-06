@@ -226,7 +226,7 @@ fn hotkey_loop(app: AppHandle, state: Shared) {
     std::thread::sleep(Duration::from_secs(2)); // le temps que les réglages soient chargés
     loop {
         let step = catch_unwind(AssertUnwindSafe(|| {
-            let wanted = super::with_context(&app, ID, |ctx| wanted_hotkey(ctx)).unwrap_or_default();
+            let wanted = super::with_context(&app, ID, wanted_hotkey).unwrap_or_default();
             let current = state.locked().hotkey.clone();
             if wanted != current {
                 apply_hotkey(&app, &state, &current, &wanted);
@@ -400,7 +400,7 @@ fn recent_files(dir: &Path) -> Vec<PathBuf> {
         .filter(|i| i.path().extension().is_some_and(|e| e.eq_ignore_ascii_case("lnk")))
         .filter_map(|i| Some((i.metadata().ok()?.modified().ok()?, i.path())))
         .collect();
-    links.sort_by(|a, b| b.0.cmp(&a.0));
+    links.sort_by_key(|l| std::cmp::Reverse(l.0));
     links
         .into_iter()
         .take(MAX_RECENT * 2) // de la marge : `scan` en écarte (dossiers, exclus…)

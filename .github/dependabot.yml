@@ -1,0 +1,11 @@
+# Dependabot : propose (en PR, jamais fusionnée seule) la mise à jour des
+# actions GitHub épinglées sur un commit dans .github/workflows/. Il met à jour
+# le SHA ET le commentaire de version (« # v7.0.1 »).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "CI"

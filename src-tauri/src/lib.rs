@@ -88,9 +88,10 @@ pub(crate) fn apply_settings(app: &AppHandle, shared: &Shared, new: Settings) ->
             || current.island.align != new.island.align
             || current.island.offset != new.island.offset;
         *current = new.clone();
-        changed
-    };
-    settings::save(&new)?;
+        // Enregistré sous le verrou : une autre sauvegarde (fin de déplacement
+        // de l'île…) ne peut pas passer entre la mémoire et le fichier.
+        settings::save(&new).map(|_| changed)
+    }?;
     apply_autostart(new.general.autostart);
     log::set_min_level(log::Level::parse(&new.general.log_level));
     island::apply_hotkey(app, &new.island.hotkey);
@@ -311,9 +312,14 @@ fn credential_delete(key: String) -> Result<(), String> {
 // ── Bus, modules, annulation ─────────────────────────────────────────────────
 
 /// Une fenêtre publie sur le bus. L'origine est l'étiquette de la fenêtre qui
-/// appelle (fournie par Tauri, donc impossible à falsifier depuis la page).
+/// appelle (fournie par Tauri, donc impossible à falsifier depuis la page) :
+/// c'est elle, et non `source`, que le Rust consulte pour décider (modules/mod.rs).
+/// `source` (le module front émetteur) est déclaré par la page : tous les
+/// modules front partagent la même page, on ne peut pas le vérifier ; il ne sert
+/// qu'à l'affichage et au journal, et il est donc seulement nettoyé.
 #[tauri::command]
 fn bus_publish(app: AppHandle, window: Window, topic: String, payload: Value, source: String) {
+    let source: String = source.chars().filter(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.')).take(32).collect();
     let msg = BusMessage { topic, payload, source, origin: window.label().to_string() };
     bus::deliver(&app, msg);
 }

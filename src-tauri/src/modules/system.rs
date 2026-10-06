@@ -100,7 +100,7 @@ const BUSY_FOR: Duration = Duration::from_secs(20);
 /// Combien de mesures de suite font BUSY_FOR à ce rythme (10 × 2 s en équilibré), 3 au moins.
 fn busy_ticks(tick: Duration) -> u32 {
     let tick = tick.as_millis().max(1);
-    ((BUSY_FOR.as_millis() + tick - 1) / tick).max(3) as u32
+    BUSY_FOR.as_millis().div_ceil(tick).max(3) as u32
 }
 
 #[derive(Default)]

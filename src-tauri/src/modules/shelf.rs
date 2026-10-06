@@ -550,8 +550,6 @@ fn list_json(items: &Items) -> Value {
     json!({ "items": list })
 }
 
-/// Prévient le front (sujet "shelf.changed") avec la nouvelle liste. Passe par
-/// bus::emit directement : les fonctions d'annulation n'ont pas de ModuleContext.
 // ── Téléchargements → étagère ───────────────────────────────────────────────
 
 /// Les fichiers en cours de téléchargement (navigateurs, gestionnaires).
@@ -622,6 +620,8 @@ fn watch_downloads(app: AppHandle, items: Items) {
     }
 }
 
+/// Prévient le front (sujet "shelf.changed") avec la nouvelle liste. Passe par
+/// bus::emit directement : les fonctions d'annulation n'ont pas de ModuleContext.
 fn changed(app: &AppHandle, items: &Items) {
     bus::emit(app, "shelf", "shelf.changed", list_json(items));
 }

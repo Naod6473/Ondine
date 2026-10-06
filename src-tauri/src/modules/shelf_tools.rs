@@ -249,8 +249,8 @@ mod tests {
         let plan = rename_plan(&[a.clone(), b.clone()], "vacances", 1).unwrap();
         assert_eq!(file_name(&plan[0].1), "vacances-01.txt");
         assert_eq!(file_name(&plan[1].1), "vacances-02.txt");
-        assert!(rename_plan(&[a.clone()], "a:b", 1).is_err());
-        assert!(rename_plan(&[a.clone()], "con", 1).is_ok()); // « con-01 » : pas réservé
+        assert!(rename_plan(std::slice::from_ref(&a), "a:b", 1).is_err());
+        assert!(rename_plan(std::slice::from_ref(&a), "con", 1).is_ok()); // « con-01 » : pas réservé
         assert!(rename_plan(&[a], "{n}x", 1).is_ok());
     }
 

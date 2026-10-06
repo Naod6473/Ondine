@@ -1,14 +1,35 @@
 # Code signing policy
 
 Free code signing provided by [SignPath.io](https://about.signpath.io),
-certificate by [SignPath Foundation](https://signpath.org).
+certificate by [SignPath Foundation](https://signpath.org) — **requested, not yet
+in place** (see "Current status" below).
+
+## Current status
+
+- **Authenticode (Windows) signing: not active yet.** Ondine has applied to the
+  SignPath Foundation program. The release pipeline
+  ([.github/workflows/release.yml](.github/workflows/release.yml)) does not contain
+  a SignPath signing step today, so the installer and `Ondine.exe` published so far
+  are **not** Authenticode-signed, and Windows SmartScreen may warn before running
+  them ("More info" → "Run anyway").
+- **Update signing: active.** Every installer built by release.yml is signed with
+  the Tauri updater key (minisign, secrets `TAURI_SIGNING_PRIVATE_KEY` /
+  `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`). Ondine only installs an update whose
+  signature matches the public key embedded in the app
+  (`src-tauri/tauri.conf.json`, `plugins.updater.pubkey`). This protects automatic
+  updates; it does not remove the SmartScreen warning on a first install.
+
+This file will be updated when the SignPath step is added to release.yml.
 
 ## What is signed
 
-Only the Windows installer (`Ondine_<version>_x64-setup.exe`) and the program it
-installs (`Ondine.exe`), built by GitHub Actions from this repository's source code
+Once SignPath signing is in place: only the Windows installer
+(`Ondine_<version>_x64-setup.exe`) and the program it installs (`Ondine.exe`),
+built by GitHub Actions from this repository's source code
 ([.github/workflows/release.yml](.github/workflows/release.yml)). Nothing built
 outside this pipeline, and no third-party binaries, are signed.
+
+Today: only the update signature (minisign) described above.
 
 ## Team roles
 

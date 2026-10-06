@@ -15,6 +15,9 @@ use crate::services::bus::BusMessage;
 use crate::platform;
 
 /// Les terminaux connus. Toute autre valeur est refusée.
+// « PowerShell » finit par le nom de l'énumération (Shell) : c'est le nom du
+// produit, on le garde.
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Shell {
     Cmd,
@@ -65,6 +68,18 @@ impl Shell {
         }
     }
 
+    /// En administrateur, cmd reçoit le dossier dans sa ligne de commande
+    /// (`/k cd /d "…"`), où il remplace %VAR% même entre guillemets : un
+    /// dossier nommé « %TEMP% » mènerait ailleurs. Pour un tel dossier, on
+    /// ouvre PowerShell, qui ne remplace rien entre apostrophes.
+    fn safe_for_admin(self, dir: &Path) -> Self {
+        if self == Self::Cmd && dir.display().to_string().contains('%') {
+            Self::PowerShell
+        } else {
+            self
+        }
+    }
+
     /// La ligne de paramètres pour une ouverture en administrateur. Là,
     /// Windows démarre dans C:\Windows\System32 : il faut se déplacer soi-même.
     /// Un chemin Windows ne peut pas contenir de « " », donc les guillemets
@@ -112,6 +127,7 @@ impl RustModule for Terminal {
                 let admin = args.get("admin").and_then(Value::as_bool).unwrap_or(false);
 
                 if admin {
+                    let shell = shell.safe_for_admin(&dir);
                     platform::run_as_admin(shell.program(), &shell.admin_params(&dir))?;
                 } else {
                     platform::spawn_console(shell.program(), &shell.args(&dir), &dir)?;
@@ -194,6 +210,13 @@ mod tests {
         assert_eq!(Shell::WindowsTerminal.safe_for(Path::new(r"C:\x; cmd /c calc")), Shell::PowerShell);
         assert_eq!(Shell::WindowsTerminal.safe_for(Path::new(r"C:\Projets")), Shell::WindowsTerminal);
         assert_eq!(Shell::Cmd.safe_for(Path::new(r"C:\a;b")), Shell::Cmd);
+    }
+
+    #[test]
+    fn a_percent_never_reaches_admin_cmd() {
+        assert_eq!(Shell::Cmd.safe_for_admin(Path::new(r"C:\Projets\%TEMP%")), Shell::PowerShell);
+        assert_eq!(Shell::Cmd.safe_for_admin(Path::new(r"C:\Projets")), Shell::Cmd);
+        assert_eq!(Shell::Pwsh.safe_for_admin(Path::new(r"C:\a%b")), Shell::Pwsh);
     }
 
     #[test]

@@ -46,7 +46,7 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # ── 1. L'installateur : construit ici, ou repris d'une exécution « release » ──
 
@@ -79,7 +79,7 @@ jobs:
 
       - name: Récupérer l'installateur de la release
         if: steps.source.outputs.mode == 'release'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: installateur
           path: installateur
@@ -88,18 +88,22 @@ jobs:
 
       - name: Node
         if: steps.source.outputs.mode == 'build'
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: lts/*
           cache: npm
 
       - name: Rust stable
         if: steps.source.outputs.mode == 'build'
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable (branche « stable » au 2026-10-06)
+        # Épinglée sur un commit : la version de Rust se donne ici (sinon
+        # l'action la déduit du nom de la référence, qui n'en est plus un).
+        with:
+          toolchain: stable
 
       - name: Cache Rust
         if: steps.source.outputs.mode == 'build'
-        uses: swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: "./src-tauri -> target"
 
@@ -192,7 +196,7 @@ jobs:
 
       - name: Garder les traces
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: installation-traces
           path: traces/

@@ -23,12 +23,12 @@
 // Technique reprise de Coucou (github.com/Louis-CFM/coucou, MIT).
 
 use crate::sync::LockExt;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize, WebviewWindow};
+use tauri::{AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize, WebviewWindow, WindowEvent};
 
 use crate::platform;
 use crate::services::log;
@@ -125,10 +125,11 @@ const FAR_FROM_ISLAND: f64 = 200.0;
 
 /// Combien attendre avant le prochain tour de lecture de la souris.
 ///
-/// Chaque tour coûte peu (trois appels Windows : position de la souris, de la
-/// fenêtre, état du bouton), mais 60 réveils par seconde, toute la journée,
-/// c'est le premier poste de travail d'Ondine au repos. Quand rien ne bouge,
-/// ou que la souris est loin, on en fait moins (selon le mode de performance).
+/// Chaque tour coûte peu (position de la souris et état du bouton ; la
+/// géométrie de la fenêtre est gardée en copie, voir `WinFrame`), mais 60
+/// réveils par seconde, toute la journée, c'est le premier poste de travail
+/// d'Ondine au repos. Quand rien ne bouge, ou que la souris est loin, on en
+/// fait moins (selon le mode de performance).
 /// Jamais pendant un appui (glisser de fichier, déplacement de l'île) : là,
 /// 60 Hz dans tous les modes. Dès qu'un mouvement près de l'île est vu, on
 /// repasse au rythme « souris qui bouge ».
@@ -144,6 +145,12 @@ pub fn poll_interval(mode: perf::Mode, active: bool, busy: bool, still_for: Dura
     } else {
         perf::cadence(Loop::CursorMoving, mode)
     }
+}
+
+/// Le point (px logiques de la fenêtre) est-il sur la forme de l'île, à
+/// `margin` près ? Une forme sans taille connue ne contient rien.
+pub fn on_shape(r: &IslandRect, x: f64, y: f64, margin: f64) -> bool {
+    r.w > 0.0 && x >= r.x - margin && x <= r.x + r.w + margin && y >= r.y - margin && y <= r.y + r.h + margin
 }
 
 /// Distance (px logiques) entre le point et la forme de l'île ; 0 dedans. Une
@@ -181,6 +188,30 @@ pub struct IslandRect {
     pub h: f64,
 }
 
+/// Copie de la géométrie de la fenêtre de l'île : coin haut gauche et taille
+/// (px physiques), échelle de l'écran. Lire ces valeurs auprès de Tauri est un
+/// aller-retour vers le thread principal ; le thread de la souris les lit donc
+/// ici, et ne les redemande que lorsqu'elles ont pu changer.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct WinFrame {
+    pub x: i32,
+    pub y: i32,
+    pub w: u32,
+    pub h: u32,
+    pub scale: f64,
+}
+
+/// Même sans événement « déplacée / redimensionnée », la copie est relue au
+/// moins une fois par seconde (filet de sécurité : 3 appels par seconde au lieu
+/// de 3 par tour de lecture).
+const FRAME_MAX_AGE: Duration = Duration::from_secs(1);
+
+/// La copie est-elle encore bonne ? Oui si rien ne l'a invalidée depuis
+/// qu'on l'a lue (même génération) et qu'elle n'est pas trop vieille.
+pub fn frame_is_fresh(stored_gen: u64, current_gen: u64, age: Duration) -> bool {
+    stored_gen == current_gen && age < FRAME_MAX_AGE
+}
+
 /// État partagé entre les commandes et le thread qui lit la souris.
 pub struct PollGate {
     /// Vrai quand l'île est visible (fenêtre « panneau »).
@@ -198,6 +229,16 @@ pub struct PollGate {
     /// Pendant un déplacement : l'écart (px physiques) entre la souris et le
     /// coin de la fenêtre au moment où on l'a attrapée.
     drag: Mutex<Option<(f64, f64)>>,
+    /// Géométrie de la fenêtre en copie (voir `WinFrame`), avec la génération
+    /// au moment de la lecture et l'heure de la lecture.
+    frame: Mutex<Option<(u64, Instant, WinFrame)>>,
+    /// Augmente à chaque fois que la fenêtre a pu bouger, changer de taille ou
+    /// d'échelle : la copie lue avant n'est plus bonne.
+    frame_gen: AtomicU64,
+    /// Le dernier vrai clic (bouton gauche enfoncé) vu par la boucle de la
+    /// souris SUR l'île visible. Les agents s'en servent pour n'accepter
+    /// « Oui, autoriser » qu'après un geste réel (voir modules/agents.rs).
+    last_click: Mutex<Option<Instant>>,
 }
 
 impl PollGate {
@@ -210,7 +251,39 @@ impl PollGate {
             flag_lock: Mutex::new(()),
             panel: Mutex::new((PANEL_W, PANEL_H)),
             drag: Mutex::new(None),
+            frame: Mutex::new(None),
+            frame_gen: AtomicU64::new(0),
+            last_click: Mutex::new(None),
         }
+    }
+
+    /// Quand la personne a cliqué sur l'île pour la dernière fois (None : jamais).
+    pub fn last_click(&self) -> Option<Instant> {
+        *self.last_click.locked()
+    }
+
+    /// La fenêtre a bougé (ou va bouger) : la prochaine lecture redemande sa géométrie.
+    pub fn invalidate_frame(&self) {
+        self.frame_gen.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// La géométrie de la fenêtre : la copie si elle est encore bonne, sinon
+    /// relue auprès de Tauri (et gardée pour les tours suivants).
+    fn frame(&self, win: &WebviewWindow) -> Option<WinFrame> {
+        // La génération est lue AVANT la lecture : si la fenêtre bouge pendant
+        // qu'on la lit, la copie aura une génération dépassée et sera relue.
+        let gen = self.frame_gen.load(Ordering::Relaxed);
+        if let Some((stored, at, f)) = *self.frame.locked() {
+            if frame_is_fresh(stored, gen, at.elapsed()) {
+                return Some(f);
+            }
+        }
+        let pos = win.outer_position().ok()?;
+        let size = win.outer_size().ok()?;
+        let scale = win.scale_factor().unwrap_or(1.0);
+        let f = WinFrame { x: pos.x, y: pos.y, w: size.width, h: size.height, scale };
+        *self.frame.locked() = Some((gen, Instant::now(), f));
+        Some(f)
     }
 
     pub fn set_rect(&self, rect: IslandRect) {
@@ -310,6 +383,9 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     // Passer d'un écran à l'autre peut changer l'échelle : on réimpose la taille.
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_always_on_top(true);
+    if let Some(shared) = app.try_state::<crate::Shared>() {
+        shared.gate.invalidate_frame();
+    }
 }
 
 /// On vient d'attraper l'île par son bord : la fenêtre va suivre la souris
@@ -340,16 +416,18 @@ fn drag_end(app: &AppHandle, gate: &PollGate) {
     log::info(format!("île déplacée : bord {}, place {}", place.edge, place.align));
 
     // Enregistrer, et prévenir les fenêtres (l'île change de forme selon le bord).
+    // Enregistré sous le verrou des réglages, comme apply_settings (lib.rs) :
+    // une sauvegarde venue de la page ne peut pas se glisser entre les deux.
     let new = {
         let mut s = shared.settings.locked();
         s.island.edge = place.edge.clone();
         s.island.align = place.align.clone();
         s.island.offset = place.offset;
+        if let Err(e) = crate::services::settings::save(&s) {
+            log::warn(format!("réglages non enregistrés : {e}"));
+        }
         s.clone()
     };
-    if let Err(e) = crate::services::settings::save(&new) {
-        log::warn(format!("réglages non enregistrés : {e}"));
-    }
     let _ = app.emit("settings-changed", new);
 
     // La fenêtre glisse jusqu'à sa place (quelques images, en ralentissant),
@@ -369,6 +447,7 @@ fn drag_end(app: &AppHandle, gate: &PollGate) {
     }
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_position(PhysicalPosition::new(x, y));
+    gate.invalidate_frame();
     let _ = app.emit_to(WINDOW_LABEL, "island-drag-end", ());
 }
 
@@ -407,6 +486,16 @@ fn screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
 ///     `poll_interval` et le mode de performance (services/perf.rs) ;
 ///   - dans les deux cas, surveille les écrans (2 fois par seconde, 1 en éco).
 pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
+    // La fenêtre bouge, change de taille ou d'écran (DPI) : la copie de sa
+    // géométrie gardée par `PollGate` est à relire.
+    if let Some(win) = window(&app) {
+        let g = gate.clone();
+        win.on_window_event(move |event| {
+            if matches!(event, WindowEvent::Moved(_) | WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. }) {
+                g.invalidate_frame();
+            }
+        });
+    }
     std::thread::spawn(move || {
         let mut was_down = false;
         let mut last_screen = None;
@@ -436,38 +525,24 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
             }
 
             let Some(win) = window(&app) else { continue };
-            let Ok(origin) = win.outer_position() else { continue };
             let Some((cx, cy)) = platform::cursor_physical() else { continue };
 
             // Un bouton enfoncé peut être le début d'un glisser de fichier : on
             // s'assure que l'île est bien une cible de dépôt avant qu'il n'arrive.
-            let down = platform::left_button_down();
+            let (down, pressed_since) = platform::left_button_state();
+            // Un appui vu à ce tour : bouton qui vient de s'enfoncer, ou clic
+            // bref tombé entre deux tours.
+            let clicked = (down && !was_down) || pressed_since;
             if down && !was_down {
                 let handle = app.clone();
                 let _ = app.run_on_main_thread(move || platform::unblock_webview_drops(&handle));
             }
             was_down = down;
 
-            if !active {
-                // ── Île cachée : la bande de réveil ──
-                last = (f64::MIN, f64::MIN);
-                let Ok(size) = win.outer_size() else { continue };
-                // Au moins 2 px de haut, et le bord tout en haut compte toujours.
-                let inside = cx >= origin.x as f64
-                    && cx < (origin.x + size.width as i32) as f64
-                    && cy < (origin.y + (size.height as i32).max(2)) as f64
-                    && cy >= (origin.y - 1) as f64;
-                if inside != in_wake_zone {
-                    in_wake_zone = inside;
-                    let event = if inside { "wake-enter" } else { "wake-leave" };
-                    let _ = app.emit_to(WINDOW_LABEL, event, ());
-                }
-                continue;
-            }
-            in_wake_zone = false;
-
-            // ── Déplacement en cours : la fenêtre suit la souris ──
-            let grab = *gate.drag.locked();
+            // ── Déplacement en cours (île visible) : la fenêtre suit la souris ──
+            // Placé avant la lecture de la géométrie : la fenêtre bouge à chaque
+            // tour, sa copie ne servirait à rien.
+            let grab = if active { *gate.drag.locked() } else { None };
             if let Some((gx, gy)) = grab {
                 if down {
                     let _ = win.set_position(PhysicalPosition::new((cx - gx).round() as i32, (cy - gy).round() as i32));
@@ -479,13 +554,35 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 continue;
             }
 
+            // Position, taille et échelle de la fenêtre : la copie gardée par
+            // `PollGate`, relue seulement quand la fenêtre a pu changer.
+            let Some(frame) = gate.frame(&win) else { continue };
+            let origin = PhysicalPosition::new(frame.x, frame.y);
+
+            if !active {
+                // ── Île cachée : la bande de réveil ──
+                last = (f64::MIN, f64::MIN);
+                // Au moins 2 px de haut, et le bord tout en haut compte toujours.
+                let inside = cx >= origin.x as f64
+                    && cx < (origin.x + frame.w as i32) as f64
+                    && cy < (origin.y + (frame.h as i32).max(2)) as f64
+                    && cy >= (origin.y - 1) as f64;
+                if inside != in_wake_zone {
+                    in_wake_zone = inside;
+                    let event = if inside { "wake-enter" } else { "wake-leave" };
+                    let _ = app.emit_to(WINDOW_LABEL, event, ());
+                }
+                continue;
+            }
+            in_wake_zone = false;
+
             // ── Glisser de fichiers vers l'extérieur (Étagère) ──
             // La souris passe au travers partout sauf sur l'île (pour lâcher sur
             // le Bureau derrière le panneau), et on n'envoie plus sa position :
             // l'île ne se replie pas pendant le glisser. Ensuite, tout reprend.
             if platform::drag_out::active() {
                 let r = *gate.rect.locked();
-                let scale = win.scale_factor().unwrap_or(1.0);
+                let scale = frame.scale;
                 let (x, y) = ((cx - origin.x as f64) / scale, (cy - origin.y as f64) / scale);
                 let on_island = r.w > 0.0 && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
                 let _guard = gate.flag_lock.locked();
@@ -498,9 +595,13 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
             }
 
             // ── Île visible ──
-            let scale = win.scale_factor().unwrap_or(1.0);
+            let scale = frame.scale;
             let x = (cx - origin.x as f64) / scale;
             let y = (cy - origin.y as f64) / scale;
+            // Un vrai clic sur l'île : noté pour les confirmations (agents).
+            if clicked && on_shape(&gate.rect.locked(), x, y, 0.0) {
+                *gate.last_click.locked() = Some(Instant::now());
+            }
             if (x - last.0).abs() < 1.0 && (y - last.1).abs() < 1.0 {
                 continue;
             }
@@ -509,11 +610,7 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
 
             let r = *gate.rect.locked();
             distance = distance_outside(&r, x, y);
-            let on_island = r.w > 0.0
-                && x >= r.x - HIT_MARGIN
-                && x <= r.x + r.w + HIT_MARGIN
-                && y >= r.y - HIT_MARGIN
-                && y <= r.y + r.h + HIT_MARGIN;
+            let on_island = on_shape(&r, x, y, HIT_MARGIN);
 
             // Glisser un fichier : une fenêtre « transparente aux clics » est
             // invisible pour le glisser-déposer de Windows. Donc tant qu'un bouton
@@ -581,7 +678,7 @@ pub fn apply_hotkey(app: &AppHandle, wanted: &str) {
 #[cfg(test)]
 mod tests {
     use super::snap;
-    use super::{distance_outside, poll_interval, IslandRect};
+    use super::{distance_outside, frame_is_fresh, on_shape, poll_interval, IslandRect};
     use crate::services::perf::Mode;
     use std::time::Duration;
 
@@ -614,6 +711,18 @@ mod tests {
     }
 
     #[test]
+    fn window_frame_copy_is_reread_when_stale() {
+        let ms = Duration::from_millis;
+        // Rien n'a bougé, copie récente : on la garde.
+        assert!(frame_is_fresh(3, 3, ms(10)));
+        // La fenêtre a bougé depuis la lecture (événement, ou bougée pendant la lecture).
+        assert!(!frame_is_fresh(3, 4, ms(10)));
+        // Filet de sécurité : relue au moins une fois par seconde.
+        assert!(!frame_is_fresh(3, 3, ms(1000)));
+        assert!(frame_is_fresh(3, 3, ms(999)));
+    }
+
+    #[test]
     fn distance_to_island() {
         let r = IslandRect { x: 100.0, y: 0.0, w: 200.0, h: 40.0 };
         assert_eq!(distance_outside(&r, 150.0, 20.0), 0.0);
@@ -622,6 +731,11 @@ mod tests {
         assert!((distance_outside(&r, 330.0, 80.0) - 50.0).abs() < 1e-9);
         // Forme inconnue : « tout près ».
         assert_eq!(distance_outside(&IslandRect::default(), 999.0, 999.0), 0.0);
+        // Sur la forme, avec ou sans marge.
+        assert!(on_shape(&r, 150.0, 20.0, 0.0));
+        assert!(!on_shape(&r, 90.0, 20.0, 0.0));
+        assert!(on_shape(&r, 90.0, 20.0, 14.0));
+        assert!(!on_shape(&IslandRect::default(), 0.0, 0.0, 14.0));
     }
 
     #[test]
