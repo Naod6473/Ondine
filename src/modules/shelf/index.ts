@@ -391,7 +391,7 @@ export const shelf: IslandModule = {
               { class: "muted shelf-empty" },
               // Pas de pictogramme au milieu de la phrase : en icônes « Épurées » il
               // serait mis à part, et la phrase coupée ne serait plus traduite.
-              "L'étagère est vide. Glisse des fichiers sur l'île et lâche-les sur la cible « Étagère » pour les garder sous la main.",
+              "L'étagère est vide. Glissez des fichiers sur l'île et lâchez-les sur la cible « Étagère » pour les garder sous la main.",
             ),
           );
           return;
@@ -453,7 +453,7 @@ export const shelf: IslandModule = {
           if (item.exists) draggable(row, api, one);
           list.append(row);
         }
-        const hint = el("p", { class: "muted shelf-hint" }, "Glisse un élément vers l'Explorateur ou le Bureau pour l'y poser (Ctrl : copier, Maj : déplacer).");
+        const hint = el("p", { class: "muted shelf-hint" }, "Glisser un élément vers l'Explorateur ou le Bureau pour l'y poser (Ctrl : copier, Maj : déplacer).");
         root.append(bar, list, hint);
       };
       draw();

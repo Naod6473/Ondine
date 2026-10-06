@@ -55,6 +55,9 @@ pub struct General {
     pub perf_mode: String,
     /// Sur batterie (PC débranché) : mode "eco", quel que soit `perf_mode`.
     pub eco_on_battery: bool,
+    /// En français : "vous" (vouvoyer, par défaut) ou "tu" (tutoyer). L'interface
+    /// le fait seule (src/core/i18n.ts) ; voir `tutoie` pour les textes du Rust.
+    pub address: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -144,7 +147,7 @@ impl Default for Settings {
 
 impl Default for General {
     fn default() -> Self {
-        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into(), welcomed: false, demo: false, auto_update: true, autostart: true, perf_mode: "balanced".into(), eco_on_battery: true }
+        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into(), welcomed: false, demo: false, auto_update: true, autostart: true, perf_mode: "balanced".into(), eco_on_battery: true, address: "vous".into() }
     }
 }
 
@@ -206,6 +209,9 @@ impl Settings {
         if !["high", "balanced", "eco"].contains(&self.general.perf_mode.as_str()) {
             self.general.perf_mode = "balanced".into();
         }
+        if !["vous", "tu"].contains(&self.general.address.as_str()) {
+            self.general.address = "vous".into();
+        }
         let i = &mut self.island;
         if !["top", "left", "right"].contains(&i.edge.as_str()) {
             i.edge = "top".into();
@@ -229,6 +235,15 @@ impl Settings {
     pub fn module_enabled(&self, id: &str) -> bool {
         self.modules.get(id).map(|m| m.enabled).unwrap_or(true)
     }
+}
+
+/// Vrai quand on tutoie l'utilisateur : réglage « Tutoiement » ET interface en
+/// français (`lang` : "fr" ou "en", voir `app_language` dans lib.rs).
+/// Presque tous les textes du Rust passent par l'interface, qui les tutoie
+/// elle-même (dictionnaire src/core/i18n-fr-tu.json) : ceci ne sert qu'aux
+/// rares textes qui n'y passent pas (la consigne envoyée à Claude).
+pub fn tutoie(general: &General, lang: &str) -> bool {
+    lang == "fr" && general.address == "tu"
 }
 
 pub fn dir() -> PathBuf {
@@ -354,6 +369,18 @@ mod tests {
         assert_eq!(s.general.perf_mode, "balanced");
         assert!(!s.general.eco_on_battery);
         assert_eq!(parse(r#"{ "version": 2, "general": { "perfMode": "eco" } }"#).unwrap().general.perf_mode, "eco");
+    }
+
+    #[test]
+    fn address_defaults_to_vous_and_tu_only_in_french() {
+        let s = parse(r#"{ "version": 2 }"#).unwrap();
+        assert_eq!(s.general.address, "vous");
+        assert_eq!(parse(r#"{ "version": 2, "general": { "address": "toi" } }"#).unwrap().general.address, "vous");
+        let s = parse(r#"{ "version": 2, "general": { "address": "tu" } }"#).unwrap();
+        assert_eq!(s.general.address, "tu");
+        assert!(tutoie(&s.general, "fr"));
+        assert!(!tutoie(&s.general, "en"));
+        assert!(!tutoie(&General::default(), "fr"));
     }
 
     #[test]

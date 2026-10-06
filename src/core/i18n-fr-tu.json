@@ -1,0 +1,205 @@
+{
+"exact": {
+"Aucune image. Dans l'onglet Capture de l'île, choisissez « ✏️ Annoter ».": "Aucune image. Dans l'onglet Capture de l'île, choisis « ✏️ Annoter ».",
+"Aucun module actif. Activez-en un dans les réglages.": "Aucun module actif. Active-en un dans les réglages.",
+"Windows bloque alors le glisser-déposer depuis l'Explorateur. Relancez-la depuis un terminal normal.": "Windows bloque alors le glisser-déposer depuis l'Explorateur. Relance-la depuis un terminal normal.",
+"L'agent continue sans, ou vous demande dans le terminal.": "L'agent continue sans, ou te demande dans le terminal.",
+"Dans votre dossier utilisateur": "Dans ton dossier utilisateur",
+"Collez le bloc « hooks » (fusionnez-le s'il en existe déjà un), puis relancez Claude Code.": "Colle le bloc « hooks » (fusionne-le s'il en existe déjà un), puis relance Claude Code.",
+"Collez les lignes à la fin du fichier, relancez Codex, puis tapez /hooks pour les approuver (Codex le demande une fois).": "Colle les lignes à la fin du fichier, relance Codex, puis tape /hooks pour les approuver (Codex le demande une fois).",
+"Collez le bloc « hooks » (version 0.26 ou plus récente), puis relancez Gemini CLI.": "Colle le bloc « hooks » (version 0.26 ou plus récente), puis relance Gemini CLI.",
+"Collez la commande dans un terminal (une seule fois), puis relancez Claude Code.": "Colle la commande dans un terminal (une seule fois), puis relance Claude Code.",
+"Collez les lignes à la fin de %USERPROFILE%\\.codex\\config.toml, puis relancez Codex.": "Colle les lignes à la fin de %USERPROFILE%\\.codex\\config.toml, puis relance Codex.",
+"Fusionnez le bloc « mcpServers » dans %USERPROFILE%\\.gemini\\settings.json, puis relancez Gemini CLI.": "Fusionne le bloc « mcpServers » dans %USERPROFILE%\\.gemini\\settings.json, puis relance Gemini CLI.",
+"Copiez la configuration.": "Copie la configuration.",
+"Ouvrez": "Ouvre",
+"En plus (facultatif) : branchez l'île comme serveur MCP. L'agent pourra alors vous envoyer un message, sa progression, lancer le minuteur, ou vous poser une question à choix, à laquelle vous répondez d'un clic.": "En plus (facultatif) : branche l'île comme serveur MCP. L'agent pourra alors t'envoyer un message, sa progression, lancer le minuteur, ou te poser une question à choix, à laquelle tu réponds d'un clic.",
+"Autoriser / Refuser depuis l'île : Gemini CLI ne le permet pas (un hook peut refuser, pas autoriser). Répondez dans son terminal.": "Autoriser / Refuser depuis l'île : Gemini CLI ne le permet pas (un hook peut refuser, pas autoriser). Réponds dans son terminal.",
+"Rien reçu pour l'instant. Branchez Claude Code ci-dessous, puis cliquez sur « Essayer ».": "Rien reçu pour l'instant. Branche Claude Code ci-dessous, puis clique sur « Essayer ».",
+"Rien ne part avant votre confirmation.": "Rien ne part avant ta confirmation.",
+"Votre question (vide = « Expliquez-moi ceci. »)": "Ta question (vide = « Explique-moi ceci. »)",
+"Réponse coupée : augmentez la longueur maximale dans les réglages.": "Réponse coupée : augmente la longueur maximale dans les réglages.",
+"Ouvrez l'onglet Capture pour le voir.": "Ouvre l'onglet Capture pour le voir.",
+"Le texte lu s'affichera ici. Tout se passe sur votre ordinateur : l'image n'est envoyée nulle part.": "Le texte lu s'affichera ici. Tout se passe sur ton ordinateur : l'image n'est envoyée nulle part.",
+"Rien pour l'instant. Copiez du texte (Ctrl+C) n'importe où : il apparaîtra ici. Les mots de passe copiés depuis un gestionnaire sont ignorés.": "Rien pour l'instant. Copie du texte (Ctrl+C) n'importe où : il apparaîtra ici. Les mots de passe copiés depuis un gestionnaire sont ignorés.",
+"Tiré au hasard par Windows, sur votre PC. Jamais enregistré ni écrit dans le journal ; effacé du presse-papiers au bout de 30 s.": "Tiré au hasard par Windows, sur ton PC. Jamais enregistré ni écrit dans le journal ; effacé du presse-papiers au bout de 30 s.",
+"Un snippet est un texte que vous collez souvent (adresse, signature, réponse type). Créez-le une fois, collez-le en un clic.": "Un snippet est un texte que tu colles souvent (adresse, signature, réponse type). Crée-le une fois, colle-le en un clic.",
+"Rien en lecture. Lancez de la musique dans Spotify, votre navigateur ou un autre lecteur : elle apparaîtra ici.": "Rien en lecture. Lance de la musique dans Spotify, ton navigateur ou un autre lecteur : elle apparaîtra ici.",
+"Votre adresse IP publique a changé": "Ton adresse IP publique a changé",
+"Tapez une adresse, puis Ping, Port ou DNS.": "Tape une adresse, puis Ping, Port ou DNS.",
+"Rien à faire. Écrivez une tâche ci-dessus et appuyez sur Entrée.": "Rien à faire. Écris une tâche ci-dessus et appuie sur Entrée.",
+"Pas encore de note. Une idée, un numéro, une liste de courses : notez-le ici.": "Pas encore de note. Une idée, un numéro, une liste de courses : note-le ici.",
+"Et si vous faisiez une petite pause ?": "Et si tu faisais une petite pause ?",
+"Aucun favori. Tapez une adresse ci-dessus et cliquez sur ★ pour l'enregistrer, ou ajoutez-en un :": "Aucun favori. Tape une adresse ci-dessus et clique sur ★ pour l'enregistrer, ou ajoute-en un :",
+"Vous pouvez débrancher le chargeur.": "Tu peux débrancher le chargeur.",
+"Le dossier est ouvert, et le texte est copié : collez-le dans votre demande.": "Le dossier est ouvert, et le texte est copié : colle-le dans ta demande.",
+"Joindre l'image copiée (faites d'abord votre capture avec Win+Maj+S)": "Joindre l'image copiée (fais d'abord ta capture avec Win+Maj+S)",
+"Votre description + les infos du poste (+ une capture) dans un dossier prêt à joindre": "Ta description + les infos du poste (+ une capture) dans un dossier prêt à joindre",
+"Lancez la suite quand vous êtes prêt.": "Lance la suite quand tu es prêt.",
+"Quand quelque chose arrive, l'île agit pour vous.": "Quand quelque chose arrive, l'île agit pour toi.",
+"Exporter ou importer vos réglages (jamais les clés).": "Exporter ou importer tes réglages (jamais les clés).",
+"Seulement si vous avez plusieurs écrans : l'île reste sur l'écran principal, ou suit l'écran où se trouve votre souris.": "Seulement si tu as plusieurs écrans : l'île reste sur l'écran principal, ou suit l'écran où se trouve ta souris.",
+"Vous pouvez aussi attraper l'île par son bord collé à l'écran et la poser ailleurs : elle s'aimante aux bords, aux coins et au centre.": "Tu peux aussi attraper l'île par son bord collé à l'écran et la poser ailleurs : elle s'aimante aux bords, aux coins et au centre.",
+"Le journal reste sur votre PC (%LOCALAPPDATA%\\Ondine\\logs). Il ne contient jamais de clé ni de contenu de fichier.": "Le journal reste sur ton PC (%LOCALAPPDATA%\\Ondine\\logs). Il ne contient jamais de clé ni de contenu de fichier.",
+"Choisissez n'importe quelle couleur : si elle est trop claire, l'île l'assombrit juste assez pour que le texte reste lisible.": "Choisis n'importe quelle couleur : si elle est trop claire, l'île l'assombrit juste assez pour que le texte reste lisible.",
+"Glissez une ligne, ou utilisez ↑ ↓. Vous pouvez aussi faire glisser les onglets directement dans l'île.": "Glisse une ligne, ou utilise ↑ ↓. Tu peux aussi faire glisser les onglets directement dans l'île.",
+"Déposez vos mascottes dans le dossier mascots/ du projet, puis relancez l'appli.": "Dépose tes mascottes dans le dossier mascots/ du projet, puis relance l'appli.",
+"Quand l'île est cachée et que vous ne touchez plus au PC depuis un moment, Ondine descend du bord de l'écran tête en bas, cligne des yeux, puis remonte. Un clic sur elle ouvre l'île. Jamais pendant une présentation ou un plein écran.": "Quand l'île est cachée et que tu ne touches plus au PC depuis un moment, Ondine descend du bord de l'écran tête en bas, cligne des yeux, puis remonte. Un clic sur elle ouvre l'île. Jamais pendant une présentation ou un plein écran.",
+"Rien n'est envoyé sur Internet sans que vous le demandiez.": "Rien n'est envoyé sur Internet sans que tu le demandes.",
+"Un module qui envoie du contenu à l'API Claude le déclare et vous montre ce qui part.": "Un module qui envoie du contenu à l'API Claude le déclare et te montre ce qui part.",
+"Remplace vos réglages actuels.": "Remplace tes réglages actuels.",
+"« Quand… alors… » : l'île agit toute seule quand un fichier arrive, qu'une clé USB est branchée ou que vous appuyez sur un raccourci. Déplacer ou renommer propose toujours « Annuler », et rien n'est supprimé définitivement.": "« Quand… alors… » : l'île agit toute seule quand un fichier arrive, qu'une clé USB est branchée ou que tu appuies sur un raccourci. Déplacer ou renommer propose toujours « Annuler », et rien n'est supprimé définitivement.",
+"Lance Claude Code, Codex ou Gemini CLI dans un de vos projets en un clic. Un tableau montre les sessions en cours ; « Y aller » ramène devant la bonne fenêtre. Claude Code, Codex et Gemini CLI préviennent l'île : « attend votre permission », « a fini ». Ils passent par la commande « ondine.exe notify » et un canal local réservé à votre compte Windows : rien ne passe par Internet. Branchée comme serveur MCP, l'île laisse aussi l'agent vous envoyer un message, une progression, lancer le minuteur ou vous poser une question à choix. Le mode concentration met leurs notifications en attente et vous fait un résumé à la fin. Si vous l'activez (désactivé par défaut), vous pouvez aussi autoriser ou refuser une action de Claude Code ou Codex depuis l'île, après confirmation. L'île n'exécute jamais rien, ne décide jamais à votre place, et ne lit ni ce que vous tapez ni les réponses de l'IA.": "Lance Claude Code, Codex ou Gemini CLI dans un de tes projets en un clic. Un tableau montre les sessions en cours ; « Y aller » ramène devant la bonne fenêtre. Claude Code, Codex et Gemini CLI préviennent l'île : « attend ta permission », « a fini ». Ils passent par la commande « ondine.exe notify » et un canal local réservé à ton compte Windows : rien ne passe par Internet. Branchée comme serveur MCP, l'île laisse aussi l'agent t'envoyer un message, une progression, lancer le minuteur ou te poser une question à choix. Le mode concentration met leurs notifications en attente et te fait un résumé à la fin. Si tu l'actives (désactivé par défaut), tu peux aussi autoriser ou refuser une action de Claude Code ou Codex depuis l'île, après confirmation. L'île n'exécute jamais rien, ne décide jamais à ta place, et ne lit ni ce que tu tapes ni les réponses de l'IA.",
+"Un bouton par projet dans l'onglet et dans le lanceur. Vide = votre dossier utilisateur.": "Un bouton par projet dans l'onglet et dans le lanceur. Vide = ton dossier utilisateur.",
+"Utilisé seulement si vous avez ajouté l'île comme serveur MCP dans votre agent.": "Utilisé seulement si tu as ajouté l'île comme serveur MCP dans ton agent.",
+"Quand Claude Code ou Codex demande la permission d'utiliser un outil, l'île vous montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Il faut aussi coller le hook d'autorisation (onglet Agents IA). Sans réponse, la question passe au terminal.": "Quand Claude Code ou Codex demande la permission d'utiliser un outil, l'île te montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Il faut aussi coller le hook d'autorisation (onglet Agents IA). Sans réponse, la question passe au terminal.",
+"Collez une erreur, ou déposez un fichier texte ou une capture sur l'île, posez votre question : Claude répond. ENVOIE DU CONTENU À L'API CLAUDE (api.anthropic.com) : avant chaque envoi, l'île vous montre exactement ce qui part, et rien ne part sans votre clic. Les dossiers exclus sont refusés. La clé API reste dans le Gestionnaire d'identifiants Windows. La réponse est seulement affichée : rien n'est exécuté.": "Colle une erreur, ou dépose un fichier texte ou une capture sur l'île, pose ta question : Claude répond. ENVOIE DU CONTENU À L'API CLAUDE (api.anthropic.com) : avant chaque envoi, l'île te montre exactement ce qui part, et rien ne part sans ton clic. Les dossiers exclus sont refusés. La clé API reste dans le Gestionnaire d'identifiants Windows. La réponse est seulement affichée : rien n'est exécuté.",
+"Vide = « Répondez en français, simplement et brièvement… ». Elle est montrée avant chaque envoi.": "Vide = « Réponds en français, simplement et brièvement… ». Elle est montrée avant chaque envoi.",
+"Garde l'historique de vos copies de texte (recherche, épinglage), colle sans mise en forme, range vos textes fréquents en snippets, retire les traqueurs des liens copiés (utm_source, fbclid…) change la casse d'un texte en un clic, et génère des mots de passe (copiés en secret, effacés au bout de 30 s, jamais enregistrés). Les copies que Windows signale comme sensibles (mots de passe) sont ignorées. L'historique reste en mémoire et disparaît à la fermeture de l'île ; seuls les éléments épinglés et les snippets sont enregistrés, sur votre ordinateur.": "Garde l'historique de tes copies de texte (recherche, épinglage), colle sans mise en forme, range tes textes fréquents en snippets, retire les traqueurs des liens copiés (utm_source, fbclid…) change la casse d'un texte en un clic, et génère des mots de passe (copiés en secret, effacés au bout de 30 s, jamais enregistrés). Les copies que Windows signale comme sensibles (mots de passe) sont ignorées. L'historique reste en mémoire et disparaît à la fermeture de l'île ; seuls les éléments épinglés et les snippets sont enregistrés, sur ton ordinateur.",
+"Ping en continu, test d'un port (ouvert, fermé ou bloqué) et recherche DNS, sans ouvrir de console. Surveille aussi Internet, les VPN et une liste de serveurs, et prévient quand ça coupe. Seuls les paquets de test partent, vers les adresses que vous donnez. Si vous l'activez, l'adresse IP publique est demandée à api.ipify.org toutes les 10 minutes (ce site voit alors votre adresse IP).": "Ping en continu, test d'un port (ouvert, fermé ou bloqué) et recherche DNS, sans ouvrir de console. Surveille aussi Internet, les VPN et une liste de serveurs, et prévient quand ça coupe. Seuls les paquets de test partent, vers les adresses que tu donnes. Si tu l'actives, l'adresse IP publique est demandée à api.ipify.org toutes les 10 minutes (ce site voit alors ton adresse IP).",
+"Désactivé par défaut : c'est le seul réglage qui contacte un site extérieur. Ce site reçoit votre adresse IP, rien d'autre.": "Désactivé par défaut : c'est le seul réglage qui contacte un site extérieur. Ce site reçoit ton adresse IP, rien d'autre.",
+"Notes rapides et liste de choses à faire. Tout est enregistré sur votre ordinateur (%APPDATA%\\Ondine\\notes.json). Supprimer propose « Annuler ».": "Notes rapides et liste de choses à faire. Tout est enregistré sur ton ordinateur (%APPDATA%\\Ondine\\notes.json). Supprimer propose « Annuler ».",
+"Vous rappelle de faire une petite pause après un long moment devant l'écran. Se tait pendant une présentation, un appel (micro utilisé) ou si vous venez déjà de vous arrêter. Tout se passe sur votre PC : on regarde seulement depuis quand la souris et le clavier sont utilisés.": "Te rappelle de faire une petite pause après un long moment devant l'écran. Se tait pendant une présentation, un appel (micro utilisé) ou si tu viens déjà de t'arrêter. Tout se passe sur ton PC : on regarde seulement depuis quand la souris et le clavier sont utilisés.",
+"Vos serveurs Bureau à distance (RDP) et SSH en favoris, ouverts en un clic depuis l'île ou le lanceur. Enregistrés sur votre ordinateur (%APPDATA%\\Ondine\\remote.json), sans aucun mot de passe. « Tester » vérifie seulement que le serveur répond.": "Tes serveurs Bureau à distance (RDP) et SSH en favoris, ouverts en un clic depuis l'île ou le lanceur. Enregistrés sur ton ordinateur (%APPDATA%\\Ondine\\remote.json), sans aucun mot de passe. « Tester » vérifie seulement que le serveur répond.",
+"Glissez des fichiers sur l'île pour les poser sur l'étagère, les envoyer à la Corbeille, les copier ou les déplacer (dossiers favoris compris), copier leur chemin, les compresser, convertir ou réduire des images, ou renommer plusieurs fichiers d'un coup (avec aperçu). Toute action sur les fichiers est annulable quelques secondes.": "Glisse des fichiers sur l'île pour les poser sur l'étagère, les envoyer à la Corbeille, les copier ou les déplacer (dossiers favoris compris), copier leur chemin, les compresser, convertir ou réduire des images, ou renommer plusieurs fichiers d'un coup (avec aperçu). Toute action sur les fichiers est annulable quelques secondes.",
+"Chacun devient une cible quand vous glissez des fichiers sur l'île.": "Chacun devient une cible quand tu glisses des fichiers sur l'île.",
+"Ouvre cmd, PowerShell, PowerShell 7 ou Windows Terminal en un clic, dans le dossier de votre choix (aussi en administrateur). Déposez un dossier sur l'île pour y ouvrir un terminal. L'île ne tape jamais de commande à votre place.": "Ouvre cmd, PowerShell, PowerShell 7 ou Windows Terminal en un clic, dans le dossier de ton choix (aussi en administrateur). Dépose un dossier sur l'île pour y ouvrir un terminal. L'île ne tape jamais de commande à ta place.",
+"Vide = votre dossier utilisateur (C:\\Users\\…).": "Vide = ton dossier utilisateur (C:\\Users\\…).",
+"Minuteur, Pomodoro et chronomètre. Le temps qui reste s'affiche dans la pilule de l'île, et l'île vous prévient (avec un petit son) quand c'est fini.": "Minuteur, Pomodoro et chronomètre. Le temps qui reste s'affiche dans la pilule de l'île, et l'île te prévient (avec un petit son) quand c'est fini.",
+"ce lien ne renvoie pas un agenda iCal (.ics) : prenez l'« adresse secrète au format iCal »": "ce lien ne renvoie pas un agenda iCal (.ics) : prends l'« adresse secrète au format iCal »",
+"Les hooks et le serveur MCP ne peuvent pas joindre l'île. Redémarrez l'île ; si ça continue, un autre programme occupe peut-être le canal.": "Les hooks et le serveur MCP ne peuvent pas joindre l'île. Redémarre l'île ; si ça continue, un autre programme occupe peut-être le canal.",
+"confirmation trop ancienne : cliquez de nouveau sur « Autoriser… »": "confirmation trop ancienne : clique de nouveau sur « Autoriser… »",
+"Gemini CLI ne laisse pas un hook autoriser un outil : répondez dans son terminal.": "Gemini CLI ne laisse pas un hook autoriser un outil : réponds dans son terminal.",
+"l'aperçu a changé : vérifiez ce qui part, puis renvoyez": "l'aperçu a changé : vérifie ce qui part, puis renvoie",
+"Pas de clé API Anthropic : ajoutez-la dans Réglages → Identifiants.": "Pas de clé API Anthropic : ajoute-la dans Réglages → Identifiants.",
+"clé API refusée (vérifiez-la dans Réglages → Identifiants)": "clé API refusée (vérifie-la dans Réglages → Identifiants)",
+"trop de demandes : réessayez dans un moment": "trop de demandes : réessaie dans un moment",
+"l'API est surchargée : réessayez dans un moment": "l'API est surchargée : réessaie dans un moment",
+"donnez un nom au snippet": "donne un nom au snippet",
+"choisissez au moins une sorte de caractères": "choisis au moins une sorte de caractères",
+"ce fichier est un programme : ouvrez-le depuis l'Explorateur": "ce fichier est un programme : ouvre-le depuis l'Explorateur",
+"donnez un nom à la règle": "donne un nom à la règle",
+"ajoutez au moins une action": "ajoute au moins une action",
+"choisissez le dossier à surveiller": "choisis le dossier à surveiller",
+"choisissez un format ou une taille : sinon l'image ne change pas": "choisis un format ou une taille : sinon l'image ne change pas",
+"décrivez le problème en quelques mots": "décris le problème en quelques mots",
+"aucune image copiée : faites d'abord votre capture (Win+Maj+S)": "aucune image copiée : fais d'abord ta capture (Win+Maj+S)",
+"le presse-papiers est occupé, réessayez": "le presse-papiers est occupé, réessaie",
+"canal refusé : ce n'est pas l'île de votre compte qui répond": "canal refusé : ce n'est pas l'île de ton compte qui répond",
+"adresse refusée : il faut un lien qui commence par https:// (l'adresse secrète iCal de votre agenda)": "adresse refusée : il faut un lien qui commence par https:// (l'adresse secrète iCal de ton agenda)",
+"indiquez le chemin complet d'un dossier existant": "indique le chemin complet d'un dossier existant",
+"La notification arrive dans l'île : lancez l'enregistrement avant de cliquer.": "La notification arrive dans l'île : lance l'enregistrement avant de cliquer.",
+"Pensez à éteindre le mode démo après vos captures.": "Pense à éteindre le mode démo après tes captures.",
+"Ondine s'ouvre toute seule quand vous ouvrez votre session.": "Ondine s'ouvre toute seule quand tu ouvres ta session.",
+"Au démarrage puis une fois par jour, Ondine regarde sur GitHub si une nouvelle version existe et vous la propose. Rien ne s'installe sans votre accord.": "Au démarrage puis une fois par jour, Ondine regarde sur GitHub si une nouvelle version existe et te la propose. Rien ne s'installe sans ton accord.",
+"Impossible de joindre GitHub. Vérifiez votre connexion à Internet.": "Impossible de joindre GitHub. Vérifie ta connexion à Internet.",
+"Un dossier est créé dans Documents\\Ondine\\Tickets avec votre description, les infos du poste et l'image. Rien n'est envoyé.": "Un dossier est créé dans Documents\\Ondine\\Tickets avec ta description, les infos du poste et l'image. Rien n'est envoyé.",
+"Tapez le nom d'une appli, d'un fichier, d'un onglet, ou un mot de vos notes.": "Tape le nom d'une appli, d'un fichier, d'un onglet, ou un mot de tes notes.",
+"Pendant une séance de travail, les notifications de l'île attendent (sauf les urgentes) ; elles arrivent à la pause, avec un résumé. Les bannières de Windows ne sont pas coupées : pour cela, lancez une séance « Focus » dans l'appli Horloge de Windows 11.": "Pendant une séance de travail, les notifications de l'île attendent (sauf les urgentes) ; elles arrivent à la pause, avec un résumé. Les bannières de Windows ne sont pas coupées : pour cela, lance une séance « Focus » dans l'appli Horloge de Windows 11.",
+"Collez-le comme une image (Ctrl+V).": "Colle-le comme une image (Ctrl+V).",
+"Visez le code avec l'appareil photo de votre téléphone. Calculé sur votre PC : rien ne passe par Internet.": "Vise le code avec l'appareil photo de ton téléphone. Calculé sur ton PC : rien ne passe par Internet.",
+"Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur votre ordinateur, hors ligne : l'image n'est envoyée nulle part. La pipette copie la couleur d'un point de l'écran.": "Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur ton ordinateur, hors ligne : l'image n'est envoyée nulle part. La pipette copie la couleur d'un point de l'écran.",
+"Fige l'écran : cliquez sur un point pour copier sa couleur (Échap pour annuler, flèches pour bouger d'un pixel)": "Fige l'écran : clique sur un point pour copier sa couleur (Échap pour annuler, flèches pour bouger d'un pixel)",
+"Un profil ne retient que ce qu'il remplace. Pendant qu'il est actif, vos changements de ces réglages (page Onglets, Apparence…) lui sont gardés ; les autres réglages restent communs.": "Un profil ne retient que ce qu'il remplace. Pendant qu'il est actif, tes changements de ces réglages (page Onglets, Apparence…) lui sont gardés ; les autres réglages restent communs.",
+"La température et le temps qu'il fait dans votre ville, dans la mini-île quand elle n'a rien d'autre à montrer, et en détail dans l'onglet Système. Désactivée tant que vous ne cochez pas « Afficher la météo » : rien ne part sur Internet avant. Service : Open-Meteo (gratuit, sans compte) ; il reçoit le nom de votre ville, puis ses coordonnées arrondies (environ 1 km), au plus toutes les 30 minutes.": "La température et le temps qu'il fait dans ta ville, dans la mini-île quand elle n'a rien d'autre à montrer, et en détail dans l'onglet Système. Désactivée tant que tu ne coches pas « Afficher la météo » : rien ne part sur Internet avant. Service : Open-Meteo (gratuit, sans compte) ; il reçoit le nom de ta ville, puis ses coordonnées arrondies (environ 1 km), au plus toutes les 30 minutes.",
+"Votre ville": "Ta ville",
+"Vos prochains rendez-vous, venant de plusieurs calendriers : des fichiers .ics (export d'Outlook, Google Agenda, Thunderbird…) ou les adresses secrètes iCal de vos agendas en ligne, chacun avec son nom et sa couleur. Un fichier est relu dès qu'il change ; un lien est retéléchargé toutes les 15 minutes. Un clic sur un rendez-vous ouvre son lien (réunion Teams, Meet, Zoom…). Lecture seule : rien n'est envoyé, et les adresses restent dans le Gestionnaire d'identifiants.": "Tes prochains rendez-vous, venant de plusieurs calendriers : des fichiers .ics (export d'Outlook, Google Agenda, Thunderbird…) ou les adresses secrètes iCal de tes agendas en ligne, chacun avec son nom et sa couleur. Un fichier est relu dès qu'il change ; un lien est retéléchargé toutes les 15 minutes. Un clic sur un rendez-vous ouvre son lien (réunion Teams, Meet, Zoom…). Lecture seule : rien n'est envoyé, et les adresses restent dans le Gestionnaire d'identifiants.",
+"Ajoutez un fichier .ics (relu tout seul quand il change) ou l'adresse secrète iCal d'un agenda en ligne (Google Agenda : Paramètres → votre agenda → « Adresse secrète au format iCal »). Le lien est rangé dans le Gestionnaire d'identifiants de Windows, jamais dans les réglages. Gardez-le pour vous : il donne accès à tout votre agenda.": "Ajoute un fichier .ics (relu tout seul quand il change) ou l'adresse secrète iCal d'un agenda en ligne (Google Agenda : Paramètres → ton agenda → « Adresse secrète au format iCal »). Le lien est rangé dans le Gestionnaire d'identifiants de Windows, jamais dans les réglages. Garde-le pour toi : il donne accès à tout ton agenda.",
+"Dans les réglages du module Agenda, ajoutez l'adresse secrète iCal de votre agenda en ligne (Google Agenda, Outlook…), toujours à jour, ou un fichier .ics exporté. Vous pouvez en mettre plusieurs, chacun avec sa couleur.": "Dans les réglages du module Agenda, ajoute l'adresse secrète iCal de ton agenda en ligne (Google Agenda, Outlook…), toujours à jour, ou un fichier .ics exporté. Tu peux en mettre plusieurs, chacun avec sa couleur.",
+"aucun lien enregistré : ajoutez-le dans les réglages du module Agenda": "aucun lien enregistré : ajoute-le dans les réglages du module Agenda",
+"Page ouverte dans votre navigateur : relisez tout avant d'envoyer.": "Page ouverte dans ton navigateur : relis tout avant d'envoyer.",
+"Ouvre GitHub avec la version, Windows et les 40 dernières lignes du journal (chemins personnels masqués). Vous relisez et complétez tout avant d'envoyer : rien ne part sans vous.": "Ouvre GitHub avec la version, Windows et les 40 dernières lignes du journal (chemins personnels masqués). Tu relis et complètes tout avant d'envoyer : rien ne part sans toi.",
+"L'étagère est vide. Glissez des fichiers sur l'île et lâchez-les sur la cible « Étagère » pour les garder sous la main.": "L'étagère est vide. Glisse des fichiers sur l'île et lâche-les sur la cible « Étagère » pour les garder sous la main.",
+"L'île montre de fausses données (musique, agenda, notes, presse-papiers…) au lieu des vôtres. Aucune action n'est faite pour de vrai.": "L'île montre de fausses données (musique, agenda, notes, presse-papiers…) au lieu des tiennes. Aucune action n'est faite pour de vrai."
+},
+"patterns": [
+[
+"^Autoriser\\ /\\ Refuser\\ depuis\\ l'île\\ \\((.+?)\\)\\ :\\ quand\\ (.+?)\\ demande\\ une\\ permission,\\ l'île\\ montre\\ la\\ commande\\ avec\\ «\\ Autoriser\\ »\\ \\(à\\ confirmer\\)\\ et\\ «\\ Refuser\\ »\\.\\ Sans\\ réponse\\ à\\ temps,\\ la\\ question\\ passe\\ au\\ terminal\\.\\ Collez\\ ce\\ hook\\ en\\ plus,\\ de\\ la\\ même\\ façon\\.$",
+"Autoriser / Refuser depuis l'île ($1) : quand $2 demande une permission, l'île montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Sans réponse à temps, la question passe au terminal. Colle ce hook en plus, de la même façon."
+],
+[
+"^(.+?)\\ est\\ sur\\ un\\ lecteur\\ sans\\ Corbeille\\ \\(clé\\ USB,\\ réseau…\\)\\ :\\ l'île\\ ne\\ supprime\\ jamais\\ définitivement,\\ faites\\-le\\ vous\\-même\\ si\\ vous\\ êtes\\ sûr$",
+"$1 est sur un lecteur sans Corbeille (clé USB, réseau…) : l'île ne supprime jamais définitivement, fais-le toi-même si tu es sûr"
+],
+[
+"^(.+?)\\ est\\ déjà\\ utilisé\\ par\\ un\\ autre\\ logiciel\\ :\\ choisissez\\ un\\ autre\\ raccourci\\ dans\\ les\\ réglages\\ du\\ Lanceur$",
+"$1 est déjà utilisé par un autre logiciel : choisis un autre raccourci dans les réglages du Lanceur"
+],
+[
+"^(.+?)\\ est\\ déjà\\ pris\\ par\\ un\\ autre\\ logiciel\\ :\\ choisissez\\ un\\ autre\\ raccourci\\ dans\\ les\\ réglages\\ de\\ Contrôles$",
+"$1 est déjà pris par un autre logiciel : choisis un autre raccourci dans les réglages de Contrôles"
+],
+[
+"^(.+?)\\ est\\ déjà\\ pris\\ par\\ un\\ autre\\ logiciel\\ :\\ choisissez\\ un\\ autre\\ raccourci\\ dans\\ Réglages\\ >\\ Général$",
+"$1 est déjà pris par un autre logiciel : choisis un autre raccourci dans Réglages > Général"
+],
+[
+"^Collez\\-le\\ dans\\ (.+?),\\ puis\\ activez\\ le\\ réglage\\ «\\ Autoriser\\ /\\ Refuser\\ depuis\\ l'île\\ »\\.$",
+"Colle-le dans $1, puis active le réglage « Autoriser / Refuser depuis l'île »."
+],
+[
+"^le\\ serveur\\ refuse\\ cette\\ adresse\\ \\(code\\ (.+?)\\)\\ :\\ recopiez\\ l'adresse\\ secrète\\ iCal$",
+"le serveur refuse cette adresse (code $1) : recopie l'adresse secrète iCal"
+],
+[
+"^(.+?)\\ minutes\\ d'écran\\ :\\ levez\\-vous,\\ regardez\\ au\\ loin,\\ buvez\\ un\\ verre\\ d'eau\\.$",
+"$1 minutes d'écran : lève-toi, regarde au loin, bois un verre d'eau."
+],
+[
+"^écrivez\\ un\\ modèle\\ de\\ nom,\\ par\\ exemple\\ «\\ vacances\\-(.+?)\\ »$",
+"écris un modèle de nom, par exemple « vacances-$1 »"
+],
+[
+"^Plus\\ que\\ (.+?)\\ %\\ :\\ pensez\\ à\\ brancher\\ le\\ chargeur\\.$",
+"Plus que $1 % : pense à brancher le chargeur."
+],
+[
+"^(.+?)\\ notifications\\ pendant\\ votre\\ présentation$",
+"$1 notifications pendant ta présentation"
+],
+[
+"^(.+?)\\ attend\\ votre\\ réponse$",
+"$1 attend ta réponse"
+],
+[
+"^Collez\\-la\\ dans\\ (.+?)\\.$",
+"Colle-la dans $1."
+],
+[
+"^✋\\ (.+?)\\ vous\\ attend(.+?)$",
+"✋ $1 t'attend$2"
+],
+[
+"^vous\\ attend\\ depuis\\ (.+?)$",
+"t'attend depuis $1"
+],
+[
+"^❓\\ (.+?)\\ vous\\ demande$",
+"❓ $1 te demande"
+],
+[
+"^(.+?)\\ vous\\ demande$",
+"$1 te demande"
+],
+[
+"^Je vis en haut de l'écran : passez la souris tout en haut, ou (.+)\\. Mon icône est près de l'horloge \\(clic droit : Réglages, Quitter\\)\\.$",
+"Je vis en haut de l'écran : passe la souris tout en haut, ou $1. Mon icône est près de l'horloge (clic droit : Réglages, Quitter)."
+],
+[
+"^(.+?)\\ notifications\\ pendant\\ votre\\ concentration$",
+"$1 notifications pendant ta concentration"
+],
+[
+"^(.+) : aucun lien enregistré : ajoutez-le dans les réglages du module Agenda$",
+"$1 : aucun lien enregistré : ajoute-le dans les réglages du module Agenda"
+],
+[
+"^(.+?)\\ attend\\ votre\\ permission$",
+"$1 attend ta permission"
+],
+[
+"^(.*) vous attend(ent)?(.*)$",
+"$1 t'attend$2$3"
+]
+]
+}

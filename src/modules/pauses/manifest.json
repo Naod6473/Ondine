@@ -2,7 +2,7 @@
   "id": "pauses",
   "name": "Pauses",
   "icon": "☕",
-  "description": "Te rappelle de faire une petite pause après un long moment devant l'écran. Se tait pendant une présentation, un appel (micro utilisé) ou si tu viens déjà de t'arrêter. Tout se passe sur ton PC : on regarde seulement depuis quand la souris et le clavier sont utilisés.",
+  "description": "Vous rappelle de faire une petite pause après un long moment devant l'écran. Se tait pendant une présentation, un appel (micro utilisé) ou si vous venez déjà de vous arrêter. Tout se passe sur votre PC : on regarde seulement depuis quand la souris et le clavier sont utilisés.",
   "version": "0.1.0",
   "permissions": [],
   "settings": {

@@ -121,7 +121,7 @@ export const remote: IslandModule = {
       const drawList = () => {
         if (!favorites.length) {
           body.replaceChildren(
-            el("p", { class: "muted" }, "Aucun favori. Tape une adresse ci-dessus et clique ★ pour l'enregistrer, ou ajoute-en un :"),
+            el("p", { class: "muted" }, "Aucun favori. Tapez une adresse ci-dessus et cliquez sur ★ pour l'enregistrer, ou ajoutez-en un :"),
             el("button", { class: "btn small", onclick: api.handler(() => openForm(null, "")) }, "＋ Ajouter un serveur"),
           );
           return;

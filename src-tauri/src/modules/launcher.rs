@@ -156,7 +156,7 @@ impl RustModule for Launcher {
                 if entry.kind == Kind::Recent {
                     let path = ctx.check_path(&entry.target)?;
                     if is_executable(&path) {
-                        return Err("ce fichier est un programme : ouvre-le depuis l'Explorateur".into());
+                        return Err("ce fichier est un programme : ouvrez-le depuis l'Explorateur".into());
                     }
                 }
                 platform::forget_previous_foreground();
@@ -272,7 +272,7 @@ fn apply_hotkey(app: &AppHandle, state: &Shared, current: &str, wanted: &str) {
             let text = e.to_string();
             let pretty = wanted.replace("Super", "Win").replace("Space", "Espace");
             let msg = if text.contains("already registered") {
-                format!("{pretty} est déjà utilisé par un autre logiciel : choisis un autre raccourci dans les réglages du Lanceur")
+                format!("{pretty} est déjà utilisé par un autre logiciel : choisissez un autre raccourci dans les réglages du Lanceur")
             } else {
                 format!("le raccourci {pretty} est refusé : {text}")
             };

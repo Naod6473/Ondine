@@ -316,7 +316,7 @@ impl Clipboard {
         let name = args.get("name").and_then(Value::as_str).unwrap_or("").trim().to_string();
         let text = args.get("text").and_then(Value::as_str).unwrap_or("").to_string();
         if name.is_empty() {
-            return Err("donne un nom au snippet".into());
+            return Err("donnez un nom au snippet".into());
         }
         if name.chars().count() > MAX_SNIPPET_NAME {
             return Err(format!("nom trop long (au plus {MAX_SNIPPET_NAME} caractères)"));
@@ -487,7 +487,7 @@ fn generate_password(r: &PasswordRules) -> Result<String, String> {
         families.push(keep("!#$%&*+-=?@^_~.:;,()[]{}"));
     }
     if families.is_empty() {
-        return Err("choisis au moins une sorte de caractères".into());
+        return Err("choisissez au moins une sorte de caractères".into());
     }
     let all: Vec<char> = families.concat();
     // Un de chaque famille, puis le reste au hasard, puis on mélange.

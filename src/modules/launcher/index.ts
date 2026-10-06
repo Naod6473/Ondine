@@ -318,7 +318,7 @@ export const launcher: IslandModule = {
         }
         list.replaceChildren(...rows);
         if (!current.length) {
-          list.append(el("li", { class: "muted launch-empty" }, search.value.trim() ? "Rien trouvé." : "Tape le nom d'une appli, d'un fichier, d'un onglet, ou un mot de tes notes."));
+          list.append(el("li", { class: "muted launch-empty" }, search.value.trim() ? "Rien trouvé." : "Tapez le nom d'une appli, d'un fichier, d'un onglet, ou un mot de vos notes."));
         }
         setLabel(
           foot,

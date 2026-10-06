@@ -120,13 +120,13 @@ fn yes() -> bool {
 /// vérifiés par `check_path` dans mod.rs). Renvoie un message clair.
 pub fn validate(rule: &Rule) -> Result<(), String> {
     if rule.name.trim().is_empty() {
-        return Err("donne un nom à la règle".into());
+        return Err("donnez un nom à la règle".into());
     }
     if rule.name.chars().count() > MAX_NAME {
         return Err(format!("nom trop long (au plus {MAX_NAME} caractères)"));
     }
     if rule.actions.is_empty() {
-        return Err("ajoute au moins une action".into());
+        return Err("ajoutez au moins une action".into());
     }
     if rule.actions.len() > MAX_ACTIONS {
         return Err(format!("au plus {MAX_ACTIONS} actions par règle"));
@@ -160,7 +160,7 @@ pub fn validate(rule: &Rule) -> Result<(), String> {
     match &rule.trigger {
         Trigger::Event { topic } if !EVENT_TOPICS.iter().any(|(t, _)| t == topic) => Err(format!("événement inconnu : {topic}")),
         Trigger::Hotkey { keys } => check_keys(keys),
-        Trigger::File { folder, .. } if folder.trim().is_empty() => Err("choisis le dossier à surveiller".into()),
+        Trigger::File { folder, .. } if folder.trim().is_empty() => Err("choisissez le dossier à surveiller".into()),
         _ => Ok(()),
     }
     .and_then(|_| {

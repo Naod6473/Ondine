@@ -172,7 +172,7 @@ export const agents: IslandModule = {
       if (!q?.question) return;
       if (q.kind === "permission") return showPermission(api, q);
       api.notify({
-        title: `${q.who} te demande`,
+        title: `${q.who} vous demande`,
         body: q.question,
         icon: "❓",
         priority: "high",
@@ -187,7 +187,7 @@ export const agents: IslandModule = {
       // gone : l'agent n'attend plus (réponse donnée dans le terminal, ou arrêté).
       api.notify({
         title: c.gone ? "Réglé ailleurs" : c.expired ? "Pas de réponse dans l'île" : "Réponse envoyée",
-        body: c.gone ? "L'agent n'attend plus cette réponse." : c.expired ? "L'agent continue sans, ou te demande dans le terminal." : undefined,
+        body: c.gone ? "L'agent n'attend plus cette réponse." : c.expired ? "L'agent continue sans, ou vous demande dans le terminal." : undefined,
         icon: c.gone ? "↩️" : c.expired ? "⌛" : "✔️",
         priority: "low",
         durationMs: 2500,
@@ -271,7 +271,7 @@ export const agents: IslandModule = {
           el("span", { class: "agents-launch-sep" }),
           ...(projects.length
             ? projects.map((p, i) => el("button", { class: "btn small", title: `Ouvrir ${LAUNCH_NAMES[chosenTool]} dans ${p.path}`, onclick: start({ index: i }) }, `📁 ${p.name}`))
-            : [el("button", { class: "btn small primary", title: "Dans ton dossier utilisateur", onclick: start({}) }, "Lancer")]),
+            : [el("button", { class: "btn small primary", title: "Dans votre dossier utilisateur", onclick: start({}) }, "Lancer")]),
           el("button", { class: "btn small", title: "Choisir le dossier du projet", onclick: pick }, "Autre dossier…"),
         );
       };
@@ -286,17 +286,17 @@ export const agents: IslandModule = {
         "claude-code": {
           name: "Claude Code",
           file: "%USERPROFILE%\\.claude\\settings.json",
-          steps: "Colle le bloc « hooks » (fusionne-le s'il en existe déjà un), puis relance Claude Code.",
+          steps: "Collez le bloc « hooks » (fusionnez-le s'il en existe déjà un), puis relancez Claude Code.",
         },
         codex: {
           name: "Codex",
           file: "%USERPROFILE%\\.codex\\config.toml",
-          steps: "Colle les lignes à la fin du fichier, relance Codex, puis tape /hooks pour les approuver (Codex le demande une fois).",
+          steps: "Collez les lignes à la fin du fichier, relancez Codex, puis tapez /hooks pour les approuver (Codex le demande une fois).",
         },
         gemini: {
           name: "Gemini CLI",
           file: "%USERPROFILE%\\.gemini\\settings.json",
-          steps: "Colle le bloc « hooks » (version 0.26 ou plus récente), puis relance Gemini CLI.",
+          steps: "Collez le bloc « hooks » (version 0.26 ou plus récente), puis relancez Gemini CLI.",
         },
       };
       let tool: Tool = "claude-code";
@@ -312,7 +312,7 @@ export const agents: IslandModule = {
           onclick: api.handler(async () => {
             try {
               await api.invoke("copy_config", { tool });
-              api.notify({ title: "Configuration copiée", body: `Colle-la dans ${TOOLS[tool].file}.`, icon: "📋", priority: "low", key: "agents-copied" });
+              api.notify({ title: "Configuration copiée", body: `Collez-la dans ${TOOLS[tool].file}.`, icon: "📋", priority: "low", key: "agents-copied" });
             } catch (err) {
               api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "agents-error" });
             }
@@ -322,9 +322,9 @@ export const agents: IslandModule = {
       );
       // Brancher l'île comme serveur MCP : l'agent peut alors l'appeler de lui-même.
       const MCP_STEPS: Record<Tool, string> = {
-        "claude-code": "Colle la commande dans un terminal (une seule fois), puis relance Claude Code.",
-        codex: "Colle les lignes à la fin de %USERPROFILE%\\.codex\\config.toml, puis relance Codex.",
-        gemini: "Fusionne le bloc « mcpServers » dans %USERPROFILE%\\.gemini\\settings.json, puis relance Gemini CLI.",
+        "claude-code": "Collez la commande dans un terminal (une seule fois), puis relancez Claude Code.",
+        codex: "Collez les lignes à la fin de %USERPROFILE%\\.codex\\config.toml, puis relancez Codex.",
+        gemini: "Fusionnez le bloc « mcpServers » dans %USERPROFILE%\\.gemini\\settings.json, puis relancez Gemini CLI.",
       };
       const mcpSteps = el("p", { class: "muted agents-mcp-steps" });
       const copyMcp = el(
@@ -351,7 +351,7 @@ export const agents: IslandModule = {
           onclick: api.handler(async () => {
             try {
               await api.invoke("copy_config", { tool, permission: true });
-              api.notify({ title: "Hook d'autorisation copié", body: `Colle-le dans ${TOOLS[tool].file}, puis active le réglage « Autoriser / Refuser depuis l'île ».`, icon: "📋", priority: "low", key: "agents-copied" });
+              api.notify({ title: "Hook d'autorisation copié", body: `Collez-le dans ${TOOLS[tool].file}, puis activez le réglage « Autoriser / Refuser depuis l'île ».`, icon: "📋", priority: "low", key: "agents-copied" });
             } catch (err) {
               api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "agents-error" });
             }
@@ -363,18 +363,18 @@ export const agents: IslandModule = {
       const drawGuide = () => {
         toolButtons.forEach((b) => b.classList.toggle("active", b.dataset.tool === tool));
         steps.replaceChildren(
-          el("li", {}, "Copie la configuration."),
-          el("li", {}, "Ouvre ", el("code", {}, TOOLS[tool].file), ". ", TOOLS[tool].steps),
+          el("li", {}, "Copiez la configuration."),
+          el("li", {}, "Ouvrez ", el("code", {}, TOOLS[tool].file), ". ", TOOLS[tool].steps),
           el("li", {}, "Chaque hook lance : ", exe),
         );
         mcpSteps.textContent =
-          "En plus (facultatif) : branche l'île comme serveur MCP. L'agent pourra alors t'envoyer un message, sa progression, lancer le minuteur, ou te poser une question à choix que tu réponds d'un clic. " +
+          "En plus (facultatif) : branchez l'île comme serveur MCP. L'agent pourra alors vous envoyer un message, sa progression, lancer le minuteur, ou vous poser une question à choix, à laquelle vous répondez d'un clic. " +
           MCP_STEPS[tool];
         const permOn = api.settings().permissions === true;
         permText.textContent =
           tool === "gemini"
-            ? "Autoriser / Refuser depuis l'île : Gemini CLI ne le permet pas (un hook peut refuser, pas autoriser). Réponds dans son terminal."
-            : `Autoriser / Refuser depuis l'île (${permOn ? "activé" : "désactivé dans les réglages"}) : quand ${TOOLS[tool].name} demande une permission, l'île montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Sans réponse à temps, la question passe au terminal. Colle ce hook en plus, de la même façon.`;
+            ? "Autoriser / Refuser depuis l'île : Gemini CLI ne le permet pas (un hook peut refuser, pas autoriser). Répondez dans son terminal."
+            : `Autoriser / Refuser depuis l'île (${permOn ? "activé" : "désactivé dans les réglages"}) : quand ${TOOLS[tool].name} demande une permission, l'île montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Sans réponse à temps, la question passe au terminal. Collez ce hook en plus, de la même façon.`;
         copyPerm.hidden = tool === "gemini";
       };
       guide.append(
@@ -435,7 +435,7 @@ export const agents: IslandModule = {
         return el(
           "li",
           { class: `agents-ask ${q.kind}` },
-          el("div", {}, el("b", {}, isPerm ? `🔐 ${q.question}` : `❓ ${q.who} te demande`), el("small", { class: "muted" }, ` · ${left}`)),
+          el("div", {}, el("b", {}, isPerm ? `🔐 ${q.question}` : `❓ ${q.who} vous demande`), el("small", { class: "muted" }, ` · ${left}`)),
           isPerm ? (q.detail ? el("code", { class: "agents-ask-detail" }, q.detail) : null) : el("div", { class: "agents-ask-q" }, q.question),
           buttons,
         );
@@ -450,7 +450,7 @@ export const agents: IslandModule = {
         }
         const waiting = data.sessions.filter((x) => x.state === "waiting").length;
         // Un morceau par élément : chacun garde son pictogramme et sa traduction.
-        const parts = [data.working ? `🧠 ${data.working} au travail` : "", waiting ? `✋ ${waiting} t'attend${waiting > 1 ? "ent" : ""}` : ""].filter(Boolean);
+        const parts = [data.working ? `🧠 ${data.working} au travail` : "", waiting ? `✋ ${waiting} vous attend${waiting > 1 ? "ent" : ""}` : ""].filter(Boolean);
         if (!data.sessions.length) status.textContent = "Aucune session pour l'instant.";
         else if (!parts.length) status.textContent = "Personne ne travaille en ce moment.";
         else status.replaceChildren(...parts.flatMap((x, i) => [i ? " · " : "", el("span", {}, x)]));
@@ -462,7 +462,7 @@ export const agents: IslandModule = {
           ...data.sessions.map((x) => {
             const what = {
               working: `travaille depuis ${duration(x.since)}`,
-              waiting: `t'attend depuis ${duration(x.since)}`,
+              waiting: `vous attend depuis ${duration(x.since)}`,
               done: `a fini ${ago(x.since)}`,
               idle: "sans nouvelles",
             }[x.state];
@@ -497,7 +497,7 @@ export const agents: IslandModule = {
                   ),
                 ),
               )
-            : [el("li", { class: "muted agents-empty" }, "Rien reçu pour l'instant. Branche Claude Code ci-dessous, puis clique « Essayer ».")]),
+            : [el("li", { class: "muted agents-empty" }, "Rien reçu pour l'instant. Branchez Claude Code ci-dessous, puis cliquez sur « Essayer ».")]),
         );
         if (!data.events.length) guide.open = true;
       };

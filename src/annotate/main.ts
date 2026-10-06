@@ -57,7 +57,7 @@ const app = document.getElementById("app")!;
 const canvas = el("canvas", { class: "board" });
 const ctx = canvas.getContext("2d")!;
 const stage = el("div", { class: "stage" }, canvas);
-const empty = el("p", { class: "empty" }, "Aucune image. Dans l'onglet Capture de l'île, choisis « ✏️ Annoter ».");
+const empty = el("p", { class: "empty" }, "Aucune image. Dans l'onglet Capture de l'île, choisissez « ✏️ Annoter ».");
 const toast = el("div", { class: "toast" });
 
 function group(...children: HTMLElement[]) {

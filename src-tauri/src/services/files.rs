@@ -114,7 +114,7 @@ fn is_other_disk(e: &io::Error) -> bool {
 
 fn no_bin(path: &Path) -> String {
     format!(
-        "{} est sur un lecteur sans Corbeille (clé USB, réseau…) : l'île ne supprime jamais définitivement, fais-le toi-même si tu es sûr",
+        "{} est sur un lecteur sans Corbeille (clé USB, réseau…) : l'île ne supprime jamais définitivement, faites-le vous-même si vous êtes sûr",
         path.display()
     )
 }

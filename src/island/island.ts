@@ -425,7 +425,7 @@ export class Island {
       this.notifications.pause(false);
       this.fsm.restore();
       // (Une concentration encore en cours fera le résumé à sa fin.)
-      if (n > 1 && !this.notifications.isPaused()) this.notifications.push({ moduleId: "island", title: `${n} notifications pendant ta présentation`, icon: "🎬", priority: "low", key: "presentation-summary" });
+      if (n > 1 && !this.notifications.isPaused()) this.notifications.push({ moduleId: "island", title: `${n} notifications pendant votre présentation`, icon: "🎬", priority: "low", key: "presentation-summary" });
     }
   }
 
@@ -448,7 +448,7 @@ export class Island {
       this.notifications.pause(false, "focus");
       // (Une présentation encore en cours fera le résumé à sa fin.)
       if (n > 1 && !this.notifications.isPaused()) {
-        this.notifications.push({ moduleId: "island", title: `${n} notifications pendant ta concentration`, icon: "🍅", priority: "low", key: "focus-summary" });
+        this.notifications.push({ moduleId: "island", title: `${n} notifications pendant votre concentration`, icon: "🍅", priority: "low", key: "focus-summary" });
       }
     });
   }
@@ -532,7 +532,7 @@ export class Island {
         this.bus.emit("island.files-dropped", { count: paths.length, target: target?.target.id ?? null });
         if (target) void this.registry.drop(target.moduleId, target.target, paths);
         else if (paths.length) {
-          this.notifications.push({ moduleId: "island", title: "Lâche le fichier sur une cible", icon: "🎯", priority: "low" });
+          this.notifications.push({ moduleId: "island", title: "Lâcher le fichier sur une cible", icon: "🎯", priority: "low" });
         }
         break;
       }
@@ -767,7 +767,7 @@ export class Island {
           { class: "muted" },
           benched.length
             ? `${benched.join(", ")} a été mis à l'écart après trois plantages. Il revient au prochain démarrage de l'appli.`
-            : "Aucun module actif. Active-en un dans les réglages.",
+            : "Aucun module actif. Activez-en un dans les réglages.",
         ),
       );
     }
