@@ -129,7 +129,7 @@ function folderInput(value: string, onChange: (v: string) => void) {
  * sait lire quelle que soit la disposition du clavier.
  */
 function hotkeyInput(value: string, onChange: (v: string) => void) {
-  const i = el("input", { type: "text", class: "rule-hotkey", readonly: true, placeholder: "Clique ici puis appuie sur le raccourci" }) as HTMLInputElement;
+  const i = el("input", { type: "text", class: "rule-hotkey", readonly: true, placeholder: "Cliquer ici puis appuyer sur le raccourci" }) as HTMLInputElement;
   i.value = value ? prettyKeys(value) : "";
   i.addEventListener("keydown", (e) => {
     e.preventDefault();
@@ -165,7 +165,7 @@ function list(main: HTMLElement) {
     el(
       "p",
       { class: "muted" },
-      "« Quand… alors… » : l'île agit toute seule quand un fichier arrive, qu'une clé USB est branchée ou que tu appuies sur un raccourci. Déplacer ou renommer propose toujours « Annuler », et rien n'est supprimé définitivement.",
+      "« Quand… alors… » : l'île agit toute seule quand un fichier arrive, qu'une clé USB est branchée ou que vous appuyez sur un raccourci. Déplacer ou renommer propose toujours « Annuler », et rien n'est supprimé définitivement.",
     ),
     el("div", { class: "btn-row" }, el("button", { class: "btn primary", onclick: () => startEditing(newRule()) }, "＋ Nouvelle règle")),
   );

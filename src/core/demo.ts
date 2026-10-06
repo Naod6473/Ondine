@@ -503,12 +503,12 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         image: null,
         bytes: 112,
         model: "claude-sonnet",
-        instruction: "Rends ce texte plus accrocheur",
+        instruction: "Rendez ce texte plus accrocheur",
         destination: "API Claude (Anthropic)",
       };
     case "askclaude.send":
       return {
-        answer: "Ondine, c'est ton bureau en un coup d'œil : la musique, l'agenda, les notes et tes agents IA tiennent dans une petite île, toujours à portée de souris.",
+        answer: "Ondine, c'est votre bureau en un coup d'œil : la musique, l'agenda, les notes et vos agents IA tiennent dans une petite île, toujours à portée de souris.",
         model: "claude-sonnet",
         truncated: false,
         inputTokens: 64,

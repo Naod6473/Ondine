@@ -64,7 +64,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "⚙️",
     label: "Général",
     sub: "L'écran, le repli de l'île, les notifications et le journal.",
-    keywords: ["Langue", "Language", "Lancer avec Windows", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal", "Signaler un problème", "Ressources utilisées", "Performances", "Économie d'énergie automatique sur batterie"],
+    keywords: ["Langue", "Language", "Lancer avec Windows", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal", "Signaler un problème", "Ressources utilisées", "Performances", "Économie d'énergie automatique sur batterie", "S'adresser à moi", "Tutoiement", "Vouvoiement"],
     render: general,
   },
   {
@@ -99,7 +99,7 @@ const ISLAND_PAGES: Page[] = [
     group: "L'île",
     icon: "⚡",
     label: "Règles",
-    sub: "Quand quelque chose arrive, l'île agit pour toi.",
+    sub: "Quand quelque chose arrive, l'île agit pour vous.",
     keywords: ["Règles automatiques", "Raccourci clavier", "Surveiller un dossier", "Clé USB", "Modèles de règles"],
     // Le module « Règles » n'a pas de page à part : son interrupteur est ici.
     render: (main) => {
@@ -143,7 +143,7 @@ const SECURITY_PAGES: Page[] = [
     group: "Sécurité",
     icon: "💾",
     label: "Sauvegarde",
-    sub: "Exporter ou importer tes réglages (jamais les clés).",
+    sub: "Exporter ou importer vos réglages (jamais les clés).",
     keywords: ["Exporter les réglages", "Importer des réglages"],
     render: backup,
   },
@@ -447,6 +447,21 @@ function results(page: HTMLElement, q: string) {
 
 // ── Pages ─────────────────────────────────────────────────────────────────────
 
+/**
+ * « S'adresser à moi » : vouvoiement (par défaut) ou tutoiement. Ne concerne
+ * que le français : la ligne est masquée quand l'interface est en anglais
+ * (classe fr-only, voir settings.css ; i18n.ts met à jour <html lang>).
+ */
+function addressRow(s: Settings): HTMLElement {
+  const r = row(
+    "S'adresser à moi",
+    choice(s.general.address === "tu" ? "tu" : "vous", [["vous", "Vouvoiement"], ["tu", "Tutoiement"]], (v) => save((d) => (d.general.address = v === "tu" ? "tu" : "vous"))),
+    "Les aides et les messages disent « vous » ou « tu ». Les boutons ne changent pas.",
+  );
+  r.classList.add("fr-only");
+  return r;
+}
+
 function general(main: HTMLElement) {
   const s = settingsStore.current;
   main.append(
@@ -456,15 +471,16 @@ function general(main: HTMLElement) {
         choice(s.general.language ?? "auto", [["auto", "Automatique"], ["fr", "Français"], ["en", "English"]], (v) => save((d) => (d.general.language = v as Settings["general"]["language"]))),
         "Automatique : la langue choisie à l'installation, sinon celle de Windows. Les fenêtres se rechargent.",
       ),
+      addressRow(s),
       row(
         "Lancer avec Windows",
         toggle(s.general.autostart !== false, (v) => save((d) => (d.general.autostart = v)), "Lancer avec Windows"),
-        "Ondine s'ouvre toute seule quand tu ouvres ta session.",
+        "Ondine s'ouvre toute seule quand vous ouvrez votre session.",
       ),
       row(
         "Sur quel écran ?",
         choice(s.general.screen, [["primary", "Écran principal"], ["cursor", "Suit la souris"]], (v) => save((d) => (d.general.screen = v as Settings["general"]["screen"]))),
-        "Seulement si tu as plusieurs écrans : l'île reste sur l'écran principal, ou suit l'écran où se trouve ta souris.",
+        "Seulement si vous avez plusieurs écrans : l'île reste sur l'écran principal, ou suit l'écran où se trouve votre souris.",
       ),
       row(
         "Toujours en mini",
@@ -495,7 +511,7 @@ function general(main: HTMLElement) {
             d.island.offset = 0.5;
           }, true),
         ),
-        "Tu peux aussi attraper l'île par son bord collé à l'écran et la poser ailleurs : elle s'aimante aux bords, aux coins et au centre.",
+        "Vous pouvez aussi attraper l'île par son bord collé à l'écran et la poser ailleurs : elle s'aimante aux bords, aux coins et au centre.",
       ),
       row(
         "Mode présentation",
@@ -518,7 +534,7 @@ function general(main: HTMLElement) {
         ),
         row("Dossier du journal", el("button", { class: "btn small", onclick: () => void Bridge.openLogsFolder() }, "Ouvrir")),
       ],
-      "Le journal reste sur ton PC (%LOCALAPPDATA%\\Ondine\\logs). Il ne contient jamais de clé ni de contenu de fichier.",
+      "Le journal reste sur votre PC (%LOCALAPPDATA%\\Ondine\\logs). Il ne contient jamais de clé ni de contenu de fichier.",
     ),
     aboutGroup(),
     demoGroup(),
@@ -568,7 +584,7 @@ function updatesGroup(): HTMLElement {
           status.textContent = info ? `La version ${info.version} est disponible.` : "Ondine est à jour.";
           install.hidden = !info;
         } catch {
-          status.textContent = "Impossible de joindre GitHub. Vérifie ta connexion à Internet.";
+          status.textContent = "Impossible de joindre GitHub. Vérifiez votre connexion à Internet.";
         }
         search.disabled = false;
       },
@@ -579,7 +595,7 @@ function updatesGroup(): HTMLElement {
     row(
       "Mises à jour automatiques",
       toggle(s.general.autoUpdate !== false, (v) => save((d) => (d.general.autoUpdate = v)), "Mises à jour automatiques"),
-      "Au démarrage puis une fois par jour, Ondine regarde sur GitHub si une nouvelle version existe et te la propose. Rien ne s'installe sans ton accord.",
+      "Au démarrage puis une fois par jour, Ondine regarde sur GitHub si une nouvelle version existe et vous la propose. Rien ne s'installe sans votre accord.",
     ),
     row("Version installée", el("div", { class: "chips" }, version, search, install, status)),
   ]);
@@ -600,7 +616,7 @@ function demoGroup(): HTMLElement {
       row(
         "Mode démo",
         toggle(on, (v) => save((d) => (d.general.demo = v), true), "Mode démo"),
-        "L'île montre de fausses données (musique, agenda, notes, presse-papiers…) au lieu des tiennes. Aucune action n'est faite pour de vrai.",
+        "L'île montre de fausses données (musique, agenda, notes, presse-papiers…) au lieu des vôtres. Aucune action n'est faite pour de vrai.",
       ),
       ...(on
         ? [
@@ -615,12 +631,12 @@ function demoGroup(): HTMLElement {
                 scene("download", "Fichier téléchargé"),
                 scene("next-track", "Morceau suivant"),
               ),
-              "La notification arrive dans l'île : lance l'enregistrement avant de cliquer.",
+              "La notification arrive dans l'île : lancez l'enregistrement avant de cliquer.",
             ),
           ]
         : []),
     ],
-    "Pense à éteindre le mode démo après tes captures.",
+    "Pensez à éteindre le mode démo après vos captures.",
   );
 }
 
@@ -653,7 +669,7 @@ function look(main: HTMLElement) {
     group("Thème", [wideRow(null, el("div", { class: "swatches" }, ...THEMES.map((t) => swatch(t.id, t.name)), swatch("custom", "Personnalisée")), undefined, "Thème")]),
     group(
       null,
-      [row("Couleur personnalisée", picker, "Choisis n'importe quelle couleur : si elle est trop claire, l'île l'assombrit juste assez pour que le texte reste lisible.")],
+      [row("Couleur personnalisée", picker, "Choisissez n'importe quelle couleur : si elle est trop claire, l'île l'assombrit juste assez pour que le texte reste lisible.")],
     ),
     group("Icônes", [
       row(
@@ -770,7 +786,7 @@ function tabs(main: HTMLElement) {
       { class: "group" },
       el("h3", { class: "group-title" }, "Ordre des onglets"),
       list,
-      el("p", { class: "group-note" }, "Glisse une ligne, ou utilise ↑ ↓. Tu peux aussi faire glisser les onglets directement dans l'île."),
+      el("p", { class: "group-note" }, "Glissez une ligne, ou utilisez ↑ ↓. Vous pouvez aussi faire glisser les onglets directement dans l'île."),
     ),
     el("div", { class: "actions" }, el("button", { class: "btn", onclick: () => save((d) => (d.island.tabOrder = []), true) }, "Ordre d'origine")),
   );
@@ -843,7 +859,7 @@ function mascot(main: HTMLElement) {
           catalog.map((e) => [e.manifest.id, e.problems.length ? `${e.manifest.name} (invalide)` : e.manifest.name]),
           (v) => save((d) => (d.mascot.id = v), true),
         ),
-        "Dépose tes mascottes dans le dossier mascots/ du projet, puis relance l'appli.",
+        "Déposez vos mascottes dans le dossier mascots/ du projet, puis relancez l'appli.",
       ),
     ]),
     group("Humeur", [
@@ -857,7 +873,7 @@ function mascot(main: HTMLElement) {
         row("Au plus une visite toutes les", stepper(s.mascot.peekEveryMins, 1, 120, (v) => save((d) => (d.mascot.peekEveryMins = v)), 1, "min")),
         row("Essayer", el("button", { class: "btn small", onclick: () => bus.emit("mascot.peek-now", null, "settings") }, "Faire venir Ondine")),
       ],
-      "Quand l'île est cachée et que tu ne touches plus au PC depuis un moment, Ondine descend du bord de l'écran tête en bas, cligne des yeux, puis remonte. Un clic sur elle ouvre l'île. Jamais pendant une présentation ou un plein écran.",
+      "Quand l'île est cachée et que vous ne touchez plus au PC depuis un moment, Ondine descend du bord de l'écran tête en bas, cligne des yeux, puis remonte. Un clic sur elle ouvre l'île. Jamais pendant une présentation ou un plein écran.",
     ),
   );
   if (!cur) return;
@@ -931,8 +947,8 @@ function privacy(main: HTMLElement) {
     group(
       "Ce que l'île promet",
       [
-        row("Télémétrie", chip("Aucune", "ok"), "Rien n'est envoyé sur Internet sans que tu le demandes."),
-        row("Envoi à Claude", chip("Toujours montré avant", "ok"), "Un module qui envoie du contenu à l'API Claude le déclare et te montre ce qui part."),
+        row("Télémétrie", chip("Aucune", "ok"), "Rien n'est envoyé sur Internet sans que vous le demandiez."),
+        row("Envoi à Claude", chip("Toujours montré avant", "ok"), "Un module qui envoie du contenu à l'API Claude le déclare et vous montre ce qui part."),
       ],
     ),
     group("Dossiers exclus", [...rows, wideRow(null, el("div", { class: "inline" }, input, el("button", { class: "btn", onclick: () => void add() }, "Exclure")))], "Aucun module ne lira ni n'enverra un fichier situé dans ces dossiers."),
@@ -1022,7 +1038,7 @@ function backup(main: HTMLElement) {
           ),
           "Un fichier .json, dans %APPDATA%\\Ondine\\exports (le dossier s'ouvre).",
         ),
-        row("Importer des réglages", el("label", { class: "btn small" }, "Choisir…", file), "Remplace tes réglages actuels."),
+        row("Importer des réglages", el("label", { class: "btn small" }, "Choisir…", file), "Remplace vos réglages actuels."),
         msg,
       ],
       "Les clés ne font jamais partie de l'export : elles restent dans le Gestionnaire d'identifiants.",

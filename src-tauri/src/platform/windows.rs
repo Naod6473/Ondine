@@ -329,7 +329,7 @@ pub fn copy_secret(text: &str) -> Result<u32, String> {
             std::thread::sleep(std::time::Duration::from_millis(20));
         }
         if !opened {
-            return Err("le presse-papiers est occupé, réessaie".into());
+            return Err("le presse-papiers est occupé, réessayez".into());
         }
         let result = (|| -> Result<(), String> {
             EmptyClipboard().map_err(|e| e.to_string())?;
@@ -1124,7 +1124,7 @@ fn check_pipe_server(pipe: &std::fs::File) -> Result<(), String> {
     use std::os::windows::io::AsRawHandle;
     use ::windows::Win32::Foundation::HANDLE;
     use ::windows::Win32::System::Pipes::GetNamedPipeServerProcessId;
-    let refused = "canal refusé : ce n'est pas l'île de ton compte qui répond";
+    let refused = "canal refusé : ce n'est pas l'île de votre compte qui répond";
     let mut pid = 0u32;
     unsafe { GetNamedPipeServerProcessId(HANDLE(pipe.as_raw_handle() as _), &mut pid) }.map_err(|_| refused)?;
     let (sid, exe) = process_identity(pid).ok_or(refused)?;

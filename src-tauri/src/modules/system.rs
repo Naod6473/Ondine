@@ -339,7 +339,7 @@ fn ticket(ctx: &ModuleContext, snap: &Value, args: &Value) -> Result<Value, Stri
     ctx.require("clipboard")?;
     let description = args.get("description").and_then(Value::as_str).unwrap_or("").trim();
     if description.is_empty() {
-        return Err("décris le problème en quelques mots".into());
+        return Err("décrivez le problème en quelques mots".into());
     }
     if description.chars().count() > 5000 {
         return Err("description trop longue (5000 caractères au plus)".into());
@@ -350,7 +350,7 @@ fn ticket(ctx: &ModuleContext, snap: &Value, args: &Value) -> Result<Value, Stri
             return Err("le contenu copié est marqué sensible : on n'y touche pas".into());
         }
         let mut clipboard = arboard::Clipboard::new().map_err(|e| format!("presse-papiers indisponible : {e}"))?;
-        let img = clipboard.get_image().map_err(|_| "aucune image copiée : fais d'abord ta capture (Win+Maj+S)".to_string())?;
+        let img = clipboard.get_image().map_err(|_| "aucune image copiée : faites d'abord votre capture (Win+Maj+S)".to_string())?;
         let mut out = std::io::Cursor::new(Vec::new());
         image::write_buffer_with_format(&mut out, &img.bytes, img.width as u32, img.height as u32, image::ExtendedColorType::Rgba8, image::ImageFormat::Png)
             .map_err(|e| format!("image illisible : {e}"))?;

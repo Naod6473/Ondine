@@ -435,7 +435,7 @@ fn images(ctx: &ModuleContext, args: &Value) -> Result<Value, String> {
     let max_width = args.get("maxWidth").and_then(Value::as_u64).filter(|w| *w > 0).map(|w| w.clamp(16, 16_384) as u32);
     let quality = args.get("quality").and_then(Value::as_u64).unwrap_or(85).clamp(30, 100) as u8;
     if format == OutFormat::Same && max_width.is_none() {
-        return Err("choisis un format ou une taille : sinon l'image ne change pas".into());
+        return Err("choisissez un format ou une taille : sinon l'image ne change pas".into());
     }
     ctx.emit("task.started", json!({ "label": "Images" }));
     let mut created = Vec::new();

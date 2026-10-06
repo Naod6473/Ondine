@@ -13,12 +13,19 @@
 // l'installateur, sinon celle de Windows (le Rust la donne : ui_language).
 // Changer la langue traduit les fenêtres sur place, sans les recharger.
 //
+// Tutoiement : en français, l'interface vouvoie (« Vérifiez votre connexion »).
+// Le réglage « S'adresser à moi » (general.address = "tu") la fait tutoyer, par
+// le même mécanisme : un dictionnaire français → français (i18n-fr-tu.json),
+// qui ne contient que les phrases au « vous ». Les boutons et les libellés à
+// l'infinitif (« Coller ici… ») ne changent pas.
+//
 // Une autre langue plus tard : un fichier i18n-xx.json de la même forme, et une
 // ligne dans DICTIONARIES ci-dessous (voir CONTRIBUTING.md, « Ajouter une langue »).
 
 import { Bridge } from "./bridge";
 import { settingsStore } from "./settings-store";
 import english from "./i18n-en.json";
+import frenchTu from "./i18n-fr-tu.json";
 
 /** Un dictionnaire : français → autre langue. */
 interface Dictionary {
@@ -31,16 +38,30 @@ const DICTIONARIES: Record<string, Dictionary> = {
   en: english as unknown as Dictionary,
 };
 
+/** Vouvoiement → tutoiement (en français seulement, réglage general.address). */
+const FRENCH_TU = frenchTu as unknown as Dictionary;
+
 /** "fr", ou un code de DICTIONARIES ("en"…). */
 export type Lang = string;
 
 let lang: Lang = "fr";
+/** Vrai : en français, on tutoie (réglage general.address = "tu"). */
+let tutoie = false;
+/** Vrai quand un dictionnaire est chargé (anglais, ou français tutoyé). */
+let active = false;
 /** Le dictionnaire de la langue courante, prêt à servir (vide en français). */
 let exact = new Map<string, string>();
 let patterns: [RegExp, string][] = [];
 
+/** Le dictionnaire à utiliser : celui de la langue, ou le tutoiement en français. */
+function dictionaryFor(code: Lang): Dictionary | undefined {
+  if (code === "fr") return tutoie ? FRENCH_TU : undefined;
+  return DICTIONARIES[code];
+}
+
 function loadDictionary(code: Lang) {
-  const d = DICTIONARIES[code];
+  const d = dictionaryFor(code);
+  active = d !== undefined;
   exact = new Map(Object.entries(d?.exact ?? {}));
   patterns = (d?.patterns ?? []).map(([rx, rep]) => [new RegExp(rx), rep]);
   // En pack d'icônes « line », el() met le pictogramme d'un libellé à part
@@ -82,9 +103,9 @@ export function currentLang(): Lang {
   return lang;
 }
 
-/** Traduit un texte français (sans rien changer en français). */
+/** Traduit un texte français (sans rien changer en français vouvoyé). */
 export function t(fr: string): string {
-  if (lang === "fr" || !fr) return fr;
+  if (!active || !fr) return fr;
   const trimmed = fr.trim();
   if (!trimmed) return fr;
   let en = exact.get(trimmed);
@@ -191,18 +212,23 @@ function switchTo(next: Lang) {
 export async function startI18n(): Promise<void> {
   originalTitle = document.title;
   let setting = settingsStore.current.general.language ?? "auto";
+  tutoie = settingsStore.current.general.address === "tu";
   switchTo(await wantedLang(setting));
   settingsStore.onChange((s) => {
     const now = s.general.language ?? "auto";
-    if (now === setting) return;
+    const tu = s.general.address === "tu";
+    if (now === setting && tu === tutoie) return;
+    const addressChanged = tu !== tutoie;
     setting = now;
+    tutoie = tu;
     void wantedLang(now).then((next) => {
-      if (next !== lang) switchTo(next);
+      // Le tutoiement ne change que le français.
+      if (next !== lang || (addressChanged && next === "fr")) switchTo(next);
     });
   });
-  // Tout ce qui arrive ensuite dans la page (en français, rien ne change).
+  // Tout ce qui arrive ensuite dans la page (en français vouvoyé, rien ne change).
   new MutationObserver((records) => {
-    if (lang === "fr") return;
+    if (!active) return;
     for (const r of records) {
       if (r.type === "characterData") translateNode(r.target);
       else if (r.type === "attributes") {

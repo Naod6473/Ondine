@@ -24,6 +24,8 @@ export interface Settings {
     perfMode?: PerfMode;
     /** Sur batterie (PC débranché) : économie d'énergie, quel que soit `perfMode`. */
     ecoOnBattery?: boolean;
+    /** En français : vouvoyer ("vous") ou tutoyer ("tu") l'utilisateur (src/core/i18n.ts). */
+    address?: "vous" | "tu";
   };
   island: {
     /** Replier l'île quand la souris n'est plus dessus depuis ce nombre de secondes. */
@@ -112,7 +114,7 @@ export interface Profiles {
 export function defaultSettings(): Settings {
   return {
     version: 2,
-    general: { screen: "primary", logLevel: "info", language: "auto", welcomed: false, demo: false, autoUpdate: true, autostart: true, perfMode: "balanced", ecoOnBattery: true },
+    general: { screen: "primary", logLevel: "info", language: "auto", welcomed: false, demo: false, autoUpdate: true, autostart: true, perfMode: "balanced", ecoOnBattery: true, address: "vous" },
     island: {
       collapseSecs: 1.5,
       notificationSecs: 6,

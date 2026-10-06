@@ -107,7 +107,7 @@ export const askclaude: IslandModule = {
 
         if (!state.preview) {
           // 1. Ce que tu veux montrer à Claude.
-          const area = el("textarea", { class: "ask-input", placeholder: "Colle ici une erreur, un message, un bout de code…", rows: "4" }) as HTMLTextAreaElement;
+          const area = el("textarea", { class: "ask-input", placeholder: "Coller ici une erreur, un message, un bout de code…", rows: "4" }) as HTMLTextAreaElement;
           area.value = state.draft;
           area.addEventListener("input", () => (state.draft = area.value));
           const pick = api.handler(async () => {
@@ -121,13 +121,13 @@ export const askclaude: IslandModule = {
               { class: "btn-row" },
               el("button", { class: "btn small primary", onclick: api.handler(() => prepare(api, { text: state.draft })) }, "Préparer l'envoi"),
               el("button", { class: "btn small", onclick: pick }, "Un fichier ou une capture…"),
-              el("small", { class: "muted" }, "Rien ne part avant ta confirmation."),
+              el("small", { class: "muted" }, "Rien ne part avant votre confirmation."),
             ),
           );
         } else {
           // 2. Ce qui part, en entier, puis ta question et « Envoyer ».
           const p = state.preview;
-          const question = el("input", { class: "ask-question", placeholder: "Ta question (vide = « Explique-moi ceci. »)", maxlength: "2000" }) as HTMLInputElement;
+          const question = el("input", { class: "ask-question", placeholder: "Votre question (vide = « Expliquez-moi ceci. »)", maxlength: "2000" }) as HTMLInputElement;
           question.value = state.question;
           question.addEventListener("input", () => (state.question = question.value));
           const send = api.handler(async () => {
@@ -190,7 +190,7 @@ export const askclaude: IslandModule = {
               { class: "ask-answer" },
               el("div", { class: "ask-outgoing-head" }, el("b", {}, "💬 Claude"), el("small", { class: "muted" }, `${a.inputTokens ?? "?"} + ${a.outputTokens ?? "?"} jetons`)),
               el("div", { class: "ask-answer-text" }, a.answer || "(réponse vide)"),
-              a.truncated ? el("small", { class: "muted" }, "Réponse coupée : augmente la longueur maximale dans les réglages.") : null,
+              a.truncated ? el("small", { class: "muted" }, "Réponse coupée : augmentez la longueur maximale dans les réglages.") : null,
               el(
                 "div",
                 { class: "btn-row" },

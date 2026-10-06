@@ -115,7 +115,7 @@ function report(api: ModuleApi, done: Done) {
     const r = done.result as OcrSummary;
     api.notify({
       title: r.copied ? `Texte copié (${r.chars} caractères)` : `Texte lu (${r.chars} caractères)`,
-      body: "Ouvre l'onglet Capture pour le voir.",
+      body: "Ouvrez l'onglet Capture pour le voir.",
       icon: "🔤",
       priority: "normal",
       key: "capture",
@@ -221,7 +221,7 @@ export const capture: IslandModule = {
           "div",
           { class: "btn-row" },
           el("span", { class: "muted capture-label" }, "Couleur à l'écran :"),
-          button("💧 Pipette", "Fige l'écran : clique sur un point pour copier sa couleur (Échap pour annuler, flèches pour bouger d'un pixel)", () => pick(api)),
+          button("💧 Pipette", "Fige l'écran : cliquez sur un point pour copier sa couleur (Échap pour annuler, flèches pour bouger d'un pixel)", () => pick(api)),
           swatches,
         ),
       );
@@ -230,7 +230,7 @@ export const capture: IslandModule = {
       const draw = () => {
         result.replaceChildren();
         if (!lastText) {
-          result.append(el("p", { class: "muted" }, "Le texte lu s'affichera ici. Tout se passe sur ton ordinateur : l'image n'est envoyée nulle part."));
+          result.append(el("p", { class: "muted" }, "Le texte lu s'affichera ici. Tout se passe sur votre ordinateur : l'image n'est envoyée nulle part."));
           return;
         }
         const text = el("textarea", { class: "clip-input capture-text", readonly: true, spellcheck: "false" }, lastText.text);

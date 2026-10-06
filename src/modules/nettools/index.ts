@@ -61,7 +61,7 @@ export const nettools: IslandModule = {
       }),
       api.on("nettools.public-ip", (msg) => {
         const p = (msg.payload ?? {}) as { ip?: string; previous?: string };
-        api.notify({ title: "Ton adresse IP publique a changé", body: `${p.previous ?? "?"} → ${p.ip ?? "?"}`, icon: "🌍", priority: "low", key: "net-public-ip" });
+        api.notify({ title: "Votre adresse IP publique a changé", body: `${p.previous ?? "?"} → ${p.ip ?? "?"}`, icon: "🌍", priority: "low", key: "net-public-ip" });
       }),
     ];
     return () => offs.forEach((off) => off());
@@ -207,7 +207,7 @@ export const nettools: IslandModule = {
           if (e.key === "Enter") return testPort();
         }),
       );
-      out.append(el("p", { class: "muted" }, "Tape une adresse, puis Ping, Port ou DNS."));
+      out.append(el("p", { class: "muted" }, "Tapez une adresse, puis Ping, Port ou DNS."));
       return stopPing;
     },
   },

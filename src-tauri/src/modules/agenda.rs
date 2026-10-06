@@ -344,7 +344,7 @@ fn link_url(ctx: &ModuleContext, id: &str) -> Option<String> {
 fn refresh_link(ctx: &ModuleContext, state: &Shared, cal: &Calendar) {
     let Some(url) = link_url(ctx, &cal.id) else {
         // Pas (ou plus) d'adresse : on oublie ce qu'on avait téléchargé.
-        let error = Some("aucun lien enregistré : ajoute-le dans les réglages du module Agenda".to_string());
+        let error = Some("aucun lien enregistré : ajoutez-le dans les réglages du module Agenda".to_string());
         state.locked().loaded.insert(cal.id.clone(), Loaded { error, ..Default::default() });
         return;
     };
@@ -407,7 +407,7 @@ fn download(url: &str) -> Result<String, String> {
     let status = resp.status().as_u16();
     if status != 200 {
         return Err(match status {
-            401 | 403 | 404 => format!("le serveur refuse cette adresse (code {status}) : recopie l'adresse secrète iCal"),
+            401 | 403 | 404 => format!("le serveur refuse cette adresse (code {status}) : recopiez l'adresse secrète iCal"),
             _ => format!("le serveur a répondu {status}, nouvel essai dans 15 minutes"),
         });
     }
@@ -418,7 +418,7 @@ fn download(url: &str) -> Result<String, String> {
         .read_to_string()
         .map_err(|_| "réponse illisible ou trop grosse (plus de 20 Mo)".to_string())?;
     if !text.contains("BEGIN:VCALENDAR") {
-        return Err("ce lien ne renvoie pas un agenda iCal (.ics) : prends l'« adresse secrète au format iCal »".into());
+        return Err("ce lien ne renvoie pas un agenda iCal (.ics) : prenez l'« adresse secrète au format iCal »".into());
     }
     Ok(text)
 }

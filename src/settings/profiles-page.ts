@@ -86,7 +86,7 @@ export function profilesPage(main: HTMLElement, save: Save) {
           "Selon l'heure ou le Wi-Fi (règle de chaque profil ci-dessous). Un choix fait à la main tient jusqu'au prochain changement.",
         ),
       ],
-      "Un profil ne retient que ce qu'il remplace. Pendant qu'il est actif, tes changements de ces réglages (page Onglets, Apparence…) lui sont gardés ; les autres réglages restent communs.",
+      "Un profil ne retient que ce qu'il remplace. Pendant qu'il est actif, vos changements de ces réglages (page Onglets, Apparence…) lui sont gardés ; les autres réglages restent communs.",
     ),
   );
 

@@ -229,7 +229,7 @@ fn apply_mic_hotkey(app: &AppHandle, wanted: &str) {
     if let Err(e) = result {
         let text = e.to_string();
         let msg = if text.contains("already registered") {
-            format!("{wanted} est déjà pris par un autre logiciel : choisis un autre raccourci dans les réglages de Contrôles")
+            format!("{wanted} est déjà pris par un autre logiciel : choisissez un autre raccourci dans les réglages de Contrôles")
         } else {
             format!("le raccourci micro {wanted} est refusé : {text}")
         };

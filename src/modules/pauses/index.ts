@@ -46,8 +46,8 @@ export const pauses: IslandModule = {
       activeSince = Date.now() - every * 60_000 + SNOOZE_MS;
       api.emit("mascot.emote", { emotion: "calm" });
       api.notify({
-        title: "Et si tu faisais une petite pause ?",
-        body: `${every} minutes d'écran : lève-toi, regarde au loin, bois un verre d'eau.`,
+        title: "Et si vous faisiez une petite pause ?",
+        body: `${every} minutes d'écran : levez-vous, regardez au loin, buvez un verre d'eau.`,
         icon: "☕",
         priority: "normal",
         key: "pauses",

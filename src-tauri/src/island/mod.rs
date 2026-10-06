@@ -666,7 +666,7 @@ pub fn apply_hotkey(app: &AppHandle, wanted: &str) {
     if let Err(e) = result {
         let text = e.to_string();
         let msg = if text.contains("already registered") {
-            format!("{wanted} est déjà pris par un autre logiciel : choisis un autre raccourci dans Réglages > Général")
+            format!("{wanted} est déjà pris par un autre logiciel : choisissez un autre raccourci dans Réglages > Général")
         } else {
             format!("le raccourci {wanted} est refusé : {text}")
         };

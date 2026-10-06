@@ -63,7 +63,7 @@ pub fn simplify(path: PathBuf) -> PathBuf {
 pub fn check_folder(raw: &str) -> Result<String, String> {
     let path = Path::new(raw.trim());
     if !path.is_absolute() || !path.is_dir() {
-        return Err("indique le chemin complet d'un dossier existant".into());
+        return Err("indiquez le chemin complet d'un dossier existant".into());
     }
     Ok(path.to_string_lossy().to_string())
 }

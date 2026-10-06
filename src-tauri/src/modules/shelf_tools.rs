@@ -122,7 +122,7 @@ const RESERVED: &[&str] = &[
 pub fn rename_plan(paths: &[PathBuf], pattern: &str, start: u32) -> Result<Vec<(PathBuf, PathBuf)>, String> {
     let pattern = pattern.trim();
     if pattern.is_empty() {
-        return Err("écris un modèle de nom, par exemple « vacances-{n} »".into());
+        return Err("écrivez un modèle de nom, par exemple « vacances-{n} »".into());
     }
     if pattern.chars().any(|c| FORBIDDEN.contains(&c) || c.is_control()) {
         return Err("le modèle contient un caractère interdit (\\ / : * ? \" < > |)".into());
