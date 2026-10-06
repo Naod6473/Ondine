@@ -17,6 +17,7 @@ import { errorText } from "../../core/log";
 import { DEMO_PICKED_FOLDER, demoOn } from "../../core/demo";
 import type { DropTarget, IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
+import { setLabel } from "../../island/icon";
 
 interface ShelfItem {
   path: string;
@@ -187,7 +188,7 @@ function confirmButton(api: ModuleApi, cls: string, label: string, title: string
   const reset = () => {
     window.clearTimeout(timer);
     timer = undefined;
-    b.textContent = label;
+    setLabel(b, label);
     b.classList.remove("confirming");
   };
   b.onclick = api.handler(() => {
@@ -388,7 +389,9 @@ export const shelf: IslandModule = {
             el(
               "p",
               { class: "muted shelf-empty" },
-              "L'étagère est vide. Glisse des fichiers sur l'île et lâche-les sur « 🧺 Étagère » pour les garder sous la main.",
+              // Pas de pictogramme au milieu de la phrase : en icônes « Épurées » il
+              // serait mis à part, et la phrase coupée ne serait plus traduite.
+              "L'étagère est vide. Glisse des fichiers sur l'île et lâche-les sur la cible « Étagère » pour les garder sous la main.",
             ),
           );
           return;

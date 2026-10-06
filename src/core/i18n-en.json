@@ -1055,7 +1055,8 @@
 "un glisser est déjà en cours": "a drag is already in progress",
 "glisser interrompu": "drag interrupted",
 "le glisser a planté": "the drag crashed",
-"glisser vers l'extérieur : disponible seulement sous Windows": "dragging out: only available on Windows"
+"glisser vers l'extérieur : disponible seulement sous Windows": "dragging out: only available on Windows",
+"L'étagère est vide. Glisse des fichiers sur l'île et lâche-les sur la cible « Étagère » pour les garder sous la main.": "The Shelf is empty. Drag files onto the island and drop them on the “Shelf” target to keep them handy."
 },
 "patterns": [
 [
@@ -2017,6 +2018,14 @@
 [
 "^(.+)\\ :\\ introuvable\\ pour\\ Windows$",
 "$1: not found by Windows"
+],
+[
+"^🔐\\ VPN\\ :\\ (.+?)$",
+"🔐 VPN: $1"
+],
+[
+"^(○+)\\ ·\\ (.+?)\\ séance\\(s\\)$",
+"$1 · $2 session(s)"
 ]
 ]
 }

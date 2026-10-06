@@ -449,10 +449,11 @@ export const agents: IslandModule = {
           return; // hors de l'appli
         }
         const waiting = data.sessions.filter((x) => x.state === "waiting").length;
-        status.textContent = data.sessions.length
-          ? [data.working ? `🧠 ${data.working} au travail` : "", waiting ? `✋ ${waiting} t'attend${waiting > 1 ? "ent" : ""}` : ""].filter(Boolean).join(" · ") ||
-            "Personne ne travaille en ce moment."
-          : "Aucune session pour l'instant.";
+        // Un morceau par élément : chacun garde son pictogramme et sa traduction.
+        const parts = [data.working ? `🧠 ${data.working} au travail` : "", waiting ? `✋ ${waiting} t'attend${waiting > 1 ? "ent" : ""}` : ""].filter(Boolean);
+        if (!data.sessions.length) status.textContent = "Aucune session pour l'instant.";
+        else if (!parts.length) status.textContent = "Personne ne travaille en ce moment.";
+        else status.replaceChildren(...parts.flatMap((x, i) => [i ? " · " : "", el("span", {}, x)]));
         // Les questions en attente (aussi après avoir fermé leur notification).
         asks.replaceChildren(...(data.asks ?? []).map((q) => askRow(q)));
         drawQuiet(data.quiet);

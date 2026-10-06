@@ -16,7 +16,7 @@ import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { settingsStore } from "../../core/settings-store";
 import { el } from "../../island/dom";
-import { agentIcon, icon } from "../../island/icon";
+import { agentIcon, icon, setLabel } from "../../island/icon";
 import { reducedMotion } from "../../island/tab-pill";
 import { ALL_MODULES } from "..";
 import { normalize, score } from "./search";
@@ -320,11 +320,14 @@ export const launcher: IslandModule = {
         if (!current.length) {
           list.append(el("li", { class: "muted launch-empty" }, search.value.trim() ? "Rien trouvé." : "Tape le nom d'une appli, d'un fichier, d'un onglet, ou un mot de tes notes."));
         }
-        foot.textContent = listing.hotkeyError
-          ? `⚠️ ${listing.hotkeyError}`
-          : listing.hotkey
-            ? `${prettyHotkey(listing.hotkey)} pour ouvrir · ↑ ↓ pour choisir · Entrée pour ouvrir`
-            : "↑ ↓ pour choisir · Entrée pour ouvrir";
+        setLabel(
+          foot,
+          listing.hotkeyError
+            ? `⚠️ ${listing.hotkeyError}`
+            : listing.hotkey
+              ? `${prettyHotkey(listing.hotkey)} pour ouvrir · ↑ ↓ pour choisir · Entrée pour ouvrir`
+              : "↑ ↓ pour choisir · Entrée pour ouvrir",
+        );
         foot.classList.toggle("bad", Boolean(listing.hotkeyError));
         // Petite entrée en cascade à l'ouverture seulement (pas à chaque frappe).
         if (first && !reducedMotion()) {

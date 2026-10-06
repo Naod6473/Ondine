@@ -14,6 +14,7 @@
 import { Bridge, IS_TAURI, onTauriEvent, type PerfState } from "./bridge";
 import { settingsStore } from "./settings-store";
 import type { PerfMode } from "./types";
+import { setLabel } from "../island/icon";
 
 /**
  * Les rythmes en millisecondes : [haute, équilibrée, éco]. La colonne
@@ -200,5 +201,6 @@ const written = new WeakMap<Node, string>();
 export function setText(node: Node, text: string) {
   if (written.get(node) === text) return;
   written.set(node, text);
-  node.textContent = text;
+  // Les pictogrammes du libellé suivent le pack d'icônes (voir icon.ts).
+  setLabel(node, text);
 }
