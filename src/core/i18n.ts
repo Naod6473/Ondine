@@ -11,7 +11,7 @@
 //
 // La langue : réglage « Langue » (auto, fr, en). « auto » = celle choisie dans
 // l'installateur, sinon celle de Windows (le Rust la donne : ui_language).
-// Changer la langue recharge les fenêtres.
+// Changer la langue traduit les fenêtres sur place, sans les recharger.
 
 import { Bridge } from "./bridge";
 import { settingsStore } from "./settings-store";
@@ -50,76 +50,105 @@ export function t(fr: string): string {
 
 const ATTRS = ["title", "placeholder", "aria-label"];
 
+// Le texte d'origine (français) de chaque texte traduit, pour revenir au
+// français sans recharger la fenêtre. `shown` = ce qu'on a écrit nous-mêmes :
+// si le texte affiché a changé depuis, c'est l'appli qui l'a réécrit.
+type Seen = { orig: string; shown: string };
+const seenText = new WeakMap<Node, Seen>();
+const seenAttr = new WeakMap<Element, Map<string, Seen>>();
+
+/** Traduit (ou remet en français) un texte de la page. */
+function applyText(node: Node) {
+  const v = node.nodeValue ?? "";
+  const seen = seenText.get(node);
+  // Le texte d'origine : celui qu'on a gardé, sauf si l'appli l'a changé depuis.
+  const orig = seen && v === seen.shown ? seen.orig : v;
+  const shown = t(orig);
+  seenText.set(node, { orig, shown });
+  if (shown !== v) node.nodeValue = shown;
+}
+
+function applyAttr(elem: Element, name: string) {
+  const v = elem.getAttribute(name);
+  if (!v) return;
+  let map = seenAttr.get(elem);
+  if (!map) seenAttr.set(elem, (map = new Map()));
+  const seen = map.get(name);
+  const orig = seen && v === seen.shown ? seen.orig : v;
+  const shown = t(orig);
+  map.set(name, { orig, shown });
+  if (shown !== v) elem.setAttribute(name, shown);
+}
+
+function skipped(elem: Element): boolean {
+  // Ce qui vient de l'utilisateur (champs de saisie, notes, presse-papiers) n'est pas touché.
+  return elem.closest("[data-no-i18n], textarea, [contenteditable='true']") !== null;
+}
+
 function translateNode(node: Node) {
   if (node.nodeType === Node.TEXT_NODE) {
-    const v = node.nodeValue ?? "";
-    const tr = t(v);
-    if (tr !== v) node.nodeValue = tr;
+    const parent = node.parentElement;
+    if (!parent || !skipped(parent)) applyText(node);
     return;
   }
   if (node.nodeType !== Node.ELEMENT_NODE) return;
   const elem = node as Element;
-  // Ce qui vient de l'utilisateur (champs de saisie, notes, presse-papiers) n'est pas touché.
-  if (elem.closest("[data-no-i18n], textarea, [contenteditable='true']")) return;
-  for (const a of ATTRS) {
-    const v = elem.getAttribute(a);
-    if (v) {
-      const tr = t(v);
-      if (tr !== v) elem.setAttribute(a, tr);
-    }
-  }
+  if (skipped(elem)) return;
+  for (const a of ATTRS) applyAttr(elem, a);
   const walker = document.createTreeWalker(elem, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
   let n = walker.nextNode();
   while (n) {
-    if (n.nodeType === Node.TEXT_NODE) translateNode(n);
-    else {
-      const e = n as Element;
-      for (const a of ATTRS) {
-        const v = e.getAttribute(a);
-        if (v) {
-          const tr = t(v);
-          if (tr !== v) e.setAttribute(a, tr);
-        }
-      }
-    }
+    if (n.nodeType === Node.TEXT_NODE) applyText(n);
+    else for (const a of ATTRS) applyAttr(n as Element, a);
     n = walker.nextNode();
   }
+}
+
+let originalTitle = "";
+
+/** La langue voulue par le réglage (« auto » : celle de l'installateur ou de Windows). */
+async function wantedLang(setting: string): Promise<Lang> {
+  if (setting === "fr" || setting === "en") return setting;
+  const sys = await Bridge.uiLanguage();
+  return sys === "en" ? "en" : sys === "fr" ? "fr" : navigator.language.startsWith("fr") ? "fr" : "en";
+}
+
+/** Passe toute la page dans la langue `next`, sans recharger la fenêtre. */
+function switchTo(next: Lang) {
+  lang = next;
+  document.documentElement.lang = lang;
+  document.title = t(originalTitle);
+  // En français, t() rend le texte tel quel : on retrouve les originaux.
+  translateNode(document.body);
 }
 
 /**
  * À appeler au démarrage d'une fenêtre, après les réglages : choisit la langue
  * et, en anglais, traduit la page et tout ce qui y arrivera ensuite.
+ *
+ * Changer la langue dans les réglages traduit la page sur place. (Avant, on
+ * rechargeait la fenêtre, mais recharger l'île la faisait disparaître.)
  */
 export async function startI18n(): Promise<void> {
-  const wanted = settingsStore.current.general.language ?? "auto";
-  if (wanted === "fr" || wanted === "en") lang = wanted;
-  else {
-    const sys = await Bridge.uiLanguage();
-    lang = sys === "en" ? "en" : sys === "fr" ? "fr" : navigator.language.startsWith("fr") ? "fr" : "en";
-  }
-  document.documentElement.lang = lang;
-  // La langue change dans les réglages : on recharge la fenêtre.
-  let shown = wanted;
+  originalTitle = document.title;
+  let setting = settingsStore.current.general.language ?? "auto";
+  switchTo(await wantedLang(setting));
   settingsStore.onChange((s) => {
     const now = s.general.language ?? "auto";
-    if (now !== shown) {
-      shown = now;
-      location.reload();
-    }
+    if (now === setting) return;
+    setting = now;
+    void wantedLang(now).then((next) => {
+      if (next !== lang) switchTo(next);
+    });
   });
-  if (lang === "fr") return;
-  document.title = t(document.title);
-  translateNode(document.body);
+  // Tout ce qui arrive ensuite dans la page (en français, rien ne change).
   new MutationObserver((records) => {
+    if (lang === "fr") return;
     for (const r of records) {
       if (r.type === "characterData") translateNode(r.target);
       else if (r.type === "attributes") {
         const e = r.target as Element;
-        const v = e.getAttribute(r.attributeName!);
-        if (v && !e.closest("[data-no-i18n]")) {
-          const tr = t(v);
-          if (tr !== v) e.setAttribute(r.attributeName!, tr);
-        }
+        if (!skipped(e)) applyAttr(e, r.attributeName!);
       } else r.addedNodes.forEach(translateNode);
     }
   }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTRS });
