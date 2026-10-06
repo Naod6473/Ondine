@@ -39,7 +39,9 @@ styles d'animation, l'île sur le bord de votre choix, le français et l'anglais
 
 ### Vie privée
 
-- **Aucune télémétrie.** Ondine n'envoie rien sur Internet de son propre chef.
+- **Aucune télémétrie.** La seule connexion automatique : une fois par jour, Ondine
+  demande à GitHub s'il existe une nouvelle version (désactivable dans les Réglages).
+  Le détail est dans [PRIVACY.md](PRIVACY.md).
 - « Demander à Claude » envoie le texte choisi à l'API d'Anthropic, avec **votre**
   clé, seulement après vous avoir montré ce qui part.
 - Les clés sont rangées dans le Gestionnaire d'identifiants de Windows.
@@ -70,9 +72,19 @@ what happens. Click: the island opens onto your tools.
 - **IT tools**: system info, network (ping, ports, DNS), RDP and SSH favorites,
   terminal, automation rules.
 - **No telemetry.** Nothing leaves your PC unless you send it, and you see what
-  is sent first. Nothing is ever deleted for good: the Recycle Bin, with undo.
+  is sent first; the only automatic request is a daily update check on GitHub
+  (can be turned off). See [PRIVACY.md](PRIVACY.md). Nothing is ever deleted for
+  good: the Recycle Bin, with undo.
 
 Download: [releases](https://github.com/Naod6473/Ondine/releases). French and English.
+
+---
+
+### Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate
+by [SignPath Foundation](https://signpath.org). Team roles and details:
+[CODE_SIGNING.md](CODE_SIGNING.md). Privacy: [PRIVACY.md](PRIVACY.md).
 
 ---
 
