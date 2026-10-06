@@ -9,6 +9,7 @@
 //   platform/     ← tout ce qui touche à Win32
 
 mod cli;
+mod diagnostics;
 mod island;
 mod modules;
 mod platform;
@@ -472,6 +473,8 @@ pub fn run() {
             app_quit,
             update::update_check,
             update::update_install,
+            diagnostics::bug_report_open,
+            diagnostics::self_usage,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

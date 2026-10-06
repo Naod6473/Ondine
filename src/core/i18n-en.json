@@ -871,7 +871,13 @@
 "Téléchargement… Ondine va se fermer puis revenir.": "Downloading… Ondine will close and come back.",
 "Téléchargement de la mise à jour…": "Downloading the update…",
 "La mise à jour n'a pas pu s'installer": "The update couldn't be installed",
-"Installer maintenant ? Ondine se ferme quelques secondes puis revient toute seule.": "Install now? Ondine closes for a few seconds, then comes back on its own."
+"Installer maintenant ? Ondine se ferme quelques secondes puis revient toute seule.": "Install now? Ondine closes for a few seconds, then comes back on its own.",
+"Signaler un problème": "Report a problem",
+"Page ouverte dans ton navigateur : relis tout avant d'envoyer.": "Page opened in your browser: check everything before sending.",
+"Ouvre GitHub avec la version, Windows et les 40 dernières lignes du journal (chemins personnels masqués). Tu relis et complètes tout avant d'envoyer : rien ne part sans toi.": "Opens GitHub with the version, Windows and the last 40 lines of the log (personal paths hidden). You review and complete everything before sending: nothing leaves without you.",
+"Ressources utilisées": "Resources used",
+"Mémoire et processeur d'Ondine et de ses fenêtres (WebView2). Mesuré seulement pendant que cette page est ouverte.": "Memory and CPU used by Ondine and its windows (WebView2). Measured only while this page is open.",
+"Disponible dans l'appli seulement.": "Only available in the app."
 },
 "patterns": [
 [
@@ -1757,6 +1763,10 @@
 [
 "^La mise à jour a échoué : (.*)$",
 "The update failed: $1"
+],
+[
+"^(\\d+) Mo · (.+) % du processeur · (\\d+) processus$",
+"$1 MB · $2% CPU · $3 processes"
 ]
 ]
 }

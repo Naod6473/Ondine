@@ -15,6 +15,7 @@ Ondine ne se connecte à Internet que dans ces cas :
 | Vous avez ajouté un lien iCal dans Agenda | l'adresse que vous avez donnée | La lecture de votre calendrier. |
 | Vous avez activé l'alerte « changement d'IP publique » (Outils IT, désactivée par défaut) | api.ipify.org | Une demande de votre adresse IP publique. |
 | Vous lancez un ping, un test de port, un accès RDP/SSH ou un agent IA | la machine ou le service que vous avez choisi | Ce que vous avez demandé. |
+| Vous cliquez « Signaler un problème » (Réglages → Général → À propos) | github.com, dans votre navigateur | Rien tant que vous n'envoyez pas : la page d'une nouvelle issue s'ouvre, préremplie avec la version, Windows et les 40 dernières lignes du journal (chemins personnels masqués). Vous relisez, modifiez ou abandonnez. |
 
 Les clés et mots de passe sont rangés dans le Gestionnaire d'identifiants de Windows,
 jamais en clair dans un fichier.
@@ -37,5 +38,8 @@ specifically requested by the user, with one exception: the update check.
 - **Calendar**: reads the iCal link you entered.
 - **Public IP alert** (IT tools, off by default): asks api.ipify.org for your public IP.
 - **Ping, port test, RDP/SSH, AI agents**: connect to the host or service you chose.
+- **Report a problem** (Settings → General → About): opens a new GitHub issue page in
+  your browser, prefilled with the version, Windows and the last 40 log lines
+  (personal paths hidden). Nothing is sent until you review it and click Submit.
 
 Keys and passwords are stored in the Windows Credential Manager, never in plain text.

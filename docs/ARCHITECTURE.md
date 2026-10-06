@@ -90,7 +90,8 @@ Elle a deux tailles (en px logiques, multipliées par l'échelle de l'écran) :
 
 **Clics traversants.** Tauri 2 ne sait rendre « transparente aux clics » que la
 fenêtre entière. Le Rust lit donc la souris ~60 fois par seconde quand l'île est
-visible, et bascule ce réglage quand la souris entre ou sort de la forme
+visible (~30 fois au calme : souris immobile depuis 250 ms ou à plus de 200 px
+de l'île, voir `poll_interval`), et bascule ce réglage quand la souris entre ou sort de la forme
 de l'île, que le front lui envoie à chaque changement (`island_set_rect`). Pendant
 qu'un bouton de souris est enfoncé au-dessus du panneau, tout le panneau prend la
 souris : sinon Windows ne verrait pas l'île comme cible d'un glisser-déposer.
@@ -98,6 +99,14 @@ souris : sinon Windows ne verrait pas l'île comme cible d'un glisser-déposer.
 **Focus.** L'île ne prend le focus clavier que dans l'état `expanded` (ouvert par
 un clic ou par le menu) : c'est ce qui permet à Échap de fonctionner. En sortant
 de `expanded`, le focus est rendu à la fenêtre qui l'avait avant.
+
+**Clavier et lecteurs d'écran.** Les onglets de l'île ouverte sont une liste
+d'onglets ARIA (`tablist` / `tab` / `tabpanel`) : Tab entre sur l'onglet actif
+puis passe à ⚙, ▴ et au contenu ; ← → (Début, Fin) déplacent le focus d'un
+onglet à l'autre, Entrée ou Espace l'ouvre. Ouverte par le raccourci clavier,
+l'île met le focus sur l'onglet actif. Un bouton-icône avec une bulle (`title`)
+reçoit cette bulle comme nom (`aria-label`, voir `el()` dans dom.ts). Le focus
+clavier est entouré de la couleur d'accent du thème (`:focus-visible`).
 
 **Écrans et DPI.** Réglage `general.screen` : écran principal ou écran de la
 souris. L'île se replace toute seule quand un écran est branché, débranché ou
@@ -323,6 +332,13 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 - **Agenda .ics** (`ics.rs`) : lit le texte d'un fichier iCalendar (aucun
   téléchargement, rien d'exécuté) et déroule les répétitions. Voir « Module
   Agenda ».
+- **Diagnostic** (`src-tauri/src/diagnostics.rs`) : « Signaler un problème »
+  (Réglages → Général → À propos) ouvre dans le navigateur une issue GitHub
+  préremplie (`bug.yml` : version, Windows, 40 dernières lignes du journal,
+  chemins personnels masqués, adresse de 2000 caractères au plus) ; rien ne part
+  sans la personne. Et la mémoire / le processeur d'Ondine et de ses processus
+  WebView2 (sysinfo), lus toutes les 2 s seulement quand la fenêtre de réglages
+  est visible sur la page Général.
 - **Confidentialité** (`privacy.rs`) : aucune télémétrie. `check_path` refuse les
   chemins relatifs, inexistants ou situés dans un dossier exclu (après résolution
   des `..` et des liens). Un module qui envoie du contenu à l'API Claude déclare

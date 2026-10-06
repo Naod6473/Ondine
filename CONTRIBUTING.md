@@ -53,6 +53,42 @@ npm run tauri build    # src-tauri\target\release\bundle\nsis\Ondine_<version>_x
 | Journal | `%LOCALAPPDATA%\Ondine\logs\ondine.log` |
 | Clés API | Gestionnaire d'identifiants Windows |
 
+## Traduire, ajouter une langue
+
+L'interface est écrite en français, directement dans le code. Une autre langue
+ne réécrit pas le code : `src/core/i18n.ts` regarde chaque texte affiché (et
+les attributs `title`, `placeholder`, `aria-label`) et le remplace par sa
+traduction s'il la connaît. Un texte inconnu reste en français, rien ne casse.
+
+Les traductions anglaises sont dans `src/core/i18n-en.json`, en deux parties :
+
+- `"exact"` : le texte entier, tel qu'il s'affiche, espaces du début et de la
+  fin enlevés (`"Réglages": "Settings"`). Majuscules, ponctuation et espaces
+  insécables (avant `:` `?` `!` `»`) doivent être identiques au code.
+- `"patterns"` : les textes avec une partie variable, `[expression régulière,
+  remplacement]` ; `(…)` capture une partie, `$1`, `$2` la remettent
+  (`["^Dans (\\d+) min : (.+)$", "In $1 min: $2"]`). L'expression couvre le
+  texte entier (`^…$`) ; la première qui correspond gagne, donc les plus
+  précises d'abord.
+
+Chaque nouveau texte d'interface ajoute sa ligne (à la fin de la partie).
+Ce que l'utilisateur tape ou copie n'est jamais traduit (`textarea`, zones
+éditables, et tout ce qui est marqué `data-no-i18n`).
+
+**Ajouter une langue** (l'allemand, par exemple) :
+
+1. `src/core/i18n-de.json`, de la même forme que `i18n-en.json` ;
+2. dans `src/core/i18n.ts`, une ligne dans `DICTIONARIES` (`de: german`) ;
+3. le choix « Langue » : la valeur `"de"` dans `src/core/types.ts`
+   (`general.language`), dans la liste acceptée par `sanitize` de
+   `src-tauri/src/services/settings.rs`, et l'option dans la page Général des
+   réglages (`src/settings/main.ts`) ;
+4. la langue « automatique » : `system_language` de
+   `src-tauri/src/platform/windows.rs` (et `other.rs`) ne reconnaît que le
+   français, le reste devient l'anglais ; et `app_language` de `lib.rs` ;
+5. les rares textes écrits côté Rust (menu de l'icône dans `tray.rs`), qui
+   choisissent aujourd'hui entre français et anglais.
+
 ## Règles du projet
 
 - Les modules ne se parlent que par le bus.

@@ -31,6 +31,7 @@ import { settingsRows } from "./form";
 import { NavPill } from "./nav-pill";
 import { startI18n } from "../core/i18n";
 import { connectRules, rulesSection } from "./rules-editor";
+import { aboutGroup } from "./about";
 
 const PERMISSION_LABELS: Record<string, string> = {
   files: "Fichiers",
@@ -60,7 +61,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "⚙️",
     label: "Général",
     sub: "L'écran, le repli de l'île, les notifications et le journal.",
-    keywords: ["Langue", "Language", "Lancer avec Windows", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal"],
+    keywords: ["Langue", "Language", "Lancer avec Windows", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal", "Signaler un problème", "Ressources utilisées"],
     render: general,
   },
   {
@@ -505,6 +506,7 @@ function general(main: HTMLElement) {
       ],
       "Le journal reste sur ton PC (%LOCALAPPDATA%\\Ondine\\logs). Il ne contient jamais de clé ni de contenu de fichier.",
     ),
+    aboutGroup(),
     demoGroup(),
   );
 }

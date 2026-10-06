@@ -26,7 +26,20 @@ export function el<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs =
     if (child === null || child === undefined || child === false) continue;
     node.append(typeof child === "object" ? child : String(child));
   }
+  nameIconButton(node);
   return node;
+}
+
+/**
+ * Un bouton-icône (« × », « ⚙ », une icône dessinée) n'a pas de nom lisible
+ * pour un lecteur d'écran : il annoncerait « multiplication ». S'il a une
+ * bulle (title) et aucun texte en lettres ou chiffres, sa bulle devient son
+ * nom (aria-label), traduit comme le reste par i18n.ts.
+ */
+function nameIconButton(node: HTMLElement) {
+  if (node.tagName !== "BUTTON" || node.hasAttribute("aria-label")) return;
+  const title = node.getAttribute("title");
+  if (title && !/[\p{L}\p{N}]/u.test(node.textContent ?? "")) node.setAttribute("aria-label", title);
 }
 
 export function clear(node: HTMLElement) {
