@@ -466,7 +466,9 @@ by [SignPath Foundation](https://signpath.org). Team roles and details:
 (En français : la signature du code est offerte par SignPath.io, avec un
 certificat de la SignPath Foundation. Seuls l'installateur et le programme
 construits par GitHub Actions à partir de ce dépôt sont signés ; chaque
-signature est approuvée à la main. Détails : [CODE_SIGNING.md](CODE_SIGNING.md).)
+signature est approuvée à la main. Détails : [CODE_SIGNING.md](CODE_SIGNING.md).
+La demande à SignPath est en cours : les versions actuelles ne sont pas
+encore signées Authenticode ; les mises à jour, elles, sont déjà signées avec minisign.)
 
 ---
 

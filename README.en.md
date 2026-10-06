@@ -450,6 +450,9 @@ Free code signing provided by [SignPath.io](https://about.signpath.io), certific
 by [SignPath Foundation](https://signpath.org). Team roles and details:
 [CODE_SIGNING.md](CODE_SIGNING.md). Privacy: [PRIVACY.md](PRIVACY.md).
 
+This is being set up: the SignPath application is in progress, so current
+releases are not Authenticode-signed yet (updates are already signed with minisign).
+
 Only the installer and the program built by GitHub Actions from this
 repository are signed, and every signing request is approved by hand.
 
