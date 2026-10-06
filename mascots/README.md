@@ -7,7 +7,7 @@ permet d'en choisir une et de tester chaque animation.
 Voir ARCHITECTURE.md, section « La mascotte », pour le format du manifeste.
 Moteurs branchés : `canvas-code` (dessin en code, `placeholder/`), `spritesheet`
 (planches PNG en ligne, aucune mascotte ne l'utilise pour l'instant) et `poses` (une image par émotion avec fondus,
-`goutte/`). `lottie` et `rive` sont prévus dans `src/mascot/renderer.ts`.
+`goutte/` et `goutte-classique/`). `lottie` et `rive` sont prévus dans `src/mascot/renderer.ts`.
 
 Format d'une pose (`goutte/`) : une image 256 × 256, fond transparent, le corps
 posé sur la même ligne de base (y ≈ 244) et centré (x ≈ 128), à la même taille
@@ -24,3 +24,7 @@ court entre deux images. Les yeux blancs de chaque image sont dans `eyes`.
 
 Format d'une planche (`spritesheet`) : une seule ligne d'images, toutes de la même
 largeur, fond transparent.
+
+`goutte-classique/` : la première goutte, refaite au format `poses` avec les mêmes
+24 poses et 11 animations que `goutte/`. Ses images sont fabriquées par un script
+(visage vierge repeint, puis traits, couleurs et mouvements dessinés en code).

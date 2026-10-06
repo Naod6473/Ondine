@@ -1,0 +1,1973 @@
+{
+  "id": "goutte-classique",
+  "name": "Goutte classique",
+  "version": "1.0.0",
+  "renderer": "poses",
+  "fallback": "idle",
+  "poses": {
+    "open": {
+      "file": "open.png",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ],
+      "blink": "closed"
+    },
+    "closed": {
+      "file": "closed.png"
+    },
+    "mouth": {
+      "file": "mouth.png",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ],
+      "blink": "laugh"
+    },
+    "laugh": {
+      "file": "laugh.png"
+    },
+    "validation": {
+      "file": "validation.png",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "question": {
+      "file": "question.png",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "agacee": {
+      "file": "agacee.png",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 16.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 16.5
+        }
+      ]
+    },
+    "oups": {
+      "file": "oups.png",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "colere": {
+      "file": "colere.png",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 16.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 16.5
+        }
+      ]
+    },
+    "erreur": {
+      "file": "erreur.png"
+    },
+    "surprise": {
+      "file": "surprise.png",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 23.5,
+          "ry": 21.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 23.5,
+          "ry": 21.5
+        }
+      ]
+    },
+    "confusion": {
+      "file": "confusion.png",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 16.5
+        }
+      ]
+    },
+    "triste": {
+      "file": "triste.png",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "inquiet": {
+      "file": "inquiet.png",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "joie": {
+      "file": "joie.png"
+    },
+    "clin": {
+      "file": "clin.png",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "fatigue": {
+      "file": "fatigue.png"
+    },
+    "sommeil": {
+      "file": "sommeil.png"
+    },
+    "reveil": {
+      "file": "reveil.png"
+    },
+    "victoire": {
+      "file": "victoire.png"
+    },
+    "attention": {
+      "file": "attention.png",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 22.5,
+          "ry": 20.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 22.5,
+          "ry": 20.5
+        }
+      ]
+    },
+    "info": {
+      "file": "info.png",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "timide": {
+      "file": "timide.png",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 174.0,
+          "rx": 21.5,
+          "ry": 16.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 174.0,
+          "rx": 21.5,
+          "ry": 16.5
+        }
+      ]
+    },
+    "calme": {
+      "file": "calme.png"
+    },
+    "bulle-1": {
+      "file": "anim/bulle-1.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "bulle-2": {
+      "file": "anim/bulle-2.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "bulle-3": {
+      "file": "anim/bulle-3.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "bulle-4": {
+      "file": "anim/bulle-4.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "bulle-5": {
+      "file": "anim/bulle-5.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "bulle-6": {
+      "file": "anim/bulle-6.webp"
+    },
+    "bulle-7": {
+      "file": "anim/bulle-7.webp"
+    },
+    "bulle-8": {
+      "file": "anim/bulle-8.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "glitch-1": {
+      "file": "anim/glitch-1.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "glitch-2": {
+      "file": "anim/glitch-2.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "glitch-3": {
+      "file": "anim/glitch-3.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "glitch-4": {
+      "file": "anim/glitch-4.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "glitch-5": {
+      "file": "anim/glitch-5.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "glitch-6": {
+      "file": "anim/glitch-6.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "glitch-7": {
+      "file": "anim/glitch-7.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "glitch-8": {
+      "file": "anim/glitch-8.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "colere-monte-1": {
+      "file": "anim/colere-monte-1.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "colere-monte-2": {
+      "file": "anim/colere-monte-2.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 17.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 17.5
+        }
+      ]
+    },
+    "colere-monte-3": {
+      "file": "anim/colere-monte-3.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 17.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 17.5
+        }
+      ]
+    },
+    "colere-monte-4": {
+      "file": "anim/colere-monte-4.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 17.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 17.5
+        }
+      ]
+    },
+    "colere-monte-5": {
+      "file": "anim/colere-monte-5.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 16.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 16.5
+        }
+      ]
+    },
+    "colere-monte-6": {
+      "file": "anim/colere-monte-6.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 16.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 16.5
+        }
+      ]
+    },
+    "colere-monte-7": {
+      "file": "anim/colere-monte-7.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 16.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 16.5
+        }
+      ]
+    },
+    "colere-monte-8": {
+      "file": "anim/colere-monte-8.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 16.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 16.5
+        }
+      ]
+    },
+    "colere-crise-1": {
+      "file": "anim/colere-crise-1.webp",
+      "eyes": [
+        {
+          "cx": 71.4,
+          "cy": 174.1,
+          "rx": 21.5,
+          "ry": 16.5
+        },
+        {
+          "cx": 171.3,
+          "cy": 170.0,
+          "rx": 21.5,
+          "ry": 16.5
+        }
+      ]
+    },
+    "colere-crise-2": {
+      "file": "anim/colere-crise-2.webp",
+      "eyes": [
+        {
+          "cx": 84.7,
+          "cy": 170.0,
+          "rx": 21.5,
+          "ry": 16.5
+        },
+        {
+          "cx": 184.6,
+          "cy": 174.1,
+          "rx": 21.5,
+          "ry": 16.5
+        }
+      ]
+    },
+    "colere-crise-3": {
+      "file": "anim/colere-crise-3.webp",
+      "eyes": [
+        {
+          "cx": 69.7,
+          "cy": 174.7,
+          "rx": 21.5,
+          "ry": 16.5
+        },
+        {
+          "cx": 169.6,
+          "cy": 169.5,
+          "rx": 21.5,
+          "ry": 16.5
+        }
+      ]
+    },
+    "colere-crise-4": {
+      "file": "anim/colere-crise-4.webp",
+      "eyes": [
+        {
+          "cx": 86.4,
+          "cy": 169.5,
+          "rx": 21.5,
+          "ry": 16.5
+        },
+        {
+          "cx": 186.3,
+          "cy": 174.7,
+          "rx": 21.5,
+          "ry": 16.5
+        }
+      ]
+    },
+    "colere-crise-5": {
+      "file": "anim/colere-crise-5.webp",
+      "eyes": [
+        {
+          "cx": 73.0,
+          "cy": 173.6,
+          "rx": 21.5,
+          "ry": 16.5
+        },
+        {
+          "cx": 173.0,
+          "cy": 170.5,
+          "rx": 21.5,
+          "ry": 16.5
+        }
+      ]
+    },
+    "colere-crise-6": {
+      "file": "anim/colere-crise-6.webp",
+      "eyes": [
+        {
+          "cx": 83.0,
+          "cy": 170.5,
+          "rx": 21.5,
+          "ry": 16.5
+        },
+        {
+          "cx": 183.0,
+          "cy": 173.6,
+          "rx": 21.5,
+          "ry": 16.5
+        }
+      ]
+    },
+    "colere-crise-7": {
+      "file": "anim/colere-crise-7.webp"
+    },
+    "colere-crise-8": {
+      "file": "anim/colere-crise-8.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 16.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 16.5
+        }
+      ]
+    },
+    "danse-1": {
+      "file": "anim/danse-1.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "danse-2": {
+      "file": "anim/danse-2.webp"
+    },
+    "danse-3": {
+      "file": "anim/danse-3.webp"
+    },
+    "danse-4": {
+      "file": "anim/danse-4.webp"
+    },
+    "danse-5": {
+      "file": "anim/danse-5.webp"
+    },
+    "danse-6": {
+      "file": "anim/danse-6.webp"
+    },
+    "danse-7": {
+      "file": "anim/danse-7.webp"
+    },
+    "danse-8": {
+      "file": "anim/danse-8.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "electrique-1": {
+      "file": "anim/electrique-1.webp",
+      "eyes": [
+        {
+          "cx": 80.0,
+          "cy": 172.0,
+          "rx": 22.5,
+          "ry": 20.5
+        },
+        {
+          "cx": 180.0,
+          "cy": 172.0,
+          "rx": 22.5,
+          "ry": 20.5
+        }
+      ]
+    },
+    "electrique-2": {
+      "file": "anim/electrique-2.webp",
+      "eyes": [
+        {
+          "cx": 76.0,
+          "cy": 172.0,
+          "rx": 22.5,
+          "ry": 20.5
+        },
+        {
+          "cx": 176.0,
+          "cy": 172.0,
+          "rx": 22.5,
+          "ry": 20.5
+        }
+      ]
+    },
+    "electrique-3": {
+      "file": "anim/electrique-3.webp",
+      "eyes": [
+        {
+          "cx": 80.0,
+          "cy": 172.0,
+          "rx": 22.5,
+          "ry": 20.5
+        },
+        {
+          "cx": 180.0,
+          "cy": 172.0,
+          "rx": 22.5,
+          "ry": 20.5
+        }
+      ]
+    },
+    "electrique-4": {
+      "file": "anim/electrique-4.webp",
+      "eyes": [
+        {
+          "cx": 76.0,
+          "cy": 172.0,
+          "rx": 22.5,
+          "ry": 20.5
+        },
+        {
+          "cx": 176.0,
+          "cy": 172.0,
+          "rx": 22.5,
+          "ry": 20.5
+        }
+      ]
+    },
+    "electrique-5": {
+      "file": "anim/electrique-5.webp",
+      "eyes": [
+        {
+          "cx": 80.0,
+          "cy": 172.0,
+          "rx": 22.5,
+          "ry": 20.5
+        },
+        {
+          "cx": 180.0,
+          "cy": 172.0,
+          "rx": 22.5,
+          "ry": 20.5
+        }
+      ]
+    },
+    "electrique-6": {
+      "file": "anim/electrique-6.webp",
+      "eyes": [
+        {
+          "cx": 76.0,
+          "cy": 172.0,
+          "rx": 22.5,
+          "ry": 20.5
+        },
+        {
+          "cx": 176.0,
+          "cy": 172.0,
+          "rx": 22.5,
+          "ry": 20.5
+        }
+      ]
+    },
+    "electrique-7": {
+      "file": "anim/electrique-7.webp",
+      "eyes": [
+        {
+          "cx": 80.0,
+          "cy": 172.0,
+          "rx": 22.5,
+          "ry": 20.5
+        },
+        {
+          "cx": 180.0,
+          "cy": 172.0,
+          "rx": 22.5,
+          "ry": 20.5
+        }
+      ]
+    },
+    "electrique-8": {
+      "file": "anim/electrique-8.webp",
+      "eyes": [
+        {
+          "cx": 76.0,
+          "cy": 172.0,
+          "rx": 22.5,
+          "ry": 20.5
+        },
+        {
+          "cx": 176.0,
+          "cy": 172.0,
+          "rx": 22.5,
+          "ry": 20.5
+        }
+      ]
+    },
+    "fondue-1": {
+      "file": "anim/fondue-1.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "fondue-2": {
+      "file": "anim/fondue-2.webp"
+    },
+    "fondue-3": {
+      "file": "anim/fondue-3.webp"
+    },
+    "fondue-4": {
+      "file": "anim/fondue-4.webp"
+    },
+    "fondue-5": {
+      "file": "anim/fondue-5.webp"
+    },
+    "fondue-6": {
+      "file": "anim/fondue-6.webp"
+    },
+    "fondue-7": {
+      "file": "anim/fondue-7.webp"
+    },
+    "fondue-8": {
+      "file": "anim/fondue-8.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "joie-saut-1": {
+      "file": "anim/joie-saut-1.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "joie-saut-2": {
+      "file": "anim/joie-saut-2.webp"
+    },
+    "joie-saut-3": {
+      "file": "anim/joie-saut-3.webp"
+    },
+    "joie-saut-4": {
+      "file": "anim/joie-saut-4.webp"
+    },
+    "joie-saut-5": {
+      "file": "anim/joie-saut-5.webp"
+    },
+    "joie-saut-6": {
+      "file": "anim/joie-saut-6.webp"
+    },
+    "joie-saut-7": {
+      "file": "anim/joie-saut-7.webp"
+    },
+    "joie-saut-8": {
+      "file": "anim/joie-saut-8.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "mange-1": {
+      "file": "anim/mange-1.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "mange-2": {
+      "file": "anim/mange-2.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "mange-3": {
+      "file": "anim/mange-3.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "mange-4": {
+      "file": "anim/mange-4.webp"
+    },
+    "mange-5": {
+      "file": "anim/mange-5.webp"
+    },
+    "mange-6": {
+      "file": "anim/mange-6.webp"
+    },
+    "mange-7": {
+      "file": "anim/mange-7.webp"
+    },
+    "mange-8": {
+      "file": "anim/mange-8.webp"
+    },
+    "pleurs-1": {
+      "file": "anim/pleurs-1.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "pleurs-2": {
+      "file": "anim/pleurs-2.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "pleurs-3": {
+      "file": "anim/pleurs-3.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "pleurs-4": {
+      "file": "anim/pleurs-4.webp"
+    },
+    "pleurs-5": {
+      "file": "anim/pleurs-5.webp"
+    },
+    "pleurs-6": {
+      "file": "anim/pleurs-6.webp"
+    },
+    "pleurs-7": {
+      "file": "anim/pleurs-7.webp"
+    },
+    "pleurs-8": {
+      "file": "anim/pleurs-8.webp",
+      "eyes": [
+        {
+          "cx": 78.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        },
+        {
+          "cx": 178.0,
+          "cy": 172.0,
+          "rx": 21.5,
+          "ry": 18.5
+        }
+      ]
+    },
+    "alerte-1": {
+      "file": "anim/alerte-1.webp",
+      "eyes": [
+        {
+          "cx": 77.4,
+          "cy": 171.2,
+          "rx": 22.8,
+          "ry": 20.7
+        },
+        {
+          "cx": 178.6,
+          "cy": 171.2,
+          "rx": 22.8,
+          "ry": 20.7
+        }
+      ]
+    },
+    "alerte-2": {
+      "file": "anim/alerte-2.webp",
+      "eyes": [
+        {
+          "cx": 76.6,
+          "cy": 170.2,
+          "rx": 23.1,
+          "ry": 21.1
+        },
+        {
+          "cx": 179.4,
+          "cy": 170.2,
+          "rx": 23.1,
+          "ry": 21.1
+        }
+      ]
+    },
+    "alerte-3": {
+      "file": "anim/alerte-3.webp",
+      "eyes": [
+        {
+          "cx": 76.0,
+          "cy": 169.4,
+          "rx": 23.4,
+          "ry": 21.3
+        },
+        {
+          "cx": 180.0,
+          "cy": 169.4,
+          "rx": 23.4,
+          "ry": 21.3
+        }
+      ]
+    },
+    "alerte-4": {
+      "file": "anim/alerte-4.webp",
+      "eyes": [
+        {
+          "cx": 76.6,
+          "cy": 170.2,
+          "rx": 23.1,
+          "ry": 21.1
+        },
+        {
+          "cx": 179.4,
+          "cy": 170.2,
+          "rx": 23.1,
+          "ry": 21.1
+        }
+      ]
+    },
+    "alerte-5": {
+      "file": "anim/alerte-5.webp",
+      "eyes": [
+        {
+          "cx": 77.4,
+          "cy": 171.2,
+          "rx": 22.8,
+          "ry": 20.7
+        },
+        {
+          "cx": 178.6,
+          "cy": 171.2,
+          "rx": 22.8,
+          "ry": 20.7
+        }
+      ]
+    },
+    "alerte-6": {
+      "file": "anim/alerte-6.webp",
+      "eyes": [
+        {
+          "cx": 76.6,
+          "cy": 170.2,
+          "rx": 23.1,
+          "ry": 21.1
+        },
+        {
+          "cx": 179.4,
+          "cy": 170.2,
+          "rx": 23.1,
+          "ry": 21.1
+        }
+      ]
+    },
+    "alerte-7": {
+      "file": "anim/alerte-7.webp",
+      "eyes": [
+        {
+          "cx": 76.0,
+          "cy": 169.4,
+          "rx": 23.4,
+          "ry": 21.3
+        },
+        {
+          "cx": 180.0,
+          "cy": 169.4,
+          "rx": 23.4,
+          "ry": 21.3
+        }
+      ]
+    },
+    "alerte-8": {
+      "file": "anim/alerte-8.webp",
+      "eyes": [
+        {
+          "cx": 77.0,
+          "cy": 170.7,
+          "rx": 22.9,
+          "ry": 20.9
+        },
+        {
+          "cx": 179.0,
+          "cy": 170.7,
+          "rx": 22.9,
+          "ry": 20.9
+        }
+      ]
+    }
+  },
+  "states": {
+    "idle": "idle",
+    "wake": "wake",
+    "sleep": "sleep",
+    "bored": "bored",
+    "happy": "happy",
+    "annoyed": "annoyed",
+    "dizzy": "dizzy",
+    "thinking": "thinking",
+    "working": "working",
+    "alert": "alert",
+    "eating": "eating",
+    "celebrate": "celebrate",
+    "love": "love",
+    "success": "success",
+    "question": "question",
+    "error": "error",
+    "warning": "warning",
+    "info": "info",
+    "sad": "sad",
+    "worried": "worried",
+    "surprise": "surprise",
+    "shy": "shy",
+    "calm": "calm",
+    "wink": "wink"
+  },
+  "animations": [
+    {
+      "name": "idle",
+      "source": {
+        "pose": "open",
+        "effect": "breathe",
+        "variants": [
+          "clin",
+          "calme"
+        ]
+      },
+      "durationMs": 4000,
+      "loop": true,
+      "priority": 0,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "wake",
+      "source": {
+        "poses": [
+          "reveil",
+          "open"
+        ],
+        "poseMs": 500,
+        "effect": "wake"
+      },
+      "durationMs": 1000,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "next": "idle"
+    },
+    {
+      "name": "sleep",
+      "source": {
+        "pose": "sommeil",
+        "effect": "sleep",
+        "overlay": "zzz"
+      },
+      "durationMs": 3200,
+      "loop": true,
+      "priority": 1,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "bored",
+      "source": {
+        "poses": [
+          "bulle-1",
+          "bulle-2",
+          "bulle-3",
+          "bulle-4",
+          "bulle-5",
+          "bulle-6",
+          "bulle-7",
+          "bulle-8",
+          "fatigue",
+          "fatigue",
+          "fatigue",
+          "fatigue",
+          "fatigue"
+        ],
+        "poseMs": 260,
+        "fadeMs": 104
+      },
+      "durationMs": 3380,
+      "loop": true,
+      "priority": 0,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "happy",
+      "source": {
+        "pose": "joie",
+        "effect": "bounce"
+      },
+      "durationMs": 1200,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "annoyed",
+      "source": {
+        "poses": [
+          "colere-monte-1",
+          "colere-monte-2",
+          "colere-monte-3",
+          "colere-monte-4",
+          "colere-monte-5",
+          "colere-crise-2",
+          "colere-crise-3",
+          "colere-crise-4",
+          "colere-crise-5",
+          "colere-crise-6",
+          "colere-monte-6",
+          "colere-monte-7",
+          "colere-monte-8"
+        ],
+        "poseMs": 190,
+        "fadeMs": 76
+      },
+      "durationMs": 2670,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "dizzy",
+      "source": {
+        "poses": [
+          "fondue-1",
+          "fondue-2",
+          "fondue-3",
+          "fondue-4",
+          "fondue-5",
+          "fondue-6",
+          "fondue-7",
+          "fondue-8"
+        ],
+        "poseMs": 300,
+        "fadeMs": 120
+      },
+      "durationMs": 2600,
+      "loop": false,
+      "priority": 4,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "thinking",
+      "source": {
+        "pose": "open",
+        "look": "up",
+        "effect": "breathe",
+        "overlay": "dots"
+      },
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 1,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "working",
+      "source": {
+        "pose": "open",
+        "effect": "bob",
+        "overlay": "sweat"
+      },
+      "durationMs": 1200,
+      "loop": true,
+      "priority": 1,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "alert",
+      "source": {
+        "pose": "surprise",
+        "wide": true,
+        "effect": "pulse",
+        "overlay": "bang"
+      },
+      "durationMs": 1500,
+      "loop": true,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "eating",
+      "source": {
+        "poses": [
+          "mange-1",
+          "mange-2",
+          "mange-3",
+          "mange-4",
+          "mange-5",
+          "mange-6",
+          "mange-7",
+          "mange-8"
+        ],
+        "poseMs": 210,
+        "fadeMs": 84
+      },
+      "durationMs": 1880,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "next": "happy"
+    },
+    {
+      "name": "celebrate",
+      "source": {
+        "poses": [
+          "danse-1",
+          "danse-2",
+          "danse-3",
+          "danse-4",
+          "danse-5",
+          "danse-6",
+          "danse-7",
+          "danse-2",
+          "danse-3",
+          "danse-4",
+          "danse-5",
+          "danse-6",
+          "danse-7",
+          "danse-8"
+        ],
+        "poseMs": 150,
+        "fadeMs": 60
+      },
+      "durationMs": 2300,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "love",
+      "source": {
+        "pose": "timide",
+        "effect": "sway",
+        "overlay": "hearts"
+      },
+      "durationMs": 2400,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "success",
+      "source": {
+        "poses": [
+          "joie-saut-1",
+          "joie-saut-2",
+          "joie-saut-3",
+          "joie-saut-4",
+          "joie-saut-5",
+          "joie-saut-6",
+          "joie-saut-7",
+          "joie-saut-8"
+        ],
+        "poseMs": 190,
+        "fadeMs": 76
+      },
+      "durationMs": 1720,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "question",
+      "source": {
+        "pose": "question",
+        "look": "up",
+        "effect": "sway",
+        "overlay": "question"
+      },
+      "durationMs": 4000,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "error",
+      "source": {
+        "poses": [
+          "glitch-1",
+          "glitch-2",
+          "glitch-3",
+          "glitch-4",
+          "glitch-5",
+          "glitch-6",
+          "glitch-7",
+          "glitch-8"
+        ],
+        "poseMs": 180,
+        "fadeMs": 72
+      },
+      "durationMs": 1640,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "warning",
+      "source": {
+        "poses": [
+          "alerte-1",
+          "alerte-2",
+          "alerte-3",
+          "alerte-4",
+          "alerte-5",
+          "alerte-6",
+          "alerte-7",
+          "alerte-8"
+        ],
+        "poseMs": 230,
+        "fadeMs": 92
+      },
+      "durationMs": 2040,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "info",
+      "source": {
+        "pose": "info",
+        "effect": "bounce"
+      },
+      "durationMs": 1800,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "sad",
+      "source": {
+        "poses": [
+          "pleurs-1",
+          "pleurs-2",
+          "pleurs-3",
+          "pleurs-4",
+          "pleurs-5",
+          "pleurs-6",
+          "pleurs-7",
+          "pleurs-8"
+        ],
+        "poseMs": 320,
+        "fadeMs": 128
+      },
+      "durationMs": 2760,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "worried",
+      "source": {
+        "pose": "inquiet",
+        "effect": "sway",
+        "overlay": "sweat"
+      },
+      "durationMs": 2600,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "surprise",
+      "source": {
+        "poses": [
+          "electrique-1",
+          "electrique-2",
+          "electrique-3",
+          "electrique-4",
+          "electrique-5",
+          "electrique-6",
+          "electrique-7",
+          "electrique-8"
+        ],
+        "poseMs": 170,
+        "fadeMs": 68
+      },
+      "durationMs": 1560,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "shy",
+      "source": {
+        "pose": "timide",
+        "effect": "sway"
+      },
+      "durationMs": 2400,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "calm",
+      "source": {
+        "pose": "calme",
+        "effect": "breathe"
+      },
+      "durationMs": 3000,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "wink",
+      "source": {
+        "pose": "clin",
+        "effect": "bounce",
+        "overlay": "stars"
+      },
+      "durationMs": 1300,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "fatigue",
+      "source": {
+        "pose": "fatigue",
+        "effect": "sigh"
+      },
+      "durationMs": 3000,
+      "loop": true,
+      "priority": 0,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "agacee-colere",
+      "source": {
+        "poses": [
+          "agacee",
+          "colere"
+        ],
+        "poseMs": 700,
+        "effect": "shake",
+        "overlay": "steam"
+      },
+      "durationMs": 1800,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "etourdie",
+      "source": {
+        "pose": "confusion",
+        "look": "spin",
+        "effect": "wobble",
+        "overlay": "stars"
+      },
+      "durationMs": 2600,
+      "loop": false,
+      "priority": 4,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "mange-vite",
+      "source": {
+        "poses": [
+          "mouth",
+          "open",
+          "mouth",
+          "open",
+          "mouth",
+          "open",
+          "mouth",
+          "open",
+          "joie"
+        ],
+        "poseMs": 150,
+        "fadeMs": 60,
+        "effect": "chomp"
+      },
+      "durationMs": 1600,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "next": "happy"
+    },
+    {
+      "name": "victoire",
+      "source": {
+        "pose": "victoire",
+        "effect": "jump",
+        "overlay": "confetti"
+      },
+      "durationMs": 2200,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "oups",
+      "source": {
+        "poses": [
+          "oups",
+          "erreur"
+        ],
+        "poseMs": 500,
+        "effect": "flinch",
+        "overlay": "sweat"
+      },
+      "durationMs": 2600,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "attention",
+      "source": {
+        "pose": "attention",
+        "wide": true,
+        "effect": "pulse",
+        "overlay": "bang"
+      },
+      "durationMs": 2000,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "surpris",
+      "source": {
+        "pose": "surprise",
+        "wide": true,
+        "effect": "flinch"
+      },
+      "durationMs": 2000,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ]
+    }
+  ]
+}
