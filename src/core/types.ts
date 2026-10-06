@@ -13,6 +13,8 @@ export interface Settings {
     welcomed: boolean;
     /** Mode démo : de fausses données pour les captures (src/core/demo.ts). */
     demo?: boolean;
+    /** Chercher une nouvelle version au démarrage (puis chaque jour) et la proposer. */
+    autoUpdate?: boolean;
   };
   island: {
     /** Replier l'île quand la souris n'est plus dessus depuis ce nombre de secondes. */
@@ -61,7 +63,7 @@ export interface Settings {
 export function defaultSettings(): Settings {
   return {
     version: 2,
-    general: { screen: "primary", logLevel: "info", language: "auto", welcomed: false, demo: false },
+    general: { screen: "primary", logLevel: "info", language: "auto", welcomed: false, demo: false, autoUpdate: true },
     island: {
       collapseSecs: 1.5,
       notificationSecs: 6,

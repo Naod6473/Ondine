@@ -1,6 +1,6 @@
 [package]
 name = "ondine"
-version = "0.1.0"
+version = "1.0.0-beta.1"
 description = "L'île : une interface intelligente en haut de l'écran Windows"
 edition = "2021"
 license = "MIT"
@@ -47,6 +47,10 @@ tauri-plugin-global-shortcut = "2"
 # Appeler l'API Claude (Demander à Claude). TLS de Windows (SChannel) et ses
 # certificats racines (ceux d'une entreprise aussi) : pas de code C à compiler.
 ureq = { version = "3", default-features = false, features = ["json", "gzip", "native-tls"] }
+# Mises à jour automatiques : lit latest.json sur GitHub, vérifie la signature
+# de l'installateur (clé publique dans tauri.conf.json), puis le lance.
+# TLS de Windows comme ureq (certificats d'entreprise compris).
+tauri-plugin-updater = { version = "2", default-features = false, features = ["native-tls", "system-proxy"] }
 
 [target.'cfg(windows)'.dependencies]
 # Gestionnaire d'identifiants Windows. Version 3 volontairement : la 4 a changé d'API.

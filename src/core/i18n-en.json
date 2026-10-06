@@ -855,7 +855,21 @@
 "Style des animations": "Animation style",
 "Classique": "Classic",
 "Studio": "Studio",
-"Classique : sobre. Studio : façon vidéo de présentation, les éléments arrivent flous puis nets l'un après l'autre, les chiffres roulent, les boutons rebondissent comme de la gélatine.": "Classic: understated. Studio: like a product video, items arrive blurred then sharp one after another, numbers roll, buttons bounce like jelly."
+"Classique : sobre. Studio : façon vidéo de présentation, les éléments arrivent flous puis nets l'un après l'autre, les chiffres roulent, les boutons rebondissent comme de la gélatine.": "Classic: understated. Studio: like a product video, items arrive blurred then sharp one after another, numbers roll, buttons bounce like jelly.",
+"Mises à jour": "Updates",
+"Mises à jour automatiques": "Automatic updates",
+"Au démarrage puis une fois par jour, Ondine regarde sur GitHub si une nouvelle version existe et te la propose. Rien ne s'installe sans ton accord.": "At startup and then once a day, Ondine checks GitHub for a new version and offers it to you. Nothing is installed without your consent.",
+"Version installée": "Installed version",
+"Rechercher maintenant": "Check now",
+"Recherche…": "Checking…",
+"Installer": "Install",
+"Plus tard": "Later",
+"Ondine est à jour.": "Ondine is up to date.",
+"Impossible de joindre GitHub. Vérifie ta connexion à Internet.": "Can't reach GitHub. Check your Internet connection.",
+"Téléchargement… Ondine va se fermer puis revenir.": "Downloading… Ondine will close and come back.",
+"Téléchargement de la mise à jour…": "Downloading the update…",
+"La mise à jour n'a pas pu s'installer": "The update couldn't be installed",
+"Installer maintenant ? Ondine se ferme quelques secondes puis revient toute seule.": "Install now? Ondine closes for a few seconds, then comes back on its own."
 },
 "patterns": [
 [
@@ -1729,6 +1743,18 @@
 [
 "^Je vis en haut de l'écran : passe la souris tout en haut, ou (.+)\\. Mon icône est près de l'horloge \\(clic droit : Réglages, Quitter\\)\\.$",
 "I live at the top of the screen: move the mouse to the very top, or press $1. My icon is next to the clock (right-click: Settings, Quit)."
+],
+[
+"^La version (.+) est disponible\\.$",
+"Version $1 is available."
+],
+[
+"^Ondine (\\S+) est disponible$",
+"Ondine $1 is available"
+],
+[
+"^La mise à jour a échoué : (.*)$",
+"The update failed: $1"
 ]
 ]
 }
