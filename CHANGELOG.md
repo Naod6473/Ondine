@@ -1,6 +1,6 @@
 # Changements · Changelog
 
-## Non publié · Unreleased
+## 1.0.0 · 2026-10-06
 
 - Recherche dans l'île : notes, presse-papiers, étagère, captures et apps, sans
   accents ni majuscules. · In-island search across notes, clipboard, shelf,
@@ -27,6 +27,19 @@
   batterie) ; la mascotte ne se dessine plus quand l'île est cachée. ·
   Performance modes: high, balanced or power saving (automatic on battery);
   the mascot no longer draws while the island is hidden.
+
+- Étagère : glisser un fichier hors de l'île, copier ou déplacer chaque
+  élément. · Shelf: drag files out, copy or move each item.
+- Icônes au trait partout en style épuré. · Line icons everywhere in the
+  clean style.
+- Textes au « vous », avec option tutoiement (Réglages → Général). · French
+  texts now use « vous », with an option for « tu ».
+- Sécurité : le canal des agents n'accepte qu'Ondine, « Oui, autoriser »
+  exige un vrai clic ou Entrée, les agents sont lancés par leur chemin
+  complet. · Security: agent pipe only accepts Ondine, "Yes, allow" needs
+  a real click or Enter, agents are launched by full path.
+- README complet en français et en anglais, avec captures. · Full README
+  in French and English, with screenshots.
 
 ## 1.0.0-beta.3
 
