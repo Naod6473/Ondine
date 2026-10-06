@@ -1,0 +1,29 @@
+{
+  "id": "weather",
+  "name": "Météo",
+  "icon": "🌤️",
+  "description": "La température et le temps qu'il fait dans ta ville, dans la mini-île quand elle n'a rien d'autre à montrer, et en détail dans l'onglet Système. Désactivée tant que tu ne coches pas « Afficher la météo » : rien ne part sur Internet avant. Service : Open-Meteo (gratuit, sans compte) ; il reçoit le nom de ta ville, puis ses coordonnées arrondies (environ 1 km), au plus toutes les 30 minutes.",
+  "version": "0.1.0",
+  "permissions": ["network"],
+  "settings": {
+    "version": 1,
+    "fields": [
+      { "key": "on", "type": "boolean", "label": "Afficher la météo", "help": "Ondine demande la météo à Open-Meteo (open-meteo.com), au plus toutes les 30 minutes.", "default": false },
+      { "key": "city", "type": "string", "label": "Ta ville", "help": "Par exemple « Lyon », ou « Lyon, FR » pour préciser le pays.", "default": "", "maxLength": 80 },
+      {
+        "key": "unit",
+        "type": "select",
+        "label": "Unité",
+        "default": "c",
+        "options": [
+          { "value": "c", "label": "°C" },
+          { "value": "f", "label": "°F" }
+        ]
+      },
+      { "key": "showCompact", "type": "boolean", "label": "Dans la mini-île", "help": "Quand rien d'autre ne s'y affiche (musique, minuteur, rendez-vous).", "default": true }
+    ]
+  },
+  "views": ["compact"],
+  "commands": ["current"],
+  "events": { "emits": ["weather.changed", "weather.updated"], "listens": ["weather.changed"] }
+}

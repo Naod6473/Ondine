@@ -15,6 +15,7 @@ Ondine ne se connecte à Internet que dans ces cas :
 | Vous avez ajouté un lien iCal dans Agenda | l'adresse que vous avez donnée | La lecture de votre calendrier. |
 | Vous avez activé l'alerte « changement d'IP publique » (Outils IT, désactivée par défaut) | api.ipify.org | Une demande de votre adresse IP publique. |
 | Vous lancez un ping, un test de port, un accès RDP/SSH ou un agent IA | la machine ou le service que vous avez choisi | Ce que vous avez demandé. |
+| Vous avez activé la Météo (désactivée par défaut) et saisi une ville, au plus toutes les 30 minutes | geocoding-api.open-meteo.com, api.open-meteo.com | Le nom de la ville (une fois, quand elle change), puis ses coordonnées arrondies à 2 décimales (environ 1 km). |
 
 Les clés et mots de passe sont rangés dans le Gestionnaire d'identifiants de Windows,
 jamais en clair dans un fichier.
@@ -37,5 +38,8 @@ specifically requested by the user, with one exception: the update check.
 - **Calendar**: reads the iCal link you entered.
 - **Public IP alert** (IT tools, off by default): asks api.ipify.org for your public IP.
 - **Ping, port test, RDP/SSH, AI agents**: connect to the host or service you chose.
+- **Weather** (off by default; once you turn it on and enter a city, at most every
+  30 minutes): sends the city name to geocoding-api.open-meteo.com (once, when it
+  changes), then its coordinates rounded to 2 decimals (about 1 km) to api.open-meteo.com.
 
 Keys and passwords are stored in the Windows Credential Manager, never in plain text.

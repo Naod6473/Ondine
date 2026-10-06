@@ -8,6 +8,7 @@
 // - privacy     : validation des chemins et dossiers exclus
 // - files       : copier, déplacer, Corbeille, zip, presse-papiers (sans jamais écraser)
 // - ics         : lecture des fichiers d'agenda .ics (rien n'est téléchargé)
+// - profiles    : les profils (Travail, Maison…) et leur changement automatique
 
 pub mod bus;
 pub mod credentials;
@@ -17,3 +18,4 @@ pub mod log;
 pub mod privacy;
 pub mod settings;
 pub mod undo;
+pub mod profiles;

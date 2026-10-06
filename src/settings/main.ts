@@ -31,6 +31,7 @@ import { settingsRows } from "./form";
 import { NavPill } from "./nav-pill";
 import { startI18n } from "../core/i18n";
 import { connectRules, rulesSection } from "./rules-editor";
+import { profilesPage } from "./profiles-page";
 
 const PERMISSION_LABELS: Record<string, string> = {
   files: "Fichiers",
@@ -103,6 +104,15 @@ const ISLAND_PAGES: Page[] = [
       if (man) modulePage(main, man, true);
       rulesSection(main);
     },
+  },
+  {
+    id: "profiles",
+    group: "L'île",
+    icon: "🧭",
+    label: "Profils",
+    sub: "Travail, Maison… : les onglets, la couleur et la mini-île d'un coup.",
+    keywords: ["Profil actif", "Changer tout seul", "Nouveau profil", "Plage horaire", "Nom du Wi-Fi", "Travail", "Maison"],
+    render: (main) => profilesPage(main, save),
   },
 ];
 

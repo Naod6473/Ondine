@@ -18,6 +18,8 @@ pub mod media_use;
 pub mod media;
 // Lire le texte d'une image (OCR de Windows). Contient sa propre version Linux.
 pub mod ocr;
+// Le nom du Wi-Fi connecté (profils automatiques). Contient sa propre version Linux.
+pub mod wifi;
 
 #[cfg(windows)]
 mod drop_target;

@@ -108,6 +108,11 @@ export const Bridge = {
   updateInstall: () => callOrThrow<void>("update_install"),
 
   quit: () => call<void>("app_quit"),
+
+  /** Active un profil ("" = aucun) : le Rust range les réglages et pose ceux du profil. */
+  profileActivate: (id: string) => callOrThrow<void>("profile_activate", { id }),
+  /** Le nom du Wi-Fi connecté (pour la règle d'un profil), ou null. */
+  wifiName: () => call<string | null>("profile_wifi_name"),
 };
 
 /** Écoute un événement Tauri envoyé par le Rust. Sans effet hors de Tauri. */
