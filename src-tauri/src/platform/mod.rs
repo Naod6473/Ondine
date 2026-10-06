@@ -18,6 +18,8 @@ pub mod media_use;
 pub mod media;
 // Lire le texte d'une image (OCR de Windows). Contient sa propre version Linux.
 pub mod ocr;
+// La pipette : choisir une couleur à l'écran. Contient sa propre version Linux.
+pub mod picker;
 
 #[cfg(windows)]
 mod drop_target;

@@ -840,6 +840,33 @@ body {
   justify-content: space-between;
   margin-bottom: 4px;
 }
+.capture-swatches {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 4px;
+}
+.capture-swatch {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.capture-swatch:hover,
+.capture-swatch:focus-visible {
+  transform: scale(1.18);
+}
+.capture-swatch-empty {
+  font-size: 11px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .capture-swatch {
+    transition: none;
+  }
+}
 .capture-text {
   width: 100%;
   box-sizing: border-box;

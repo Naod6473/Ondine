@@ -296,6 +296,8 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `agents.progress` `{source, who, title, step, total}` | Agents IA (Rust, outil MCP) | notification « 3/7 » remplacée à chaque étape |
 | `agents.quiet` `{on, summary?}` | Agents IA (Rust) | début / fin de la concentration ; à la fin, la notification du résumé |
 | `claude.thinking` / `claude.done` | Agents IA (Rust) | la mascotte réfléchit tant qu'une session de Claude Code travaille |
+| `capture.pick` | Lanceur (front) | Capture ouvre la pipette |
+| `capture.color` `{ok, hex, text, error?}` | Capture (Rust) | notification « #3A7BD5 copié » ; l'onglet redemande l'historique (`colors`) |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -505,6 +507,27 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   (`annotate_export`). Le Rust le décode (ce qui le valide), puis le copie,
   l'enregistre ou le pose sur l'étagère.
 - **Image déjà copiée** : les mêmes actions, sans ouvrir l'outil.
+- **Pipette** (`pick_color`, ou `capture.pick` depuis le Lanceur) : l'île se
+  replie (450 ms), puis `platform/picker.rs` photographie tout le bureau
+  (`BitBlt` + `CAPTUREBLT` depuis l'écran, tous les écrans) et l'affiche dans
+  une fenêtre **Win32** (pas WebView2) sans bordure, au-dessus de tout, de la
+  taille du bureau virtuel : l'écran a l'air figé. Le fil est en
+  `PER_MONITOR_AWARE_V2` : tout est en pixels physiques, donc le pixel lu est
+  bien celui sous la croix, même avec des écrans à 100 % et 150 %. Curseur en
+  croix (`IDC_CROSS`), loupe 11 × 11 pixels agrandis (taille selon l'échelle
+  de l'écran, placée de l'autre côté près d'un bord) avec pastille et
+  `#RRGGBB`. Clic gauche ou Entrée = choisir (au relâchement : rien n'arrive à
+  la fenêtre d'en dessous), Échap, clic droit ou perte du focus = annuler,
+  flèches = bouger d'un pixel ; fermeture automatique après 2 minutes. La
+  couleur est lue dans la photo (la loupe ne peut pas s'y retrouver).
+  Pourquoi pas une page : une fenêtre WebView2 créée tard peut rester blanche,
+  la photo pèserait des dizaines de Mo à envoyer, et une page étalée sur des
+  écrans d'échelles différentes n'a qu'une échelle. La photo est effacée à la
+  fermeture. Couleur copiée en HEX, RGB ou HSL (réglage `colorFormat`, calculs
+  testés dans `modules/capture/color.rs`) ; historique des 8 dernières
+  (sans doublon) dans `%APPDATA%\Ondine\colors.json`, pastilles cliquables
+  dans l'onglet (`colors`, `copy_color {hex}` : seule une couleur `#RRGGBB`
+  est acceptée).
 - **Ordre des onglets** : réglage `island.tabOrder` (liste d'ids ; vide = ordre
   d'origine ; un module absent se met à la fin). On le change en glissant un
   onglet dans l'île (`src/island/tab-drag.ts` : l'onglet suit la souris, les

@@ -216,6 +216,9 @@ function agentsHistory() {
 
 const RULE_EMPTY = { extensions: [], nameContains: "", minKb: null, maxKb: null };
 
+/** L'historique de la pipette (module Capture) : une petite palette inventée. */
+const DEMO_COLORS = ["#3A7BD5", "#00D2FF", "#F7B733", "#FC4A1A", "#6A3093", "#2ECC71", "#1F2937", "#F5F5F4"];
+
 // ── Les réponses aux modules ─────────────────────────────────────────────────
 
 /** Ce que le Rust aurait répondu. Les actions ne font rien (ou changent les fausses données). */
@@ -367,6 +370,14 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return { dir: HOME };
     case "capture.last":
       return { result: null };
+    case "capture.colors":
+      return { colors: DEMO_COLORS.map((hex) => ({ hex, text: hex })) };
+    case "capture.pick_color":
+      // Pas de vraie pipette : une couleur « choisie » un instant plus tard.
+      setTimeout(() => bus.inject("capture.color", { ok: true, hex: "#3A7BD5", text: "#3A7BD5" }, "capture"), 900);
+      return null;
+    case "capture.copy_color":
+      return { text: String(args.hex ?? "") };
 
     // Agents IA et « Demander à Claude »
     case "agents.history":

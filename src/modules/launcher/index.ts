@@ -105,6 +105,13 @@ function islandActions(api: ModuleApi, query: string): Result[] {
       close();
     });
   }
+  if (settingsStore.moduleEnabled("capture")) {
+    // La pipette (module Capture) : l'île se replie, puis l'écran se fige sous une croix.
+    add("pipette", "Pipette : copier une couleur de l'écran", "💧", ["pipette", "couleur", "color picker", "hex", "rgb"], () => {
+      close();
+      api.emit("capture.pick", {});
+    });
+  }
   add("settings", "Réglages de l'île", "⚙️", ["parametres", "options", "preferences"], async () => {
     await Bridge.openSettingsWindow();
     close();

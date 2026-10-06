@@ -66,7 +66,8 @@
       "terminal.open",
       "timer.start",
       "remote.connect",
-      "agents.launch"
+      "agents.launch",
+      "capture.pick"
     ],
     "listens": [
       "launcher.open",
