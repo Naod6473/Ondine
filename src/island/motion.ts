@@ -224,6 +224,10 @@ export function popIn(card: Element) {
 
 /** Le dernier texte vu pour chaque élément, pour savoir s'il a vraiment changé. */
 const lastText = new WeakMap<Element, string>();
+/** L'heure (ms) du dernier changement de chaque élément, pour repérer les compteurs rapides. */
+const lastChange = new WeakMap<Element, number>();
+/** Un texte qui change plus vite que ça (chronomètre aux centièmes) ne roule pas. */
+const FAST_MS = 400;
 
 /**
  * On surveille tout le contenu de l'île (MutationObserver) :
@@ -262,6 +266,15 @@ function roll(elem: Element) {
   const before = lastText.get(elem);
   lastText.set(elem, text);
   if (before === undefined || before === text) return;
+  // Un compteur qui change très vite (le chronomètre, à chaque image) ne roule pas :
+  // l'effet redémarrerait sans arrêt et le chiffre deviendrait illisible.
+  const now = performance.now();
+  const previous = lastChange.get(elem);
+  lastChange.set(elem, now);
+  if (previous !== undefined && now - previous < FAST_MS) {
+    elem.getAnimations().forEach((a) => a.cancel());
+    return;
+  }
   // Pendant un glissé (barre de musique), le chiffre suit la main : pas de roulement.
   if (document.querySelector(".scrubbing")) return;
   // Le sens suit la valeur : un nombre qui monte arrive d'en bas, qui descend d'en haut.
@@ -271,6 +284,10 @@ function roll(elem: Element) {
   const from = `${up ? d : -d}em`; // en « em » : marche aussi dans un dessin SVG
   // Un texte « en ligne » ne peut pas glisser : on en fait un petit bloc.
   if (elem instanceof HTMLElement && getComputedStyle(elem).display === "inline") elem.style.display = "inline-block";
+  // On arrête d'abord un roulement encore en cours : sinon on lirait sa position
+  // « en plein glissement » comme si c'était la position normale, et le chiffre
+  // descendrait un peu plus à chaque changement (le bug du chronomètre).
+  elem.getAnimations().forEach((a) => a.cancel());
   // L'élément peut déjà être tourné ou déplacé en CSS (le texte du minuteur) :
   // on garde sa transformation et on ajoute le glissement devant.
   const own = getComputedStyle(elem).transform;
