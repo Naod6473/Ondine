@@ -1,0 +1,11 @@
+name: Une idée · Idea
+description: Une fonction ou une amélioration. · A feature or an improvement.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idee
+    attributes:
+      label: L'idée · The idea
+      description: Ce que vous aimeriez, et dans quelle situation ça vous servirait. · What you would like, and when it would help you.
+    validations:
+      required: true
