@@ -11,7 +11,7 @@
 // pour qu'une fenêtre ignore l'écho de ses propres messages.
 //
 // Les modules ne s'appellent jamais directement : ils publient et écoutent des sujets
-// (ex. "hello.greeted", "task.finished"). Voir ARCHITECTURE.md pour la liste.
+// (ex. "hello.greeted", "task.finished"). Voir docs/ARCHITECTURE.md pour la liste.
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

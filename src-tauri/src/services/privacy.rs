@@ -12,7 +12,7 @@
 // Aucune télémétrie : l'île n'envoie rien nulle part de sa propre initiative.
 // Un module qui envoie du contenu à l'API Claude doit le déclarer (permission
 // "claude-api") et montrer ce qui part avant l'envoi (règle reprise dans
-// ARCHITECTURE.md ; le composant d'aperçu arrivera avec la phase 8).
+// docs/ARCHITECTURE.md ; le composant d'aperçu arrivera avec la phase 8).
 
 use std::path::{Path, PathBuf};
 

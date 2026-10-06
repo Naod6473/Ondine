@@ -10,7 +10,7 @@
 // puis l'appelle à l'intérieur de `catch_unwind` : une panique dans un module
 // devient une erreur, l'île continue.
 //
-// Ajouter un module Rust : voir ARCHITECTURE.md, « Ajouter un module ».
+// Ajouter un module Rust : voir docs/ARCHITECTURE.md, « Ajouter un module ».
 
 mod agenda;
 mod agents;

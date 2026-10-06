@@ -4,7 +4,7 @@
 //   - watch.rs : le thread qui surveille les dossiers et les lecteurs ;
 //   - ce fichier : les commandes, l'exécution des actions, les raccourcis.
 //
-// Garde-fous (voir ARCHITECTURE.md, « Module Règles ») :
+// Garde-fous (voir docs/ARCHITECTURE.md, « Module Règles ») :
 //   - déplacer, renommer, Corbeille : proposent « Annuler » ; jamais de
 //     suppression définitive ;
 //   - tous les dossiers passent par `check_path` (dossiers exclus respectés) ;

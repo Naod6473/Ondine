@@ -8,7 +8,7 @@
 //   - fin d'une animation non bouclée : on passe à `next`, sinon à l'état de base
 //     (idle, ou working/thinking si une tâche est en cours).
 //
-// Événements écoutés (voir ARCHITECTURE.md pour la liste complète) :
+// Événements écoutés (voir docs/ARCHITECTURE.md pour la liste complète) :
 //   app.ready → wake               task.started → working
 //   task.finished → success (sinon celebrate)                  task.failed → error (sinon annoyed)
 //   claude.thinking → thinking     claude.done → idle

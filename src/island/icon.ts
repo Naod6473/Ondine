@@ -5,7 +5,8 @@
 //   - un emoji qui a son image (« 📅 » → src/assets/icons/agenda.webp) est
 //     affiché en image, partout où il apparaît ;
 //   - un autre emoji est affiché tel quel, comme du texte ;
-//   - « logo:claude » désigne un logo fourni avec l'île.
+//   - « logo:claude », « logo:gemini », « logo:codex » désignent les icônes
+//     des agents. Ce sont des icônes à nous, jamais les logos des marques.
 // Ainsi les manifestes et les notifications ne changent pas : pour donner une
 // image à un emoji, il suffit d'ajouter une ligne dans BY_EMOJI.
 //
@@ -15,8 +16,6 @@
 //     MIT, src/assets/icons-line/*.svg). Elles prennent la couleur du texte.
 // Changer de pack remplace les icônes déjà affichées, sans rien recharger.
 
-import claudeLogo from "../assets/logos/claude.svg?url";
-import geminiLogo from "../assets/logos/gemini.svg?url";
 import { settingsStore } from "../core/settings-store";
 
 // Toutes les images de src/assets/icons, par nom de fichier (« agenda »…).
@@ -56,12 +55,11 @@ const BY_EMOJI: Record<string, string> = {
 };
 
 /** Les images connues. Une clé « logo: » absente retombe sur FALLBACK. */
-const IMAGES: Record<string, string> = {
-  "logo:claude": claudeLogo,
-  "logo:gemini": geminiLogo,
-};
-// Codex : une icône à nous (un « codex », livre de code), pas le logo d'OpenAI.
-if (byName("codex")) IMAGES["logo:codex"] = byName("codex");
+const IMAGES: Record<string, string> = {};
+// Les agents : des icônes maison (un C, un G, un « codex », livre de code),
+// pas les logos d'Anthropic, de Google ni d'OpenAI.
+const AGENTS = ["claude", "gemini", "codex"];
+for (const name of AGENTS) if (byName(name)) IMAGES[`logo:${name}`] = byName(name);
 for (const [emoji, name] of Object.entries(BY_EMOJI)) {
   const url = byName(name);
   if (url) IMAGES[emoji] = url;
@@ -76,7 +74,7 @@ for (const [emoji, name] of Object.entries(BY_EMOJI)) {
   const url = lineByName(name);
   if (url) LINE[emoji] = url;
 }
-if (lineByName("codex")) LINE["logo:codex"] = lineByName("codex");
+for (const name of AGENTS) if (lineByName(name)) LINE[`logo:${name}`] = lineByName(name);
 
 export type IconPack = "color" | "line";
 

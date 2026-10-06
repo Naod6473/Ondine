@@ -13,9 +13,11 @@ les a mises au point sur la même pile.
 ## Arborescence
 
 ```
-island/
-├─ ARCHITECTURE.md            ce document
-├─ README.md                  lancer, tester, construire
+ondine/
+├─ README.md                  présentation, téléchargement
+├─ CONTRIBUTING.md            lancer, tester, construire
+├─ LICENSE · THIRD-PARTY.md   licence MIT, et ce qui vient d'ailleurs
+├─ docs/                      ce document, les listes de tests
 ├─ package.json · vite.config.ts · tsconfig.json
 ├─ index.html                 page de l'île
 ├─ settings.html              page de la fenêtre de réglages

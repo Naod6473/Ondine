@@ -3,7 +3,7 @@
 // Un module = un dossier src/modules/<id>/ avec :
 //   - manifest.json : la carte d'identité (lue aussi par le Rust) ;
 //   - index.ts      : exporte un `IslandModule` (setup + vues).
-// Voir ARCHITECTURE.md, « Ajouter un module ».
+// Voir docs/ARCHITECTURE.md, « Ajouter un module ».
 
 import type { BusHandler } from "./bus";
 import type { Logger } from "./log";

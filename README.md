@@ -1,49 +1,78 @@
-# Ondine
+<p align="center"><img src="src-tauri/icons/128x128@2x.png" width="96" alt=""></p>
 
-« L'île » intelligente pour Windows 10/11 : une interface en haut au centre de
-l'écran, modulaire, avec une mascotte animée. Voir [ARCHITECTURE.md](ARCHITECTURE.md).
+<h1 align="center">Ondine</h1>
 
-## Prérequis
+<p align="center">
+<b>Une île au sommet de l'écran pour Windows 10 et 11.</b><br>
+<i>A little island at the top of your Windows screen.</i>
+</p>
 
-- Windows 10 ou 11 (WebView2 est déjà installé)
-- [Rust](https://rustup.rs), [Node 20+](https://nodejs.org)
-- Visual Studio Build Tools avec « Développement Desktop en C++ »
+---
 
-## Lancer
+**Français** · [English](#english)
 
-```powershell
-npm install
-npm run tauri dev      # l'appli complète, rechargée à chaque modification
-```
+Ondine vit en haut de l'écran, comme l'île dynamique d'un iPhone. Approchez la
+souris : une pilule apparaît, avec Ondine, la petite goutte qui réagit à ce qui
+se passe. Cliquez : l'île s'ouvre sur vos outils.
 
-`npm run dev` seul ouvre l'île dans un navigateur (http://localhost:1420) : utile
-pour travailler l'apparence, sans les fonctions Windows. La fenêtre de réglages est
-sur http://localhost:1420/settings.html.
+### Ce qu'elle sait faire
 
-## Vérifier
+| | |
+|---|---|
+| **Musique** | Ce qui joue (Spotify, navigateur…), lecture, pause, barre de progression cliquable |
+| **Contrôles** | Son, micro, luminosité, Wi-Fi, Bluetooth, mode avion, sortie audio |
+| **Étagère** | Glissez des fichiers sur l'île pour les garder sous la main |
+| **Presse-papiers** | Historique, épinglage, coller sans mise en forme |
+| **Captures** | Capture d'écran, texte lu dans l'image (OCR), annotations |
+| **Minuteur** | Minuteur, Pomodoro, chronomètre, dans la pilule |
+| **Agenda** | Le prochain rendez-vous, depuis un fichier ou un lien iCal |
+| **Notes** | Notes rapides et choses à faire |
+| **Agents IA** | Lancez Claude Code, Codex ou Gemini CLI ; leurs notifications arrivent dans l'île |
+| **Demander à Claude** | Collez une erreur, posez une question (avec votre propre clé API) |
+| **Outils IT** | Système, réseau (ping, ports, DNS), accès distants RDP et SSH, terminal |
+| **Règles** | « Quand un fichier arrive… alors… », raccourcis, clés USB |
 
-```powershell
-npm run typecheck                       # TypeScript
-cd src-tauri; cargo test; cd ..         # tests Rust (réglages, bus, journal, chemins, modules)
-```
+Et aussi : trois mascottes, des thèmes de couleur, deux packs d'icônes, deux
+styles d'animation, l'île sur le bord de votre choix, le français et l'anglais.
 
-## Tests à faire
+### Vie privée
 
-La liste des tests et l'installation sur un autre PC : [TESTS.md](TESTS.md).
+- **Aucune télémétrie.** Ondine n'envoie rien sur Internet de son propre chef.
+- « Demander à Claude » envoie le texte choisi à l'API d'Anthropic, avec **votre**
+  clé, seulement après vous avoir montré ce qui part.
+- Les clés sont rangées dans le Gestionnaire d'identifiants de Windows.
+- Rien n'est supprimé définitivement : tout passe par la Corbeille, avec une annulation.
 
-## Construire l'installateur
+### Installer
 
-```powershell
-npm run tauri build    # src-tauri\target\release\bundle\nsis\Ondine_0.1.0_x64-setup.exe
-```
+Téléchargez l'installateur dans les [versions publiées](https://github.com/Naod6473/Ondine/releases).
 
-`src-tauri\target\release\ondine.exe` fonctionne aussi sans installation.
+### Contribuer
 
-## Où sont les fichiers
+Voir [CONTRIBUTING.md](CONTRIBUTING.md) et [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-| Quoi | Où |
-|------|----|
-| Réglages | `%APPDATA%\Ondine\settings.json` |
-| Exports de réglages | `%APPDATA%\Ondine\exports\` |
-| Journal | `%LOCALAPPDATA%\Ondine\logs\ondine.log` |
-| Clés API | Gestionnaire d'identifiants Windows (entrées contenant « io.github.naod6473.island ») |
+---
+
+<a id="english"></a>
+**English**
+
+Ondine lives at the top of your screen, like an iPhone's Dynamic Island. Move
+the mouse up: a pill appears, with Ondine, a little water drop that reacts to
+what happens. Click: the island opens onto your tools.
+
+- **Music** (now playing, controls, seek bar), **quick controls** (volume, mic,
+  brightness, Wi-Fi, Bluetooth, airplane mode), **shelf** for files, **clipboard**
+  history, **screenshots** with OCR, **timer**, **calendar**, **notes**.
+- **AI agents**: launch Claude Code, Codex or Gemini CLI; their notifications
+  show up in the island. **Ask Claude** with your own API key.
+- **IT tools**: system info, network (ping, ports, DNS), RDP and SSH favorites,
+  terminal, automation rules.
+- **No telemetry.** Nothing leaves your PC unless you send it, and you see what
+  is sent first. Nothing is ever deleted for good: the Recycle Bin, with undo.
+
+Download: [releases](https://github.com/Naod6473/Ondine/releases). French and English.
+
+---
+
+MIT · [LICENSE](LICENSE) · [THIRD-PARTY.md](THIRD-PARTY.md). Claude, Gemini and
+Codex are trademarks of their owners; Ondine is not affiliated with them.
