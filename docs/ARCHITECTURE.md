@@ -437,6 +437,20 @@ Front : `src/modules/shelf/index.ts`. Rust : `src-tauri/src/modules/shelf.rs`.
   donc la sienne à la place (`platform/drop_target.rs`), au premier clic, et
   envoie au front l'événement `file-drag` (`enter`/`over`/`leave`/`drop`, chemins,
   position en pixels physiques). Elle ne lit que la liste des chemins.
+- **Par élément** : 📂 Montrer dans l'Explorateur, 📄 Copier vers…, 📦 Déplacer
+  vers… (mêmes commandes `copy_to` / `move_to`, donc même annulation), 📋, 🗑️, ×.
+- **Sortir un élément en le glissant (Windows)** : appuyer sur une ligne puis
+  bouger de 6 px appelle `drag_out`. Le Rust (`platform/drag_out.rs`) crée un
+  objet de données du Shell (`SHCreateDataObject` avec les PIDL des fichiers)
+  et lance `SHDoDragDrop` sur le thread principal (`run_on_main_thread`), avec
+  une petite `IDropSource` (Échap annule, bouton relâché = lâcher). C'est la
+  cible qui copie ou déplace (règles habituelles : même disque = déplacer,
+  Ctrl = copier, Maj = déplacer) ; Ondine ne touche à rien. Après le lâcher,
+  ce qui n'existe plus quitte l'étagère, puis on revérifie pendant ~2 min
+  (l'Explorateur finit parfois le déplacement après coup). Pendant le glisser,
+  la boucle de souris de l'île rend la fenêtre traversante partout sauf sur
+  l'île et n'envoie plus la position (l'île ne se replie pas), et la cible de
+  dépôt de l'île refuse ce qui vient d'elle-même. Désactivé en mode démo.
 - La boîte « Choisir un dossier » est la commande `dialog_pick_folder`
   (plugin officiel `tauri-plugin-dialog`), appelée depuis le Rust uniquement :
   les pages n'ont pas accès au plugin directement.

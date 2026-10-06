@@ -2,7 +2,10 @@
 //
 //   - cibles de dépôt : Étagère, Copier vers…, Déplacer vers…, un favori par
 //     dossier choisi dans les réglages, Copier le chemin, Compresser, Corbeille ;
-//   - vue agrandie : la liste de l'étagère, avec les mêmes actions.
+//   - vue agrandie : la liste de l'étagère, avec les mêmes actions, pour tout
+//     le contenu ou pour un seul élément ;
+//   - sortir un élément : le glisser vers l'Explorateur, le Bureau ou une autre
+//     appli (vrai glisser-déposer de Windows, lancé par le Rust).
 //
 // Tout le travail sur les fichiers est fait par le Rust (src-tauri/src/modules/shelf.rs),
 // qui valide les chemins et propose « Annuler ». Ici, on ne fait qu'afficher et
@@ -11,6 +14,7 @@
 import manifest from "./manifest.json";
 import { Bridge } from "../../core/bridge";
 import { errorText } from "../../core/log";
+import { DEMO_PICKED_FOLDER, demoOn } from "../../core/demo";
 import type { DropTarget, IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
 
@@ -61,6 +65,24 @@ function reportPartial(api: ModuleApi, what: string, r: BatchResult) {
   if (r.error) api.notify({ title: `${what} interrompu`, body: r.error, icon: "⚠️", priority: "normal" });
 }
 
+/** La boîte « Choisir un dossier ». En mode démo, pas de vraie boîte : un dossier inventé. */
+function pickFolder(title: string): Promise<string | null> {
+  return demoOn() ? Promise.resolve(DEMO_PICKED_FOLDER) : Bridge.pickFolder(title);
+}
+
+/** « rapport.pdf » ou « 3 éléments » (même forme que les messages du Rust). */
+function label(paths: string[]): string {
+  return paths.length === 1 ? `« ${baseName(paths[0])} »` : `${paths.length} éléments`;
+}
+
+/**
+ * En mode démo, rien n'est copié ni déplacé et le Rust ne propose pas
+ * « Annuler » : on affiche nous-mêmes le message qu'on aurait vu.
+ */
+function demoDone(api: ModuleApi, paths: string[], folder: string, verb: "copié(s)" | "déplacé(s)") {
+  if (demoOn()) api.notify({ title: `${label(paths)} ${verb} dans « ${baseName(folder)} »`, icon: "↩️", priority: "normal" });
+}
+
 // ── Les actions (utilisées par les cibles de dépôt ET par la vue agrandie) ──
 
 const actions = {
@@ -72,16 +94,18 @@ const actions = {
 
   copyTo: (api: ModuleApi, paths: string[], dest?: string) =>
     attempt(api, "Copie", async () => {
-      const folder = dest ?? (await Bridge.pickFolder("Copier vers…"));
+      const folder = dest ?? (await pickFolder("Copier vers…"));
       if (!folder) return; // boîte annulée
       reportPartial(api, "Copie", await api.invoke<BatchResult>("copy_to", { paths, dest: folder }));
+      demoDone(api, paths, folder, "copié(s)");
     }),
 
   moveTo: (api: ModuleApi, paths: string[], dest?: string) =>
     attempt(api, "Déplacement", async () => {
-      const folder = dest ?? (await Bridge.pickFolder("Déplacer vers…"));
+      const folder = dest ?? (await pickFolder("Déplacer vers…"));
       if (!folder) return;
       reportPartial(api, "Déplacement", await api.invoke<BatchResult>("move_to", { paths, dest: folder }));
+      demoDone(api, paths, folder, "déplacé(s)");
     }),
 
   copyPaths: (api: ModuleApi, paths: string[]) =>
@@ -100,6 +124,57 @@ const actions = {
       await api.invoke("trash", { paths });
     }),
 };
+
+// ── Sortir de l'étagère en glissant ──────────────────────────────────────────
+
+/** Au-delà de ce déplacement (px) avec le bouton enfoncé, c'est un glisser. */
+const DRAG_THRESHOLD = 6;
+/** Un glisser est en cours (un seul à la fois). */
+let draggingOut = false;
+
+/**
+ * Le glisser lui-même : le Rust lance le glisser-déposer de Windows et rend la
+ * main quand on a lâché (ou annulé avec Échap). C'est la cible (l'Explorateur…)
+ * qui copie ou déplace, avec les touches habituelles (Ctrl = copier, Maj =
+ * déplacer). Ce qui a été déplacé quitte l'étagère tout seul (sujet shelf.changed).
+ */
+async function dragOut(api: ModuleApi, paths: string[]) {
+  if (draggingOut || demoOn()) return; // en démo : pas de glisser natif
+  draggingOut = true;
+  try {
+    await attempt(api, "Glisser", async () => {
+      const r = await api.invoke<{ effect: string; removed: number }>("drag_out", { paths });
+      if (r.removed > 0) api.notify({ title: `${label(paths)} sorti(s) de l'étagère`, icon: "📤", priority: "low" });
+    });
+  } finally {
+    draggingOut = false;
+  }
+}
+
+/**
+ * Rend une ligne de l'étagère « attrapable » : appuyer puis bouger de quelques
+ * pixels lance le glisser. (Pas le glisser HTML de la page : il ne sait pas
+ * donner un vrai fichier à l'Explorateur.)
+ */
+function draggable(row: HTMLElement, api: ModuleApi, paths: string[]) {
+  row.classList.add("shelf-draggable");
+  row.addEventListener("dragstart", (e) => e.preventDefault());
+  row.addEventListener("pointerdown", (down) => {
+    if (down.button !== 0 || (down.target as HTMLElement).closest("button")) return;
+    const stop = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", stop);
+    };
+    const move = (e: PointerEvent) => {
+      if (!(e.buttons & 1)) return stop();
+      if (Math.hypot(e.clientX - down.clientX, e.clientY - down.clientY) < DRAG_THRESHOLD) return;
+      stop();
+      void dragOut(api, paths);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", stop);
+  });
+}
 
 /**
  * Un bouton en deux clics : le premier le transforme en « Confirmer ? »
@@ -349,31 +424,34 @@ export const shelf: IslandModule = {
         const list = el("ul", { class: "shelf-list" });
         for (const item of items) {
           const one = [item.path];
-          list.append(
+          const row = el(
+            "li",
+            { class: `shelf-item ${item.exists ? "" : "missing"}`, title: item.path },
+            el("span", { class: "shelf-icon" }, item.isDir ? "📁" : "📄"),
+            el("span", { class: "shelf-name" }, item.name),
+            item.exists ? null : el("span", { class: "muted" }, "introuvable"),
             el(
-              "li",
-              { class: `shelf-item ${item.exists ? "" : "missing"}`, title: item.path },
-              el("span", { class: "shelf-icon" }, item.isDir ? "📁" : "📄"),
-              el("span", { class: "shelf-name" }, item.name),
-              item.exists ? null : el("span", { class: "muted" }, "introuvable"),
+              "span",
+              { class: "shelf-actions" },
+              item.exists
+                ? el("button", { class: "icon-btn", title: "Montrer dans l'Explorateur", onclick: api.handler(() => attempt(api, "Explorateur", () => api.invoke("reveal", { paths: one }).then(() => {}))) }, "📂")
+                : null,
+              item.exists ? el("button", { class: "icon-btn", title: "Copier vers un dossier…", onclick: api.handler(() => actions.copyTo(api, one)) }, "📄") : null,
+              item.exists ? el("button", { class: "icon-btn", title: "Déplacer vers un dossier…", onclick: api.handler(() => actions.moveTo(api, one)) }, "📦") : null,
+              item.exists ? el("button", { class: "icon-btn", title: "Copier le chemin", onclick: api.handler(() => actions.copyPaths(api, one)) }, "📋") : null,
+              item.exists ? confirmButton(api, "icon-btn", "🗑️", "Envoyer à la Corbeille", () => actions.trash(api, one)) : null,
               el(
-                "span",
-                { class: "shelf-actions" },
-                item.exists
-                  ? el("button", { class: "icon-btn", title: "Montrer dans l'Explorateur", onclick: api.handler(() => attempt(api, "Explorateur", () => api.invoke("reveal", { paths: one }).then(() => {}))) }, "📂")
-                  : null,
-                item.exists ? el("button", { class: "icon-btn", title: "Copier le chemin", onclick: api.handler(() => actions.copyPaths(api, one)) }, "📋") : null,
-                item.exists ? confirmButton(api, "icon-btn", "🗑️", "Envoyer à la Corbeille", () => actions.trash(api, one)) : null,
-                el(
-                  "button",
-                  { class: "icon-btn", title: "Retirer de l'étagère", onclick: api.handler(() => attempt(api, "Retirer", () => api.invoke("remove", { paths: one }).then(() => {}))) },
-                  "×",
-                ),
+                "button",
+                { class: "icon-btn", title: "Retirer de l'étagère", onclick: api.handler(() => attempt(api, "Retirer", () => api.invoke("remove", { paths: one }).then(() => {}))) },
+                "×",
               ),
             ),
           );
+          if (item.exists) draggable(row, api, one);
+          list.append(row);
         }
-        root.append(bar, list);
+        const hint = el("p", { class: "muted shelf-hint" }, "Glisse un élément vers l'Explorateur ou le Bureau pour l'y poser (Ctrl : copier, Maj : déplacer).");
+        root.append(bar, list, hint);
       };
       draw();
       redraws.add(draw);

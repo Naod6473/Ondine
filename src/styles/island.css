@@ -455,6 +455,15 @@ body {
   display: flex;
   gap: 2px;
 }
+/* Un élément qu'on peut glisser hors de l'île (vers l'Explorateur, le Bureau). */
+.shelf-draggable {
+  cursor: grab;
+  user-select: none;
+}
+.shelf-hint {
+  margin: 6px 0 0;
+  font-size: 11px;
+}
 
 .view-expanded h3 {
   margin: 0 0 4px;

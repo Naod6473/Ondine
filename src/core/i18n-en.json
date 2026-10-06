@@ -1047,7 +1047,15 @@
 "Mode actuel : Équilibrée": "Current mode: Balanced",
 "Mode actuel : Économie d'énergie": "Current mode: Power saving",
 "Mode actuel : Économie d'énergie (sur batterie)": "Current mode: Power saving (on battery)",
-"Pour comparer les modes : la ligne « Ressources utilisées », plus bas dans À propos.": "To compare modes: the “Resources used” line, further down in About."
+"Pour comparer les modes : la ligne « Ressources utilisées », plus bas dans À propos.": "To compare modes: the “Resources used” line, further down in About.",
+"Copier vers un dossier…": "Copy to a folder…",
+"Déplacer vers un dossier…": "Move to a folder…",
+"Glisse un élément vers l'Explorateur ou le Bureau pour l'y poser (Ctrl : copier, Maj : déplacer).": "Drag an item to File Explorer or the desktop to drop it there (Ctrl: copy, Shift: move).",
+"Glisser impossible": "Drag failed",
+"un glisser est déjà en cours": "a drag is already in progress",
+"glisser interrompu": "drag interrupted",
+"le glisser a planté": "the drag crashed",
+"glisser vers l'extérieur : disponible seulement sous Windows": "dragging out: only available on Windows"
 },
 "patterns": [
 [
@@ -1459,10 +1467,6 @@
 "missing parameter “$1”"
 ],
 [
-"^(.+?)\\ déplacé\\(s\\)\\ dans\\ (.+?)$",
-"$1 moved to $1"
-],
-[
 "^(.+?)\\ reste\\ au\\ premier\\ plan$",
 "$1 stays on top"
 ],
@@ -1489,10 +1493,6 @@
 [
 "^commande\\ non\\ gérée\\ :\\ (.+?)$",
 "unhandled command: $1"
-],
-[
-"^(.+?)\\ copié\\(s\\)\\ dans\\ (.+?)$",
-"$1 copied to $1"
 ],
 [
 "^⬆\\ Ce\\ qui\\ part\\ vers\\ (.+?)$",
@@ -1993,6 +1993,30 @@
 [
 "^(\\d+) Mo · (.+) % du processeur · (\\d+) processus$",
 "$1 MB · $2% CPU · $3 processes"
+],
+[
+"^(.+?)\\ déplacé\\(s\\)\\ dans\\ (.+?)$",
+"$1 moved to $2"
+],
+[
+"^(.+?)\\ copié\\(s\\)\\ dans\\ (.+?)$",
+"$1 copied to $2"
+],
+[
+"^(.+?)\\ sorti\\(s\\)\\ de\\ l'étagère$",
+"$1 taken off the Shelf"
+],
+[
+"^glisser\\ impossible\\ :\\ (.+)$",
+"drag failed: $1"
+],
+[
+"^objet\\ de\\ glisser\\ impossible\\ :\\ (.+)$",
+"could not prepare the drag: $1"
+],
+[
+"^(.+)\\ :\\ introuvable\\ pour\\ Windows$",
+"$1: not found by Windows"
 ]
 ]
 }

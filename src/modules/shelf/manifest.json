@@ -80,7 +80,8 @@
     "rename_preview",
     "rename",
     "search",
-    "open"
+    "open",
+    "drag_out"
   ],
   "events": {
     "emits": [

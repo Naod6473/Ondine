@@ -125,6 +125,8 @@ windows = { version = "0.61", features = [
   "Win32_System_LibraryLoader",
   # Profils : le nom du Wi-Fi connecté (wlanapi).
   "Win32_NetworkManagement_WiFi",
+  # Étagère : glisser des fichiers vers l'Explorateur (PIDL, SHCreateDataObject).
+  "Win32_UI_Shell_Common",
 ] }
 
 [profile.release]
