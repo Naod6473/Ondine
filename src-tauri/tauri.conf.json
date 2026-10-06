@@ -50,7 +50,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "CLE_PUBLIQUE_A_REMPLACER",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUyN0YzN0I5MTQ2RkYwREEKUldUYThHOFV1VGQvVXZyMXJLQ3FKRWljMmlabDQvcVVnbEdHR3NyOXV3YVJPTU84ams1SzZoc04K",
       "endpoints": ["https://github.com/Naod6473/Ondine/releases/latest/download/latest.json"],
       "windows": { "installMode": "passive" }
     }
