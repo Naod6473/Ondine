@@ -59,7 +59,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "⚙️",
     label: "Général",
     sub: "L'écran, le repli de l'île, les notifications et le journal.",
-    keywords: ["Langue", "Language", "Sur quel écran ?", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal"],
+    keywords: ["Langue", "Language", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal"],
     render: general,
   },
   {
@@ -442,6 +442,11 @@ function general(main: HTMLElement) {
         "Sur quel écran ?",
         choice(s.general.screen, [["primary", "Écran principal"], ["cursor", "Suit la souris"]], (v) => save((d) => (d.general.screen = v as Settings["general"]["screen"]))),
         "Seulement si tu as plusieurs écrans : l'île reste sur l'écran principal, ou suit l'écran où se trouve ta souris.",
+      ),
+      row(
+        "Toujours en mini",
+        toggle(s.island.alwaysMini ?? false, (v) => save((d) => (d.island.alwaysMini = v)), "Toujours en mini"),
+        "L'île reste en petite pilule au lieu de disparaître. Elle se cache seulement en mode présentation.",
       ),
       row(
         "Replier l'île",

@@ -35,6 +35,8 @@ export interface Settings {
     presentationQuiet: boolean;
     /** Pack d'icônes : "color" (dessinées en couleur) ou "line" (au trait, sobres). */
     iconPack: "color" | "line";
+    /** L'île reste en mini au lieu de disparaître. */
+    alwaysMini: boolean;
   };
   mascot: {
     enabled: boolean;
@@ -70,6 +72,7 @@ export function defaultSettings(): Settings {
       hotkey: "Ctrl+Alt+O",
       presentationQuiet: true,
       iconPack: "color",
+      alwaysMini: false,
     },
     mascot: { enabled: true, id: "goutte", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5 },
     privacy: { excludedFolders: [] },

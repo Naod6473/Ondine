@@ -75,6 +75,8 @@ pub struct IslandPrefs {
     pub presentation_quiet: bool,
     /// Le pack d'icônes : "color" (dessinées en couleur) ou "line" (au trait, sobres).
     pub icon_pack: String,
+    /// L'île reste en mini (la pilule) au lieu de disparaître.
+    pub always_mini: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -141,6 +143,7 @@ impl Default for IslandPrefs {
             hotkey: "Ctrl+Alt+O".into(),
             presentation_quiet: true,
             icon_pack: "color".into(),
+            always_mini: false,
         }
     }
 }

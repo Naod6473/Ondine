@@ -29,6 +29,10 @@
 //   (tous sauf drop) --alerte-->         alert  (on retient l'état d'avant)
 //   alert    --alerte terminée-->         état d'avant (hidden devient compact)
 //   menu de l'icône « Ouvrir l'île »  --> expanded
+//
+// Réglage « Toujours en mini » (alwaysMini) : l'état de repos devient compact
+// au lieu de hidden. L'île ne disparaît plus ; elle redevient mini. Seul le mode
+// présentation la cache encore (hide), et elle revient en mini après (restore).
 
 export type IslandState = "hidden" | "peek" | "compact" | "expanded" | "drop" | "alert";
 
@@ -50,6 +54,10 @@ export class IslandStateMachine {
   /** Une notification est affichée : l'île compacte reste ouverte pour qu'on puisse la lire. */
   private holding = false;
   private timer: number | null = null;
+  /** Réglage « Toujours en mini » : l'île se repose en compact, pas cachée. */
+  private alwaysMini = false;
+  /** Cachée exprès (mode présentation), même en « Toujours en mini ». */
+  private forcedHidden = false;
 
   /** Appelé à chaque transition. */
   onTransition: (from: IslandState, to: IslandState) => void = () => {};
@@ -91,16 +99,41 @@ export class IslandStateMachine {
 
   /** Un module demande à refermer l'île (pas pendant une alerte ou un glisser). */
   close() {
-    if (this.state === "alert" || this.state === "drop" || this.state === "hidden") return;
-    this.go("hidden");
+    if (this.state === "alert" || this.state === "drop" || this.state === this.rest()) return;
+    this.go(this.rest());
   }
 
   /** Renvoie vrai si Échap a été utilisé ici. */
   escape(): "dismiss-alert" | "closed" | null {
     if (this.state === "alert") return "dismiss-alert";
-    if (this.state === "hidden") return null;
-    this.go("hidden");
+    if (this.state === this.rest() || this.state === "hidden") return null;
+    this.go(this.rest());
     return "closed";
+  }
+
+  /** Active ou coupe « Toujours en mini ». */
+  setAlwaysMini(on: boolean) {
+    if (on === this.alwaysMini) return;
+    this.alwaysMini = on;
+    if (on && (this.state === "hidden" || this.state === "peek") && !this.forcedHidden) this.go("compact");
+    else this.scheduleCollapse();
+  }
+
+  /** Cache l'île quoi qu'il arrive (mode présentation). */
+  hide() {
+    this.forcedHidden = true;
+    if (this.state !== "hidden") this.go("hidden");
+  }
+
+  /** Fin du mode présentation : en « Toujours en mini », l'île revient. */
+  restore() {
+    this.forcedHidden = false;
+    if (this.alwaysMini && this.state === "hidden") this.go("compact");
+  }
+
+  /** L'état où l'île se repose quand personne ne s'en sert. */
+  private rest(): IslandState {
+    return this.alwaysMini && !this.forcedHidden ? "compact" : "hidden";
   }
 
   dragEnter() {
@@ -183,11 +216,12 @@ export class IslandStateMachine {
         this.later(this.timings.peekToHiddenMs, () => this.go("hidden"));
         break;
       case "compact":
+        if (this.rest() === "compact") break; // « Toujours en mini » : elle reste
         this.later(this.timings.collapseMs, () => this.go("hidden"));
         break;
       case "expanded":
-        // D'un coup jusqu'à cachée, sauf si une notification attend d'être lue.
-        this.later(this.timings.collapseMs, () => this.go(this.holding ? "compact" : "hidden"));
+        // D'un coup jusqu'à l'état de repos, sauf si une notification attend d'être lue.
+        this.later(this.timings.collapseMs, () => this.go(this.holding ? "compact" : this.rest()));
         break;
       default:
         break; // hidden, drop, alert : rien à programmer

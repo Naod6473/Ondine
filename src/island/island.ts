@@ -160,6 +160,7 @@ export class Island {
 
   private applySettings(s: Settings) {
     this.fsm.timings = timingsFrom(s);
+    this.fsm.setAlwaysMini(s.island.alwaysMini ?? false);
     // Le bord et la place de l'île : la forme s'adapte en CSS (island.css).
     document.body.dataset.edge = s.island.edge ?? "top";
     document.body.dataset.align = s.island.align ?? "center";
@@ -380,11 +381,12 @@ export class Island {
     document.body.classList.toggle("presenting", busy);
     if (busy) {
       this.hanger.hide(true);
-      if (this.fsm.state !== "hidden") this.fsm.close();
+      this.fsm.hide();
       this.notifications.pause(true);
     } else {
       const n = this.notifications.waiting();
       this.notifications.pause(false);
+      this.fsm.restore();
       if (n > 1) this.notifications.push({ moduleId: "island", title: `${n} notifications pendant ta présentation`, icon: "🎬", priority: "low", key: "presentation-summary" });
     }
   }
