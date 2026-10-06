@@ -51,6 +51,9 @@ ureq = { version = "3", default-features = false, features = ["json", "gzip", "n
 # de l'installateur (clé publique dans tauri.conf.json), puis le lance.
 # TLS de Windows comme ureq (certificats d'entreprise compris).
 tauri-plugin-updater = { version = "2", default-features = false, features = ["native-tls", "system-proxy"] }
+# QR code d'une copie (Presse-papiers), calculé sur le PC. Sans ses options
+# d'image : seulement la grille, qu'on dessine nous-mêmes (aucune dépendance).
+qrcode = { version = "0.14", default-features = false }
 
 [target.'cfg(windows)'.dependencies]
 # Gestionnaire d'identifiants Windows. Version 3 volontairement : la 4 a changé d'API.

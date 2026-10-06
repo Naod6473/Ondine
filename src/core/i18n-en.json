@@ -871,7 +871,19 @@
 "Téléchargement… Ondine va se fermer puis revenir.": "Downloading… Ondine will close and come back.",
 "Téléchargement de la mise à jour…": "Downloading the update…",
 "La mise à jour n'a pas pu s'installer": "The update couldn't be installed",
-"Installer maintenant ? Ondine se ferme quelques secondes puis revient toute seule.": "Install now? Ondine closes for a few seconds, then comes back on its own."
+"Installer maintenant ? Ondine se ferme quelques secondes puis revient toute seule.": "Install now? Ondine closes for a few seconds, then comes back on its own.",
+"Mode concentration pendant le Pomodoro": "Focus mode during Pomodoro",
+"Pendant une séance de travail, les notifications de l'île attendent (sauf les urgentes) ; elles arrivent à la pause, avec un résumé. Les bannières de Windows ne sont pas coupées : pour cela, lance une séance « Focus » dans l'appli Horloge de Windows 11.": "During a work session, the island's notifications wait (except urgent ones); they arrive at the break, with a summary. Windows banners aren't silenced: for that, start a \"Focus\" session in the Windows 11 Clock app.",
+"🔕 Concentration : les notifications de l'île attendent la fin de la séance.": "🔕 Focus: the island's notifications wait until the session ends.",
+"QR code (pour l'ouvrir sur un téléphone)": "QR code (to open it on a phone)",
+"Copie l'image du QR code (noir sur blanc) dans le presse-papiers": "Copies the QR code image (black on white) to the clipboard",
+"Copier l'image": "Copy image",
+"‹ Retour": "‹ Back",
+"QR code copié": "QR code copied",
+"Colle-le comme une image (Ctrl+V).": "Paste it as an image (Ctrl+V).",
+"Copier le QR code impossible": "Couldn't copy the QR code",
+"Vise le code avec l'appareil photo de ton téléphone. Calculé sur ton PC : rien ne passe par Internet.": "Point your phone's camera at the code. Made on your PC: nothing goes over the Internet.",
+"rien à mettre dans le QR code": "nothing to put in the QR code"
 },
 "patterns": [
 [
@@ -1757,6 +1769,14 @@
 [
 "^La mise à jour a échoué : (.*)$",
 "The update failed: $1"
+],
+[
+"^(.+?)\\ notifications\\ pendant\\ ta\\ concentration$",
+"$1 notifications during your focus session"
+],
+[
+"^texte\\ trop\\ long\\ pour\\ un\\ QR\\ code\\ \\((\\d+)\\ caractères,\\ (\\d+)\\ au\\ plus\\)$",
+"text too long for a QR code ($1 characters, $2 at most)"
 ]
 ]
 }

@@ -7,6 +7,22 @@
 // La vue compacte (la pilule) montre ce qui tourne. À la fin d'un minuteur ou
 // d'une séance Pomodoro, l'île s'ouvre en alerte, avec un petit son, et la
 // mascotte fait la fête (sujet "task.finished").
+//
+// Mode concentration (réglage « focusQuiet ») : pendant une séance de travail
+// Pomodoro qui tourne, on publie "timer.focus" {on: true} ; l'île met alors
+// ses notifications en attente (voir island.ts, wireFocus). En pause, à l'arrêt
+// ou à la fin de la séance : {on: false}, et elles arrivent avec un résumé.
+//
+// Et « Ne pas déranger » de Windows ? Il n'existe pas d'API publique simple :
+//   - FocusSessionManager (WinRT, Windows 11) est une « fonction à accès
+//     limité » : il faut un jeton demandé à Microsoft ;
+//   - la clé de registre NOC_GLOBAL_SETTING_TOASTS_ENABLED (ou ToastEnabled)
+//     n'est relue par Windows qu'au redémarrage de son service de
+//     notifications, et resterait coupée si Ondine plantait en pleine séance ;
+//   - WNF / Focus Assist : non documentés, peuvent casser à chaque mise à jour.
+// On ne touche donc pas à Windows : seule l'île se tait. Pour couper aussi les
+// bannières de Windows, une séance « Focus » de l'appli Horloge active « Ne pas
+// déranger » (Windows 11).
 
 import manifest from "./manifest.json";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
@@ -143,6 +159,16 @@ function nextPhase(api: ModuleApi): PomodoroPhase {
 // ── Ce qui se passe à chaque instant ─────────────────────────────────────────
 
 let wasActive = false;
+/** Le mode concentration est-il annoncé à l'île en ce moment ? */
+let focusOn = false;
+
+/** Annonce le début ou la fin de la concentration, quand ça change. */
+function syncFocus(api: ModuleApi, force?: boolean) {
+  const wanted = force ?? (Boolean(api.settings().focusQuiet) && running(pomodoro.clock) && pomodoro.phase === "work");
+  if (wanted === focusOn) return;
+  focusOn = wanted;
+  api.emit("timer.focus", { on: wanted });
+}
 
 /** Quelque chose tourne-t-il ? (pour la pilule) */
 function anyActive(): boolean {
@@ -168,6 +194,7 @@ function tick(api: ModuleApi) {
       ended === "work" ? "☕" : "🍅",
     );
   }
+  syncFocus(api);
   // La pilule n'a besoin d'être changée que quand ça démarre ou s'arrête.
   const active = anyActive();
   if (active !== wasActive) {
@@ -249,6 +276,8 @@ export const timerModule: IslandModule = {
       window.clearInterval(interval);
       off();
       offStart();
+      // Module coupé en pleine séance : les notifications de l'île reprennent.
+      syncFocus(api, false);
     };
   },
 
@@ -368,8 +397,10 @@ export const timerModule: IslandModule = {
           pomodoro.started = true;
           if (running(pomodoro.clock)) pause(pomodoro.clock);
           else start(pomodoro.clock);
+          syncFocus(api);
         }, "btn primary");
         const tomatoes = el("div", { class: "timer-tomatoes" });
+        const focusHint = el("p", { class: "muted timer-hint" });
         body.append(
           el(
             "div",
@@ -387,15 +418,18 @@ export const timerModule: IslandModule = {
                   if (pomodoro.phase === "work") pomodoro.done++;
                   pomodoro.phase = nextPhase(api);
                   reset(pomodoro.clock, phaseMs(api, pomodoro.phase));
+                  syncFocus(api);
                 }),
                 button("↺ Réinitialiser", "Recommencer à zéro", () => {
                   pomodoro.phase = "work";
                   pomodoro.done = 0;
                   pomodoro.started = false;
                   reset(pomodoro.clock, phaseMs(api, "work"));
+                  syncFocus(api);
                 }),
               ),
               el("p", { class: "muted timer-hint" }, "Les durées se règlent dans les réglages du module."),
+              focusHint,
             ),
           ),
         );
@@ -407,6 +441,8 @@ export const timerModule: IslandModule = {
           const inCycle = pomodoro.done % every;
           const want = `${"🍅".repeat(inCycle)}${"○".repeat(every - inCycle)} · ${pomodoro.done} séance(s)`;
           if (tomatoes.textContent !== want) tomatoes.textContent = want;
+          const hint = focusOn ? "🔕 Concentration : les notifications de l'île attendent la fin de la séance." : "";
+          if (focusHint.textContent !== hint) focusHint.textContent = hint;
         };
       };
 

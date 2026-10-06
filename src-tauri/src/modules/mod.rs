@@ -28,6 +28,7 @@ mod shelf;
 mod shelf_tools;
 mod system;
 mod terminal;
+mod clipboard_qr;
 
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};

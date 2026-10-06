@@ -22,7 +22,9 @@
 //   - générer un mot de passe (hasard du système) : copié marqué « secret »
 //     (ni historique Windows, ni le nôtre, ni cloud), puis effacé du
 //     presse-papiers au bout de 30 s si rien d'autre n'a été copié entre-temps.
-//     Il n'est jamais enregistré ni écrit dans le journal.
+//     Il n'est jamais enregistré ni écrit dans le journal ;
+//   - montrer une copie en QR code (calculé sur le PC, clipboard_qr.rs), pour
+//     l'ouvrir sur un téléphone ; « Copier l'image » le met dans le presse-papiers.
 //
 // Le manifeste est le même fichier que celui du front (src/modules/clipboard/manifest.json).
 
@@ -32,10 +34,13 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use base64::engine::general_purpose::STANDARD as BASE64;
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tauri::AppHandle;
 
+use super::clipboard_qr;
 use super::{ModuleContext, RustModule};
 use crate::platform;
 use crate::services::undo::DEFAULT_WINDOW;
@@ -184,6 +189,22 @@ impl RustModule for Clipboard {
                     platform::clear_clipboard_if(seq);
                 });
                 Ok(json!({ "clearsInSecs": SECRET_LIFETIME.as_secs() }))
+            }
+            // { id } → { image, size } : le QR code de la copie, en SVG (data URL).
+            "qr" => {
+                let qr = clipboard_qr::make(&self.text_of(&args)?)?;
+                let image = format!("data:image/svg+xml;base64,{}", BASE64.encode(clipboard_qr::svg(&qr)));
+                Ok(json!({ "image": image, "size": qr.width }))
+            }
+            // { id } : copie le QR code en image (noir sur blanc, ~512 px).
+            "qr_copy" => {
+                let qr = clipboard_qr::make(&self.text_of(&args)?)?;
+                let (side, bytes) = clipboard_qr::rgba(&qr);
+                let mut clipboard = arboard::Clipboard::new().map_err(|e| format!("presse-papiers indisponible : {e}"))?;
+                clipboard
+                    .set_image(arboard::ImageData { width: side, height: side, bytes: bytes.into() })
+                    .map_err(|e| format!("presse-papiers : {e}"))?;
+                Ok(Value::Null)
             }
             "snippet_save" => self.snippet_save(ctx, &args),
             "snippet_delete" => self.snippet_delete(ctx, arg_id(&args, "id")?),

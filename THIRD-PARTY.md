@@ -9,7 +9,7 @@ travaux, dont les licences sont respectées :
 | [Phosphor Icons](https://phosphoricons.com) | Pack d'icônes « Épurées » (`src/assets/icons-line/`, sauf claude, gemini et codex) | MIT ([texte](src/assets/icons-line/LICENSE-phosphor.txt)) |
 | [Tauri](https://tauri.app) et ses plugins | Le socle de l'appli | MIT ou Apache-2.0 |
 | [windows-rs](https://github.com/microsoft/windows-rs) | Les appels aux API de Windows | MIT ou Apache-2.0 |
-| Crates Rust (serde, serde_json, trash, arboard, image, chrono, zip, getrandom, notify, sysinfo, ureq, keyring) | Voir `src-tauri/Cargo.toml` | MIT, Apache-2.0 ou les deux |
+| Crates Rust (serde, serde_json, trash, arboard, image, chrono, zip, getrandom, notify, sysinfo, ureq, keyring, qrcode) | Voir `src-tauri/Cargo.toml` | MIT, Apache-2.0 ou les deux |
 | Vite, TypeScript | Outils de construction (pas livrés dans l'appli) | MIT, Apache-2.0 |
 
 ## Images
