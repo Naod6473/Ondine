@@ -14,6 +14,7 @@ import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
+import { pacedInterval } from "../../core/perf";
 
 type DeviceId = "speakers" | "microphone";
 
@@ -48,9 +49,9 @@ interface Screen {
   brightness: number;
 }
 
-const SOUND_REFRESH_MS = 1000;
-const SCREENS_REFRESH_MS = 5000;
-const RADIOS_REFRESH_MS = 2000;
+// Le son est relu chaque seconde, les radios toutes les 2 s, la luminosité
+// toutes les 5 s (c'est lent) : "controlsSound", "controlsRadios",
+// "controlsScreens" de src/core/perf.ts (selon le mode de performance).
 /** Pendant qu'on fait glisser un pilier, au plus un envoi tous les… (le son réagit vite, un écran externe non). */
 const SOUND_SEND_MS = 60;
 const SCREEN_SEND_MS = 150;
@@ -536,14 +537,14 @@ export const controls: IslandModule = {
       void refreshSound();
       void refreshScreens();
       const timers = [
-        window.setInterval(() => void refreshSound(), SOUND_REFRESH_MS),
-        window.setInterval(() => void refreshRadios(), RADIOS_REFRESH_MS),
-        window.setInterval(() => void refreshScreens(), SCREENS_REFRESH_MS),
+        pacedInterval(() => void refreshSound(), "controlsSound", true),
+        pacedInterval(() => void refreshRadios(), "controlsRadios", true),
+        pacedInterval(() => void refreshScreens(), "controlsScreens", true),
       ];
       return () => {
         alive = false;
         closeMenu();
-        timers.forEach((t) => window.clearInterval(t));
+        timers.forEach((stop) => stop());
       };
     },
   },

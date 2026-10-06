@@ -23,6 +23,10 @@
   sobre. · Resource usage shown in settings; lighter mouse polling.
 - Tests automatiques de l'interface et de l'installation. · Automated UI and
   install tests.
+- Performances : haute, équilibrée ou économie d'énergie (automatique sur
+  batterie) ; la mascotte ne se dessine plus quand l'île est cachée. ·
+  Performance modes: high, balanced or power saving (automatic on battery);
+  the mascot no longer draws while the island is hidden.
 
 ## 1.0.0-beta.3
 

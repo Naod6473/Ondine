@@ -6,6 +6,7 @@
 // renvoie une « pose » (position du corps, forme des yeux, bouche, effets…).
 // Une seule fonction `draw` sait dessiner n'importe quelle pose.
 
+import { frameLoop } from "../../core/perf";
 import type { MascotRenderer } from "../renderer";
 import type { AnimationSpec, MascotState, Mood } from "../types";
 import { drawHeart, drawOverlay, type Overlay } from "./overlays";
@@ -173,7 +174,7 @@ export class PlaceholderCanvasRenderer implements MascotRenderer {
   private canvas = document.createElement("canvas");
   private ctx = this.canvas.getContext("2d")!;
   private observer: ResizeObserver | null = null;
-  private raf = 0;
+  private stopFrames: () => void = () => {};
   private anim: AnimationSpec | null = null;
   private animStart = 0;
   private ended = false;
@@ -193,11 +194,9 @@ export class PlaceholderCanvasRenderer implements MascotRenderer {
     this.observer = new ResizeObserver(() => this.resize());
     this.observer.observe(container);
     this.resize();
-    const loop = () => {
-      this.frame(performance.now());
-      this.raf = requestAnimationFrame(loop);
-    };
-    this.raf = requestAnimationFrame(loop);
+    // Arrêtée quand la place de la mascotte n'a pas de taille (île cachée),
+    // 30 images/s au plus en économie d'énergie (src/core/perf.ts).
+    this.stopFrames = frameLoop(this.canvas, (now) => this.frame(now));
   }
 
   play(animation: AnimationSpec) {
@@ -228,7 +227,7 @@ export class PlaceholderCanvasRenderer implements MascotRenderer {
   }
 
   destroy() {
-    cancelAnimationFrame(this.raf);
+    this.stopFrames();
     this.observer?.disconnect();
     this.canvas.remove();
     this.endCallbacks = [];

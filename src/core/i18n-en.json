@@ -1034,7 +1034,20 @@
 "Ouvre GitHub avec la version, Windows et les 40 dernières lignes du journal (chemins personnels masqués). Tu relis et complètes tout avant d'envoyer : rien ne part sans toi.": "Opens GitHub with the version, Windows and the last 40 lines of the log (personal paths hidden). You review and complete everything before sending: nothing leaves without you.",
 "Ressources utilisées": "Resources used",
 "Mémoire et processeur d'Ondine et de ses fenêtres (WebView2). Mesuré seulement pendant que cette page est ouverte.": "Memory and CPU used by Ondine and its windows (WebView2). Measured only while this page is open.",
-"Disponible dans l'appli seulement.": "Only available in the app."
+"Disponible dans l'appli seulement.": "Only available in the app.",
+"Performances": "Performance",
+"Performance haute": "High performance",
+"Équilibrée": "Balanced",
+"Économie d'énergie": "Power saving",
+"Économie d'énergie automatique sur batterie": "Automatic power saving on battery",
+"Haute : l'île réagit au plus vite. Équilibrée : le bon compromis. Économie d'énergie : Ondine se réveille moins souvent (souris, musique, système…) et garde moins d'effets.": "High: the island reacts as fast as possible. Balanced: the right compromise. Power saving: Ondine wakes up less often (mouse, music, system…) and keeps fewer effects.",
+"PC débranché : Ondine passe en économie d'énergie, quel que soit le choix au-dessus.": "PC unplugged: Ondine switches to power saving, whatever the choice above.",
+"Mode utilisé": "Mode in use",
+"Mode actuel : Performance haute": "Current mode: High performance",
+"Mode actuel : Équilibrée": "Current mode: Balanced",
+"Mode actuel : Économie d'énergie": "Current mode: Power saving",
+"Mode actuel : Économie d'énergie (sur batterie)": "Current mode: Power saving (on battery)",
+"Pour comparer les modes : la ligne « Ressources utilisées », plus bas dans À propos.": "To compare modes: the “Resources used” line, further down in About."
 },
 "patterns": [
 [

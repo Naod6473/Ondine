@@ -22,10 +22,10 @@ use tauri::AppHandle;
 use super::{model, Msg, Shared, ID};
 use crate::platform::{self, DriveInfo};
 use crate::services::log;
+use crate::services::perf::{self, Loop};
 
 /// Un fichier qui ne change plus pendant ce temps est considéré comme fini.
 const STABLE_FOR: Duration = Duration::from_millis(1500);
-const DRIVES_EVERY: Duration = Duration::from_secs(2);
 /// Garde-fou : pas plus de fichiers en attente que ça (un dossier énorme copié d'un coup).
 const MAX_PENDING: usize = 500;
 
@@ -39,13 +39,25 @@ pub fn run(app: AppHandle, state: Shared, tx: Sender<Msg>, rx: Receiver<Msg>) {
     let mut watchers: Vec<RecommendedWatcher> = Vec::new();
     let mut pending: HashMap<PathBuf, Pending> = HashMap::new();
     let mut drives: Option<Vec<DriveInfo>> = None;
-    let mut last_drives = Instant::now() - DRIVES_EVERY;
+    let mut last_drives: Option<Instant> = None;
     let mut was_active = false;
     // On démarre en construisant la surveillance.
     let _ = tx.send(Msg::Rebuild);
 
     loop {
-        let msg = rx.recv_timeout(Duration::from_millis(500));
+        // Des fichiers attendent d'être « stables » : on revient vite (500 ms en
+        // équilibré). Sinon, rien à faire avant le prochain coup d'œil aux
+        // lecteurs : on dort jusque-là (un événement de fichier réveille quand même).
+        // Module désactivé : un coup d'œil toutes les 2 s suffit pour voir qu'il revient.
+        let wait = if !was_active {
+            perf::every(Loop::RulesDrives)
+        } else if pending.is_empty() {
+            let next = last_drives.map_or(Duration::ZERO, |t| perf::every(Loop::RulesDrives).saturating_sub(t.elapsed()));
+            next.max(perf::every(Loop::RulesWait))
+        } else {
+            perf::every(Loop::RulesWait)
+        };
+        let msg = rx.recv_timeout(wait);
         // Une panique ici ne doit tuer ni le thread ni l'île.
         let step = catch_unwind(AssertUnwindSafe(|| {
             let active = crate::modules::is_active(&app, ID);
@@ -68,8 +80,8 @@ pub fn run(app: AppHandle, state: Shared, tx: Sender<Msg>, rx: Receiver<Msg>) {
                 return true;
             }
             process_pending(&app, &state, &mut pending);
-            if last_drives.elapsed() >= DRIVES_EVERY {
-                last_drives = Instant::now();
+            if last_drives.is_none_or(|t| t.elapsed() >= perf::every(Loop::RulesDrives)) {
+                last_drives = Some(Instant::now());
                 check_drives(&app, &state, &mut drives);
             }
             true

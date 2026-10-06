@@ -18,19 +18,18 @@
 // (réglages, menu de l'icône) tient jusqu'au prochain changement de situation.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
 use crate::services::log;
+use crate::services::perf::{self, Loop};
 use crate::services::settings::Settings;
 use crate::sync::LockExt;
 
 /// Au plus tant de profils.
 pub const MAX_PROFILES: usize = 10;
 /// Le fil du changement automatique regarde l'heure et le Wi-Fi à ce rythme.
-const AUTO_TICK: Duration = Duration::from_secs(30);
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -313,7 +312,8 @@ pub fn spawn_auto(app: AppHandle) {
             if step.is_err() {
                 log::warn("profils : erreur dans le changement automatique");
             }
-            std::thread::sleep(AUTO_TICK);
+            // Toutes les 30 s (60 s en éco : services/perf.rs).
+            std::thread::sleep(perf::every(Loop::Profiles));
         }
     });
 }

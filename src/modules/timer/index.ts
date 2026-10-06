@@ -27,6 +27,7 @@
 import manifest from "./manifest.json";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
+import { frameLoop, pacedInterval, setText } from "../../core/perf";
 import { reducedMotion, TabPill } from "../../island/tab-pill";
 
 // ── Les trois compteurs ──────────────────────────────────────────────────────
@@ -240,12 +241,15 @@ function ring(): { root: SVGSVGElement; set: (fraction: number, text: string, su
   sub.setAttribute("y", "82");
   sub.classList.add("sub");
   svg.append(track, bar, text, sub);
+  let lastOffset = "";
   return {
     root: svg,
     set(fraction, t, s = "") {
-      bar.setAttribute("stroke-dashoffset", String(RING_LEN * (1 - Math.min(1, Math.max(0, fraction)))));
-      if (text.textContent !== t) text.textContent = t;
-      if (sub.textContent !== s) sub.textContent = s;
+      // Seulement si l'anneau a bougé (en pause, rien n'est réécrit à chaque image).
+      const offset = (RING_LEN * (1 - Math.min(1, Math.max(0, fraction)))).toFixed(2);
+      if (offset !== lastOffset) bar.setAttribute("stroke-dashoffset", (lastOffset = offset));
+      setText(text, t);
+      setText(sub, s);
     },
   };
 }
@@ -257,7 +261,8 @@ export const timerModule: IslandModule = {
 
   setup(api) {
     reset(pomodoro.clock, phaseMs(api, "work"));
-    const interval = window.setInterval(() => tick(api), 250);
+    // Toutes les 250 ms (500 en économie d'énergie : src/core/perf.ts).
+    const stopTick = pacedInterval(() => tick(api), "timerTick");
     // Une règle (raccourci, événement…) lance un minuteur.
     const offStart = api.on("timer.start", (msg) => {
       const minutes = Number((msg.payload as { minutes?: number } | null)?.minutes);
@@ -273,7 +278,7 @@ export const timerModule: IslandModule = {
       api.refreshCompact();
     });
     return () => {
-      window.clearInterval(interval);
+      stopTick();
       off();
       offStart();
       // Module coupé en pleine séance : les notifications de l'île reprennent.
@@ -288,7 +293,8 @@ export const timerModule: IslandModule = {
       const line = el("span", { class: "timer-compact-text" });
       const bar = el("span", { class: "timer-compact-bar" }, el("i"));
       root.append(el("div", { class: "timer-compact" }, line, bar));
-      let frame = 0;
+      const fill = bar.firstChild as HTMLElement;
+      let shownFraction = "";
       const draw = () => {
         let icon = "⏱️";
         let text = "";
@@ -304,14 +310,18 @@ export const timerModule: IslandModule = {
           text = clock(elapsed());
           fraction = (elapsed() % 60_000) / 60_000; // un tour par minute
         }
-        line.textContent = `${icon} ${text}`;
-        (bar.firstChild as HTMLElement).style.transform = `scaleX(${fraction})`;
-        // Le design Studio dessine un petit anneau à la place de la barre (island.css).
-        bar.style.setProperty("--p", String(fraction));
-        frame = requestAnimationFrame(draw);
+        // Le texte change une fois par seconde : on ne le réécrit qu'à ce moment-là.
+        setText(line, `${icon} ${text}`);
+        const f = fraction.toFixed(4);
+        if (f !== shownFraction) {
+          shownFraction = f;
+          fill.style.transform = `scaleX(${f})`;
+          // Le design Studio dessine un petit anneau à la place de la barre (island.css).
+          bar.style.setProperty("--p", f);
+        }
       };
       draw();
-      return () => cancelAnimationFrame(frame);
+      return frameLoop(root, draw);
     },
 
     expanded(root, api) {
@@ -332,7 +342,6 @@ export const timerModule: IslandModule = {
       const body = el("div", { class: "timer-body" });
       root.append(seg, body);
 
-      let frame = 0;
       let update: () => void = () => {};
 
       const show = (id: Pane, animate = true) => {
@@ -386,7 +395,7 @@ export const timerModule: IslandModule = {
         );
         return () => {
           r.set(remaining(timer) / timer.total, countdownText(timer), running(timer) ? "" : "en pause");
-          toggle.textContent = running(timer) ? "⏸ Pause" : "▶ Démarrer";
+          setText(toggle, running(timer) ? "⏸ Pause" : "▶ Démarrer");
         };
       };
 
@@ -436,13 +445,13 @@ export const timerModule: IslandModule = {
         return () => {
           const c = pomodoro.clock;
           r.set(remaining(c) / c.total, countdownText(c), PHASE_LABEL[pomodoro.phase]);
-          toggle.textContent = running(c) ? "⏸ Pause" : "▶ Démarrer";
+          setText(toggle, running(c) ? "⏸ Pause" : "▶ Démarrer");
           const every = api.settings().longEvery as number;
           const inCycle = pomodoro.done % every;
           const want = `${"🍅".repeat(inCycle)}${"○".repeat(every - inCycle)} · ${pomodoro.done} séance(s)`;
-          if (tomatoes.textContent !== want) tomatoes.textContent = want;
+          setText(tomatoes, want);
           const hint = focusOn ? "🔕 Concentration : les notifications de l'île attendent la fin de la séance." : "";
-          if (focusHint.textContent !== hint) focusHint.textContent = hint;
+          setText(focusHint, hint);
         };
       };
 
@@ -480,8 +489,8 @@ export const timerModule: IslandModule = {
           ),
         );
         return () => {
-          big.textContent = clock(elapsed(), true);
-          toggle.textContent = stopwatch.startedAt === null ? (elapsed() ? "▶ Reprendre" : "▶ Démarrer") : "⏸ Pause";
+          setText(big, clock(elapsed(), true));
+          setText(toggle, stopwatch.startedAt === null ? (elapsed() ? "▶ Reprendre" : "▶ Démarrer") : "⏸ Pause");
           if (shownLaps !== stopwatch.laps.length) {
             shownLaps = stopwatch.laps.length;
             const n = stopwatch.laps.length;
@@ -497,13 +506,12 @@ export const timerModule: IslandModule = {
 
       show(pane, false);
       requestAnimationFrame(() => pill.jumpTo(segButtons.get(pane)!));
-      const loop = () => {
-        update();
-        frame = requestAnimationFrame(loop);
-      };
-      loop();
+      // À chaque image (le chrono affiche les centièmes), 30 par seconde en
+      // économie d'énergie ; rien n'est réécrit si rien n'a changé (setText).
+      update();
+      const stopLoop = frameLoop(root, () => update());
       return () => {
-        cancelAnimationFrame(frame);
+        stopLoop();
         pill.stop();
       };
     },

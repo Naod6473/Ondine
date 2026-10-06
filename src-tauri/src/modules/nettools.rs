@@ -34,6 +34,7 @@ use super::remote::check_host;
 use super::{ModuleContext, RustModule};
 use crate::platform;
 use crate::services::log;
+use crate::services::perf::{self, Loop};
 
 const PING_TIMEOUT_MS: u32 = 1000;
 // Windows ne répond pas « fermé » tout de suite : quand un port refuse la
@@ -43,7 +44,6 @@ const PING_TIMEOUT_MS: u32 = 1000;
 const PORT_TIMEOUT: Duration = Duration::from_secs(4);
 
 const ID: &str = "nettools";
-const WATCH_TICK: Duration = Duration::from_secs(5);
 const HOSTS_EVERY: Duration = Duration::from_secs(60);
 const PUBLIC_IP_EVERY: Duration = Duration::from_secs(600);
 const PUBLIC_IP_URL: &str = "https://api.ipify.org";
@@ -170,7 +170,8 @@ fn watch_loop(app: AppHandle, watch: Arc<Mutex<Watch>>) {
     let mut last_hosts: Option<Instant> = None;
     let mut last_ip: Option<Instant> = None;
     loop {
-        std::thread::sleep(WATCH_TICK);
+        // Toutes les 5 s (3 s en haute, 15 s en éco : services/perf.rs).
+        std::thread::sleep(perf::every(Loop::NetWatch));
         if !super::is_active(&app, ID) {
             continue;
         }

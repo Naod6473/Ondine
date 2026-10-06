@@ -10,6 +10,7 @@ import { jellyButtons, motionOn, popIn, setStudio, spotlight, staggerIn, tabOut,
 import { Bridge, IS_TAURI, onDragDrop, onTauriEvent, type DragDropEvent } from "../core/bridge";
 import type { Bus } from "../core/bus";
 import { logger } from "../core/log";
+import { onPerfChange, pacedInterval, perfMode } from "../core/perf";
 import type { ModuleRegistry } from "../core/module-registry";
 import { isAlert, type IslandNotification, type NotificationQueue } from "../core/notifications";
 import { settingsStore } from "../core/settings-store";
@@ -38,10 +39,9 @@ const EDGE_ZONE = { len: 240, depth: 14 };
 const LONG_HOVER_MS = 2500;
 /** Ondine vient pendre au bord seulement si personne n'a touché le PC depuis… */
 const PEEK_IDLE_MS = 20_000;
-/** On se demande toutes les… si c'est le moment. */
-const PEEK_CHECK_MS = 15_000;
-/** Mode présentation : on regarde toutes les… si une appli est en plein écran. */
-const PRESENTATION_CHECK_MS = 4000;
+// On se demande toutes les 15 s si c'est le moment de pendre au bord, et toutes
+// les 4 s si une appli est en plein écran (mode présentation) : rythmes
+// "peekCheck" et "presentationCheck" de src/core/perf.ts (selon le mode de performance).
 
 function timingsFrom(s: Settings) {
   return {
@@ -126,8 +126,10 @@ export class Island {
       onClick: () => this.fsm.open(),
       onShowChange: (on) => this.onHangChange(on),
     });
-    window.setInterval(() => void this.maybePeek(), PEEK_CHECK_MS);
-    window.setInterval(() => void this.checkPresentation(), PRESENTATION_CHECK_MS);
+    pacedInterval(() => void this.maybePeek(), "peekCheck");
+    pacedInterval(() => void this.checkPresentation(), "presentationCheck");
+    // Économie d'énergie : pas d'effets « Studio » (flous coûteux), ils reviennent ensuite.
+    onPerfChange(() => setStudio(settingsStore.current.island.motion === "studio" && perfMode() !== "eco"));
     // Dans un navigateur (npm run dev) : window.ondinePeek() la fait venir tout de suite.
     // Et window.ondineBus.emit("controls.media-use", { mic: ["Zoom"], cam: [] }) simule un message.
     if (!IS_TAURI) Object.assign(window, { ondinePeek: () => this.hanger.show(), ondineBus: this.bus });
@@ -190,7 +192,7 @@ export class Island {
   private applySettings(s: Settings) {
     this.fsm.timings = timingsFrom(s);
     this.fsm.setAlwaysMini(s.island.alwaysMini ?? false);
-    setStudio(s.island.motion === "studio");
+    setStudio(s.island.motion === "studio" && perfMode() !== "eco");
     // Le bord et la place de l'île : la forme s'adapte en CSS (island.css).
     document.body.dataset.edge = s.island.edge ?? "top";
     document.body.dataset.align = s.island.align ?? "center";

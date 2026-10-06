@@ -18,6 +18,7 @@
 // Chaque image est dessinée d'abord dans un petit canvas hors écran (un
 // « calque »), puis le calque est posé sur l'île avec les mouvements du corps.
 
+import { frameLoop } from "../../core/perf";
 import type { MascotRenderer } from "../renderer";
 import type { AnimationSpec, MascotManifest, MascotState, Mood, PoseEye, PoseSpec } from "../types";
 import { EFFECTS, STILL, type Motion } from "./effects";
@@ -82,7 +83,7 @@ export class PosesRenderer implements MascotRenderer {
   private canvas = document.createElement("canvas");
   private ctx = this.canvas.getContext("2d")!;
   private observer: ResizeObserver | null = null;
-  private raf = 0;
+  private stopFrames: () => void = () => {};
   // « Réduire les animations » : suivi en direct (le réglage Windows peut changer).
   private motionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)") ?? null;
   private reduced = this.motionQuery?.matches ?? false;
@@ -152,18 +153,18 @@ export class PosesRenderer implements MascotRenderer {
     this.resize();
     this.motionQuery?.addEventListener("change", this.onMotionChange);
     let warned = false;
-    const loop = () => {
+    // Arrêtée quand la place de la mascotte n'a pas de taille (île cachée),
+    // 30 images/s au plus en économie d'énergie (src/core/perf.ts).
+    this.stopFrames = frameLoop(this.canvas, (now) => {
       // Une erreur dans une image ne doit pas arrêter la goutte : on la note
       // une fois et on continue à l'image suivante.
       try {
-        this.frame(performance.now());
+        this.frame(now);
       } catch (err) {
         if (!warned) console.warn("[mascotte] erreur de dessin", err);
         warned = true;
       }
-      this.raf = requestAnimationFrame(loop);
-    };
-    this.raf = requestAnimationFrame(loop);
+    });
   }
 
   play(animation: AnimationSpec) {
@@ -191,7 +192,7 @@ export class PosesRenderer implements MascotRenderer {
   }
 
   destroy() {
-    cancelAnimationFrame(this.raf);
+    this.stopFrames();
     this.motionQuery?.removeEventListener("change", this.onMotionChange);
     this.observer?.disconnect();
     this.canvas.remove();

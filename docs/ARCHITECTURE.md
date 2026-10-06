@@ -91,7 +91,7 @@ Elle a deux tailles (en px logiques, multipliées par l'échelle de l'écran) :
 **Clics traversants.** Tauri 2 ne sait rendre « transparente aux clics » que la
 fenêtre entière. Le Rust lit donc la souris ~60 fois par seconde quand l'île est
 visible (~30 fois au calme : souris immobile depuis 250 ms ou à plus de 200 px
-de l'île, voir `poll_interval`), et bascule ce réglage quand la souris entre ou sort de la forme
+de l'île, voir `poll_interval` ; ces rythmes suivent le mode de performance, voir « Modes de performance »), et bascule ce réglage quand la souris entre ou sort de la forme
 de l'île, que le front lui envoie à chaque changement (`island_set_rect`). Pendant
 qu'un bouton de souris est enfoncé au-dessus du panneau, tout le panneau prend la
 souris : sinon Windows ne verrait pas l'île comme cible d'un glisser-déposer.
@@ -996,3 +996,88 @@ https://api.anthropic.com/v1/messages`, en-tête `anthropic-version:
   429 trop de demandes, 529 surchargée).
 - Dépôt sur l'île : « Demander à Claude » prépare le fichier et ouvre l'onglet
   sur l'aperçu.
+
+## Modes de performance (`src-tauri/src/services/perf.rs`, `src/core/perf.ts`)
+
+Réglages → Général → Performances : `general.perfMode` = `high` (Performance
+haute), `balanced` (Équilibrée, par défaut) ou `eco` (Économie d'énergie), et
+`general.ecoOnBattery` (« Économie d'énergie automatique sur batterie »,
+activé par défaut).
+
+- **Mode effectif** (`perf::effective`) : `eco` si la case est cochée et que le
+  PC est sur batterie (`platform::on_battery`, `GetSystemPowerStatus` :
+  `ACLineStatus == 0` ; un PC fixe ou un état inconnu compte comme secteur ;
+  toujours secteur hors Windows), sinon le choix. Un fil regarde le secteur
+  toutes les 15 s ; `apply_settings` recalcule à chaque enregistrement.
+- **À chaud** : le mode est gardé dans un `AtomicU8` ; chaque boucle Rust
+  demande son rythme à `perf::every(Loop::…)` à chaque tour. Le front reçoit
+  l'événement `perf-mode` `{mode, chosen, onBattery}` (et `Bridge.perfState()`
+  au démarrage) ; `pacedInterval` refait ses minuteries quand le mode change.
+- **Un seul tableau par côté** : pas de `if (eco)` dans les modules. Rust :
+  `perf::table`, front : `CADENCES`. `balanced` = le comportement d'avant les
+  modes (vérifié par un test).
+- **Jamais ralenti** : la souris pendant un appui (glisser de fichier,
+  déplacement de l'île, 16 ms dans tous les modes), les attentes d'une action
+  en cours (capture, collage), le ping lancé par l'utilisateur (1 s), le
+  minuteur affiché à la seconde (sa fin est vue en 500 ms au plus), les appels
+  réseau (météo 30 min, agenda en ligne 15 min).
+
+Rust (ms ; haute / équilibrée / éco) :
+
+| Boucle | Haute | Équilibrée | Éco | Remarque |
+|--------|------:|-----------:|----:|----------|
+| Souris, île visible, souris qui bouge près de l'île | 16 | 16 | 33 | |
+| Souris immobile depuis 250 ms | 16 | 33 | 33 | 30 Hz au repos en éco |
+| Souris à plus de 200 px de l'île | 16 | 33 | 66 | 15 Hz loin de l'île en éco |
+| Souris, île cachée (bande de réveil) | 33 | 50 | 100 | le passage peek → compact attend 350 ms de toute façon |
+| Écrans branchés / échelle | 500 | 500 | 1 000 | |
+| Presse-papiers (compteur de copies) | 250 | 400 | 1 000 | |
+| Musique (SMTC) | 500 | 1 000 | 2 000 | la barre avance côté front entre deux lectures |
+| Système : processeur, mémoire | 1 000 | 2 000 | 5 000 | « très occupé » = ≈ 20 s dans tous les modes (`busy_ticks`) |
+| Système : disques, batterie | 30 000 | 30 000 | 60 000 | |
+| Contrôles : micro / caméra utilisés, micro coupé | 1 000 | 2 000 | 3 000 | le raccourci micro réagit tout de suite (raccourci global) |
+| Étagère : Téléchargements | 2 000 | 3 000 | 6 000 | |
+| Règles : fichiers en attente « stables » | 250 | 500 | 1 000 | sans fichier en attente, le fil dort jusqu'au prochain coup d'œil aux lecteurs |
+| Règles : lecteurs branchés | 1 000 | 2 000 | 5 000 | |
+| Agenda : fichiers .ics, rappels | 10 000 | 15 000 | 30 000 | |
+| Réseau : Internet, VPN | 3 000 | 5 000 | 15 000 | |
+| Lanceur : raccourci réservé | 1 000 | 1 000 | 3 000 | |
+| Profils automatiques | 30 000 | 30 000 | 60 000 | |
+| Météo : « l'heure de redemander ? » | 10 000 | 10 000 | 30 000 | |
+
+Front (ms) :
+
+| Minuterie | Haute | Équilibrée | Éco | Remarque |
+|-----------|------:|-----------:|----:|----------|
+| Minuteur : fin d'un compte à rebours | 250 | 250 | 500 | |
+| Musique : barre et temps écoulé | 250 | 500 | 1 000 | |
+| Onglet Système | 1 000 | 2 000 | 5 000 | |
+| Contrôles : son / radios / luminosité | 500 / 1 000 / 5 000 | 1 000 / 2 000 / 5 000 | 2 000 / 4 000 / 10 000 | |
+| Agenda : la pilule doit-elle apparaître ? | 10 000 | 10 000 | 30 000 | |
+| Agenda : texte de la pilule (à la minute) | 1 000 | 1 000 | 5 000 | |
+| Onglet Agenda / onglet Agents IA | 30 000 / 15 000 | 30 000 / 15 000 | 60 000 / 30 000 | |
+| Mascotte : ennui, sommeil | 2 000 | 2 000 | 4 000 | |
+| Ondine pend au bord ? / mode présentation | 15 000 / 2 000 | 15 000 / 4 000 | 30 000 / 8 000 | |
+| Pauses | 30 000 | 30 000 | 60 000 | |
+| Dessins continus (mascotte, anneau du minuteur, chrono) | 60 im/s | 60 im/s | 30 im/s | `frameLoop` |
+
+En éco, en plus : les effets « Studio » (flou → net) sont remplacés par ceux de
+« Classique », et les cartes de verre des Contrôles perdent leur flou
+(`body[data-perf="eco"]` dans island.css).
+
+**Travail évité dans tous les modes** (sans rien changer à ce qu'on voit) :
+
+- la mascotte ne se dessine plus quand sa place n'a pas de taille (île cachée
+  ou en `peek`) : avant, ≈ 60 dessins de canvas par seconde toute la journée
+  pour rien (`frameLoop` observe la taille et repart quand elle revient) ;
+- la pilule et l'onglet du Minuteur ne réécrivent le texte et la barre que
+  quand ils changent (avant : à chaque image, donc une mise en page par image) ;
+  en anglais, ça évitait aussi de retraduire le texte 60 fois par seconde ;
+- l'onglet Système ne reconstruit les infos, les disques et le réseau que si
+  quelque chose a changé (avant : toutes les 2 s) ;
+- les minuteries des vues (Système, Contrôles, Musique, Agenda, Agents) ne font
+  rien quand Windows dit la fenêtre cachée ;
+- Règles : sans fichier en attente, le fil se réveille toutes les 2 s au lieu
+  de 2 fois par seconde.
+
+Pour comparer : Réglages → Général → À propos → « Ressources utilisées ».

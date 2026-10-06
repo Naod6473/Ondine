@@ -25,7 +25,6 @@ use std::collections::HashMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 use serde_json::{json, Value};
 use tauri::AppHandle;
@@ -35,6 +34,7 @@ use super::{ModuleContext, RustModule};
 use crate::services::undo::DEFAULT_WINDOW;
 use crate::services::bus::BusMessage;
 use crate::services::{bus, files, search};
+use crate::services::perf::{self, Loop};
 
 /// Au-delà, on refuse d'ajouter : l'étagère est un endroit de passage.
 const MAX_ITEMS: usize = 100;
@@ -511,15 +511,15 @@ fn is_partial(name: &str) -> bool {
     n.starts_with('.') || n.starts_with("~$") || [".crdownload", ".part", ".partial", ".tmp", ".download", ".opdownload"].iter().any(|e| n.ends_with(e))
 }
 
-/// Regarde le dossier Téléchargements toutes les 3 s. Un nouveau fichier est
-/// posé sur l'étagère quand sa taille n'a pas bougé entre deux tours.
+/// Regarde le dossier Téléchargements toutes les 3 s (selon le mode de
+/// performance : services/perf.rs). Un nouveau fichier est posé sur l'étagère
+/// quand sa taille n'a pas bougé entre deux tours.
 fn watch_downloads(app: AppHandle, items: Items) {
-    const TICK: Duration = Duration::from_secs(3);
     // Ce qui était déjà là (nom → taille) ; et les nouveaux en attente (nom → taille vue).
     let mut known: Option<HashMap<String, u64>> = None;
     let mut waiting: HashMap<String, u64> = HashMap::new();
     loop {
-        std::thread::sleep(TICK);
+        std::thread::sleep(perf::every(Loop::ShelfDownloads));
         let wanted = super::with_context(&app, "shelf", |ctx| ctx.settings().get("watchDownloads").and_then(Value::as_bool).unwrap_or(true));
         if wanted != Some(true) {
             known = None;

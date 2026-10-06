@@ -3387,3 +3387,11 @@ body.presenting .island[data-state="hidden"] {
     scroll-behavior: auto !important;
   }
 }
+
+/* Économie d'énergie (body[data-perf="eco"], src/core/perf.ts) : pas de flou
+   derrière les cartes de verre des Contrôles, recalculé à chaque image.
+   Le fond reste un dégradé translucide : seul le flou disparaît. */
+body[data-perf="eco"] .ctl-card,
+body[data-perf="eco"] .ctl-menu {
+  backdrop-filter: none;
+}

@@ -12,6 +12,7 @@ import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { Bridge } from "../../core/bridge";
 import { el } from "../../island/dom";
+import { pacedInterval } from "../../core/perf";
 import { agentIcon, icon } from "../../island/icon";
 
 interface AgentEvent {
@@ -506,10 +507,10 @@ export const agents: IslandModule = {
       );
       redraws.add(draw);
       void draw();
-      const timer = window.setInterval(() => void draw(), 15_000); // pour « il y a 5 min »
+      const stopTimer = pacedInterval(() => void draw(), "agentsList", true); // pour « il y a 5 min »
       return () => {
         redraws.delete(draw);
-        window.clearInterval(timer);
+        stopTimer();
       };
     },
   },

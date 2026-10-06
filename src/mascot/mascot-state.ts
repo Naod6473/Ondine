@@ -26,6 +26,7 @@
 
 import type { Bus } from "../core/bus";
 import { settingsStore } from "../core/settings-store";
+import { pacedInterval } from "../core/perf";
 import type { MascotRenderer } from "./renderer";
 import { MASCOT_STATES, type AnimationSpec, type MascotManifest, type MascotState, type Mood } from "./types";
 
@@ -75,7 +76,7 @@ export class MascotController {
   private lastReaction = 0;
   /** Le processeur est à fond (message system.cpu-busy). */
   private cpuBusy = false;
-  private inactivityTimer: number;
+  private stopInactivity: () => void;
   private offs: (() => void)[] = [];
 
   constructor(
@@ -86,12 +87,13 @@ export class MascotController {
   ) {
     renderer.onAnimationEnd((name) => this.onEnd(name));
     this.wire();
-    this.inactivityTimer = window.setInterval(() => this.checkInactivity(), 2000);
+    // Toutes les 2 s (4 s en économie d'énergie : src/core/perf.ts).
+    this.stopInactivity = pacedInterval(() => this.checkInactivity(), "mascotIdle");
     this.request("idle", true);
   }
 
   destroy() {
-    clearInterval(this.inactivityTimer);
+    this.stopInactivity();
     for (const off of this.offs) off();
     this.renderer.destroy();
   }

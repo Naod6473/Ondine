@@ -777,6 +777,18 @@ pub fn battery() -> Option<Battery> {
     })
 }
 
+/// Le PC tourne-t-il sur batterie (secteur débranché) ? Un PC fixe, ou un état
+/// inconnu (ACLineStatus = 255), compte comme « sur secteur ».
+pub fn on_battery() -> bool {
+    use ::windows::Win32::System::Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS};
+    let mut st = SYSTEM_POWER_STATUS::default();
+    if unsafe { GetSystemPowerStatus(&mut st) }.is_err() {
+        return false;
+    }
+    // ACLineStatus : 0 = débranché, 1 = branché, 255 = inconnu.
+    st.ACLineStatus == 0
+}
+
 // ── Outils réseau ────────────────────────────────────────────────────────────
 
 /// Un « ping » (écho ICMP) vers une adresse IPv4, sans droits administrateur

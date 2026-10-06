@@ -11,6 +11,7 @@
 // - search      : recherche dans l'île (sans accents ni majuscules, classement)
 // - profiles    : les profils (Travail, Maison…) et leur changement automatique
 // - ics_calendars : la liste des calendriers de l'Agenda, sa migration, la fusion
+// - perf        : les modes de performance (haute, équilibrée, éco) et le rythme des boucles
 
 pub mod bus;
 pub mod credentials;
@@ -23,3 +24,4 @@ pub mod settings;
 pub mod undo;
 pub mod search;
 pub mod profiles;
+pub mod perf;

@@ -120,6 +120,11 @@ pub fn battery() -> Option<Battery> {
     None
 }
 
+/// Hors Windows : toujours « sur secteur ».
+pub fn on_battery() -> bool {
+    false
+}
+
 pub fn ping(_ip: std::net::Ipv4Addr, _timeout_ms: u32) -> Result<Option<(u32, u8)>, String> {
     Err("disponible seulement sous Windows".into())
 }

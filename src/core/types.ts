@@ -1,6 +1,9 @@
 // Les réglages, tels que le Rust les enregistre (src-tauri/src/services/settings.rs).
 // Si tu modifies l'un, modifie l'autre.
 
+/** Mode de performance (src-tauri/src/services/perf.rs). */
+export type PerfMode = "high" | "balanced" | "eco";
+
 export interface Settings {
   version: number;
   general: {
@@ -17,6 +20,10 @@ export interface Settings {
     autoUpdate?: boolean;
     /** Lancer Ondine à l'ouverture de session Windows. */
     autostart?: boolean;
+    /** Rythme des boucles : haute, équilibrée, économie d'énergie (src/core/perf.ts). */
+    perfMode?: PerfMode;
+    /** Sur batterie (PC débranché) : économie d'énergie, quel que soit `perfMode`. */
+    ecoOnBattery?: boolean;
   };
   island: {
     /** Replier l'île quand la souris n'est plus dessus depuis ce nombre de secondes. */
@@ -105,7 +112,7 @@ export interface Profiles {
 export function defaultSettings(): Settings {
   return {
     version: 2,
-    general: { screen: "primary", logLevel: "info", language: "auto", welcomed: false, demo: false, autoUpdate: true, autostart: true },
+    general: { screen: "primary", logLevel: "info", language: "auto", welcomed: false, demo: false, autoUpdate: true, autostart: true, perfMode: "balanced", ecoOnBattery: true },
     island: {
       collapseSecs: 1.5,
       notificationSecs: 6,
