@@ -334,7 +334,7 @@ impl Shelf {
             let (items, app) = (self.items.clone(), ctx.app.clone());
             std::thread::spawn(move || {
                 for wait in AFTER_DRAG_CHECKS {
-                    std::thread::sleep(Duration::from_millis(*wait));
+                    std::thread::sleep(std::time::Duration::from_millis(*wait));
                     if forget_gone(&items, &paths, |p| p.exists()) > 0 {
                         changed(&app, &items);
                     }
