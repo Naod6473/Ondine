@@ -904,6 +904,41 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   {on: false, summary}`, une seule notification (« Claude a fini 2 tâches ·
   Codex t'attend · 1 question en attente »). En mémoire seulement.
 
+## Profils (`src-tauri/src/services/profiles.rs`, `src/settings/profiles-page.ts`)
+
+- Réglage `profiles` : `{list, active, auto, base}`. Un profil (« Travail »,
+  « Maison »…, 10 au plus) ne garde que ce qu'il remplace (`values`, champs
+  facultatifs) : `tabOrder` et `modules` (onglets affichés), `theme` + `color`,
+  `alwaysMini`.
+- Changer de profil (`profile_activate {id}`, "" = aucun) : les réglages
+  actuels sont rangés (ce que le profil actif remplace va dans ce profil, le
+  reste dans `base`), puis on repart de `base` avec par-dessus le nouveau
+  profil. Les retouches faites pendant un profil lui restent donc.
+- Changement automatique (`auto`) : règle par profil, plage horaire (jours,
+  début, fin, peut passer minuit) ou nom du Wi-Fi (`platform/wifi.rs`, API
+  Native Wifi `WlanQueryInterface` ; Windows 11 24H2 exige la permission de
+  localisation). Un fil regarde toutes les 30 s ; Wi-Fi avant heures, puis
+  l'ordre de la liste. Il n'agit que quand la réponse change : un choix à la
+  main tient jusqu'au prochain changement de situation.
+- Menu de l'icône (`tray.rs`) : sous-menu « Profil » (case cochée devant
+  l'actif), infobulle « Ondine · Travail ».
+
+## Météo (`src/modules/weather/`, `src-tauri/src/modules/weather.rs`)
+
+- Désactivée par défaut (réglage `on`), permission `network`. Rien ne part
+  tant qu'elle n'est pas allumée avec une ville.
+- Open-Meteo, en HTTPS seulement (ureq, TLS de Windows, 8 s au plus) :
+  `geocoding-api.open-meteo.com` (la ville → coordonnées, quand la ville
+  change ; « Lyon, FR » précise le pays), puis `api.open-meteo.com`
+  (coordonnées arrondies à 2 décimales) au plus toutes les 30 minutes (une
+  minute après un changement de ville ou d'unité). Erreurs : une ligne dans le
+  journal, sans la ville.
+- `weather.changed` (Rust) → le front redemande `current`, puis publie
+  `weather.updated` (icône, température, description, ville, détail) que
+  l'onglet Système affiche en ligne « Météo ».
+- Pas d'onglet : vue compacte (icône + température + ville) quand aucun autre
+  module n'occupe la pilule. Mode démo : une fausse météo (Lyon, 21°).
+
 ## Demander à Claude (`src/modules/askclaude/`, `src-tauri/src/modules/askclaude.rs`)
 
 Une erreur collée, un fichier texte ou une image (capture), une question :

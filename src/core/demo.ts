@@ -31,6 +31,7 @@ export type DemoScene = (typeof DEMO_SCENES)[number];
 const REAL_DATA = [
   "agenda.", "agents.", "claude.", "capture.", "clipboard.changed", "clipboard.link-cleaned", "controls.",
   "media.", "nettools.", "notes.", "remote.", "rules.notify", "shelf.", "system.", "task.",
+  "weather.",
 ];
 
 export function hidesRealData(msg: BusMessage): boolean {
@@ -500,6 +501,9 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         inputTokens: 64,
         outputTokens: 48,
       };
+    case "weather.current":
+      // Une fausse météo : un bel après-midi à Lyon.
+      return { place: "Lyon", temp: 21.4, min: 12.1, max: 23.6, wind: 9, code: 1, isDay: true, icon: "🌤️", label: "Plutôt dégagé", unit: "c", at: "15:00" };
     default:
       // Toute autre action : on fait comme si c'était fait, sans rien toucher.
       return null;
@@ -509,7 +513,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
 // ── Allumer, éteindre, scènes ────────────────────────────────────────────────
 
 /** Les sujets « …changed » qui font relire leurs données aux modules. */
-const REFRESH = ["agenda.changed", "notes.changed", "clipboard.changed", "rules.changed", "remote.changed", "agents.changed"];
+const REFRESH = ["agenda.changed", "notes.changed", "clipboard.changed", "rules.changed", "remote.changed", "agents.changed", "weather.changed"];
 
 /** Fait relire leurs données à tous les modules (fausses ou vraies selon le mode). */
 async function refreshAll(bus: Bus) {

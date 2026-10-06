@@ -59,6 +59,46 @@ export interface Settings {
     excludedFolders: string[];
   };
   modules: Record<string, { enabled: boolean; values: Record<string, unknown> }>;
+  /** Les profils (« Travail », « Maison »…), voir src-tauri/src/services/profiles.rs. */
+  profiles?: Profiles;
+}
+
+/** Ce qu'un profil peut remplacer ; un champ absent = pas remplacé. */
+export interface ProfileValues {
+  tabOrder?: string[];
+  /** Les onglets affichés : id de module → activé. */
+  modules?: Record<string, boolean>;
+  theme?: string;
+  color?: string;
+  alwaysMini?: boolean;
+}
+
+export interface ProfileRule {
+  /** "none" (à la main seulement), "hours" (plage horaire) ou "wifi". */
+  kind: "none" | "hours" | "wifi";
+  /** 1 = lundi … 7 = dimanche. */
+  days: number[];
+  /** "HH:MM" ; une fin avant le début = la plage passe minuit. */
+  start: string;
+  end: string;
+  ssid: string;
+}
+
+export interface Profile {
+  id: string;
+  name: string;
+  values: ProfileValues;
+  rule: ProfileRule;
+}
+
+export interface Profiles {
+  list: Profile[];
+  /** L'id du profil actif, "" = aucun. */
+  active: string;
+  /** Changer de profil tout seul selon les règles. */
+  auto: boolean;
+  /** Les réglages hors profil, gardés par le Rust pendant qu'un profil est actif. */
+  base: ProfileValues;
 }
 
 /** Valeurs par défaut, identiques à celles du Rust (pour `npm run dev` dans un navigateur). */
@@ -86,5 +126,6 @@ export function defaultSettings(): Settings {
     mascot: { enabled: true, id: "goutte", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5 },
     privacy: { excludedFolders: [] },
     modules: {},
+    profiles: { list: [], active: "", auto: false, base: {} },
   };
 }

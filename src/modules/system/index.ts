@@ -34,6 +34,16 @@ interface Snapshot {
 
 const REFRESH_MS = 2000;
 
+/** La météo du module Météo (sujet `weather.updated`), s'il est allumé. */
+interface WeatherLine {
+  icon: string;
+  temp: string;
+  label: string;
+  place: string;
+  detail: string;
+}
+let weather: WeatherLine | null = null;
+
 /** « 3 j 4 h », « 5 h 12 min », « 7 min ». */
 export function uptimeText(secs: number): string {
   const d = Math.floor(secs / 86400);
@@ -71,10 +81,24 @@ function line(label: string, value: string, title?: string) {
   return el("div", { class: "sys-line", title: title ?? value }, el("span", { class: "muted" }, label), el("span", {}, value));
 }
 
+/** « Météo  🌤️ 21°C · Plutôt dégagé · Lyon » (le détail au survol). */
+function weatherLine(w: WeatherLine) {
+  return el(
+    "div",
+    { class: "sys-line", title: w.detail },
+    el("span", { class: "muted" }, "Météo"),
+    el("span", {}, `${w.icon} ${w.temp} · `, el("span", {}, w.label), " · ", el("span", { "data-no-i18n": true }, w.place)),
+  );
+}
+
 export const system: IslandModule = {
   manifest: manifest as ModuleManifest,
 
   setup(api) {
+    // La météo arrive par le bus (les modules ne se parlent que comme ça).
+    api.on("weather.updated", (msg) => {
+      weather = (msg.payload as WeatherLine | null) ?? null;
+    });
     api.on("system.disk-low", (msg) => {
       const p = (msg.payload ?? {}) as { mount?: string; freePct?: number; freeGb?: number };
       api.notify({
@@ -190,6 +214,7 @@ export const system: IslandModule = {
           line("Allumé depuis", uptimeText(s.uptimeSecs)),
           line("IP", ip),
           bat ? line("Batterie", bat) : "",
+          weather ? weatherLine(weather) : "",
         );
 
         if (ticketOpen) return;

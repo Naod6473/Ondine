@@ -20,5 +20,6 @@ import { agents } from "./agents";
 import { askclaude } from "./askclaude";
 import { terminal } from "./terminal";
 import { timerModule } from "./timer";
+import { weather } from "./weather";
 
-export const ALL_MODULES: IslandModule[] = [shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, agents, askclaude, launcher, rules, media, controls, pauses];
+export const ALL_MODULES: IslandModule[] = [shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, agents, askclaude, launcher, rules, media, controls, pauses, weather];

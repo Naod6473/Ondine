@@ -20,6 +20,8 @@ pub mod media;
 pub mod ocr;
 // La pipette : choisir une couleur à l'écran. Contient sa propre version Linux.
 pub mod picker;
+// Le nom du Wi-Fi connecté (profils automatiques). Contient sa propre version Linux.
+pub mod wifi;
 
 #[cfg(windows)]
 mod drop_target;

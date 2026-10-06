@@ -28,6 +28,8 @@ pub struct Settings {
     pub privacy: Privacy,
     /// Réglages par module, indexés par l'id du module.
     pub modules: BTreeMap<String, ModuleSettings>,
+    /// Les profils (« Travail », « Maison »…) : voir profiles.rs.
+    pub profiles: crate::services::profiles::Profiles,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -131,6 +133,7 @@ impl Default for Settings {
             mascot: MascotPrefs::default(),
             privacy: Privacy::default(),
             modules: BTreeMap::new(),
+            profiles: Default::default(),
         }
     }
 }
@@ -212,6 +215,7 @@ impl Settings {
         i.hotkey = i.hotkey.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '+').take(40).collect();
         let m = &mut self.mascot;
         m.peek_every_mins = if m.peek_every_mins.is_finite() { m.peek_every_mins.clamp(1.0, 120.0) } else { 5.0 };
+        crate::services::profiles::sanitize(&mut self.profiles);
     }
 
     /// Un module est actif sauf si l'utilisateur l'a désactivé.

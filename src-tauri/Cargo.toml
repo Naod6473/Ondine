@@ -123,6 +123,8 @@ windows = { version = "0.61", features = [
   # Capture : la pipette (pixels physiques sur chaque écran, fenêtre Win32).
   "Win32_UI_HiDpi",
   "Win32_System_LibraryLoader",
+  # Profils : le nom du Wi-Fi connecté (wlanapi).
+  "Win32_NetworkManagement_WiFi",
 ] }
 
 [profile.release]
