@@ -45,7 +45,7 @@ async function start() {
     notifications.push({
       moduleId: "island",
       title: "Ondine tourne en administrateur",
-      body: "Windows bloque alors le glisser-déposer depuis l'Explorateur. Relance-la depuis un terminal normal.",
+      body: "Windows bloque alors le glisser-déposer depuis l'Explorateur. Relancez-la depuis un terminal normal.",
       icon: "🛡️",
       priority: "high",
       sticky: true,
@@ -73,7 +73,7 @@ function welcome(bus: Bus, notifications: NotificationQueue) {
   notifications.push({
     moduleId: "island",
     title: "Bonjour, je suis Ondine 👋",
-    body: `Je vis en haut de l'écran : passe la souris tout en haut, ou ${settingsStore.current.island.hotkey || "Ctrl+Alt+O"}. Mon icône est près de l'horloge (clic droit : Réglages, Quitter).`,
+    body: `Je vis en haut de l'écran : passez la souris tout en haut, ou ${settingsStore.current.island.hotkey || "Ctrl+Alt+O"}. Mon icône est près de l'horloge (clic droit : Réglages, Quitter).`,
     icon: "💧",
     priority: "high",
     sticky: true,

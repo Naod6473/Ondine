@@ -43,7 +43,7 @@ export async function check(notifications: NotificationQueue | null, manual: boo
     info = await Bridge.updateCheck();
   } catch (err) {
     log.warn(`recherche impossible : ${errorText(err)}`);
-    return "Impossible de joindre GitHub. Vérifie ta connexion à Internet.";
+    return "Impossible de joindre GitHub. Vérifiez votre connexion à Internet.";
   }
   if (!info) return "Ondine est à jour.";
   if (notifications && (manual || offered !== info.version)) {

@@ -191,7 +191,7 @@ function tick(api: ModuleApi) {
     finished(
       api,
       ended === "work" ? "Séance terminée : pause !" : "Pause terminée : au travail !",
-      auto ? `${PHASE_LABEL[pomodoro.phase]} : ${clock(pomodoro.clock.total)}` : "Lance la suite quand tu es prêt.",
+      auto ? `${PHASE_LABEL[pomodoro.phase]} : ${clock(pomodoro.clock.total)}` : "Lancez la suite quand vous êtes prêt.",
       ended === "work" ? "☕" : "🍅",
     );
   }

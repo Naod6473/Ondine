@@ -112,10 +112,10 @@ export const system: IslandModule = {
     });
     api.on("system.battery-low", (msg) => {
       const p = (msg.payload ?? {}) as { percent?: number };
-      api.notify({ title: "Batterie faible", body: `Plus que ${p.percent ?? "?"} % : pense à brancher le chargeur.`, icon: "🪫", priority: "normal", key: "battery" });
+      api.notify({ title: "Batterie faible", body: `Plus que ${p.percent ?? "?"} % : pensez à brancher le chargeur.`, icon: "🪫", priority: "normal", key: "battery" });
     });
     api.on("system.battery-full", () => {
-      api.notify({ title: "Batterie chargée", body: "Tu peux débrancher le chargeur.", icon: "🔋", priority: "low", key: "battery" });
+      api.notify({ title: "Batterie chargée", body: "Vous pouvez débrancher le chargeur.", icon: "🔋", priority: "low", key: "battery" });
     });
   },
 
@@ -159,7 +159,7 @@ export const system: IslandModule = {
             onclick: api.handler(async () => {
               try {
                 await api.invoke("ticket", { description: text.value, withImage: withImage.checked });
-                api.notify({ title: "Ticket prêt", body: "Le dossier est ouvert, et le texte est copié : colle-le dans ta demande.", icon: "🎫", priority: "low", key: "system-ticket" });
+                api.notify({ title: "Ticket prêt", body: "Le dossier est ouvert, et le texte est copié : collez-le dans votre demande.", icon: "🎫", priority: "low", key: "system-ticket" });
                 ticketOpen = false;
                 void refresh();
               } catch (err) {
@@ -176,8 +176,8 @@ export const system: IslandModule = {
             { class: "sys-ticket" },
             el("div", { class: "sys-title muted" }, "Préparer un ticket"),
             text,
-            el("label", { class: "pw-check" }, withImage, "Joindre l'image copiée (fais d'abord ta capture avec Win+Maj+S)"),
-            el("p", { class: "muted tool-note" }, "Un dossier est créé dans Documents\\Ondine\\Tickets avec ta description, les infos du poste et l'image. Rien n'est envoyé."),
+            el("label", { class: "pw-check" }, withImage, "Joindre l'image copiée (faites d'abord votre capture avec Win+Maj+S)"),
+            el("p", { class: "muted tool-note" }, "Un dossier est créé dans Documents\\Ondine\\Tickets avec votre description, les infos du poste et l'image. Rien n'est envoyé."),
             el("div", { class: "btn-row" }, go, cancel),
           ),
         );
@@ -187,7 +187,7 @@ export const system: IslandModule = {
         "button",
         {
           class: "btn small",
-          title: "Ta description + les infos du poste (+ une capture) dans un dossier prêt à joindre",
+          title: "Votre description + les infos du poste (+ une capture) dans un dossier prêt à joindre",
           onclick: () => {
             ticketOpen = true;
             ticketForm();

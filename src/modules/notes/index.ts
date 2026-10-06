@@ -161,7 +161,7 @@ export const notes: IslandModule = {
         );
         const list = el("ul", { class: "todo-list" });
         const footer = el("div", { class: "btn-row notes-foot" });
-        const empty = el("p", { class: "muted" }, "Rien à faire. Écris une tâche ci-dessus et appuie sur Entrée.");
+        const empty = el("p", { class: "muted" }, "Rien à faire. Écrivez une tâche ci-dessus et appuyez sur Entrée.");
         body.append(input, list, footer);
         requestAnimationFrame(() => input.focus());
 
@@ -265,7 +265,7 @@ export const notes: IslandModule = {
             el("div", { class: "btn-row" }, el("button", { class: "btn small", onclick: api.handler(() => open("new")) }, "+ Nouvelle note")),
           );
           if (!data.notes.length) {
-            host.append(el("p", { class: "muted" }, "Pas encore de note. Une idée, un numéro, une liste de courses : note-le ici."));
+            host.append(el("p", { class: "muted" }, "Pas encore de note. Une idée, un numéro, une liste de courses : notez-le ici."));
             return;
           }
           const grid = el("div", { class: "note-grid" });
@@ -294,7 +294,7 @@ export const notes: IslandModule = {
         const editor = (id: number | "new") => {
           const note = id === "new" ? null : data.notes.find((n) => n.id === id);
           let savedId = note?.id ?? null;
-          const area = el("textarea", { class: "clip-input note-editor", placeholder: "Écris ta note… (enregistrée automatiquement)", spellcheck: "true" }, note?.text ?? "");
+          const area = el("textarea", { class: "clip-input note-editor", placeholder: "Écrire une note… (enregistrée automatiquement)", spellcheck: "true" }, note?.text ?? "");
           const status = el("span", { class: "muted note-status" }, note ? `Modifiée ${ago(note.updated)}` : "");
           let timer = 0;
           const save = async () => {

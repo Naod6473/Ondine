@@ -42,7 +42,7 @@ export function aboutGroup(): HTMLElement {
         status.textContent = "";
         try {
           await Bridge.bugReportOpen();
-          status.textContent = "Page ouverte dans ton navigateur : relis tout avant d'envoyer.";
+          status.textContent = "Page ouverte dans votre navigateur : relisez tout avant d'envoyer.";
         } catch (err) {
           status.textContent = errorText(err);
         }
@@ -71,7 +71,7 @@ export function aboutGroup(): HTMLElement {
       row(
         "Signaler un problème",
         el("div", { class: "chips" }, report, status),
-        "Ouvre GitHub avec la version, Windows et les 40 dernières lignes du journal (chemins personnels masqués). Tu relis et complètes tout avant d'envoyer : rien ne part sans toi.",
+        "Ouvre GitHub avec la version, Windows et les 40 dernières lignes du journal (chemins personnels masqués). Vous relisez et complétez tout avant d'envoyer : rien ne part sans vous.",
       ),
       row(
         "Ressources utilisées",

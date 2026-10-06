@@ -176,7 +176,7 @@ export const clipboard: IslandModule = {
               { class: "muted" },
               view.query
                 ? "Aucune copie ne contient ce texte."
-                : "Rien pour l'instant. Copie du texte (Ctrl+C) n'importe où : il apparaîtra ici. Les mots de passe copiés depuis un gestionnaire sont ignorés.",
+                : "Rien pour l'instant. Copiez du texte (Ctrl+C) n'importe où : il apparaîtra ici. Les mots de passe copiés depuis un gestionnaire sont ignorés.",
             ),
           );
           return;
@@ -285,7 +285,7 @@ export const clipboard: IslandModule = {
             title: "Copie l'image du QR code (noir sur blanc) dans le presse-papiers",
             onclick: api.handler(async () => {
               if (await attempt(api, "Copier le QR code", () => api.invoke("qr_copy", { id: item.id }))) {
-                api.notify({ title: "QR code copié", body: "Colle-le comme une image (Ctrl+V).", icon: "▦", priority: "low", key: "clipboard-copied" });
+                api.notify({ title: "QR code copié", body: "Collez-le comme une image (Ctrl+V).", icon: "▦", priority: "low", key: "clipboard-copied" });
               }
             }),
           },
@@ -299,7 +299,7 @@ export const clipboard: IslandModule = {
             box,
             el("p", { class: "muted clip-qr-text" }, item.preview),
             el("div", { class: "btn-row" }, copyBtn, el("button", { class: "btn small", onclick: api.handler(closeQr) }, "‹ Retour")),
-            el("p", { class: "muted tool-note" }, "Vise le code avec l'appareil photo de ton téléphone. Calculé sur ton PC : rien ne passe par Internet."),
+            el("p", { class: "muted tool-note" }, "Visez le code avec l'appareil photo de votre téléphone. Calculé sur votre PC : rien ne passe par Internet."),
           ),
         );
         void (async () => {
@@ -366,7 +366,7 @@ export const clipboard: IslandModule = {
             el("div", { class: "pw-row" }, out, el("button", { class: "icon-btn", title: "Un autre", onclick: api.handler(make) }, "↻"), copyBtn),
             el("label", { class: "tool-row" }, el("span", { class: "muted" }, "Longueur"), length, lengthVal),
             el("div", { class: "tool-row" }, check("upper", "ABC"), check("lower", "abc"), check("digits", "123"), check("symbols", "#$%"), check("ambiguous", "Garder 0 O l 1")),
-            el("p", { class: "muted tool-note" }, "Tiré au hasard par Windows, sur ton PC. Jamais enregistré ni écrit dans le journal ; effacé du presse-papiers au bout de 30 s."),
+            el("p", { class: "muted tool-note" }, "Tiré au hasard par Windows, sur votre PC. Jamais enregistré ni écrit dans le journal ; effacé du presse-papiers au bout de 30 s."),
           ),
         );
         void make();
@@ -381,7 +381,7 @@ export const clipboard: IslandModule = {
               { class: "muted" },
               view.query
                 ? "Aucun snippet ne contient ce texte."
-                : "Un snippet est un texte que tu colles souvent (adresse, signature, réponse type). Crée-le une fois, colle-le en un clic.",
+                : "Un snippet est un texte que vous collez souvent (adresse, signature, réponse type). Créez-le une fois, collez-le en un clic.",
             ),
             add,
           );

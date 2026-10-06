@@ -170,7 +170,7 @@ impl RustModule for Agents {
                     source: "island".into(),
                     kind: "info",
                     title: "Agents IA : canal indisponible".into(),
-                    body: "Les hooks et le serveur MCP ne peuvent pas joindre l'île. Redémarre l'île ; si ça continue, un autre programme occupe peut-être le canal.".into(),
+                    body: "Les hooks et le serveur MCP ne peuvent pas joindre l'île. Redémarrez l'île ; si ça continue, un autre programme occupe peut-être le canal.".into(),
                     project: String::new(),
                     session: String::new(),
                 };
@@ -736,7 +736,7 @@ fn quiet_stop(app: &AppHandle, state: &Shared) {
     });
 }
 
-/// « Claude a fini 2 tâches · Codex t'attend · 1 question » (None : rien à dire).
+/// « Claude a fini 2 tâches · Codex vous attend · 1 question » (None : rien à dire).
 fn summary(held: &[Event], waiting: &[&str], asks: usize) -> Option<String> {
     let mut parts: Vec<String> = Vec::new();
     // Les fins de tâche, par agent, dans l'ordre d'arrivée.
@@ -759,7 +759,7 @@ fn summary(held: &[Event], waiting: &[&str], asks: usize) -> Option<String> {
         }
     }
     if !names.is_empty() {
-        let verb = if names.len() > 1 { "t'attendent" } else { "t'attend" };
+        let verb = if names.len() > 1 { "vous attendent" } else { "vous attend" };
         // Plusieurs sessions du même agent : on le précise.
         let extra = if waiting.len() > names.len() { format!(" ({} sessions)", waiting.len()) } else { String::new() };
         parts.push(format!("{} {verb}{extra}", names.join(" et ")));
@@ -792,7 +792,7 @@ fn allow_is_confirmed(confirmed: bool, armed: Option<Instant>, now: Instant) -> 
         return Err("autorisation non confirmée".into());
     }
     if waited > ARM_MAX {
-        return Err("confirmation trop ancienne : clique de nouveau sur « Autoriser… »".into());
+        return Err("confirmation trop ancienne : cliquez de nouveau sur « Autoriser… »".into());
     }
     Ok(())
 }
@@ -978,7 +978,7 @@ fn understand(msg: &Value, at: u64) -> Option<Event> {
         // Codex demande une autorisation : on affiche quel outil, sans décider à ta place.
         Some("PermissionRequest") => {
             ev.kind = "waiting";
-            ev.title = format!("{who} attend ta permission");
+            ev.title = format!("{who} attend votre permission");
             let tool = text(&hook["tool_name"]);
             ev.body = if tool.is_empty() { String::new() } else { format!("pour {tool}") };
         }
@@ -988,15 +988,15 @@ fn understand(msg: &Value, at: u64) -> Option<Event> {
             let ntype = hook["notification_type"].as_str().unwrap_or("");
             let lower = message.to_lowercase();
             ev.title = match ntype {
-                "permission_prompt" | "ToolPermission" => format!("{who} attend ta permission"),
-                "idle_prompt" | "elicitation_dialog" | "elicitation_url_dialog" | "agent_needs_input" => format!("{who} attend ta réponse"),
+                "permission_prompt" | "ToolPermission" => format!("{who} attend votre permission"),
+                "idle_prompt" | "elicitation_dialog" | "elicitation_url_dialog" | "agent_needs_input" => format!("{who} attend votre réponse"),
                 // Connexion réussie, quotas, réponses déjà données… : rien à signaler.
                 "" => {
                     // Anciennes versions sans « notification_type » : on devine d'après le texte.
                     if lower.contains("permission") {
-                        format!("{who} attend ta permission")
+                        format!("{who} attend votre permission")
                     } else {
-                        format!("{who} attend ta réponse")
+                        format!("{who} attend votre réponse")
                     }
                 }
                 _ => return None,
@@ -1101,7 +1101,7 @@ fn permission_config(tool: &str, exe: &str) -> Result<String, String> {
             Ok(format!("# Ondine : Autoriser / Refuser depuis l'île (à coller dans %USERPROFILE%\\.codex\\config.toml)\n\n[[hooks.PermissionRequest]]\n[[hooks.PermissionRequest.hooks]]\ntype = \"command\"\ncommand = {toml}\ntimeout = 330\n"))
         }
         // Gemini CLI : un hook peut refuser ou laisser demander, mais pas autoriser.
-        "gemini" => Err("Gemini CLI ne laisse pas un hook autoriser un outil : réponds dans son terminal.".into()),
+        "gemini" => Err("Gemini CLI ne laisse pas un hook autoriser un outil : répondez dans son terminal.".into()),
         other => Err(format!("outil inconnu : {other}")),
     }
 }
@@ -1140,9 +1140,9 @@ mod tests {
     #[test]
     fn claude_events_are_understood() {
         let e = hook(json!({ "hook_event_name": "Notification", "message": "Claude needs your permission to use Bash", "session_id": "s1", "cwd": "C:\\Projets\\Island\\" })).unwrap();
-        assert_eq!((e.kind, e.title.as_str(), e.project.as_str(), e.session.as_str()), ("waiting", "Claude attend ta permission", "Island", "claude-code:s1"));
+        assert_eq!((e.kind, e.title.as_str(), e.project.as_str(), e.session.as_str()), ("waiting", "Claude attend votre permission", "Island", "claude-code:s1"));
         let e = hook(json!({ "hook_event_name": "Notification", "notification_type": "idle_prompt", "message": "Claude is waiting for your input" })).unwrap();
-        assert_eq!(e.title, "Claude attend ta réponse");
+        assert_eq!(e.title, "Claude attend votre réponse");
         assert!(hook(json!({ "hook_event_name": "Notification", "notification_type": "auth_success", "message": "ok" })).is_none());
         let e = hook(json!({ "hook_event_name": "Stop", "cwd": "/home/x/api" })).unwrap();
         assert_eq!((e.kind, e.title.as_str(), e.project.as_str()), ("done", "Claude a fini", "api"));
@@ -1168,9 +1168,9 @@ mod tests {
     fn quiet_summary() {
         let ev = |source: &str, kind: &'static str| Event { at: 0, source: source.into(), kind, title: String::new(), body: String::new(), project: String::new(), session: String::new() };
         let held = vec![ev("claude-code", "done"), ev("codex", "done"), ev("claude-code", "done"), ev("mcp", "info")];
-        assert_eq!(summary(&held, &["Codex"], 1).unwrap(), "Claude a fini 2 tâches · Codex a fini une tâche · Codex t'attend · 1 question en attente · 1 message");
-        assert_eq!(summary(&[], &["Claude", "Claude"], 0).unwrap(), "Claude t'attend (2 sessions)");
-        assert_eq!(summary(&[], &["Claude", "Gemini"], 0).unwrap(), "Claude et Gemini t'attendent");
+        assert_eq!(summary(&held, &["Codex"], 1).unwrap(), "Claude a fini 2 tâches · Codex a fini une tâche · Codex vous attend · 1 question en attente · 1 message");
+        assert_eq!(summary(&[], &["Claude", "Claude"], 0).unwrap(), "Claude vous attend (2 sessions)");
+        assert_eq!(summary(&[], &["Claude", "Gemini"], 0).unwrap(), "Claude et Gemini vous attendent");
         assert!(summary(&[], &[], 0).is_none());
     }
 
@@ -1243,10 +1243,10 @@ mod tests {
         assert_eq!((e.kind, e.title.as_str(), e.session.as_str()), ("done", "Codex a fini", "codex:t1"));
         assert!(!e.body.contains("secret"));
         let e = codex(json!({ "hook_event_name": "PermissionRequest", "tool_name": "Bash", "tool_input": { "command": "rm -rf /" } })).unwrap();
-        assert_eq!((e.title.as_str(), e.body.as_str()), ("Codex attend ta permission", "pour Bash"));
+        assert_eq!((e.title.as_str(), e.body.as_str()), ("Codex attend votre permission", "pour Bash"));
         let gem = |v: Value| understand(&json!({ "source": "gemini", "hook": v }), 0);
         assert_eq!(gem(json!({ "hook_event_name": "AfterAgent", "prompt_response": "x" })).unwrap().title, "Gemini a fini");
-        assert_eq!(gem(json!({ "hook_event_name": "Notification", "notification_type": "ToolPermission", "message": "Allow?" })).unwrap().title, "Gemini attend ta permission");
+        assert_eq!(gem(json!({ "hook_event_name": "Notification", "notification_type": "ToolPermission", "message": "Allow?" })).unwrap().title, "Gemini attend votre permission");
         assert_eq!(gem(json!({ "hook_event_name": "BeforeAgent", "prompt": "x" })).unwrap().kind, "working");
         assert!(gem(json!({ "type": "inconnu" })).is_none());
     }

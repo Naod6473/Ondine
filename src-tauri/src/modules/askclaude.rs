@@ -33,7 +33,7 @@ const MAX_TEXT_BYTES: u64 = 100 * 1024;
 const MAX_IMAGE_BYTES: u64 = 3_750_000;
 const MAX_QUESTION: usize = 2000;
 const MODELS: &[&str] = &["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-4-5-20251001"];
-const DEFAULT_INSTRUCTION: &str = "Tu aides quelqu'un sur son PC Windows. Réponds en français, simplement et brièvement. Si tu n'es pas sûr, dis-le au lieu d'inventer.";
+const DEFAULT_INSTRUCTION: &str = "Vous aidez quelqu'un sur son PC Windows. Répondez en français, simplement et brièvement. Si vous n'êtes pas sûr, dites-le au lieu d'inventer.";
 
 const TEXT_EXTENSIONS: &[&str] = &[
     "txt", "log", "md", "json", "xml", "csv", "yml", "yaml", "toml", "ini", "cfg", "conf", "reg", "ps1", "psm1", "bat", "cmd", "sh", "py", "rs", "ts", "tsx", "js",
@@ -101,9 +101,9 @@ impl RustModule for AskClaude {
             "send" => {
                 ctx.require("claude-api")?;
                 let id = args.get("id").and_then(Value::as_u64).ok_or("rien de préparé")?;
-                let prepared = self.prepared.locked().clone().filter(|p| p.id == id).ok_or("l'aperçu a changé : vérifie ce qui part, puis renvoie")?;
+                let prepared = self.prepared.locked().clone().filter(|p| p.id == id).ok_or("l'aperçu a changé : vérifiez ce qui part, puis renvoyez")?;
                 let question: String = args.get("question").and_then(Value::as_str).unwrap_or("").trim().chars().take(MAX_QUESTION).collect();
-                let key = ctx.credential("anthropic-api-key")?.ok_or("Pas de clé API Anthropic : ajoute-la dans Réglages → Identifiants.")?;
+                let key = ctx.credential("anthropic-api-key")?.ok_or("Pas de clé API Anthropic : ajoutez-la dans Réglages → Identifiants.")?;
                 let body = request_body(&prepared, &question, &prepared.model, max_tokens(ctx), &prepared.instruction);
                 ctx.log_info(format!("demande envoyée à Claude ({} octets)", body.to_string().len()));
                 let answer = call_api(&key, &body)?;
@@ -181,7 +181,7 @@ fn request_body(p: &Prepared, question: &str, model: &str, max_tokens: u64, syst
     if let Some((media, data)) = &p.image {
         content.push(json!({ "type": "image", "source": { "type": "base64", "media_type": media, "data": data } }));
     }
-    let question = if question.is_empty() { "Explique-moi ceci." } else { question };
+    let question = if question.is_empty() { "Expliquez-moi ceci." } else { question };
     let mut text = question.to_string();
     if let Some(t) = &p.text {
         // Le contenu est balisé : c'est un document à lire, pas des instructions.
@@ -218,11 +218,11 @@ fn call_api(key: &str, body: &Value) -> Result<Value, String> {
 fn api_error(status: u16, v: &Value) -> String {
     let detail = v["error"]["message"].as_str().unwrap_or("");
     let what = match status {
-        401 => "clé API refusée (vérifie-la dans Réglages → Identifiants)",
+        401 => "clé API refusée (vérifiez-la dans Réglages → Identifiants)",
         403 => "accès refusé par l'API",
         413 => "envoi trop gros",
-        429 => "trop de demandes : réessaie dans un moment",
-        529 => "l'API est surchargée : réessaie dans un moment",
+        429 => "trop de demandes : réessayez dans un moment",
+        529 => "l'API est surchargée : réessayez dans un moment",
         _ => "l'API a refusé la demande",
     };
     if detail.is_empty() { format!("{what} (code {status})") } else { format!("{what} (code {status}) : {}", detail.chars().take(200).collect::<String>()) }
@@ -250,7 +250,7 @@ mod tests {
         let content = b["messages"][0]["content"].as_array().unwrap();
         assert_eq!(content[0]["source"]["media_type"], "image/png");
         let text = content[1]["text"].as_str().unwrap();
-        assert!(text.starts_with("Explique-moi ceci."));
+        assert!(text.starts_with("Expliquez-moi ceci."));
         assert!(text.contains("<document nom=\"a'b.log\">\nErreur 42\n</document>"));
         assert_eq!((b["model"].as_str(), b["max_tokens"].as_u64(), b["system"].as_str()), (Some("claude-sonnet-5-5"), Some(1024), Some("sys")));
     }

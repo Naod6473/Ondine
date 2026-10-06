@@ -316,7 +316,7 @@ export const media: IslandModule = {
             el(
               "p",
               { class: "muted" },
-              "Rien en lecture. Lance de la musique dans Spotify, ton navigateur ou un autre lecteur : elle apparaîtra ici.",
+              "Rien en lecture. Lancez de la musique dans Spotify, votre navigateur ou un autre lecteur : elle apparaîtra ici.",
             ),
           );
           return;

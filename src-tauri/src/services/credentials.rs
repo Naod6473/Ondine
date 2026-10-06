@@ -140,7 +140,7 @@ pub fn check_ical_url(url: &str) -> Result<(), String> {
     if ok {
         Ok(())
     } else {
-        Err("adresse refusée : il faut un lien qui commence par https:// (l'adresse secrète iCal de ton agenda)".into())
+        Err("adresse refusée : il faut un lien qui commence par https:// (l'adresse secrète iCal de votre agenda)".into())
     }
 }
 

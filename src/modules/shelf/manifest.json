@@ -2,7 +2,7 @@
   "id": "shelf",
   "name": "Étagère",
   "icon": "🧺",
-  "description": "Glisse des fichiers sur l'île pour les poser sur l'étagère, les envoyer à la Corbeille, les copier ou les déplacer (dossiers favoris compris), copier leur chemin, les compresser, convertir ou réduire des images, ou renommer plusieurs fichiers d'un coup (avec aperçu). Toute action sur les fichiers est annulable quelques secondes.",
+  "description": "Glissez des fichiers sur l'île pour les poser sur l'étagère, les envoyer à la Corbeille, les copier ou les déplacer (dossiers favoris compris), copier leur chemin, les compresser, convertir ou réduire des images, ou renommer plusieurs fichiers d'un coup (avec aperçu). Toute action sur les fichiers est annulable quelques secondes.",
   "version": "0.1.0",
   "permissions": [
     "files",
@@ -15,7 +15,7 @@
         "key": "favorites",
         "type": "folders",
         "label": "Dossiers favoris",
-        "help": "Chacun devient une cible quand tu glisses des fichiers sur l'île.",
+        "help": "Chacun devient une cible quand vous glissez des fichiers sur l'île.",
         "default": []
       },
       {

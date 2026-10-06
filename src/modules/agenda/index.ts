@@ -302,7 +302,7 @@ export const agenda: IslandModule = {
               el(
                 "p",
                 { class: "muted" },
-                "Dans les réglages du module Agenda, ajoute l'adresse secrète iCal de ton agenda en ligne (Google Agenda, Outlook…), toujours à jour, ou un fichier .ics exporté. Tu peux en mettre plusieurs, chacun avec sa couleur.",
+                "Dans les réglages du module Agenda, ajoutez l'adresse secrète iCal de votre agenda en ligne (Google Agenda, Outlook…), toujours à jour, ou un fichier .ics exporté. Vous pouvez en mettre plusieurs, chacun avec sa couleur.",
               ),
               el("button", { class: "btn primary", onclick: api.handler(() => Bridge.openSettingsWindow()) }, "⚙ Ouvrir les réglages"),
             ),
