@@ -1,0 +1,51 @@
+# Construire l'installateur Windows et préparer une version sur GitHub.
+#
+# Comment s'en servir :
+#   1. mettre le même numéro dans package.json, src-tauri/tauri.conf.json et
+#      src-tauri/Cargo.toml (ex. 1.0.0-beta.1) ;
+#   2. pousser une étiquette : git tag v1.0.0-beta.1 ; git push origin v1.0.0-beta.1
+#      (ou lancer « release » à la main depuis l'onglet Actions) ;
+#   3. GitHub construit l'installateur (*-setup.exe) et crée un BROUILLON de
+#      version : rien n'est public tant que tu ne cliques pas « Publish ».
+name: release
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  installateur:
+    runs-on: windows-latest
+    permissions:
+      contents: write # pour créer le brouillon de version
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Dépendances de l'interface
+        run: npm ci
+
+      - name: Construire et préparer la version
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: "Ondine v__VERSION__"
+          releaseBody: "Télécharge le fichier *-setup.exe ci-dessous pour installer Ondine sur Windows 10 ou 11."
+          releaseDraft: true
+          prerelease: true
