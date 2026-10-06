@@ -37,6 +37,8 @@ export interface Settings {
     iconPack: "color" | "line";
     /** L'île reste en mini au lieu de disparaître. */
     alwaysMini: boolean;
+    /** Style des animations : "classic" (sobre) ou "studio" (flou → net, chiffres qui roulent, gélatine). */
+    motion: "classic" | "studio";
   };
   mascot: {
     enabled: boolean;
@@ -73,6 +75,7 @@ export function defaultSettings(): Settings {
       presentationQuiet: true,
       iconPack: "color",
       alwaysMini: false,
+      motion: "classic",
     },
     mascot: { enabled: true, id: "goutte", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5 },
     privacy: { excludedFolders: [] },

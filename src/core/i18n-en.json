@@ -1715,5 +1715,10 @@
 "^Je vis en haut de l'écran : passe la souris tout en haut, ou (.+)\\. Mon icône est près de l'horloge \\(clic droit : Réglages, Quitter\\)\\.$",
 "I live at the top of the screen: move the mouse to the very top, or press $1. My icon is next to the clock (right-click: Settings, Quit)."
 ]
-]
+],
+"Animations": "Animations",
+"Style des animations": "Animation style",
+"Classique": "Classic",
+"Studio": "Studio",
+"Classique : sobre. Studio : façon vidéo de présentation, les éléments arrivent flous puis nets l'un après l'autre, les chiffres roulent, les boutons rebondissent comme de la gélatine.": "Classic: understated. Studio: like a product video, items arrive blurred then sharp one after another, numbers roll, buttons bounce like jelly."
 }

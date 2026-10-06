@@ -68,7 +68,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "🎨",
     label: "Apparence",
     sub: "La couleur de l'île et ses petits sons.",
-    keywords: ["Thème", "Icônes", "Style des icônes", "Couleur de l'île", "Couleur personnalisée", "Sons de clic", "Volume des sons"],
+    keywords: ["Thème", "Icônes", "Style des icônes", "Animations", "Style des animations", "Studio", "Couleur de l'île", "Couleur personnalisée", "Sons de clic", "Volume des sons"],
     render: look,
   },
   {
@@ -534,6 +534,13 @@ function look(main: HTMLElement) {
         "Style des icônes",
         segmented(s.island.iconPack ?? "color", [["color", "Couleur"], ["line", "Épurées"]], (v) => save((d) => (d.island.iconPack = v as "color" | "line"))),
         "Couleur : les icônes dessinées pour Ondine. Épurées : au trait, sobres, qui prennent la couleur du texte (Phosphor, licence MIT).",
+      ),
+    ]),
+    group("Animations", [
+      row(
+        "Style des animations",
+        segmented(s.island.motion ?? "classic", [["classic", "Classique"], ["studio", "Studio"]], (v) => save((d) => (d.island.motion = v as "classic" | "studio"))),
+        "Classique : sobre. Studio : façon vidéo de présentation, les éléments arrivent flous puis nets l'un après l'autre, les chiffres roulent, les boutons rebondissent comme de la gélatine.",
       ),
     ]),
     group("Sons", [

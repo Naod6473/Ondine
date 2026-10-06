@@ -6,6 +6,7 @@
 //   island.ts (ici)   dessine l'état, écoute la souris, le clavier, le glisser-déposer
 //   Rust (island/)    place la fenêtre, gère les clics traversants, lit la souris
 
+import { popIn, setStudio, staggerIn, studioOn, tabOut, jellyButtons, watchNumbers } from "./studio";
 import { Bridge, IS_TAURI, onDragDrop, onTauriEvent, type DragDropEvent } from "../core/bridge";
 import type { Bus } from "../core/bus";
 import { logger } from "../core/log";
@@ -148,6 +149,9 @@ export class Island {
     this.applySettings(settingsStore.current);
     this.wireInputs();
     this.wireUndo();
+    // Design « Studio » : chiffres qui roulent et boutons en gélatine (inactifs en Classique).
+    watchNumbers(this.content);
+    jellyButtons(this.content);
     this.wirePrivacy();
     // Bouton « Faire venir Ondine » des réglages.
     this.bus.on("mascot.peek-now", () => {
@@ -161,6 +165,7 @@ export class Island {
   private applySettings(s: Settings) {
     this.fsm.timings = timingsFrom(s);
     this.fsm.setAlwaysMini(s.island.alwaysMini ?? false);
+    setStudio(s.island.motion === "studio");
     // Le bord et la place de l'île : la forme s'adapte en CSS (island.css).
     document.body.dataset.edge = s.island.edge ?? "top";
     document.body.dataset.align = s.island.align ?? "center";
@@ -574,7 +579,13 @@ export class Island {
     this.renderBanner(n);
 
     // Le contenu arrive en douceur quand l'île change de forme.
-    if (state !== this.renderedState && state !== "hidden" && state !== "peek" && !reducedMotion()) {
+    if (state !== this.renderedState && state !== "hidden" && state !== "peek" && studioOn()) {
+      this.studioEntrance(state);
+    } else if (state === this.renderedState && (state === "compact" || state === "alert") && studioOn()) {
+      // Même forme, nouvelle notification : elle sort quand même de la pilule.
+      const card = this.content.querySelector(".notif");
+      if (card) popIn(card);
+    } else if (state !== this.renderedState && state !== "hidden" && state !== "peek" && !reducedMotion()) {
       this.content.animate(
         [
           { opacity: 0, transform: "translateY(-6px) scale(0.98)", filter: "blur(4px)" },
@@ -584,6 +595,25 @@ export class Island {
       );
     }
     this.renderedState = state;
+  }
+
+  /**
+   * Arrivée façon « Studio » : les onglets puis les morceaux de la vue passent
+   * de flous à nets l'un après l'autre ; une notification sort de la pilule.
+   */
+  private studioEntrance(state: IslandState) {
+    const card = this.content.querySelector(".notif");
+    if (card && state !== "expanded") {
+      popIn(card);
+      return;
+    }
+    const tabs = this.content.querySelector(".tabs");
+    if (tabs) staggerIn(tabs, 20);
+    // Le module peut dessiner sa vue juste après : on attend une image.
+    requestAnimationFrame(() => {
+      const view = this.content.querySelector(".view");
+      if (view) staggerIn(view, tabs ? 120 : 40);
+    });
   }
 
   private renderCompact(n: IslandNotification | null) {
@@ -736,18 +766,24 @@ export class Island {
     old.classList.add("leaving");
     old.style.pointerEvents = "none";
     const ease = "cubic-bezier(0.2, 0.8, 0.2, 1)";
-    old
-      .animate(
-        [
-          { opacity: 1, transform: "none", filter: "blur(0)" },
-          { opacity: 0, transform: `translateX(${-direction * 18}px) scale(0.98)`, filter: "blur(6px)" },
-        ],
-        { duration: 220, easing: ease, fill: "forwards" },
-      )
-      .finished.then(
+    const studio = studioOn();
+    const leaving = studio
+      ? tabOut(old, direction)
+      : old.animate(
+          [
+            { opacity: 1, transform: "none", filter: "blur(0)" },
+            { opacity: 0, transform: `translateX(${-direction * 18}px) scale(0.98)`, filter: "blur(6px)" },
+          ],
+          { duration: 220, easing: ease, fill: "forwards" },
+        );
+    leaving.finished.then(
         () => old.remove(),
         () => old.remove(), // animation interrompue (île refermée) : on nettoie quand même
       );
+    if (studio) {
+      requestAnimationFrame(() => staggerIn(body, 60));
+      return;
+    }
     body.animate(
       [
         { opacity: 0, transform: `translateX(${direction * 24}px) scale(0.98)`, filter: "blur(6px)" },

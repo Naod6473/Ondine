@@ -3044,3 +3044,25 @@ body.presenting .island[data-state="hidden"] {
   font: inherit;
   font-size: 12px;
 }
+
+/* ── Design d'animation « Studio » (Réglages → Apparence → Animations) ─────
+   Posé par la classe motion-studio sur <body> ; le reste est dans studio.ts. */
+
+/* La pilule rebondit plus franchement (8 % de dépassement au lieu de 4 %).
+   Pas en grand : le panneau toucherait les bords de la fenêtre. */
+.motion-studio .island:not([data-state="expanded"]) {
+  --ease: linear(0, 0.0319, 0.1132, 0.2252, 0.3523, 0.4828, 0.6077, 0.721, 0.8193, 0.9007, 0.9652, 1.0136,
+    1.0475, 1.069, 1.0803, 1.0835, 1.0808, 1.074, 1.0646, 1.054, 1.0431, 1.0327, 1.0232, 1.015, 1.0082,
+    1.0029, 0.9988, 0.996, 1);
+}
+
+/* Survol : les boutons se soulèvent un peu, comme aimantés. */
+.motion-studio .btn:hover {
+  transform: translateY(-1px) scale(1.04);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-studio .btn:hover {
+    transform: none;
+  }
+}
