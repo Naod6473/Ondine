@@ -6,7 +6,7 @@
 //   island.ts (ici)   dessine l'état, écoute la souris, le clavier, le glisser-déposer
 //   Rust (island/)    place la fenêtre, gère les clics traversants, lit la souris
 
-import { flyIcon, jellyButtons, motionOn, popIn, setStudio, spotlight, staggerIn, tabOut, watchContent } from "./motion";
+import { jellyButtons, motionOn, popIn, setStudio, spotlight, staggerIn, tabOut, watchContent } from "./motion";
 import { Bridge, IS_TAURI, onDragDrop, onTauriEvent, type DragDropEvent } from "../core/bridge";
 import type { Bus } from "../core/bus";
 import { logger } from "../core/log";
@@ -742,7 +742,6 @@ export class Island {
     // Les onglets : seul l'actif garde son nom (la largeur s'anime en CSS).
     for (const [tabId, button] of ui.tabs) button.classList.toggle("active", tabId === id);
     ui.pill.moveTo(ui.tabs.get(id)!);
-    flyIcon(ui.tabs.get(id)!, ui.stage);
 
     // Le contenu : on démonte l'ancien module, mais on garde son dessin le
     // temps qu'il s'efface.

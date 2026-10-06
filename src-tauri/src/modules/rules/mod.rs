@@ -722,21 +722,26 @@ fn mark_produced(state: &Shared, path: &Path) {
 fn in_folder(path: &Path, folder: &Path, sub: bool) -> bool {
     let Some(parent) = path.parent() else { return false };
     if sub {
-        let (p, f) = (lower(parent), lower(folder));
-        p == f || p.starts_with(&format!("{}{}", f.trim_end_matches(['\\', '/']), std::path::MAIN_SEPARATOR))
+        // On compare morceau par morceau (C:, Users, x, Downloads…) : ainsi
+        // « / » et « \ » se valent, et « Downloads2 » n'est pas dans « Downloads ».
+        parts(parent).starts_with(&parts(folder))
     } else {
         same_path(parent, folder)
     }
 }
 
-/// Sous Windows, la casse ne compte pas dans les chemins.
-fn lower(p: &Path) -> String {
-    let s = p.to_string_lossy().trim_end_matches(['\\', '/']).to_string();
-    if cfg!(windows) { s.to_lowercase() } else { s }
+/// Les morceaux d'un chemin. Sous Windows, la casse ne compte pas.
+fn parts(p: &Path) -> Vec<String> {
+    p.components()
+        .map(|c| {
+            let s = c.as_os_str().to_string_lossy().to_string();
+            if cfg!(windows) { s.to_lowercase() } else { s }
+        })
+        .collect()
 }
 
 fn same_path(a: &Path, b: &Path) -> bool {
-    lower(a) == lower(b)
+    parts(a) == parts(b)
 }
 
 fn file_name(p: &Path) -> String {
@@ -796,6 +801,15 @@ mod tests {
         assert!(!in_folder(Path::new("/home/x/Downloads/sub/a.pdf"), folder, false));
         assert!(in_folder(Path::new("/home/x/Downloads/sub/a.pdf"), folder, true));
         assert!(!in_folder(Path::new("/home/x/Downloads2/a.pdf"), folder, true));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn folder_membership_ignores_case_and_slashes() {
+        let folder = Path::new("c:/users/x/downloads");
+        assert!(in_folder(Path::new(r"C:\Users\X\Downloads\a.pdf"), folder, false));
+        assert!(in_folder(Path::new(r"C:\Users\X\Downloads\sub\a.pdf"), folder, true));
+        assert!(!in_folder(Path::new(r"C:\Users\X\Downloads2\a.pdf"), folder, true));
     }
 
     #[test]

@@ -499,6 +499,45 @@ function general(main: HTMLElement) {
       ],
       "Le journal reste sur ton PC (%LOCALAPPDATA%\\Ondine\\logs). Il ne contient jamais de clé ni de contenu de fichier.",
     ),
+    demoGroup(),
+  );
+}
+
+/**
+ * Le mode démo : l'île montre de fausses données (src/core/demo.ts), pour les
+ * captures d'écran et la vidéo. Les scènes font apparaître une notification
+ * à filmer.
+ */
+function demoGroup(): HTMLElement {
+  const on = settingsStore.current.general.demo === true;
+  const scene = (id: string, label: string) =>
+    el("button", { class: "btn small", onclick: () => bus.emit("demo.scene", { scene: id }, "settings") }, label);
+  return group(
+    "Captures d'écran",
+    [
+      row(
+        "Mode démo",
+        toggle(on, (v) => save((d) => (d.general.demo = v), true), "Mode démo"),
+        "L'île montre de fausses données (musique, agenda, notes, presse-papiers…) au lieu des tiennes. Aucune action n'est faite pour de vrai.",
+      ),
+      ...(on
+        ? [
+            row(
+              "Jouer une scène",
+              el(
+                "div",
+                { class: "chips" },
+                scene("claude-done", "Claude a fini"),
+                scene("claude-permission", "Demande d'autorisation"),
+                scene("download", "Fichier téléchargé"),
+                scene("next-track", "Morceau suivant"),
+              ),
+              "La notification arrive dans l'île : lance l'enregistrement avant de cliquer.",
+            ),
+          ]
+        : []),
+    ],
+    "Pense à éteindre le mode démo après tes captures.",
   );
 }
 

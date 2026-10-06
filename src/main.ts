@@ -5,6 +5,7 @@
 
 import { Bridge, windowLabel } from "./core/bridge";
 import { Bus } from "./core/bus";
+import { hidesRealData, startDemo } from "./core/demo";
 import { errorText, logger } from "./core/log";
 import { ModuleRegistry } from "./core/module-registry";
 import { NotificationQueue } from "./core/notifications";
@@ -25,6 +26,8 @@ async function start() {
   await startI18n();
 
   const bus = new Bus(windowLabel("island"));
+  // Mode démo : les vraies nouvelles du Rust (musique, presse-papiers…) sont ignorées.
+  bus.accept = (msg) => !hidesRealData(msg);
   await bus.connect();
 
   const notifications = new NotificationQueue();
@@ -32,6 +35,7 @@ async function start() {
   new Island(document.getElementById("root")!, bus, registry, notifications);
 
   registry.sync();
+  startDemo(bus);
   if (boot?.elevated) {
     // Windows refuse le glisser-déposer d'une appli normale vers une appli administrateur.
     notifications.push({
