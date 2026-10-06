@@ -797,6 +797,42 @@ option {
   padding-left: 0 !important;
 }
 
+/* Calendriers de l'Agenda : couleur, nom, source (fichier ou lien) */
+.cals-item {
+  flex-wrap: wrap;
+}
+.cals-color {
+  flex: none;
+  width: 26px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+.cals-name.text {
+  width: 160px;
+}
+.cals-source {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+code.cals-source {
+  display: block;
+}
+.cals-form {
+  width: 100%;
+  margin-bottom: 4px;
+}
+
 /* Onglets : ordre et interrupteurs */
 .order-item {
   cursor: grab;

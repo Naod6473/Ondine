@@ -1,9 +1,14 @@
-// Module « Agenda » : le prochain rendez-vous, lu dans des fichiers .ics.
+// Module « Agenda » : les prochains rendez-vous de plusieurs calendriers
+// (fichiers .ics ou liens iCal), chacun avec sa couleur.
 //
-// Le Rust (src-tauri/src/modules/agenda.rs) lit les fichiers, déroule les
-// répétitions et prévient par "agenda.changed" ; on redemande alors la liste
-// avec la commande "upcoming". Un peu avant un rendez-vous, il publie
-// "agenda.reminder" : l'île s'ouvre en alerte.
+// Le Rust (src-tauri/src/modules/agenda.rs) lit les calendriers, déroule les
+// répétitions, fusionne et trie les rendez-vous, et prévient par
+// "agenda.changed" ; on redemande alors la liste avec la commande "upcoming".
+// Un peu avant un rendez-vous, il publie "agenda.reminder" : l'île s'ouvre en alerte.
+//
+// Un clic sur un rendez-vous qui a un lien (réunion Teams, Meet, Zoom, page
+// web) l'ouvre : commande "open". On ne connaît que la SORTE de lien ;
+// l'adresse reste dans le Rust, qui n'ouvre que du http(s).
 //
 // La pilule de l'île montre le rendez-vous quand il approche (réglage
 // « … quand il commence dans moins de »), puis pendant qu'il a lieu.
@@ -24,38 +29,64 @@ interface Meeting {
   start: number;
   end: number;
   allDay: boolean;
+  /** Le calendrier d'où il vient (identifiant, nom, couleur « #4fb8ff »). */
+  calendar?: string;
+  calendarName?: string;
+  color?: string;
+  /** La sorte de lien à ouvrir d'un clic, ou null s'il n'y en a pas. */
+  link?: LinkKind | null;
+}
+
+type LinkKind = "teams" | "meet" | "zoom" | "webex" | "web";
+
+interface CalendarInfo {
+  id: string;
+  name: string;
+  color: string;
+  kind: "file" | "link";
 }
 
 interface Listing {
   events: Meeting[];
   errors: string[];
-  /** Nombre de fichiers lus avec succès. */
-  files: number;
-  /** Un agenda en ligne (adresse iCal) est branché. */
-  online?: boolean;
+  /** Les calendriers des réglages (lus ou non). */
+  calendars: CalendarInfo[];
   /** Combien d'événements ont été lus en tout, et la date du plus récent. */
   read?: number;
   latest?: string | null;
 }
 
-/** « 1 fichier · agenda en ligne · 245 événements lus (le plus récent : 12/03/2026) · 0 à venir » */
-function sourcesLine(files: number, online: boolean | undefined, read: number | undefined, latest: string | null | undefined, upcoming: number): string {
+/** Le texte du bouton / de l'infobulle d'un lien. */
+const LINK_LABELS: Record<LinkKind, string> = {
+  teams: "Rejoindre la réunion Teams",
+  meet: "Rejoindre la réunion Google Meet",
+  zoom: "Rejoindre la réunion Zoom",
+  webex: "Rejoindre la réunion Webex",
+  web: "Ouvrir le lien du rendez-vous",
+};
+
+/** « 2 calendriers · 245 événements lus (le plus récent : 12/03/2026) · 0 à venir » */
+function sourcesLine(calendars: number, read: number | undefined, latest: string | null | undefined, upcoming: number): string {
   const parts: string[] = [];
-  if (files) parts.push(files > 1 ? `${files} fichiers` : "1 fichier");
-  if (online) parts.push("agenda en ligne");
+  if (calendars) parts.push(calendars > 1 ? `${calendars} calendriers` : "1 calendrier");
   if (read !== undefined) parts.push(`${read} événement${read > 1 ? "s" : ""} lu${read > 1 ? "s" : ""}${latest ? ` (le plus récent : ${latest})` : ""}`);
   parts.push(`${upcoming} à venir`);
   return parts.join(" · ");
 }
 
-let listing: Listing = { events: [], errors: [], files: 0 };
+let listing: Listing = { events: [], errors: [], calendars: [] };
 const redraws = new Set<() => void>();
 const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
 const MINUTE = 60_000;
 
-async function refresh(api: ModuleApi, command: "upcoming" | "reload" = "upcoming") {
+/**
+ * Redemande la liste. "reload" relit tout (bouton « Relire ») ; avec
+ * `{ force: false }`, seulement ce qui a changé dans les réglages.
+ */
+async function refresh(api: ModuleApi, command: "upcoming" | "reload" = "upcoming", args?: { force: boolean }) {
   try {
-    listing = await api.invoke<Listing>(command);
+    const answer = await api.invoke<Listing>(command, args);
+    listing = { ...answer, calendars: answer.calendars ?? [] };
   } catch (err) {
     if (command === "reload") {
       api.notify({ title: "Agenda", body: errorText(err), icon: "⚠️", priority: "low", key: "agenda-error" });
@@ -113,6 +144,45 @@ function relative(m: Meeting, now = Date.now()): string {
   return m.allDay ? dayLabel(m.start).toLowerCase() : `${dayLabel(m.start).toLowerCase()} à ${hhmm(m.start)}`;
 }
 
+/** Ouvre le lien d'un rendez-vous (le Rust le retrouve et vérifie qu'il est http(s)). */
+async function openLink(api: ModuleApi, m: Meeting) {
+  if (!m.link) return;
+  try {
+    await api.invoke("open", { calendar: m.calendar ?? "", key: m.key });
+  } catch (err) {
+    api.notify({ title: "Agenda", body: errorText(err), icon: "⚠️", priority: "low", key: "agenda-error" });
+  }
+}
+
+/** La pastille de couleur du calendrier. */
+function dot(m: Meeting): HTMLElement {
+  const d = el("span", { class: "agenda-dot", title: m.calendarName ?? "", "aria-hidden": "true" });
+  if (m.color) d.style.setProperty("--cal", m.color);
+  return d;
+}
+
+/**
+ * Rend un élément cliquable s'il a un lien : clic, ou Entrée / Espace au
+ * clavier. Sans lien, il ne se passe rien.
+ */
+function clickable(node: HTMLElement, api: ModuleApi, m: Meeting): HTMLElement {
+  if (!m.link) return node;
+  node.classList.add("has-link");
+  node.setAttribute("role", "button");
+  node.setAttribute("tabindex", "0");
+  node.title = LINK_LABELS[m.link];
+  node.addEventListener("click", api.handler(() => openLink(api, m)));
+  node.addEventListener(
+    "keydown",
+    api.handler((e: KeyboardEvent) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      return openLink(api, m);
+    }),
+  );
+  return node;
+}
+
 /** Le rendez-vous à montrer dans la pilule : en cours, ou qui commence bientôt. */
 function soon(api: ModuleApi): Meeting | null {
   const s = api.settings();
@@ -140,10 +210,11 @@ export const agenda: IslandModule = {
         icon: "📅",
         priority: "high",
         key: `agenda-${m.key}`,
+        actions: m.link ? [{ label: m.link === "web" ? "Ouvrir" : "Rejoindre", run: () => void openLink(api, m) }] : undefined,
       });
     });
-    // Fichiers changés dans les réglages : on relit tout de suite.
-    const off = api.onSettingsChange(() => void refresh(api, "reload"));
+    // Calendriers changés dans les réglages : on relit ce qui a changé, tout de suite.
+    const off = api.onSettingsChange(() => void refresh(api, "reload", { force: false }));
 
     // Le récap du soir : à l'heure choisie, une fois par jour, les rendez-vous de
     // demain (et Ondine qui bâille). Rien si l'heure vaut 0.
@@ -216,10 +287,10 @@ export const agenda: IslandModule = {
       let first = true;
 
       const draw = () => {
-        const { events, errors, files, online, read, latest } = listing;
+        const { events, errors, calendars, read, latest } = listing;
         body.replaceChildren();
 
-        if (!files && !online && !errors.length) {
+        if (!calendars.length && !errors.length) {
           body.append(
             el(
               "div",
@@ -229,7 +300,7 @@ export const agenda: IslandModule = {
               el(
                 "p",
                 { class: "muted" },
-                "Google Agenda : colle son adresse secrète iCal dans Réglages → Identifiants (toujours à jour). Sinon, exporte ton agenda en .ics et choisis le fichier dans les réglages du module Agenda.",
+                "Dans les réglages du module Agenda, ajoute l'adresse secrète iCal de ton agenda en ligne (Google Agenda, Outlook…), toujours à jour, ou un fichier .ics exporté. Tu peux en mettre plusieurs, chacun avec sa couleur.",
               ),
               el("button", { class: "btn primary", onclick: api.handler(() => Bridge.openSettingsWindow()) }, "⚙ Ouvrir les réglages"),
             ),
@@ -245,12 +316,17 @@ export const agenda: IslandModule = {
           // La carte du prochain rendez-vous (ou de celui en cours).
           const next = events.find((m) => !m.allDay) ?? events[0];
           body.append(
-            el(
-              "div",
-              { class: `agenda-next${ongoing(next) ? " live" : ""}` },
-              el("span", { class: "agenda-when" }, relative(next)),
-              el("b", { class: "agenda-title" }, next.title),
-              el("span", { class: "muted" }, [dayLabel(next.start), timeRange(next), next.location].filter(Boolean).join(" · ")),
+            clickable(
+              el(
+                "div",
+                { class: `agenda-next${ongoing(next) ? " live" : ""}` },
+                el("span", { class: "agenda-when" }, relative(next)),
+                el("b", { class: "agenda-title" }, dot(next), next.title),
+                el("span", { class: "muted" }, [dayLabel(next.start), timeRange(next), next.location].filter(Boolean).join(" · ")),
+                next.link ? el("span", { class: "agenda-join" }, next.link === "web" ? "🔗 " : "🎥 ", LINK_LABELS[next.link]) : null,
+              ),
+              api,
+              next,
             ),
           );
 
@@ -265,12 +341,18 @@ export const agenda: IslandModule = {
               list.append(el("div", { class: "agenda-day" }, dayLabel(m.start)));
             }
             list.append(
-              el(
-                "div",
-                { class: `agenda-row${ongoing(m) ? " live" : ""}` },
-                el("span", { class: "agenda-time" }, m.allDay ? "Journée" : hhmm(m.start)),
-                el("span", { class: "agenda-row-title" }, m.title),
-                m.location ? el("span", { class: "muted agenda-loc" }, m.location) : null,
+              clickable(
+                el(
+                  "div",
+                  { class: `agenda-row${ongoing(m) ? " live" : ""}` },
+                  dot(m),
+                  el("span", { class: "agenda-time" }, m.allDay ? "Journée" : hhmm(m.start)),
+                  el("span", { class: "agenda-row-title" }, m.title),
+                  m.location ? el("span", { class: "muted agenda-loc" }, m.location) : null,
+                  m.link ? el("span", { class: "agenda-link-icon", "aria-hidden": "true" }, m.link === "web" ? "🔗" : "🎥") : null,
+                ),
+                api,
+                m,
               ),
             );
           }
@@ -281,8 +363,8 @@ export const agenda: IslandModule = {
           el(
             "div",
             { class: "btn-row agenda-foot" },
-            el("span", { class: "muted" }, sourcesLine(files, online, read, latest, events.length)),
-            el("button", { class: "btn small", title: "Relire les fichiers .ics", onclick: api.handler(() => refresh(api, "reload")) }, "🔄 Relire"),
+            el("span", { class: "muted" }, sourcesLine(calendars.length, read, latest, events.length)),
+            el("button", { class: "btn small", title: "Relire tous les calendriers", onclick: api.handler(() => refresh(api, "reload", { force: true })) }, "🔄 Relire"),
           ),
         );
 

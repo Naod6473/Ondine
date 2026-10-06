@@ -540,13 +540,28 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
 
 ### Module Agenda (`src/modules/agenda/`, `src-tauri/src/modules/agenda.rs`)
 
-- Réglage `icsFiles` (type `files`, extension `.ics`, 5 au plus) : la boîte
-  « Ouvrir » de Windows (`dialog_pick_file`). Les chemins passent par
-  `check_path` (dossiers exclus), la taille est limitée à 20 Mo.
+- Réglage `calendars` (type `calendars`, 10 au plus, éditeur
+  `src/settings/calendars-input.ts`) : une liste `{id, name, color, kind,
+  path?}`. `kind: "file"` = un .ics choisi avec `dialog_pick_file` (chemin
+  passé par `check_path`, 20 Mo au plus) ; `kind: "link"` = un lien iCal rangé
+  dans le Gestionnaire d'identifiants sous `agenda-ical-url-<id>` (jamais dans
+  settings.json). Lecture et nettoyage de la liste, migration et fusion :
+  `services/ics_calendars.rs`.
+- Migration (1.2) : les anciens réglages (`icsFiles` + un lien sous
+  `agenda-ical-url`) deviennent des calendriers `f1`, `f2`… et `lien`, au
+  démarrage, même module désactivé ; le lien est recopié sous
+  `agenda-ical-url-lien` et l'ancienne clé effacée seulement après relecture.
+  Tant que ce n'est pas enregistré, les anciens réglages sont lus tels quels.
 - Un thread relit un fichier quand sa date de modification change (toutes les
-  15 s), calcule les rendez-vous des 30 prochains jours (30 au plus), publie
+  15 s) et retélécharge un lien toutes les 15 min, fusionne et trie les
+  rendez-vous de tous les calendriers (`horizonDays` jours, 30 au plus), publie
   `agenda.changed` si la liste a changé et `agenda.reminder` une seule fois
   par rendez-vous, `reminderMin` minutes avant.
+- Clic sur un rendez-vous : commande `open {calendar, key}`. Le lien vient du
+  .ics (`URL`, sinon un lien Teams / Meet / Zoom / Webex dans
+  `X-GOOGLE-CONFERENCE`, le lieu ou la description : `ics::event_link`) ; il
+  reste dans le Rust (le front n'a que sa sorte) et n'est ouvert
+  (`platform::shell_open`) que s'il commence par http(s).
 - Lecture du .ics (`services/ics.rs`) : lignes repliées, texte échappé,
   journées entières, heures UTC (`Z`) converties, `DURATION`, `RRULE`
   (DAILY/WEEKLY/MONTHLY/YEARLY avec INTERVAL, COUNT, UNTIL, BYDAY dont

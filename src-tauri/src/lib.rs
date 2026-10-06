@@ -78,7 +78,7 @@ fn apply_autostart(on: bool) {
     }
 }
 
-fn apply_settings(app: &AppHandle, shared: &Shared, new: Settings) -> Result<(), String> {
+pub(crate) fn apply_settings(app: &AppHandle, shared: &Shared, new: Settings) -> Result<(), String> {
     let screen_changed = {
         let mut current = shared.settings.locked();
         // L'écran, ou la place de l'île sur l'écran : il faut replacer la fenêtre.

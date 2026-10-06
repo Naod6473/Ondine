@@ -27,7 +27,7 @@ se passe. Cliquez : l'île s'ouvre sur vos outils.
 | **Presse-papiers** | Historique, épinglage, coller sans mise en forme |
 | **Captures** | Capture d'écran, texte lu dans l'image (OCR), annotations |
 | **Minuteur** | Minuteur, Pomodoro, chronomètre, dans la pilule |
-| **Agenda** | Le prochain rendez-vous, depuis un fichier ou un lien iCal |
+| **Agenda** | Les prochains rendez-vous de plusieurs calendriers (fichiers ou liens iCal), un clic pour rejoindre la visio |
 | **Notes** | Notes rapides et choses à faire |
 | **Agents IA** | Lancez Claude Code, Codex ou Gemini CLI ; leurs notifications arrivent dans l'île |
 | **Demander à Claude** | Collez une erreur, posez une question (avec votre propre clé API) |

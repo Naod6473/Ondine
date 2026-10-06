@@ -12,7 +12,9 @@
 //     INTERVAL, COUNT, UNTIL, BYDAY (« le 1er lundi du mois » compris) ;
 //   - les exceptions : EXDATE (une date supprimée) et RECURRENCE-ID (une date
 //     déplacée ou annulée) ;
-//   - les événements annulés (STATUS:CANCELLED) sont ignorés.
+//   - les événements annulés (STATUS:CANCELLED) sont ignorés ;
+//   - le lien d'un rendez-vous (propriété URL, ou lien Teams / Meet / Zoom
+//     trouvé dans la description ou le lieu), pour l'ouvrir d'un clic.
 //
 // Limite connue : une heure avec un fuseau nommé (DTSTART;TZID=Europe/Paris:…)
 // est lue comme une heure locale de l'ordinateur. C'est juste si l'agenda et
@@ -32,6 +34,15 @@ pub struct Event {
     pub uid: String,
     pub summary: String,
     pub location: String,
+    /// La description, le temps de la lecture : on n'y cherche qu'un lien de
+    /// visio, puis elle est vidée (une invitation Teams fait plusieurs Ko).
+    pub description: String,
+    /// La propriété URL de l'événement (la page du rendez-vous), telle quelle.
+    pub url: String,
+    /// Le lien de visio ajouté par Google ou Outlook (X-GOOGLE-CONFERENCE…), tel quel.
+    pub conference: String,
+    /// Le lien à ouvrir d'un clic, calculé à la fin de la lecture (`event_link`).
+    pub link: Option<String>,
     /// Début, à l'heure locale de l'ordinateur.
     pub start: Option<NaiveDateTime>,
     pub end: Option<NaiveDateTime>,
@@ -72,6 +83,8 @@ pub struct Occurrence {
     pub start: NaiveDateTime,
     pub end: NaiveDateTime,
     pub all_day: bool,
+    /// Le lien à ouvrir d'un clic (voir `event_link`), s'il y en a un.
+    pub link: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -90,7 +103,9 @@ pub fn parse(text: &str) -> Vec<Event> {
         match (name.as_str(), value.trim()) {
             ("BEGIN", "VEVENT") if current.is_none() => current = Some(Event::default()),
             ("END", "VEVENT") if skip_depth == 0 => {
-                if let Some(ev) = current.take() {
+                if let Some(mut ev) = current.take() {
+                    ev.link = event_link(&ev);
+                    ev.description = String::new();
                     if ev.start.is_some() && events.len() < MAX_EVENTS {
                         events.push(ev);
                     }
@@ -115,6 +130,9 @@ fn read_property(ev: &mut Event, name: &str, params: &str, value: &str) {
         "UID" => ev.uid = value.trim().to_string(),
         "SUMMARY" => ev.summary = unescape(value),
         "LOCATION" => ev.location = unescape(value),
+        "DESCRIPTION" => ev.description = unescape(value),
+        "URL" => ev.url = value.trim().to_string(),
+        "X-GOOGLE-CONFERENCE" | "X-MICROSOFT-SKYPETEAMSMEETINGURL" => ev.conference = value.trim().to_string(),
         "STATUS" => ev.cancelled = value.trim().eq_ignore_ascii_case("CANCELLED"),
         "DTSTART" => {
             if let Some((t, is_date)) = parse_time(value, date_only) {
@@ -370,8 +388,97 @@ fn push_if_visible(out: &mut Vec<Occurrence>, ev: &Event, start: NaiveDateTime, 
             start,
             end,
             all_day: ev.all_day,
+            link: ev.link.clone(),
         });
     }
+}
+
+// ---------------------------------------------------------------------------
+// Le lien d'un rendez-vous
+// ---------------------------------------------------------------------------
+
+/// Les sites de visio reconnus dans le texte d'un rendez-vous (le nom exact,
+/// ou un sous-domaine : « us02web.zoom.us »).
+const MEETING_HOSTS: &[&str] = &["teams.microsoft.com", "teams.live.com", "meet.google.com", "zoom.us", "zoomgov.com", "webex.com"];
+
+/// Le lien à ouvrir quand on clique sur le rendez-vous :
+///   1. la propriété URL de l'événement (si c'est bien un lien http ou https) ;
+///   2. sinon un lien de visio (Teams, Meet, Zoom, Webex) trouvé dans le lien
+///      de conférence ajouté par Google/Outlook, le lieu ou la description.
+///
+/// Jamais autre chose qu'un lien http(s) : un « file:// » ou un « javascript: »
+/// glissé dans un .ics n'est pas ouvert.
+pub fn event_link(ev: &Event) -> Option<String> {
+    let url = ev.url.trim();
+    if is_web_url(url) {
+        return Some(url.to_string());
+    }
+    [&ev.conference, &ev.location, &ev.description].into_iter().find_map(|text| meeting_link(text))
+}
+
+/// Un lien web sûr à ouvrir : http:// ou https://, avec un nom de site, sans
+/// espace, guillemet ni caractère de contrôle, et de longueur raisonnable.
+pub fn is_web_url(url: &str) -> bool {
+    let lower = url.to_ascii_lowercase();
+    let Some(rest) = lower.strip_prefix("https://").or_else(|| lower.strip_prefix("http://")) else { return false };
+    url.len() <= 2000 && host_of(rest).is_some() && !url.chars().any(|c| c.is_whitespace() || c.is_control() || "\"<>`".contains(c))
+}
+
+/// Le nom du site d'une adresse sans son « https:// » (« Teams.Microsoft.com:443/l/… »
+/// → « teams.microsoft.com »). None si vide, ou s'il y a un « nom@ » devant
+/// (« https://teams.microsoft.com@pirate.example » ne passe pas pour Teams).
+fn host_of(rest: &str) -> Option<String> {
+    let end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+    let authority = &rest[..end];
+    if authority.contains('@') {
+        return None;
+    }
+    let host = authority.split(':').next().unwrap_or("").trim_end_matches('.').to_ascii_lowercase();
+    let ok = !host.is_empty() && host.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-');
+    ok.then_some(host)
+}
+
+/// La sorte de lien, pour l'afficher (« Rejoindre Teams ») : "teams", "meet",
+/// "zoom", "webex", ou "web" pour un autre site.
+pub fn link_kind(url: &str) -> &'static str {
+    let lower = url.to_ascii_lowercase();
+    let rest = lower.strip_prefix("https://").or_else(|| lower.strip_prefix("http://")).unwrap_or("");
+    let host = host_of(rest).unwrap_or_default();
+    let on = |site: &str| host == site || host.ends_with(&format!(".{site}"));
+    if on("teams.microsoft.com") || on("teams.live.com") {
+        "teams"
+    } else if on("meet.google.com") {
+        "meet"
+    } else if on("zoom.us") || on("zoomgov.com") {
+        "zoom"
+    } else if on("webex.com") {
+        "webex"
+    } else {
+        "web"
+    }
+}
+
+/// Le premier lien de visio (https) d'un texte, ou None.
+pub fn meeting_link(text: &str) -> Option<String> {
+    // Les positions de `lower` sont celles de `text` (minuscules ASCII seulement).
+    let lower = text.to_ascii_lowercase();
+    let mut from = 0;
+    while let Some(found) = lower[from..].find("https://") {
+        let start = from + found;
+        // Le lien s'arrête au premier espace ou caractère qui ne peut pas en
+        // faire partie (« <https://…> », « (https://…) », guillemets…).
+        let len = text[start..].find(|c: char| c.is_whitespace() || c.is_control() || "<>\"'()[]{}|\\^`".contains(c)).unwrap_or(text.len() - start);
+        // Une ponctuation collée à la fin (« … rejoindre : https://…/xyz. ») n'en fait pas partie.
+        let candidate = text[start..start + len].trim_end_matches(['.', ',', ';', ':', '!', '?']);
+        let is_meeting = host_of(&candidate["https://".len()..]).is_some_and(|host| {
+            MEETING_HOSTS.iter().any(|m| host == *m || host.ends_with(&format!(".{m}")))
+        });
+        if is_meeting && is_web_url(candidate) {
+            return Some(candidate.to_string());
+        }
+        from = start + "https://".len();
+    }
+    None
 }
 
 /// Les débuts successifs d'une répétition, jusqu'à `to` (au plus).
@@ -651,6 +758,79 @@ mod tests {
         let occ = occurrences(&events, dt("2026-10-05 12:00"), dt("2026-10-20 00:00"));
         assert_eq!(starts(&occ), vec!["2026-10-06 09:00", "2026-10-13 09:00"]);
         assert_eq!(occ[0].summary, "Réunion");
+    }
+
+    #[test]
+    fn meeting_links_are_found_in_description_and_location() {
+        // Une invitation Teams d'Outlook : le lien est entre < >, sur des lignes repliées.
+        let teams = "Réunion Microsoft Teams\\nRejoindre : <https://teams.microsoft.com/l/meetup-join/19%3ameeting_abc%40thread.v2/0?context=%7b%22Tid%22%3a%22x%22%7d>\\nID : 123";
+        assert_eq!(
+            meeting_link(&unescape(teams)).as_deref(),
+            Some("https://teams.microsoft.com/l/meetup-join/19%3ameeting_abc%40thread.v2/0?context=%7b%22Tid%22%3a%22x%22%7d")
+        );
+        // Meet et Zoom (sous-domaine), ponctuation collée à la fin retirée.
+        assert_eq!(meeting_link("Visio : https://meet.google.com/abc-defg-hij.").as_deref(), Some("https://meet.google.com/abc-defg-hij"));
+        assert_eq!(meeting_link("(https://us02web.zoom.us/j/8123?pwd=xyz)").as_deref(), Some("https://us02web.zoom.us/j/8123?pwd=xyz"));
+        // Le premier lien n'est pas une visio : on cherche plus loin.
+        assert_eq!(
+            meeting_link("Ordre du jour https://exemple.fr/doc puis HTTPS://Meet.Google.com/xyz").as_deref(),
+            Some("HTTPS://Meet.Google.com/xyz")
+        );
+        // Pas de visio, ou faux sites qui ressemblent : rien.
+        for text in [
+            "Salle Océan",
+            "https://exemple.fr/teams.microsoft.com",
+            "https://teams.microsoft.com@pirate.example/x",
+            "https://notzoom.us/j/1",
+            "https://zoom.us.pirate.example/j/1",
+            "http://meet.google.com/abc",
+            "https://",
+            "https://é",
+        ] {
+            assert_eq!(meeting_link(text), None, "{text}");
+        }
+    }
+
+    #[test]
+    fn event_link_prefers_url_then_meeting_and_refuses_other_schemes() {
+        let text = cal(
+            "BEGIN:VEVENT\r\nUID:a\r\nSUMMARY:Avec URL\r\nDTSTART:20261006T090000\r\nURL:https://exemple.fr/rdv/42\r\n\
+             DESCRIPTION:https://meet.google.com/aaa-bbbb-ccc\r\nEND:VEVENT\r\n\
+             BEGIN:VEVENT\r\nUID:b\r\nSUMMARY:Teams\r\nDTSTART:20261006T100000\r\nLOCATION:Réunion Microsoft Teams\r\n\
+             DESCRIPTION:Cliquez ici pour rejoindre : <https://teams.microsoft.com/l/meetup-join/1\r\n 9%3ax>\\nMerci\r\nEND:VEVENT\r\n\
+             BEGIN:VEVENT\r\nUID:c\r\nSUMMARY:Google\r\nDTSTART:20261006T110000\r\nX-GOOGLE-CONFERENCE:https://meet.google.com/xyz-abcd-efg\r\nEND:VEVENT\r\n\
+             BEGIN:VEVENT\r\nUID:d\r\nSUMMARY:Piège\r\nDTSTART:20261006T120000\r\nURL:file:///C:/Windows/System32/calc.exe\r\n\
+             LOCATION:javascript:alert(1)\r\nEND:VEVENT\r\n\
+             BEGIN:VEVENT\r\nUID:e\r\nSUMMARY:Rien\r\nDTSTART:20261006T130000\r\nLOCATION:Salle Lagune\r\nEND:VEVENT\r\n",
+        );
+        let events = parse(&text);
+        // La description n'est pas gardée en mémoire une fois le lien trouvé.
+        assert!(events.iter().all(|e| e.description.is_empty()));
+        let occ = occurrences(&events, dt("2026-10-06 00:00"), dt("2026-10-07 00:00"));
+        let links: Vec<Option<&str>> = occ.iter().map(|o| o.link.as_deref()).collect();
+        assert_eq!(
+            links,
+            [
+                Some("https://exemple.fr/rdv/42"),
+                Some("https://teams.microsoft.com/l/meetup-join/19%3ax"),
+                Some("https://meet.google.com/xyz-abcd-efg"),
+                None,
+                None
+            ]
+        );
+    }
+
+    #[test]
+    fn only_web_urls_are_accepted() {
+        assert!(is_web_url("https://exemple.fr"));
+        assert!(is_web_url("HTTP://exemple.fr:8080/a?b#c"));
+        for bad in ["file:///C:/a.exe", "javascript:alert(1)", "ms-settings:", "https://a b", "https://\"x", "https://", "http://user@x.fr", "\\\\serveur\\partage"] {
+            assert!(!is_web_url(bad), "{bad}");
+        }
+        assert_eq!(link_kind("https://teams.microsoft.com/l/x"), "teams");
+        assert_eq!(link_kind("https://us02web.zoom.us/j/1"), "zoom");
+        assert_eq!(link_kind("https://meet.google.com/abc"), "meet");
+        assert_eq!(link_kind("https://exemple.fr/teams.microsoft.com"), "web");
     }
 
     #[test]
