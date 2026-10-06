@@ -17,6 +17,7 @@ import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
+import { setLabel } from "../../island/icon";
 
 /** Une copie, telle que le Rust l'envoie (seulement un aperçu du texte). */
 interface ClipItem {
@@ -327,7 +328,7 @@ export const clipboard: IslandModule = {
             out.textContent = current;
           } catch (err) {
             current = "";
-            out.textContent = `⚠️ ${errorText(err)}`;
+            setLabel(out, `⚠️ ${errorText(err)}`);
           }
         };
         length.oninput = () => {

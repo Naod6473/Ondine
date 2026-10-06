@@ -11,6 +11,7 @@ import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
+import { pacedInterval, setText } from "../../core/perf";
 
 /** Miroir de `NowPlaying` (src-tauri/src/platform/media.rs). */
 interface NowPlaying {
@@ -366,16 +367,17 @@ export const media: IslandModule = {
         fill.style.width = `${percent}%`;
         root.querySelector<HTMLElement>(".media-seek")?.style.setProperty("--f", `${percent}%`);
         root.querySelector(".media-seek")?.setAttribute("aria-valuetext", clock(pos));
-        now.textContent = clock(pos);
-        total.textContent = clock(duration);
+        setText(now, clock(pos));
+        setText(total, clock(duration));
       };
 
       draw();
       redraws.add(draw);
-      const timer = window.setInterval(tick, 500);
+      // Toutes les 500 ms (250 en haute, 1 s en économie d'énergie : src/core/perf.ts).
+      const stopTick = pacedInterval(tick, "mediaProgress", true);
       return () => {
         redraws.delete(draw);
-        window.clearInterval(timer);
+        stopTick();
       };
     },
   },

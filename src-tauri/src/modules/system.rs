@@ -37,10 +37,9 @@ use tauri::AppHandle;
 use super::{ModuleContext, RustModule};
 use crate::platform;
 use crate::services::{files, log};
+use crate::services::perf::{self, Loop};
 
 const ID: &str = "system";
-const TICK: Duration = Duration::from_secs(2);
-const DISK_EVERY: Duration = Duration::from_secs(30);
 const GIB: f64 = 1024.0 * 1024.0 * 1024.0;
 
 /// Ce que le fil de fond mesure.
@@ -91,11 +90,18 @@ fn battery_news(w: &mut BatteryWatch, b: &platform::Battery, low_pct: u8, full_a
     None
 }
 
-/// Le processeur est « très occupé » après BUSY_TICKS mesures au-dessus de
-/// BUSY_PCT, et « calme » après autant de mesures sous CALM_PCT.
+/// Le processeur est « très occupé » après BUSY_FOR (≈ 20 s) de mesures
+/// au-dessus de BUSY_PCT, et « calme » après autant de mesures sous CALM_PCT.
+/// Le nombre de mesures dépend du rythme (mode de performance) : `busy_ticks`.
 const BUSY_PCT: f32 = 85.0;
 const CALM_PCT: f32 = 60.0;
-const BUSY_TICKS: u32 = 10; // 10 × 2 s = 20 s
+const BUSY_FOR: Duration = Duration::from_secs(20);
+
+/// Combien de mesures de suite font BUSY_FOR à ce rythme (10 × 2 s en équilibré), 3 au moins.
+fn busy_ticks(tick: Duration) -> u32 {
+    let tick = tick.as_millis().max(1);
+    ((BUSY_FOR.as_millis() + tick - 1) / tick).max(3) as u32
+}
 
 #[derive(Default)]
 struct CpuWatch {
@@ -104,10 +110,10 @@ struct CpuWatch {
 }
 
 /// Renvoie Some(nouvel état) quand le processeur devient très occupé ou se calme.
-fn cpu_news(w: &mut CpuWatch, usage: f32) -> Option<bool> {
+fn cpu_news(w: &mut CpuWatch, usage: f32, needed: u32) -> Option<bool> {
     let pushing = if w.busy { usage < CALM_PCT } else { usage > BUSY_PCT };
     w.streak = if pushing { w.streak + 1 } else { 0 };
-    if w.streak >= BUSY_TICKS {
+    if w.streak >= needed {
         w.streak = 0;
         w.busy = !w.busy;
         return Some(w.busy);
@@ -160,7 +166,8 @@ fn watch(app: AppHandle, state: Shared) {
     }
     let mut last_disks: Option<Instant> = None;
     loop {
-        std::thread::sleep(TICK);
+        // Toutes les 2 s (1 s en haute, 5 s en éco : services/perf.rs).
+        std::thread::sleep(perf::every(Loop::System));
         if !super::is_active(&app, ID) {
             continue; // module désactivé : on ne mesure rien
         }
@@ -174,7 +181,7 @@ fn watch(app: AppHandle, state: Shared) {
                 s.mem_used = sys.used_memory();
             }
             super::with_context(&app, ID, |ctx| check_cpu(ctx, &state));
-            if last_disks.is_none_or(|t| t.elapsed() >= DISK_EVERY) {
+            if last_disks.is_none_or(|t| t.elapsed() >= perf::every(Loop::SystemDisks)) {
                 last_disks = Some(Instant::now());
                 super::with_context(&app, ID, |ctx| {
                     check_disks(ctx, &state);
@@ -206,7 +213,7 @@ fn check_battery(ctx: &ModuleContext, state: &Shared) {
 fn check_cpu(ctx: &ModuleContext, state: &Shared) {
     let mut s = state.locked();
     let usage = s.cpu_usage;
-    if let Some(on) = cpu_news(&mut s.cpu, usage) {
+    if let Some(on) = cpu_news(&mut s.cpu, usage, busy_ticks(perf::every(Loop::System))) {
         drop(s);
         ctx.emit("system.cpu-busy", json!({ "on": on }));
     }
@@ -434,17 +441,27 @@ mod tests {
 
     #[test]
     fn cpu_busy_needs_a_streak() {
+        const N: u32 = 10;
         let mut w = CpuWatch::default();
-        for _ in 0..BUSY_TICKS - 1 {
-            assert_eq!(cpu_news(&mut w, 95.0), None);
+        for _ in 0..N - 1 {
+            assert_eq!(cpu_news(&mut w, 95.0, N), None);
         }
-        assert_eq!(cpu_news(&mut w, 95.0), Some(true));
-        assert_eq!(cpu_news(&mut w, 30.0), None);
-        assert_eq!(cpu_news(&mut w, 95.0), None); // la série repart de zéro
-        for _ in 0..BUSY_TICKS - 1 {
-            cpu_news(&mut w, 30.0);
+        assert_eq!(cpu_news(&mut w, 95.0, N), Some(true));
+        assert_eq!(cpu_news(&mut w, 30.0, N), None);
+        assert_eq!(cpu_news(&mut w, 95.0, N), None); // la série repart de zéro
+        for _ in 0..N - 1 {
+            cpu_news(&mut w, 30.0, N);
         }
-        assert_eq!(cpu_news(&mut w, 30.0), Some(false));
+        assert_eq!(cpu_news(&mut w, 30.0, N), Some(false));
+    }
+
+    #[test]
+    fn cpu_busy_lasts_about_20_s_in_every_mode() {
+        let ms = Duration::from_millis;
+        assert_eq!(busy_ticks(ms(2_000)), 10); // équilibré : comme avant
+        assert_eq!(busy_ticks(ms(1_000)), 20); // haute
+        assert_eq!(busy_ticks(ms(5_000)), 4); // éco
+        assert_eq!(busy_ticks(ms(60_000)), 3); // jamais moins de 3 mesures
     }
 
     #[test]

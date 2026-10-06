@@ -10,9 +10,10 @@
 
 import manifest from "./manifest.json";
 import { Bridge } from "../../core/bridge";
+import { pacedInterval } from "../../core/perf";
 import type { IslandModule, ModuleManifest } from "../../core/module-types";
 
-const CHECK_MS = 30_000;
+// On regarde toutes les 30 s (60 s en économie d'énergie) : "pausesCheck" de src/core/perf.ts.
 /** Une absence de cette durée compte comme une pause. */
 const BREAK_IDLE_MS = 5 * 60_000;
 /** « Plus tard » repousse de… */
@@ -57,9 +58,9 @@ export const pauses: IslandModule = {
         ],
       });
     };
-    const timer = window.setInterval(() => void tick(), CHECK_MS);
+    const stopTimer = pacedInterval(() => void tick(), "pausesCheck");
     return () => {
-      window.clearInterval(timer);
+      stopTimer();
       offMic();
     };
   },

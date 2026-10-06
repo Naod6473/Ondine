@@ -13,6 +13,7 @@ import { settingsStore } from "./core/settings-store";
 import { currentLang, startI18n } from "./core/i18n";
 import { Island } from "./island/island";
 import { startUpdates } from "./core/updates";
+import { startPerf } from "./core/perf";
 import { ALL_MODULES } from "./modules";
 
 const log = logger("app");
@@ -25,6 +26,8 @@ async function start() {
   const boot = await Bridge.boot();
   await settingsStore.connect(boot?.settings ?? null);
   await startI18n();
+  // Le mode de performance (haute, équilibrée, éco) : avant les modules, qui le lisent.
+  await startPerf();
 
   const bus = new Bus(windowLabel("island"));
   // Mode démo : les vraies nouvelles du Rust (musique, presse-papiers…) sont ignorées.

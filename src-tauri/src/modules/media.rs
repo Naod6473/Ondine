@@ -16,7 +16,6 @@
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 use base64::Engine;
 use serde_json::{json, Value};
@@ -25,6 +24,7 @@ use tauri::AppHandle;
 use super::{ModuleContext, RustModule};
 use crate::platform::media::{self, Control, NowPlaying};
 use crate::services::{bus, log};
+use crate::services::perf::{self, Loop};
 
 const ID: &str = "media";
 /// Un écart plus grand entre la position attendue et la vraie = on a avancé ou reculé.
@@ -83,13 +83,14 @@ fn payload(state: &State) -> Value {
     json!({ "playing": state.current, "artwork": state.artwork_id })
 }
 
-/// La boucle du thread : une fois par seconde, tant que l'île tourne.
+/// La boucle du thread : une fois par seconde (selon le mode de performance :
+/// services/perf.rs), tant que l'île tourne.
 fn watch(app: AppHandle, state: Arc<Mutex<State>>) {
     media::init_thread();
     let mut manager = None;
     let mut last_error = String::new();
     loop {
-        std::thread::sleep(Duration::from_secs(1));
+        std::thread::sleep(perf::every(Loop::Media));
 
         // Module désactivé (ou mis à l'écart) : on ne regarde rien.
         if !super::is_active(&app, ID) {

@@ -19,7 +19,6 @@
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::Mutex;
-use std::time::Duration;
 
 use serde_json::{json, Value};
 use tauri::AppHandle;
@@ -28,11 +27,11 @@ use super::{ModuleContext, RustModule};
 use crate::platform::audio::{self, Device};
 use crate::platform::media_use::{self, MediaUse};
 use crate::services::{bus, log};
+use crate::services::perf::{self, Loop};
 use crate::platform::brightness;
 use crate::platform::radios::{self, Kind};
 
 const ID: &str = "controls";
-const TICK: Duration = Duration::from_secs(2);
 
 /// Les raccourcis proposés pour couper / rétablir le micro (les autres sont refusés).
 pub const MIC_HOTKEYS: &[&str] = &["Ctrl+Alt+M", "Ctrl+Shift+M", "Alt+Shift+M", "Pause"];
@@ -165,7 +164,8 @@ fn watch(app: AppHandle) {
     let mut last_use = MediaUse::default();
     let mut last_muted: Option<bool> = None;
     loop {
-        std::thread::sleep(TICK);
+        // Toutes les 2 s (1 s en haute, 3 s en éco : services/perf.rs).
+        std::thread::sleep(perf::every(Loop::Controls));
         if !super::is_active(&app, ID) {
             // Module désactivé : plus de point ni de raccourci.
             if last_use != MediaUse::default() {

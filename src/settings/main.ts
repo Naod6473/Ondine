@@ -33,6 +33,8 @@ import { startI18n } from "../core/i18n";
 import { connectRules, rulesSection } from "./rules-editor";
 import { profilesPage } from "./profiles-page";
 import { aboutGroup } from "./about";
+import { perfGroup } from "./perf-group";
+import { startPerf } from "../core/perf";
 
 const PERMISSION_LABELS: Record<string, string> = {
   files: "Fichiers",
@@ -62,7 +64,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "⚙️",
     label: "Général",
     sub: "L'écran, le repli de l'île, les notifications et le journal.",
-    keywords: ["Langue", "Language", "Lancer avec Windows", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal", "Signaler un problème", "Ressources utilisées"],
+    keywords: ["Langue", "Language", "Lancer avec Windows", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal", "Signaler un problème", "Ressources utilisées", "Performances", "Économie d'énergie automatique sur batterie"],
     render: general,
   },
   {
@@ -189,6 +191,7 @@ async function start() {
   if (boot?.mica) document.documentElement.classList.add("mica");
   await settingsStore.connect(boot?.settings ?? null);
   await startI18n();
+  await startPerf();
   bus = new Bus(windowLabel("settings"));
   await bus.connect();
   try {
@@ -501,6 +504,7 @@ function general(main: HTMLElement) {
       ),
     ]),
     updatesGroup(),
+    perfGroup(save),
     group(
       "Journal",
       [

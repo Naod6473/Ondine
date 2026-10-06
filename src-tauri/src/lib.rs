@@ -100,6 +100,8 @@ pub(crate) fn apply_settings(app: &AppHandle, shared: &Shared, new: Settings) ->
     // Le menu de l'icône montre les profils et coche l'actif.
     tray::sync_profiles(app, &new.profiles);
     let _ = app.emit("settings-changed", new);
+    // Le mode de performance a peut-être changé : les boucles le lisent au tour suivant.
+    services::perf::refresh(app);
     Ok(())
 }
 
@@ -491,6 +493,7 @@ pub fn run() {
             profile_wifi_name,
             diagnostics::bug_report_open,
             diagnostics::self_usage,
+            services::perf::perf_state,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -512,6 +515,8 @@ pub fn run() {
             island::apply_hotkey(&handle, &loaded.island.hotkey);
             // À chaque démarrage : l'exe a pu changer de place (réinstallation).
             apply_autostart(loaded.general.autostart);
+            // Le mode de performance (réglage + batterie), avant les boucles qui le lisent.
+            services::perf::spawn_watch(handle.clone());
             island::spawn_cursor_poll(handle.clone(), gate.clone());
             // Travail de fond des modules (ex. : Musique surveille le lecteur).
             handle.state::<Registry>().start_all(&handle);

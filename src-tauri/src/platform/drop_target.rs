@@ -149,7 +149,9 @@ impl IDropTarget_Impl for DropTarget_Impl {
         pt: &POINTL,
         effect: *mut DROPEFFECT,
     ) -> ::windows::core::Result<()> {
-        let paths = file_paths(data);
+        // Des fichiers glissés DEPUIS l'île (Étagère) : lâchés sur l'île, ils
+        // ne vont nulle part (le glisser est annulé).
+        let paths = if super::drag_out::active() { None } else { file_paths(data) };
         self.valid.set(paths.is_some());
         if let Some(paths) = paths {
             self.send("enter", paths, Some(pt));

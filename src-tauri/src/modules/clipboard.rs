@@ -46,10 +46,10 @@ use crate::platform;
 use crate::services::undo::DEFAULT_WINDOW;
 use crate::services::bus::{self, BusMessage};
 use crate::services::{files, log, search};
+use crate::services::perf::{self, Loop};
 
 const ID: &str = "clipboard";
 /// Tous les combien on regarde le compteur de Windows.
-const POLL: Duration = Duration::from_millis(400);
 /// Au-delà, une copie n'est pas gardée (un fichier texte entier collé par erreur…).
 const MAX_CHARS: usize = 100_000;
 /// Longueur de l'aperçu envoyé au front pour la liste.
@@ -382,7 +382,8 @@ impl Clipboard {
 fn watch(app: AppHandle, store: Shared) {
     let mut last_seq = 0;
     loop {
-        std::thread::sleep(POLL);
+        // Toutes les 400 ms (250 en haute, 1 s en éco : services/perf.rs).
+        std::thread::sleep(perf::every(Loop::Clipboard));
         if !super::is_active(&app, ID) {
             continue;
         }

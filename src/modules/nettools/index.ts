@@ -9,6 +9,7 @@ import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
+import { setLabel } from "../../island/icon";
 
 interface PingReply {
   ip: string;
@@ -97,7 +98,8 @@ export const nettools: IslandModule = {
           const parts = [st.internet == null ? "" : st.internet ? "🌐 Internet OK" : "📵 Pas d'Internet"];
           if (st.vpns.length) parts.push(`🔐 VPN : ${st.vpns.join(", ")}`);
           if (st.publicIp) parts.push(`🌍 IP publique : ${st.publicIp}`);
-          status.textContent = parts.filter(Boolean).join("  ·  ");
+          // Un morceau par élément : chacun garde son pictogramme et sa traduction.
+          status.replaceChildren(...parts.filter(Boolean).flatMap((x, i) => [i ? "  ·  " : "", el("span", {}, x)]));
         })
         .catch(() => {});
 
@@ -115,7 +117,7 @@ export const nettools: IslandModule = {
       const stopPing = () => {
         window.clearInterval(pingTimer);
         pingTimer = 0;
-        pingBtn.textContent = "📶 Ping";
+        setLabel(pingBtn, "📶 Ping");
         pingBtn.classList.remove("primary");
       };
       const startPing = () => {
@@ -128,7 +130,7 @@ export const nettools: IslandModule = {
         const stats = el("small", { class: "muted" });
         const graph = el("div", { class: "net-graph" });
         out.replaceChildren(el("div", { class: "net-ping" }, el("div", { class: "net-ping-top" }, big, info), graph, stats));
-        pingBtn.textContent = "⏹ Arrêter";
+        setLabel(pingBtn, "⏹ Arrêter");
         pingBtn.classList.add("primary");
 
         const once = async () => {

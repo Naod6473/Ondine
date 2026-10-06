@@ -12,6 +12,7 @@ import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { Bridge } from "../../core/bridge";
 import { el } from "../../island/dom";
+import { pacedInterval } from "../../core/perf";
 import { agentIcon, icon } from "../../island/icon";
 
 interface AgentEvent {
@@ -448,10 +449,11 @@ export const agents: IslandModule = {
           return; // hors de l'appli
         }
         const waiting = data.sessions.filter((x) => x.state === "waiting").length;
-        status.textContent = data.sessions.length
-          ? [data.working ? `🧠 ${data.working} au travail` : "", waiting ? `✋ ${waiting} t'attend${waiting > 1 ? "ent" : ""}` : ""].filter(Boolean).join(" · ") ||
-            "Personne ne travaille en ce moment."
-          : "Aucune session pour l'instant.";
+        // Un morceau par élément : chacun garde son pictogramme et sa traduction.
+        const parts = [data.working ? `🧠 ${data.working} au travail` : "", waiting ? `✋ ${waiting} t'attend${waiting > 1 ? "ent" : ""}` : ""].filter(Boolean);
+        if (!data.sessions.length) status.textContent = "Aucune session pour l'instant.";
+        else if (!parts.length) status.textContent = "Personne ne travaille en ce moment.";
+        else status.replaceChildren(...parts.flatMap((x, i) => [i ? " · " : "", el("span", {}, x)]));
         // Les questions en attente (aussi après avoir fermé leur notification).
         asks.replaceChildren(...(data.asks ?? []).map((q) => askRow(q)));
         drawQuiet(data.quiet);
@@ -506,10 +508,10 @@ export const agents: IslandModule = {
       );
       redraws.add(draw);
       void draw();
-      const timer = window.setInterval(() => void draw(), 15_000); // pour « il y a 5 min »
+      const stopTimer = pacedInterval(() => void draw(), "agentsList", true); // pour « il y a 5 min »
       return () => {
         redraws.delete(draw);
-        window.clearInterval(timer);
+        stopTimer();
       };
     },
   },

@@ -44,6 +44,7 @@ use crate::services::credentials::{self, ICAL_URL};
 use crate::services::ics::{self, Event, Occurrence};
 use crate::services::ics_calendars::{self, Calendar, Source, LEGACY_LINK_ID};
 use crate::services::log;
+use crate::services::perf::{self, Loop};
 
 const ID: &str = "agenda";
 /// Un .ics plus gros est refusé (un agenda de plusieurs années tient en 1 à 5 Mo).
@@ -51,7 +52,6 @@ const MAX_FILE_BYTES: u64 = 20 * 1024 * 1024;
 /// Combien de jours à l'avance on regarde (réglage « horizonDays »), et combien de rendez-vous au plus.
 const HORIZON_DEFAULT: i64 = 60;
 const MAX_UPCOMING: usize = 30;
-const TICK: Duration = Duration::from_secs(15);
 /// Un lien iCal est retéléchargé à cet intervalle.
 const ONLINE_EVERY: Duration = Duration::from_secs(15 * 60);
 
@@ -176,7 +176,8 @@ fn watch(app: AppHandle, state: Shared) {
         if step.is_err() {
             log::warn("agenda : erreur inattendue pendant la lecture, on réessaie plus tard");
         }
-        std::thread::sleep(TICK);
+        // Toutes les 15 s (30 s en éco : services/perf.rs).
+        std::thread::sleep(perf::every(Loop::AgendaFiles));
     }
 }
 

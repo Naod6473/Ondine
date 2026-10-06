@@ -4,6 +4,13 @@
 //
 // Les enfants de type texte sont insérés comme TEXTE (jamais comme HTML) :
 // aucun contenu venant d'un fichier ou d'une page ne peut s'exécuter.
+//
+// Un texte qui commence (ou finit) par un pictogramme (« 📄 Copier vers… »)
+// est découpé par glyphs() (icon.ts) : le pictogramme suit le pack d'icônes
+// (emoji en « color », icône au trait en « line »). Pas pour les textes de
+// l'utilisateur : un élément marqué data-no-i18n garde ses emojis.
+
+import { glyphs } from "./icon";
 
 type Attrs = Record<string, string | number | boolean | ((e: any) => void) | undefined>;
 type Child = Node | string | number | null | undefined | false;
@@ -22,13 +29,19 @@ export function el<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs =
       node.setAttribute(key, String(value));
     }
   }
+  const plain = "data-no-i18n" in attrs || PLAIN_TAGS.has(tag);
   for (const child of children) {
     if (child === null || child === undefined || child === false) continue;
-    node.append(typeof child === "object" ? child : String(child));
+    if (typeof child === "object") node.append(child);
+    else if (typeof child === "number" || plain) node.append(String(child));
+    else node.append(...glyphs(child));
   }
   nameIconButton(node);
   return node;
 }
+
+/** Balises qui ne savent montrer que du texte : pas d'icône dedans. */
+const PLAIN_TAGS = new Set<string>(["option", "textarea", "title", "style", "script"]);
 
 /**
  * Un bouton-icône (« × », « ⚙ », une icône dessinée) n'a pas de nom lisible

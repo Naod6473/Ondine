@@ -222,6 +222,9 @@ const SHELF = [
   { path: `${HOME}\\Documents\\Rapport annuel.pdf`, name: "Rapport annuel.pdf", isDir: false, exists: true },
 ];
 
+/** Le dossier « choisi » par Copier vers… / Déplacer vers… en mode démo (pas de vraie boîte). */
+export const DEMO_PICKED_FOLDER = `${HOME}\\Documents\\Projets`;
+
 /** Des captures inventées (« Recherche dans l'île »). */
 const CAPTURES = [
   { name: "Capture 2026-10-02 09.41.12.png", date: "2 octobre 2026 à 09:41" },
@@ -418,6 +421,10 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return [];
     case "shelf.images":
       return { count: 0, failed: 0, error: null };
+    // Copier / déplacer vers… : rien ne bouge, l'onglet affiche le résultat.
+    case "shelf.copy_to":
+    case "shelf.move_to":
+      return { count: Array.isArray(args.paths) ? args.paths.length : 1, error: null };
 
     // Système, réseau, accès distants
     case "system.snapshot":

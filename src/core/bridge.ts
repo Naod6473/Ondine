@@ -8,7 +8,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import type { Settings } from "./types";
+import type { PerfMode, Settings } from "./types";
 
 export const IS_TAURI = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
@@ -118,7 +118,19 @@ export const Bridge = {
   bugReportOpen: () => callOrThrow<void>("bug_report_open"),
   /** Mémoire et processeur d'Ondine (+ WebView2). null si la fenêtre n'est pas visible. */
   selfUsage: () => call<SelfUsage | null>("self_usage"),
+  /** Le mode de performance qui s'applique (choix + batterie). null hors de l'appli. */
+  perfState: () => call<PerfState>("perf_state"),
 };
+
+/** Le mode de performance vu par le Rust (src-tauri/src/services/perf.rs). */
+export interface PerfState {
+  /** Le mode qui s'applique vraiment. */
+  mode: PerfMode;
+  /** Le mode choisi dans les réglages. */
+  chosen: PerfMode;
+  /** Le PC est sur batterie (débranché). */
+  onBattery: boolean;
+}
 
 export interface SelfUsage {
   memoryBytes: number;

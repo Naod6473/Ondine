@@ -25,7 +25,6 @@ use std::collections::HashMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 use serde_json::{json, Value};
 use tauri::AppHandle;
@@ -35,6 +34,8 @@ use super::{ModuleContext, RustModule};
 use crate::services::undo::DEFAULT_WINDOW;
 use crate::services::bus::BusMessage;
 use crate::services::{bus, files, search};
+use crate::services::perf::{self, Loop};
+use crate::platform::drag_out;
 
 /// Au-delà, on refuse d'ajouter : l'étagère est un endroit de passage.
 const MAX_ITEMS: usize = 100;
@@ -118,6 +119,8 @@ impl RustModule for Shelf {
                 Ok(Value::Null)
             }
             "trash" => self.trash(ctx, &args),
+            // { paths } : glisser vers l'Explorateur / le Bureau (Windows).
+            "drag_out" => self.drag_out(ctx, &args),
             "copy_to" => self.copy_to(ctx, &args),
             "move_to" => self.move_to(ctx, &args),
             "compress" => self.compress(ctx, &args),
@@ -313,6 +316,37 @@ impl Shelf {
         Ok(json!({ "count": paths.len(), "error": error, "undoId": undo_id }))
     }
 
+    /// Glisser des éléments de l'étagère vers l'Explorateur, le Bureau ou une
+    /// autre appli (vrai glisser-déposer de Windows, voir platform/drag_out.rs).
+    /// C'est la cible qui copie ou déplace ; ensuite, ce qui a quitté sa place
+    /// quitte aussi l'étagère (on ne sait pas où la cible l'a mis).
+    fn drag_out(&self, ctx: &ModuleContext, args: &Value) -> Result<Value, String> {
+        let paths = checked_paths(ctx, args)?;
+        let effect = drag_out::effect_name(crate::platform::drag_out::drag_files(ctx.app, &paths)?);
+        ctx.log_info(format!("{} élément(s) glissé(s) hors de l'île ({effect})", paths.len()));
+        let removed = forget_gone(&self.items, &paths, |p| p.exists());
+        if removed > 0 {
+            changed(ctx.app, &self.items);
+        }
+        // L'Explorateur peut finir le déplacement APRÈS le lâcher (gros fichiers,
+        // autre disque) : on regarde encore un peu. Une copie ne fait rien partir.
+        if effect != "copy" && effect != "link" && removed < paths.len() {
+            let (items, app) = (self.items.clone(), ctx.app.clone());
+            std::thread::spawn(move || {
+                for wait in AFTER_DRAG_CHECKS {
+                    std::thread::sleep(std::time::Duration::from_millis(*wait));
+                    if forget_gone(&items, &paths, |p| p.exists()) > 0 {
+                        changed(&app, &items);
+                    }
+                    if paths.iter().all(|p| !p.exists()) {
+                        break;
+                    }
+                }
+            });
+        }
+        Ok(json!({ "effect": effect, "removed": removed }))
+    }
+
     /// Crée une archive .zip à côté du premier élément. Annuler = archive à la Corbeille.
     fn compress(&self, ctx: &ModuleContext, args: &Value) -> Result<Value, String> {
         let paths = checked_paths(ctx, args)?;
@@ -447,6 +481,21 @@ fn take_from_shelf(items: &Items, paths: &[PathBuf]) -> Vec<PathBuf> {
     taken
 }
 
+/// Après un glisser vers l'extérieur : on regarde encore si les fichiers sont
+/// partis au bout de… (ms, cumulés : jusqu'à ~1 min 50 s).
+const AFTER_DRAG_CHECKS: &[u64] = &[500, 1_500, 3_000, 6_000, 12_000, 30_000, 60_000];
+
+/// Retire de l'étagère ceux de `paths` qui n'existent plus (déplacés par la
+/// cible d'un glisser) et dit combien sont partis. `exists` est passé en
+/// paramètre pour les tests.
+fn forget_gone(items: &Items, paths: &[PathBuf], exists: impl Fn(&std::path::Path) -> bool) -> usize {
+    let gone: Vec<PathBuf> = paths.iter().filter(|p| !exists(p)).cloned().collect();
+    if gone.is_empty() {
+        return 0;
+    }
+    take_from_shelf(items, &gone).len()
+}
+
 /// Remplace sur l'étagère chaque ancien chemin par le nouveau.
 fn rename_on_shelf<'a>(items: &Items, renames: impl Iterator<Item = (&'a PathBuf, &'a PathBuf)>) {
     let mut items = items.locked();
@@ -511,15 +560,15 @@ fn is_partial(name: &str) -> bool {
     n.starts_with('.') || n.starts_with("~$") || [".crdownload", ".part", ".partial", ".tmp", ".download", ".opdownload"].iter().any(|e| n.ends_with(e))
 }
 
-/// Regarde le dossier Téléchargements toutes les 3 s. Un nouveau fichier est
-/// posé sur l'étagère quand sa taille n'a pas bougé entre deux tours.
+/// Regarde le dossier Téléchargements toutes les 3 s (selon le mode de
+/// performance : services/perf.rs). Un nouveau fichier est posé sur l'étagère
+/// quand sa taille n'a pas bougé entre deux tours.
 fn watch_downloads(app: AppHandle, items: Items) {
-    const TICK: Duration = Duration::from_secs(3);
     // Ce qui était déjà là (nom → taille) ; et les nouveaux en attente (nom → taille vue).
     let mut known: Option<HashMap<String, u64>> = None;
     let mut waiting: HashMap<String, u64> = HashMap::new();
     loop {
-        std::thread::sleep(TICK);
+        std::thread::sleep(perf::every(Loop::ShelfDownloads));
         let wanted = super::with_context(&app, "shelf", |ctx| ctx.settings().get("watchDownloads").and_then(Value::as_bool).unwrap_or(true));
         if wanted != Some(true) {
             known = None;
@@ -575,4 +624,43 @@ fn watch_downloads(app: AppHandle, items: Items) {
 
 fn changed(app: &AppHandle, items: &Items) {
     bus::emit(app, "shelf", "shelf.changed", list_json(items));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn shelf(paths: &[&str]) -> Items {
+        Arc::new(Mutex::new(paths.iter().map(PathBuf::from).collect()))
+    }
+
+    #[test]
+    fn dragged_out_and_moved_leaves_the_shelf() {
+        let items = shelf(&["C:/a.txt", "C:/b.txt", "C:/c.txt"]);
+        let dragged = vec![PathBuf::from("C:/a.txt"), PathBuf::from("C:/b.txt")];
+        // a.txt a été déplacé par l'Explorateur, b.txt copié (toujours là).
+        let removed = forget_gone(&items, &dragged, |p| p != std::path::Path::new("C:/a.txt"));
+        assert_eq!(removed, 1);
+        assert_eq!(*items.locked(), vec![PathBuf::from("C:/b.txt"), PathBuf::from("C:/c.txt")]);
+    }
+
+    #[test]
+    fn copy_or_cancel_keeps_everything() {
+        let items = shelf(&["C:/a.txt", "C:/b.txt"]);
+        let dragged = vec![PathBuf::from("C:/a.txt")];
+        assert_eq!(forget_gone(&items, &dragged, |_| true), 0);
+        assert_eq!(items.locked().len(), 2);
+    }
+
+    #[test]
+    fn only_dragged_items_are_forgotten() {
+        // c.txt a disparu aussi, mais il ne faisait pas partie du glisser : on
+        // le laisse (l'étagère le montre « introuvable »).
+        let items = shelf(&["C:/a.txt", "C:/c.txt"]);
+        let dragged = vec![PathBuf::from("C:/a.txt")];
+        assert_eq!(forget_gone(&items, &dragged, |_| false), 1);
+        assert_eq!(*items.locked(), vec![PathBuf::from("C:/c.txt")]);
+        // Un deuxième passage (vérification plus tard) ne retire rien de plus.
+        assert_eq!(forget_gone(&items, &dragged, |_| false), 0);
+    }
 }

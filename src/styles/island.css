@@ -455,6 +455,15 @@ body {
   display: flex;
   gap: 2px;
 }
+/* Un élément qu'on peut glisser hors de l'île (vers l'Explorateur, le Bureau). */
+.shelf-draggable {
+  cursor: grab;
+  user-select: none;
+}
+.shelf-hint {
+  margin: 6px 0 0;
+  font-size: 11px;
+}
 
 .view-expanded h3 {
   margin: 0 0 4px;
@@ -3386,4 +3395,12 @@ body.presenting .island[data-state="hidden"] {
     transition-duration: 1ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Économie d'énergie (body[data-perf="eco"], src/core/perf.ts) : pas de flou
+   derrière les cartes de verre des Contrôles, recalculé à chaque image.
+   Le fond reste un dégradé translucide : seul le flou disparaît. */
+body[data-perf="eco"] .ctl-card,
+body[data-perf="eco"] .ctl-menu {
+  backdrop-filter: none;
 }

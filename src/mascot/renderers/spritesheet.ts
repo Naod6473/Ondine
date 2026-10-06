@@ -11,6 +11,7 @@
 // et `overlay` dessine un effet autour (zzz, confettis…). Ça permet d'avoir tous
 // les états dès maintenant, avant d'avoir une vraie planche pour chacun.
 
+import { frameLoop } from "../../core/perf";
 import type { MascotRenderer } from "../renderer";
 import type { AnimationSpec, MascotManifest, MascotState, Mood } from "../types";
 import { EFFECTS, STILL, type Motion } from "./effects";
@@ -21,7 +22,7 @@ export class SpriteSheetRenderer implements MascotRenderer {
   private canvas = document.createElement("canvas");
   private ctx = this.canvas.getContext("2d")!;
   private observer: ResizeObserver | null = null;
-  private raf = 0;
+  private stopFrames: () => void = () => {};
   private images = new Map<string, HTMLImageElement>();
   private anim: AnimationSpec | null = null;
   private animStart = 0;
@@ -59,11 +60,9 @@ export class SpriteSheetRenderer implements MascotRenderer {
     this.observer = new ResizeObserver(() => this.resize());
     this.observer.observe(container);
     this.resize();
-    const loop = () => {
-      this.frame(performance.now());
-      this.raf = requestAnimationFrame(loop);
-    };
-    this.raf = requestAnimationFrame(loop);
+    // Arrêtée quand la place de la mascotte n'a pas de taille (île cachée),
+    // 30 images/s au plus en économie d'énergie (src/core/perf.ts).
+    this.stopFrames = frameLoop(this.canvas, (now) => this.frame(now));
   }
 
   play(animation: AnimationSpec) {
@@ -87,7 +86,7 @@ export class SpriteSheetRenderer implements MascotRenderer {
   }
 
   destroy() {
-    cancelAnimationFrame(this.raf);
+    this.stopFrames();
     this.observer?.disconnect();
     this.canvas.remove();
     this.endCallbacks = [];

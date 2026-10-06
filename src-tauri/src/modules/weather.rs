@@ -25,6 +25,7 @@ use tauri::AppHandle;
 
 use super::{ModuleContext, RustModule};
 use crate::services::log;
+use crate::services::perf::{self, Loop};
 
 const ID: &str = "weather";
 const GEOCODE_URL: &str = "https://geocoding-api.open-meteo.com/v1/search";
@@ -34,7 +35,6 @@ const REFRESH_EVERY: Duration = Duration::from_secs(30 * 60);
 /// Après un changement de ville ou d'unité : pas plus d'un essai par minute.
 const RETRY_AFTER_CHANGE: Duration = Duration::from_secs(60);
 /// Le fil regarde les réglages à ce rythme (sans rien demander à Internet).
-const TICK: Duration = Duration::from_secs(10);
 const TIMEOUT: Duration = Duration::from_secs(8);
 /// Une réponse plus grosse que ça n'est pas une réponse d'Open-Meteo.
 const MAX_BYTES: u64 = 256 * 1024;
@@ -98,7 +98,7 @@ impl RustModule for WeatherModule {
             if catch_unwind(AssertUnwindSafe(|| tick(&app, &state))).is_err() {
                 log::warn("météo : erreur dans le fil de fond");
             }
-            std::thread::sleep(TICK);
+            std::thread::sleep(perf::every(Loop::Weather));
         });
     }
 

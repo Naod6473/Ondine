@@ -9,6 +9,7 @@ import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
+import { pacedInterval } from "../../core/perf";
 
 interface Disk {
   mount: string;
@@ -32,7 +33,7 @@ interface Snapshot {
   battery: { percent: number | null; charging: boolean; plugged: boolean } | null;
 }
 
-const REFRESH_MS = 2000;
+// L'onglet se rafraîchit toutes les 2 s (1 s en haute, 5 s en éco) : "systemTab" de src/core/perf.ts.
 
 /** La météo du module Météo (sujet `weather.updated`), s'il est allumé. */
 interface WeatherLine {
@@ -143,7 +144,12 @@ export const system: IslandModule = {
       const details = el("div", { class: "sys-details" });
       // « Préparer un ticket » : le formulaire prend la place du détail.
       let ticketOpen = false;
+      // Ce qui est affiché (en texte), pour ne pas tout reconstruire toutes les
+      // 2 s quand rien n'a changé (les disques et le réseau bougent rarement).
+      let shownFacts = "";
+      let shownDetails = "";
       const ticketForm = () => {
+        shownDetails = ""; // à la fermeture du formulaire, le détail revient
         const text = el("textarea", { class: "clip-input sys-ticket-text", rows: 4, maxlength: 5000, placeholder: "Que se passe-t-il ? Depuis quand ? Message d'erreur…" }) as HTMLTextAreaElement;
         const withImage = el("input", { type: "checkbox" }) as HTMLInputElement;
         const go = el(
@@ -208,16 +214,23 @@ export const system: IslandModule = {
         const bat = s.battery
           ? `${s.battery.percent ?? "?"} %${s.battery.charging ? " · en charge" : s.battery.plugged ? " · branché" : ""}`
           : null;
-        facts.replaceChildren(
-          line("PC", s.host || "?", `${s.domain}\\${s.user}`),
-          line("Windows", s.os || "?", s.osBuild ? `build ${s.osBuild}` : undefined),
-          line("Allumé depuis", uptimeText(s.uptimeSecs)),
-          line("IP", ip),
-          bat ? line("Batterie", bat) : "",
-          weather ? weatherLine(weather) : "",
-        );
+        const factsKey = JSON.stringify([s.host, s.domain, s.user, s.os, s.osBuild, uptimeText(s.uptimeSecs), ip, bat, weather]);
+        if (factsKey !== shownFacts) {
+          shownFacts = factsKey;
+          facts.replaceChildren(
+            line("PC", s.host || "?", `${s.domain}\\${s.user}`),
+            line("Windows", s.os || "?", s.osBuild ? `build ${s.osBuild}` : undefined),
+            line("Allumé depuis", uptimeText(s.uptimeSecs)),
+            line("IP", ip),
+            bat ? line("Batterie", bat) : "",
+            weather ? weatherLine(weather) : "",
+          );
+        }
 
         if (ticketOpen) return;
+        const detailsKey = JSON.stringify([s.disks, s.net, s.cpu.brand]);
+        if (detailsKey === shownDetails) return;
+        shownDetails = detailsKey;
         details.replaceChildren(
           el("div", { class: "sys-title muted" }, "Disques"),
           ...s.disks.map((d) => {
@@ -250,10 +263,10 @@ export const system: IslandModule = {
         }
       };
       void refresh();
-      const timer = window.setInterval(() => void refresh(), REFRESH_MS);
+      const stopTimer = pacedInterval(() => void refresh(), "systemTab", true);
       return () => {
         alive = false;
-        window.clearInterval(timer);
+        stopTimer();
       };
     },
   },

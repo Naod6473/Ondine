@@ -51,6 +51,10 @@ pub struct General {
     pub auto_update: bool,
     /// Lancer Ondine à l'ouverture de session Windows.
     pub autostart: bool,
+    /// Le rythme des boucles : "high", "balanced" ou "eco" (voir services/perf.rs).
+    pub perf_mode: String,
+    /// Sur batterie (PC débranché) : mode "eco", quel que soit `perf_mode`.
+    pub eco_on_battery: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -140,7 +144,7 @@ impl Default for Settings {
 
 impl Default for General {
     fn default() -> Self {
-        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into(), welcomed: false, demo: false, auto_update: true, autostart: true }
+        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into(), welcomed: false, demo: false, auto_update: true, autostart: true, perf_mode: "balanced".into(), eco_on_battery: true }
     }
 }
 
@@ -198,6 +202,9 @@ impl Settings {
         }
         if !["auto", "fr", "en"].contains(&self.general.language.as_str()) {
             self.general.language = "auto".into();
+        }
+        if !["high", "balanced", "eco"].contains(&self.general.perf_mode.as_str()) {
+            self.general.perf_mode = "balanced".into();
         }
         let i = &mut self.island;
         if !["top", "left", "right"].contains(&i.edge.as_str()) {
@@ -336,6 +343,17 @@ mod tests {
     #[test]
     fn newer_schema_is_refused() {
         assert!(parse(r#"{ "version": 999 }"#).is_err());
+    }
+
+    #[test]
+    fn perf_mode_defaults_and_unknown_value() {
+        let s = parse(r#"{ "version": 2 }"#).unwrap();
+        assert_eq!(s.general.perf_mode, "balanced");
+        assert!(s.general.eco_on_battery);
+        let s = parse(r#"{ "version": 2, "general": { "perfMode": "turbo", "ecoOnBattery": false } }"#).unwrap();
+        assert_eq!(s.general.perf_mode, "balanced");
+        assert!(!s.general.eco_on_battery);
+        assert_eq!(parse(r#"{ "version": 2, "general": { "perfMode": "eco" } }"#).unwrap().general.perf_mode, "eco");
     }
 
     #[test]

@@ -28,6 +28,7 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use super::{ModuleContext, RustModule};
 use crate::platform;
 use crate::services::{files, log, search};
+use crate::services::perf::{self, Loop};
 
 const ID: &str = "launcher";
 /// On relit le menu Démarrer et les récents au plus toutes les 30 s.
@@ -234,7 +235,7 @@ fn hotkey_loop(app: AppHandle, state: Shared) {
         if step.is_err() {
             log::warn("lanceur : erreur inattendue avec le raccourci, on réessaie");
         }
-        std::thread::sleep(Duration::from_secs(1));
+        std::thread::sleep(perf::every(Loop::LauncherHotkey));
     }
 }
 

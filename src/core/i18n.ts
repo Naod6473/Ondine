@@ -43,7 +43,35 @@ function loadDictionary(code: Lang) {
   const d = DICTIONARIES[code];
   exact = new Map(Object.entries(d?.exact ?? {}));
   patterns = (d?.patterns ?? []).map(([rx, rep]) => [new RegExp(rx), rep]);
+  // En pack d'icônes « line », el() met le pictogramme d'un libellé à part
+  // (« 📄 Copier vers… » → icône + « Copier vers… », voir island/icon.ts).
+  // Le texte qui reste doit être traduit aussi : on ajoute chaque entrée sans
+  // son pictogramme du début ou de la fin, quand la traduction a le même.
+  for (const [fr, en] of [...exact]) {
+    for (const rx of [LEAD_PICTO, TRAIL_PICTO]) {
+      const pf = rx.exec(fr)?.[0];
+      const pe = rx.exec(en)?.[0];
+      if (!pf || pf.trim() !== pe?.trim()) continue;
+      const bareFr = fr.replace(rx, "").trim();
+      if (bareFr && !exact.has(bareFr)) exact.set(bareFr, en.replace(rx, "").trim());
+    }
+  }
+  // Pareil pour les motifs : « ^⏳\ Pas de réponse… » sert aussi sans le ⏳.
+  for (const [rx, rep] of d?.patterns ?? []) {
+    const lead = /^\^((?:\p{Extended_Pictographic}️?)+)(?:\\ | )*/u.exec(rx);
+    if (lead && LEAD_PICTO.exec(rep)?.[0].trim() === lead[1]) {
+      patterns.push([new RegExp("^" + rx.slice(lead[0].length)), rep.replace(LEAD_PICTO, "")]);
+    }
+    const trail = /(?:\\ | )*((?:\p{Extended_Pictographic}️?)+)\$$/u.exec(rx);
+    if (trail && TRAIL_PICTO.exec(rep)?.[0].trim() === trail[1]) {
+      patterns.push([new RegExp(rx.slice(0, trail.index) + "$"), rep.replace(TRAIL_PICTO, "")]);
+    }
+  }
 }
+
+// Des pictogrammes (et espaces) au début ou à la fin d'un texte.
+const LEAD_PICTO = /^(?:\p{Extended_Pictographic}\uFE0F?\s*)+/u;
+const TRAIL_PICTO = /(?:\s*\p{Extended_Pictographic}\uFE0F?)+$/u;
 
 /** Les langues qu'on sait afficher. */
 export function knownLang(code: string | null | undefined): code is Lang {

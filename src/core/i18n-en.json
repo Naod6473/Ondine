@@ -1034,7 +1034,29 @@
 "Ouvre GitHub avec la version, Windows et les 40 dernières lignes du journal (chemins personnels masqués). Tu relis et complètes tout avant d'envoyer : rien ne part sans toi.": "Opens GitHub with the version, Windows and the last 40 lines of the log (personal paths hidden). You review and complete everything before sending: nothing leaves without you.",
 "Ressources utilisées": "Resources used",
 "Mémoire et processeur d'Ondine et de ses fenêtres (WebView2). Mesuré seulement pendant que cette page est ouverte.": "Memory and CPU used by Ondine and its windows (WebView2). Measured only while this page is open.",
-"Disponible dans l'appli seulement.": "Only available in the app."
+"Disponible dans l'appli seulement.": "Only available in the app.",
+"Performances": "Performance",
+"Performance haute": "High performance",
+"Équilibrée": "Balanced",
+"Économie d'énergie": "Power saving",
+"Économie d'énergie automatique sur batterie": "Automatic power saving on battery",
+"Haute : l'île réagit au plus vite. Équilibrée : le bon compromis. Économie d'énergie : Ondine se réveille moins souvent (souris, musique, système…) et garde moins d'effets.": "High: the island reacts as fast as possible. Balanced: the right compromise. Power saving: Ondine wakes up less often (mouse, music, system…) and keeps fewer effects.",
+"PC débranché : Ondine passe en économie d'énergie, quel que soit le choix au-dessus.": "PC unplugged: Ondine switches to power saving, whatever the choice above.",
+"Mode utilisé": "Mode in use",
+"Mode actuel : Performance haute": "Current mode: High performance",
+"Mode actuel : Équilibrée": "Current mode: Balanced",
+"Mode actuel : Économie d'énergie": "Current mode: Power saving",
+"Mode actuel : Économie d'énergie (sur batterie)": "Current mode: Power saving (on battery)",
+"Pour comparer les modes : la ligne « Ressources utilisées », plus bas dans À propos.": "To compare modes: the “Resources used” line, further down in About.",
+"Copier vers un dossier…": "Copy to a folder…",
+"Déplacer vers un dossier…": "Move to a folder…",
+"Glisse un élément vers l'Explorateur ou le Bureau pour l'y poser (Ctrl : copier, Maj : déplacer).": "Drag an item to File Explorer or the desktop to drop it there (Ctrl: copy, Shift: move).",
+"Glisser impossible": "Drag failed",
+"un glisser est déjà en cours": "a drag is already in progress",
+"glisser interrompu": "drag interrupted",
+"le glisser a planté": "the drag crashed",
+"glisser vers l'extérieur : disponible seulement sous Windows": "dragging out: only available on Windows",
+"L'étagère est vide. Glisse des fichiers sur l'île et lâche-les sur la cible « Étagère » pour les garder sous la main.": "The Shelf is empty. Drag files onto the island and drop them on the “Shelf” target to keep them handy."
 },
 "patterns": [
 [
@@ -1446,10 +1468,6 @@
 "missing parameter “$1”"
 ],
 [
-"^(.+?)\\ déplacé\\(s\\)\\ dans\\ (.+?)$",
-"$1 moved to $1"
-],
-[
 "^(.+?)\\ reste\\ au\\ premier\\ plan$",
 "$1 stays on top"
 ],
@@ -1476,10 +1494,6 @@
 [
 "^commande\\ non\\ gérée\\ :\\ (.+?)$",
 "unhandled command: $1"
-],
-[
-"^(.+?)\\ copié\\(s\\)\\ dans\\ (.+?)$",
-"$1 copied to $1"
 ],
 [
 "^⬆\\ Ce\\ qui\\ part\\ vers\\ (.+?)$",
@@ -1980,6 +1994,38 @@
 [
 "^(\\d+) Mo · (.+) % du processeur · (\\d+) processus$",
 "$1 MB · $2% CPU · $3 processes"
+],
+[
+"^(.+?)\\ déplacé\\(s\\)\\ dans\\ (.+?)$",
+"$1 moved to $2"
+],
+[
+"^(.+?)\\ copié\\(s\\)\\ dans\\ (.+?)$",
+"$1 copied to $2"
+],
+[
+"^(.+?)\\ sorti\\(s\\)\\ de\\ l'étagère$",
+"$1 taken off the Shelf"
+],
+[
+"^glisser\\ impossible\\ :\\ (.+)$",
+"drag failed: $1"
+],
+[
+"^objet\\ de\\ glisser\\ impossible\\ :\\ (.+)$",
+"could not prepare the drag: $1"
+],
+[
+"^(.+)\\ :\\ introuvable\\ pour\\ Windows$",
+"$1: not found by Windows"
+],
+[
+"^🔐\\ VPN\\ :\\ (.+?)$",
+"🔐 VPN: $1"
+],
+[
+"^(○+)\\ ·\\ (.+?)\\ séance\\(s\\)$",
+"$1 · $2 session(s)"
 ]
 ]
 }

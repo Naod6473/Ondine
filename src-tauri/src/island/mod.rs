@@ -32,6 +32,7 @@ use tauri::{AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize
 
 use crate::platform;
 use crate::services::log;
+use crate::services::perf::{self, Loop};
 
 pub const WINDOW_LABEL: &str = "island";
 
@@ -113,37 +114,35 @@ pub fn snap(cx: f64, cy: f64, w: f64, h: f64) -> Placement {
 /// pour que le réglage soit déjà basculé quand la souris arrive sur un bouton.
 const HIT_MARGIN: f64 = 14.0;
 
-/// Rythme de lecture de la souris, île visible : normal (≈ 60 Hz) et « au calme »
-/// (≈ 30 Hz). Île cachée : 20 Hz (seulement la bande de réveil).
-const TICK_FAST: Duration = Duration::from_millis(16);
-const TICK_CALM: Duration = Duration::from_millis(33);
-const TICK_HIDDEN: Duration = Duration::from_millis(50);
+/// Les rythmes de lecture de la souris sont dans le tableau des modes de
+/// performance (services/perf.rs) : en mode équilibré, île visible ≈ 60 Hz,
+/// « au calme » ≈ 30 Hz ; île cachée 20 Hz (seulement la bande de réveil).
 /// La souris n'a pas bougé depuis… : rien à envoyer, on peut ralentir.
 const CALM_AFTER: Duration = Duration::from_millis(250);
-/// La souris est à plus de… px logiques de l'île : son regard peut suivre à
-/// 30 Hz, et elle mettrait plusieurs tours à atteindre l'île.
+/// La souris est à plus de… px logiques de l'île : son regard peut suivre plus
+/// lentement, et elle mettrait plusieurs tours à atteindre l'île.
 const FAR_FROM_ISLAND: f64 = 200.0;
-/// On regarde si les écrans ont changé toutes les…
-const SCREEN_CHECK: Duration = Duration::from_millis(500);
 
 /// Combien attendre avant le prochain tour de lecture de la souris.
 ///
 /// Chaque tour coûte peu (trois appels Windows : position de la souris, de la
 /// fenêtre, état du bouton), mais 60 réveils par seconde, toute la journée,
 /// c'est le premier poste de travail d'Ondine au repos. Quand rien ne bouge,
-/// ou que la souris est loin, on en fait deux fois moins. Jamais pendant un
-/// appui (glisser de fichier, déplacement de l'île). Au pire, le premier
-/// mouvement après un arrêt est vu 17 ms plus tard ; dès qu'il est vu, on
-/// repasse à 60 Hz.
-pub fn poll_interval(active: bool, busy: bool, still_for: Duration, distance: f64) -> Duration {
+/// ou que la souris est loin, on en fait moins (selon le mode de performance).
+/// Jamais pendant un appui (glisser de fichier, déplacement de l'île) : là,
+/// 60 Hz dans tous les modes. Dès qu'un mouvement près de l'île est vu, on
+/// repasse au rythme « souris qui bouge ».
+pub fn poll_interval(mode: perf::Mode, active: bool, busy: bool, still_for: Duration, distance: f64) -> Duration {
     if !active {
-        TICK_HIDDEN
+        perf::cadence(Loop::CursorHidden, mode)
     } else if busy {
-        TICK_FAST
-    } else if still_for >= CALM_AFTER || distance > FAR_FROM_ISLAND {
-        TICK_CALM
+        perf::BUSY
+    } else if distance > FAR_FROM_ISLAND {
+        perf::cadence(Loop::CursorFar, mode)
+    } else if still_for >= CALM_AFTER {
+        perf::cadence(Loop::CursorStill, mode)
     } else {
-        TICK_FAST
+        perf::cadence(Loop::CursorMoving, mode)
     }
 }
 
@@ -404,9 +403,9 @@ fn screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
 ///   - île visible (~60 fois par seconde) : bascule les clics traversants selon que
 ///     la souris est sur l'île ou non, et envoie sa position au front ("cursor"),
 ///     pour le survol et le regard de la mascotte. Au calme (souris immobile
-///     depuis 250 ms, ou à plus de 200 px de l'île), on passe à ~30 fois par
-///     seconde : voir `poll_interval` ;
-///   - dans les deux cas, surveille les écrans (2 fois par seconde).
+///     depuis 250 ms, ou à plus de 200 px de l'île), on ralentit : voir
+///     `poll_interval` et le mode de performance (services/perf.rs) ;
+///   - dans les deux cas, surveille les écrans (2 fois par seconde, 1 en éco).
 pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
     std::thread::spawn(move || {
         let mut was_down = false;
@@ -421,9 +420,9 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
         loop {
             let active = gate.is_active();
             let busy = was_down || gate.drag.locked().is_some();
-            std::thread::sleep(poll_interval(active, busy, last_move.elapsed(), distance));
+            std::thread::sleep(poll_interval(perf::mode(), active, busy, last_move.elapsed(), distance));
 
-            if last_screen_check.elapsed() >= SCREEN_CHECK {
+            if last_screen_check.elapsed() >= perf::every(Loop::ScreenCheck) {
                 last_screen_check = Instant::now();
                 let now = screen_key(&app);
                 if now.is_some() && now != last_screen {
@@ -476,6 +475,24 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 }
                 *gate.drag.locked() = None;
                 drag_end(&app, &gate);
+                last = (f64::MIN, f64::MIN);
+                continue;
+            }
+
+            // ── Glisser de fichiers vers l'extérieur (Étagère) ──
+            // La souris passe au travers partout sauf sur l'île (pour lâcher sur
+            // le Bureau derrière le panneau), et on n'envoie plus sa position :
+            // l'île ne se replie pas pendant le glisser. Ensuite, tout reprend.
+            if platform::drag_out::active() {
+                let r = *gate.rect.locked();
+                let scale = win.scale_factor().unwrap_or(1.0);
+                let (x, y) = ((cx - origin.x as f64) / scale, (cy - origin.y as f64) / scale);
+                let on_island = r.w > 0.0 && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+                let _guard = gate.flag_lock.locked();
+                if !gate.collapsed.load(Ordering::Relaxed) && gate.ignoring.load(Ordering::Relaxed) == on_island {
+                    gate.ignoring.store(!on_island, Ordering::Relaxed);
+                    let _ = win.set_ignore_cursor_events(!on_island);
+                }
                 last = (f64::MIN, f64::MIN);
                 continue;
             }
@@ -564,21 +581,36 @@ pub fn apply_hotkey(app: &AppHandle, wanted: &str) {
 #[cfg(test)]
 mod tests {
     use super::snap;
-    use super::{distance_outside, poll_interval, IslandRect, TICK_CALM, TICK_FAST, TICK_HIDDEN};
+    use super::{distance_outside, poll_interval, IslandRect};
+    use crate::services::perf::Mode;
     use std::time::Duration;
 
     #[test]
     fn cursor_poll_slows_down_only_when_calm() {
         let ms = Duration::from_millis;
-        // Île cachée : toujours le rythme lent de la bande de réveil.
-        assert_eq!(poll_interval(false, false, ms(0), 0.0), TICK_HIDDEN);
+        let b = Mode::Balanced;
+        // Île cachée : toujours le rythme lent de la bande de réveil (20 Hz).
+        assert_eq!(poll_interval(b, false, false, ms(0), 0.0), ms(50));
         // La souris bouge près de l'île : plein rythme.
-        assert_eq!(poll_interval(true, false, ms(10), 50.0), TICK_FAST);
+        assert_eq!(poll_interval(b, true, false, ms(10), 50.0), ms(16));
         // Immobile, ou loin : au calme.
-        assert_eq!(poll_interval(true, false, ms(400), 0.0), TICK_CALM);
-        assert_eq!(poll_interval(true, false, ms(10), 500.0), TICK_CALM);
-        // Un bouton enfoncé (glisser, déplacement) : jamais ralenti.
-        assert_eq!(poll_interval(true, true, ms(5000), 900.0), TICK_FAST);
+        assert_eq!(poll_interval(b, true, false, ms(400), 0.0), ms(33));
+        assert_eq!(poll_interval(b, true, false, ms(10), 500.0), ms(33));
+        // Un bouton enfoncé (glisser, déplacement) : jamais ralenti, dans aucun mode.
+        for m in [Mode::High, Mode::Balanced, Mode::Eco] {
+            assert_eq!(poll_interval(m, true, true, ms(5000), 900.0), ms(16));
+        }
+    }
+
+    #[test]
+    fn cursor_poll_follows_the_perf_mode() {
+        let ms = Duration::from_millis;
+        // Haute : toujours 60 Hz, île visible.
+        assert_eq!(poll_interval(Mode::High, true, false, ms(400), 900.0), ms(16));
+        // Éco : 30 Hz au repos, 15 Hz loin de l'île, 10 Hz île cachée.
+        assert_eq!(poll_interval(Mode::Eco, true, false, ms(400), 0.0), ms(33));
+        assert_eq!(poll_interval(Mode::Eco, true, false, ms(10), 500.0), ms(66));
+        assert_eq!(poll_interval(Mode::Eco, false, false, ms(0), 0.0), ms(100));
     }
 
     #[test]

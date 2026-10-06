@@ -20,6 +20,7 @@ import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-
 import { el } from "../../island/dom";
 import { icon } from "../../island/icon";
 import { reducedMotion } from "../../island/tab-pill";
+import { pacedInterval, setText } from "../../core/perf";
 
 interface Meeting {
   key: string;
@@ -241,19 +242,20 @@ export const agenda: IslandModule = {
     }, MINUTE);
 
     // La pilule dépend de l'heure : on vérifie régulièrement si elle doit changer.
+    // Toutes les 10 s (30 s en économie d'énergie : "agendaPill" de src/core/perf.ts).
     let wasSoon: string | null = null;
-    const interval = window.setInterval(() => {
+    const stopPill = pacedInterval(() => {
       const key = soon(api)?.key ?? null;
       if (key !== wasSoon) {
         wasSoon = key;
         api.refreshCompact();
       }
-    }, 10_000);
+    }, "agendaPill");
 
     void refresh(api);
     return () => {
       off();
-      window.clearInterval(interval);
+      stopPill();
       window.clearInterval(recap);
     };
   },
@@ -270,15 +272,15 @@ export const agenda: IslandModule = {
         if (!m) return;
         // L'heure d'abord : si le titre est long, c'est lui qui est coupé.
         const when = ongoing(m) ? "En cours" : relative(m).replace(/^./, (c) => c.toUpperCase());
-        text.textContent = `📅 ${when} · ${m.title}`;
+        setText(text, `📅 ${when} · ${m.title}`);
         // Pendant le rendez-vous, la barre se remplit ; avant, elle est cachée.
         const live = ongoing(m) && m.end > m.start;
         bar.style.display = live ? "" : "none";
         if (live) (bar.firstChild as HTMLElement).style.transform = `scaleX(${Math.min(1, (Date.now() - m.start) / (m.end - m.start))})`;
       };
       draw();
-      const interval = window.setInterval(draw, 1000);
-      return () => window.clearInterval(interval);
+      // Chaque seconde (5 s en économie d'énergie : le texte est à la minute).
+      return pacedInterval(draw, "agendaCompact", true);
     },
 
     expanded(root, api) {
@@ -385,10 +387,10 @@ export const agenda: IslandModule = {
       draw();
       redraws.add(draw);
       // « dans 12 min » doit avancer tout seul.
-      const interval = window.setInterval(draw, 30_000);
+      const stopList = pacedInterval(draw, "agendaList", true);
       return () => {
         redraws.delete(draw);
-        window.clearInterval(interval);
+        stopList();
       };
     },
   },
