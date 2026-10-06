@@ -52,6 +52,9 @@ const BY_EMOJI: Record<string, string> = {
   "💾": "backup",
   "☕": "pauses",
   "🎨": "appearance",
+  // Pas encore d'image en couleur : l'emoji reste affiché dans ce pack.
+  "🌤️": "weather",
+  "🧭": "profiles",
 };
 
 /** Les images connues. Une clé « logo: » absente retombe sur FALLBACK. */
