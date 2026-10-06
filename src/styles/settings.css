@@ -1199,3 +1199,9 @@ html.mica .blob {
   background: none;
   cursor: pointer;
 }
+
+/* Réglages qui ne concernent que le français (« S'adresser à moi ») : masqués
+   quand l'interface est dans une autre langue (i18n.ts met à jour <html lang>). */
+html:not([lang="fr"]) .fr-only {
+  display: none;
+}

@@ -1049,7 +1049,11 @@
 "glisser interrompu": "drag interrupted",
 "le glisser a planté": "the drag crashed",
 "glisser vers l'extérieur : disponible seulement sous Windows": "dragging out: only available on Windows",
-"L'étagère est vide. Glissez des fichiers sur l'île et lâchez-les sur la cible « Étagère » pour les garder sous la main.": "The Shelf is empty. Drag files onto the island and drop them on the “Shelf” target to keep them handy."
+"L'étagère est vide. Glissez des fichiers sur l'île et lâchez-les sur la cible « Étagère » pour les garder sous la main.": "The Shelf is empty. Drag files onto the island and drop them on the “Shelf” target to keep them handy.",
+"S'adresser à moi": "Address me as",
+"Vouvoiement": "Formal (vous)",
+"Tutoiement": "Informal (tu)",
+"Les aides et les messages disent « vous » ou « tu ». Les boutons ne changent pas.": "Help texts and messages say “vous” or “tu” (French only). Buttons don't change."
 },
 "patterns": [
 [
