@@ -1,0 +1,42 @@
+# Publier le site vitrine (dossier site/) sur GitHub Pages.
+#
+# Se lance tout seul quand site/ change sur main, ou à la main depuis l'onglet Actions.
+# Réglage à faire une fois sur GitHub : Settings → Pages → Source : « GitHub Actions »,
+# puis Custom domain : ondine.pissits.com (et cocher « Enforce HTTPS »).
+name: site
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["site/**", ".github/workflows/pages.yml"]
+
+permissions:
+  contents: read
+  pages: write # pour publier sur GitHub Pages
+  id-token: write # pour prouver à Pages que la publication vient bien de ce dépôt
+
+# Une seule publication à la fois ; on ne coupe pas celle en cours.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publier:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/configure-pages@v5
+
+      - name: Préparer le site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+      - name: Publier
+        id: deploiement
+        uses: actions/deploy-pages@v4
