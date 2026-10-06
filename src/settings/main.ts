@@ -60,7 +60,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "⚙️",
     label: "Général",
     sub: "L'écran, le repli de l'île, les notifications et le journal.",
-    keywords: ["Langue", "Language", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal"],
+    keywords: ["Langue", "Language", "Lancer avec Windows", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal"],
     render: general,
   },
   {
@@ -441,6 +441,11 @@ function general(main: HTMLElement) {
         "Langue",
         choice(s.general.language ?? "auto", [["auto", "Automatique"], ["fr", "Français"], ["en", "English"]], (v) => save((d) => (d.general.language = v as Settings["general"]["language"]))),
         "Automatique : la langue choisie à l'installation, sinon celle de Windows. Les fenêtres se rechargent.",
+      ),
+      row(
+        "Lancer avec Windows",
+        toggle(s.general.autostart !== false, (v) => save((d) => (d.general.autostart = v)), "Lancer avec Windows"),
+        "Ondine s'ouvre toute seule quand tu ouvres ta session.",
       ),
       row(
         "Sur quel écran ?",
