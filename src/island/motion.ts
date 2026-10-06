@@ -1,7 +1,7 @@
 // Les effets d'animation de l'île et des réglages, en deux intensités
 // (réglage Apparence → Animations) :
 //
-//   Classique : les mêmes effets, en douceur (peu de flou, pas de rebond).
+//   Classique : les mêmes effets, en douceur (sans flou, sans rebond).
 //   Studio    : façon vidéo de présentation (flou → net franc, rebonds,
 //               boutons en gélatine).
 //
@@ -33,7 +33,7 @@ export function setStudio(on: boolean) {
 function feel() {
   return studioOn()
     ? { blur: 10, rise: 10, scale: 0.96, gap: 45, ms: 520, ease: SPRING }
-    : { blur: 4, rise: 6, scale: 0.99, gap: 28, ms: 340, ease: OUT };
+    : { blur: 0, rise: 6, scale: 0.99, gap: 28, ms: 340, ease: OUT };
 }
 
 // La courbe « ressort » : part vite, dépasse un peu, revient se poser.
@@ -89,7 +89,7 @@ function revealTitles(root: Element, delay: number) {
     // (On ne touche pas au texte lui-même : la traduction anglaise reste intacte.)
     title.animate(
       [
-        { maskImage: "linear-gradient(90deg, #000 40%, transparent 60%)", maskSize: "260% 100%", maskPosition: "100% 0", filter: `blur(${strong ? 5 : 2}px)`, letterSpacing: strong ? "0.12em" : "normal" },
+        { maskImage: "linear-gradient(90deg, #000 40%, transparent 60%)", maskSize: "260% 100%", maskPosition: "100% 0", filter: `blur(${strong ? 5 : 0}px)`, letterSpacing: strong ? "0.12em" : "normal" },
         { maskImage: "linear-gradient(90deg, #000 40%, transparent 60%)", maskSize: "260% 100%", maskPosition: "0% 0", filter: "blur(0)", letterSpacing: "normal" },
       ],
       { duration: strong ? 620 : 420, delay: delay + 60 + i * 60, easing: OUT, fill: "backwards" },
@@ -108,7 +108,7 @@ function growCover(root: Element, delay: number) {
     [
       strong
         ? { transform: "translate(-34px, -30px) scale(0.3)", borderRadius: "50%", filter: "blur(6px)" }
-        : { transform: "translate(-14px, -12px) scale(0.7)", filter: "blur(2px)" },
+        : { transform: "translate(-14px, -12px) scale(0.7)" },
       { transform: "none", filter: "blur(0)" },
     ],
     { duration: strong ? 640 : 420, delay, easing: strong ? SPRING : OUT, fill: "backwards" },
@@ -180,7 +180,7 @@ export function flyIcon(tab: Element, stage: Element) {
       [
         { transform: "none", opacity: 1, filter: "blur(0)" },
         { transform: `translate(${dx * 0.6}px, ${dy * 0.6}px) scale(${strong ? 2.2 : 1.5})`, opacity: strong ? 1 : 0.7, filter: "blur(0)", offset: 0.55 },
-        { transform: `translate(${dx}px, ${dy}px) scale(${strong ? 2.6 : 1.7})`, opacity: 0, filter: `blur(${strong ? 8 : 3}px)` },
+        { transform: `translate(${dx}px, ${dy}px) scale(${strong ? 2.6 : 1.7})`, opacity: 0, filter: `blur(${strong ? 8 : 0}px)` },
       ],
       { duration: strong ? 620 : 420, easing: OUT },
     )
@@ -195,7 +195,7 @@ export function tabOut(old: Element, direction: number): Animation {
       { opacity: 1, transform: "none", filter: "blur(0)" },
       strong
         ? { opacity: 0, transform: `translateX(${-direction * 30}px) scale(0.92)`, filter: "blur(14px)" }
-        : { opacity: 0, transform: `translateX(${-direction * 18}px) scale(0.98)`, filter: "blur(6px)" },
+        : { opacity: 0, transform: `translateX(${-direction * 18}px) scale(0.98)` },
     ],
     { duration: strong ? 260 : 220, easing: OUT, fill: "forwards" },
   );
@@ -213,8 +213,8 @@ export function popIn(card: Element) {
           { opacity: 1, transform: "none", filter: "blur(0)" },
         ]
       : [
-          { opacity: 0, transform: "scale(0.92)", filter: "blur(4px)" },
-          { opacity: 1, transform: "none", filter: "blur(0)" },
+          { opacity: 0, transform: "scale(0.92)" },
+          { opacity: 1, transform: "none" },
         ],
     { duration: strong ? 560 : 340, easing: OUT, fill: "backwards" },
   );
@@ -262,6 +262,8 @@ function roll(elem: Element) {
   const before = lastText.get(elem);
   lastText.set(elem, text);
   if (before === undefined || before === text) return;
+  // Pendant un glissé (barre de musique), le chiffre suit la main : pas de roulement.
+  if (document.querySelector(".scrubbing")) return;
   // Le sens suit la valeur : un nombre qui monte arrive d'en bas, qui descend d'en haut.
   const up = (parseFloat(text.replace(/[^\d.-]/g, "")) || 0) >= (parseFloat(before.replace(/[^\d.-]/g, "")) || 0);
   const strong = studioOn();
@@ -275,7 +277,7 @@ function roll(elem: Element) {
   const base = own && own !== "none" ? own : "";
   elem.animate(
     [
-      { transform: `translateY(${from}) ${base}`, filter: `blur(${strong ? 4 : 2}px)`, opacity: strong ? 0.2 : 0.4 },
+      { transform: `translateY(${from}) ${base}`, filter: `blur(${strong ? 4 : 0}px)`, opacity: strong ? 0.2 : 0.4 },
       { transform: `translateY(0) ${base}`, filter: "blur(0)", opacity: 1 },
     ],
     { duration: strong ? 340 : 260, easing: strong ? SPRING : OUT },

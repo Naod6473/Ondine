@@ -626,6 +626,46 @@ body {
   background: var(--accent);
   transition: width 500ms linear;
 }
+/* La zone cliquable autour de la barre (module Musique : seekable). */
+.media-seek {
+  position: relative;
+  padding: 6px 0;
+}
+.media-seek.seekable {
+  cursor: pointer;
+}
+.media-seek:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* La pastille : apparaît au survol, suit la position. */
+.media-thumb {
+  position: absolute;
+  top: 50%;
+  left: var(--f, 0%);
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  transform: scale(0);
+  transition: transform 220ms var(--ease);
+  pointer-events: none;
+}
+.media-seek.seekable:hover .media-thumb,
+.media-seek.scrubbing .media-thumb {
+  transform: scale(1);
+}
+.media-seek.scrubbing .media-bar-fill {
+  transition: none;
+}
+.media-seek.seekable:hover .media-bar,
+.media-seek.scrubbing .media-bar {
+  height: 6px;
+  border-radius: 3px;
+}
 .media-times {
   display: flex;
   justify-content: space-between;
@@ -2839,7 +2879,6 @@ body[data-edge="right"] .privacy-dot {
   from {
     opacity: 0;
     scale: 0.85;
-    filter: blur(4px);
   }
 }
 .ctl-menu-item {
@@ -3113,7 +3152,8 @@ body.presenting .island[data-state="hidden"] {
 .media-bar {
   transition: height 300ms var(--ease), border-radius 300ms var(--ease);
 }
-.media-progress:hover .media-bar {
+.motion-studio .media-seek.seekable:hover .media-bar,
+.motion-studio .media-seek.scrubbing .media-bar {
   height: 9px;
   border-radius: 5px;
 }
@@ -3183,7 +3223,6 @@ body.presenting .island[data-state="hidden"] {
   from {
     opacity: 0;
     transform: translateY(6px);
-    filter: blur(4px);
   }
 }
 @keyframes studio-in {

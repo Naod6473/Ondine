@@ -55,15 +55,26 @@ impl RustModule for Media {
         std::thread::spawn(move || watch(app, state));
     }
 
-    fn invoke(&self, _ctx: &ModuleContext, command: &str, _args: Value) -> Result<Value, String> {
+    fn invoke(&self, _ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
         match command {
             "state" => Ok(payload(&self.state.locked())),
             "artwork" => Ok(json!({ "url": self.state.locked().artwork })),
             "toggle" => media::control(Control::TogglePlayPause).map(|_| Value::Null),
             "next" => media::control(Control::Next).map(|_| Value::Null),
             "previous" => media::control(Control::Previous).map(|_| Value::Null),
+            "seek" => media::control(Control::Seek(seek_target(&args)?)).map(|_| Value::Null),
             other => Err(format!("commande inconnue : {other}")),
         }
+    }
+}
+
+/// La position demandée par le front (`{ "positionMs": 83000 }`), vérifiée :
+/// un nombre positif, au plus 24 h (aucun morceau n'est plus long).
+fn seek_target(args: &Value) -> Result<u64, String> {
+    const MAX_MS: u64 = 24 * 60 * 60 * 1000;
+    match args.get("positionMs").and_then(Value::as_u64) {
+        Some(ms) if ms <= MAX_MS => Ok(ms),
+        _ => Err("position invalide".into()),
     }
 }
 
@@ -145,7 +156,7 @@ fn update(app: &AppHandle, state: &Arc<Mutex<State>>, manager: &media::Manager, 
 /// Même morceau : y a-t-il un changement qui mérite un message ?
 fn differs(before: &Option<NowPlaying>, now: &Option<NowPlaying>) -> bool {
     let (Some(a), Some(b)) = (before, now) else { return false };
-    if a.status != b.status || a.can_toggle != b.can_toggle || a.can_next != b.can_next || a.can_previous != b.can_previous {
+    if a.status != b.status || a.can_toggle != b.can_toggle || a.can_next != b.can_next || a.can_previous != b.can_previous || a.can_seek != b.can_seek {
         return true;
     }
     if a.duration_ms != b.duration_ms {
@@ -196,6 +207,7 @@ mod tests {
             can_toggle: true,
             can_next: true,
             can_previous: true,
+            can_seek: true,
         })
     }
 
@@ -203,6 +215,15 @@ mod tests {
     fn normal_progress_is_not_a_change() {
         assert!(!differs(&song("playing", 10_000), &song("playing", 11_000)));
         assert!(!differs(&song("paused", 10_000), &song("paused", 10_000)));
+    }
+
+    #[test]
+    fn seek_target_is_checked() {
+        assert_eq!(seek_target(&json!({ "positionMs": 83_000 })), Ok(83_000));
+        assert!(seek_target(&json!({ "positionMs": -5 })).is_err());
+        assert!(seek_target(&json!({ "positionMs": "12" })).is_err());
+        assert!(seek_target(&json!({})).is_err());
+        assert!(seek_target(&json!({ "positionMs": 90_000_000 })).is_err());
     }
 
     #[test]

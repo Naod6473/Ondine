@@ -144,8 +144,8 @@ async function load() {
     if (!reducedMotion()) {
       canvas.animate(
         [
-          { opacity: 0, transform: "scale(0.96)", filter: "blur(6px)" },
-          { opacity: 1, transform: "none", filter: "blur(0)" },
+          { opacity: 0, transform: "scale(0.96)" },
+          { opacity: 1, transform: "none" },
         ],
         { duration: 420, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
       );

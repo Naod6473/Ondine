@@ -1,5 +1,6 @@
 // Module « Musique » : ce qui joue en ce moment, avec lecture/pause, suivant
-// et précédent.
+// et précédent. La barre de progression est cliquable (et glissable) quand le
+// lecteur accepte qu'on change la position.
 //
 // Le Rust (src-tauri/src/modules/media.rs) surveille le lecteur de Windows et
 // publie "media.changed" quand quelque chose change. Entre deux messages, on
@@ -23,6 +24,8 @@ interface NowPlaying {
   canToggle: boolean;
   canNext: boolean;
   canPrevious: boolean;
+  /** Le lecteur accepte-t-il qu'on change la position ? */
+  canSeek: boolean;
 }
 
 interface MediaState {
@@ -39,6 +42,8 @@ let receivedAt = 0;
 let artworkId = 0;
 let artworkUrl: string | null = null;
 const redraws = new Set<() => void>();
+/** Pendant qu'on glisse sur la barre : la position visée (ms), sinon null. */
+let scrub: number | null = null;
 
 function redrawAll() {
   for (const r of redraws) r();
@@ -49,8 +54,9 @@ function hasTrack(): boolean {
   return !!playing && playing.status !== "stopped" && playing.title.length > 0;
 }
 
-/** Position actuelle estimée, en ms. */
+/** Position actuelle estimée, en ms (ou celle visée pendant un glissé). */
 function currentPosition(): number | null {
+  if (scrub !== null) return scrub;
   if (!playing || playing.positionMs === null) return null;
   const elapsed = playing.status === "playing" ? performance.now() - receivedAt : 0;
   return Math.min(playing.positionMs + elapsed, playing.durationMs ?? Infinity);
@@ -78,9 +84,9 @@ function cover(size: "small" | "large"): HTMLElement {
 }
 
 /** Lance une commande du lecteur ; une erreur (lecteur fermé…) s'affiche sans compter comme plantage. */
-async function control(api: ModuleApi, command: "toggle" | "next" | "previous") {
+async function control(api: ModuleApi, command: "toggle" | "next" | "previous" | "seek", args?: Record<string, unknown>) {
   try {
-    await api.invoke(command);
+    await api.invoke(command, args);
   } catch (err) {
     api.notify({ title: "Le lecteur ne répond pas", body: errorText(err), icon: "🎵", priority: "low", key: "media-error" });
   }
@@ -102,6 +108,62 @@ function glyph(kind: keyof typeof GLYPHS): SVGSVGElement {
   path.setAttribute("d", GLYPHS[kind]);
   svg.append(path);
   return svg;
+}
+
+/** Un appui sur une flèche du clavier avance ou recule de… */
+const SEEK_STEP_MS = 5_000;
+
+/**
+ * Rend la barre de progression cliquable : un clic va à cet endroit du
+ * morceau ; en glissant, la barre et le temps suivent le doigt, et la position
+ * part au lecteur quand on lâche. Clavier : flèches gauche / droite.
+ */
+function seekable(api: ModuleApi, zone: HTMLElement, bar: HTMLElement, durationMs: number, show: () => void) {
+  zone.classList.add("seekable");
+  zone.tabIndex = 0;
+  zone.setAttribute("role", "slider");
+  zone.setAttribute("aria-label", "Position dans le morceau");
+  const at = (e: PointerEvent) => {
+    const r = bar.getBoundingClientRect();
+    return Math.round(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * durationMs);
+  };
+  const go = (ms: number) => {
+    // On montre tout de suite la nouvelle position, sans attendre le lecteur.
+    if (playing) {
+      playing.positionMs = ms;
+      receivedAt = performance.now();
+    }
+    void control(api, "seek", { positionMs: ms });
+  };
+  zone.addEventListener("pointerdown", (e) => {
+    zone.setPointerCapture(e.pointerId);
+    zone.classList.add("scrubbing");
+    scrub = at(e);
+    show();
+  });
+  zone.addEventListener("pointermove", (e) => {
+    if (scrub === null) return;
+    scrub = at(e);
+    show();
+  });
+  const release = (send: boolean) => {
+    if (scrub === null) return;
+    const target = scrub;
+    scrub = null;
+    zone.classList.remove("scrubbing");
+    if (send) go(target);
+    redrawAll(); // un message du lecteur a pu arriver pendant le glissé
+  };
+  zone.addEventListener("pointerup", () => release(true));
+  zone.addEventListener("pointercancel", () => release(false));
+  zone.addEventListener("keydown", (e) => {
+    const step = e.key === "ArrowRight" ? SEEK_STEP_MS : e.key === "ArrowLeft" ? -SEEK_STEP_MS : 0;
+    const pos = currentPosition();
+    if (!step || pos === null) return;
+    e.preventDefault();
+    go(Math.max(0, Math.min(durationMs, pos + step)));
+    show();
+  });
 }
 
 /** Trois petites barres qui dansent quand la musique joue. */
@@ -245,6 +307,8 @@ export const media: IslandModule = {
 
     expanded(root, api) {
       const draw = () => {
+        // Pendant un glissé sur la barre, on ne redessine pas (on perdrait la souris).
+        if (scrub !== null) return;
         root.replaceChildren();
         if (!hasTrack() || !playing) {
           root.append(
@@ -262,6 +326,9 @@ export const media: IslandModule = {
 
         const bar = el("div", { class: "media-bar" }, el("div", { class: "media-bar-fill" }));
         const times = el("div", { class: "media-times" }, el("span"), el("span"));
+        // La zone cliquable est plus haute que la barre (4 px, trop fine pour viser).
+        const seek = el("div", { class: "media-seek" }, bar, el("span", { class: "media-thumb" }));
+        if (p.canSeek && p.durationMs) seekable(api, seek, bar, p.durationMs, () => tick());
 
         root.append(
           el(
@@ -274,7 +341,7 @@ export const media: IslandModule = {
               el("div", { class: "media-title" }, p.title),
               el("div", { class: "media-artist" }, [p.artist, p.album].filter(Boolean).join(" · ")),
               el("div", { class: "muted media-app" }, appName(p.app)),
-              p.durationMs ? el("div", { class: "media-progress" }, bar, times) : null,
+              p.durationMs ? el("div", { class: "media-progress" }, seek, times) : null,
               el(
                 "div",
                 { class: "media-controls" },
@@ -295,7 +362,10 @@ export const media: IslandModule = {
         const pos = currentPosition();
         const duration = playing?.durationMs;
         if (!fill || pos === null || !duration) return;
-        fill.style.width = `${Math.min(100, (pos / duration) * 100)}%`;
+        const percent = Math.min(100, (pos / duration) * 100);
+        fill.style.width = `${percent}%`;
+        root.querySelector<HTMLElement>(".media-seek")?.style.setProperty("--f", `${percent}%`);
+        root.querySelector(".media-seek")?.setAttribute("aria-valuetext", clock(pos));
         now.textContent = clock(pos);
         total.textContent = clock(duration);
       };
