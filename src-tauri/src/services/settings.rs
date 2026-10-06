@@ -179,6 +179,10 @@ impl Default for MascotPrefs {
     }
 }
 
+// Écrit à la main (et pas « #[derive(Default)] ») : tests/front/settings.test.ts
+// lit ces blocs « impl Default » pour comparer les valeurs par défaut du Rust
+// et du front.
+#[allow(clippy::derivable_impls)]
 impl Default for Privacy {
     fn default() -> Self {
         Self { excluded_folders: Vec::new() }
@@ -308,9 +312,19 @@ pub fn load() -> Settings {
     }
 }
 
+/// Une seule écriture à la fois : deux sauvegardes simultanées (la page et la
+/// fin d'un déplacement de l'île, par exemple) écriraient en même temps dans
+/// le même fichier temporaire.
+static SAVING: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 /// Enregistre les réglages. On écrit d'abord un fichier temporaire puis on le
 /// renomme : une coupure au milieu ne laisse jamais un fichier à moitié écrit.
+/// Les appelants qui modifient `Shared::settings` appellent `save` sans
+/// relâcher le verrou de `Shared::settings` : le fichier reçoit alors les
+/// réglages dans l'ordre où ils ont été modifiés en mémoire.
 pub fn save(settings: &Settings) -> Result<(), String> {
+    use crate::sync::LockExt;
+    let _one_at_a_time = SAVING.locked();
     std::fs::create_dir_all(dir()).map_err(|e| e.to_string())?;
     let json = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
     let tmp = dir().join("settings.json.tmp");

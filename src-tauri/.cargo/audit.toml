@@ -1,0 +1,19 @@
+# Réglages de `cargo audit` (étape « audit » de .github/workflows/ci.yml).
+#
+# Une faille connue (« vulnerability ») fait échouer la CI. Les simples
+# avertissements (« unmaintained », « unsound »…) sont affichés sans la faire
+# échouer.
+#
+# Liste des avis ignorés : seulement ceux qui n'ont PAS de correctif, ou qui
+# ne concernent pas Ondine. Chaque entrée dit pourquoi et depuis quand ; à
+# revoir à chaque mise à jour de Tauri.
+#
+# Au 2026-10-06, `cargo audit` ne trouve aucune faille, seulement deux
+# avertissements, laissés visibles (pas ignorés) :
+#   - RUSTSEC-2024-0370 : proc-macro-error n'est plus maintenu (utilisé à la
+#     compilation seulement, par une dépendance de Tauri sous Linux) ;
+#   - RUSTSEC-2024-0429 : glib 0.18 (GTK, Linux seulement : absent de l'appli
+#     Windows), corrigé dans glib 0.20 que Tauri n'utilise pas encore.
+
+[advisories]
+ignore = []

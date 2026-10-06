@@ -18,5 +18,8 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

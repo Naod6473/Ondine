@@ -196,7 +196,7 @@ impl RustModule for Agents {
                 let mut st = s.locked();
                 let before = st.working();
                 for session in st.sessions.values_mut() {
-                    let quiet = session.updated.map_or(true, |t| t.elapsed() >= SESSION_TIMEOUT);
+                    let quiet = session.updated.is_none_or(|t| t.elapsed() >= SESSION_TIMEOUT);
                     if session.state == "working" && quiet {
                         session.state = "idle"; // interrompue sans « Stop », sans doute
                     }
@@ -250,6 +250,12 @@ impl RustModule for Agents {
             "answer" => {
                 let id = args.get("id").and_then(Value::as_u64).ok_or("question manquante")?;
                 let choice = args.get("choice").and_then(Value::as_u64).ok_or("choix manquant")? as usize;
+                let confirmed = args.get("confirmed") == Some(&Value::Bool(true));
+                // « Oui, autoriser » : il faut un vrai geste (clic sur l'île, ou
+                // Entrée) depuis l'écran de confirmation. Attendu hors du verrou :
+                // le clic peut n'être noté qu'un tour de boucle plus tard.
+                let armed = if confirmed { self.state.locked().asks.get(&id).and_then(|a| a.armed) } else { None };
+                let gesture = armed.is_some_and(|at| gesture_since(ctx.app, at));
                 let mut ask = {
                     let mut st = self.state.locked();
                     let ask = st.asks.get(&id).ok_or("cette question n'attend plus (délai dépassé ?)")?;
@@ -259,8 +265,13 @@ impl RustModule for Agents {
                     // Autoriser une action d'un agent : seulement après la confirmation,
                     // vérifiée ici (et pas seulement dans l'interface).
                     if ask.answers[choice] == "allow" {
-                        let confirmed = args.get("confirmed") == Some(&Value::Bool(true));
                         allow_is_confirmed(confirmed, ask.armed, Instant::now())?;
+                        // `armed` relu plus haut doit être le même : un nouvel « arm »
+                        // entre-temps demande un nouveau geste.
+                        if !gesture || ask.armed != armed {
+                            ctx.log_warn("autorisation refusée : aucun clic ni Entrée dans l'île depuis la confirmation");
+                            return Err("autorisation non confirmée".into());
+                        }
                     }
                     st.asks.remove(&id).unwrap()
                 };
@@ -398,9 +409,13 @@ fn launch(ctx: &ModuleContext, tool: Tool, dir: &Path) -> Result<(), String> {
     ctx.require("files")?;
     let in_wt = ctx.settings().get("claudeIn").and_then(Value::as_str) == Some("wt");
     // Le chemin complet du programme, trouvé dans le PATH (jamais dans le
-    // projet) ; s'il n'est pas installé, le mot seul : la console affiche
-    // alors le message d'erreur de Windows.
-    let word = platform::find_program(tool.word()).map(|p| p.display().to_string()).unwrap_or_else(|| tool.word().to_string());
+    // projet). Jamais le mot seul : la console ouverte cherche les programmes
+    // d'abord dans le dossier courant (comportement normal de cmd.exe, que
+    // l'utilisateur garde dans sa console), et un « claude.cmd » piégé dans un
+    // projet serait alors lancé à sa place.
+    let word = platform::find_program(tool.word())
+        .map(|p| p.display().to_string())
+        .ok_or_else(|| format!("{} n'est pas installé sur ce PC", tool.word()))?;
     let (program, args) = agent_command(&word, dir, in_wt);
     // La console doit pouvoir passer devant l'île.
     platform::forget_previous_foreground();
@@ -409,10 +424,12 @@ fn launch(ctx: &ModuleContext, tool: Tool, dir: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// « cmd /k <chemin de claude> » (ou codex, gemini) : la fenêtre reste
-/// ouverte s'il n'est pas installé (on lit alors le message d'erreur de Windows).
+/// « cmd /k <chemin complet de claude> » (ou codex, gemini) : la fenêtre
+/// reste ouverte quand l'agent se termine.
 fn agent_command(word: &str, dir: &Path, in_wt: bool) -> (&'static str, Vec<String>) {
-    let cmd = ["cmd.exe".to_string(), "/k".into(), word.into()];
+    // Dans Windows Terminal, « cmd.exe » est cherché par Windows Terminal, qui
+    // démarre dans le dossier du projet : on lui donne le chemin complet.
+    let cmd = [system_cmd(std::env::var("SystemRoot").ok()), "/k".into(), word.into()];
     // Windows Terminal lit « ; » comme un séparateur de commandes : un dossier
     // qui en contient s'ouvre dans une console classique.
     if in_wt && !dir.display().to_string().contains(';') {
@@ -421,6 +438,15 @@ fn agent_command(word: &str, dir: &Path, in_wt: bool) -> (&'static str, Vec<Stri
         ("wt.exe", args)
     } else {
         ("cmd.exe", cmd[1..].to_vec())
+    }
+}
+
+/// Le cmd.exe de Windows (« C:\Windows\System32\cmd.exe »), d'après le
+/// dossier de Windows ; « cmd.exe » seul si on ne le connaît pas.
+fn system_cmd(system_root: Option<String>) -> String {
+    match system_root.filter(|r| Path::new(r).is_absolute() || r.contains(":\\")) {
+        Some(root) => format!("{}\\System32\\cmd.exe", root.trim_end_matches('\\')),
+        None => "cmd.exe".into(),
     }
 }
 
@@ -797,6 +823,37 @@ fn allow_is_confirmed(confirmed: bool, armed: Option<Instant>, now: Instant) -> 
     Ok(())
 }
 
+/// Le clic peut être noté par la boucle de la souris un peu après l'arrivée
+/// de la commande (elle tourne toutes les 16 à 33 ms) : on l'attend jusque-là.
+const GESTURE_GRACE: Duration = Duration::from_millis(120);
+
+/// Un geste réel a-t-il eu lieu depuis `armed` ? Un clic du bouton gauche sur
+/// l'île (vu par la boucle de la souris, island/mod.rs : un script de la page
+/// ne peut pas le simuler), ou la touche Entrée enfoncée dans l'île.
+fn real_gesture(armed: Instant, last_click: Option<Instant>, enter_held: bool) -> bool {
+    enter_held || last_click.is_some_and(|c| c > armed)
+}
+
+/// `real_gesture` avec les vraies sources, en laissant à la boucle de la
+/// souris le temps de noter le clic (`GESTURE_GRACE`).
+fn gesture_since(app: &AppHandle, armed: Instant) -> bool {
+    use tauri::Manager;
+    let gate = app.try_state::<crate::Shared>().map(|s| s.gate.clone());
+    let island = crate::island::window(app);
+    let deadline = Instant::now() + GESTURE_GRACE;
+    loop {
+        let click = gate.as_ref().and_then(|g| g.last_click());
+        let enter = island.as_ref().is_some_and(platform::enter_held_in);
+        if real_gesture(armed, click, enter) {
+            return true;
+        }
+        if Instant::now() >= deadline {
+            return false;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
 /// La ligne renvoyée à « ondine.exe mcp » : `{"answer": "…" | null, "reason"?: "…"}`.
 /// Si l'agent est parti entre-temps, l'écriture échoue sans bruit.
 fn answer_line(reply: &mut std::fs::File, answer: Option<&str>, reason: Option<&str>) {
@@ -926,6 +983,7 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
 ///     et l'ancien réglage `notify` (JSON « agent-turn-complete ») ;
 ///   - gemini : hooks BeforeAgent, Notification (ToolPermission), AfterAgent,
 ///     SessionEnd.
+///
 /// Les textes de l'utilisateur (prompt) et les réponses de l'IA ne sont
 /// jamais lus.
 fn understand(msg: &Value, at: u64) -> Option<Event> {
@@ -1227,11 +1285,30 @@ mod tests {
     }
 
     #[test]
+    fn allow_needs_a_real_gesture_after_arm() {
+        let t = Instant::now();
+        let later = |ms| t + Duration::from_millis(ms);
+        // Aucun clic, ou seulement celui d'avant l'écran de confirmation : refusé.
+        assert!(!real_gesture(t, None, false));
+        assert!(!real_gesture(later(500), Some(later(100)), false));
+        assert!(!real_gesture(t, Some(t), false));
+        // Un clic sur l'île après « Autoriser… » : accepté.
+        assert!(real_gesture(t, Some(later(400)), false));
+        // Entrée enfoncée dans l'île : accepté.
+        assert!(real_gesture(t, None, true));
+    }
+
+    #[test]
     fn agent_command_lines() {
         let dir = Path::new(r"C:\Projets\Mon appli");
         assert_eq!(agent_command("claude", dir, false), ("cmd.exe", vec!["/k".to_string(), "claude".to_string()]));
+        assert_eq!(system_cmd(Some(r"C:\WINDOWS".into())), r"C:\WINDOWS\System32\cmd.exe");
+        assert_eq!(system_cmd(Some(r"C:\Windows\".into())), r"C:\Windows\System32\cmd.exe");
+        assert_eq!(system_cmd(Some("Windows".into())), "cmd.exe");
+        assert_eq!(system_cmd(None), "cmd.exe");
         let (p, a) = agent_command(r"C:\npm\codex.cmd", dir, true);
-        assert_eq!((p, a[1].as_str(), a[2].as_str(), a[4].as_str()), ("wt.exe", r"C:\Projets\Mon appli", "cmd.exe", r"C:\npm\codex.cmd"));
+        assert_eq!((p, a[1].as_str(), a[4].as_str()), ("wt.exe", r"C:\Projets\Mon appli", r"C:\npm\codex.cmd"));
+        assert!(a[2].ends_with("cmd.exe"));
         assert_eq!(agent_command("gemini", Path::new(r"C:\a;b"), true).0, "cmd.exe");
         assert!(Tool::parse("calc").is_err());
     }

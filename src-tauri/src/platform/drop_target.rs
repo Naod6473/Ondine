@@ -30,7 +30,7 @@ use ::windows::Win32::System::Ole::{
 };
 use ::windows::Win32::System::SystemServices::MODIFIERKEYS_FLAGS;
 use ::windows::Win32::UI::Shell::{DragQueryFileW, HDROP};
-use ::windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW};
+use ::windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW, IsWindow};
 
 use crate::services::log;
 
@@ -62,6 +62,10 @@ pub fn install(app: &AppHandle, window_hwnd: HWND, label: &'static str) {
         let _ = EnumChildWindows(Some(window_hwnd), Some(collect_render_widgets), LPARAM(&mut found as *mut Vec<HWND> as isize));
     }
     let mut installed = INSTALLED.locked();
+    // Les fenêtres disparues (WebView2 recrée sa fenêtre intérieure après un
+    // plantage du rendu, un changement de carte graphique…) sont oubliées :
+    // sinon un numéro réutilisé par Windows serait cru déjà équipé.
+    installed.retain(|&h| unsafe { IsWindow(Some(HWND(h as *mut _))) }.as_bool());
     for hwnd in found {
         if installed.contains(&(hwnd.0 as isize)) {
             continue;

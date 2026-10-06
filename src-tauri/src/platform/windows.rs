@@ -174,6 +174,25 @@ pub fn left_button_down() -> bool {
     unsafe { (GetAsyncKeyState(VK_LBUTTON.0 as i32) as u16 & 0x8000) != 0 }
 }
 
+/// Le bouton gauche : (enfoncé maintenant, enfoncé depuis la lecture
+/// précédente). Le second sert à ne pas rater un clic très bref tombé entre
+/// deux tours de la boucle de la souris. (Windows précise que ce second
+/// renseignement peut être « pris » par un autre programme qui lit le même
+/// bouton : c'est un complément, pas la seule source.)
+pub fn left_button_state() -> (bool, bool) {
+    let state = unsafe { GetAsyncKeyState(VK_LBUTTON.0 as i32) } as u16;
+    (state & 0x8000 != 0, state & 1 != 0)
+}
+
+/// La touche Entrée est-elle enfoncée en ce moment, la fenêtre `win` ayant le
+/// focus clavier ? (Un bouton activé au clavier avec Entrée est « cliqué »
+/// à l'appui : la touche est encore enfoncée quand la commande arrive.)
+pub fn enter_held_in(win: &WebviewWindow) -> bool {
+    use ::windows::Win32::UI::Input::KeyboardAndMouse::VK_RETURN;
+    let Some(hwnd) = hwnd_of(win) else { return false };
+    unsafe { GetForegroundWindow() == hwnd && GetAsyncKeyState(VK_RETURN.0 as i32) < 0 }
+}
+
 // ── Fenêtre de l'île ──────────────────────────────────────────────────────────
 
 fn hwnd_of(win: &WebviewWindow) -> Option<HWND> {
@@ -354,6 +373,7 @@ pub fn clear_clipboard_if(seq: u32) -> bool {
 ///   - `ExcludeClipboardContentFromMonitorProcessing` : ne pas surveiller du tout ;
 ///   - `Clipboard Viewer Ignore` : ancienne convention, même sens ;
 ///   - `CanIncludeInClipboardHistory` = 0 : ne pas mettre dans l'historique.
+///
 /// Dans le doute (presse-papiers occupé), on répond « sensible » : mieux vaut
 /// rater une copie que garder un mot de passe.
 pub fn clipboard_is_sensitive() -> bool {
@@ -495,7 +515,14 @@ pub fn documents_dir() -> Option<PathBuf> {
 }
 
 /// Ouvre un programme console (cmd, PowerShell…) dans SA PROPRE fenêtre,
-/// dans le dossier `dir`. Utilisé par le module Terminal.
+/// dans le dossier `dir`. Utilisé par les modules Terminal, Agents et Accès
+/// distant.
+///
+/// La console reçoit l'environnement normal de l'utilisateur : on n'y pose
+/// PAS `NoDefaultCurrentDirectoryInExePath`, sinon taper « build.bat » dans
+/// la console ouverte répondrait « n'est pas reconnu » alors que le fichier
+/// est là. Les appelants passent donc toujours un programme au chemin complet
+/// ou résolu par Ondine (`find_program`), jamais un nom à chercher par cmd.
 pub fn spawn_console(program: &str, args: &[String], dir: &std::path::Path) -> Result<(), String> {
     use std::os::windows::process::CommandExt;
     // CREATE_NEW_CONSOLE : une nouvelle fenêtre de console, détachée de l'île.
@@ -503,9 +530,6 @@ pub fn spawn_console(program: &str, args: &[String], dir: &std::path::Path) -> R
     std::process::Command::new(program)
         .args(args)
         .current_dir(dir)
-        // cmd.exe ne cherchera pas les programmes dans le dossier ouvert (un
-        // « claude.cmd » piégé dans un projet ne doit jamais être lancé).
-        .env("NoDefaultCurrentDirectoryInExePath", "1")
         .creation_flags(CREATE_NEW_CONSOLE)
         .spawn()
         .map(|_| ())
@@ -1013,6 +1037,12 @@ pub fn serve_agents_pipe(
         next = create_again();
         // `File` lit le canal et le referme quand il est détruit.
         let file = unsafe { std::fs::File::from_raw_handle(current.0 as RawHandle) };
+        // Seule Ondine elle-même (lancée par un agent) a le droit de parler à
+        // l'île : tout autre programme est refusé (canal fermé sans rien lire).
+        if let Err(e) = check_pipe_client(&file) {
+            crate::services::log::warn(format!("agents : canal refusé ({e})"));
+            continue;
+        }
         if active.load(Ordering::SeqCst) >= PIPE_MAX_CLIENTS {
             continue; // trop de clients à la fois : celui-ci est refusé (fermé)
         }
@@ -1092,22 +1122,13 @@ fn open_agents_pipe() -> Result<std::fs::File, String> {
 /// les demandes de permission pour répondre « allow ».
 fn check_pipe_server(pipe: &std::fs::File) -> Result<(), String> {
     use std::os::windows::io::AsRawHandle;
-    use ::windows::core::PWSTR;
-    use ::windows::Win32::Foundation::{CloseHandle, HANDLE};
+    use ::windows::Win32::Foundation::HANDLE;
     use ::windows::Win32::System::Pipes::GetNamedPipeServerProcessId;
-    use ::windows::Win32::System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION};
     let refused = "canal refusé : ce n'est pas l'île de votre compte qui répond";
-    unsafe {
-        let mut pid = 0u32;
-        GetNamedPipeServerProcessId(HANDLE(pipe.as_raw_handle() as _), &mut pid).map_err(|_| refused)?;
-        let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).map_err(|_| refused)?;
-        let sid = process_user_sid(process);
-        let mut path = [0u16; 1024];
-        let mut len = path.len() as u32;
-        let exe = QueryFullProcessImageNameW(process, PROCESS_NAME_WIN32, PWSTR(path.as_mut_ptr()), &mut len)
-            .ok()
-            .map(|_| String::from_utf16_lossy(&path[..len as usize]));
-        let _ = CloseHandle(process);
+    let mut pid = 0u32;
+    unsafe { GetNamedPipeServerProcessId(HANDLE(pipe.as_raw_handle() as _), &mut pid) }.map_err(|_| refused)?;
+    let (sid, exe) = process_identity(pid).ok_or(refused)?;
+    {
         let same_user = sid.is_some() && sid == own_sid();
         let is_island = exe
             .as_deref()
@@ -1118,6 +1139,49 @@ fn check_pipe_server(pipe: &std::fs::File) -> Result<(), String> {
         } else {
             Err(refused.into())
         }
+    }
+}
+
+/// Le compte (SID) et le chemin complet de l'exécutable d'un programme.
+/// `None` si le programme n'a pas pu être ouvert (déjà fermé, protégé…).
+fn process_identity(pid: u32) -> Option<(Option<String>, Option<String>)> {
+    use ::windows::core::PWSTR;
+    use ::windows::Win32::Foundation::CloseHandle;
+    use ::windows::Win32::System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION};
+    unsafe {
+        let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+        let sid = process_user_sid(process);
+        let mut path = [0u16; 1024];
+        let mut len = path.len() as u32;
+        let exe = QueryFullProcessImageNameW(process, PROCESS_NAME_WIN32, PWSTR(path.as_mut_ptr()), &mut len)
+            .ok()
+            .map(|_| String::from_utf16_lossy(&path[..len as usize]));
+        let _ = CloseHandle(process);
+        Some((sid, exe))
+    }
+}
+
+/// Côté île : le programme qui vient de se connecter au canal est-il bien
+/// Ondine elle-même (« ondine.exe notify », « ondine.exe mcp »… lancés par les
+/// agents), du même compte ? Le canal est déjà fermé aux autres comptes et aux
+/// autres machines ; ceci écarte en plus les autres programmes de ce compte,
+/// qui pourraient sinon afficher une fausse demande d'autorisation dans l'île.
+fn check_pipe_client(pipe: &std::fs::File) -> Result<(), String> {
+    use std::os::windows::io::AsRawHandle;
+    use ::windows::Win32::Foundation::HANDLE;
+    use ::windows::Win32::System::Pipes::GetNamedPipeClientProcessId;
+    let mut pid = 0u32;
+    unsafe { GetNamedPipeClientProcessId(HANDLE(pipe.as_raw_handle() as _), &mut pid) }
+        .map_err(|e| format!("programme client inconnu : {e}"))?;
+    let (sid, exe) = process_identity(pid).ok_or_else(|| format!("programme {pid} illisible"))?;
+    if sid.is_none() || sid != own_sid() {
+        return Err(format!("programme {pid} d'un autre compte"));
+    }
+    let own = std::env::current_exe().map_err(|e| format!("exécutable d'Ondine introuvable : {e}"))?;
+    match exe {
+        Some(exe) if crate::platform::same_exe_path(&exe, &own.to_string_lossy()) => Ok(()),
+        Some(exe) => Err(format!("programme {pid} refusé : {exe}")),
+        None => Err(format!("programme {pid} : exécutable illisible")),
     }
 }
 

@@ -177,8 +177,12 @@ fn instruction(ctx: &ModuleContext) -> String {
     if s.is_empty() { defaults(voice(ctx)).0.to_string() } else { s }
 }
 
+/// Ce qu'on tire d'un fichier déposé : son nom, son texte (s'il en a), et
+/// son image (type MIME, contenu en base64) si c'en est une.
+type DroppedFile = (String, Option<String>, Option<(&'static str, String)>);
+
 /// Lit un fichier déposé : du texte (UTF-8) ou une image, avec des limites de taille.
-fn read_file(ctx: &ModuleContext, raw: &str) -> Result<(String, Option<String>, Option<(&'static str, String)>), String> {
+fn read_file(ctx: &ModuleContext, raw: &str) -> Result<DroppedFile, String> {
     let path = ctx.check_path(raw)?; // refuse les dossiers exclus
     if !path.is_file() {
         return Err("ce n'est pas un fichier".into());

@@ -19,8 +19,10 @@ const PROFILE_PREFIX: &str = "profile:";
 
 /// Le menu en anglais (réglage « Langue », lu au démarrage).
 static ENGLISH: AtomicBool = AtomicBool::new(false);
+/// Les profils du menu : (identifiant, nom) de chacun, et l'identifiant de l'actif.
+type ShownProfiles = (Vec<(String, String)>, String);
 /// Les profils tels que le menu les montre (on ne reconstruit que s'ils changent).
-static SHOWN: Mutex<Option<(Vec<(String, String)>, String)>> = Mutex::new(None);
+static SHOWN: Mutex<Option<ShownProfiles>> = Mutex::new(None);
 
 fn tr(fr: &'static str, english: &'static str) -> &'static str {
     if ENGLISH.load(Ordering::Relaxed) {

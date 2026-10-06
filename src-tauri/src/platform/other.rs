@@ -33,7 +33,10 @@ pub fn reveal_folder(_path: &std::path::Path) {}
 pub fn cursor_physical() -> Option<(f64, f64)> {
     None
 }
-pub fn left_button_down() -> bool {
+pub fn left_button_state() -> (bool, bool) {
+    (false, false)
+}
+pub fn enter_held_in(_win: &WebviewWindow) -> bool {
     false
 }
 pub fn make_non_activating(_win: &WebviewWindow) {}

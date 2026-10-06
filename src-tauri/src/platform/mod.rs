@@ -64,3 +64,35 @@ impl LocalTime {
         )
     }
 }
+
+/// Deux chemins d'exécutable Windows désignent-ils le même fichier ? Sans
+/// tenir compte des majuscules (Windows non plus), des `/` à la place des `\`
+/// ni du préfixe `\\?\` des chemins longs. Sert au canal des agents : seul le
+/// même exe qu'Ondine a le droit d'y parler.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn same_exe_path(a: &str, b: &str) -> bool {
+    fn norm(p: &str) -> String {
+        let p = p.trim().replace('/', "\\");
+        let p = p.strip_prefix(r"\\?\").unwrap_or(&p);
+        p.to_lowercase()
+    }
+    let (a, b) = (norm(a), norm(b));
+    !a.is_empty() && a == b
+}
+
+#[cfg(test)]
+mod tests {
+    use super::same_exe_path;
+
+    #[test]
+    fn exe_paths_compare_like_windows() {
+        let own = r"C:\Users\Simon\AppData\Local\Ondine\ondine.exe";
+        assert!(same_exe_path(own, r"c:\users\simon\appdata\local\ondine\Ondine.EXE"));
+        assert!(same_exe_path(own, r"\\?\C:\Users\Simon\AppData\Local\Ondine\ondine.exe"));
+        assert!(same_exe_path(own, "C:/Users/Simon/AppData/Local/Ondine/ondine.exe"));
+        // Un autre programme, ou un ondine.exe copié ailleurs : refusé.
+        assert!(!same_exe_path(own, r"C:\Users\Simon\Downloads\ondine.exe"));
+        assert!(!same_exe_path(own, r"C:\Windows\System32\cmd.exe"));
+        assert!(!same_exe_path("", ""));
+    }
+}

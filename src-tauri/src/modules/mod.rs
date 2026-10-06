@@ -104,9 +104,6 @@ pub struct ModuleContext<'a> {
     pub manifest: &'a Manifest,
 }
 
-// Certaines méthodes ne servent pas encore (elles attendent les modules des
-// phases suivantes) : on dit au compilateur de ne pas s'en plaindre.
-#[allow(dead_code)]
 impl ModuleContext<'_> {
     pub fn id(&self) -> &str {
         &self.manifest.id

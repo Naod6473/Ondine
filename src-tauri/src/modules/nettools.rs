@@ -340,6 +340,9 @@ fn fetch_public_ip() -> Option<String> {
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .tls_config(TlsConfig::builder().provider(TlsProvider::NativeTls).root_certs(RootCerts::PlatformVerifier).build())
         .timeout_global(Some(Duration::from_secs(10)))
+        // Jamais en clair, et pas de redirection : la réponse vient d'ipify, en HTTPS.
+        .https_only(true)
+        .max_redirects(0)
         .build()
         .into();
     let mut resp = agent.get(PUBLIC_IP_URL).call().ok()?;

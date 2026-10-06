@@ -18,7 +18,6 @@ use std::path::{Path, PathBuf};
 
 use crate::services::settings::Settings;
 
-#[allow(dead_code)] // utilisée par ModuleContext::check_path
 pub fn check_path(settings: &Settings, raw: &str) -> Result<PathBuf, String> {
     let path = Path::new(raw);
     if !path.is_absolute() {
@@ -32,7 +31,6 @@ pub fn check_path(settings: &Settings, raw: &str) -> Result<PathBuf, String> {
 }
 
 /// Vrai si `real` (déjà canonisé) est dans un des dossiers exclus.
-#[allow(dead_code)]
 pub fn is_excluded(settings: &Settings, real: &Path) -> bool {
     settings.privacy.excluded_folders.iter().any(|folder| {
         // Un dossier exclu qui n'existe plus ne peut rien contenir.
