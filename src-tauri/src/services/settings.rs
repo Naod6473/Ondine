@@ -73,6 +73,8 @@ pub struct IslandPrefs {
     /// Mode présentation : pendant un partage d'écran ou un plein écran, l'île
     /// se cache et garde les notifications pour après.
     pub presentation_quiet: bool,
+    /// Le pack d'icônes : "color" (dessinées en couleur) ou "line" (au trait, sobres).
+    pub icon_pack: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -138,6 +140,7 @@ impl Default for IslandPrefs {
             sound_volume: 0.5,
             hotkey: "Ctrl+Alt+O".into(),
             presentation_quiet: true,
+            icon_pack: "color".into(),
         }
     }
 }
@@ -166,6 +169,9 @@ impl Settings {
     /// la main) : un bord inconnu redevient « en haut », un nombre hors limites
     /// est ramené dans ses bornes.
     pub fn sanitize(&mut self) {
+        if !["color", "line"].contains(&self.island.icon_pack.as_str()) {
+            self.island.icon_pack = "color".into();
+        }
         if !["auto", "fr", "en"].contains(&self.general.language.as_str()) {
             self.general.language = "auto".into();
         }

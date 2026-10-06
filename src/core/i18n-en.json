@@ -833,7 +833,12 @@
 "Apparence": "Appearance",
 "Onglets": "Tabs",
 "Mascotte": "Mascot",
-"Bonjour, je suis Ondine 👋": "Hi, I'm Ondine 👋"
+"Bonjour, je suis Ondine 👋": "Hi, I'm Ondine 👋",
+"Icônes": "Icons",
+"Style des icônes": "Icon style",
+"Épurées": "Minimal",
+"Couleur : les icônes dessinées pour Ondine. Épurées : au trait, sobres, qui prennent la couleur du texte (Phosphor, licence MIT).": "Color: the icons drawn for Ondine. Minimal: clean line icons that take the text colour (Phosphor, MIT licence).",
+"Couleur": "Color"
 },
 "patterns": [
 [

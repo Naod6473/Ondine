@@ -33,6 +33,8 @@ export interface Settings {
     hotkey: string;
     /** Partage d'écran, plein écran : l'île se cache et garde les notifications pour après. */
     presentationQuiet: boolean;
+    /** Pack d'icônes : "color" (dessinées en couleur) ou "line" (au trait, sobres). */
+    iconPack: "color" | "line";
   };
   mascot: {
     enabled: boolean;
@@ -67,6 +69,7 @@ export function defaultSettings(): Settings {
       soundVolume: 0.5,
       hotkey: "Ctrl+Alt+O",
       presentationQuiet: true,
+      iconPack: "color",
     },
     mascot: { enabled: true, id: "goutte", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5 },
     privacy: { excludedFolders: [] },

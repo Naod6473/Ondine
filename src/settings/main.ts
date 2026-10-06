@@ -25,7 +25,7 @@ import { THEMES, themeFor } from "../island/themes";
 import { mascotCatalog } from "../mascot/catalog";
 import { createRenderer, type MascotRenderer } from "../mascot/renderer";
 import { ALL_MODULES } from "../modules";
-import { chip, choice, group, row, stepper, toggle, wideRow } from "./controls";
+import { chip, choice, group, row, segmented, stepper, toggle, wideRow } from "./controls";
 import { settingsRows } from "./form";
 import { NavPill } from "./nav-pill";
 import { startI18n } from "../core/i18n";
@@ -68,7 +68,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "🎨",
     label: "Apparence",
     sub: "La couleur de l'île et ses petits sons.",
-    keywords: ["Thème", "Couleur de l'île", "Couleur personnalisée", "Sons de clic", "Volume des sons"],
+    keywords: ["Thème", "Icônes", "Style des icônes", "Couleur de l'île", "Couleur personnalisée", "Sons de clic", "Volume des sons"],
     render: look,
   },
   {
@@ -524,6 +524,13 @@ function look(main: HTMLElement) {
       null,
       [row("Couleur personnalisée", picker, "Choisis n'importe quelle couleur : si elle est trop claire, l'île l'assombrit juste assez pour que le texte reste lisible.")],
     ),
+    group("Icônes", [
+      row(
+        "Style des icônes",
+        segmented(s.island.iconPack ?? "color", [["color", "Couleur"], ["line", "Épurées"]], (v) => save((d) => (d.island.iconPack = v as "color" | "line"))),
+        "Couleur : les icônes dessinées pour Ondine. Épurées : au trait, sobres, qui prennent la couleur du texte (Phosphor, licence MIT).",
+      ),
+    ]),
     group("Sons", [
       row("Sons de clic", toggle(s.island.sounds, (v) => save((d) => (d.island.sounds = v)), "Sons de clic"), "De petits « plop » à l'ouverture, à la fermeture et sur les boutons. Fabriqués sur place, sans fichier."),
       row(

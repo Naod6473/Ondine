@@ -2203,6 +2203,17 @@ body {
   filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.35));
   pointer-events: none;
 }
+/* Pack « Épurées » : la forme du .svg, remplie avec la couleur du texte. */
+.icon-line {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.22em;
+  background: currentColor;
+  -webkit-mask: var(--src) center / contain no-repeat;
+  mask: var(--src) center / contain no-repeat;
+  pointer-events: none;
+}
 .agents-logo {
   font-size: 14px;
   line-height: 1;

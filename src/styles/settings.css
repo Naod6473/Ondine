@@ -1074,6 +1074,17 @@ option {
 }
 
 /* Icônes en image (logos des agents, voir src/island/icon.ts). */
+/* Pack « Épurées » (voir island.css). */
+.icon-line {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.22em;
+  background: currentColor;
+  -webkit-mask: var(--src) center / contain no-repeat;
+  mask: var(--src) center / contain no-repeat;
+  pointer-events: none;
+}
 .icon-img {
   width: 1.3em;
   height: 1.3em;
