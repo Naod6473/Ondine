@@ -48,12 +48,16 @@ export class Bus {
   onHandlerError: (owner: string, err: unknown, msg: BusMessage) => void = (owner, err) =>
     console.error(`[bus] erreur chez ${owner}`, err);
 
+  /** Renvoie faux pour ignorer un message venu d'ailleurs (le mode démo s'en sert). */
+  accept: (msg: BusMessage) => boolean = () => true;
+
   constructor(private readonly origin: string) {}
 
   /** Reçoit les messages venus du Rust et des autres fenêtres. */
   async connect() {
     await onTauriEvent<BusMessage>("bus", (msg) => {
       if (msg.origin === this.origin) return; // notre propre écho
+      if (!this.accept(msg)) return;
       this.dispatch(msg);
     });
   }
@@ -76,6 +80,14 @@ export class Bus {
     const msg: BusMessage = { topic, payload, source, origin: this.origin };
     this.dispatch(msg);
     void Bridge.busPublish(topic, payload, source);
+  }
+
+  /**
+   * Livre un message à cette fenêtre seulement, sans l'envoyer au Rust.
+   * Réservé au mode démo (fausses données qui ne doivent aller nulle part).
+   */
+  inject(topic: string, payload: unknown = null, source = "demo") {
+    this.dispatch({ topic, payload, source, origin: "demo" });
   }
 
   private dispatch(msg: BusMessage) {

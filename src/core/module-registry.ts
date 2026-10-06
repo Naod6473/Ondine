@@ -12,6 +12,7 @@ import { errorText, logger } from "./log";
 import type { DropTarget, IslandModule, ModuleApi, ViewKind } from "./module-types";
 import type { NotificationQueue } from "./notifications";
 import { settingsStore } from "./settings-store";
+import { demoInvoke, demoOn } from "./demo";
 
 const MAX_FAILURES = 3;
 const log = logger("modules");
@@ -248,6 +249,8 @@ export class ModuleRegistry {
       },
       async invoke<T>(command: string, args?: unknown) {
         if (!m.commands.includes(command)) throw new Error(`commande non déclarée : ${command}`);
+        // Mode démo : une réponse inventée, rien n'arrive au Rust.
+        if (demoOn()) return (await demoInvoke(self.bus, id, command, args)) as T;
         return Bridge.moduleInvoke<T>(id, command, args ?? null);
       },
       settings: () => settingsStore.moduleValues(m),
