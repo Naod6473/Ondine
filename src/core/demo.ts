@@ -414,6 +414,10 @@ const REFRESH = ["agenda.changed", "notes.changed", "clipboard.changed", "rules.
 async function refreshAll(bus: Bus) {
   for (const topic of REFRESH) bus.inject(topic, null, "demo");
   if (demoOn()) {
+    // Le morceau repart du même endroit à chaque fois qu'on allume le mode démo.
+    state.track = 0;
+    state.playing = true;
+    setPosition(63_000);
     bus.inject("media.changed", mediaState(), "demo");
     bus.inject("shelf.changed", { items: SHELF }, "demo");
     return;
