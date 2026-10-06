@@ -150,6 +150,17 @@ Dans l'onglet 🤖, ouvre « Brancher Claude Code, Codex ou Gemini ».
 - ☐ Réglage « Ouvrir les agents dans : Windows Terminal » → ça s'ouvre dans
   un onglet de Windows Terminal.
 - ☐ Lanceur (Alt+Espace), taper `claude` → « Claude Code · projet ».
+- ☐ Recherche dans l'île : créer une note « Idées été », une tâche « Appeler
+  Léa », copier « Rendez-vous médecin », poser un fichier sur l'étagère, faire
+  une capture enregistrée. Dans le Lanceur, taper `ete`, `LEA`, `medecin`, le
+  nom du fichier, `octobre` (ou le mois du jour) : chaque élément apparaît dans
+  sa section. Entrée sur la note → l'onglet Notes s'ouvre dans l'éditeur ; sur
+  la tâche → la tâche est mise en avant ; sur la copie → « Copié », Ctrl+V la
+  colle ; sur le fichier ou la capture → il s'ouvre.
+- ☐ Recherche dans l'île et confidentialité : ajouter le dossier du fichier
+  de l'étagère aux dossiers exclus → il n'apparaît plus. Désactiver le module
+  Presse-papiers → sa section disparaît. Décocher « Chercher aussi dans l'île »
+  → plus aucune section.
 
 ### 2.3 Codex et Gemini (si installés)
 

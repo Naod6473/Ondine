@@ -560,7 +560,6 @@
 "Alt + Maj + M": "Alt + Shift + M",
 "Montrer un point quand une appli utilise le micro ou la caméra": "Show a dot when an app uses the microphone or camera",
 "Lanceur": "Launcher",
-"Un raccourci clavier (Alt+Espace par défaut) ouvre une recherche : applications du menu Démarrer, outils Windows (Services, Gestionnaire de périphériques…), fichiers récents, serveurs favoris (Accès distants) et actions de l'île. Entrée pour ouvrir.": "A keyboard shortcut (Alt+Space by default) opens a search: Start menu apps, Windows tools (Services, Device Manager…), recent files, favorite servers (Remote access) and island actions. Enter to open.",
 "Raccourci": "Shortcut",
 "Alt + Espace": "Alt + Space",
 "Ctrl + Espace": "Ctrl + Space",
@@ -895,7 +894,26 @@
 "Alors…": "Then…",
 "Dernier texte lu": "Last text read",
 "Créer l'image": "Create the image",
-"Renommer le fichier": "Rename the file"
+"Renommer le fichier": "Rename the file",
+"Un raccourci clavier (Alt+Espace par défaut) ouvre une recherche : applications du menu Démarrer, outils Windows (Services, Gestionnaire de périphériques…), fichiers récents, serveurs favoris (Accès distants) et actions de l'île. Il cherche aussi dans l'île : notes et tâches, presse-papiers, étagère et captures. Entrée pour ouvrir.": "A keyboard shortcut (Alt+Space by default) opens a search: Start menu apps, Windows tools (Services, Device Manager…), recent files, favorite servers (Remote access) and island actions. It also searches the island: notes and tasks, clipboard, shelf and captures. Enter to open.",
+"Une appli, un fichier, une note, une copie… (ou « 10 min »)": "An app, a file, a note, a copy… (or “10 min”)",
+"Tape le nom d'une appli, d'un fichier, d'un onglet, ou un mot de tes notes.": "Type the name of an app, a file, a tab, or a word from your notes.",
+"Chercher aussi dans l'île (notes, presse-papiers, étagère, captures)": "Also search the island (notes, clipboard, shelf, captures)",
+"5 résultats au plus par source, groupés. Les dossiers exclus (Confidentialité) ne sont jamais montrés.": "At most 5 results per source, grouped. Excluded folders (Privacy) are never shown.",
+"Notes et tâches": "Notes and tasks",
+"Captures": "Captures",
+"Tâche": "Task",
+"Note": "Note",
+"Copie": "Copy",
+"Snippet": "Snippet",
+"Capture": "Capture",
+"Faite": "Done",
+"À faire": "To do",
+"hier": "yesterday",
+"Recopié dans le presse-papiers": "Copied to the clipboard again",
+"Programme montré dans l'Explorateur": "Program shown in File Explorer",
+"Il n'est pas lancé depuis l'île.": "It isn't launched from the island.",
+"Le texte lu est dans le presse-papiers": "The recognized text is on the clipboard"
 },
 "patterns": [
 [
@@ -1789,6 +1807,14 @@
 [
 "^Renommer les (\\d+) fichiers$",
 "Rename the $1 files"
+],
+[
+"^il y a (\\d+) min$",
+"$1 min ago"
+],
+[
+"^il y a (\\d+) h$",
+"$1 h ago"
 ]
 ]
 }

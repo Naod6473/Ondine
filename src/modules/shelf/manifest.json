@@ -78,7 +78,9 @@
     "reveal",
     "images",
     "rename_preview",
-    "rename"
+    "rename",
+    "search",
+    "open"
   ],
   "events": {
     "emits": [

@@ -4,7 +4,11 @@
 //   - quelques outils Windows utiles en informatique (Services, Gestionnaire de
 //     périphériques…), dans une liste FIXE ;
 //   - les fichiers ouverts récemment (dossier « Récent » de Windows) ;
-//   - les actions de l'île (celles-là sont gérées côté front).
+//   - les actions de l'île (celles-là sont gérées côté front) ;
+//   - « Recherche dans l'île » : les notes et tâches, l'historique du
+//     presse-papiers, l'étagère et les captures. Chaque module cherche dans ses
+//     propres données (sa commande "search", appelée ici par `modules::invoke`,
+//     qui vérifie qu'il est activé) et renvoie 5 résultats au plus.
 //
 // Sécurité : le front ne donne jamais de chemin, seulement le numéro d'une
 // entrée que le Rust a trouvée lui-même. Un fichier récent est revalidé au
@@ -23,7 +27,7 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 use super::{ModuleContext, RustModule};
 use crate::platform;
-use crate::services::log;
+use crate::services::{files, log, search};
 
 const ID: &str = "launcher";
 /// On relit le menu Démarrer et les récents au plus toutes les 30 s.
@@ -34,6 +38,8 @@ const MAX_DEPTH: usize = 6;
 const MAX_RECENT: usize = 40;
 /// Le raccourci par défaut (même que PowerToys Run).
 const DEFAULT_HOTKEY: &str = "Alt+Space";
+/// Les modules où cherche « Recherche dans l'île », dans l'ordre des sections.
+const SOURCES: [&str; 4] = ["notes", "clipboard", "shelf", "capture"];
 /// Les raccourcis qu'on propose dans les réglages. Toute autre valeur est refusée.
 const HOTKEYS: &[&str] = &["Alt+Space", "Ctrl+Space", "Ctrl+Alt+Space", "Ctrl+Shift+Space", "Super+Shift+Space"];
 
@@ -157,6 +163,48 @@ impl RustModule for Launcher {
                 // Le journal ne contient que le type d'entrée, jamais le nom du fichier.
                 log::info(format!("lanceur : ouverture ({})", entry.kind.name()));
                 Ok(Value::Null)
+            }
+            // { query } → { groups: [{ source, items }] } : la recherche dans l'île.
+            "search" => {
+                let query = args.get("query").and_then(Value::as_str).unwrap_or("");
+                let wanted = ctx.settings().get("searchIsland").and_then(Value::as_bool).unwrap_or(true);
+                if !wanted || query.trim().chars().count() < 2 {
+                    return Ok(json!({ "groups": [] }));
+                }
+                let mut groups = Vec::new();
+                for source in SOURCES {
+                    // Un module désactivé (ou en panne) répond par une erreur : on passe.
+                    let found = super::invoke(ctx.app, source, "search", json!({ "query": query, "limit": search::PER_SOURCE }));
+                    let items = found.ok().and_then(|v| v.get("items").cloned()).unwrap_or(Value::Null);
+                    if items.as_array().is_some_and(|a| !a.is_empty()) {
+                        groups.push(json!({ "source": source, "items": items }));
+                    }
+                }
+                Ok(json!({ "groups": groups }))
+            }
+            // { source, kind, id | path | name } : l'action naturelle d'un
+            // résultat de la recherche dans l'île (la note, elle, est ouverte
+            // par le front : c'est un onglet de l'île).
+            "open_found" => {
+                let source = args.get("source").and_then(Value::as_str).unwrap_or("");
+                let kind = args.get("kind").and_then(Value::as_str).unwrap_or("");
+                // { key: args[key] } : on ne transmet que ce paramètre-là.
+                let pick = |key: &str| {
+                    let mut one = serde_json::Map::new();
+                    one.insert(key.to_string(), args.get(key).cloned().unwrap_or(Value::Null));
+                    Value::Object(one)
+                };
+                let result = match (source, kind) {
+                    ("clipboard", "clip") => super::invoke(ctx.app, "clipboard", "copy", pick("id")),
+                    ("clipboard", "snippet") => super::invoke(ctx.app, "clipboard", "copy", json!({ "snippet": args.get("id") })),
+                    ("shelf", _) => super::invoke(ctx.app, "shelf", "open", pick("path")),
+                    ("capture", "text") => super::invoke(ctx.app, "capture", "copy_last", Value::Null),
+                    ("capture", "file") => super::invoke(ctx.app, "capture", "open", pick("name")),
+                    _ => Err("résultat inconnu".into()),
+                }?;
+                // Le journal ne dit que d'où vient le résultat.
+                log::info(format!("lanceur : résultat de l'île ouvert ({source})"));
+                Ok(result)
             }
             // Avant une action de l'île qui ouvre une fenêtre (terminal…) :
             // l'île ne rendra pas le focus à la fenêtre d'avant.
@@ -357,6 +405,24 @@ fn recent_files(dir: &Path) -> Vec<PathBuf> {
         .take(MAX_RECENT * 2) // de la marge : `scan` en écarte (dossiers, exclus…)
         .filter_map(|(_, lnk)| platform::shortcut_target(&lnk))
         .collect()
+}
+
+/// Ouvre un fichier ou un dossier déjà validé (`check_path`) pour la recherche
+/// dans l'île (Étagère, Capture) : un dossier dans l'Explorateur, un fichier
+/// « comme un double-clic ». Un programme n'est jamais lancé : on le montre
+/// dans l'Explorateur (renvoie alors `true`).
+pub(super) fn open_checked(path: &Path) -> Result<bool, String> {
+    if path.is_dir() {
+        files::open_folder(path)?;
+        return Ok(false);
+    }
+    if is_executable(path) {
+        files::reveal(path)?;
+        return Ok(true);
+    }
+    platform::forget_previous_foreground();
+    platform::shell_open(&path.display().to_string())?;
+    Ok(false)
 }
 
 fn is_executable(path: &Path) -> bool {

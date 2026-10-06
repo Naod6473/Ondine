@@ -40,7 +40,7 @@ use super::{ModuleContext, RustModule};
 use crate::platform;
 use crate::services::undo::DEFAULT_WINDOW;
 use crate::services::bus::{self, BusMessage};
-use crate::services::{files, log};
+use crate::services::{files, log, search};
 
 const ID: &str = "clipboard";
 /// Tous les combien on regarde le compteur de Windows.
@@ -121,6 +121,9 @@ impl RustModule for Clipboard {
                 let query = args.get("query").and_then(Value::as_str).unwrap_or("");
                 Ok(list_json(&self.store.locked(), query))
             }
+            // { query, limit } → { items } : la recherche du Lanceur. Les copies
+            // sensibles n'y sont jamais : elles n'ont pas été lues.
+            "search" => Ok(search_json(&self.store.locked(), &args)),
             "pin" => {
                 let id = arg_id(&args, "id")?;
                 let pinned = args.get("pinned").and_then(Value::as_bool).unwrap_or(true);
@@ -640,6 +643,33 @@ fn list_json(s: &Store, query: &str) -> Value {
     json!({ "items": items, "snippets": snippets, "total": s.clips.len() })
 }
 
+/// Les copies et les snippets qui correspondent à la recherche (les meilleurs
+/// d'abord, `limit` au plus), avec un court extrait plutôt que tout le texte.
+fn search_json(s: &Store, args: &Value) -> Value {
+    let (query, limit) = search::args(args);
+    if query.is_empty() {
+        return json!({ "items": [] });
+    }
+    let mut hits = Vec::new();
+    for c in &s.clips {
+        // Un élément épinglé passe devant une copie aussi bien trouvée.
+        let found = search::score(&c.text, &query);
+        if found > 0 {
+            let score = found + u32::from(c.pinned);
+            let value = json!({ "kind": "clip", "id": c.id, "title": search::excerpt(&c.text, &query, 90), "pinned": c.pinned, "at": c.at });
+            hits.push(search::Hit { score, at: c.at, value });
+        }
+    }
+    for n in &s.snippets {
+        let score = search::score_titled(&n.name, &n.text, &query);
+        if score > 0 {
+            let value = json!({ "kind": "snippet", "id": n.id, "title": n.name, "detail": search::excerpt(&n.text, &query, 90) });
+            hits.push(search::Hit { score, at: 0, value });
+        }
+    }
+    json!({ "items": search::best(hits, limit) })
+}
+
 /// Les PREVIEW_CHARS premiers caractères (jamais coupé au milieu d'une lettre).
 fn preview(text: &str) -> String {
     match text.char_indices().nth(PREVIEW_CHARS) {
@@ -804,6 +834,27 @@ mod tests {
         let list = list_json(&s, "BONJOUR");
         let previews: Vec<&str> = list["items"].as_array().unwrap().iter().map(|i| i["preview"].as_str().unwrap()).collect();
         assert_eq!(previews, ["Bonjour Simon", "bonjour encore"]);
+    }
+
+    #[test]
+    fn search_finds_clips_and_snippets() {
+        let s = Store {
+            clips: vec![
+                Clip { id: 1, text: "Rendez-vous chez le médecin".into(), pinned: false, at: 5 },
+                Clip { id: 2, text: "medecin@exemple.fr".into(), pinned: true, at: 1 },
+                Clip { id: 3, text: "autre chose".into(), pinned: false, at: 9 },
+            ],
+            snippets: vec![Snippet { id: 4, name: "Adresse".into(), text: "12 rue du Médecin".into() }],
+            ..Store::default()
+        };
+        let found = search_json(&s, &json!({ "query": "MEDECIN", "limit": 2 }));
+        let items = found["items"].as_array().unwrap();
+        assert_eq!(items.len(), 2);
+        // L'épinglé qui commence par « medecin » d'abord, puis la copie.
+        assert_eq!((items[0]["id"].as_u64(), items[1]["id"].as_u64()), (Some(2), Some(1)));
+        let all = search_json(&s, &json!({ "query": "medecin" }));
+        assert_eq!(all["items"].as_array().unwrap().len(), 3);
+        assert_eq!(all["items"][2]["kind"], "snippet");
     }
 
     #[test]

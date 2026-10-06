@@ -20,7 +20,7 @@ use tauri::AppHandle;
 use super::{ModuleContext, RustModule};
 use crate::platform;
 use crate::services::undo::DEFAULT_WINDOW;
-use crate::services::{bus, log};
+use crate::services::{bus, log, search};
 
 const ID: &str = "notes";
 /// Limites : une note est faite pour être courte, mais on laisse de la marge.
@@ -86,6 +86,8 @@ impl RustModule for Notes {
                 let d = self.data.locked();
                 Ok(json!({ "notes": d.notes, "todos": d.todos }))
             }
+            // { query, limit } → { items } : la recherche du Lanceur.
+            "search" => Ok(search_json(&self.data.locked(), &args)),
             "note_save" => {
                 let text = arg_text(&args, MAX_NOTE_CHARS)?;
                 let id = {
@@ -253,6 +255,40 @@ fn changed(app: &AppHandle, data: &Shared) {
     bus::emit(app, ID, "notes.changed", json!({ "notes": notes, "todos": todos, "open": open }));
 }
 
+/// Les notes et les tâches qui correspondent à la recherche (les meilleures
+/// d'abord, `limit` au plus). Une note renvoie sa première ligne et un extrait.
+fn search_json(d: &Data, args: &Value) -> Value {
+    let (query, limit) = search::args(args);
+    if query.is_empty() {
+        return json!({ "items": [] });
+    }
+    let mut hits = Vec::new();
+    for n in &d.notes {
+        let title = n.text.lines().find(|l| !l.trim().is_empty()).unwrap_or("").trim();
+        let rest = n.text.trim_start().split_once('\n').map_or("", |(_, r)| r);
+        let score = search::score_titled(title, rest, &query);
+        if score > 0 {
+            let value = json!({
+                "kind": "note",
+                "id": n.id,
+                "title": title.chars().take(80).collect::<String>(),
+                "detail": search::excerpt(rest, &query, 90),
+                "at": n.updated,
+            });
+            hits.push(search::Hit { score, at: n.updated, value });
+        }
+    }
+    for t in &d.todos {
+        // Une tâche déjà faite passe après une tâche à faire aussi bien trouvée.
+        let score = search::score(&t.text, &query).saturating_sub(if t.done { 5 } else { 0 });
+        if score > 0 {
+            let value = json!({ "kind": "todo", "id": t.id, "title": t.text, "done": t.done, "at": t.created });
+            hits.push(search::Hit { score, at: t.created, value });
+        }
+    }
+    json!({ "items": search::best(hits, limit) })
+}
+
 fn file() -> PathBuf {
     platform::config_dir().join("notes.json")
 }
@@ -324,6 +360,31 @@ mod tests {
         assert!(arg_text(&json!({ "text": "   " }), 10).is_err());
         assert!(arg_text(&json!({ "text": "x".repeat(11) }), 10).is_err());
         assert_eq!(arg_text(&json!({ "text": "Acheter du pain  " }), 50).unwrap(), "Acheter du pain");
+    }
+
+    #[test]
+    fn search_finds_notes_and_todos_without_accents() {
+        let d = Data {
+            notes: vec![
+                Note { id: 1, text: "Idées cadeaux\nUn livre pour Léa".into(), updated: 10 },
+                Note { id: 2, text: "Courses\npain, café".into(), updated: 20 },
+            ],
+            todos: vec![
+                Todo { id: 3, text: "Appeler Léa".into(), done: true, created: 30 },
+                Todo { id: 4, text: "Réserver le resto".into(), done: false, created: 40 },
+            ],
+            next_id: 4,
+        };
+        let found = search_json(&d, &json!({ "query": "LEA" }));
+        let items = found["items"].as_array().unwrap();
+        // « Appeler Léa » (mot entier, tâche) avant la note où Léa est dans le texte.
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0]["kind"], "todo");
+        assert_eq!(items[1]["title"], "Idées cadeaux");
+        assert!(items[1]["detail"].as_str().unwrap().contains("Léa"));
+        let found = search_json(&d, &json!({ "query": "idees" }));
+        assert_eq!(found["items"][0]["id"], 1);
+        assert_eq!(search_json(&d, &json!({ "query": " " }))["items"], json!([]));
     }
 
     #[test]

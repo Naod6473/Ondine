@@ -34,7 +34,7 @@ use super::shelf_tools::{self, OutFormat};
 use super::{ModuleContext, RustModule};
 use crate::services::undo::DEFAULT_WINDOW;
 use crate::services::bus::BusMessage;
-use crate::services::{bus, files};
+use crate::services::{bus, files, search};
 
 /// Au-delà, on refuse d'ajouter : l'étagère est un endroit de passage.
 const MAX_ITEMS: usize = 100;
@@ -61,6 +61,19 @@ impl RustModule for Shelf {
     fn invoke(&self, ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
         match command {
             "list" => Ok(list_json(&self.items)),
+            // { query, limit } → { items } : la recherche du Lanceur (noms de fichiers).
+            "search" => Ok(search_json(ctx, &self.items, &args)),
+            // { path } : ouvre un élément de l'étagère (un programme est montré
+            // dans l'Explorateur au lieu d'être lancé).
+            "open" => {
+                let path = args.get("path").and_then(Value::as_str).ok_or("paramètre « path » manquant")?;
+                let path = ctx.check_path(path)?;
+                if !self.items.locked().contains(&path) {
+                    return Err("cet élément n'est plus sur l'étagère".into());
+                }
+                let revealed = super::launcher::open_checked(&path)?;
+                Ok(json!({ "revealed": revealed }))
+            }
             "add" => {
                 let added = self.add(ctx, &args)?;
                 Ok(json!({ "added": added }))
@@ -442,6 +455,33 @@ fn rename_on_shelf<'a>(items: &Items, renames: impl Iterator<Item = (&'a PathBuf
             *p = to.clone();
         }
     }
+}
+
+/// Les éléments de l'étagère dont le nom correspond à la recherche. Ceux qui
+/// sont maintenant dans un dossier exclu (ou qui ont disparu) ne sont pas montrés.
+fn search_json(ctx: &ModuleContext, items: &Items, args: &Value) -> Value {
+    let (query, limit) = search::args(args);
+    if query.is_empty() {
+        return json!({ "items": [] });
+    }
+    let list = items.locked().clone();
+    let mut hits = Vec::new();
+    // Le dernier posé sur l'étagère passe devant, à note égale.
+    for (index, p) in list.iter().enumerate() {
+        let name = p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+        let score = search::score(&name, &query);
+        if score == 0 || ctx.check_path(&p.display().to_string()).is_err() {
+            continue;
+        }
+        let value = json!({
+            "kind": if p.is_dir() { "dir" } else { "file" },
+            "path": p.display().to_string(),
+            "title": name,
+            "detail": p.parent().map(|d| d.display().to_string()).unwrap_or_default(),
+        });
+        hits.push(search::Hit { score, at: index as u64, value });
+    }
+    json!({ "items": search::best(hits, limit) })
 }
 
 /// La liste telle que le front l'affiche.

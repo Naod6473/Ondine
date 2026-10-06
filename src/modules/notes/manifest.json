@@ -12,9 +12,9 @@
     ]
   },
   "views": ["expanded"],
-  "commands": ["list", "note_save", "note_delete", "todo_add", "todo_toggle", "todo_edit", "todo_delete", "todo_clear_done"],
+  "commands": ["list", "note_save", "note_delete", "todo_add", "todo_toggle", "todo_edit", "todo_delete", "todo_clear_done", "search"],
   "events": {
     "emits": ["notes.changed", "task.finished"],
-    "listens": ["notes.changed"]
+    "listens": ["notes.changed", "notes.open"]
   }
 }
