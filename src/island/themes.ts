@@ -21,6 +21,8 @@ export const THEMES: Theme[] = [
   { id: "graphite", name: "Graphite", bg: "#1c1d22", accent: "#c7cbd6" },
   // Le fond laisse un peu voir le bureau à travers (la fenêtre est transparente).
   { id: "verre", name: "Verre", bg: "rgba(18, 20, 28, 0.72)", accent: "#9fd8ff" },
+  // Façon vidéo de présentation : noir profond, texte blanc, un seul accent blanc cassé.
+  { id: "studio", name: "Studio", bg: "#000000", accent: "#f2f2f5" },
 ];
 
 /** #rrggbb → [r, g, b] (0-255), ou null. */

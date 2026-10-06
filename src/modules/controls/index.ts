@@ -76,9 +76,15 @@ function glyph(kind: keyof typeof GLYPHS): SVGSVGElement {
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", "0 0 24 24");
   svg.setAttribute("aria-hidden", "true");
-  const path = document.createElementNS(ns, "path");
-  path.setAttribute("d", GLYPHS[kind]);
-  svg.append(path);
+  // Le haut-parleur en trois morceaux (corps + deux ondes) : le design Studio
+  // allume les ondes selon le volume (island.css, data-level sur le pilier).
+  const parts = kind === "speakers" ? GLYPHS.speakers.split(/(?=M16 |M18\.5 )/) : [GLYPHS[kind]];
+  parts.forEach((d, i) => {
+    const path = document.createElementNS(ns, "path");
+    path.setAttribute("d", d);
+    if (i > 0) path.setAttribute("class", `wave w${i}`);
+    svg.append(path);
+  });
   return svg;
 }
 
@@ -184,6 +190,8 @@ function devicePillar(api: ModuleApi, device: DeviceId, onState: (level: Level |
   const paint = (level: Level) => {
     p.show(level.volume, level.muted ? "coupé" : `${level.volume} %`);
     p.pill.classList.toggle("muted-dev", level.muted);
+    // 0 = aucune onde, 1 = une, 2 = les deux (design Studio).
+    p.pill.dataset.level = level.muted || level.volume === 0 ? "0" : level.volume < 50 ? "1" : "2";
     p.iconBox.replaceChildren(glyph(level.muted ? off : device));
     onState(level);
   };

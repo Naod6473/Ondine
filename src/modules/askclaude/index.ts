@@ -158,7 +158,12 @@ export const askclaude: IslandModule = {
             el(
               "div",
               { class: "btn-row" },
-              el("button", { class: "btn small primary", disabled: state.busy || !hasKey, onclick: send }, state.busy ? "Claude réfléchit…" : "Envoyer à Claude"),
+              el(
+                "button",
+                // « thinking » : le design Studio fait respirer le bouton pendant l'attente.
+                { class: `btn small primary ${state.busy ? "thinking" : ""}`, disabled: state.busy || !hasKey, onclick: send },
+                state.busy ? "Claude réfléchit…" : "Envoyer à Claude",
+              ),
               el(
                 "button",
                 {

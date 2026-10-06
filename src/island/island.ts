@@ -6,7 +6,7 @@
 //   island.ts (ici)   dessine l'état, écoute la souris, le clavier, le glisser-déposer
 //   Rust (island/)    place la fenêtre, gère les clics traversants, lit la souris
 
-import { popIn, setStudio, staggerIn, studioOn, tabOut, jellyButtons, watchNumbers } from "./studio";
+import { flyIcon, jellyButtons, popIn, setStudio, spotlight, staggerIn, studioOn, tabOut, watchContent } from "./studio";
 import { Bridge, IS_TAURI, onDragDrop, onTauriEvent, type DragDropEvent } from "../core/bridge";
 import type { Bus } from "../core/bus";
 import { logger } from "../core/log";
@@ -149,9 +149,11 @@ export class Island {
     this.applySettings(settingsStore.current);
     this.wireInputs();
     this.wireUndo();
-    // Design « Studio » : chiffres qui roulent et boutons en gélatine (inactifs en Classique).
-    watchNumbers(this.content);
+    // Design « Studio » : chiffres qui roulent, listes qui glissent, boutons en
+    // gélatine, reflet sous la souris (rien de tout ça en Classique).
+    watchContent(this.content);
     jellyButtons(this.content);
+    spotlight(this.shell);
     this.wirePrivacy();
     // Bouton « Faire venir Ondine » des réglages.
     this.bus.on("mascot.peek-now", () => {
@@ -747,6 +749,7 @@ export class Island {
     // Les onglets : seul l'actif garde son nom (la largeur s'anime en CSS).
     for (const [tabId, button] of ui.tabs) button.classList.toggle("active", tabId === id);
     ui.pill.moveTo(ui.tabs.get(id)!);
+    flyIcon(ui.tabs.get(id)!, ui.stage);
 
     // Le contenu : on démonte l'ancien module, mais on garde son dessin le
     // temps qu'il s'efface.
@@ -838,7 +841,11 @@ export class Island {
     return el(
       "div",
       // Plusieurs boutons (une question à choix) : ils passent sur leur propre ligne.
-      { class: `notif ${big ? "big" : ""} ${(n.actions?.length ?? 0) > 1 ? "many" : ""} prio-${n.priority}` },
+      {
+        class: `notif ${big ? "big" : ""} ${(n.actions?.length ?? 0) > 1 ? "many" : ""} prio-${n.priority}`,
+        // Combien attendent derrière (design Studio : l'icône s'empile, voir island.css).
+        "data-more": String(Math.min(this.notifications.waiting(), 3)),
+      },
       el("span", { class: "notif-icon" }, icon(n.icon ?? "•")),
       el("div", { class: "notif-text" }, el("div", { class: "notif-title" }, n.title), n.body ? el("div", { class: "notif-body" }, n.body) : null),
       actions,

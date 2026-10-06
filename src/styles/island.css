@@ -3061,8 +3061,126 @@ body.presenting .island[data-state="hidden"] {
   transform: translateY(-1px) scale(1.04);
 }
 
+/* Le reflet qui suit la souris : une lueur ronde sous le curseur (studio.ts
+   pose --mx et --my). --spot est déclaré pour pouvoir s'allumer en fondu. */
+@property --spot {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+.motion-studio .island {
+  background-image: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, calc(var(--spot) * 0.07)), transparent 70%);
+  transition-property: width, height, border-radius, padding, --spot;
+  transition-duration: var(--speed), var(--speed), var(--speed), var(--speed), 400ms;
+  transition-timing-function: var(--ease);
+}
+.motion-studio .island:hover {
+  --spot: 1;
+}
+
+/* Minuteur dans la mini-île : la barre se replie en un petit anneau qui se vide. */
+.motion-studio .timer-compact-bar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: conic-gradient(var(--accent) calc(var(--p, 0) * 1turn), rgba(255, 255, 255, 0.14) 0);
+  mask: radial-gradient(circle, transparent 0 5.5px, #000 6px);
+  -webkit-mask: radial-gradient(circle, transparent 0 5.5px, #000 6px);
+  animation: studio-ring 700ms var(--ease) both;
+}
+.motion-studio .timer-compact-bar i {
+  display: none;
+}
+@keyframes studio-ring {
+  from {
+    width: 70px;
+    height: 4px;
+    border-radius: 2px;
+  }
+}
+
+/* Musique : la barre de progression s'épaissit au survol. */
+.motion-studio .media-bar {
+  transition: height 300ms var(--ease), border-radius 300ms var(--ease);
+}
+.motion-studio .media-progress:hover .media-bar {
+  height: 9px;
+  border-radius: 5px;
+}
+
+/* Contrôles : les ondes du haut-parleur suivent le volume. */
+.motion-studio .ctl-pill .wave {
+  transform-box: fill-box;
+  transform-origin: left center;
+  transition:
+    opacity 300ms ease,
+    transform 420ms var(--ease);
+}
+.motion-studio .ctl-pill[data-level="0"] .wave,
+.motion-studio .ctl-pill[data-level="1"] .w2 {
+  opacity: 0;
+  transform: scale(0.4);
+}
+
+/* Notifications empilées : l'icône montre des cartes derrière elle, une par
+   notification en attente ; elles s'écartent au survol. */
+.motion-studio .notif-icon {
+  transition: box-shadow 360ms var(--ease);
+}
+.motion-studio .notif[data-more="1"] .notif-icon {
+  box-shadow: 4px -3px 0 -1px rgba(255, 255, 255, 0.28);
+}
+.motion-studio .notif[data-more="2"] .notif-icon {
+  box-shadow:
+    4px -3px 0 -1px rgba(255, 255, 255, 0.28),
+    8px -6px 0 -2px rgba(255, 255, 255, 0.16);
+}
+.motion-studio .notif[data-more="3"] .notif-icon {
+  box-shadow:
+    4px -3px 0 -1px rgba(255, 255, 255, 0.28),
+    8px -6px 0 -2px rgba(255, 255, 255, 0.16),
+    12px -9px 0 -3px rgba(255, 255, 255, 0.09);
+}
+.motion-studio .notif[data-more]:hover .notif-icon {
+  box-shadow:
+    7px -4px 0 -1px rgba(255, 255, 255, 0.28),
+    14px -8px 0 -2px rgba(255, 255, 255, 0.16),
+    21px -12px 0 -3px rgba(255, 255, 255, 0.09);
+}
+.motion-studio .notif[data-more="0"] .notif-icon {
+  box-shadow: none;
+}
+
+/* « Demander à Claude » : le bouton respire pendant que Claude réfléchit,
+   puis la réponse arrive floue et devient nette. */
+.motion-studio .btn.thinking {
+  animation: studio-breathe 1.6s ease-in-out infinite;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent);
+}
+@keyframes studio-breathe {
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 0%, transparent);
+  }
+}
+.motion-studio .ask-answer {
+  animation: studio-in 640ms cubic-bezier(0.34, 1.4, 0.5, 1) both;
+}
+@keyframes studio-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+    filter: blur(10px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .motion-studio .btn:hover {
     transform: none;
+  }
+  .motion-studio .btn.thinking,
+  .motion-studio .ask-answer,
+  .motion-studio .timer-compact-bar {
+    animation: none;
   }
 }

@@ -277,6 +277,8 @@ export const timerModule: IslandModule = {
         }
         line.textContent = `${icon} ${text}`;
         (bar.firstChild as HTMLElement).style.transform = `scaleX(${fraction})`;
+        // Le design Studio dessine un petit anneau à la place de la barre (island.css).
+        bar.style.setProperty("--p", String(fraction));
         frame = requestAnimationFrame(draw);
       };
       draw();
