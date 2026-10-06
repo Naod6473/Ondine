@@ -9,6 +9,8 @@ export interface Settings {
     logLevel: "error" | "warn" | "info" | "debug";
     /** Langue de l'interface : "auto" (installateur, sinon Windows), "fr" ou "en". */
     language: "auto" | "fr" | "en";
+    /** Vrai une fois le mot de bienvenue montré (premier démarrage). */
+    welcomed: boolean;
   };
   island: {
     /** Replier l'île quand la souris n'est plus dessus depuis ce nombre de secondes. */
@@ -51,7 +53,7 @@ export interface Settings {
 export function defaultSettings(): Settings {
   return {
     version: 2,
-    general: { screen: "primary", logLevel: "info", language: "auto" },
+    general: { screen: "primary", logLevel: "info", language: "auto", welcomed: false },
     island: {
       collapseSecs: 1.5,
       notificationSecs: 6,

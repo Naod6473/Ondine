@@ -9,7 +9,7 @@ import { errorText, logger } from "./core/log";
 import { ModuleRegistry } from "./core/module-registry";
 import { NotificationQueue } from "./core/notifications";
 import { settingsStore } from "./core/settings-store";
-import { startI18n } from "./core/i18n";
+import { currentLang, startI18n } from "./core/i18n";
 import { Island } from "./island/island";
 import { ALL_MODULES } from "./modules";
 
@@ -45,7 +45,41 @@ async function start() {
     });
   }
   bus.emit("app.ready", { version: boot?.version ?? "dev" });
+  // Premier démarrage (dans l'appli, pas dans le navigateur) : un mot de bienvenue.
+  if (boot && !settingsStore.current.general.welcomed) welcome(bus, notifications);
   log.info(`île prête (${boot?.version ?? "navigateur"})`);
+}
+
+/**
+ * Le mot de bienvenue du premier démarrage : où vit l'île, comment l'ouvrir, et
+ * le choix de la langue. Montré une seule fois (réglage general.welcomed).
+ */
+function welcome(bus: Bus, notifications: NotificationQueue) {
+  const other = currentLang() === "fr" ? "en" : "fr";
+  void settingsStore.update((d) => {
+    d.general.welcomed = true;
+  });
+  bus.emit("mascot.emote", { emotion: "success" });
+  notifications.push({
+    moduleId: "island",
+    title: "Bonjour, je suis Ondine 👋",
+    body: `Je vis en haut de l'écran : passe la souris tout en haut, ou ${settingsStore.current.island.hotkey || "Ctrl+Alt+O"}. Mon icône est près de l'horloge (clic droit : Réglages, Quitter).`,
+    icon: "💧",
+    priority: "high",
+    sticky: true,
+    key: "welcome",
+    actions: [
+      {
+        label: other === "en" ? "English" : "Français",
+        run: () =>
+          settingsStore.update((d) => {
+            d.general.language = other;
+          }),
+      },
+      { label: "Réglages", run: () => void Bridge.openSettingsWindow() },
+      { label: "C'est parti", run: () => undefined },
+    ],
+  });
 }
 
 void start();

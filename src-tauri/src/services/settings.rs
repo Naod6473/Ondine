@@ -40,6 +40,8 @@ pub struct General {
     /// La langue de l'interface : "auto" (celle choisie à l'installation, sinon
     /// celle de Windows), "fr" ou "en".
     pub language: String,
+    /// Vrai une fois le petit mot de bienvenue montré (premier démarrage).
+    pub welcomed: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -117,7 +119,7 @@ impl Default for Settings {
 
 impl Default for General {
     fn default() -> Self {
-        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into() }
+        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into(), welcomed: false }
     }
 }
 

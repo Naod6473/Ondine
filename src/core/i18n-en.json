@@ -829,7 +829,11 @@
 "Ouvrir le dossier du journal": "Open the log folder",
 "Langue": "Language",
 "Automatique": "Automatic",
-"Automatique : la langue choisie à l'installation, sinon celle de Windows. Les fenêtres se rechargent.": "Automatic: the language chosen during installation, otherwise Windows' language. Windows reload."
+"Automatique : la langue choisie à l'installation, sinon celle de Windows. Les fenêtres se rechargent.": "Automatic: the language chosen during installation, otherwise Windows' language. Windows reload.",
+"Apparence": "Appearance",
+"Onglets": "Tabs",
+"Mascotte": "Mascot",
+"Bonjour, je suis Ondine 👋": "Hi, I'm Ondine 👋"
 },
 "patterns": [
 [
@@ -1699,6 +1703,10 @@
 [
 "^(.+?)\\ créé$",
 "$1 created"
+],
+[
+"^Je vis en haut de l'écran : passe la souris tout en haut, ou (.+)\\. Mon icône est près de l'horloge \\(clic droit : Réglages, Quitter\\)\\.$",
+"I live at the top of the screen: move the mouse to the very top, or press $1. My icon is next to the clock (right-click: Settings, Quit)."
 ]
 ]
 }
