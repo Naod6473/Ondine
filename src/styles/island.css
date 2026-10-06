@@ -2232,15 +2232,16 @@ body {
   backdrop-filter: blur(18px) saturate(160%);
 }
 
-/* À gauche : les pastilles rondes, deux par ligne. */
+/* À gauche : les pastilles rondes, trois par ligne (deux lignes : tout
+   tient dans la hauteur de la vue, même avec « Épingler »). */
 .ctl-toggles {
   flex: none;
   display: grid;
-  grid-template-columns: repeat(2, 66px);
+  grid-template-columns: repeat(3, 58px);
   align-content: center;
   justify-content: center;
-  gap: 8px 10px;
-  padding: 10px 12px;
+  gap: 10px 6px;
+  padding: 10px;
 }
 .ctl-toggle {
   display: flex;
@@ -2256,15 +2257,15 @@ body {
   cursor: pointer;
 }
 .ctl-toggle-name {
-  max-width: 66px;
+  max-width: 58px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .ctl-dot {
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: flex;
   background: rgba(255, 255, 255, 0.1);
@@ -2278,8 +2279,8 @@ body {
     transform 380ms var(--ease);
 }
 .ctl-dot svg {
-  width: 21px;
-  height: 21px;
+  width: 19px;
+  height: 19px;
   margin: auto;
   fill: none;
   stroke: currentColor;
