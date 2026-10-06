@@ -3,7 +3,7 @@
 
 import { Bridge, onTauriEvent } from "./bridge";
 import { defaultSettings, type Settings } from "./types";
-import type { ModuleManifest, SettingField } from "./module-types";
+import type { CalendarEntry, ModuleManifest, SettingField } from "./module-types";
 
 type Listener = (s: Settings) => void;
 
@@ -85,6 +85,22 @@ export function coerce(field: SettingField, value: unknown): unknown {
       if (!Array.isArray(value)) return [...field.default];
       const folders = value.filter((v): v is string => typeof v === "string" && v.length > 0 && v.length < 1000);
       return [...new Set(folders)].slice(0, field.max ?? 20);
+    }
+    case "calendars": {
+      // Mêmes règles que le Rust (services/ics_calendars.rs) : le reste est écarté.
+      if (!Array.isArray(value)) return [...field.default];
+      const out: CalendarEntry[] = [];
+      for (const v of value as Partial<CalendarEntry>[]) {
+        const id = typeof v?.id === "string" ? v.id : "";
+        if (!/^[a-z0-9]{1,16}$/.test(id) || out.some((c) => c.id === id)) continue;
+        if (v.kind !== "file" && v.kind !== "link") continue;
+        const path = typeof v.path === "string" ? v.path.trim() : "";
+        if (v.kind === "file" && (!path || path.length >= 1000)) continue;
+        const color = typeof v.color === "string" && /^#[0-9a-fA-F]{6}$/.test(v.color) ? v.color.toLowerCase() : "#4fb8ff";
+        const name = typeof v.name === "string" ? v.name.trim().slice(0, 60) : "";
+        out.push(v.kind === "file" ? { id, name, color, kind: "file", path } : { id, name, color, kind: "link" });
+      }
+      return out.slice(0, field.max ?? 10);
     }
   }
 }

@@ -10,11 +10,13 @@
 // - ics         : lecture des fichiers d'agenda .ics (rien n'est téléchargé)
 // - search      : recherche dans l'île (sans accents ni majuscules, classement)
 // - profiles    : les profils (Travail, Maison…) et leur changement automatique
+// - ics_calendars : la liste des calendriers de l'Agenda, sa migration, la fusion
 
 pub mod bus;
 pub mod credentials;
 pub mod files;
 pub mod ics;
+pub mod ics_calendars;
 pub mod log;
 pub mod privacy;
 pub mod settings;

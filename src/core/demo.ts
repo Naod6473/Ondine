@@ -123,21 +123,27 @@ function setPosition(ms: number) {
 }
 
 function agenda() {
-  const event = (key: string, title: string, location: string, start: number, minutes: number) => ({
+  const calendars = [
+    { id: "travail", name: "Travail", color: "#4fb8ff", kind: "link" },
+    { id: "perso", name: "Perso", color: "#ff8a65", kind: "link" },
+    { id: "f1", name: "Club de voile", color: "#7bd88f", kind: "file" },
+  ];
+  const event = (key: string, cal: number, title: string, location: string, start: number, minutes: number, link: string | null = null) => ({
     key, title, location, start, end: start + minutes * MIN, allDay: false,
+    calendar: calendars[cal].id, calendarName: calendars[cal].name, color: calendars[cal].color, link,
   });
   return {
     events: [
-      event("d1", "Point d'équipe", "Salle Océan", soon(20), 30),
-      event("d2", "Café avec Léa", "Le Petit Port", soon(90), 45),
-      event("d3", "Revue du site", "Visio", soon(180), 45),
-      event("d4", "Démo d'Ondine", "Salle Lagune", day(1, 10), 60),
-      event("d5", "Rendez-vous dentiste", "", day(2, 17, 30), 30),
+      event("d1", 0, "Point d'équipe", "Réunion Microsoft Teams", soon(20), 30, "teams"),
+      event("d2", 1, "Café avec Léa", "Le Petit Port", soon(90), 45),
+      event("d3", 0, "Revue du site", "Google Meet", soon(180), 45, "meet"),
+      event("d4", 0, "Démo d'Ondine", "Salle Lagune", day(1, 10), 60),
+      event("d6", 2, "Sortie en mer", "Port de La Rochelle", day(1, 14), 120, "web"),
+      event("d5", 1, "Rendez-vous dentiste", "", day(2, 17, 30), 30),
     ],
     errors: [],
-    files: 1,
-    online: true,
-    read: 5,
+    calendars,
+    read: 6,
     latest: null,
   };
 }

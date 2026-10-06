@@ -23,7 +23,25 @@ export type SettingField =
   /** Une liste de dossiers, choisis avec la boîte « Choisir un dossier » de Windows. */
   | { key: string; type: "folders"; label: string; help?: string; default: string[]; max?: number }
   /** Une liste de fichiers, choisis avec la boîte « Ouvrir » de Windows (filtrée par extension). */
-  | { key: string; type: "files"; label: string; help?: string; default: string[]; max?: number; extensions: string[] };
+  | { key: string; type: "files"; label: string; help?: string; default: string[]; max?: number; extensions: string[] }
+  /**
+   * Une liste de calendriers (module Agenda) : fichiers .ics ou liens iCal,
+   * chacun avec un nom et une couleur. L'adresse d'un lien n'est PAS dans les
+   * réglages : elle va dans le Gestionnaire d'identifiants (« agenda-ical-url-<id> »).
+   */
+  | { key: string; type: "calendars"; label: string; help?: string; default: CalendarEntry[]; max?: number };
+
+/** Un calendrier du module Agenda, tel que rangé dans les réglages. */
+export interface CalendarEntry {
+  /** 1 à 16 lettres minuscules ou chiffres (sert aussi à nommer la clé de son lien). */
+  id: string;
+  name: string;
+  /** « #4fb8ff » */
+  color: string;
+  kind: "file" | "link";
+  /** Le chemin du .ics (seulement pour kind = "file"). */
+  path?: string;
+}
 
 export interface ModuleManifest {
   id: string;

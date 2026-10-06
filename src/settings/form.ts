@@ -4,10 +4,11 @@
 //
 // Chaque champ devient une ligne (voir controls.ts) : interrupteur pour un
 // oui/non, − + pour un nombre, segmenté ou liste pour un choix, champ texte,
-// ou liste de dossiers / fichiers sur toute la largeur.
+// ou liste de dossiers / fichiers / calendriers sur toute la largeur.
 
-import type { SettingField } from "../core/module-types";
+import type { CalendarEntry, SettingField } from "../core/module-types";
 import { coerce } from "../core/settings-store";
+import { calendarsInput } from "./calendars-input";
 import { Bridge, IS_TAURI } from "../core/bridge";
 import { el } from "../island/dom";
 import { choice, row, stepper, toggle, wideRow } from "./controls";
@@ -47,6 +48,8 @@ export function settingsRows(fields: SettingField[], values: Record<string, unkn
         const exts = field.type === "files" ? field.extensions : [];
         return wideRow(field.label, pathsInput(field.type, exts, field.max ?? 20, list, (v) => onChange(field.key, v)), field.help);
       }
+      case "calendars":
+        return wideRow(field.label, calendarsInput(field.max ?? 10, coerce(field, current) as CalendarEntry[], (v) => onChange(field.key, v)), field.help);
     }
   });
 }

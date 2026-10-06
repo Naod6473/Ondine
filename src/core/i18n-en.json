@@ -1000,7 +1000,35 @@
 "Averses": "Showers",
 "Averses de neige": "Snow showers",
 "Orage": "Thunderstorm",
-"Orage avec grêle": "Thunderstorm with hail"
+"Orage avec grêle": "Thunderstorm with hail",
+"Tes prochains rendez-vous, venant de plusieurs calendriers : des fichiers .ics (export d'Outlook, Google Agenda, Thunderbird…) ou les adresses secrètes iCal de tes agendas en ligne, chacun avec son nom et sa couleur. Un fichier est relu dès qu'il change ; un lien est retéléchargé toutes les 15 minutes. Un clic sur un rendez-vous ouvre son lien (réunion Teams, Meet, Zoom…). Lecture seule : rien n'est envoyé, et les adresses restent dans le Gestionnaire d'identifiants.": "Your upcoming appointments from several calendars: .ics files (exported from Outlook, Google Calendar, Thunderbird…) or the secret iCal addresses of your online calendars, each with its own name and color. A file is re-read as soon as it changes; a link is re-downloaded every 15 minutes. Clicking an appointment opens its link (Teams, Meet, Zoom meeting…). Read-only: nothing is sent, and the addresses stay in the Credential Manager.",
+"Calendriers": "Calendars",
+"Ajoute un fichier .ics (relu tout seul quand il change) ou l'adresse secrète iCal d'un agenda en ligne (Google Agenda : Paramètres → ton agenda → « Adresse secrète au format iCal »). Le lien est rangé dans le Gestionnaire d'identifiants de Windows, jamais dans les réglages. Garde-le pour toi : il donne accès à tout ton agenda.": "Add an .ics file (re-read automatically when it changes) or the secret iCal address of an online calendar (Google Calendar: Settings → your calendar → “Secret address in iCal format”). The link is stored in the Windows Credential Manager, never in the settings. Keep it to yourself: it gives access to your whole calendar.",
+"Aucun calendrier.": "No calendar.",
+"＋ Fichier .ics…": "＋ .ics file…",
+"＋ Lien iCal…": "＋ iCal link…",
+"Lien iCal": "iCal link",
+"✓ Lien enregistré": "✓ Link saved",
+"Aucun lien": "No link",
+"Changer le lien": "Change the link",
+"Retirer ce calendrier": "Remove this calendar",
+"Nom du calendrier": "Calendar name",
+"Nom (ex. : Travail)": "Name (e.g. Work)",
+"Lien enregistré : l'agenda sera relu dans quelques secondes.": "Link saved: the calendar will be re-read in a few seconds.",
+"Calendrier ajouté.": "Calendar added.",
+"Ajouter": "Add",
+"Dans les réglages du module Agenda, ajoute l'adresse secrète iCal de ton agenda en ligne (Google Agenda, Outlook…), toujours à jour, ou un fichier .ics exporté. Tu peux en mettre plusieurs, chacun avec sa couleur.": "In the Calendar module settings, add the secret iCal address of your online calendar (Google Calendar, Outlook…), always up to date, or an exported .ics file. You can add several, each with its own color.",
+"Rejoindre la réunion Teams": "Join the Teams meeting",
+"Rejoindre la réunion Google Meet": "Join the Google Meet meeting",
+"Rejoindre la réunion Zoom": "Join the Zoom meeting",
+"Rejoindre la réunion Webex": "Join the Webex meeting",
+"Ouvrir le lien du rendez-vous": "Open the appointment's link",
+"Rejoindre": "Join",
+"Relire tous les calendriers": "Re-read all calendars",
+"1 calendrier": "1 calendar",
+"ce rendez-vous n'a pas de lien": "this appointment has no link",
+"lien refusé : seuls les liens http(s) s'ouvrent": "link refused: only http(s) links are opened",
+"aucun lien enregistré : ajoute-le dans les réglages du module Agenda": "no link saved: add it in the Calendar module settings"
 },
 "patterns": [
 [
@@ -1930,6 +1958,18 @@
 [
 "^(.*?)vent\\ (\\d+)\\ (km/h|mph)\\ ·\\ à\\ (\\d\\d:\\d\\d)$",
 "$1wind $2 $3 · at $4"
+],
+[
+"^Couleur de (.+)$",
+"Color of $1"
+],
+[
+"^lien non ouvert : (.+)$",
+"link not opened: $1"
+],
+[
+"^(.+) : aucun lien enregistré : ajoute-le dans les réglages du module Agenda$",
+"$1: no link saved: add it in the Calendar module settings"
 ]
 ]
 }
