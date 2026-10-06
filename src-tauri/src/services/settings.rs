@@ -42,6 +42,9 @@ pub struct General {
     pub language: String,
     /// Vrai une fois le petit mot de bienvenue montré (premier démarrage).
     pub welcomed: bool,
+    /// Mode démo : l'île montre de fausses données (captures d'écran, vidéo).
+    /// Tout se passe dans l'interface ; le Rust ne fait que garder le choix.
+    pub demo: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -130,7 +133,7 @@ impl Default for Settings {
 
 impl Default for General {
     fn default() -> Self {
-        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into(), welcomed: false }
+        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into(), welcomed: false, demo: false }
     }
 }
 

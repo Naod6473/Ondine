@@ -840,7 +840,22 @@
 "Couleur : les icônes dessinées pour Ondine. Épurées : au trait, sobres, qui prennent la couleur du texte (Phosphor, licence MIT).": "Color: the icons drawn for Ondine. Minimal: clean line icons that take the text colour (Phosphor, MIT licence).",
 "Couleur": "Color",
 "Toujours en mini": "Always mini",
-"L'île reste en petite pilule au lieu de disparaître. Elle se cache seulement en mode présentation.": "The island stays as a small pill instead of disappearing. It only hides in presentation mode."
+"L'île reste en petite pilule au lieu de disparaître. Elle se cache seulement en mode présentation.": "The island stays as a small pill instead of disappearing. It only hides in presentation mode.",
+"Captures d'écran": "Screenshots",
+"Mode démo": "Demo mode",
+"L'île montre de fausses données (musique, agenda, notes, presse-papiers…) au lieu des tiennes. Aucune action n'est faite pour de vrai.": "The island shows fake data (music, calendar, notes, clipboard…) instead of yours. No action is really performed.",
+"Jouer une scène": "Play a scene",
+"Claude a fini": "Claude is done",
+"Demande d'autorisation": "Permission request",
+"Fichier téléchargé": "File downloaded",
+"Morceau suivant": "Next track",
+"La notification arrive dans l'île : lance l'enregistrement avant de cliquer.": "The notification shows up in the island: start recording before you click.",
+"Pense à éteindre le mode démo après tes captures.": "Remember to turn demo mode off after your screenshots.",
+"Animations": "Animations",
+"Style des animations": "Animation style",
+"Classique": "Classic",
+"Studio": "Studio",
+"Classique : sobre. Studio : façon vidéo de présentation, les éléments arrivent flous puis nets l'un après l'autre, les chiffres roulent, les boutons rebondissent comme de la gélatine.": "Classic: understated. Studio: like a product video, items arrive blurred then sharp one after another, numbers roll, buttons bounce like jelly."
 },
 "patterns": [
 [
@@ -1715,10 +1730,5 @@
 "^Je vis en haut de l'écran : passe la souris tout en haut, ou (.+)\\. Mon icône est près de l'horloge \\(clic droit : Réglages, Quitter\\)\\.$",
 "I live at the top of the screen: move the mouse to the very top, or press $1. My icon is next to the clock (right-click: Settings, Quit)."
 ]
-],
-"Animations": "Animations",
-"Style des animations": "Animation style",
-"Classique": "Classic",
-"Studio": "Studio",
-"Classique : sobre. Studio : façon vidéo de présentation, les éléments arrivent flous puis nets l'un après l'autre, les chiffres roulent, les boutons rebondissent comme de la gélatine.": "Classic: understated. Studio: like a product video, items arrive blurred then sharp one after another, numbers roll, buttons bounce like jelly."
+]
 }

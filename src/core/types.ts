@@ -11,6 +11,8 @@ export interface Settings {
     language: "auto" | "fr" | "en";
     /** Vrai une fois le mot de bienvenue montré (premier démarrage). */
     welcomed: boolean;
+    /** Mode démo : de fausses données pour les captures (src/core/demo.ts). */
+    demo?: boolean;
   };
   island: {
     /** Replier l'île quand la souris n'est plus dessus depuis ce nombre de secondes. */
@@ -59,7 +61,7 @@ export interface Settings {
 export function defaultSettings(): Settings {
   return {
     version: 2,
-    general: { screen: "primary", logLevel: "info", language: "auto", welcomed: false },
+    general: { screen: "primary", logLevel: "info", language: "auto", welcomed: false, demo: false },
     island: {
       collapseSecs: 1.5,
       notificationSecs: 6,
