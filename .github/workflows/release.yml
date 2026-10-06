@@ -3,10 +3,12 @@
 # Comment s'en servir :
 #   1. mettre le même numéro dans package.json, src-tauri/tauri.conf.json et
 #      src-tauri/Cargo.toml (ex. 1.0.0-beta.1) ;
-#   2. pousser une étiquette : git tag v1.0.0-beta.1 ; git push origin v1.0.0-beta.1
-#      (ou lancer « release » à la main depuis l'onglet Actions) ;
+#   2. lancer « release » à la main depuis l'onglet Actions (Run workflow) ;
 #   3. GitHub construit l'installateur (*-setup.exe) et crée un BROUILLON de
 #      version : rien n'est public tant que tu ne cliques pas « Publish ».
+#      C'est « Publish » qui crée l'étiquette v1.0.0-… : le workflow ne se
+#      déclenche donc PAS sur les étiquettes, sinon chaque publication
+#      relançait une construction et créait un brouillon en double.
 #
 # Mises à jour automatiques : l'installateur est signé avec la clé privée des
 # mises à jour (secrets TAURI_SIGNING_PRIVATE_KEY et
@@ -17,8 +19,6 @@ name: release
 
 on:
   workflow_dispatch:
-  push:
-    tags: ["v*"]
 
 jobs:
   installateur:

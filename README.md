@@ -50,6 +50,9 @@ styles d'animation, l'île sur le bord de votre choix, le français et l'anglais
 ### Installer
 
 Téléchargez l'installateur dans les [versions publiées](https://github.com/Naod6473/Ondine/releases).
+Tant qu'il n'est pas signé, Windows peut afficher « Windows a protégé votre
+ordinateur » : cliquez sur **Informations complémentaires**, puis **Exécuter quand
+même**. L'installateur est construit par GitHub Actions à partir de ce dépôt.
 
 ### Contribuer
 
@@ -77,6 +80,8 @@ what happens. Click: the island opens onto your tools.
   good: the Recycle Bin, with undo.
 
 Download: [releases](https://github.com/Naod6473/Ondine/releases). French and English.
+Until the installer is code-signed, Windows may show "Windows protected your PC":
+click **More info**, then **Run anyway**. It is built by GitHub Actions from this repository.
 
 ---
 
