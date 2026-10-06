@@ -38,7 +38,6 @@
 "agenda en ligne": "online calendar",
 "Toute la journée": "All day",
 "Demain : aucun rendez-vous": "Tomorrow: no appointments",
-"${first.allDay ? \"Toute la journée\" :": "${first.allDay ? \"All day\" :",
 "Bonne soirée !": "Have a good evening!",
 "En cours": "Ongoing",
 "Aucun agenda pour l'instant": "No calendar yet",
@@ -129,7 +128,6 @@
 "Enregistre l'image du presse-papiers et la pose sur l'étagère": "Saves the Clipboard image and puts it on the Shelf",
 "Montre la dernière capture enregistrée dans l'Explorateur": "Shows the last saved capture in Explorer",
 "Le texte lu s'affichera ici. Tout se passe sur ton ordinateur : l'image n'est envoyée nulle part.": "The text read will show up here. Everything happens on your computer: the image is sent nowhere.",
-"Dernier texte lu${lastText.language ?": "Last text read${lastText.language ?",
 "Copier tout le texte": "Copy all text",
 "Copié": "Copied",
 "Copier en MAJUSCULES": "Copy in UPPERCASE",
@@ -173,7 +171,6 @@
 "Choisir la sortie audio": "Choose the audio output",
 "Aucune sortie audio": "No audio output",
 "Écran": "Screen",
-"« ${r.title.length > 40 ?": "\"${r.title.length > 40 ?",
 ": r.title} »": ": r.title}\"",
 "La fenêtre": "The window",
 "Mode avion : tout est coupé": "Airplane mode: everything is off",
@@ -287,11 +284,9 @@
 "Copier le chemin": "Copy path",
 "Retour à l'étagère": "Back to the Shelf",
 "Qualité JPEG": "JPEG quality",
-"Créer ${n > 1 ?": "Create ${n > 1 ?",
 ": \"l'image\"}": ": \"the image\"}",
 "Largeur max.": "Max width",
 "Les originaux ne bougent pas : les nouvelles images sont créées à côté (ex. « photo-1920.jpg »). Annulable quelques secondes.": "Originals stay untouched: new images are created next to them (e.g. “photo-1920.jpg”). Can be undone for a few seconds.",
-"Renommer ${n > 1 ?": "Rename ${n > 1 ?",
 ": \"le fichier\"}": ": \"the file\"}",
 "Renommer (annulable quelques secondes)": "Rename (can be undone for a few seconds)",
 "Nouveau nom": "New name",
@@ -871,7 +866,36 @@
 "Téléchargement… Ondine va se fermer puis revenir.": "Downloading… Ondine will close and come back.",
 "Téléchargement de la mise à jour…": "Downloading the update…",
 "La mise à jour n'a pas pu s'installer": "The update couldn't be installed",
-"Installer maintenant ? Ondine se ferme quelques secondes puis revient toute seule.": "Install now? Ondine closes for a few seconds, then comes back on its own."
+"Installer maintenant ? Ondine se ferme quelques secondes puis revient toute seule.": "Install now? Ondine closes for a few seconds, then comes back on its own.",
+"Fermer": "Close",
+"Texte…": "Text…",
+"Essayer": "Try",
+"Retour": "Back",
+"Explorateur": "File Explorer",
+"Rechercher…": "Search…",
+"Copier": "Copy",
+"Vider": "Clear",
+"Longueur": "Length",
+"Supprimer": "Delete",
+"Enregistrer": "Save",
+"Annuler": "Cancel",
+"Modifier": "Edit",
+"introuvable": "missing",
+"Un dossier est créé dans Documents\\Ondine\\Tickets avec ta description, les infos du poste et l'image. Rien n'est envoyé.": "A folder is created in Documents\\Ondine\\Tickets with your description, the computer's details and the image. Nothing is sent.",
+"Disques": "Disks",
+"Processeur": "Processor",
+"Ouvrir": "Open",
+"Monter": "Move up",
+"Descendre": "Move down",
+"Retirer": "Remove",
+"C:\\Users\\moi\\Documents\\Privé": "C:\\Users\\me\\Documents\\Private",
+"Exclure": "Exclude",
+"Choisir…": "Choose…",
+"Quand…": "When…",
+"Alors…": "Then…",
+"Dernier texte lu": "Last text read",
+"Créer l'image": "Create the image",
+"Renommer le fichier": "Rename the file"
 },
 "patterns": [
 [
@@ -1087,10 +1111,6 @@
 "the shortcut $1 was refused: $2"
 ],
 [
-"^le\\ raccourci\\ (.+?)\\ est\\ refusé\\ :\\ (.+?)$",
-"the shortcut $1 was refused: $2"
-],
-[
 "^écriture\\ du\\ ticket\\ impossible\\ :\\ (.+?)$",
 "unable to write the ticket: $1"
 ],
@@ -1181,10 +1201,6 @@
 [
 "^Il\\ reste\\ (.+?)\\ Go\\ \\((.+?)\\ %\\)\\.$",
 "$1 GB left ($2%)."
-],
-[
-"^Lancer\\ un\\ minuteur\\ de\\ (.+?)\\ min$",
-"Start a $1 min timer"
 ],
 [
 "^Texte\\ copié\\ \\((.+?)\\ caractères\\)$",
@@ -1719,10 +1735,6 @@
 "Open $1"
 ],
 [
-"^Ouvrir\\ (.+?)$",
-"Open $1"
-],
-[
 "^Monter\\ (.+?)$",
 "Move $1 up"
 ],
@@ -1757,6 +1769,26 @@
 [
 "^La mise à jour a échoué : (.*)$",
 "The update failed: $1"
+],
+[
+"^Toute la journée : (.+)$",
+"All day: $1"
+],
+[
+"^Le premier à (.+?) : (.+)$",
+"The first one at $1: $2"
+],
+[
+"^Dernier texte lu \\((.+?)\\)$",
+"Last text read ($1)"
+],
+[
+"^Créer (\\d+) images$",
+"Create $1 images"
+],
+[
+"^Renommer les (\\d+) fichiers$",
+"Rename the $1 files"
 ]
 ]
 }

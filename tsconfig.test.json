@@ -1,0 +1,17 @@
+{
+  // Pour `npm test` (scripts/run-tests.mjs) : compile les tests de tests/front
+  // et le code qu'ils importent en CommonJS, dans un dossier temporaire, pour
+  // que Node les lance tels quels (les imports sans extension de src/ ne
+  // marchent pas directement avec Node).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node10",
+    "noEmit": false,
+    "outDir": ".tests-build",
+    "rootDir": ".",
+    "esModuleInterop": true,
+    "types": ["vite/client"]
+  },
+  "include": ["tests/front"]
+}

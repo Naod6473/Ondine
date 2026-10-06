@@ -35,6 +35,9 @@ jobs:
       - name: Vérifier l'interface (TypeScript + Vite)
         run: npm run build
 
+      - name: Tests de l'interface (machine à états, réglages, traductions)
+        run: npm test
+
       - name: Tests Rust
         working-directory: src-tauri
         run: cargo test --locked

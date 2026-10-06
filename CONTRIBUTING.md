@@ -28,6 +28,7 @@ sur http://localhost:1420/settings.html.
 
 ```powershell
 npm run typecheck                       # TypeScript
+npm test                                # tests de l'interface (tests/front : île, réglages, traductions)
 cd src-tauri; cargo test; cd ..         # tests Rust (réglages, bus, journal, chemins, modules)
 ```
 
