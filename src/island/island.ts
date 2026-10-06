@@ -51,6 +51,26 @@ function timingsFrom(s: Settings) {
   };
 }
 
+/** La zone du contenu de l'onglet ouvert (role tabpanel). */
+const PANEL_ID = "island-tabpanel";
+
+/**
+ * Fait de `body` le panneau de l'onglet `tabId` (ou le retire : l'ancien
+ * contenu qui s'efface). Tabulable : on peut y arriver au clavier même si le
+ * module n'y a mis aucun bouton.
+ */
+function asPanel(body: HTMLElement, tabId: string | null) {
+  if (!tabId) {
+    for (const a of ["id", "role", "aria-labelledby", "tabindex"]) body.removeAttribute(a);
+    body.setAttribute("aria-hidden", "true");
+    return;
+  }
+  body.id = PANEL_ID;
+  body.setAttribute("role", "tabpanel");
+  body.setAttribute("aria-labelledby", `tab-${tabId}`);
+  body.tabIndex = 0;
+}
+
 export class Island {
   private fsm: IslandStateMachine;
   private shell = el("div", { class: "island", "data-state": "hidden" });
@@ -86,6 +106,8 @@ export class Island {
   private lastPeek = Date.now();
   /** Une présentation ou une appli plein écran est en cours : l'île se fait oublier. */
   private presenting = false;
+  /** Ouverte au clavier (raccourci) : le focus va sur l'onglet actif. */
+  private focusTabsOnOpen = false;
 
   constructor(
     private readonly root: HTMLElement,
@@ -155,6 +177,7 @@ export class Island {
     jellyButtons(this.content);
     spotlight(this.shell);
     this.wirePrivacy();
+    this.wireFocus();
     // Bouton « Faire venir Ondine » des réglages.
     this.bus.on("mascot.peek-now", () => {
       if (this.fsm.state === "hidden") this.hanger.show();
@@ -315,7 +338,12 @@ export class Island {
     void onDragDrop((e) => this.onDrag(e));
     void onTauriEvent<string>("tray", (id) => id === "open" && this.fsm.open());
     // Le raccourci clavier de l'île (Ctrl+Alt+O par défaut) : ouvre, ou referme.
-    void onTauriEvent("hotkey", () => (this.fsm.state === "expanded" ? this.fsm.close() : this.fsm.open()));
+    void onTauriEvent("hotkey", () => {
+      if (this.fsm.state === "expanded") return this.fsm.close();
+      // Ouverte au clavier : on continue au clavier (Tab, flèches, Entrée).
+      this.focusTabsOnOpen = true;
+      this.fsm.open();
+    });
     void onTauriEvent<string>("hotkey-error", (text) => this.notifications.push({ moduleId: "island", title: text, icon: "⌨️", priority: "normal" }));
     void onTauriEvent("screen-changed", () => void Bridge.islandReposition());
     // Fin d'un déplacement : l'île s'est posée sur un bord.
@@ -394,8 +422,33 @@ export class Island {
       const n = this.notifications.waiting();
       this.notifications.pause(false);
       this.fsm.restore();
-      if (n > 1) this.notifications.push({ moduleId: "island", title: `${n} notifications pendant ta présentation`, icon: "🎬", priority: "low", key: "presentation-summary" });
+      // (Une concentration encore en cours fera le résumé à sa fin.)
+      if (n > 1 && !this.notifications.isPaused()) this.notifications.push({ moduleId: "island", title: `${n} notifications pendant ta présentation`, icon: "🎬", priority: "low", key: "presentation-summary" });
     }
+  }
+
+  /**
+   * Mode concentration : pendant une séance de travail Pomodoro (si le réglage
+   * du Minuteur est activé), le Minuteur publie "timer.focus" {on: true} et les
+   * notifications attendent, sauf les « critical » et celles du Minuteur
+   * lui-même (la fin de séance doit s'afficher). À la pause, à l'arrêt ou à la
+   * fin de la séance ({on: false}), elles arrivent, avec un petit résumé.
+   */
+  private wireFocus() {
+    this.bus.on("timer.focus", (msg) => {
+      const on = !!(msg.payload as { on?: boolean } | null)?.on;
+      if (on) {
+        this.notifications.pause(true, "focus", ["timer"]);
+        return;
+      }
+      if (!this.notifications.isPaused("focus")) return;
+      const n = this.notifications.waiting();
+      this.notifications.pause(false, "focus");
+      // (Une présentation encore en cours fera le résumé à sa fin.)
+      if (n > 1 && !this.notifications.isPaused()) {
+        this.notifications.push({ moduleId: "island", title: `${n} notifications pendant ta concentration`, icon: "🍅", priority: "low", key: "focus-summary" });
+      }
+    });
   }
 
   /** Ondine arrive au bord (la fenêtre doit être assez grande) ou repart. */
@@ -633,7 +686,10 @@ export class Island {
 
   private renderExpanded() {
     const tabs = this.orderedTabs();
-    const header = el("div", { class: "tabs" });
+    // Accessibilité : une liste d'onglets (role tablist/tab/tabpanel). Au
+    // clavier, Tab entre dans la rangée sur l'onglet actif, les flèches
+    // passent d'un onglet à l'autre, Entrée ou Espace l'ouvre (voir tabKeys).
+    const header = el("div", { class: "tabs", role: "tablist", "aria-label": "Modules" });
     // Au-delà de 4 onglets, la place manque : les onglets inactifs ne montrent
     // que leur icône (le nom apparaît au survol), l'onglet actif garde son nom.
     if (tabs.length > 4) header.classList.add("icons-only");
@@ -647,8 +703,18 @@ export class Island {
       const m = t.module.manifest;
       const button = el(
         "button",
-        { class: `tab ${m.id === this.activeTab ? "active" : ""}`, "data-id": m.id, title: `${m.name} (glisser pour déplacer)`, onclick: () => this.switchTab(m.id) },
-        el("span", { class: "tab-icon" }, icon(m.icon)),
+        {
+          class: `tab ${m.id === this.activeTab ? "active" : ""}`,
+          "data-id": m.id,
+          id: `tab-${m.id}`,
+          role: "tab",
+          "aria-selected": String(m.id === this.activeTab),
+          "aria-controls": PANEL_ID,
+          tabindex: m.id === this.activeTab ? 0 : -1,
+          title: `${m.name} (glisser pour déplacer)`,
+          onclick: () => this.switchTab(m.id),
+        },
+        el("span", { class: "tab-icon", "aria-hidden": "true" }, icon(m.icon)),
         el("span", { class: "tab-label" }, m.name),
       );
       buttons.set(m.id, button);
@@ -656,9 +722,10 @@ export class Island {
     }
     header.append(
       el("span", { class: "spacer" }),
-      el("button", { class: "icon-btn", title: "Réglages", onclick: () => void Bridge.openSettingsWindow() }, "⚙"),
-      el("button", { class: "icon-btn", title: "Réduire (Échap pour fermer)", onclick: () => this.fsm.shrink() }, "▴"),
+      el("button", { class: "icon-btn", title: "Réglages", "aria-label": "Réglages", onclick: () => void Bridge.openSettingsWindow() }, "⚙"),
+      el("button", { class: "icon-btn", title: "Réduire (Échap pour fermer)", "aria-label": "Réduire", onclick: () => this.fsm.shrink() }, "▴"),
     );
+    header.addEventListener("keydown", (e) => this.tabKeys(e, header));
     const pill = new TabPill(header);
     // Glisser un onglet le déplace ; le nouvel ordre est enregistré.
     enableTabDrag(header, {
@@ -678,6 +745,7 @@ export class Island {
     // l'ancien contenu s'efface par-dessus le nouveau.
     const stage = el("div", { class: "view-stage" });
     const body = el("div", { class: "view view-expanded" });
+    asPanel(body, this.activeTab);
     stage.append(body);
     this.content.append(header, banner, stage);
     this.expandedUi = { tabs: buttons, pill, stage, body };
@@ -685,6 +753,8 @@ export class Island {
     const active = this.activeTab ? buttons.get(this.activeTab) : undefined;
     // La pastille se place une fois la mise en page faite.
     if (active) requestAnimationFrame(() => pill.jumpTo(active));
+    if (active && this.focusTabsOnOpen) active.focus();
+    this.focusTabsOnOpen = false;
 
     if (this.activeTab) this.unmountView = this.registry.mountView(this.activeTab, "expanded", body);
     else {
@@ -699,6 +769,26 @@ export class Island {
         ),
       );
     }
+  }
+
+  /**
+   * Le clavier dans la rangée d'onglets (modèle « onglets » de l'ARIA, avec
+   * activation manuelle) : ← → passent à l'onglet voisin (en boucle), Début
+   * et Fin au premier et au dernier. Le focus bouge, l'onglet ouvert ne
+   * change qu'avec Entrée ou Espace (le clic natif du bouton).
+   */
+  private tabKeys(e: KeyboardEvent, header: HTMLElement) {
+    const tabs = [...header.querySelectorAll<HTMLElement>(":scope > .tab")];
+    const from = tabs.indexOf(e.target as HTMLElement);
+    if (from < 0 || !tabs.length) return;
+    // Sur un côté de l'écran, la rangée reste horizontale : mêmes flèches.
+    const moves: Record<string, number> = { ArrowRight: from + 1, ArrowLeft: from - 1, Home: 0, End: tabs.length - 1 };
+    const next = moves[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    const target = tabs[(next + tabs.length) % tabs.length];
+    for (const t of tabs) t.tabIndex = t === target ? 0 : -1;
+    target.focus();
   }
 
   /**
@@ -740,14 +830,20 @@ export class Island {
     const direction = Math.sign(ids.indexOf(id) - ids.indexOf(this.activeTab ?? "")) || 1;
 
     // Les onglets : seul l'actif garde son nom (la largeur s'anime en CSS).
-    for (const [tabId, button] of ui.tabs) button.classList.toggle("active", tabId === id);
+    for (const [tabId, button] of ui.tabs) {
+      button.classList.toggle("active", tabId === id);
+      button.setAttribute("aria-selected", String(tabId === id));
+      button.tabIndex = tabId === id ? 0 : -1;
+    }
     ui.pill.moveTo(ui.tabs.get(id)!);
 
     // Le contenu : on démonte l'ancien module, mais on garde son dessin le
     // temps qu'il s'efface.
     this.unmountView();
     const old = ui.body;
+    asPanel(old, null);
     const body = el("div", { class: "view view-expanded" });
+    asPanel(body, id);
     ui.stage.append(body);
     ui.body = body;
     this.activeTab = id;

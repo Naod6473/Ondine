@@ -31,6 +31,8 @@ import { settingsRows } from "./form";
 import { NavPill } from "./nav-pill";
 import { startI18n } from "../core/i18n";
 import { connectRules, rulesSection } from "./rules-editor";
+import { profilesPage } from "./profiles-page";
+import { aboutGroup } from "./about";
 
 const PERMISSION_LABELS: Record<string, string> = {
   files: "Fichiers",
@@ -60,7 +62,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "⚙️",
     label: "Général",
     sub: "L'écran, le repli de l'île, les notifications et le journal.",
-    keywords: ["Langue", "Language", "Lancer avec Windows", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal"],
+    keywords: ["Langue", "Language", "Lancer avec Windows", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal", "Signaler un problème", "Ressources utilisées"],
     render: general,
   },
   {
@@ -104,6 +106,15 @@ const ISLAND_PAGES: Page[] = [
       rulesSection(main);
     },
   },
+  {
+    id: "profiles",
+    group: "L'île",
+    icon: "🧭",
+    label: "Profils",
+    sub: "Travail, Maison… : les onglets, la couleur et la mini-île d'un coup.",
+    keywords: ["Profil actif", "Changer tout seul", "Nouveau profil", "Plage horaire", "Nom du Wi-Fi", "Travail", "Maison"],
+    render: (main) => profilesPage(main, save),
+  },
 ];
 
 const SECURITY_PAGES: Page[] = [
@@ -122,7 +133,7 @@ const SECURITY_PAGES: Page[] = [
     icon: "🔑",
     label: "Identifiants",
     sub: "Rangés dans le Gestionnaire d'identifiants Windows.",
-    keywords: ["Clé API Anthropic", "Adresse iCal de ton agenda", "Google Agenda", "Gestionnaire d'identifiants"],
+    keywords: ["Clé API Anthropic", "Gestionnaire d'identifiants"],
     render: credentials,
   },
   {
@@ -505,6 +516,7 @@ function general(main: HTMLElement) {
       ],
       "Le journal reste sur ton PC (%LOCALAPPDATA%\\Ondine\\logs). Il ne contient jamais de clé ni de contenu de fichier.",
     ),
+    aboutGroup(),
     demoGroup(),
   );
 }
@@ -925,15 +937,8 @@ function privacy(main: HTMLElement) {
 }
 
 function credentials(main: HTMLElement) {
-  const keys = [
-    { key: "anthropic-api-key", label: "Clé API Anthropic", placeholder: "Coller la clé ici", help: "" },
-    {
-      key: "agenda-ical-url",
-      label: "Adresse iCal de ton agenda",
-      placeholder: "Coller l'adresse secrète iCal (https://…)",
-      help: "Google Agenda : Paramètres → ton agenda → « Adresse secrète au format iCal ». L'onglet Agenda le télécharge toutes les 15 minutes. Garde ce lien pour toi : il donne accès à tout ton agenda.",
-    },
-  ];
+  // Les liens iCal de l'Agenda (un par calendrier) se gèrent dans les réglages du module Agenda.
+  const keys = [{ key: "anthropic-api-key", label: "Clé API Anthropic", placeholder: "Coller la clé ici", help: "" }];
   for (const k of keys) {
     const status = chip("…");
     const input = el("input", { type: "password", class: "text grow", placeholder: k.placeholder, autocomplete: "off", "aria-label": k.label }) as HTMLInputElement;

@@ -6,6 +6,9 @@
 // ajoute les actions de l'île (onglets, minuteur, terminal, réglages), on
 // trie selon ce qui est tapé, et on gère le clavier : ↑ ↓ pour choisir,
 // Entrée pour ouvrir, Échap pour refermer l'île.
+//
+// « Recherche dans l'île » (island-search.ts) : sous ces résultats, une
+// section par module (notes, presse-papiers, étagère, captures).
 
 import manifest from "./manifest.json";
 import { Bridge } from "../../core/bridge";
@@ -17,6 +20,7 @@ import { agentIcon, icon } from "../../island/icon";
 import { reducedMotion } from "../../island/tab-pill";
 import { ALL_MODULES } from "..";
 import { normalize, score } from "./search";
+import { type FoundGroup, MIN_QUERY, rowsOf, searchIsland, SECTIONS } from "./island-search";
 
 /** Une entrée trouvée par le Rust. */
 interface Item {
@@ -41,10 +45,16 @@ interface Result {
   icon: string;
   tag: string;
   score: number;
+  /** Une tâche déjà faite (recherche dans l'île) : texte barré. */
+  done?: boolean;
   run: () => unknown;
 }
 
 const MAX_RESULTS = 30;
+/** Quand l'île a aussi trouvé quelque chose, on montre moins d'applis et de fichiers. */
+const MAX_WITH_ISLAND = 8;
+/** On attend un peu après la dernière frappe avant de chercher dans l'île. */
+const ISLAND_DELAY_MS = 140;
 const ICONS = { app: "📦", tool: "🛠️", recent: "📄" };
 const TAGS = { app: "Appli", tool: "Outil", recent: "Récent" };
 /** À égalité de note : d'abord l'île, puis les applis, les outils, les fichiers. */
@@ -103,6 +113,13 @@ function islandActions(api: ModuleApi, query: string): Result[] {
       await api.invoke("forget_focus"); // la console doit pouvoir passer devant
       api.emit("terminal.open", {});
       close();
+    });
+  }
+  if (settingsStore.moduleEnabled("capture")) {
+    // La pipette (module Capture) : l'île se replie, puis l'écran se fige sous une croix.
+    add("pipette", "Pipette : copier une couleur de l'écran", "💧", ["pipette", "couleur", "color picker", "hex", "rgb"], () => {
+      close();
+      api.emit("capture.pick", {});
     });
   }
   add("settings", "Réglages de l'île", "⚙️", ["parametres", "options", "preferences"], async () => {
@@ -213,11 +230,15 @@ export const launcher: IslandModule = {
       const search = el("input", {
         class: "clip-search launch-search",
         type: "search",
-        placeholder: "Une appli, un fichier, une action… (ou « 10 min »)",
+        placeholder: "Une appli, un fichier, une note, une copie… (ou « 10 min »)",
         spellcheck: "false",
         autocomplete: "off",
       }) as HTMLInputElement;
       const list = el("ul", { class: "launch-list" });
+      // La recherche dans l'île : les derniers résultats reçus, et pour quelle recherche.
+      let found: { query: string; groups: FoundGroup[] } = { query: "", groups: [] };
+      let searchTimer = 0;
+      let searchSeq = 0;
       const foot = el("div", { class: "launch-foot muted" });
       root.append(el("div", { class: "launch" }, search, list, foot));
 
@@ -227,9 +248,46 @@ export const launcher: IslandModule = {
 
       const select = (i: number) => {
         selected = Math.max(0, Math.min(current.length - 1, i));
-        list.querySelectorAll(".launch-item").forEach((n, k) => n.classList.toggle("sel", k === selected));
-        list.children[selected]?.scrollIntoView({ block: "nearest" });
+        const items = list.querySelectorAll(".launch-item");
+        items.forEach((n, k) => n.classList.toggle("sel", k === selected));
+        items[selected]?.scrollIntoView({ block: "nearest" });
       };
+
+      /** Cherche dans l'île un instant après la dernière frappe ; une réponse en retard est ignorée. */
+      const askIsland = () => {
+        window.clearTimeout(searchTimer);
+        const query = search.value.trim();
+        if (query.length < MIN_QUERY) {
+          found = { query: "", groups: [] };
+          return;
+        }
+        const seq = ++searchSeq;
+        searchTimer = window.setTimeout(async () => {
+          const groups = await searchIsland(api, query).catch(() => [] as FoundGroup[]);
+          if (seq !== searchSeq || search.value.trim() !== query) return;
+          found = { query, groups };
+          draw();
+        }, ISLAND_DELAY_MS);
+      };
+
+      /** Une ligne de résultat (bouton). */
+      const item = (r: Result, i: number) =>
+        el(
+          "li",
+          {},
+          el(
+            "button",
+            {
+              class: `launch-item${i === selected ? " sel" : ""}${r.done ? " done" : ""}`,
+              title: r.detail || r.name,
+              onclick: api.handler(() => run(r)),
+              onmousemove: () => selected !== i && select(i),
+            },
+            el("span", { class: "launch-icon" }, icon(r.icon)),
+            el("span", { class: "launch-text" }, el("b", {}, r.name), r.detail ? el("small", { class: "muted" }, r.detail) : null),
+            el("span", { class: "launch-tag" }, r.tag),
+          ),
+        );
 
       const run = async (r: Result | undefined) => {
         if (!r) return;
@@ -243,30 +301,24 @@ export const launcher: IslandModule = {
       };
 
       const draw = () => {
-        current = results(api, search.value);
+        // Les résultats de l'île ne valent que pour la recherche qui les a demandés.
+        const groups = found.query === search.value.trim() ? found.groups : [];
+        const flat = results(api, search.value).slice(0, groups.length ? MAX_WITH_ISLAND : MAX_RESULTS);
+        current = [...flat];
         selected = 0;
-        list.replaceChildren(
-          ...current.map((r, i) =>
-            el(
-              "li",
-              {},
-              el(
-                "button",
-                {
-                  class: `launch-item${i === selected ? " sel" : ""}`,
-                  title: r.detail || r.name,
-                  onclick: api.handler(() => run(r)),
-                  onmousemove: () => selected !== i && select(i),
-                },
-                el("span", { class: "launch-icon" }, icon(r.icon)),
-                el("span", { class: "launch-text" }, el("b", {}, r.name), r.detail ? el("small", { class: "muted" }, r.detail) : null),
-                el("span", { class: "launch-tag" }, r.tag),
-              ),
-            ),
-          ),
-        );
+        const rows: HTMLElement[] = flat.map((r, i) => item(r, i));
+        for (const g of groups) {
+          const section = SECTIONS[g.source];
+          rows.push(el("li", { class: "launch-section muted" }, icon(section.icon), " ", el("span", {}, section.label)));
+          for (const row of rowsOf(api, g)) {
+            const r: Result = { ...row, score: 0 };
+            rows.push(item(r, current.length));
+            current.push(r);
+          }
+        }
+        list.replaceChildren(...rows);
         if (!current.length) {
-          list.append(el("li", { class: "muted launch-empty" }, search.value.trim() ? "Rien trouvé." : "Tape le nom d'une appli, d'un fichier ou d'un onglet."));
+          list.append(el("li", { class: "muted launch-empty" }, search.value.trim() ? "Rien trouvé." : "Tape le nom d'une appli, d'un fichier, d'un onglet, ou un mot de tes notes."));
         }
         foot.textContent = listing.hotkeyError
           ? `⚠️ ${listing.hotkeyError}`
@@ -288,7 +340,10 @@ export const launcher: IslandModule = {
         first = false;
       };
 
-      search.addEventListener("input", draw);
+      search.addEventListener("input", () => {
+        draw();
+        askIsland();
+      });
       search.addEventListener(
         "keydown",
         api.handler((e: KeyboardEvent) => {
@@ -314,6 +369,7 @@ export const launcher: IslandModule = {
       search.focus();
       void load(api);
       return () => {
+        window.clearTimeout(searchTimer);
         shown = null;
       };
     },

@@ -64,3 +64,14 @@ jobs:
           # Pas « pre-release » : le bouton Télécharger du site et les mises à
           # jour pointent vers « latest », qui ignore les pre-releases.
           prerelease: false
+
+      # L'installateur est aussi gardé comme artefact de cette exécution : le
+      # workflow « installation » le reprend pour l'installer et le lancer sur
+      # une machine Windows propre (voir .github/workflows/installation.yml).
+      - name: Garder l'installateur pour le test d'installation
+        uses: actions/upload-artifact@v4
+        with:
+          name: installateur
+          path: src-tauri/target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error
+          retention-days: 30

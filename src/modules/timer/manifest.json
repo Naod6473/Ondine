@@ -14,13 +14,14 @@
       { "key": "longEvery", "type": "number", "label": "Pomodoro : pause longue toutes les … séances", "default": 4, "min": 2, "max": 10, "step": 1 },
       { "key": "autoNext", "type": "boolean", "label": "Pomodoro : enchaîner automatiquement travail et pauses", "default": true },
       { "key": "sound", "type": "boolean", "label": "Jouer un son à la fin", "default": true },
-      { "key": "showCompact", "type": "boolean", "label": "Afficher le temps dans la pilule de l'île", "default": true }
+      { "key": "showCompact", "type": "boolean", "label": "Afficher le temps dans la pilule de l'île", "default": true },
+      { "key": "focusQuiet", "type": "boolean", "label": "Mode concentration pendant le Pomodoro", "help": "Pendant une séance de travail, les notifications de l'île attendent (sauf les urgentes) ; elles arrivent à la pause, avec un résumé. Les bannières de Windows ne sont pas coupées : pour cela, lance une séance « Focus » dans l'appli Horloge de Windows 11.", "default": true }
     ]
   },
   "views": ["compact", "expanded"],
   "commands": [],
   "events": {
-    "emits": ["timer.done", "task.finished"],
+    "emits": ["timer.done", "task.finished", "timer.focus"],
     "listens": ["timer.start"]
   }
 }

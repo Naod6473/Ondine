@@ -1,26 +1,33 @@
-// Module « Agenda » : le prochain rendez-vous, lu dans un ou plusieurs
-// fichiers .ics choisis dans les réglages (export d'Outlook, Google Agenda…).
+// Module « Agenda » : les prochains rendez-vous de plusieurs calendriers,
+// chacun avec un nom et une couleur choisis dans les réglages du module :
+//   - un fichier .ics (export d'Outlook, Google Agenda, Thunderbird…) ;
+//   - ou un lien iCal (l'« adresse secrète » d'un agenda en ligne).
+// La liste des calendriers et sa migration sont dans services/ics_calendars.rs.
 //
 // Un thread regarde toutes les 15 secondes :
 //   - si un fichier a changé (date de modification) : il est relu ;
-//   - la liste des prochains rendez-vous (30 jours, au plus 30) : si elle a
-//     changé, "agenda.changed" est publié ;
+//   - un lien iCal est retéléchargé toutes les 15 minutes (ou tout de suite
+//     si son adresse a changé) : lecture seule, rien n'est envoyé ;
+//   - les rendez-vous de tous les calendriers sont fusionnés et triés ; si la
+//     liste a changé, "agenda.changed" est publié ;
 //   - si un rendez-vous commence bientôt (réglage « rappel ») :
 //     "agenda.reminder" est publié, une seule fois par rendez-vous.
 //
 // Comme pour les notes, les messages du bus ne contiennent pas le texte des
 // rendez-vous : le front le demande avec la commande "upcoming". Rien n'est
-// écrit dans le journal à part le nom du fichier en cas d'erreur.
+// écrit dans le journal à part le nom du fichier ou du calendrier en cas d'erreur.
 //
-// Agenda en ligne (Google Agenda…) : si tu as enregistré son adresse secrète
-// iCal dans Réglages → Identifiants, il est téléchargé au démarrage puis toutes
-// les 15 minutes (lecture seule, rien n'est envoyé). L'adresse reste dans le
-// Gestionnaire d'identifiants : elle n'apparaît jamais dans le journal, dans
-// les messages d'erreur ni dans l'interface.
+// Les adresses iCal restent dans le Gestionnaire d'identifiants (une clé par
+// calendrier) : elles n'apparaissent jamais dans settings.json, le journal,
+// les messages d'erreur ni l'interface.
+//
+// Un clic sur un rendez-vous ouvre son lien (commande "open") : seulement un
+// lien http(s) trouvé dans le .ics (voir ics::event_link). Le front ne donne
+// que le calendrier et la clé du rendez-vous ; l'adresse est reprise ici.
 
 use crate::sync::LockExt;
 use std::collections::hash_map::DefaultHasher;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::PathBuf;
@@ -29,50 +36,53 @@ use std::time::{Duration, Instant, SystemTime};
 
 use chrono::{Local, NaiveDateTime, TimeZone};
 use serde_json::{json, Value};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 use super::{ModuleContext, RustModule};
-use crate::services::credentials::ICAL_URL;
+use crate::platform;
+use crate::services::credentials::{self, ICAL_URL};
 use crate::services::ics::{self, Event, Occurrence};
+use crate::services::ics_calendars::{self, Calendar, Source, LEGACY_LINK_ID};
 use crate::services::log;
 
 const ID: &str = "agenda";
-/// Au plus ce nombre de fichiers .ics.
-const MAX_FILES: usize = 5;
 /// Un .ics plus gros est refusé (un agenda de plusieurs années tient en 1 à 5 Mo).
 const MAX_FILE_BYTES: u64 = 20 * 1024 * 1024;
 /// Combien de jours à l'avance on regarde (réglage « horizonDays »), et combien de rendez-vous au plus.
 const HORIZON_DEFAULT: i64 = 60;
 const MAX_UPCOMING: usize = 30;
 const TICK: Duration = Duration::from_secs(15);
-/// L'agenda en ligne est retéléchargé à cet intervalle.
+/// Un lien iCal est retéléchargé à cet intervalle.
 const ONLINE_EVERY: Duration = Duration::from_secs(15 * 60);
 
-/// Un fichier .ics déjà lu (ses événements sont rangés dans `State::events`).
+/// Ce qu'on a lu d'un calendrier.
+#[derive(Default)]
 struct Loaded {
-    path: PathBuf,
+    /// Fichier : son chemin et sa date de modification au moment de la lecture.
+    path: Option<String>,
     modified: Option<SystemTime>,
-    events: Vec<Event>,
+    /// Lien : une empreinte de l'adresse (pas l'adresse : si elle change, on
+    /// retélécharge) et l'heure du dernier téléchargement (réussi ou non).
+    url_key: u64,
+    fetched_at: Option<Instant>,
+    /// Les événements (dernière lecture réussie). Partagés (Arc) pour faire
+    /// les calculs sans garder le verrou.
+    events: Arc<Vec<Event>>,
+    /// Le dernier problème (affiché dans l'onglet, sans jamais l'adresse).
+    error: Option<String>,
 }
 
 #[derive(Default)]
 struct State {
-    files: Vec<Loaded>,
-    /// Les événements de tous les fichiers réunis. Partagés (Arc) pour faire
-    /// les calculs sans garder le verrou.
-    events: Arc<Vec<Event>>,
-    /// Un message par fichier qui n'a pas pu être lu (affiché dans l'onglet).
-    errors: Vec<String>,
-    /// Les événements de l'agenda en ligne (dernier téléchargement réussi).
-    online: Arc<Vec<Event>>,
-    /// Le dernier échec de téléchargement (sans l'adresse, qui est secrète).
-    online_error: Option<String>,
-    /// Une empreinte de l'adresse (pas l'adresse) : si elle change, on retélécharge.
-    online_key: u64,
-    /// Quand on a téléchargé pour la dernière fois (réussi ou non).
-    online_at: Option<Instant>,
+    /// Les calendriers des réglages, dans leur ordre.
+    calendars: Vec<Calendar>,
+    /// Ce qu'on a lu de chacun (clé : identifiant du calendrier).
+    loaded: HashMap<String, Loaded>,
     /// La dernière liste publiée (pour ne publier que les changements).
     upcoming: Vec<Value>,
+    /// Les liens des rendez-vous affichés : « calendrier/clé » → adresse.
+    /// Gardés ici : le front sait seulement qu'il y a un lien.
+    links: HashMap<String, String>,
     /// Les rendez-vous déjà rappelés (leur clé).
     reminded: HashSet<String>,
     /// Le dernier message publié, pour ne pas répéter le même.
@@ -96,19 +106,31 @@ impl RustModule for Agenda {
         std::thread::spawn(move || watch(app, state));
     }
 
-    fn invoke(&self, ctx: &ModuleContext, command: &str, _args: Value) -> Result<Value, String> {
+    fn invoke(&self, ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
         match command {
             "upcoming" => Ok(listing(&self.state.locked())),
-            // Réglages changés ou bouton « Relire » : on relit tout de suite.
+            // Bouton « Relire » : on relit tout (fichiers et liens) tout de suite.
+            // Réglages changés ({ force: false }) : seulement ce qui a changé
+            // (un nouveau calendrier est lu, un retiré oublié), sans retélécharger
+            // tous les liens pour un changement de couleur.
             "reload" => {
-                {
-                    let mut s = self.state.locked();
-                    s.files.clear();
-                    s.events = Arc::default();
-                    s.online_at = None; // l'agenda en ligne aussi
+                if args.get("force").and_then(Value::as_bool).unwrap_or(true) {
+                    self.state.locked().loaded.clear();
                 }
                 refresh(ctx, &self.state);
                 Ok(listing(&self.state.locked()))
+            }
+            // Clic sur un rendez-vous : on ouvre son lien (navigateur, Teams, Zoom…).
+            "open" => {
+                let text = |k: &str| args.get(k).and_then(Value::as_str).unwrap_or("").to_string();
+                let url = self.state.locked().links.get(&link_id(&text("calendar"), &text("key"))).cloned();
+                let url = url.ok_or("ce rendez-vous n'a pas de lien")?;
+                // Vérifié encore une fois juste avant d'ouvrir : jamais autre chose que http(s).
+                if !ics::is_web_url(&url) {
+                    return Err("lien refusé : seuls les liens http(s) s'ouvrent".into());
+                }
+                platform::shell_open(&url).map_err(|e| format!("lien non ouvert : {e}"))?;
+                Ok(Value::Null)
             }
             other => Err(format!("commande inconnue : {other}")),
         }
@@ -117,19 +139,25 @@ impl RustModule for Agenda {
 
 /// Ce que renvoie la commande "upcoming".
 fn listing(state: &State) -> Value {
-    let mut errors = state.errors.clone();
-    errors.extend(state.online_error.clone());
+    let loaded = |c: &Calendar| state.loaded.get(&c.id);
+    let errors: Vec<String> = state.calendars.iter().filter_map(|c| Some(format!("{} : {}", c.name, loaded(c)?.error.as_ref()?))).collect();
     // Pour comprendre un agenda « vide » : combien d'événements ont été lus,
     // et la date du plus récent (un export ancien s'arrête dans le passé).
-    let all = state.events.iter().chain(state.online.iter());
-    let read = state.events.len() + state.online.len();
-    let latest = all.filter_map(|e| e.start).max().map(|t| t.format("%d/%m/%Y").to_string());
+    let events = || state.calendars.iter().filter_map(loaded).flat_map(|l| l.events.iter());
+    let latest = events().filter_map(|e| e.start).max().map(|t| t.format("%d/%m/%Y").to_string());
+    let calendars: Vec<Value> = state
+        .calendars
+        .iter()
+        .map(|c| {
+            let kind = if matches!(c.source, Source::Link) { "link" } else { "file" };
+            json!({ "id": c.id, "name": c.name, "color": c.color, "kind": kind })
+        })
+        .collect();
     json!({
         "events": state.upcoming,
         "errors": errors,
-        "files": state.files.len(),
-        "online": state.online_key != 0,
-        "read": read,
+        "calendars": calendars,
+        "read": events().count(),
         "latest": latest,
     })
 }
@@ -140,7 +168,11 @@ fn watch(app: AppHandle, state: Shared) {
     std::thread::sleep(Duration::from_secs(2));
     loop {
         // Une panique ici ne doit tuer ni le thread ni l'île.
-        let step = catch_unwind(AssertUnwindSafe(|| super::with_context(&app, ID, |ctx| refresh(ctx, &state))));
+        let step = catch_unwind(AssertUnwindSafe(|| {
+            // Même module désactivé : les anciens réglages sont convertis.
+            migrate_settings(&app);
+            super::with_context(&app, ID, |ctx| refresh(ctx, &state))
+        }));
         if step.is_err() {
             log::warn("agenda : erreur inattendue pendant la lecture, on réessaie plus tard");
         }
@@ -148,49 +180,100 @@ fn watch(app: AppHandle, state: Shared) {
     }
 }
 
-/// Relit les fichiers qui ont changé, recalcule la liste, publie et rappelle.
+// ── Migration des anciens réglages (avant 1.2) ───────────────────────────────
+
+/// Un lien iCal des anciens réglages existe-t-il ? (sous l'ancienne clé, ou
+/// déjà recopié sous celle de son calendrier)
+fn legacy_link_exists() -> bool {
+    credentials::get(ICAL_URL).is_some() || credentials::get(&credentials::calendar_key(LEGACY_LINK_ID)).is_some()
+}
+
+/// Anciens réglages (des fichiers "icsFiles" et UN lien iCal) → liste
+/// "calendars", enregistrée une fois pour toutes. Le lien est recopié sous la
+/// clé de son calendrier ; l'ancienne clé n'est effacée qu'une fois la copie
+/// relue. Rien ne se perd : tant que ce n'est pas fait, `effective` lit les
+/// anciens réglages comme s'ils étaient déjà convertis.
+fn migrate_settings(app: &AppHandle) {
+    let shared = app.state::<crate::Shared>();
+    let values = shared.settings.locked().modules.get(ID).map(|m| m.values.clone()).unwrap_or_default();
+    if !ics_calendars::needs_migration(&values) {
+        return;
+    }
+    let list = ics_calendars::legacy_list(&values, legacy_link_exists());
+    if list.is_empty() {
+        return; // rien à convertir (premier lancement) : la liste sera créée dans les réglages
+    }
+    // Le lien : recopié sous sa nouvelle clé, puis l'ancienne effacée.
+    if let Some(url) = credentials::get(ICAL_URL) {
+        let new_key = credentials::calendar_key(LEGACY_LINK_ID);
+        let copied = credentials::get(&new_key).is_some() || (credentials::set(&new_key, &url).is_ok() && credentials::get(&new_key).as_deref() == Some(url.as_str()));
+        if !copied {
+            // On garde l'ancienne clé (lue en secours par `link_url`) et on réessaiera.
+            log::warn("agenda : le lien iCal n'a pas pu être recopié, nouvel essai plus tard");
+            return;
+        }
+        let _ = credentials::delete(ICAL_URL);
+    }
+    let mut settings = shared.settings.locked().clone();
+    let module = settings.modules.entry(ID.to_string()).or_default();
+    // Revérifié : la liste a pu être créée entre-temps (fenêtre de réglages).
+    if !ics_calendars::needs_migration(&module.values) {
+        return;
+    }
+    module.values.insert("calendars".into(), Value::Array(list));
+    module.values.remove("icsFiles");
+    match crate::apply_settings(app, &shared, settings) {
+        Ok(()) => log::info("agenda : anciens réglages convertis en liste de calendriers"),
+        Err(e) => log::warn(format!("agenda : conversion des anciens réglages non enregistrée : {e}")),
+    }
+}
+
+// ── Lecture des calendriers ──────────────────────────────────────────────────
+
+/// Relit ce qui a changé, recalcule la liste, publie et rappelle.
 fn refresh(ctx: &ModuleContext, state: &Shared) {
     let settings = ctx.settings();
-    let paths: Vec<String> = settings
-        .get("icsFiles")
-        .and_then(Value::as_array)
-        .map(|a| a.iter().filter_map(Value::as_str).take(MAX_FILES).map(String::from).collect())
-        .unwrap_or_default();
     let reminder_min = settings.get("reminderMin").and_then(Value::as_i64).unwrap_or(10).clamp(0, 240);
     let horizon = settings.get("horizonDays").and_then(Value::as_i64).unwrap_or(HORIZON_DEFAULT).clamp(1, 365);
+    let legacy_link = ics_calendars::needs_migration(&settings) && ctx.require("credentials").is_ok() && legacy_link_exists();
+    let calendars = ics_calendars::effective(&settings, legacy_link);
 
-    // Lire les fichiers peut être lent (gros .ics, disque réseau) : on le fait
-    // sans tenir le verrou, pour que l'onglet reste fluide pendant ce temps.
-    let known: Vec<(PathBuf, Option<SystemTime>)> = state.locked().files.iter().map(|f| (f.path.clone(), f.modified)).collect();
-    if needs_reload(&known, &paths) {
-        let (files, events, errors) = load_files(ctx, &paths);
+    // On oublie les calendriers retirés (ou dont le fichier / la sorte a changé).
+    {
         let mut s = state.locked();
-        s.files = files;
-        s.events = Arc::new(events);
-        s.errors = errors;
+        s.loaded.retain(|id, l| calendars.iter().any(|c| c.id == *id && same_source(c, l)));
+        s.calendars = calendars.clone();
+    }
+    // Lire un fichier ou télécharger peut être lent : fait sans tenir le verrou.
+    for cal in &calendars {
+        match &cal.source {
+            Source::File(path) => refresh_file(ctx, state, cal, path),
+            Source::Link => refresh_link(ctx, state, cal),
+        }
     }
 
-    refresh_online(ctx, state);
-
-    // Les prochains rendez-vous, de maintenant à dans `horizon` jours (calcul hors verrou aussi).
-    let (events, online) = {
+    // Les prochains rendez-vous de chaque calendrier, de maintenant à dans
+    // `horizon` jours, fusionnés et triés (calcul hors verrou aussi).
+    let events: Vec<Arc<Vec<Event>>> = {
         let s = state.locked();
-        (s.events.clone(), s.online.clone())
+        calendars.iter().map(|c| s.loaded.get(&c.id).map(|l| l.events.clone()).unwrap_or_default()).collect()
     };
     let now = Local::now().naive_local();
     let to = now + chrono::Duration::days(horizon);
-    let mut occ = ics::occurrences(&events, now, to);
-    occ.extend(ics::occurrences(&online, now, to));
-    occ.sort_by(|a, b| a.start.cmp(&b.start).then_with(|| a.summary.cmp(&b.summary)));
-    let upcoming: Vec<Value> = occ.iter().take(MAX_UPCOMING).map(to_json).collect();
+    let merged = ics_calendars::merge(events.iter().map(|e| ics::occurrences(e, now, to)).collect());
+    let shown = &merged[..merged.len().min(MAX_UPCOMING)];
+    let upcoming: Vec<Value> = shown.iter().map(|(i, o)| to_json(&calendars[*i], o)).collect();
+    let links: HashMap<String, String> =
+        shown.iter().filter_map(|(i, o)| Some((link_id(&calendars[*i].id, &key_of(o)), o.link.clone()?))).collect();
 
     let mut s = state.locked();
 
     // Rappels : un rendez-vous (pas une journée entière) qui commence dans
-    // moins de `reminder_min` minutes, et pas encore rappelé.
+    // moins de `reminder_min` minutes, et pas encore rappelé. Le même
+    // rendez-vous dans deux calendriers n'est rappelé qu'une fois.
     let mut reminders = Vec::new();
     if reminder_min > 0 {
-        for o in occ.iter().filter(|o| !o.all_day && o.start >= now) {
+        for (_, o) in merged.iter().filter(|(_, o)| !o.all_day && o.start >= now) {
             let key = key_of(o);
             if o.start - now <= chrono::Duration::minutes(reminder_min) && s.reminded.insert(key.clone()) {
                 reminders.push(key);
@@ -199,12 +282,14 @@ fn refresh(ctx: &ModuleContext, state: &Shared) {
     }
 
     s.upcoming = upcoming;
+    s.links = links;
+    let errors: Vec<&String> = calendars.iter().filter_map(|c| s.loaded.get(&c.id)?.error.as_ref()).collect();
     let payload = json!({
         "count": s.upcoming.len(),
         "next": s.upcoming.first().and_then(|e| e.get("start").cloned()),
-        "errors": s.errors.len() + usize::from(s.online_error.is_some()),
-        // Change avec la liste : le front sait qu'il doit la redemander.
-        "version": version_of(&s.upcoming, &s.errors, &s.online_error),
+        "errors": errors.len(),
+        // Change avec la liste (et les calendriers) : le front sait qu'il doit la redemander.
+        "version": version_of(&s.upcoming, &errors, &calendars),
     });
     let changed = payload != s.last_payload;
     s.last_payload = payload.clone();
@@ -218,63 +303,95 @@ fn refresh(ctx: &ModuleContext, state: &Shared) {
     }
 }
 
-/// L'agenda en ligne : téléchargé si une adresse est enregistrée et que c'est
-/// l'heure (ou que l'adresse a changé). Un échec garde les rendez-vous déjà
-/// connus et affiche un message dans l'onglet.
-fn refresh_online(ctx: &ModuleContext, state: &Shared) {
-    let url = ctx.credential(ICAL_URL).ok().flatten();
-    let Some(url) = url else {
-        // Plus d'adresse (supprimée dans les réglages) : on oublie tout.
-        let mut s = state.locked();
-        if s.online_key != 0 {
-            s.online = Arc::default();
-            s.online_error = None;
-            s.online_key = 0;
-            s.online_at = None;
+/// Ce qu'on a lu correspond-il encore à ce calendrier ?
+fn same_source(cal: &Calendar, loaded: &Loaded) -> bool {
+    match &cal.source {
+        Source::File(path) => loaded.path.as_deref() == Some(path.as_str()),
+        Source::Link => loaded.path.is_none(),
+    }
+}
+
+/// Un fichier .ics : relu s'il est nouveau ou si sa date de modification a changé.
+fn refresh_file(ctx: &ModuleContext, state: &Shared, cal: &Calendar, path: &str) {
+    let now_modified = modified(path);
+    if state.locked().loaded.get(&cal.id).is_some_and(|l| l.modified == now_modified) {
+        return;
+    }
+    let loaded = match read_file(ctx, path) {
+        Ok((events, modified)) => Loaded { path: Some(path.to_string()), modified, events: Arc::new(events), ..Default::default() },
+        Err(e) => {
+            let name = PathBuf::from(path).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+            ctx.log_warn(format!("agenda : {name} illisible : {e}"));
+            Loaded { path: Some(path.to_string()), modified: now_modified, error: Some(e), ..Default::default() }
         }
+    };
+    state.locked().loaded.insert(cal.id.clone(), loaded);
+}
+
+/// L'adresse d'un lien iCal, lue dans le Gestionnaire d'identifiants. Pour le
+/// calendrier issu des anciens réglages, l'ancienne clé sert de secours.
+fn link_url(ctx: &ModuleContext, id: &str) -> Option<String> {
+    let url = ctx.credential(&credentials::calendar_key(id)).ok().flatten();
+    if url.is_none() && id == LEGACY_LINK_ID {
+        return ctx.credential(ICAL_URL).ok().flatten();
+    }
+    url
+}
+
+/// Un lien iCal : téléchargé si c'est l'heure (ou si l'adresse a changé). Un
+/// échec garde les rendez-vous déjà connus et affiche un message dans l'onglet.
+fn refresh_link(ctx: &ModuleContext, state: &Shared, cal: &Calendar) {
+    let Some(url) = link_url(ctx, &cal.id) else {
+        // Pas (ou plus) d'adresse : on oublie ce qu'on avait téléchargé.
+        let error = Some("aucun lien enregistré : ajoute-le dans les réglages du module Agenda".to_string());
+        state.locked().loaded.insert(cal.id.clone(), Loaded { error, ..Default::default() });
         return;
     };
     let key = fingerprint(&url);
     {
         let mut s = state.locked();
-        let due = s.online_key != key || s.online_at.is_none_or(|t| t.elapsed() >= ONLINE_EVERY);
+        let l = s.loaded.entry(cal.id.clone()).or_default();
+        let due = l.url_key != key || l.fetched_at.is_none_or(|t| t.elapsed() >= ONLINE_EVERY);
         if !due {
             return;
         }
-        if s.online_key != key {
-            s.online = Arc::default(); // une autre adresse : les anciens rendez-vous ne valent plus
+        if l.url_key != key {
+            // Une autre adresse : les anciens rendez-vous ne valent plus.
+            l.events = Arc::default();
+            l.error = None;
         }
         // Noté AVANT de télécharger : un échec n'entraîne pas un nouvel essai toutes les 15 s.
-        s.online_key = key;
-        s.online_at = Some(Instant::now());
+        l.url_key = key;
+        l.fetched_at = Some(Instant::now());
     }
     // Le téléchargement se fait sans tenir le verrou.
     let result = download(&url).map(|text| ics::parse(&text));
     let mut s = state.locked();
+    let Some(l) = s.loaded.get_mut(&cal.id).filter(|l| l.url_key == key) else { return };
     match result {
         Ok(events) => {
-            s.online = Arc::new(events);
-            s.online_error = None;
+            l.events = Arc::new(events);
+            l.error = None;
         }
         Err(e) => {
-            ctx.log_warn(format!("agenda : agenda en ligne non téléchargé : {e}"));
-            s.online_error = Some(format!("Agenda en ligne : {e}"));
+            ctx.log_warn(format!("agenda : lien iCal « {} » non téléchargé : {e}", cal.name));
+            l.error = Some(e);
         }
     }
 }
 
 /// Une empreinte de l'adresse, pour savoir si elle a changé sans la garder en mémoire.
-/// Jamais 0 (0 veut dire « pas d'agenda en ligne »).
+/// Jamais 0 (0 veut dire « pas encore téléchargé »).
 fn fingerprint(url: &str) -> u64 {
     let mut h = DefaultHasher::new();
     url.hash(&mut h);
     h.finish().max(1)
 }
 
-/// Télécharge l'agenda (https seulement, 20 Mo au plus, 30 s au plus).
+/// Télécharge un agenda (https seulement, 20 Mo au plus, 30 s au plus).
 /// Les messages d'erreur ne contiennent JAMAIS l'adresse.
 fn download(url: &str) -> Result<String, String> {
-    crate::services::credentials::check_ical_url(url)?;
+    credentials::check_ical_url(url)?;
     use ureq::tls::{RootCerts, TlsConfig, TlsProvider};
     let agent: ureq::Agent = ureq::Agent::config_builder()
         // Le TLS de Windows et ses certificats (comme « Demander à Claude »).
@@ -305,31 +422,8 @@ fn download(url: &str) -> Result<String, String> {
     Ok(text)
 }
 
-/// Faut-il relire ? Oui si la liste des fichiers ou une date de modification a changé.
-fn needs_reload(known: &[(PathBuf, Option<SystemTime>)], paths: &[String]) -> bool {
-    let same_list = known.len() == paths.len() && known.iter().zip(paths).all(|((p, _), raw)| p.as_path() == std::path::Path::new(raw));
-    !(same_list && known.iter().all(|(p, m)| modified(p) == *m))
-}
-
-/// Lit tous les fichiers : (fichiers lus, leurs événements réunis, erreurs).
-fn load_files(ctx: &ModuleContext, paths: &[String]) -> (Vec<Loaded>, Vec<Event>, Vec<String>) {
-    let mut files = Vec::new();
-    let mut errors = Vec::new();
-    for raw in paths {
-        let name = PathBuf::from(raw).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
-        match read_file(ctx, raw) {
-            Ok(loaded) => files.push(loaded),
-            Err(e) => {
-                ctx.log_warn(format!("agenda : {name} illisible : {e}"));
-                errors.push(format!("{name} : {e}"));
-            }
-        }
-    }
-    let events = files.iter_mut().flat_map(|f| std::mem::take(&mut f.events)).collect();
-    (files, events, errors)
-}
-
-fn read_file(ctx: &ModuleContext, raw: &str) -> Result<Loaded, String> {
+/// Lit un fichier .ics : (ses événements, sa date de modification).
+fn read_file(ctx: &ModuleContext, raw: &str) -> Result<(Vec<Event>, Option<SystemTime>), String> {
     // Validation du chemin (permission "files", dossiers exclus, chemin absolu…).
     let path = ctx.check_path(raw)?;
     let is_ics = path.extension().is_some_and(|e| e.eq_ignore_ascii_case("ics"));
@@ -343,11 +437,10 @@ fn read_file(ctx: &ModuleContext, raw: &str) -> Result<Loaded, String> {
     let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
     // Les .ics sont en UTF-8 ; un caractère abîmé ne doit pas tout empêcher.
     let text = String::from_utf8_lossy(&bytes);
-    let events = ics::parse(&text);
-    Ok(Loaded { modified: meta.modified().ok(), path: PathBuf::from(raw), events })
+    Ok((ics::parse(&text), meta.modified().ok()))
 }
 
-fn modified(path: &PathBuf) -> Option<SystemTime> {
+fn modified(path: &str) -> Option<SystemTime> {
     std::fs::metadata(path).ok()?.modified().ok()
 }
 
@@ -363,15 +456,22 @@ fn key_of(o: &Occurrence) -> String {
     format!("{:x}", h.finish())
 }
 
-fn version_of(upcoming: &[Value], errors: &[String], online_error: &Option<String>) -> String {
+/// Comment on retrouve le lien d'un rendez-vous affiché (commande "open").
+fn link_id(calendar: &str, key: &str) -> String {
+    format!("{calendar}/{key}")
+}
+
+fn version_of(upcoming: &[Value], errors: &[&String], calendars: &[Calendar]) -> String {
     let mut h = DefaultHasher::new();
     serde_json::to_string(upcoming).unwrap_or_default().hash(&mut h);
     errors.hash(&mut h);
-    online_error.hash(&mut h);
+    for c in calendars {
+        (&c.id, &c.name, &c.color).hash(&mut h);
+    }
     format!("{:x}", h.finish())
 }
 
-fn to_json(o: &Occurrence) -> Value {
+fn to_json(cal: &Calendar, o: &Occurrence) -> Value {
     json!({
         "key": key_of(o),
         "title": o.summary,
@@ -379,5 +479,10 @@ fn to_json(o: &Occurrence) -> Value {
         "start": to_ms(o.start),
         "end": to_ms(o.end),
         "allDay": o.all_day,
+        "calendar": cal.id,
+        "calendarName": cal.name,
+        "color": cal.color,
+        // Seulement la SORTE de lien (« teams », « web »…) : l'adresse reste ici.
+        "link": o.link.as_deref().map(ics::link_kind),
     })
 }

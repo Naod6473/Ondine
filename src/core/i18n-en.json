@@ -38,7 +38,6 @@
 "agenda en ligne": "online calendar",
 "Toute la journée": "All day",
 "Demain : aucun rendez-vous": "Tomorrow: no appointments",
-"${first.allDay ? \"Toute la journée\" :": "${first.allDay ? \"All day\" :",
 "Bonne soirée !": "Have a good evening!",
 "En cours": "Ongoing",
 "Aucun agenda pour l'instant": "No calendar yet",
@@ -129,7 +128,6 @@
 "Enregistre l'image du presse-papiers et la pose sur l'étagère": "Saves the Clipboard image and puts it on the Shelf",
 "Montre la dernière capture enregistrée dans l'Explorateur": "Shows the last saved capture in Explorer",
 "Le texte lu s'affichera ici. Tout se passe sur ton ordinateur : l'image n'est envoyée nulle part.": "The text read will show up here. Everything happens on your computer: the image is sent nowhere.",
-"Dernier texte lu${lastText.language ?": "Last text read${lastText.language ?",
 "Copier tout le texte": "Copy all text",
 "Copié": "Copied",
 "Copier en MAJUSCULES": "Copy in UPPERCASE",
@@ -173,7 +171,6 @@
 "Choisir la sortie audio": "Choose the audio output",
 "Aucune sortie audio": "No audio output",
 "Écran": "Screen",
-"« ${r.title.length > 40 ?": "\"${r.title.length > 40 ?",
 ": r.title} »": ": r.title}\"",
 "La fenêtre": "The window",
 "Mode avion : tout est coupé": "Airplane mode: everything is off",
@@ -287,11 +284,9 @@
 "Copier le chemin": "Copy path",
 "Retour à l'étagère": "Back to the Shelf",
 "Qualité JPEG": "JPEG quality",
-"Créer ${n > 1 ?": "Create ${n > 1 ?",
 ": \"l'image\"}": ": \"the image\"}",
 "Largeur max.": "Max width",
 "Les originaux ne bougent pas : les nouvelles images sont créées à côté (ex. « photo-1920.jpg »). Annulable quelques secondes.": "Originals stay untouched: new images are created next to them (e.g. “photo-1920.jpg”). Can be undone for a few seconds.",
-"Renommer ${n > 1 ?": "Rename ${n > 1 ?",
 ": \"le fichier\"}": ": \"the file\"}",
 "Renommer (annulable quelques secondes)": "Rename (can be undone for a few seconds)",
 "Nouveau nom": "New name",
@@ -546,7 +541,6 @@
 "Consigne donnée à Claude": "Instruction given to Claude",
 "Vide = « Réponds en français, simplement et brièvement… ». Elle est montrée avant chaque envoi.": "Empty = “Answer in French, simply and briefly…”. It's shown before each send.",
 "Proposer « Demander à Claude » quand on dépose un fichier sur l'île": "Offer “Ask Claude” when a file is dropped on the island",
-"Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur ton ordinateur, hors ligne : l'image n'est envoyée nulle part.": "Captures an area of the screen with the Windows tool, then reads its text (OCR) or saves it as PNG. Also works on an image you've already copied. Text recognition runs on your computer, offline: the image is sent nowhere.",
 "Copier le texte lu dans le presse-papiers": "Copy the recognized text to the clipboard",
 "Dossier des captures": "Captures folder",
 "Vide : le dossier Images\\Ondine.": "Empty: the Pictures\\Ondine folder.",
@@ -565,7 +559,6 @@
 "Alt + Maj + M": "Alt + Shift + M",
 "Montrer un point quand une appli utilise le micro ou la caméra": "Show a dot when an app uses the microphone or camera",
 "Lanceur": "Launcher",
-"Un raccourci clavier (Alt+Espace par défaut) ouvre une recherche : applications du menu Démarrer, outils Windows (Services, Gestionnaire de périphériques…), fichiers récents, serveurs favoris (Accès distants) et actions de l'île. Entrée pour ouvrir.": "A keyboard shortcut (Alt+Space by default) opens a search: Start menu apps, Windows tools (Services, Device Manager…), recent files, favorite servers (Remote access) and island actions. Enter to open.",
 "Raccourci": "Shortcut",
 "Alt + Espace": "Alt + Space",
 "Ctrl + Espace": "Ctrl + Space",
@@ -871,7 +864,177 @@
 "Téléchargement… Ondine va se fermer puis revenir.": "Downloading… Ondine will close and come back.",
 "Téléchargement de la mise à jour…": "Downloading the update…",
 "La mise à jour n'a pas pu s'installer": "The update couldn't be installed",
-"Installer maintenant ? Ondine se ferme quelques secondes puis revient toute seule.": "Install now? Ondine closes for a few seconds, then comes back on its own."
+"Installer maintenant ? Ondine se ferme quelques secondes puis revient toute seule.": "Install now? Ondine closes for a few seconds, then comes back on its own.",
+"Fermer": "Close",
+"Texte…": "Text…",
+"Essayer": "Try",
+"Retour": "Back",
+"Explorateur": "File Explorer",
+"Rechercher…": "Search…",
+"Copier": "Copy",
+"Vider": "Clear",
+"Longueur": "Length",
+"Supprimer": "Delete",
+"Enregistrer": "Save",
+"Annuler": "Cancel",
+"Modifier": "Edit",
+"introuvable": "missing",
+"Un dossier est créé dans Documents\\Ondine\\Tickets avec ta description, les infos du poste et l'image. Rien n'est envoyé.": "A folder is created in Documents\\Ondine\\Tickets with your description, the computer's details and the image. Nothing is sent.",
+"Disques": "Disks",
+"Processeur": "Processor",
+"Ouvrir": "Open",
+"Monter": "Move up",
+"Descendre": "Move down",
+"Retirer": "Remove",
+"C:\\Users\\moi\\Documents\\Privé": "C:\\Users\\me\\Documents\\Private",
+"Exclure": "Exclude",
+"Choisir…": "Choose…",
+"Quand…": "When…",
+"Alors…": "Then…",
+"Dernier texte lu": "Last text read",
+"Créer l'image": "Create the image",
+"Renommer le fichier": "Rename the file",
+"Un raccourci clavier (Alt+Espace par défaut) ouvre une recherche : applications du menu Démarrer, outils Windows (Services, Gestionnaire de périphériques…), fichiers récents, serveurs favoris (Accès distants) et actions de l'île. Il cherche aussi dans l'île : notes et tâches, presse-papiers, étagère et captures. Entrée pour ouvrir.": "A keyboard shortcut (Alt+Space by default) opens a search: Start menu apps, Windows tools (Services, Device Manager…), recent files, favorite servers (Remote access) and island actions. It also searches the island: notes and tasks, clipboard, shelf and captures. Enter to open.",
+"Une appli, un fichier, une note, une copie… (ou « 10 min »)": "An app, a file, a note, a copy… (or “10 min”)",
+"Tape le nom d'une appli, d'un fichier, d'un onglet, ou un mot de tes notes.": "Type the name of an app, a file, a tab, or a word from your notes.",
+"Chercher aussi dans l'île (notes, presse-papiers, étagère, captures)": "Also search the island (notes, clipboard, shelf, captures)",
+"5 résultats au plus par source, groupés. Les dossiers exclus (Confidentialité) ne sont jamais montrés.": "At most 5 results per source, grouped. Excluded folders (Privacy) are never shown.",
+"Notes et tâches": "Notes and tasks",
+"Captures": "Captures",
+"Tâche": "Task",
+"Note": "Note",
+"Copie": "Copy",
+"Snippet": "Snippet",
+"Capture": "Capture",
+"Faite": "Done",
+"À faire": "To do",
+"hier": "yesterday",
+"Recopié dans le presse-papiers": "Copied to the clipboard again",
+"Programme montré dans l'Explorateur": "Program shown in File Explorer",
+"Il n'est pas lancé depuis l'île.": "It isn't launched from the island.",
+"Le texte lu est dans le presse-papiers": "The recognized text is on the clipboard",
+"Mode concentration pendant le Pomodoro": "Focus mode during Pomodoro",
+"Pendant une séance de travail, les notifications de l'île attendent (sauf les urgentes) ; elles arrivent à la pause, avec un résumé. Les bannières de Windows ne sont pas coupées : pour cela, lance une séance « Focus » dans l'appli Horloge de Windows 11.": "During a work session, the island's notifications wait (except urgent ones); they arrive at the break, with a summary. Windows banners aren't silenced: for that, start a \"Focus\" session in the Windows 11 Clock app.",
+"🔕 Concentration : les notifications de l'île attendent la fin de la séance.": "🔕 Focus: the island's notifications wait until the session ends.",
+"QR code (pour l'ouvrir sur un téléphone)": "QR code (to open it on a phone)",
+"Copie l'image du QR code (noir sur blanc) dans le presse-papiers": "Copies the QR code image (black on white) to the clipboard",
+"Copier l'image": "Copy image",
+"‹ Retour": "‹ Back",
+"QR code copié": "QR code copied",
+"Colle-le comme une image (Ctrl+V).": "Paste it as an image (Ctrl+V).",
+"Copier le QR code impossible": "Couldn't copy the QR code",
+"Vise le code avec l'appareil photo de ton téléphone. Calculé sur ton PC : rien ne passe par Internet.": "Point your phone's camera at the code. Made on your PC: nothing goes over the Internet.",
+"rien à mettre dans le QR code": "nothing to put in the QR code",
+"Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur ton ordinateur, hors ligne : l'image n'est envoyée nulle part. La pipette copie la couleur d'un point de l'écran.": "Captures an area of the screen with the Windows tool, then reads its text (OCR) or saves it as PNG. Also works on an image you've already copied. Text recognition runs on your computer, offline: the image is sent nowhere. The color picker copies the color of any point on the screen.",
+"Format de la couleur copiée (pipette)": "Copied color format (color picker)",
+"Couleur à l'écran :": "Color on screen:",
+"💧 Pipette": "💧 Color picker",
+"Fige l'écran : clique sur un point pour copier sa couleur (Échap pour annuler, flèches pour bouger d'un pixel)": "Freezes the screen: click a point to copy its color (Esc to cancel, arrow keys to move by one pixel)",
+"Aucune couleur pour l'instant": "No colors yet",
+"Pipette impossible": "Color picker unavailable",
+"Copie impossible": "Copy failed",
+"Pipette : copier une couleur de l'écran": "Color picker: copy a color from the screen",
+"la pipette est déjà ouverte": "the color picker is already open",
+"écran introuvable": "screen not found",
+"capture de l'écran impossible": "couldn't capture the screen",
+"capture de l'écran impossible (mémoire)": "couldn't capture the screen (memory)",
+"couleur invalide": "invalid color",
+"Profils": "Profiles",
+"Travail, Maison… : les onglets, la couleur et la mini-île d'un coup.": "Work, Home…: tabs, color and the mini island in one go.",
+"Profil actif": "Active profile",
+"Aucun profil": "No profile",
+"Aussi depuis le menu de l'icône d'Ondine, près de l'horloge.": "Also from Ondine's icon menu, near the clock.",
+"Changer tout seul": "Switch automatically",
+"Changer de profil tout seul": "Switch profile automatically",
+"Selon l'heure ou le Wi-Fi (règle de chaque profil ci-dessous). Un choix fait à la main tient jusqu'au prochain changement.": "By time or Wi-Fi (each profile's rule below). A manual choice holds until the next change.",
+"Un profil ne retient que ce qu'il remplace. Pendant qu'il est actif, tes changements de ces réglages (page Onglets, Apparence…) lui sont gardés ; les autres réglages restent communs.": "A profile only keeps what it replaces. While it's active, your changes to those settings (Tabs, Appearance…) are saved to it; other settings stay shared.",
+"＋ Nouveau profil (à partir des réglages actuels)": "＋ New profile (from current settings)",
+"Nom du profil": "Profile name",
+"Nom": "Name",
+"Le profil remplace les onglets": "The profile replaces the tabs",
+"Ne change pas": "Don't change",
+"Oui": "Yes",
+"Non": "No",
+"Confirmer la suppression": "Confirm deletion",
+"Activer": "Activate",
+"actif": "active",
+"Onglets affichés et leur ordre": "Shown tabs and their order",
+"Coché : le profil retient les onglets tels qu'ils sont maintenant.": "Checked: the profile keeps the tabs as they are now.",
+"Activer tout seul": "Turn on automatically",
+"Heures": "Hours",
+"Il faut aussi « Changer tout seul », en haut de la page.": "Also needs \"Switch automatically\" at the top of the page.",
+"Jours": "Days",
+"Lundi": "Monday",
+"Mardi": "Tuesday",
+"Mercredi": "Wednesday",
+"Jeudi": "Thursday",
+"Vendredi": "Friday",
+"Samedi": "Saturday",
+"Dimanche": "Sunday",
+"De … à …": "From … to …",
+"Début": "Start",
+"Fin": "End",
+"Une fin avant le début passe minuit (22:00 → 06:00).": "An end before the start goes past midnight (22:00 → 06:00).",
+"Nom du Wi-Fi": "Wi-Fi name",
+"Wi-Fi actuel": "Current Wi-Fi",
+"Introuvable": "Not found",
+"Windows 11 ne donne ce nom qu'aux applis autorisées à utiliser la localisation (Paramètres → Confidentialité → Localisation).": "Windows 11 only gives this name to apps allowed to use location (Settings → Privacy → Location).",
+"Météo": "Weather",
+"La température et le temps qu'il fait dans ta ville, dans la mini-île quand elle n'a rien d'autre à montrer, et en détail dans l'onglet Système. Désactivée tant que tu ne coches pas « Afficher la météo » : rien ne part sur Internet avant. Service : Open-Meteo (gratuit, sans compte) ; il reçoit le nom de ta ville, puis ses coordonnées arrondies (environ 1 km), au plus toutes les 30 minutes.": "Temperature and current weather in your city, in the mini island when it has nothing else to show, and in detail in the System tab. Off until you check \"Show the weather\": nothing goes out to the Internet before that. Service: Open-Meteo (free, no account); it receives your city's name, then its rounded coordinates (about 1 km), at most every 30 minutes.",
+"Afficher la météo": "Show the weather",
+"Ondine demande la météo à Open-Meteo (open-meteo.com), au plus toutes les 30 minutes.": "Ondine asks Open-Meteo (open-meteo.com) for the weather, at most every 30 minutes.",
+"Ta ville": "Your city",
+"Par exemple « Lyon », ou « Lyon, FR » pour préciser le pays.": "For example \"Lyon\", or \"Lyon, FR\" to specify the country.",
+"Unité": "Unit",
+"Dans la mini-île": "In the mini island",
+"Quand rien d'autre ne s'y affiche (musique, minuteur, rendez-vous).": "When nothing else shows there (music, timer, appointment).",
+"Ciel dégagé": "Clear sky",
+"Plutôt dégagé": "Mostly clear",
+"Partiellement nuageux": "Partly cloudy",
+"Couvert": "Overcast",
+"Brouillard": "Fog",
+"Bruine": "Drizzle",
+"Pluie verglaçante": "Freezing rain",
+"Pluie": "Rain",
+"Neige": "Snow",
+"Averses": "Showers",
+"Averses de neige": "Snow showers",
+"Orage": "Thunderstorm",
+"Orage avec grêle": "Thunderstorm with hail",
+"Tes prochains rendez-vous, venant de plusieurs calendriers : des fichiers .ics (export d'Outlook, Google Agenda, Thunderbird…) ou les adresses secrètes iCal de tes agendas en ligne, chacun avec son nom et sa couleur. Un fichier est relu dès qu'il change ; un lien est retéléchargé toutes les 15 minutes. Un clic sur un rendez-vous ouvre son lien (réunion Teams, Meet, Zoom…). Lecture seule : rien n'est envoyé, et les adresses restent dans le Gestionnaire d'identifiants.": "Your upcoming appointments from several calendars: .ics files (exported from Outlook, Google Calendar, Thunderbird…) or the secret iCal addresses of your online calendars, each with its own name and color. A file is re-read as soon as it changes; a link is re-downloaded every 15 minutes. Clicking an appointment opens its link (Teams, Meet, Zoom meeting…). Read-only: nothing is sent, and the addresses stay in the Credential Manager.",
+"Calendriers": "Calendars",
+"Ajoute un fichier .ics (relu tout seul quand il change) ou l'adresse secrète iCal d'un agenda en ligne (Google Agenda : Paramètres → ton agenda → « Adresse secrète au format iCal »). Le lien est rangé dans le Gestionnaire d'identifiants de Windows, jamais dans les réglages. Garde-le pour toi : il donne accès à tout ton agenda.": "Add an .ics file (re-read automatically when it changes) or the secret iCal address of an online calendar (Google Calendar: Settings → your calendar → “Secret address in iCal format”). The link is stored in the Windows Credential Manager, never in the settings. Keep it to yourself: it gives access to your whole calendar.",
+"Aucun calendrier.": "No calendar.",
+"＋ Fichier .ics…": "＋ .ics file…",
+"＋ Lien iCal…": "＋ iCal link…",
+"Lien iCal": "iCal link",
+"✓ Lien enregistré": "✓ Link saved",
+"Aucun lien": "No link",
+"Changer le lien": "Change the link",
+"Retirer ce calendrier": "Remove this calendar",
+"Nom du calendrier": "Calendar name",
+"Nom (ex. : Travail)": "Name (e.g. Work)",
+"Lien enregistré : l'agenda sera relu dans quelques secondes.": "Link saved: the calendar will be re-read in a few seconds.",
+"Calendrier ajouté.": "Calendar added.",
+"Ajouter": "Add",
+"Dans les réglages du module Agenda, ajoute l'adresse secrète iCal de ton agenda en ligne (Google Agenda, Outlook…), toujours à jour, ou un fichier .ics exporté. Tu peux en mettre plusieurs, chacun avec sa couleur.": "In the Calendar module settings, add the secret iCal address of your online calendar (Google Calendar, Outlook…), always up to date, or an exported .ics file. You can add several, each with its own color.",
+"Rejoindre la réunion Teams": "Join the Teams meeting",
+"Rejoindre la réunion Google Meet": "Join the Google Meet meeting",
+"Rejoindre la réunion Zoom": "Join the Zoom meeting",
+"Rejoindre la réunion Webex": "Join the Webex meeting",
+"Ouvrir le lien du rendez-vous": "Open the appointment's link",
+"Rejoindre": "Join",
+"Relire tous les calendriers": "Re-read all calendars",
+"1 calendrier": "1 calendar",
+"ce rendez-vous n'a pas de lien": "this appointment has no link",
+"lien refusé : seuls les liens http(s) s'ouvrent": "link refused: only http(s) links are opened",
+"aucun lien enregistré : ajoute-le dans les réglages du module Agenda": "no link saved: add it in the Calendar module settings",
+"Signaler un problème": "Report a problem",
+"Page ouverte dans ton navigateur : relis tout avant d'envoyer.": "Page opened in your browser: check everything before sending.",
+"Ouvre GitHub avec la version, Windows et les 40 dernières lignes du journal (chemins personnels masqués). Tu relis et complètes tout avant d'envoyer : rien ne part sans toi.": "Opens GitHub with the version, Windows and the last 40 lines of the log (personal paths hidden). You review and complete everything before sending: nothing leaves without you.",
+"Ressources utilisées": "Resources used",
+"Mémoire et processeur d'Ondine et de ses fenêtres (WebView2). Mesuré seulement pendant que cette page est ouverte.": "Memory and CPU used by Ondine and its windows (WebView2). Measured only while this page is open.",
+"Disponible dans l'appli seulement.": "Only available in the app."
 },
 "patterns": [
 [
@@ -1087,10 +1250,6 @@
 "the shortcut $1 was refused: $2"
 ],
 [
-"^le\\ raccourci\\ (.+?)\\ est\\ refusé\\ :\\ (.+?)$",
-"the shortcut $1 was refused: $2"
-],
-[
 "^écriture\\ du\\ ticket\\ impossible\\ :\\ (.+?)$",
 "unable to write the ticket: $1"
 ],
@@ -1181,10 +1340,6 @@
 [
 "^Il\\ reste\\ (.+?)\\ Go\\ \\((.+?)\\ %\\)\\.$",
 "$1 GB left ($2%)."
-],
-[
-"^Lancer\\ un\\ minuteur\\ de\\ (.+?)\\ min$",
-"Start a $1 min timer"
 ],
 [
 "^Texte\\ copié\\ \\((.+?)\\ caractères\\)$",
@@ -1719,10 +1874,6 @@
 "Open $1"
 ],
 [
-"^Ouvrir\\ (.+?)$",
-"Open $1"
-],
-[
 "^Monter\\ (.+?)$",
 "Move $1 up"
 ],
@@ -1757,6 +1908,78 @@
 [
 "^La mise à jour a échoué : (.*)$",
 "The update failed: $1"
+],
+[
+"^Toute la journée : (.+)$",
+"All day: $1"
+],
+[
+"^Le premier à (.+?) : (.+)$",
+"The first one at $1: $2"
+],
+[
+"^Dernier texte lu \\((.+?)\\)$",
+"Last text read ($1)"
+],
+[
+"^Créer (\\d+) images$",
+"Create $1 images"
+],
+[
+"^Renommer les (\\d+) fichiers$",
+"Rename the $1 files"
+],
+[
+"^il y a (\\d+) min$",
+"$1 min ago"
+],
+[
+"^il y a (\\d+) h$",
+"$1 h ago"
+],
+[
+"^(.+?)\\ notifications\\ pendant\\ ta\\ concentration$",
+"$1 notifications during your focus session"
+],
+[
+"^texte\\ trop\\ long\\ pour\\ un\\ QR\\ code\\ \\((\\d+)\\ caractères,\\ (\\d+)\\ au\\ plus\\)$",
+"text too long for a QR code ($1 characters, $2 at most)"
+],
+[
+"^(#[0-9A-F]{6}|rgb\\(.+\\)|hsl\\(.+\\)) copié$",
+"$1 copied"
+],
+[
+"^(.+) : cliquer pour copier$",
+"$1: click to copy"
+],
+[
+"^«\\ (.+?)\\ »\\ est\\ actif\\.\\ Aussi\\ depuis\\ le\\ menu\\ de\\ l'icône\\ d'Ondine,\\ près\\ de\\ l'horloge\\.$",
+"\"$1\" is active. Also from Ondine's icon menu, near the clock."
+],
+[
+"^(\\d+)\\ profils\\ au\\ plus$",
+"$1 profiles at most"
+],
+[
+"^(.*?)vent\\ (\\d+)\\ (km/h|mph)\\ ·\\ à\\ (\\d\\d:\\d\\d)$",
+"$1wind $2 $3 · at $4"
+],
+[
+"^Couleur de (.+)$",
+"Color of $1"
+],
+[
+"^lien non ouvert : (.+)$",
+"link not opened: $1"
+],
+[
+"^(.+) : aucun lien enregistré : ajoute-le dans les réglages du module Agenda$",
+"$1: no link saved: add it in the Calendar module settings"
+],
+[
+"^(\\d+) Mo · (.+) % du processeur · (\\d+) processus$",
+"$1 MB · $2% CPU · $3 processes"
 ]
 ]
 }

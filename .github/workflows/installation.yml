@@ -1,0 +1,200 @@
+# Test de la version INSTALLÉE, sur une vraie machine Windows de GitHub :
+# installe l'installateur NSIS en silence (/S), lance Ondine avec
+# « Toujours en mini » activé, puis vérifie que la fenêtre de l'île est bien
+# ouverte (et pas restée la bande de réveil de 240 × 6 px, bug de la beta.1).
+# Une capture d'écran et le journal d'Ondine sont gardés comme artefacts.
+#
+# Quand il tourne :
+#   - tout seul après chaque « release » réussi (il prend l'installateur que
+#     release a gardé, artefact « installateur ») ;
+#   - à la main (onglet Actions → installation → Run workflow) :
+#       * « release_run » vide : l'installateur de la dernière « release » réussie ;
+#       * « release_run » = numéro d'une exécution de release (le nombre à la
+#         fin de son adresse …/actions/runs/<numéro>) : celui-là ;
+#       * « construire » coché : construit d'abord l'installateur depuis la
+#         branche choisie (sans signature ni brouillon de version) — pratique
+#         pour tester une branche avant de faire une version.
+#
+# Rien n'est publié ici et rien ne sort de la machine de test.
+name: installation
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_run:
+        description: "Numéro de l'exécution « release » dont on teste l'installateur (vide = la dernière réussie)"
+        required: false
+        default: ""
+      construire:
+        description: "Construire l'installateur depuis cette branche au lieu de prendre celui d'une release"
+        type: boolean
+        default: false
+  workflow_run:
+    workflows: [release]
+    types: [completed]
+
+jobs:
+  installer-et-lancer:
+    # Après une release ratée, il n'y a pas d'installateur à tester.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    permissions:
+      actions: read # pour télécharger l'artefact d'une autre exécution
+      contents: read
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+
+      # ── 1. L'installateur : construit ici, ou repris d'une exécution « release » ──
+
+      - name: Choisir l'installateur à tester
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          BUILD: ${{ inputs.construire }}
+          WANTED_RUN: ${{ inputs.release_run }}
+          TRIGGER_RUN: ${{ github.event.workflow_run.id }}
+          REPO: ${{ github.repository }}
+        run: |
+          if ($env:EVENT -eq "workflow_dispatch" -and $env:BUILD -eq "true") {
+            "mode=build" >> $env:GITHUB_OUTPUT
+            Write-Host "Construction de l'installateur depuis $env:GITHUB_REF_NAME."
+            exit 0
+          }
+          $run = ""
+          if ($env:EVENT -eq "workflow_run") { $run = $env:TRIGGER_RUN }
+          elseif ($env:WANTED_RUN -match '^\d+$') { $run = $env:WANTED_RUN }
+          elseif ($env:WANTED_RUN) { throw "« release_run » doit être un numéro d'exécution (chiffres seulement)." }
+          else {
+            $run = gh run list --repo $env:REPO --workflow release.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId'
+            if (-not $run -or $run -eq "null") { throw "Aucune exécution « release » réussie : lance release, ou coche « construire »." }
+          }
+          "mode=release" >> $env:GITHUB_OUTPUT
+          "run=$run" >> $env:GITHUB_OUTPUT
+          Write-Host "Installateur de l'exécution release n° $run."
+
+      - name: Récupérer l'installateur de la release
+        if: steps.source.outputs.mode == 'release'
+        uses: actions/download-artifact@v4
+        with:
+          name: installateur
+          path: installateur
+          run-id: ${{ steps.source.outputs.run }}
+          github-token: ${{ github.token }}
+
+      - name: Node
+        if: steps.source.outputs.mode == 'build'
+        uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Rust stable
+        if: steps.source.outputs.mode == 'build'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        if: steps.source.outputs.mode == 'build'
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Construire l'installateur
+        if: steps.source.outputs.mode == 'build'
+        run: |
+          npm ci
+          npm run tauri build -- --bundles nsis
+          New-Item -ItemType Directory -Force -Path installateur | Out-Null
+          Copy-Item src-tauri/target/release/bundle/nsis/*-setup.exe installateur/
+
+      # ── 2. Préparer, installer, lancer ───────────────────────────────────────
+
+      - name: Préparer les réglages (« Toujours en mini »)
+        run: |
+          # Les réglages vivent dans %APPDATA%\Ondine\settings.json
+          # (src-tauri/src/services/settings.rs). Les champs absents prennent
+          # leur valeur par défaut.
+          #   alwaysMini        : le réglage du bug de la beta.1 ;
+          #   welcomed          : pas de mot de bienvenue (il ouvrirait l'île
+          #                       tout seul et cacherait le bug) ;
+          #   presentationQuiet : off, pour qu'un plein écran sur la machine de
+          #                       test ne cache pas l'île ;
+          #   autoUpdate, autostart : rien vers Internet, rien dans le registre.
+          $dir = Join-Path $env:APPDATA "Ondine"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          $settings = @{
+            version = 2
+            general = @{ welcomed = $true; autoUpdate = $false; autostart = $false; language = "fr" }
+            island  = @{ alwaysMini = $true; presentationQuiet = $false }
+          } | ConvertTo-Json -Depth 5
+          # UTF-8 SANS BOM : serde_json refuse le BOM, et le fichier serait mis de côté.
+          [IO.File]::WriteAllText((Join-Path $dir "settings.json"), $settings, (New-Object Text.UTF8Encoding $false))
+          Get-Content (Join-Path $dir "settings.json")
+
+      - name: Installer en silence (/S)
+        run: |
+          $setup = Get-ChildItem installateur -Filter *-setup.exe -Recurse | Select-Object -First 1
+          if (-not $setup) { throw "Pas d'installateur *-setup.exe dans l'artefact." }
+          Write-Host "Installation de $($setup.Name)"
+          $p = Start-Process -FilePath $setup.FullName -ArgumentList "/S" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "L'installateur a renvoyé le code $($p.ExitCode)." }
+          # Si l'installateur a lancé Ondine lui-même, on l'arrête : on veut un
+          # démarrage propre (une seconde instance ouvrirait l'île en grand).
+          Get-Process -Name ondine -ErrorAction SilentlyContinue | Stop-Process -Force
+          # Où est-il installé ? (mode « currentUser » : %LOCALAPPDATA%\Ondine)
+          $places = @("$env:LOCALAPPDATA\Ondine", "$env:LOCALAPPDATA\Programs\Ondine", "$env:ProgramFiles\Ondine")
+          $exe = $places | Where-Object { Test-Path $_ } |
+            ForEach-Object { Get-ChildItem $_ -Filter ondine.exe -Recurse -ErrorAction SilentlyContinue } |
+            Select-Object -First 1
+          if (-not $exe) { throw "ondine.exe introuvable après l'installation (cherché dans : $($places -join ', '))." }
+          Write-Host "Installé : $($exe.FullName)"
+          "ONDINE_EXE=$($exe.FullName)" >> $env:GITHUB_ENV
+
+      - name: Lancer Ondine
+        run: |
+          # Les réglages n'ont pas été touchés par l'installateur ?
+          Get-Content (Join-Path $env:APPDATA "Ondine\settings.json")
+          Start-Process -FilePath $env:ONDINE_EXE
+          Start-Sleep -Seconds 5
+
+      # ── 3. Vérifier ──────────────────────────────────────────────────────────
+
+      - name: Vérifier la fenêtre de l'île
+        run: ./.github/scripts/verifier-ile.ps1 -TimeoutSecs 60 -StableSecs 6 -ShotDir captures
+
+      - name: Les réglages ont bien été lus
+        run: |
+          # Un fichier illisible est renommé settings.broken-….json et Ondine
+          # repart des valeurs par défaut : le test ne voudrait alors plus rien dire.
+          $dir = Join-Path $env:APPDATA "Ondine"
+          $broken = @(Get-ChildItem $dir -Filter "settings.broken-*.json" -ErrorAction SilentlyContinue)
+          if ($broken.Count -gt 0) { throw "Réglages mis de côté par Ondine : $($broken.Name -join ', ')" }
+          $s = Get-Content (Join-Path $dir "settings.json") -Raw | ConvertFrom-Json
+          if ($s.island.alwaysMini -ne $true) { throw "island.alwaysMini n'est plus à true dans settings.json." }
+          Write-Host "Réglages lus, alwaysMini = true."
+
+      # ── 4. Garder les traces (même en cas d'échec) ──────────────────────────
+
+      - name: Rassembler captures, réglages et journal
+        if: always()
+        run: |
+          New-Item -ItemType Directory -Force -Path traces | Out-Null
+          if (Test-Path captures) { Copy-Item captures/* traces/ -ErrorAction SilentlyContinue }
+          Copy-Item (Join-Path $env:APPDATA "Ondine\settings*.json") traces/ -ErrorAction SilentlyContinue
+          Get-ChildItem (Join-Path $env:LOCALAPPDATA "Ondine") -Filter *.log -Recurse -ErrorAction SilentlyContinue |
+            Copy-Item -Destination traces/ -ErrorAction SilentlyContinue
+          Get-Process -Name ondine -ErrorAction SilentlyContinue | Stop-Process -Force
+          Get-ChildItem traces
+
+      - name: Garder les traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: installation-traces
+          path: traces/
+          if-no-files-found: warn
+          retention-days: 14

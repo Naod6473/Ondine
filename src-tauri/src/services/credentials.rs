@@ -6,12 +6,32 @@
 // Seul le code Rust d'un module ayant la permission "credentials" peut la lire,
 // via ModuleContext::credential (voir modules/mod.rs).
 
-/// Toutes les clés que l'île accepte de stocker. Les autres sont refusées.
+/// Toutes les clés que l'île accepte de stocker. Les autres sont refusées
+/// (sauf celles des agendas en ligne, voir `calendar_key`).
 pub const KNOWN_KEYS: &[&str] = &["anthropic-api-key", ICAL_URL];
 
 /// L'adresse secrète iCal d'un agenda en ligne (Google Agenda…) : c'est un
 /// mot de passe déguisé (qui l'a peut lire tout l'agenda), donc rangée ici.
+/// C'est l'ANCIENNE clé (un seul agenda en ligne, avant la version 1.2) : elle
+/// ne sert plus qu'à la migration (voir modules/agenda.rs).
 pub const ICAL_URL: &str = "agenda-ical-url";
+
+/// Depuis la version 1.2, chaque agenda en ligne a sa propre clé :
+/// « agenda-ical-url-<id> », où <id> est l'identifiant du calendrier dans les
+/// réglages du module Agenda.
+pub fn calendar_key(id: &str) -> String {
+    format!("{ICAL_URL}-{id}")
+}
+
+/// Un identifiant de calendrier valide : 1 à 16 lettres minuscules ou chiffres.
+pub fn is_calendar_id(id: &str) -> bool {
+    !id.is_empty() && id.len() <= 16 && id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+}
+
+/// Est-ce une clé d'agenda en ligne (l'ancienne ou celle d'un calendrier) ?
+fn is_ical_key(key: &str) -> bool {
+    key == ICAL_URL || key.strip_prefix(ICAL_URL).and_then(|rest| rest.strip_prefix('-')).is_some_and(is_calendar_id)
+}
 
 /// Nom sous lequel les clés apparaissent dans le Gestionnaire d'identifiants.
 #[cfg(windows)]
@@ -22,7 +42,7 @@ const SERVICE: &str = "io.github.naod6473.ondine";
 const OLD_SERVICE: &str = "io.github.naod6473.island";
 
 fn check_key(key: &str) -> Result<(), String> {
-    if KNOWN_KEYS.contains(&key) {
+    if KNOWN_KEYS.contains(&key) || is_ical_key(key) {
         Ok(())
     } else {
         Err(format!("clé inconnue : {key}"))
@@ -98,7 +118,7 @@ pub fn set(key: &str, value: &str) -> Result<(), String> {
     if value.is_empty() {
         return delete(key);
     }
-    if key == ICAL_URL {
+    if is_ical_key(key) {
         // Outlook et Apple donnent parfois « webcal:// » : c'est du https.
         let url = match value.get(..9) {
             Some(p) if p.eq_ignore_ascii_case("webcal://") => format!("https://{}", &value[9..]),
@@ -142,5 +162,16 @@ mod tests {
         }
         // Le message ne recopie jamais l'adresse.
         assert!(!check_ical_url("http://secret-token").unwrap_err().contains("secret-token"));
+    }
+
+    #[test]
+    fn one_key_per_calendar() {
+        assert_eq!(calendar_key("ab12"), "agenda-ical-url-ab12");
+        assert!(check_key(&calendar_key("ab12")).is_ok());
+        assert!(check_key(ICAL_URL).is_ok());
+        // Un identifiant bizarre ne permet pas de ranger n'importe quelle clé.
+        for bad in ["agenda-ical-url-", "agenda-ical-url-AB", "agenda-ical-url-a/b", "agenda-ical-url-12345678901234567", "agenda-ical-urlx"] {
+            assert!(check_key(bad).is_err(), "{bad}");
+        }
     }
 }

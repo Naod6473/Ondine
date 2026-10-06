@@ -90,7 +90,8 @@ Elle a deux tailles (en px logiques, multipliées par l'échelle de l'écran) :
 
 **Clics traversants.** Tauri 2 ne sait rendre « transparente aux clics » que la
 fenêtre entière. Le Rust lit donc la souris ~60 fois par seconde quand l'île est
-visible, et bascule ce réglage quand la souris entre ou sort de la forme
+visible (~30 fois au calme : souris immobile depuis 250 ms ou à plus de 200 px
+de l'île, voir `poll_interval`), et bascule ce réglage quand la souris entre ou sort de la forme
 de l'île, que le front lui envoie à chaque changement (`island_set_rect`). Pendant
 qu'un bouton de souris est enfoncé au-dessus du panneau, tout le panneau prend la
 souris : sinon Windows ne verrait pas l'île comme cible d'un glisser-déposer.
@@ -98,6 +99,14 @@ souris : sinon Windows ne verrait pas l'île comme cible d'un glisser-déposer.
 **Focus.** L'île ne prend le focus clavier que dans l'état `expanded` (ouvert par
 un clic ou par le menu) : c'est ce qui permet à Échap de fonctionner. En sortant
 de `expanded`, le focus est rendu à la fenêtre qui l'avait avant.
+
+**Clavier et lecteurs d'écran.** Les onglets de l'île ouverte sont une liste
+d'onglets ARIA (`tablist` / `tab` / `tabpanel`) : Tab entre sur l'onglet actif
+puis passe à ⚙, ▴ et au contenu ; ← → (Début, Fin) déplacent le focus d'un
+onglet à l'autre, Entrée ou Espace l'ouvre. Ouverte par le raccourci clavier,
+l'île met le focus sur l'onglet actif. Un bouton-icône avec une bulle (`title`)
+reçoit cette bulle comme nom (`aria-label`, voir `el()` dans dom.ts). Le focus
+clavier est entouré de la couleur d'accent du thème (`:focus-visible`).
 
 **Écrans et DPI.** Réglage `general.screen` : écran principal ou écran de la
 souris. L'île se replace toute seule quand un écran est branché, débranché ou
@@ -272,6 +281,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `shelf.add` `{paths}` | Capture (Rust) | l'Étagère valide les chemins et les pose sur l'étagère |
 | `clipboard.changed` `{count}` | Presse-papiers (Rust) | l'onglet redemande la liste (le message ne contient aucun texte copié) |
 | `timer.done` `{title}` | Minuteur (front) | (la notification et le son sont faits par le module) |
+| `timer.focus` `{on}` | Minuteur (front), mode concentration | l'île met ses notifications en attente pendant une séance de travail Pomodoro (sauf « critical » et celles du Minuteur), puis un résumé |
 | `notes.changed` `{notes, todos, open}` | Notes (Rust) | l'onglet redemande la liste (que des nombres dans le message) |
 | `agenda.changed` `{count, next, errors, version}` | Agenda (Rust) | l'onglet et la pilule redemandent la liste (`upcoming`) |
 | `agenda.reminder` `{key, minutes}` | Agenda (Rust) | notification « Dans 10 min : … » (île en alerte) |
@@ -290,12 +300,15 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `agents.event` `{source, kind, title, body, project, at}` | Agents IA (Rust) | notification (✋ « attend ta permission » en priorité haute, ✅ « a fini ») et historique |
 | `agents.projects` `{tools, projects: [{index, name}]}` | Agents IA (Rust) | le Lanceur propose « Claude Code · projet », « Codex · projet »… |
 | `agents.launch` `{tool, index?}` | Lanceur (front) | Agents IA ouvre cet agent dans ce projet |
+| `notes.open` `{kind: "note"\|"todo", id}` | Lanceur (front, recherche dans l'île) | l'onglet Notes s'ouvre sur cette note (éditeur) ou cette tâche (mise en avant) |
 | `agents.changed` | Agents IA (Rust) | l'onglet redessine le tableau des sessions |
 | `agents.ask` `{id, kind, who, question, detail, options, session, until}` | Agents IA (Rust : outil MCP ou permission) | alerte avec un bouton par choix (permission : Autoriser… / Refuser / Au terminal) |
 | `agents.ask.closed` `{id, expired, gone}` | Agents IA (Rust) | remplace l'alerte par « Réponse envoyée », « Pas de réponse » ou « Réglé ailleurs » |
 | `agents.progress` `{source, who, title, step, total}` | Agents IA (Rust, outil MCP) | notification « 3/7 » remplacée à chaque étape |
 | `agents.quiet` `{on, summary?}` | Agents IA (Rust) | début / fin de la concentration ; à la fin, la notification du résumé |
 | `claude.thinking` / `claude.done` | Agents IA (Rust) | la mascotte réfléchit tant qu'une session de Claude Code travaille |
+| `capture.pick` | Lanceur (front) | Capture ouvre la pipette |
+| `capture.color` `{ok, hex, text, error?}` | Capture (Rust) | notification « #3A7BD5 copié » ; l'onglet redemande l'historique (`colors`) |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -323,6 +336,13 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 - **Agenda .ics** (`ics.rs`) : lit le texte d'un fichier iCalendar (aucun
   téléchargement, rien d'exécuté) et déroule les répétitions. Voir « Module
   Agenda ».
+- **Diagnostic** (`src-tauri/src/diagnostics.rs`) : « Signaler un problème »
+  (Réglages → Général → À propos) ouvre dans le navigateur une issue GitHub
+  préremplie (`bug.yml` : version, Windows, 40 dernières lignes du journal,
+  chemins personnels masqués, adresse de 2000 caractères au plus) ; rien ne part
+  sans la personne. Et la mémoire / le processeur d'Ondine et de ses processus
+  WebView2 (sysinfo), lus toutes les 2 s seulement quand la fenêtre de réglages
+  est visible sur la page Général.
 - **Confidentialité** (`privacy.rs`) : aucune télémétrie. `check_path` refuse les
   chemins relatifs, inexistants ou situés dans un dossier exclu (après résolution
   des `..` et des liens). Un module qui envoie du contenu à l'API Claude déclare
@@ -471,6 +491,11 @@ et l'accès à Windows dans `src-tauri/src/platform/windows.rs` (« Presse-papie
   disparaissent) avant de coller.
 - **Annuler** : retirer une copie, vider l'historique (les épinglés restent) et
   supprimer un snippet proposent « Annuler ».
+- **QR code** (bouton ▦ d'une copie) : `clipboard_qr.rs` calcule la grille avec
+  le crate `qrcode` (sans ses options d'image), la dessine en SVG (affiché dans
+  l'île, data URL) ou en pixels (« Copier l'image », ~512 px, via arboard).
+  Niveau de correction M, 1 000 caractères au plus (au-delà, le code serait
+  trop serré pour un téléphone) : message clair sinon. Aucun service en ligne.
 - **Confidentialité** : aucun texte copié dans le journal ni sur le bus ; rien ne
   sort de l'ordinateur.
 
@@ -505,6 +530,27 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   (`annotate_export`). Le Rust le décode (ce qui le valide), puis le copie,
   l'enregistre ou le pose sur l'étagère.
 - **Image déjà copiée** : les mêmes actions, sans ouvrir l'outil.
+- **Pipette** (`pick_color`, ou `capture.pick` depuis le Lanceur) : l'île se
+  replie (450 ms), puis `platform/picker.rs` photographie tout le bureau
+  (`BitBlt` + `CAPTUREBLT` depuis l'écran, tous les écrans) et l'affiche dans
+  une fenêtre **Win32** (pas WebView2) sans bordure, au-dessus de tout, de la
+  taille du bureau virtuel : l'écran a l'air figé. Le fil est en
+  `PER_MONITOR_AWARE_V2` : tout est en pixels physiques, donc le pixel lu est
+  bien celui sous la croix, même avec des écrans à 100 % et 150 %. Curseur en
+  croix (`IDC_CROSS`), loupe 11 × 11 pixels agrandis (taille selon l'échelle
+  de l'écran, placée de l'autre côté près d'un bord) avec pastille et
+  `#RRGGBB`. Clic gauche ou Entrée = choisir (au relâchement : rien n'arrive à
+  la fenêtre d'en dessous), Échap, clic droit ou perte du focus = annuler,
+  flèches = bouger d'un pixel ; fermeture automatique après 2 minutes. La
+  couleur est lue dans la photo (la loupe ne peut pas s'y retrouver).
+  Pourquoi pas une page : une fenêtre WebView2 créée tard peut rester blanche,
+  la photo pèserait des dizaines de Mo à envoyer, et une page étalée sur des
+  écrans d'échelles différentes n'a qu'une échelle. La photo est effacée à la
+  fermeture. Couleur copiée en HEX, RGB ou HSL (réglage `colorFormat`, calculs
+  testés dans `modules/capture/color.rs`) ; historique des 8 dernières
+  (sans doublon) dans `%APPDATA%\Ondine\colors.json`, pastilles cliquables
+  dans l'onglet (`colors`, `copy_color {hex}` : seule une couleur `#RRGGBB`
+  est acceptée).
 - **Ordre des onglets** : réglage `island.tabOrder` (liste d'ids ; vide = ordre
   d'origine ; un module absent se met à la fin). On le change en glissant un
   onglet dans l'île (`src/island/tab-drag.ts` : l'onglet suit la souris, les
@@ -527,6 +573,16 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   (WebAudio, autorisé seulement après un premier clic dans l'île), et
   `task.finished` (la mascotte fait la fête).
 - Pilule : le temps qui reste et une barre de progression, tant que ça tourne.
+- Mode concentration (réglage `focusQuiet`, activé par défaut) : pendant une
+  séance de travail Pomodoro qui tourne, `timer.focus {on: true}` ; l'île met
+  la file de notifications en pause (raison « focus », `NotificationQueue.pause`
+  accepte plusieurs raisons qui se chevauchent, comme le mode présentation),
+  en laissant passer les « critical » et celles du Minuteur. Pause, passer,
+  réinitialiser, fin de séance ou module coupé : `{on: false}`, résumé
+  « N notifications pendant ta concentration ». « Ne pas déranger » de Windows
+  n'est PAS activé : pas d'API publique fiable (FocusSessionManager est une
+  fonction à accès limité, la clé de registre des notifications n'est relue
+  qu'au redémarrage du service, WNF n'est pas documenté).
 
 ### Module Notes (`src/modules/notes/`, `src-tauri/src/modules/notes.rs`)
 
@@ -540,13 +596,28 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
 
 ### Module Agenda (`src/modules/agenda/`, `src-tauri/src/modules/agenda.rs`)
 
-- Réglage `icsFiles` (type `files`, extension `.ics`, 5 au plus) : la boîte
-  « Ouvrir » de Windows (`dialog_pick_file`). Les chemins passent par
-  `check_path` (dossiers exclus), la taille est limitée à 20 Mo.
+- Réglage `calendars` (type `calendars`, 10 au plus, éditeur
+  `src/settings/calendars-input.ts`) : une liste `{id, name, color, kind,
+  path?}`. `kind: "file"` = un .ics choisi avec `dialog_pick_file` (chemin
+  passé par `check_path`, 20 Mo au plus) ; `kind: "link"` = un lien iCal rangé
+  dans le Gestionnaire d'identifiants sous `agenda-ical-url-<id>` (jamais dans
+  settings.json). Lecture et nettoyage de la liste, migration et fusion :
+  `services/ics_calendars.rs`.
+- Migration (1.2) : les anciens réglages (`icsFiles` + un lien sous
+  `agenda-ical-url`) deviennent des calendriers `f1`, `f2`… et `lien`, au
+  démarrage, même module désactivé ; le lien est recopié sous
+  `agenda-ical-url-lien` et l'ancienne clé effacée seulement après relecture.
+  Tant que ce n'est pas enregistré, les anciens réglages sont lus tels quels.
 - Un thread relit un fichier quand sa date de modification change (toutes les
-  15 s), calcule les rendez-vous des 30 prochains jours (30 au plus), publie
+  15 s) et retélécharge un lien toutes les 15 min, fusionne et trie les
+  rendez-vous de tous les calendriers (`horizonDays` jours, 30 au plus), publie
   `agenda.changed` si la liste a changé et `agenda.reminder` une seule fois
   par rendez-vous, `reminderMin` minutes avant.
+- Clic sur un rendez-vous : commande `open {calendar, key}`. Le lien vient du
+  .ics (`URL`, sinon un lien Teams / Meet / Zoom / Webex dans
+  `X-GOOGLE-CONFERENCE`, le lieu ou la description : `ics::event_link`) ; il
+  reste dans le Rust (le front n'a que sa sorte) et n'est ouvert
+  (`platform::shell_open`) que s'il commence par http(s).
 - Lecture du .ics (`services/ics.rs`) : lignes repliées, texte échappé,
   journées entières, heures UTC (`Z`) converties, `DURATION`, `RRULE`
   (DAILY/WEEKLY/MONTHLY/YEARLY avec INTERVAL, COUNT, UNTIL, BYDAY dont
@@ -633,6 +704,33 @@ qui surveille dossiers et lecteurs).
   (`timer.start`), « Ouvrir un terminal » (`terminal.open`), réglages.
 - Tri (`search.ts`) : début du nom > début d'un mot > initiales (« gdp ») >
   contenu > lettres dans l'ordre ; sans accents ni majuscules.
+- **Recherche dans l'île** (`island-search.ts`, réglage `searchIsland`, activé
+  par défaut) : à partir de 2 lettres, 140 ms après la dernière frappe, le
+  front appelle `launcher.search {query}`. Le Rust du Lanceur appelle la
+  commande `search {query, limit: 5}` de Notes, Presse-papiers, Étagère et
+  Capture par `modules::invoke` (qui vérifie qu'ils sont activés et pas en
+  panne) et renvoie `{groups: [{source, items}]}`. L'île montre une section
+  par source, sous les applis (8 au plus dans ce cas). Fonctions communes dans
+  `services/search.rs` : `normalize` (minuscules, accents retirés, blancs
+  regroupés), `score` (début du texte 100 > début d'un mot 80 > chaque mot
+  tapé commence un mot 70 > contenu 60 > chaque mot quelque part 40), `best`
+  (note, puis le plus récent), `excerpt` (extrait d'une ligne autour du mot).
+  - Notes : notes (première ligne = titre, qui compte plus que le reste) et
+    tâches (une tâche faite passe après). Action : `notes.open`.
+  - Presse-papiers : historique et snippets, extrait de 90 caractères. Les
+    copies sensibles n'ont jamais été lues, donc jamais trouvées. Action :
+    `open_found` → `clipboard.copy` (recopier).
+  - Étagère : noms des éléments ; ceux qui sont maintenant dans un dossier
+    exclu (ou disparus) sont écartés. Action : `shelf.open {path}` (chemin
+    revalidé, doit être sur l'étagère).
+  - Capture : les images du dossier des captures (nom + date en toutes
+    lettres, « 6 octobre 2026 », pour trouver par le mois) et le dernier texte
+    lu (gardé en mémoire seulement). Action : `capture.open {name}` (un simple
+    nom de fichier, cherché dans le dossier des captures) ou `copy_last`.
+  - Ouvrir un fichier (`launcher::open_checked`) : un dossier → Explorateur ;
+    un exécutable n'est jamais lancé, seulement montré dans l'Explorateur.
+  - Rien ne passe par le bus ni par le journal (seulement « résultat de l'île
+    ouvert (source) »). En mode démo, des résultats inventés (`demo.ts`).
 
 ### `api.openIsland(tab?)`
 
@@ -836,6 +934,41 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   permission passent tout de suite au terminal. À la fin : `agents.quiet
   {on: false, summary}`, une seule notification (« Claude a fini 2 tâches ·
   Codex t'attend · 1 question en attente »). En mémoire seulement.
+
+## Profils (`src-tauri/src/services/profiles.rs`, `src/settings/profiles-page.ts`)
+
+- Réglage `profiles` : `{list, active, auto, base}`. Un profil (« Travail »,
+  « Maison »…, 10 au plus) ne garde que ce qu'il remplace (`values`, champs
+  facultatifs) : `tabOrder` et `modules` (onglets affichés), `theme` + `color`,
+  `alwaysMini`.
+- Changer de profil (`profile_activate {id}`, "" = aucun) : les réglages
+  actuels sont rangés (ce que le profil actif remplace va dans ce profil, le
+  reste dans `base`), puis on repart de `base` avec par-dessus le nouveau
+  profil. Les retouches faites pendant un profil lui restent donc.
+- Changement automatique (`auto`) : règle par profil, plage horaire (jours,
+  début, fin, peut passer minuit) ou nom du Wi-Fi (`platform/wifi.rs`, API
+  Native Wifi `WlanQueryInterface` ; Windows 11 24H2 exige la permission de
+  localisation). Un fil regarde toutes les 30 s ; Wi-Fi avant heures, puis
+  l'ordre de la liste. Il n'agit que quand la réponse change : un choix à la
+  main tient jusqu'au prochain changement de situation.
+- Menu de l'icône (`tray.rs`) : sous-menu « Profil » (case cochée devant
+  l'actif), infobulle « Ondine · Travail ».
+
+## Météo (`src/modules/weather/`, `src-tauri/src/modules/weather.rs`)
+
+- Désactivée par défaut (réglage `on`), permission `network`. Rien ne part
+  tant qu'elle n'est pas allumée avec une ville.
+- Open-Meteo, en HTTPS seulement (ureq, TLS de Windows, 8 s au plus) :
+  `geocoding-api.open-meteo.com` (la ville → coordonnées, quand la ville
+  change ; « Lyon, FR » précise le pays), puis `api.open-meteo.com`
+  (coordonnées arrondies à 2 décimales) au plus toutes les 30 minutes (une
+  minute après un changement de ville ou d'unité). Erreurs : une ligne dans le
+  journal, sans la ville.
+- `weather.changed` (Rust) → le front redemande `current`, puis publie
+  `weather.updated` (icône, température, description, ville, détail) que
+  l'onglet Système affiche en ligne « Météo ».
+- Pas d'onglet : vue compacte (icône + température + ville) quand aucun autre
+  module n'occupe la pilule. Mode démo : une fausse météo (Lyon, 21°).
 
 ## Demander à Claude (`src/modules/askclaude/`, `src-tauri/src/modules/askclaude.rs`)
 

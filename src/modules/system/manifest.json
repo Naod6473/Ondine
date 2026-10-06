@@ -61,7 +61,8 @@
     "listens": [
       "system.disk-low",
       "system.battery-low",
-      "system.battery-full"
+      "system.battery-full",
+      "weather.updated"
     ]
   }
 }

@@ -2,8 +2,8 @@
   "id": "agenda",
   "name": "Agenda",
   "icon": "📅",
-  "description": "Ton prochain rendez-vous, lu dans un fichier .ics (export d'Outlook, Google Agenda, Thunderbird…) ou téléchargé depuis l'adresse secrète iCal de ton agenda en ligne (Réglages → Identifiants). Le fichier est relu dès qu'il change ; l'agenda en ligne est retéléchargé toutes les 15 minutes. Lecture seule : rien n'est envoyé, et l'adresse n'apparaît jamais dans le journal.",
-  "version": "0.1.0",
+  "description": "Tes prochains rendez-vous, venant de plusieurs calendriers : des fichiers .ics (export d'Outlook, Google Agenda, Thunderbird…) ou les adresses secrètes iCal de tes agendas en ligne, chacun avec son nom et sa couleur. Un fichier est relu dès qu'il change ; un lien est retéléchargé toutes les 15 minutes. Un clic sur un rendez-vous ouvre son lien (réunion Teams, Meet, Zoom…). Lecture seule : rien n'est envoyé, et les adresses restent dans le Gestionnaire d'identifiants.",
+  "version": "0.2.0",
   "permissions": [
     "files",
     "network",
@@ -13,15 +13,12 @@
     "version": 1,
     "fields": [
       {
-        "key": "icsFiles",
-        "type": "files",
-        "label": "Fichiers d'agenda (.ics)",
-        "help": "Exporte ton agenda au format .ics, puis choisis le fichier ici. Il est relu tout seul quand il change. Pour un agenda Google toujours à jour, mets plutôt son adresse secrète iCal dans Réglages → Identifiants.",
+        "key": "calendars",
+        "type": "calendars",
+        "label": "Calendriers",
+        "help": "Ajoute un fichier .ics (relu tout seul quand il change) ou l'adresse secrète iCal d'un agenda en ligne (Google Agenda : Paramètres → ton agenda → « Adresse secrète au format iCal »). Le lien est rangé dans le Gestionnaire d'identifiants de Windows, jamais dans les réglages. Garde-le pour toi : il donne accès à tout ton agenda.",
         "default": [],
-        "max": 5,
-        "extensions": [
-          "ics"
-        ]
+        "max": 10
       },
       {
         "key": "horizonDays",
@@ -74,7 +71,8 @@
   ],
   "commands": [
     "upcoming",
-    "reload"
+    "reload",
+    "open"
   ],
   "events": {
     "emits": [

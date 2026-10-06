@@ -11,8 +11,9 @@
 //     s'affichent dans l'île compacte, sans la forcer à s'ouvrir en grand ;
 //   - même `key` = même sujet : la nouvelle remplace l'ancienne (pas de doublons) ;
 //   - au plus MAX_QUEUE en attente : au-delà, la moins prioritaire est abandonnée ;
-//   - en pause (mode présentation), seules les "critical" s'affichent ; les
-//     autres attendent la fin de la pause.
+//   - en pause (mode présentation, mode concentration), seules les "critical"
+//     s'affichent (et celles des modules qu'une pause laisse passer, comme le
+//     Minuteur pendant la concentration) ; les autres attendent la fin de la pause.
 
 export type Priority = "low" | "normal" | "high" | "critical";
 
@@ -54,7 +55,12 @@ export class NotificationQueue {
   private shown: IslandNotification | null = null;
   private timer: number | null = null;
   private nextId = 1;
-  private paused = false;
+  /**
+   * Les pauses en cours : raison ("presentation", "focus"…) → modules dont les
+   * notifications passent quand même. Plusieurs pauses peuvent se chevaucher :
+   * la file ne repart que quand la dernière est levée.
+   */
+  private pauses = new Map<string, string[]>();
 
   /** Durée par défaut (ms), mise à jour depuis les réglages. */
   defaultDurationMs = 6000;
@@ -93,23 +99,31 @@ export class NotificationQueue {
   }
 
   /**
-   * Met la file en pause (true) : plus rien ne s'affiche sauf "critical", et
-   * celle affichée retourne en file. À la reprise (false), elles arrivent.
+   * Met la file en pause (true) pour une raison : plus rien ne s'affiche sauf
+   * "critical" et les notifications des modules de `letThrough` ; celle
+   * affichée retourne en file si elle ne passe pas. À la reprise (false), les
+   * autres arrivent, sauf si une autre pause est encore en cours.
    */
-  pause(on: boolean) {
-    if (on === this.paused) return;
-    this.paused = on;
-    if (on && this.shown && this.shown.priority !== "critical") {
+  pause(on: boolean, reason = "presentation", letThrough: string[] = []) {
+    if (on === this.pauses.has(reason)) return;
+    if (on) this.pauses.set(reason, letThrough);
+    else this.pauses.delete(reason);
+    if (this.shown && !this.passes(this.shown)) {
       this.queue.unshift(this.shown);
       this.shown = null;
       this.clearTimer();
       this.onShow(null);
-    } else if (!on && !this.shown) {
+    } else if (!this.shown) {
       this.showNext();
     }
   }
 
-  /** Combien attendent (pour le résumé à la fin d'une présentation). */
+  /** Une pause est-elle en cours (pour cette raison, ou pour n'importe laquelle) ? */
+  isPaused(reason?: string): boolean {
+    return reason ? this.pauses.has(reason) : this.pauses.size > 0;
+  }
+
+  /** Combien attendent (pour le résumé à la fin d'une présentation ou d'une concentration). */
   waiting(): number {
     return this.queue.length;
   }
@@ -130,14 +144,23 @@ export class NotificationQueue {
   }
 
   private showNext() {
-    // En pause, seules les critiques passent.
-    const i = this.paused ? this.queue.findIndex((q) => q.priority === "critical") : 0;
+    // En pause, seules passent les critiques et celles que la pause laisse passer.
+    const i = this.queue.findIndex((q) => this.passes(q));
     this.shown = i >= 0 ? (this.queue.splice(i, 1)[0] ?? null) : null;
     if (this.shown && !this.shown.sticky) {
       const id = this.shown.id;
       this.timer = window.setTimeout(() => this.dismiss(id), this.shown.durationMs ?? this.defaultDurationMs);
     }
     this.onShow(this.shown);
+  }
+
+  /** Cette notification peut-elle s'afficher malgré les pauses en cours ? */
+  private passes(n: IslandNotification): boolean {
+    if (n.priority === "critical") return true;
+    for (const letThrough of this.pauses.values()) {
+      if (!letThrough.includes(n.moduleId)) return false;
+    }
+    return true;
   }
 
   private sort() {

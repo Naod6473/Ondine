@@ -31,6 +31,7 @@ export type DemoScene = (typeof DEMO_SCENES)[number];
 const REAL_DATA = [
   "agenda.", "agents.", "claude.", "capture.", "clipboard.changed", "clipboard.link-cleaned", "controls.",
   "media.", "nettools.", "notes.", "remote.", "rules.notify", "shelf.", "system.", "task.",
+  "weather.",
 ];
 
 export function hidesRealData(msg: BusMessage): boolean {
@@ -122,21 +123,27 @@ function setPosition(ms: number) {
 }
 
 function agenda() {
-  const event = (key: string, title: string, location: string, start: number, minutes: number) => ({
+  const calendars = [
+    { id: "travail", name: "Travail", color: "#4fb8ff", kind: "link" },
+    { id: "perso", name: "Perso", color: "#ff8a65", kind: "link" },
+    { id: "f1", name: "Club de voile", color: "#7bd88f", kind: "file" },
+  ];
+  const event = (key: string, cal: number, title: string, location: string, start: number, minutes: number, link: string | null = null) => ({
     key, title, location, start, end: start + minutes * MIN, allDay: false,
+    calendar: calendars[cal].id, calendarName: calendars[cal].name, color: calendars[cal].color, link,
   });
   return {
     events: [
-      event("d1", "Point d'équipe", "Salle Océan", soon(20), 30),
-      event("d2", "Café avec Léa", "Le Petit Port", soon(90), 45),
-      event("d3", "Revue du site", "Visio", soon(180), 45),
-      event("d4", "Démo d'Ondine", "Salle Lagune", day(1, 10), 60),
-      event("d5", "Rendez-vous dentiste", "", day(2, 17, 30), 30),
+      event("d1", 0, "Point d'équipe", "Réunion Microsoft Teams", soon(20), 30, "teams"),
+      event("d2", 1, "Café avec Léa", "Le Petit Port", soon(90), 45),
+      event("d3", 0, "Revue du site", "Google Meet", soon(180), 45, "meet"),
+      event("d4", 0, "Démo d'Ondine", "Salle Lagune", day(1, 10), 60),
+      event("d6", 2, "Sortie en mer", "Port de La Rochelle", day(1, 14), 120, "web"),
+      event("d5", 1, "Rendez-vous dentiste", "", day(2, 17, 30), 30),
     ],
     errors: [],
-    files: 1,
-    online: true,
-    read: 5,
+    calendars,
+    read: 6,
     latest: null,
   };
 }
@@ -172,11 +179,97 @@ function clipboard(query: string) {
   };
 }
 
+/**
+ * Le QR code du mode démo (bouton ▦ du Presse-papiers) : un vrai code, calculé
+ * une fois par clipboard_qr.rs, pour « https://ondine.pissits.com ». Le même
+ * pour toutes les copies de démo (le Rust n'est pas appelé en démo).
+ */
+const DEMO_QR_SIZE = 33;
+const DEMO_QR_PATH =
+  "M4 4h7v1h-7zM12 4h2v1h-2zM15 4h2v1h-2zM18 4h1v1h-1zM20 4h1v1h-1zM22 4h7v1h-7zM4 5h1v1h-1z" +
+  "M10 5h1v1h-1zM12 5h2v1h-2zM16 5h3v1h-3zM20 5h1v1h-1zM22 5h1v1h-1zM28 5h1v1h-1zM4 6h1v1h-1z" +
+  "M6 6h3v1h-3zM10 6h1v1h-1zM13 6h2v1h-2zM17 6h2v1h-2zM20 6h1v1h-1zM22 6h1v1h-1zM24 6h3v1h-3z" +
+  "M28 6h1v1h-1zM4 7h1v1h-1zM6 7h3v1h-3zM10 7h1v1h-1zM12 7h1v1h-1zM14 7h1v1h-1zM17 7h2v1h-2z" +
+  "M22 7h1v1h-1zM24 7h3v1h-3zM28 7h1v1h-1zM4 8h1v1h-1zM6 8h3v1h-3zM10 8h1v1h-1zM14 8h1v1h-1z" +
+  "M19 8h2v1h-2zM22 8h1v1h-1zM24 8h3v1h-3zM28 8h1v1h-1zM4 9h1v1h-1zM10 9h1v1h-1zM15 9h1v1h-1z" +
+  "M20 9h1v1h-1zM22 9h1v1h-1zM28 9h1v1h-1zM4 10h7v1h-7zM12 10h1v1h-1zM14 10h1v1h-1zM16 10h1v1h-1z" +
+  "M18 10h1v1h-1zM20 10h1v1h-1zM22 10h7v1h-7zM12 11h3v1h-3zM4 12h1v1h-1zM6 12h2v1h-2zM9 12h3v1h-3z" +
+  "M14 12h1v1h-1zM16 12h1v1h-1zM18 12h1v1h-1zM22 12h1v1h-1zM25 12h1v1h-1zM27 12h2v1h-2zM5 13h2v1h-2z" +
+  "M12 13h1v1h-1zM15 13h3v1h-3zM20 13h1v1h-1zM23 13h1v1h-1zM27 13h1v1h-1zM4 14h1v1h-1zM10 14h3v1h-3z" +
+  "M15 14h1v1h-1zM18 14h1v1h-1zM22 14h2v1h-2zM5 15h1v1h-1zM7 15h1v1h-1zM9 15h1v1h-1zM11 15h2v1h-2z" +
+  "M14 15h2v1h-2zM17 15h3v1h-3zM22 15h1v1h-1zM24 15h3v1h-3zM4 16h3v1h-3zM10 16h1v1h-1zM14 16h5v1h-5z" +
+  "M21 16h2v1h-2zM24 16h1v1h-1zM26 16h3v1h-3zM7 17h2v1h-2zM11 17h1v1h-1zM14 17h2v1h-2zM19 17h1v1h-1z" +
+  "M21 17h4v1h-4zM28 17h1v1h-1zM5 18h1v1h-1zM8 18h1v1h-1zM10 18h1v1h-1zM13 18h2v1h-2zM16 18h3v1h-3z" +
+  "M21 18h1v1h-1zM24 18h1v1h-1zM26 18h2v1h-2zM4 19h1v1h-1zM6 19h1v1h-1zM8 19h1v1h-1zM12 19h2v1h-2z" +
+  "M19 19h2v1h-2zM22 19h3v1h-3zM28 19h1v1h-1zM8 20h3v1h-3zM12 20h2v1h-2zM17 20h1v1h-1zM20 20h9v1h-9z" +
+  "M12 21h1v1h-1zM15 21h4v1h-4zM20 21h1v1h-1zM24 21h1v1h-1zM26 21h1v1h-1zM28 21h1v1h-1zM4 22h7v1h-7z" +
+  "M12 22h3v1h-3zM17 22h1v1h-1zM20 22h1v1h-1zM22 22h1v1h-1zM24 22h1v1h-1zM26 22h3v1h-3zM4 23h1v1h-1z" +
+  "M10 23h1v1h-1zM12 23h2v1h-2zM16 23h1v1h-1zM19 23h2v1h-2zM24 23h1v1h-1zM27 23h2v1h-2zM4 24h1v1h-1z" +
+  "M6 24h3v1h-3zM10 24h1v1h-1zM13 24h3v1h-3zM20 24h6v1h-6zM28 24h1v1h-1zM4 25h1v1h-1zM6 25h3v1h-3z" +
+  "M10 25h1v1h-1zM12 25h1v1h-1zM14 25h2v1h-2zM17 25h1v1h-1zM19 25h4v1h-4zM24 25h5v1h-5zM4 26h1v1h-1z" +
+  "M6 26h3v1h-3zM10 26h1v1h-1zM12 26h2v1h-2zM15 26h3v1h-3zM19 26h4v1h-4zM24 26h1v1h-1zM26 26h2v1h-2z" +
+  "M4 27h1v1h-1zM10 27h1v1h-1zM15 27h1v1h-1zM17 27h1v1h-1zM22 27h1v1h-1zM24 27h1v1h-1zM26 27h1v1h-1z" +
+  "M4 28h7v1h-7zM12 28h1v1h-1zM16 28h3v1h-3zM21 28h8v1h-8z";
+function demoQr() {
+  const n = DEMO_QR_SIZE;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges"><rect width="${n}" height="${n}" fill="#fff"/><path fill="#000" d="${DEMO_QR_PATH}"/></svg>`;
+  return { image: `data:image/svg+xml,${encodeURIComponent(svg)}`, size: n };
+}
+
 const SHELF = [
   { path: `${HOME}\\Documents\\Présentation.pptx`, name: "Présentation.pptx", isDir: false, exists: true },
   { path: `${HOME}\\Pictures\\Maquette du site.png`, name: "Maquette du site.png", isDir: false, exists: true },
   { path: `${HOME}\\Documents\\Rapport annuel.pdf`, name: "Rapport annuel.pdf", isDir: false, exists: true },
 ];
+
+/** Des captures inventées (« Recherche dans l'île »). */
+const CAPTURES = [
+  { name: "Capture 2026-10-02 09.41.12.png", date: "2 octobre 2026 à 09:41" },
+  { name: "Capture 2026-09-28 16.05.47.png", date: "28 septembre 2026 à 16:05" },
+  { name: "Maquette de l'onglet Notes.png", date: "21 septembre 2026 à 11:20" },
+];
+
+/** « Été » → « ete » : comme la recherche du Rust (sans accents ni majuscules). */
+function plain(text: string): string {
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+/** La recherche dans l'île, sur les fausses données : 5 résultats au plus par source. */
+function islandSearch(query: string) {
+  const q = plain(query.trim());
+  if (q.length < 2) return { groups: [] };
+  const hit = (...texts: string[]) => texts.some((t) => plain(t).includes(q));
+  const n = notes();
+  const clips = clipboard("");
+  const groups = [
+    {
+      source: "notes",
+      items: [
+        ...n.notes.filter((x) => hit(x.text)).map((x) => {
+          const [title, ...rest] = x.text.split("\n");
+          return { kind: "note", id: x.id, title, detail: rest.join(" · "), at: x.updated };
+        }),
+        ...n.todos.filter((x) => hit(x.text)).map((x) => ({ kind: "todo", id: x.id, title: x.text, done: x.done, at: x.created })),
+      ],
+    },
+    {
+      source: "clipboard",
+      items: [
+        ...clips.items.filter((x) => hit(x.preview)).map((x) => ({ kind: "clip", id: x.id, title: x.preview, pinned: x.pinned, at: x.at })),
+        ...clips.snippets.filter((x) => hit(x.name, x.text)).map((x) => ({ kind: "snippet", id: x.id, title: x.name, detail: x.text.replace(/\n/g, " ") })),
+      ],
+    },
+    {
+      source: "shelf",
+      items: SHELF.filter((x) => hit(x.name)).map((x) => ({ kind: "file", path: x.path, title: x.name, detail: x.path.slice(0, x.path.lastIndexOf("\\")) })),
+    },
+    {
+      source: "capture",
+      items: CAPTURES.filter((x) => hit(x.name, x.date)).map((x) => ({ kind: "file", name: x.name, title: x.name, detail: x.date })),
+    },
+  ];
+  return { groups: groups.map((g) => ({ ...g, items: g.items.slice(0, 5) })).filter((g) => g.items.length) };
+}
 
 function system() {
   return {
@@ -215,6 +308,9 @@ function agentsHistory() {
 }
 
 const RULE_EMPTY = { extensions: [], nameContains: "", minKb: null, maxKb: null };
+
+/** L'historique de la pipette (module Capture) : une petite palette inventée. */
+const DEMO_COLORS = ["#3A7BD5", "#00D2FF", "#F7B733", "#FC4A1A", "#6A3093", "#2ECC71", "#1F2937", "#F5F5F4"];
 
 // ── Les réponses aux modules ─────────────────────────────────────────────────
 
@@ -310,6 +406,8 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     }
     case "clipboard.password_generate":
       return { password: "Vague-Corail-Lagune-27" };
+    case "clipboard.qr":
+      return demoQr();
     case "shelf.list":
       return { items: SHELF };
     case "shelf.add":
@@ -363,10 +461,20 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         hotkey: "",
         hotkeyError: null,
       };
+    case "launcher.search":
+      return islandSearch(String(args.query ?? ""));
     case "terminal.start_dir":
       return { dir: HOME };
     case "capture.last":
       return { result: null };
+    case "capture.colors":
+      return { colors: DEMO_COLORS.map((hex) => ({ hex, text: hex })) };
+    case "capture.pick_color":
+      // Pas de vraie pipette : une couleur « choisie » un instant plus tard.
+      setTimeout(() => bus.inject("capture.color", { ok: true, hex: "#3A7BD5", text: "#3A7BD5" }, "capture"), 900);
+      return null;
+    case "capture.copy_color":
+      return { text: String(args.hex ?? "") };
 
     // Agents IA et « Demander à Claude »
     case "agents.history":
@@ -399,6 +507,9 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         inputTokens: 64,
         outputTokens: 48,
       };
+    case "weather.current":
+      // Une fausse météo : un bel après-midi à Lyon.
+      return { place: "Lyon", temp: 21.4, min: 12.1, max: 23.6, wind: 9, code: 1, isDay: true, icon: "🌤️", label: "Plutôt dégagé", unit: "c", at: "15:00" };
     default:
       // Toute autre action : on fait comme si c'était fait, sans rien toucher.
       return null;
@@ -408,7 +519,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
 // ── Allumer, éteindre, scènes ────────────────────────────────────────────────
 
 /** Les sujets « …changed » qui font relire leurs données aux modules. */
-const REFRESH = ["agenda.changed", "notes.changed", "clipboard.changed", "rules.changed", "remote.changed", "agents.changed"];
+const REFRESH = ["agenda.changed", "notes.changed", "clipboard.changed", "rules.changed", "remote.changed", "agents.changed", "weather.changed"];
 
 /** Fait relire leurs données à tous les modules (fausses ou vraies selon le mode). */
 async function refreshAll(bus: Bus) {

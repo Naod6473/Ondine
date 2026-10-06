@@ -28,6 +28,8 @@ mod shelf;
 mod shelf_tools;
 mod system;
 mod terminal;
+mod clipboard_qr;
+mod weather;
 
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -202,6 +204,7 @@ impl Registry {
             Box::new(controls::Controls),
             Box::new(agents::Agents::default()),
             Box::new(askclaude::AskClaude::default()),
+            Box::new(weather::WeatherModule::default()),
         ];
 
         let mut entries = Vec::new();

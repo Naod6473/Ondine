@@ -9,6 +9,7 @@
 //   platform/     ← tout ce qui touche à Win32
 
 mod cli;
+mod diagnostics;
 mod island;
 mod modules;
 mod platform;
@@ -78,7 +79,7 @@ fn apply_autostart(on: bool) {
     }
 }
 
-fn apply_settings(app: &AppHandle, shared: &Shared, new: Settings) -> Result<(), String> {
+pub(crate) fn apply_settings(app: &AppHandle, shared: &Shared, new: Settings) -> Result<(), String> {
     let screen_changed = {
         let mut current = shared.settings.locked();
         // L'écran, ou la place de l'île sur l'écran : il faut replacer la fenêtre.
@@ -96,8 +97,22 @@ fn apply_settings(app: &AppHandle, shared: &Shared, new: Settings) -> Result<(),
     if screen_changed {
         island::apply_geometry(app, &new.general.screen, shared.gate.collapsed.load(Ordering::Relaxed));
     }
+    // Le menu de l'icône montre les profils et coche l'actif.
+    tray::sync_profiles(app, &new.profiles);
     let _ = app.emit("settings-changed", new);
     Ok(())
+}
+
+/// Active un profil ("" = aucun) : voir services/profiles.rs.
+#[tauri::command]
+fn profile_activate(app: AppHandle, id: String) -> Result<(), String> {
+    services::profiles::activate(&app, &id)
+}
+
+/// Le nom du Wi-Fi connecté (bouton « Wi-Fi actuel » de la page Profils).
+#[tauri::command]
+fn profile_wifi_name() -> Option<String> {
+    platform::wifi::current_ssid()
 }
 
 #[tauri::command]
@@ -472,6 +487,10 @@ pub fn run() {
             app_quit,
             update::update_check,
             update::update_install,
+            profile_activate,
+            profile_wifi_name,
+            diagnostics::bug_report_open,
+            diagnostics::self_usage,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -496,6 +515,9 @@ pub fn run() {
             island::spawn_cursor_poll(handle.clone(), gate.clone());
             // Travail de fond des modules (ex. : Musique surveille le lecteur).
             handle.state::<Registry>().start_all(&handle);
+            // Profils : le menu de l'icône, et le changement automatique (heure, Wi-Fi).
+            tray::sync_profiles(&handle, &loaded.profiles);
+            services::profiles::spawn_auto(handle.clone());
 
             log::info(format!("--- Ondine {} démarrée ---", env!("CARGO_PKG_VERSION")));
             if platform::is_elevated() {
