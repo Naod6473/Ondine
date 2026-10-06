@@ -40,6 +40,15 @@ export interface GumPose {
   look?: { x: number; y: number };
   /** Temps en secondes (spirales, effets). */
   t?: number;
+  /** Vire peu à peu vers une autre teinte (tintK de 0 à 1). */
+  tintTo?: GumTint;
+  tintK?: number;
+  /** Bulle de chewing-gum (0 = aucune, 1 = prête à éclater). */
+  bubble?: number;
+  /** Larmes qui coulent (0 à 1). */
+  tears?: number;
+  /** Clin d'œil : l'œil droit se ferme en arc. */
+  wink?: boolean;
 }
 
 /** Les teintes : clair (reflet), milieu, profond (bas du corps), contour. */
@@ -67,7 +76,12 @@ function bodyPath(ctx: CanvasRenderingContext2D, R: number) {
 
 /** Dessine la goutte gomme centrée dans un canvas de w × h pixels. */
 export function drawGum(ctx: CanvasRenderingContext2D, w: number, h: number, pose: GumPose) {
-  const tint = TINTS[pose.tint ?? "blue"];
+  let tint = TINTS[pose.tint ?? "blue"];
+  if (pose.tintTo && (pose.tintK ?? 0) > 0) {
+    const to = TINTS[pose.tintTo];
+    const k = Math.min(1, pose.tintK ?? 0);
+    tint = tint.map((c, i) => mixHex(c, to[i], k)) as typeof tint;
+  }
   const [light, mid, deep, rim] = tint;
   const S = Math.min(w, h);
   const R = S * 0.33;
@@ -190,7 +204,27 @@ function drawFace(ctx: CanvasRenderingContext2D, pose: GumPose, R: number, fx: n
     }
   }
 
-  for (const side of [-1, 1]) drawEye(ctx, pose, side * eyeDX + fx, eyeY, R, side, t);
+  for (const side of [-1, 1]) {
+    const eyePose = pose.wink && side === 1 ? { ...pose, eyes: "happy" as GumEyes } : pose;
+    drawEye(ctx, eyePose, side * eyeDX + fx, eyeY, R, side, t);
+  }
+
+  // Larmes : deux ruisseaux clairs qui descendent des yeux.
+  const tears = pose.tears ?? 0;
+  if (tears > 0) {
+    for (const side of [-1, 1]) {
+      const x = side * (eyeDX + R * 0.06) + fx;
+      const top = eyeY + R * 0.14;
+      const len = R * 0.55 * tears;
+      const g = ctx.createLinearGradient(0, top, 0, top + len);
+      g.addColorStop(0, "rgba(220, 245, 255, 0.95)");
+      g.addColorStop(1, "rgba(220, 245, 255, 0.5)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.roundRect(x - R * 0.045, top, R * 0.09, len, R * 0.045);
+      ctx.fill();
+    }
+  }
 
   // Sourcils.
   const brows = pose.brows ?? "none";
@@ -204,7 +238,7 @@ function drawFace(ctx: CanvasRenderingContext2D, pose: GumPose, R: number, fx: n
       if (brows === "raised") {
         ctx.arc(ex, by + R * 0.08, R * 0.14, 1.2 * Math.PI, 1.8 * Math.PI);
       } else {
-        const tilt = brows === "angry" ? -0.09 : 0.08;
+        const tilt = brows === "angry" ? 0.09 : -0.08;
         ctx.moveTo(ex + side * R * 0.15, by - tilt * R);
         ctx.lineTo(ex - side * R * 0.13, by + tilt * R);
       }
@@ -340,7 +374,37 @@ function drawMouth(ctx: CanvasRenderingContext2D, pose: GumPose, x: number, y: n
     case "none":
       break;
   }
+  // Bulle de chewing-gum, rose et brillante, devant la bouche.
+  const bubble = pose.bubble ?? 0;
+  if (bubble > 0) {
+    const r = R * 0.38 * bubble;
+    const by = y + r * 0.55;
+    const g = ctx.createRadialGradient(x - r * 0.35, by - r * 0.35, r * 0.1, x, by, r);
+    g.addColorStop(0, "#ffe3f0");
+    g.addColorStop(0.6, "#ff9cc8");
+    g.addColorStop(1, "#ff6fae");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, by, r, 0, TAU);
+    ctx.fill();
+    ctx.lineWidth = R * 0.025;
+    ctx.strokeStyle = "#d94c8c";
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+    ctx.beginPath();
+    ctx.ellipse(x - r * 0.38, by - r * 0.4, r * 0.18, r * 0.11, -0.6, 0, TAU);
+    ctx.fill();
+  }
   void rim;
+}
+
+/** Mélange deux couleurs "#rrggbb" (k = 0 : la première, 1 : la seconde). */
+function mixHex(a: string, b: string, k: number): string {
+  const na = parseInt(a.slice(1), 16);
+  const nb = parseInt(b.slice(1), 16);
+  const ch = (n: number, sh: number) => (n >> sh) & 255;
+  const m = (sh: number) => Math.round(ch(na, sh) + (ch(nb, sh) - ch(na, sh)) * k);
+  return `#${((1 << 24) | (m(16) << 16) | (m(8) << 8) | m(0)).toString(16).slice(1)}`;
 }
 
 /** "#rrggbb" + opacité → "rgba(…)". */

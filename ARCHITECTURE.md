@@ -22,7 +22,8 @@ island/
 ├─ annotate.html              page de la fenêtre d'annotation des captures
 ├─ scripts/gen-icons.mjs      dessine l'icône de l'appli (npm run icons)
 ├─ mascots/                   UNE MASCOTTE = UN DOSSIER (manifest.json + fichiers)
-│  ├─ placeholder/            la mascotte provisoire, dessinée en code
+│  ├─ goutte-gomme/           la goutte gomme, dessinée en code (gum.ts)
+│  ├─ goutte-classique/       la première goutte, mêmes poses et animations que goutte/
 │  └─ goutte/                 la goutte : une image par émotion, animations, fondus (par défaut)
 ├─ src/                       ── FRONT (TypeScript) ──
 │  ├─ main.ts                 démarrage de la fenêtre de l'île
@@ -44,7 +45,7 @@ island/
 │  │  ├─ mascot-state.ts      machine à états de la mascotte, reliée au bus
 │  │  ├─ catalog.ts           trouve et vérifie les mascottes de mascots/
 │  │  ├─ types.ts             états, humeurs, format du manifeste
-│  │  └─ renderers/            canvas-placeholder.ts, spritesheet.ts, overlays.ts
+│  │  └─ renderers/            canvas-placeholder.ts, gum.ts, gum-draw.ts, poses.ts, spritesheet.ts, overlays.ts
 │  ├─ modules/
 │  │  ├─ index.ts             LISTE DES MODULES (front)
 │  │  ├─ shelf/               Étagère et dépôt de fichiers (phase 2)
@@ -357,7 +358,7 @@ bus ──▶ MascotController (mascot-state.ts) ──▶ MascotRenderer (rende
 - **Déclencheurs** : voir le tableau du bus ; plus l'inactivité (bored après
   `mascot.boredAfterSecs`, sleep après `mascot.sleepAfterSecs`) et le réveil
   dès que la souris revient sur l'île.
-- **Moteurs branchés** : `canvas-code` (la goutte provisoire, `mascots/placeholder/`)
+- **Moteurs branchés** : `canvas-code` (la goutte provisoire, plus utilisée par aucune mascotte mais gardée en secours), `gum` (la goutte gomme dessinée en code, `mascots/goutte-gomme/`)
   et `spritesheet` (aucune mascotte ne l'utilise pour l'instant). Une planche = une ligne d'images de même
   largeur. `"mode": "gaze"` choisit l'image d'après la souris (de la première,
   regard à gauche, à la dernière, regard à droite) et `nearFile` donne la planche

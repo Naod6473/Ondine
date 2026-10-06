@@ -5,7 +5,7 @@ d'animation. L'île les trouve toute seule (au build), et l'écran Réglages →
 permet d'en choisir une et de tester chaque animation.
 
 Voir ARCHITECTURE.md, section « La mascotte », pour le format du manifeste.
-Moteurs branchés : `canvas-code` (dessin en code, `placeholder/`), `spritesheet`
+Moteurs branchés : `canvas-code` (dessin en code, gardé en secours), `gum` (la goutte gomme dessinée en code, `goutte-gomme/`), `spritesheet`
 (planches PNG en ligne, aucune mascotte ne l'utilise pour l'instant) et `poses` (une image par émotion avec fondus,
 `goutte/` et `goutte-classique/`). `lottie` et `rive` sont prévus dans `src/mascot/renderer.ts`.
 

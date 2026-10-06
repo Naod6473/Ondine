@@ -1,0 +1,422 @@
+{
+  "id": "goutte-gomme",
+  "name": "Goutte gomme",
+  "version": "1.0.0",
+  "renderer": "gum",
+  "fallback": "idle",
+  "states": {
+    "idle": "idle",
+    "wake": "wake",
+    "sleep": "sleep",
+    "bored": "bored",
+    "happy": "happy",
+    "annoyed": "annoyed",
+    "dizzy": "dizzy",
+    "thinking": "thinking",
+    "working": "working",
+    "alert": "alert",
+    "eating": "eating",
+    "celebrate": "celebrate",
+    "love": "love",
+    "success": "success",
+    "question": "question",
+    "error": "error",
+    "warning": "warning",
+    "info": "info",
+    "sad": "sad",
+    "worried": "worried",
+    "surprise": "surprise",
+    "shy": "shy",
+    "calm": "calm",
+    "wink": "wink"
+  },
+  "animations": [
+    {
+      "name": "idle",
+      "durationMs": 4000,
+      "loop": true,
+      "priority": 0,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "idle"
+      }
+    },
+    {
+      "name": "wake",
+      "durationMs": 1000,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "next": "idle",
+      "source": {
+        "function": "wake"
+      }
+    },
+    {
+      "name": "sleep",
+      "durationMs": 3200,
+      "loop": true,
+      "priority": 1,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "sleep"
+      }
+    },
+    {
+      "name": "bored",
+      "durationMs": 3380,
+      "loop": true,
+      "priority": 0,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "bored"
+      }
+    },
+    {
+      "name": "happy",
+      "durationMs": 1200,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "happy"
+      }
+    },
+    {
+      "name": "annoyed",
+      "durationMs": 2670,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "annoyed"
+      }
+    },
+    {
+      "name": "dizzy",
+      "durationMs": 2600,
+      "loop": false,
+      "priority": 4,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "dizzy"
+      }
+    },
+    {
+      "name": "thinking",
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 1,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "thinking"
+      }
+    },
+    {
+      "name": "working",
+      "durationMs": 1200,
+      "loop": true,
+      "priority": 1,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "working"
+      }
+    },
+    {
+      "name": "alert",
+      "durationMs": 1500,
+      "loop": true,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "alert"
+      }
+    },
+    {
+      "name": "eating",
+      "durationMs": 1880,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "next": "happy",
+      "source": {
+        "function": "eating"
+      }
+    },
+    {
+      "name": "celebrate",
+      "durationMs": 2300,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "celebrate"
+      }
+    },
+    {
+      "name": "love",
+      "durationMs": 2400,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "love"
+      }
+    },
+    {
+      "name": "success",
+      "durationMs": 1720,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "success"
+      }
+    },
+    {
+      "name": "question",
+      "durationMs": 4000,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "question"
+      }
+    },
+    {
+      "name": "error",
+      "durationMs": 1640,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "error"
+      }
+    },
+    {
+      "name": "warning",
+      "durationMs": 2040,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "warning"
+      }
+    },
+    {
+      "name": "info",
+      "durationMs": 1800,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "info"
+      }
+    },
+    {
+      "name": "sad",
+      "durationMs": 2760,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "sad"
+      }
+    },
+    {
+      "name": "worried",
+      "durationMs": 2600,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "worried"
+      }
+    },
+    {
+      "name": "surprise",
+      "durationMs": 1560,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "surprise"
+      }
+    },
+    {
+      "name": "shy",
+      "durationMs": 2400,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "shy"
+      }
+    },
+    {
+      "name": "calm",
+      "durationMs": 3000,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "calm"
+      }
+    },
+    {
+      "name": "wink",
+      "durationMs": 1300,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "wink"
+      }
+    },
+    {
+      "name": "fatigue",
+      "durationMs": 3000,
+      "loop": true,
+      "priority": 0,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "fatigue"
+      }
+    },
+    {
+      "name": "agacee-colere",
+      "durationMs": 1800,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "agacee-colere"
+      }
+    },
+    {
+      "name": "etourdie",
+      "durationMs": 2600,
+      "loop": false,
+      "priority": 4,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "etourdie"
+      }
+    },
+    {
+      "name": "mange-vite",
+      "durationMs": 1600,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "next": "happy",
+      "source": {
+        "function": "mange-vite"
+      }
+    },
+    {
+      "name": "victoire",
+      "durationMs": 2200,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "victoire"
+      }
+    },
+    {
+      "name": "oups",
+      "durationMs": 2600,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "oups"
+      }
+    },
+    {
+      "name": "attention",
+      "durationMs": 2000,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "attention"
+      }
+    },
+    {
+      "name": "surpris",
+      "durationMs": 2000,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "surpris"
+      }
+    }
+  ]
+}
