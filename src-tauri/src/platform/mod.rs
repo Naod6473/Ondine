@@ -22,6 +22,8 @@ pub mod ocr;
 pub mod picker;
 // Le nom du Wi-Fi connecté (profils automatiques). Contient sa propre version Linux.
 pub mod wifi;
+// Glisser des fichiers de l'île vers l'Explorateur (Étagère). Contient sa propre version Linux.
+pub mod drag_out;
 
 #[cfg(windows)]
 mod drop_target;

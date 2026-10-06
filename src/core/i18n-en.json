@@ -1034,7 +1034,15 @@
 "Ouvre GitHub avec la version, Windows et les 40 dernières lignes du journal (chemins personnels masqués). Tu relis et complètes tout avant d'envoyer : rien ne part sans toi.": "Opens GitHub with the version, Windows and the last 40 lines of the log (personal paths hidden). You review and complete everything before sending: nothing leaves without you.",
 "Ressources utilisées": "Resources used",
 "Mémoire et processeur d'Ondine et de ses fenêtres (WebView2). Mesuré seulement pendant que cette page est ouverte.": "Memory and CPU used by Ondine and its windows (WebView2). Measured only while this page is open.",
-"Disponible dans l'appli seulement.": "Only available in the app."
+"Disponible dans l'appli seulement.": "Only available in the app.",
+"Copier vers un dossier…": "Copy to a folder…",
+"Déplacer vers un dossier…": "Move to a folder…",
+"Glisse un élément vers l'Explorateur ou le Bureau pour l'y poser (Ctrl : copier, Maj : déplacer).": "Drag an item to File Explorer or the desktop to drop it there (Ctrl: copy, Shift: move).",
+"Glisser impossible": "Drag failed",
+"un glisser est déjà en cours": "a drag is already in progress",
+"glisser interrompu": "drag interrupted",
+"le glisser a planté": "the drag crashed",
+"glisser vers l'extérieur : disponible seulement sous Windows": "dragging out: only available on Windows"
 },
 "patterns": [
 [
@@ -1447,7 +1455,7 @@
 ],
 [
 "^(.+?)\\ déplacé\\(s\\)\\ dans\\ (.+?)$",
-"$1 moved to $1"
+"$1 moved to $2"
 ],
 [
 "^(.+?)\\ reste\\ au\\ premier\\ plan$",
@@ -1479,7 +1487,7 @@
 ],
 [
 "^(.+?)\\ copié\\(s\\)\\ dans\\ (.+?)$",
-"$1 copied to $1"
+"$1 copied to $2"
 ],
 [
 "^⬆\\ Ce\\ qui\\ part\\ vers\\ (.+?)$",
@@ -1980,6 +1988,22 @@
 [
 "^(\\d+) Mo · (.+) % du processeur · (\\d+) processus$",
 "$1 MB · $2% CPU · $3 processes"
+],
+[
+"^(.+?)\\ sorti\\(s\\)\\ de\\ l'étagère$",
+"$1 taken off the Shelf"
+],
+[
+"^glisser\\ impossible\\ :\\ (.+)$",
+"drag failed: $1"
+],
+[
+"^objet\\ de\\ glisser\\ impossible\\ :\\ (.+)$",
+"could not prepare the drag: $1"
+],
+[
+"^(.+)\\ :\\ introuvable\\ pour\\ Windows$",
+"$1: not found by Windows"
 ]
 ]
 }

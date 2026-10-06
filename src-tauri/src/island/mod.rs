@@ -480,6 +480,24 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 continue;
             }
 
+            // ── Glisser de fichiers vers l'extérieur (Étagère) ──
+            // La souris passe au travers partout sauf sur l'île (pour lâcher sur
+            // le Bureau derrière le panneau), et on n'envoie plus sa position :
+            // l'île ne se replie pas pendant le glisser. Ensuite, tout reprend.
+            if platform::drag_out::active() {
+                let r = *gate.rect.locked();
+                let scale = win.scale_factor().unwrap_or(1.0);
+                let (x, y) = ((cx - origin.x as f64) / scale, (cy - origin.y as f64) / scale);
+                let on_island = r.w > 0.0 && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+                let _guard = gate.flag_lock.locked();
+                if !gate.collapsed.load(Ordering::Relaxed) && gate.ignoring.load(Ordering::Relaxed) == on_island {
+                    gate.ignoring.store(!on_island, Ordering::Relaxed);
+                    let _ = win.set_ignore_cursor_events(!on_island);
+                }
+                last = (f64::MIN, f64::MIN);
+                continue;
+            }
+
             // ── Île visible ──
             let scale = win.scale_factor().unwrap_or(1.0);
             let x = (cx - origin.x as f64) / scale;
