@@ -6,11 +6,13 @@ use tauri::{AppHandle, Emitter};
 
 use crate::island::WINDOW_LABEL;
 
-pub fn build(app: &AppHandle) -> tauri::Result<()> {
-    let open = MenuItem::with_id(app, "open", "Ouvrir l'île", true, None::<&str>)?;
-    let settings = MenuItem::with_id(app, "settings", "Réglages…", true, None::<&str>)?;
-    let logs = MenuItem::with_id(app, "logs", "Ouvrir le dossier du journal", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Quitter", true, None::<&str>)?;
+/// `en` : le menu en anglais (réglage « Langue », lu au démarrage).
+pub fn build(app: &AppHandle, en: bool) -> tauri::Result<()> {
+    let tr = |fr: &'static str, english: &'static str| if en { english } else { fr };
+    let open = MenuItem::with_id(app, "open", tr("Ouvrir l'île", "Open the island"), true, None::<&str>)?;
+    let settings = MenuItem::with_id(app, "settings", tr("Réglages…", "Settings…"), true, None::<&str>)?;
+    let logs = MenuItem::with_id(app, "logs", tr("Ouvrir le dossier du journal", "Open the log folder"), true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", tr("Quitter", "Quit"), true, None::<&str>)?;
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
     let menu = Menu::with_items(app, &[&open, &sep1, &settings, &logs, &sep2, &quit])?;

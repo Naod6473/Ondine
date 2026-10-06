@@ -37,6 +37,11 @@ pub struct General {
     pub screen: String,
     /// "error", "warn", "info" ou "debug".
     pub log_level: String,
+    /// La langue de l'interface : "auto" (celle choisie à l'installation, sinon
+    /// celle de Windows), "fr" ou "en".
+    pub language: String,
+    /// Vrai une fois le petit mot de bienvenue montré (premier démarrage).
+    pub welcomed: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,6 +54,36 @@ pub struct IslandPrefs {
     /// L'ordre des onglets (ids de modules) choisi par l'utilisateur ; vide =
     /// l'ordre d'origine. Un module absent de la liste se met après les autres.
     pub tab_order: Vec<String>,
+    /// Le bord de l'écran où vit l'île : "top", "left" ou "right".
+    pub edge: String,
+    /// Sa place le long de ce bord : "start" (coin haut ou gauche), "center"
+    /// (à `offset`), "end" (coin bas ou droit).
+    pub align: String,
+    /// Pour "center" : la position du centre de l'île le long du bord, de 0 à 1.
+    pub offset: f64,
+    /// Le thème de couleurs (voir src/island/themes.ts), "custom" = `color`.
+    pub theme: String,
+    /// La couleur choisie pour le thème "custom" (#rrggbb).
+    pub color: String,
+    /// Petits sons de clic, et leur volume (0 à 1).
+    pub sounds: bool,
+    pub sound_volume: f64,
+    /// Raccourci clavier global qui ouvre l'île ("" = aucun).
+    pub hotkey: String,
+    /// Mode présentation : pendant un partage d'écran ou un plein écran, l'île
+    /// se cache et garde les notifications pour après.
+    pub presentation_quiet: bool,
+    /// Le pack d'icônes : "color" (dessinées en couleur) ou "line" (au trait, sobres).
+    pub icon_pack: String,
+    /// L'île reste en mini (la pilule) au lieu de disparaître.
+    pub always_mini: bool,
+    /// Le style des animations : "classic" (sobre) ou "studio" (façon vidéo de
+    /// présentation : flou → net, chiffres qui roulent, boutons en gélatine).
+    pub motion: String,
+}
+
+fn default_motion() -> String {
+    "classic".into()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -60,6 +95,10 @@ pub struct MascotPrefs {
     /// Inactivité (secondes) avant `bored`, puis avant `sleep`.
     pub bored_after_secs: f64,
     pub sleep_after_secs: f64,
+    /// Ondine vient de temps en temps pendre au bord de l'écran quand on ne fait rien.
+    pub peek: bool,
+    /// Au plus une visite toutes les… (minutes).
+    pub peek_every_mins: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -91,19 +130,35 @@ impl Default for Settings {
 
 impl Default for General {
     fn default() -> Self {
-        Self { screen: "primary".into(), log_level: "info".into() }
+        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into(), welcomed: false }
     }
 }
 
 impl Default for IslandPrefs {
     fn default() -> Self {
-        Self { collapse_secs: 1.5, notification_secs: 6.0, tab_order: Vec::new() }
+        Self {
+            collapse_secs: 1.5,
+            notification_secs: 6.0,
+            tab_order: Vec::new(),
+            edge: "top".into(),
+            align: "center".into(),
+            offset: 0.5,
+            theme: "nuit".into(),
+            color: "#0c0d12".into(),
+            sounds: true,
+            sound_volume: 0.5,
+            hotkey: "Ctrl+Alt+O".into(),
+            presentation_quiet: true,
+            icon_pack: "color".into(),
+            always_mini: false,
+            motion: default_motion(),
+        }
     }
 }
 
 impl Default for MascotPrefs {
     fn default() -> Self {
-        Self { enabled: true, id: "goutte".into(), bored_after_secs: 60.0, sleep_after_secs: 180.0 }
+        Self { enabled: true, id: "goutte".into(), bored_after_secs: 60.0, sleep_after_secs: 180.0, peek: true, peek_every_mins: 5.0 }
     }
 }
 
@@ -121,6 +176,37 @@ impl Default for ModuleSettings {
 }
 
 impl Settings {
+    /// Remet dans les clous les valeurs venues d'un fichier (abîmé, ou modifié à
+    /// la main) : un bord inconnu redevient « en haut », un nombre hors limites
+    /// est ramené dans ses bornes.
+    pub fn sanitize(&mut self) {
+        if !["color", "line"].contains(&self.island.icon_pack.as_str()) {
+            self.island.icon_pack = "color".into();
+        }
+        if !["classic", "studio"].contains(&self.island.motion.as_str()) {
+            self.island.motion = default_motion();
+        }
+        if !["auto", "fr", "en"].contains(&self.general.language.as_str()) {
+            self.general.language = "auto".into();
+        }
+        let i = &mut self.island;
+        if !["top", "left", "right"].contains(&i.edge.as_str()) {
+            i.edge = "top".into();
+        }
+        if !["start", "center", "end"].contains(&i.align.as_str()) {
+            i.align = "center".into();
+        }
+        i.offset = if i.offset.is_finite() { i.offset.clamp(0.0, 1.0) } else { 0.5 };
+        i.sound_volume = if i.sound_volume.is_finite() { i.sound_volume.clamp(0.0, 1.0) } else { 0.5 };
+        let hex = i.color.len() == 7 && i.color.starts_with('#') && i.color[1..].chars().all(|c| c.is_ascii_hexdigit());
+        if !hex {
+            i.color = "#0c0d12".into();
+        }
+        i.hotkey = i.hotkey.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '+').take(40).collect();
+        let m = &mut self.mascot;
+        m.peek_every_mins = if m.peek_every_mins.is_finite() { m.peek_every_mins.clamp(1.0, 120.0) } else { 5.0 };
+    }
+
     /// Un module est actif sauf si l'utilisateur l'a désactivé.
     pub fn module_enabled(&self, id: &str) -> bool {
         self.modules.get(id).map(|m| m.enabled).unwrap_or(true)
@@ -166,7 +252,9 @@ pub fn parse(text: &str) -> Result<Settings, String> {
         return Err("le fichier ne contient pas un objet de réglages".into());
     }
     let value = migrate(value)?;
-    serde_json::from_value(value).map_err(|e| format!("réglages invalides : {e}"))
+    let mut settings: Settings = serde_json::from_value(value).map_err(|e| format!("réglages invalides : {e}"))?;
+    settings.sanitize();
+    Ok(settings)
 }
 
 /// Charge les réglages au démarrage. Un fichier abîmé n'est jamais effacé : il est

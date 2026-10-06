@@ -11,8 +11,18 @@
 // prévient une fois (« system.disk-low »), puis de nouveau seulement si la
 // place est revenue entre-temps.
 //
+// Il surveille aussi la batterie (« system.battery-low » sous le seuil choisi,
+// « system.battery-full » quand la charge est finie) et le processeur : s'il
+// reste longtemps très occupé, « system.cpu-busy » { on: true } (Ondine
+// transpire), puis { on: false } quand il se calme.
+//
 // « Copier pour le support » met dans le presse-papiers un résumé à coller
 // dans un ticket. Le journal ne contient jamais ces informations.
+//
+// « Préparer un ticket » : ta description + ce résumé (+ l'image copiée, si tu
+// le demandes, par exemple une capture Win+Maj+S) dans un dossier
+// Documents\Ondine\Tickets\Ticket <date>, et le texte dans le presse-papiers.
+// Rien n'est envoyé : tu joins le dossier toi-même. Annulable (Corbeille).
 
 use crate::sync::LockExt;
 use std::collections::HashSet;
@@ -43,6 +53,66 @@ struct State {
     mem_used: u64,
     /// Disques déjà signalés comme pleins (point de montage).
     warned: HashSet<String>,
+    battery: BatteryWatch,
+    cpu: CpuWatch,
+}
+
+/// Ce qu'on a déjà dit de la batterie (pour ne prévenir qu'une fois).
+#[derive(Default, Debug, PartialEq)]
+struct BatteryWatch {
+    low_said: bool,
+    full_said: bool,
+}
+
+/// Ce qu'il faut annoncer pour la batterie, selon l'état lu et le seuil (0 = jamais).
+#[derive(Debug, PartialEq)]
+enum BatteryNews {
+    Low(u8),
+    Full,
+}
+
+fn battery_news(w: &mut BatteryWatch, b: &platform::Battery, low_pct: u8, full_alert: bool) -> Option<BatteryNews> {
+    let pct = b.percent?;
+    // Branché : plus d'alerte « faible » à venir ; à 100 %, « chargée » une fois.
+    if b.plugged {
+        w.low_said = false;
+        if full_alert && pct >= 100 && !w.full_said {
+            w.full_said = true;
+            return Some(BatteryNews::Full);
+        }
+        return None;
+    }
+    // Débranché : on pourra de nouveau dire « chargée » la prochaine fois.
+    w.full_said = false;
+    if low_pct > 0 && pct <= low_pct && !w.low_said {
+        w.low_said = true;
+        return Some(BatteryNews::Low(pct));
+    }
+    None
+}
+
+/// Le processeur est « très occupé » après BUSY_TICKS mesures au-dessus de
+/// BUSY_PCT, et « calme » après autant de mesures sous CALM_PCT.
+const BUSY_PCT: f32 = 85.0;
+const CALM_PCT: f32 = 60.0;
+const BUSY_TICKS: u32 = 10; // 10 × 2 s = 20 s
+
+#[derive(Default)]
+struct CpuWatch {
+    busy: bool,
+    streak: u32,
+}
+
+/// Renvoie Some(nouvel état) quand le processeur devient très occupé ou se calme.
+fn cpu_news(w: &mut CpuWatch, usage: f32) -> Option<bool> {
+    let pushing = if w.busy { usage < CALM_PCT } else { usage > BUSY_PCT };
+    w.streak = if pushing { w.streak + 1 } else { 0 };
+    if w.streak >= BUSY_TICKS {
+        w.streak = 0;
+        w.busy = !w.busy;
+        return Some(w.busy);
+    }
+    None
 }
 
 type Shared = Arc<Mutex<State>>;
@@ -62,9 +132,11 @@ impl RustModule for SystemInfo {
         std::thread::spawn(move || watch(app, state));
     }
 
-    fn invoke(&self, ctx: &ModuleContext, command: &str, _args: Value) -> Result<Value, String> {
+    fn invoke(&self, ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
         match command {
             "snapshot" => Ok(snapshot(&self.state)),
+            // { description, withImage } → { folder }
+            "ticket" => ticket(ctx, &snapshot(&self.state), &args),
             "copy_support" => {
                 ctx.require("clipboard")?;
                 files::copy_text(&support_text(&snapshot(&self.state)))?;
@@ -101,14 +173,42 @@ fn watch(app: AppHandle, state: Shared) {
                 s.mem_total = sys.total_memory();
                 s.mem_used = sys.used_memory();
             }
+            super::with_context(&app, ID, |ctx| check_cpu(ctx, &state));
             if last_disks.is_none_or(|t| t.elapsed() >= DISK_EVERY) {
                 last_disks = Some(Instant::now());
-                super::with_context(&app, ID, |ctx| check_disks(ctx, &state));
+                super::with_context(&app, ID, |ctx| {
+                    check_disks(ctx, &state);
+                    check_battery(ctx, &state);
+                });
             }
         }));
         if step.is_err() {
             log::warn("système : erreur inattendue pendant une mesure, on continue");
         }
+    }
+}
+
+/// Prévient quand la batterie est faible, ou chargée.
+fn check_battery(ctx: &ModuleContext, state: &Shared) {
+    let Some(b) = platform::battery() else { return };
+    let settings = ctx.settings();
+    let low = settings.get("batteryLowPct").and_then(Value::as_u64).unwrap_or(20).min(50) as u8;
+    let full = settings.get("batteryFullAlert").and_then(Value::as_bool).unwrap_or(true);
+    let news = battery_news(&mut state.locked().battery, &b, low, full);
+    match news {
+        Some(BatteryNews::Low(pct)) => ctx.emit("system.battery-low", json!({ "percent": pct })),
+        Some(BatteryNews::Full) => ctx.emit("system.battery-full", json!({})),
+        None => {}
+    }
+}
+
+/// Prévient quand le processeur reste très occupé, puis quand il se calme.
+fn check_cpu(ctx: &ModuleContext, state: &Shared) {
+    let mut s = state.locked();
+    let usage = s.cpu_usage;
+    if let Some(on) = cpu_news(&mut s.cpu, usage) {
+        drop(s);
+        ctx.emit("system.cpu-busy", json!({ "on": on }));
     }
 }
 
@@ -226,6 +326,60 @@ fn uptime_text(secs: u64) -> String {
 }
 
 /// Le texte copié pour un ticket de support.
+/// Prépare le dossier du ticket (voir en tête de fichier).
+fn ticket(ctx: &ModuleContext, snap: &Value, args: &Value) -> Result<Value, String> {
+    ctx.require("files")?;
+    ctx.require("clipboard")?;
+    let description = args.get("description").and_then(Value::as_str).unwrap_or("").trim();
+    if description.is_empty() {
+        return Err("décris le problème en quelques mots".into());
+    }
+    if description.chars().count() > 5000 {
+        return Err("description trop longue (5000 caractères au plus)".into());
+    }
+    // L'image d'abord : si on la demande et qu'il n'y en a pas, on s'arrête avant d'écrire quoi que ce soit.
+    let png = if args.get("withImage").and_then(Value::as_bool).unwrap_or(false) {
+        if platform::clipboard_is_sensitive() {
+            return Err("le contenu copié est marqué sensible : on n'y touche pas".into());
+        }
+        let mut clipboard = arboard::Clipboard::new().map_err(|e| format!("presse-papiers indisponible : {e}"))?;
+        let img = clipboard.get_image().map_err(|_| "aucune image copiée : fais d'abord ta capture (Win+Maj+S)".to_string())?;
+        let mut out = std::io::Cursor::new(Vec::new());
+        image::write_buffer_with_format(&mut out, &img.bytes, img.width as u32, img.height as u32, image::ExtendedColorType::Rgba8, image::ImageFormat::Png)
+            .map_err(|e| format!("image illisible : {e}"))?;
+        Some(out.into_inner())
+    } else {
+        None
+    };
+
+    let base = platform::documents_dir().ok_or("dossier Documents introuvable")?.join("Ondine").join("Tickets");
+    std::fs::create_dir_all(&base).map_err(|e| format!("impossible de créer {} : {e}", base.display()))?;
+    let base = ctx.check_path(&base.display().to_string())?;
+    let t = platform::local_time();
+    let name = format!("Ticket {:04}-{:02}-{:02} {:02}.{:02}.{:02}", t.year, t.month, t.day, t.hour, t.minute, t.second);
+    let dir = files::unique_dest(&base, name.as_ref());
+    std::fs::create_dir(&dir).map_err(|e| format!("impossible de créer le dossier du ticket : {e}"))?;
+
+    let mut text = format!("Problème\r\n--------\r\n{}\r\n\r\nInfos du poste\r\n--------------\r\n{}", description.replace('\n', "\r\n"), support_text(snap));
+    if png.is_some() {
+        text.push_str("\r\n\r\nCapture jointe : capture.png");
+    }
+    let written = std::fs::write(dir.join("ticket.txt"), &text).and_then(|_| match &png {
+        Some(bytes) => std::fs::write(dir.join("capture.png"), bytes),
+        None => Ok(()),
+    });
+    if let Err(e) = written {
+        let _ = files::to_trash(std::slice::from_ref(&dir));
+        return Err(format!("écriture du ticket impossible : {e}"));
+    }
+    files::copy_text(&text)?;
+    let _ = files::open_folder(&dir);
+    log::info("système : ticket préparé");
+    let undo_dir = dir.clone();
+    ctx.offer_undo("Ticket préparé", crate::services::undo::DEFAULT_WINDOW, Box::new(move || files::to_trash(&[undo_dir])));
+    Ok(json!({ "folder": dir.display().to_string() }))
+}
+
 fn support_text(s: &Value) -> String {
     let str_of = |v: &Value| v.as_str().unwrap_or_default().to_string();
     let mut out = vec![
@@ -261,6 +415,37 @@ fn support_text(s: &Value) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn battery_news_once() {
+        let mut w = BatteryWatch::default();
+        let b = |percent, plugged| platform::Battery { percent: Some(percent), charging: plugged, plugged };
+        assert_eq!(battery_news(&mut w, &b(50, false), 20, true), None);
+        assert_eq!(battery_news(&mut w, &b(20, false), 20, true), Some(BatteryNews::Low(20)));
+        assert_eq!(battery_news(&mut w, &b(15, false), 20, true), None); // déjà dit
+        assert_eq!(battery_news(&mut w, &b(80, true), 20, true), None);
+        assert_eq!(battery_news(&mut w, &b(100, true), 20, true), Some(BatteryNews::Full));
+        assert_eq!(battery_news(&mut w, &b(100, true), 20, true), None);
+        assert_eq!(battery_news(&mut w, &b(19, false), 20, true), Some(BatteryNews::Low(19)));
+        // Seuil 0 : jamais.
+        let mut w = BatteryWatch::default();
+        assert_eq!(battery_news(&mut w, &b(5, false), 0, true), None);
+    }
+
+    #[test]
+    fn cpu_busy_needs_a_streak() {
+        let mut w = CpuWatch::default();
+        for _ in 0..BUSY_TICKS - 1 {
+            assert_eq!(cpu_news(&mut w, 95.0), None);
+        }
+        assert_eq!(cpu_news(&mut w, 95.0), Some(true));
+        assert_eq!(cpu_news(&mut w, 30.0), None);
+        assert_eq!(cpu_news(&mut w, 95.0), None); // la série repart de zéro
+        for _ in 0..BUSY_TICKS - 1 {
+            cpu_news(&mut w, 30.0);
+        }
+        assert_eq!(cpu_news(&mut w, 30.0), Some(false));
+    }
 
     #[test]
     fn uptime_reads_well() {

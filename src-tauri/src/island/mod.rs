@@ -1,13 +1,21 @@
 // La fenêtre de l'île : placement sur le bon écran (DPI compris), ses deux tailles,
 // les clics traversants et la lecture de la souris.
 //
-// Un PC n'a pas d'encoche : l'île est une forme noire dessinée en haut au centre,
-// dans une fenêtre sans bordure, transparente, toujours au premier plan, qui ne
-// prend pas le focus. La fenêtre a deux tailles :
-//   - « bande » (240 × 6) quand l'île est cachée : une bande invisible tout en haut,
-//     qui réveille l'île au survol (état `peek`) ou quand on y glisse un fichier ;
-//   - « panneau » (720 × 320) le reste du temps : assez grand pour la plus grande vue.
-//     Seule la forme de l'île prend la souris, le reste laisse passer les clics.
+// Un PC n'a pas d'encoche : l'île est une forme noire dessinée au bord de
+// l'écran (en haut, à gauche ou à droite, voir `Placement`), dans une fenêtre
+// sans bordure, transparente, toujours au premier plan, qui ne prend pas le
+// focus. La fenêtre a deux tailles :
+//   - « bande » (240 × 6, ou 6 × 240 sur un côté) quand l'île est cachée : une
+//     bande invisible au bord, qui réveille l'île au survol (état `peek`) ou
+//     quand on y glisse un fichier ;
+//   - « panneau » (720 × 320, ou 720 × 380 sur un côté) le reste du temps : assez
+//     grand pour la plus grande vue. Seule la forme de l'île prend la souris, le
+//     reste laisse passer les clics.
+//
+// On déplace l'île en l'attrapant par son bord extérieur (island.ts appelle
+// `drag_start`) : la fenêtre suit la souris, puis au lâcher elle s'aimante au
+// bord le plus proche (haut, gauche ou droite), et dans un coin ou au centre
+// si on la lâche près d'eux.
 //
 // Clics traversants : Tauri 2 ne sait rendre transparente aux clics que la fenêtre
 // ENTIÈRE (set_ignore_cursor_events). On lit donc la souris ~60 fois par seconde
@@ -33,6 +41,73 @@ pub const PANEL_H: f64 = 320.0;
 /// Taille logique de la bande de réveil, quand l'île est cachée.
 pub const STRIP_W: f64 = 240.0;
 pub const STRIP_H: f64 = 6.0;
+/// Sur un côté de l'écran, le panneau est plus haut : l'île compacte y est une
+/// pilule verticale (42 × 340).
+pub const SIDE_PANEL_H: f64 = 380.0;
+
+/// Près d'un coin (moins de ce nombre de px logiques), l'île s'y aimante ; près
+/// du centre (moins de 6 % de la longueur du bord), au centre.
+const CORNER_MAGNET: f64 = 160.0;
+const CENTER_MAGNET: f64 = 0.06;
+
+/// Où vit l'île : le bord, et sa place le long de ce bord (réglages `island.*`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Placement {
+    pub edge: String,
+    pub align: String,
+    pub offset: f64,
+}
+
+impl Placement {
+    fn from_settings(app: &AppHandle) -> Placement {
+        match app.try_state::<crate::Shared>() {
+            Some(shared) => {
+                let s = shared.settings.locked();
+                Placement { edge: s.island.edge.clone(), align: s.island.align.clone(), offset: s.island.offset }
+            }
+            None => Placement { edge: "top".into(), align: "center".into(), offset: 0.5 },
+        }
+    }
+
+    fn side(&self) -> bool {
+        self.edge == "left" || self.edge == "right"
+    }
+
+    /// Taille logique de la fenêtre (bande ou panneau) pour ce bord.
+    fn window_size(&self, collapsed: bool) -> (f64, f64) {
+        match (self.side(), collapsed) {
+            (false, true) => (STRIP_W, STRIP_H),
+            (false, false) => (PANEL_W, PANEL_H),
+            (true, true) => (STRIP_H, STRIP_W),
+            (true, false) => (PANEL_W, SIDE_PANEL_H),
+        }
+    }
+}
+
+/// Le choix du bord et de la place au lâcher, d'après le centre de l'île
+/// (`cx`, `cy` en px logiques, depuis le coin haut gauche de l'écran `w` × `h`).
+pub fn snap(cx: f64, cy: f64, w: f64, h: f64) -> Placement {
+    // Le bord le plus proche : en haut, à gauche ou à droite (pas en bas : la
+    // barre des tâches y est souvent).
+    let (edge, pos, len) = if cy <= cx && cy <= w - cx {
+        ("top", cx, w)
+    } else if cx <= w - cx {
+        ("left", cy, h)
+    } else {
+        ("right", cy, h)
+    };
+    let pos = pos.clamp(0.0, len);
+    let (align, offset) = if pos < CORNER_MAGNET {
+        ("start", 0.0)
+    } else if pos > len - CORNER_MAGNET {
+        ("end", 1.0)
+    } else if (pos / len - 0.5).abs() < CENTER_MAGNET {
+        ("center", 0.5)
+    } else {
+        ("center", pos / len)
+    };
+    Placement { edge: edge.into(), align: align.into(), offset }
+}
 
 /// Marge autour de l'île qui compte encore comme « sur l'île » (px logiques),
 /// pour que le réglage soit déjà basculé quand la souris arrive sur un bouton.
@@ -74,6 +149,11 @@ pub struct PollGate {
     /// lecture pouvait rendre la bande de réveil transparente aux clics juste après
     /// qu'on l'a réduite, et l'île ne se réveillait plus.
     flag_lock: Mutex<()>,
+    /// Taille logique actuelle de la fenêtre (panneau du haut ou d'un côté).
+    panel: Mutex<(f64, f64)>,
+    /// Pendant un déplacement : l'écart (px physiques) entre la souris et le
+    /// coin de la fenêtre au moment où on l'a attrapée.
+    drag: Mutex<Option<(f64, f64)>>,
 }
 
 impl PollGate {
@@ -84,6 +164,8 @@ impl PollGate {
             rect: Mutex::new(IslandRect::default()),
             ignoring: AtomicBool::new(false),
             flag_lock: Mutex::new(()),
+            panel: Mutex::new((PANEL_W, PANEL_H)),
+            drag: Mutex::new(None),
         }
     }
 
@@ -141,27 +223,109 @@ pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
     }
 }
 
-/// Place et dimensionne la fenêtre, en pixels physiques : taille logique × échelle
-/// de l'écran (125 %, 150 %…), centrée en haut de l'écran choisi.
-pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
-    let Some(win) = window(app) else { return };
-    let Some(m) = target_monitor(app, pref) else { return };
-
+/// Où mettre la fenêtre (px physiques) : sa taille et son coin haut gauche.
+fn target_frame(m: &Monitor, place: &Placement, collapsed: bool) -> (u32, u32, i32, i32) {
     let scale = m.scale_factor();
     let mp = *m.position();
     let ms = *m.size();
-
-    let (lw, lh) = if collapsed { (STRIP_W, STRIP_H) } else { (PANEL_W, PANEL_H) };
+    let (lw, lh) = place.window_size(collapsed);
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
-    let x = mp.x + (ms.width as i32 - pw as i32) / 2;
-    let y = mp.y;
+
+    // Le long du bord : collée au début, collée à la fin, ou centrée sur `offset`
+    // (sans jamais dépasser de l'écran).
+    let along = |start: i32, len: u32, size: u32| -> i32 {
+        let free = (len as i32 - size as i32).max(0);
+        match place.align.as_str() {
+            "start" => start,
+            "end" => start + free,
+            _ => start + ((place.offset * len as f64) as i32 - size as i32 / 2).clamp(0, free),
+        }
+    };
+    let (x, y) = match place.edge.as_str() {
+        "left" => (mp.x, along(mp.y, ms.height, ph)),
+        "right" => (mp.x + ms.width as i32 - pw as i32, along(mp.y, ms.height, ph)),
+        _ => (along(mp.x, ms.width, pw), mp.y),
+    };
+    (pw, ph, x, y)
+}
+
+/// Place et dimensionne la fenêtre, en pixels physiques : taille logique × échelle
+/// de l'écran (125 %, 150 %…), au bord et à la place choisis (`Placement`).
+pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
+    let Some(win) = window(app) else { return };
+    let Some(m) = target_monitor(app, pref) else { return };
+    let place = Placement::from_settings(app);
+    if let Some(shared) = app.try_state::<crate::Shared>() {
+        *shared.gate.panel.locked() = place.window_size(false);
+    }
+    let (pw, ph, x, y) = target_frame(&m, &place, collapsed);
 
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_position(PhysicalPosition::new(x, y));
     // Passer d'un écran à l'autre peut changer l'échelle : on réimpose la taille.
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_always_on_top(true);
+}
+
+/// On vient d'attraper l'île par son bord : la fenêtre va suivre la souris
+/// (voir `spawn_cursor_poll`) jusqu'à ce qu'on relâche le bouton.
+pub fn drag_start(app: &AppHandle, gate: &PollGate) {
+    let Some(win) = window(app) else { return };
+    let (Ok(origin), Some((cx, cy))) = (win.outer_position(), platform::cursor_physical()) else { return };
+    *gate.drag.locked() = Some((cx - origin.x as f64, cy - origin.y as f64));
+}
+
+/// Le bouton est relâché : on choisit le bord et la place (aimant), on
+/// l'enregistre, et la fenêtre glisse jusqu'à sa nouvelle place.
+fn drag_end(app: &AppHandle, gate: &PollGate) {
+    let Some(win) = window(app) else { return };
+    let Some(shared) = app.try_state::<crate::Shared>() else { return };
+    let pref = shared.settings.locked().general.screen.clone();
+    let Some(m) = target_monitor(app, &pref) else { return };
+    let Ok(origin) = win.outer_position() else { return };
+
+    // Le centre de l'île, en px logiques depuis le coin de l'écran.
+    let scale = m.scale_factor();
+    let r = *gate.rect.locked();
+    let mp = *m.position();
+    let ms = *m.size();
+    let cx = ((origin.x - mp.x) as f64 + (r.x + r.w / 2.0) * scale) / scale;
+    let cy = ((origin.y - mp.y) as f64 + (r.y + r.h / 2.0) * scale) / scale;
+    let place = snap(cx, cy, ms.width as f64 / scale, ms.height as f64 / scale);
+    log::info(format!("île déplacée : bord {}, place {}", place.edge, place.align));
+
+    // Enregistrer, et prévenir les fenêtres (l'île change de forme selon le bord).
+    let new = {
+        let mut s = shared.settings.locked();
+        s.island.edge = place.edge.clone();
+        s.island.align = place.align.clone();
+        s.island.offset = place.offset;
+        s.clone()
+    };
+    if let Err(e) = crate::services::settings::save(&new) {
+        log::warn(format!("réglages non enregistrés : {e}"));
+    }
+    let _ = app.emit("settings-changed", new);
+
+    // La fenêtre glisse jusqu'à sa place (quelques images, en ralentissant),
+    // puis prend la taille du panneau de ce bord.
+    let collapsed = gate.collapsed.load(Ordering::Relaxed);
+    let (pw, ph, x, y) = target_frame(&m, &place, collapsed);
+    *gate.panel.locked() = place.window_size(false);
+    let (x0, y0) = (origin.x as f64, origin.y as f64);
+    const STEPS: u32 = 10;
+    for i in 1..=STEPS {
+        let t = i as f64 / STEPS as f64;
+        let k = 1.0 - (1.0 - t).powi(3); // ralentit à l'arrivée
+        let nx = x0 + (x as f64 - x0) * k;
+        let ny = y0 + (y as f64 - y0) * k;
+        let _ = win.set_position(PhysicalPosition::new(nx.round() as i32, ny.round() as i32));
+        std::thread::sleep(Duration::from_millis(14));
+    }
+    let _ = win.set_size(PhysicalSize::new(pw, ph));
+    let _ = win.set_position(PhysicalPosition::new(x, y));
+    let _ = app.emit_to(WINDOW_LABEL, "island-drag-end", ());
 }
 
 /// Après un changement de taille : la fenêtre reprend la souris, et le prochain
@@ -251,6 +415,19 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
             }
             in_wake_zone = false;
 
+            // ── Déplacement en cours : la fenêtre suit la souris ──
+            let grab = *gate.drag.locked();
+            if let Some((gx, gy)) = grab {
+                if down {
+                    let _ = win.set_position(PhysicalPosition::new((cx - gx).round() as i32, (cy - gy).round() as i32));
+                    continue;
+                }
+                *gate.drag.locked() = None;
+                drag_end(&app, &gate);
+                last = (f64::MIN, f64::MIN);
+                continue;
+            }
+
             // ── Île visible ──
             let scale = win.scale_factor().unwrap_or(1.0);
             let x = (cx - origin.x as f64) / scale;
@@ -270,7 +447,8 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
             // Glisser un fichier : une fenêtre « transparente aux clics » est
             // invisible pour le glisser-déposer de Windows. Donc tant qu'un bouton
             // est enfoncé au-dessus du panneau, tout le panneau prend la souris.
-            let over_panel = x >= 0.0 && x <= PANEL_W && y >= 0.0 && y <= PANEL_H;
+            let (panel_w, panel_h) = *gate.panel.locked();
+            let over_panel = x >= 0.0 && x <= panel_w && y >= 0.0 && y <= panel_h;
             let accept = on_island || (down && over_panel);
             {
                 let _guard = gate.flag_lock.locked();
@@ -284,4 +462,77 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
             let _ = win.emit("cursor", CursorPayload { x, y });
         }
     });
+}
+
+// ── Raccourci clavier global : ouvrir / fermer l'île ─────────────────────────
+
+/** Les raccourcis proposés dans les réglages (les autres sont refusés). */
+pub const HOTKEYS: &[&str] = &["Ctrl+Alt+O", "Ctrl+Shift+O", "Alt+Shift+O", "Ctrl+Alt+I"];
+
+/// Le raccourci actuellement enregistré auprès de Windows ("" = aucun).
+static HOTKEY: Mutex<String> = Mutex::new(String::new());
+
+/// Enregistre le raccourci de l'île (ou le retire si `wanted` est vide ou
+/// inconnu). Un appui envoie "hotkey" à l'île, qui s'ouvre ou se referme.
+pub fn apply_hotkey(app: &AppHandle, wanted: &str) {
+    use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
+    let wanted = if HOTKEYS.contains(&wanted) { wanted } else { "" };
+    let mut current = HOTKEY.locked();
+    if *current == wanted {
+        return;
+    }
+    let gs = app.global_shortcut();
+    if !current.is_empty() {
+        let _ = gs.unregister(current.as_str());
+    }
+    *current = wanted.to_string();
+    if wanted.is_empty() {
+        return;
+    }
+    let result = gs.on_shortcut(wanted, |app, _shortcut, event| {
+        // Au relâchement : pas de répétition si on garde les touches enfoncées.
+        if event.state == ShortcutState::Released {
+            let _ = app.emit_to(WINDOW_LABEL, "hotkey", ());
+        }
+    });
+    if let Err(e) = result {
+        let text = e.to_string();
+        let msg = if text.contains("already registered") {
+            format!("{wanted} est déjà pris par un autre logiciel : choisis un autre raccourci dans Réglages > Général")
+        } else {
+            format!("le raccourci {wanted} est refusé : {text}")
+        };
+        log::warn(format!("île : {msg}"));
+        let _ = app.emit_to(WINDOW_LABEL, "hotkey-error", msg);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::snap;
+
+    #[test]
+    fn island_hotkeys_parse() {
+        use tauri_plugin_global_shortcut::Shortcut;
+        for k in super::HOTKEYS {
+            assert!(k.parse::<Shortcut>().is_ok(), "{k}");
+        }
+    }
+
+    #[test]
+    fn snaps_to_nearest_edge_and_magnets() {
+        // Écran 1920 × 1080.
+        let p = snap(960.0, 30.0, 1920.0, 1080.0);
+        assert_eq!((p.edge.as_str(), p.align.as_str(), p.offset), ("top", "center", 0.5));
+        let p = snap(40.0, 30.0, 1920.0, 1080.0);
+        assert_eq!((p.edge.as_str(), p.align.as_str()), ("top", "start"));
+        let p = snap(30.0, 500.0, 1920.0, 1080.0);
+        assert_eq!((p.edge.as_str(), p.align.as_str()), ("left", "center"));
+        let p = snap(1900.0, 1000.0, 1920.0, 1080.0);
+        assert_eq!((p.edge.as_str(), p.align.as_str()), ("right", "end"));
+        // Ni coin ni centre : la place exacte est gardée.
+        let p = snap(1400.0, 10.0, 1920.0, 1080.0);
+        assert_eq!(p.align, "center");
+        assert!((p.offset - 1400.0 / 1920.0).abs() < 1e-9);
+    }
 }

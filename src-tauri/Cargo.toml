@@ -27,12 +27,15 @@ trash = "5"
 # Presse-papiers (texte) depuis le Rust.
 # image-data : lire une image copiée (captures, phase 5).
 arboard = { version = "3", default-features = false, features = ["image-data"] }
-# Enregistrer les captures en PNG et réduire une image trop grande pour l'OCR.
-image = { version = "0.25", default-features = false, features = ["png"] }
+# Enregistrer les captures en PNG, réduire une image trop grande pour l'OCR, et
+# convertir / redimensionner les images glissées sur l'île (lecture PNG, JPEG, WebP, BMP, GIF).
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "bmp", "gif"] }
 # Dates des rendez-vous (.ics) : fuseaux UTC/local, jours de la semaine.
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 # Création d'archives .zip (compression « deflate » seulement).
 zip = { version = "2", default-features = false, features = ["deflate"] }
+# Le hasard du système (générateur de mots de passe) : pas un hasard « prévisible ».
+getrandom = "0.3"
 # Encode la pochette d'album en texte (data URL) pour l'afficher dans l'île.
 base64 = "0.22"
 # Surveillance de dossiers (règles de la phase 7). Version 8 : la 9 est encore en préversion.
@@ -95,9 +98,18 @@ windows = { version = "0.61", features = [
   "Win32_Media_Audio_Endpoints",
   # (requis par IMMDevice::Activate)
   "Win32_System_Variant",
+  # Contrôles : le nom des sorties audio (IMMDevice::OpenPropertyStore).
+  "Win32_UI_Shell_PropertiesSystem",
   # Contrôles : luminosité (WMI pour l'écran du portable, DDC/CI pour les externes).
   "Win32_System_Wmi",
   "Win32_Devices_Display",
+  # Contrôles : qui utilise le micro / la caméra (registre « ConsentStore »).
+  "Win32_System_Registry",
+  # Langue de Windows (GetUserDefaultUILanguage) pour la langue « auto ».
+  "Win32_Globalization",
+  # Réseau : Internet joignable ? (NetworkListManager) et VPN branchés (cartes réseau).
+  "Win32_Networking_NetworkListManager",
+  "Win32_NetworkManagement_Ndis",
   # Contrôles : Wi-Fi, Bluetooth, mode avion.
   "Devices_Radios",
   "Foundation_Collections",

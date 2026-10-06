@@ -4,7 +4,7 @@
 // Windows… y publient le titre en cours.
 //
 // On ne fait que LIRE ce que Windows expose déjà, et envoyer lecture/pause,
-// suivant, précédent. Rien ne sort de l'ordinateur, rien n'est écrit dans le
+// suivant, précédent, ou « aller à telle position » (si le lecteur l'accepte). Rien ne sort de l'ordinateur, rien n'est écrit dans le
 // journal (un titre écouté est une donnée personnelle).
 //
 // Sous Linux (vérifications), tout renvoie « rien en lecture ».
@@ -28,6 +28,8 @@ pub struct NowPlaying {
     pub can_toggle: bool,
     pub can_next: bool,
     pub can_previous: bool,
+    /// Le lecteur accepte-t-il qu'on change la position (barre cliquable) ?
+    pub can_seek: bool,
 }
 
 /// Les commandes qu'on peut envoyer au lecteur.
@@ -36,6 +38,8 @@ pub enum Control {
     TogglePlayPause,
     Next,
     Previous,
+    /// Aller à cette position, en millisecondes depuis le début du morceau.
+    Seek(u64),
 }
 
 #[cfg(windows)]
@@ -137,6 +141,7 @@ mod win {
             can_toggle: can(&|c| c.IsPlayPauseToggleEnabled()),
             can_next: can(&|c| c.IsNextEnabled()),
             can_previous: can(&|c| c.IsPreviousEnabled()),
+            can_seek: can(&|c| c.IsPlaybackPositionEnabled()) && duration_ms.is_some(),
         }))
     }
 
@@ -190,6 +195,16 @@ mod win {
             Control::TogglePlayPause => session.TryTogglePlayPauseAsync(),
             Control::Next => session.TrySkipNextAsync(),
             Control::Previous => session.TrySkipPreviousAsync(),
+            Control::Seek(ms) => {
+                // Windows compte en « ticks » de 100 ns, à partir du début de la
+                // chronologie du lecteur (StartTime, presque toujours 0).
+                let start = session
+                    .GetTimelineProperties()
+                    .and_then(|t| t.StartTime())
+                    .map(|d| d.Duration)
+                    .unwrap_or(0);
+                session.TryChangePlaybackPositionAsync(start + ms as i64 * 10_000)
+            }
         };
         match op.and_then(|op| op.get()) {
             Ok(true) => Ok(()),

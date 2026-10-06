@@ -10,6 +10,10 @@ pub mod audio;
 pub mod brightness;
 // Wi-Fi, Bluetooth, mode avion (Windows.Devices.Radios). Contient sa propre version Linux.
 pub mod radios;
+// Internet joignable, VPN branchés (surveillance du module Réseau). Contient sa propre version Linux.
+pub mod netwatch;
+// Qui utilise le micro ou la caméra en ce moment (registre). Contient sa propre version Linux.
+pub mod media_use;
 // « En cours de lecture » (SMTC). Contient sa propre version Linux.
 pub mod media;
 // Lire le texte d'une image (OCR de Windows). Contient sa propre version Linux.

@@ -31,6 +31,41 @@ const BARS = 40;
 export const nettools: IslandModule = {
   manifest: manifest as ModuleManifest,
 
+  // Les alertes de la surveillance en fond (Rust) : Internet, VPN, serveurs, IP publique.
+  setup(api) {
+    const offs = [
+      api.on("nettools.internet", (msg) => {
+        const up = !!(msg.payload as { up?: boolean } | null)?.up;
+        api.notify(
+          up
+            ? { title: "Internet est revenu", icon: "🌐", priority: "low", key: "net-internet" }
+            : { title: "Plus d'accès à Internet", body: "Le réseau local répond peut-être encore.", icon: "📵", priority: "normal", key: "net-internet" },
+        );
+      }),
+      api.on("nettools.vpn", (msg) => {
+        const p = (msg.payload ?? {}) as { name?: string; up?: boolean };
+        api.notify(
+          p.up
+            ? { title: `VPN branché : ${p.name ?? ""}`, icon: "🔐", priority: "low", key: `net-vpn-${p.name}` }
+            : { title: `VPN coupé : ${p.name ?? ""}`, body: "Les ressources internes ne sont plus joignables.", icon: "🔓", priority: "normal", key: `net-vpn-${p.name}` },
+        );
+      }),
+      api.on("nettools.host", (msg) => {
+        const p = (msg.payload ?? {}) as { host?: string; up?: boolean };
+        api.notify(
+          p.up
+            ? { title: `${p.host} répond de nouveau`, icon: "✅", priority: "low", key: `net-host-${p.host}` }
+            : { title: `${p.host} ne répond plus`, body: "Pas de réponse depuis deux minutes.", icon: "🖥️", priority: "normal", key: `net-host-${p.host}` },
+        );
+      }),
+      api.on("nettools.public-ip", (msg) => {
+        const p = (msg.payload ?? {}) as { ip?: string; previous?: string };
+        api.notify({ title: "Ton adresse IP publique a changé", body: `${p.previous ?? "?"} → ${p.ip ?? "?"}`, icon: "🌍", priority: "low", key: "net-public-ip" });
+      }),
+    ];
+    return () => offs.forEach((off) => off());
+  },
+
   views: {
     expanded(root, api: ModuleApi) {
       const host = el("input", {
@@ -53,7 +88,18 @@ export const nettools: IslandModule = {
         ),
       );
       const out = el("div", { class: "net-out" });
-      root.append(el("div", { class: "net" }, el("div", { class: "net-head" }, host, port, pingBtn, portBtn, dnsBtn), chips, out));
+      // L'état surveillé en fond : Internet, VPN, IP publique (si activée).
+      const status = el("div", { class: "net-status muted" });
+      root.append(el("div", { class: "net" }, el("div", { class: "net-head" }, host, port, pingBtn, portBtn, dnsBtn), chips, status, out));
+      api
+        .invoke<{ internet: boolean | null; vpns: string[]; publicIp: string | null }>("status")
+        .then((st) => {
+          const parts = [st.internet == null ? "" : st.internet ? "🌐 Internet OK" : "📵 Pas d'Internet"];
+          if (st.vpns.length) parts.push(`🔐 VPN : ${st.vpns.join(", ")}`);
+          if (st.publicIp) parts.push(`🌍 IP publique : ${st.publicIp}`);
+          status.textContent = parts.filter(Boolean).join("  ·  ");
+        })
+        .catch(() => {});
 
       const target = () => host.value.trim();
       const problem = (err: unknown) => out.replaceChildren(el("p", { class: "net-bad" }, `⚠️ ${errorText(err)}`));

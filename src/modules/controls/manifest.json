@@ -2,7 +2,7 @@
   "id": "controls",
   "name": "Contrôles",
   "icon": "🎚️",
-  "description": "Le volume des haut-parleurs et du micro, la luminosité des écrans, le Wi-Fi, le Bluetooth et le mode avion, sans ouvrir Windows. Agit sur les périphériques que Windows utilise par défaut ; les écrans externes doivent accepter le réglage DDC/CI (souvent activé dans leur menu). Rien n'est écouté ni enregistré.",
+  "description": "Le volume des haut-parleurs et du micro, la luminosité des écrans, le Wi-Fi, le Bluetooth et le mode avion, sans ouvrir Windows. Un point orange (micro) ou vert (caméra) sur l'île montre quand une appli s'en sert, et un raccourci coupe le micro de partout. Agit sur les périphériques que Windows utilise par défaut ; les écrans externes doivent accepter le réglage DDC/CI (souvent activé dans leur menu). Rien n'est écouté ni enregistré : on lit seulement ce que Windows note pour sa page Confidentialité.",
   "version": "0.1.0",
   "permissions": [],
   "views": [
@@ -16,10 +16,63 @@
     "set_brightness",
     "radios",
     "set_radio",
-    "set_airplane"
+    "set_airplane",
+    "media_use",
+    "toggle_mic",
+    "outputs",
+    "set_output",
+    "window",
+    "toggle_pin"
   ],
   "events": {
-    "emits": [],
-    "listens": []
+    "emits": [
+      "controls.media-use",
+      "controls.mic-muted",
+      "controls.mic-error"
+    ],
+    "listens": [
+      "controls.mic-muted",
+      "controls.mic-error"
+    ]
+  },
+  "settings": {
+    "version": 1,
+    "fields": [
+      {
+        "key": "micHotkey",
+        "type": "select",
+        "label": "Raccourci pour couper / rétablir le micro",
+        "help": "Marche partout, même en visio. Ondine porte un petit badge tant que le micro est coupé.",
+        "default": "Ctrl+Alt+M",
+        "options": [
+          {
+            "value": "",
+            "label": "Aucun"
+          },
+          {
+            "value": "Ctrl+Alt+M",
+            "label": "Ctrl + Alt + M"
+          },
+          {
+            "value": "Ctrl+Shift+M",
+            "label": "Ctrl + Maj + M"
+          },
+          {
+            "value": "Alt+Shift+M",
+            "label": "Alt + Maj + M"
+          },
+          {
+            "value": "Pause",
+            "label": "Pause"
+          }
+        ]
+      },
+      {
+        "key": "privacyDot",
+        "type": "boolean",
+        "label": "Montrer un point quand une appli utilise le micro ou la caméra",
+        "default": true
+      }
+    ]
   }
 }

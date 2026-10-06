@@ -17,6 +17,16 @@ pub enum Device {
     Microphone,
 }
 
+/// Une sortie audio (casque, haut-parleurs, écran HDMI…).
+#[derive(Debug, Clone, Serialize)]
+pub struct Output {
+    /// L'identifiant Windows du périphérique (opaque, sert seulement à le choisir).
+    pub id: String,
+    pub name: String,
+    /// C'est la sortie par défaut en ce moment.
+    pub default: bool,
+}
+
 /// L'état d'un périphérique : niveau de 0 à 100, et coupé ou non.
 #[derive(Debug, Clone, Serialize)]
 pub struct Level {
@@ -25,6 +35,7 @@ pub struct Level {
 }
 
 #[cfg(windows)]
+#[allow(non_snake_case)] // les méthodes de IPolicyConfig gardent leur nom Windows
 mod imp {
     use super::{Device, Level};
     use ::windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
@@ -75,6 +86,95 @@ mod imp {
             unsafe { ep.SetMute(muted, std::ptr::null()) }.map_err(|e| e.to_string())
         })
     }
+
+    // ── Choisir la sortie audio ──────────────────────────────────────────────
+    //
+    // Lister les sorties est une API documentée (IMMDeviceEnumerator). En
+    // revanche, Windows ne donne AUCUNE API officielle pour changer la sortie
+    // par défaut : tous les logiciels qui le font (EarTrumpet, SoundSwitch…)
+    // passent par l'interface interne « IPolicyConfig » de Windows, décrite
+    // ci-dessous. Elle marche de Windows 7 à 11, mais Microsoft pourrait la
+    // changer : en cas d'échec, on le dit simplement, rien ne casse.
+
+    use ::windows::core::{interface, IUnknown, IUnknown_Vtbl, GUID, HRESULT, HSTRING, PCWSTR};
+    use ::windows::Win32::Foundation::PROPERTYKEY;
+    use ::windows::Win32::Media::Audio::{eCommunications, eMultimedia, ERole, DEVICE_STATE_ACTIVE};
+    use ::windows::Win32::System::Com::STGM_READ;
+    use std::ffi::c_void;
+
+    /// IPolicyConfig (non documentée). Seule la 11e méthode, SetDefaultEndpoint,
+    /// sert ; les autres sont déclarées pour que l'ordre soit le bon.
+    #[interface("f8679f50-850a-41cf-9c72-430f290290c8")]
+    unsafe trait IPolicyConfig: IUnknown {
+        fn GetMixFormat(&self, id: PCWSTR, format: *mut *mut c_void) -> HRESULT;
+        fn GetDeviceFormat(&self, id: PCWSTR, default: i32, format: *mut *mut c_void) -> HRESULT;
+        fn ResetDeviceFormat(&self, id: PCWSTR) -> HRESULT;
+        fn SetDeviceFormat(&self, id: PCWSTR, endpoint: *mut c_void, mix: *mut c_void) -> HRESULT;
+        fn GetProcessingPeriod(&self, id: PCWSTR, default: i32, period: *mut i64, min: *mut i64) -> HRESULT;
+        fn SetProcessingPeriod(&self, id: PCWSTR, period: *mut i64) -> HRESULT;
+        fn GetShareMode(&self, id: PCWSTR, mode: *mut c_void) -> HRESULT;
+        fn SetShareMode(&self, id: PCWSTR, mode: *mut c_void) -> HRESULT;
+        fn GetPropertyValue(&self, id: PCWSTR, key: *const c_void, value: *mut c_void) -> HRESULT;
+        fn SetPropertyValue(&self, id: PCWSTR, key: *const c_void, value: *mut c_void) -> HRESULT;
+        fn SetDefaultEndpoint(&self, id: PCWSTR, role: ERole) -> HRESULT;
+        fn SetEndpointVisibility(&self, id: PCWSTR, visible: i32) -> HRESULT;
+    }
+
+    /// L'objet de Windows qui implémente IPolicyConfig (« PolicyConfigClient »).
+    const POLICY_CONFIG_CLIENT: GUID = GUID::from_u128(0x870af99c_171d_4f9e_af0d_e63df40c2bc9);
+
+    /// PKEY_Device_FriendlyName : « Haut-parleurs (Realtek Audio) ».
+    const FRIENDLY_NAME: PROPERTYKEY =
+        PROPERTYKEY { fmtid: GUID::from_u128(0xa45c254e_df1c_4efd_8020_67d146a850e0), pid: 14 };
+
+    pub fn outputs() -> Result<Vec<super::Output>, String> {
+        crate::platform::with_com(|| unsafe {
+            let devices: IMMDeviceEnumerator =
+                CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(|_| "le service audio de Windows ne répond pas".to_string())?;
+            let default_id = devices
+                .GetDefaultAudioEndpoint(eRender, eConsole)
+                .and_then(|d| d.GetId())
+                .map(|p| {
+                    let s = p.to_string().unwrap_or_default();
+                    ::windows::Win32::System::Com::CoTaskMemFree(Some(p.0 as *const c_void));
+                    s
+                })
+                .unwrap_or_default();
+            let list = devices.EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE).map_err(|e| e.to_string())?;
+            let mut out = Vec::new();
+            for i in 0..list.GetCount().map_err(|e| e.to_string())? {
+                let Ok(dev) = list.Item(i) else { continue };
+                let Ok(raw_id) = dev.GetId() else { continue };
+                let id = raw_id.to_string().unwrap_or_default();
+                ::windows::Win32::System::Com::CoTaskMemFree(Some(raw_id.0 as *const c_void));
+                let name = dev
+                    .OpenPropertyStore(STGM_READ)
+                    .and_then(|store| store.GetValue(&FRIENDLY_NAME))
+                    .map(|v| v.to_string())
+                    .unwrap_or_default();
+                let name = if name.is_empty() { "Sortie audio".to_string() } else { name };
+                out.push(super::Output { default: id == default_id, id, name });
+            }
+            Ok(out)
+        })
+    }
+
+    pub fn set_default_output(id: &str) -> Result<(), String> {
+        // On n'accepte qu'un identifiant de la liste actuelle : jamais une valeur inventée.
+        if !outputs()?.iter().any(|o| o.id == id) {
+            return Err("cette sortie audio n'existe plus".into());
+        }
+        crate::platform::with_com(|| unsafe {
+            let policy: IPolicyConfig = CoCreateInstance(&POLICY_CONFIG_CLIENT, None, CLSCTX_ALL)
+                .map_err(|_| "Windows refuse de changer la sortie audio d'ici (interface interne absente)".to_string())?;
+            let id = HSTRING::from(id);
+            // Les trois « rôles » : sons système, musique / vidéo, appels.
+            for role in [eConsole, eMultimedia, eCommunications] {
+                policy.SetDefaultEndpoint(PCWSTR(id.as_ptr()), role).ok().map_err(|e| format!("changement de sortie refusé ({e})"))?;
+            }
+            Ok(())
+        })
+    }
 }
 
 #[cfg(not(windows))]
@@ -90,6 +190,12 @@ mod imp {
     pub fn set_muted(_device: Device, _muted: bool) -> Result<(), String> {
         Err("pas de périphérique audio (hors Windows)".into())
     }
+    pub fn outputs() -> Result<Vec<super::Output>, String> {
+        Ok(Vec::new())
+    }
+    pub fn set_default_output(_id: &str) -> Result<(), String> {
+        Err("pas de périphérique audio (hors Windows)".into())
+    }
 }
 
-pub use imp::{get, set_muted, set_volume};
+pub use imp::{get, outputs, set_default_output, set_muted, set_volume};

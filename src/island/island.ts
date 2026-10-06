@@ -6,6 +6,7 @@
 //   island.ts (ici)   dessine l'état, écoute la souris, le clavier, le glisser-déposer
 //   Rust (island/)    place la fenêtre, gère les clics traversants, lit la souris
 
+import { flyIcon, jellyButtons, motionOn, popIn, setStudio, spotlight, staggerIn, tabOut, watchContent } from "./motion";
 import { Bridge, IS_TAURI, onDragDrop, onTauriEvent, type DragDropEvent } from "../core/bridge";
 import type { Bus } from "../core/bus";
 import { logger } from "../core/log";
@@ -15,22 +16,32 @@ import { settingsStore } from "../core/settings-store";
 import { applyTabOrder, mergeOrder } from "../core/tab-order";
 import type { Settings } from "../core/types";
 import { findMascot } from "../mascot/catalog";
+import { Hanger } from "../mascot/hang";
 import { MascotController } from "../mascot/mascot-state";
 import { createRenderer } from "../mascot/renderer";
 import { clear, el } from "./dom";
 import { icon } from "./icon";
 import { IslandStateMachine, type IslandState } from "./island-state";
+import { enableGestures, grabZone, type Edge } from "./gestures";
+import { sounds, setSoundPrefs } from "./sounds";
 import { enableTabDrag, flip } from "./tab-drag";
+import { applyTheme } from "./themes";
 import { reducedMotion, TabPill } from "./tab-pill";
 
 const log = logger("island");
 
 /** Durée des animations CSS de l'île (doit suivre --speed dans island.css). */
 const TRANSITION_MS = 420;
-/** Zone tout en haut au centre qui compte comme « survol » même si l'île est minuscule. */
-const TOP_ZONE = { w: 240, h: 14 };
+/** Zone au bord de l'écran qui compte comme « survol » même si l'île est minuscule. */
+const EDGE_ZONE = { len: 240, depth: 14 };
 /** Survol prolongé de la mascotte → `love`. */
 const LONG_HOVER_MS = 2500;
+/** Ondine vient pendre au bord seulement si personne n'a touché le PC depuis… */
+const PEEK_IDLE_MS = 20_000;
+/** On se demande toutes les… si c'est le moment. */
+const PEEK_CHECK_MS = 15_000;
+/** Mode présentation : on regarde toutes les… si une appli est en plein écran. */
+const PRESENTATION_CHECK_MS = 4000;
 
 function timingsFrom(s: Settings) {
   return {
@@ -45,6 +56,10 @@ export class Island {
   private shell = el("div", { class: "island", "data-state": "hidden" });
   private mascotSlot = el("div", { class: "mascot-slot", title: "" });
   private content = el("div", { class: "island-content" });
+  /** Le petit point orange (micro) ou vert (caméra) quand une appli s'en sert. */
+  private privacyDot = el("span", { class: "privacy-dot", "aria-hidden": "true" });
+  /** Qui utilise le micro et la caméra (message "controls.media-use" du module Contrôles). */
+  private mediaUse: { mic: string[]; cam: string[] } = { mic: [], cam: [] };
   private mascot: MascotController | null = null;
   private mascotId = "";
 
@@ -64,6 +79,13 @@ export class Island {
   private collapseTimer: number | null = null;
   private hoverMascotSince = 0;
   private hoverMascotFired = false;
+  /** Le dernier appui sur l'île était un geste (étirer, déplacer), pas un clic. */
+  private wasGesture: () => boolean = () => false;
+  /** Ondine qui pend au bord de l'écran (mascot/hang.ts), et sa dernière visite. */
+  private hanger: Hanger;
+  private lastPeek = Date.now();
+  /** Une présentation ou une appli plein écran est en cours : l'île se fait oublier. */
+  private presenting = false;
 
   constructor(
     private readonly root: HTMLElement,
@@ -73,8 +95,20 @@ export class Island {
   ) {
     this.fsm = new IslandStateMachine(timingsFrom(settingsStore.current));
     this.fsm.onTransition = (from, to) => this.onTransition(from, to);
-    this.shell.append(this.mascotSlot, this.content);
+    this.shell.append(this.mascotSlot, this.content, this.privacyDot);
     this.root.append(this.shell);
+    this.hanger = new Hanger(this.root, {
+      edge: () => this.edge(),
+      align: () => document.body.dataset.align ?? "center",
+      entry: () => (this.mascotId ? findMascot(this.mascotId) : null),
+      onClick: () => this.fsm.open(),
+      onShowChange: (on) => this.onHangChange(on),
+    });
+    window.setInterval(() => void this.maybePeek(), PEEK_CHECK_MS);
+    window.setInterval(() => void this.checkPresentation(), PRESENTATION_CHECK_MS);
+    // Dans un navigateur (npm run dev) : window.ondinePeek() la fait venir tout de suite.
+    // Et window.ondineBus.emit("controls.media-use", { mic: ["Zoom"], cam: [] }) simule un message.
+    if (!IS_TAURI) Object.assign(window, { ondinePeek: () => this.hanger.show(), ondineBus: this.bus });
 
     this.notifications.defaultDurationMs = settingsStore.current.island.notificationSecs * 1000;
     let wasAlert = false;
@@ -115,6 +149,16 @@ export class Island {
     this.applySettings(settingsStore.current);
     this.wireInputs();
     this.wireUndo();
+    // Design « Studio » : chiffres qui roulent, listes qui glissent, boutons en
+    // gélatine, reflet sous la souris (rien de tout ça en Classique).
+    watchContent(this.content);
+    jellyButtons(this.content);
+    spotlight(this.shell);
+    this.wirePrivacy();
+    // Bouton « Faire venir Ondine » des réglages.
+    this.bus.on("mascot.peek-now", () => {
+      if (this.fsm.state === "hidden") this.hanger.show();
+    });
     this.render(true);
   }
 
@@ -122,7 +166,15 @@ export class Island {
 
   private applySettings(s: Settings) {
     this.fsm.timings = timingsFrom(s);
+    this.fsm.setAlwaysMini(s.island.alwaysMini ?? false);
+    setStudio(s.island.motion === "studio");
+    // Le bord et la place de l'île : la forme s'adapte en CSS (island.css).
+    document.body.dataset.edge = s.island.edge ?? "top";
+    document.body.dataset.align = s.island.align ?? "center";
+    applyTheme(s.island.theme ?? "nuit", s.island.color ?? "");
+    setSoundPrefs(s.island.sounds ?? true, s.island.soundVolume ?? 0.5);
     this.reorderTabs();
+    this.drawPrivacy();
     this.notifications.defaultDurationMs = s.island.notificationSecs * 1000;
     const wanted = s.mascot.enabled ? s.mascot.id : "";
     if (wanted !== this.mascotId) {
@@ -145,6 +197,39 @@ export class Island {
     }
   }
 
+  // ── Micro et caméra ────────────────────────────────────────────────────────
+
+  /**
+   * Le module Contrôles dit qui utilise le micro ou la caméra, et si le micro
+   * est coupé. On montre un point (orange = micro, vert = caméra, comme sur
+   * iPhone), même île cachée (une petite barre au bord), et un badge sur Ondine
+   * tant que le micro est coupé.
+   */
+  private wirePrivacy() {
+    this.bus.on("controls.media-use", (msg) => {
+      const p = (msg.payload ?? {}) as { mic?: string[]; cam?: string[] };
+      this.mediaUse = { mic: p.mic ?? [], cam: p.cam ?? [] };
+      this.drawPrivacy();
+    });
+    this.bus.on("controls.mic-muted", (msg) => {
+      const muted = !!(msg.payload as { muted?: boolean } | null)?.muted;
+      this.mascotSlot.classList.toggle("mic-muted", muted);
+    });
+  }
+
+  private drawPrivacy() {
+    const values = settingsStore.current.modules?.controls?.values ?? {};
+    const wanted = values.privacyDot !== false;
+    const { mic, cam } = this.mediaUse;
+    const kind = !wanted ? "" : cam.length ? "cam" : mic.length ? "mic" : "";
+    this.shell.dataset.privacy = kind;
+    const parts = [];
+    if (cam.length) parts.push(`Caméra : ${cam.join(", ")}`);
+    if (mic.length) parts.push(`Micro : ${mic.join(", ")}`);
+    this.privacyDot.title = parts.join(" · ");
+    this.privacyDot.setAttribute("aria-label", this.privacyDot.title);
+  }
+
   // ── Transitions ────────────────────────────────────────────────────────────
 
   private onTransition(from: IslandState, to: IslandState) {
@@ -158,6 +243,8 @@ export class Island {
     if (from === "hidden") {
       // On agrandit d'abord la fenêtre, puis l'île s'anime dedans.
       void Bridge.islandSetCollapsed(false);
+      // Ondine pendait au bord : elle remonte, l'île arrive.
+      this.hanger.hide();
     }
     if (to === "hidden") {
       // On laisse l'animation de fermeture se finir avant de réduire la fenêtre.
@@ -168,6 +255,9 @@ export class Island {
     if (to === "expanded") void Bridge.islandSetFocus(true);
     if (from === "expanded") void Bridge.islandSetFocus(false);
     if (to !== "hidden") this.mascot?.activity();
+    // Petits sons : une bulle qui monte à l'ouverture, qui redescend à la fermeture.
+    if (to === "expanded") sounds.open();
+    else if (from === "expanded") sounds.close();
     this.render();
   }
 
@@ -184,15 +274,36 @@ export class Island {
     }
     // Île cachée : la fenêtre n'est qu'une bande de 6 px. Le Rust surveille la
     // souris et prévient quand elle touche cette bande.
-    void onTauriEvent("wake-enter", () => this.fsm.state === "hidden" && this.fsm.pointerEnter());
+    void onTauriEvent("wake-enter", () => this.fsm.state === "hidden" && !this.presenting && this.fsm.pointerEnter());
     void onTauriEvent("wake-leave", () => this.fsm.state === "hidden" && this.fsm.pointerLeave());
 
+    // Étirer l'île par son bord intérieur, la déplacer par son bord extérieur (gestures.ts).
+    this.wasGesture = enableGestures(this.shell, {
+      edge: () => this.edge(),
+      enabled: () => ["peek", "compact", "expanded", "alert"].includes(this.fsm.state),
+      onMoveStart: () => this.startMove(),
+      onRelease: (amount) => amount > 8 && sounds.boing(),
+    });
+    // Un « tic » doux sur chaque bouton de l'île.
+    this.shell.addEventListener("click", (e) => (e.target as HTMLElement).closest("button") && sounds.tap(), true);
+    // Au survol, le pointeur montre ce qu'on peut faire sur les bords.
+    this.shell.addEventListener("pointermove", (e) => {
+      if (e.buttons) return;
+      const zone = ["compact", "expanded", "alert"].includes(this.fsm.state) ? grabZone(this.shell, this.edge(), e.clientX, e.clientY) : null;
+      const along = this.edge() === "top" ? "ns-resize" : "ew-resize";
+      this.shell.style.cursor = zone === "outer" ? "grab" : zone === "inner" ? along : "";
+      this.shell.classList.toggle("grab-inner", zone === "inner");
+    });
+    this.shell.addEventListener("pointerleave", () => this.shell.classList.remove("grab-inner"));
+
     this.shell.addEventListener("click", (e) => {
+      if (this.wasGesture()) return;
       if ((e.target as HTMLElement).closest("button, input, select, textarea, a")) return;
       this.fsm.click();
     });
     this.mascotSlot.addEventListener("click", (e) => {
       e.stopPropagation();
+      if (this.wasGesture()) return;
       this.bus.emit("mascot.clicked");
     });
 
@@ -203,7 +314,15 @@ export class Island {
 
     void onDragDrop((e) => this.onDrag(e));
     void onTauriEvent<string>("tray", (id) => id === "open" && this.fsm.open());
+    // Le raccourci clavier de l'île (Ctrl+Alt+O par défaut) : ouvre, ou referme.
+    void onTauriEvent("hotkey", () => (this.fsm.state === "expanded" ? this.fsm.close() : this.fsm.open()));
+    void onTauriEvent<string>("hotkey-error", (text) => this.notifications.push({ moduleId: "island", title: text, icon: "⌨️", priority: "normal" }));
     void onTauriEvent("screen-changed", () => void Bridge.islandReposition());
+    // Fin d'un déplacement : l'île s'est posée sur un bord.
+    void onTauriEvent("island-drag-end", () => {
+      this.shell.classList.remove("moving");
+      this.pushRect();
+    });
 
     // La forme de l'île change (animation, contenu) : le Rust doit la connaître
     // pour décider où les clics passent au travers.
@@ -211,21 +330,109 @@ export class Island {
     this.shell.addEventListener("transitionend", () => this.pushRect());
   }
 
+  /** Le bord de l'écran où se trouve l'île (posé sur <body> par applySettings). */
+  private edge(): Edge {
+    const e = document.body.dataset.edge;
+    return e === "left" || e === "right" ? e : "top";
+  }
+
+  /** La bande au bord de l'écran, là où l'île se cache (pour le survol). */
+  private inEdgeZone(x: number, y: number): boolean {
+    const edge = this.edge();
+    const align = document.body.dataset.align ?? "center";
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const span = (len: number, p: number) => {
+      const start = align === "start" ? 0 : align === "end" ? len - EDGE_ZONE.len : (len - EDGE_ZONE.len) / 2;
+      return p >= start && p <= start + EDGE_ZONE.len;
+    };
+    if (edge === "left") return x <= EDGE_ZONE.depth && span(H, y);
+    if (edge === "right") return x >= W - EDGE_ZONE.depth && span(H, y);
+    return y <= EDGE_ZONE.depth && span(W, x);
+  }
+
+  /** On a attrapé l'île par son bord extérieur : le Rust déplace la fenêtre. */
+  private startMove() {
+    this.shell.classList.add("moving");
+    void Bridge.islandDragStart();
+  }
+
+  /**
+   * C'est peut-être le moment pour Ondine de venir pendre au bord : île cachée,
+   * réglage activé, personne au clavier depuis un moment, pas de présentation,
+   * et pas de visite depuis `peekEveryMins`. Un peu de hasard en plus.
+   */
+  private async maybePeek() {
+    const s = settingsStore.current;
+    if (!s.mascot.enabled || !s.mascot.peek || this.fsm.state !== "hidden" || this.hanger.showing) return;
+    if (Date.now() - this.lastPeek < (s.mascot.peekEveryMins ?? 5) * 60_000) return;
+    const desk = await Bridge.deskState();
+    if (!desk || desk.busy || desk.idleMs < PEEK_IDLE_MS) return;
+    if (Math.random() < 0.4) return;
+    this.lastPeek = Date.now();
+    this.hanger.show();
+  }
+
+  /**
+   * Mode présentation (réglage « presentationQuiet ») : pendant un diaporama
+   * PowerPoint, une vidéo ou un jeu en plein écran (Windows le signale), l'île
+   * se cache, la souris au bord ne la réveille plus, et les notifications
+   * attendent. À la fin, elles arrivent, avec un petit résumé.
+   */
+  private async checkPresentation() {
+    const wanted = settingsStore.current.island.presentationQuiet ?? true;
+    const desk = wanted ? await Bridge.deskState() : null;
+    const busy = !!desk?.busy;
+    if (busy === this.presenting) return;
+    this.presenting = busy;
+    document.body.classList.toggle("presenting", busy);
+    if (busy) {
+      this.hanger.hide(true);
+      this.fsm.hide();
+      this.notifications.pause(true);
+    } else {
+      const n = this.notifications.waiting();
+      this.notifications.pause(false);
+      this.fsm.restore();
+      if (n > 1) this.notifications.push({ moduleId: "island", title: `${n} notifications pendant ta présentation`, icon: "🎬", priority: "low", key: "presentation-summary" });
+    }
+  }
+
+  /** Ondine arrive au bord (la fenêtre doit être assez grande) ou repart. */
+  private onHangChange(on: boolean) {
+    if (on) sounds.drop();
+    if (this.fsm.state === "hidden") void Bridge.islandSetCollapsed(!on);
+    requestAnimationFrame(() => this.pushRect());
+  }
+
   private pushRect() {
+    // Île cachée et Ondine au bord : seul son petit rectangle prend la souris.
+    const hang = this.fsm.state === "hidden" ? this.hanger.rect() : null;
+    if (hang) {
+      void Bridge.islandSetRect(hang.left, hang.top, hang.width, hang.height);
+      return;
+    }
     const r = this.shell.getBoundingClientRect();
     void Bridge.islandSetRect(r.left, r.top, r.width, r.height);
   }
 
   /** Position de la souris (px logiques de la fenêtre). */
   private pointer(x: number, y: number) {
+    // Ondine pend au bord : elle suit la souris des yeux. Sur elle, la souris
+    // ne réveille pas l'île (on veut pouvoir cliquer dessus).
+    if (this.hanger.showing) {
+      this.hanger.lookAt(x, y);
+      const h = this.hanger.rect();
+      if (h && x >= h.left && x <= h.right && y >= h.top && y <= h.bottom) return;
+    }
+    // Présentation en cours : la souris au bord ne réveille pas l'île.
+    if (this.presenting && this.fsm.state === "hidden") return;
     // Dans l'appli, l'île cachée est gérée par la bande de réveil (ci-dessus).
-    if (this.fsm.state === "hidden" && IS_TAURI) return;
+    if (this.fsm.state === "hidden" && IS_TAURI && !this.hanger.showing) return;
     const r = this.shell.getBoundingClientRect();
     const margin = 8;
     const inIsland = x >= r.left - margin && x <= r.right + margin && y >= r.top - margin && y <= r.bottom + margin;
-    const zoneLeft = (window.innerWidth - TOP_ZONE.w) / 2;
-    const inTopZone = x >= zoneLeft && x <= zoneLeft + TOP_ZONE.w && y >= 0 && y <= TOP_ZONE.h;
-    const inside = inIsland || inTopZone;
+    const inside = inIsland || this.inEdgeZone(x, y);
     if (inside) this.fsm.pointerEnter();
     else this.fsm.pointerLeave();
 
@@ -266,6 +473,7 @@ export class Island {
         const target = this.dropTargetAt(e.position);
         this.highlightDropTarget(undefined);
         this.fsm.dropped();
+        if (paths.length) sounds.drop();
         this.bus.emit("island.files-dropped", { count: paths.length, target: target?.target.id ?? null });
         if (target) void this.registry.drop(target.moduleId, target.target, paths);
         else if (paths.length) {
@@ -372,17 +580,35 @@ export class Island {
     }
     this.renderBanner(n);
 
-    // Le contenu arrive en douceur quand l'île change de forme.
-    if (state !== this.renderedState && state !== "hidden" && state !== "peek" && !reducedMotion()) {
-      this.content.animate(
-        [
-          { opacity: 0, transform: "translateY(-6px) scale(0.98)", filter: "blur(4px)" },
-          { opacity: 1, transform: "none", filter: "blur(0)" },
-        ],
-        { duration: 320, delay: 60, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)", fill: "backwards" },
-      );
+    // Le contenu arrive en douceur quand l'île change de forme (motion.ts :
+    // en douceur en Classique, plus franc en Studio).
+    if (state !== this.renderedState && state !== "hidden" && state !== "peek" && motionOn()) {
+      this.entrance(state);
+    } else if (state === this.renderedState && (state === "compact" || state === "alert") && motionOn()) {
+      // Même forme, nouvelle notification : elle sort quand même de la pilule.
+      const card = this.content.querySelector(".notif");
+      if (card) popIn(card);
     }
     this.renderedState = state;
+  }
+
+  /**
+   * Arrivée du contenu : les onglets puis les morceaux de la vue passent de
+   * flous à nets l'un après l'autre ; une notification sort de la pilule.
+   */
+  private entrance(state: IslandState) {
+    const card = this.content.querySelector(".notif");
+    if (card && state !== "expanded") {
+      popIn(card);
+      return;
+    }
+    const tabs = this.content.querySelector(".tabs");
+    if (tabs) staggerIn(tabs, 20);
+    // Le module peut dessiner sa vue juste après : on attend une image.
+    requestAnimationFrame(() => {
+      const view = this.content.querySelector(".view");
+      if (view) staggerIn(view, tabs ? 120 : 40);
+    });
   }
 
   private renderCompact(n: IslandNotification | null) {
@@ -516,6 +742,7 @@ export class Island {
     // Les onglets : seul l'actif garde son nom (la largeur s'anime en CSS).
     for (const [tabId, button] of ui.tabs) button.classList.toggle("active", tabId === id);
     ui.pill.moveTo(ui.tabs.get(id)!);
+    flyIcon(ui.tabs.get(id)!, ui.stage);
 
     // Le contenu : on démonte l'ancien module, mais on garde son dessin le
     // temps qu'il s'efface.
@@ -534,26 +761,12 @@ export class Island {
     }
     old.classList.add("leaving");
     old.style.pointerEvents = "none";
-    const ease = "cubic-bezier(0.2, 0.8, 0.2, 1)";
-    old
-      .animate(
-        [
-          { opacity: 1, transform: "none", filter: "blur(0)" },
-          { opacity: 0, transform: `translateX(${-direction * 18}px) scale(0.98)`, filter: "blur(6px)" },
-        ],
-        { duration: 220, easing: ease, fill: "forwards" },
-      )
-      .finished.then(
-        () => old.remove(),
-        () => old.remove(), // animation interrompue (île refermée) : on nettoie quand même
-      );
-    body.animate(
-      [
-        { opacity: 0, transform: `translateX(${direction * 24}px) scale(0.98)`, filter: "blur(6px)" },
-        { opacity: 1, transform: "none", filter: "blur(0)" },
-      ],
-      { duration: 380, delay: 40, easing: ease, fill: "backwards" },
+    tabOut(old, direction).finished.then(
+      () => old.remove(),
+      () => old.remove(), // animation interrompue (île refermée) : on nettoie quand même
     );
+    // Le nouveau contenu arrive en cascade une fois dessiné par le module.
+    requestAnimationFrame(() => staggerIn(body, 60));
   }
 
   private renderDrop() {
@@ -601,7 +814,11 @@ export class Island {
     return el(
       "div",
       // Plusieurs boutons (une question à choix) : ils passent sur leur propre ligne.
-      { class: `notif ${big ? "big" : ""} ${(n.actions?.length ?? 0) > 1 ? "many" : ""} prio-${n.priority}` },
+      {
+        class: `notif ${big ? "big" : ""} ${(n.actions?.length ?? 0) > 1 ? "many" : ""} prio-${n.priority}`,
+        // Combien attendent derrière (design Studio : l'icône s'empile, voir island.css).
+        "data-more": String(Math.min(this.notifications.waiting(), 3)),
+      },
       el("span", { class: "notif-icon" }, icon(n.icon ?? "•")),
       el("div", { class: "notif-text" }, el("div", { class: "notif-title" }, n.title), n.body ? el("div", { class: "notif-body" }, n.body) : null),
       actions,

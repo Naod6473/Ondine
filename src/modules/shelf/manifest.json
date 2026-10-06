@@ -2,9 +2,12 @@
   "id": "shelf",
   "name": "Étagère",
   "icon": "🧺",
-  "description": "Glisse des fichiers sur l'île pour les poser sur l'étagère, les envoyer à la Corbeille, les copier ou les déplacer (dossiers favoris compris), copier leur chemin ou les compresser. Toute action sur les fichiers est annulable quelques secondes.",
+  "description": "Glisse des fichiers sur l'île pour les poser sur l'étagère, les envoyer à la Corbeille, les copier ou les déplacer (dossiers favoris compris), copier leur chemin, les compresser, convertir ou réduire des images, ou renommer plusieurs fichiers d'un coup (avec aperçu). Toute action sur les fichiers est annulable quelques secondes.",
   "version": "0.1.0",
-  "permissions": ["files", "clipboard"],
+  "permissions": [
+    "files",
+    "clipboard"
+  ],
   "settings": {
     "version": 1,
     "fields": [
@@ -21,18 +24,74 @@
         "label": "Lâcher sur un favori…",
         "default": "copy",
         "options": [
-          { "value": "copy", "label": "copie les fichiers" },
-          { "value": "move", "label": "déplace les fichiers" }
+          {
+            "value": "copy",
+            "label": "copie les fichiers"
+          },
+          {
+            "value": "move",
+            "label": "déplace les fichiers"
+          }
         ]
       },
-      { "key": "showTrash", "type": "boolean", "label": "Cible « Corbeille »", "default": true },
-      { "key": "showCompress", "type": "boolean", "label": "Cible « Compresser »", "default": true }
+      {
+        "key": "showTrash",
+        "type": "boolean",
+        "label": "Cible « Corbeille »",
+        "default": true
+      },
+      {
+        "key": "showCompress",
+        "type": "boolean",
+        "label": "Cible « Compresser »",
+        "default": true
+      },
+      {
+        "key": "showTools",
+        "type": "boolean",
+        "label": "Cibles « Images » et « Renommer »",
+        "default": true
+      },
+      {
+        "key": "watchDownloads",
+        "type": "boolean",
+        "label": "Poser sur l'étagère chaque nouveau fichier téléchargé",
+        "help": "Le dossier Téléchargements est regardé toutes les 3 secondes ; le fichier arrive quand le téléchargement est fini.",
+        "default": true
+      }
     ]
   },
-  "views": ["expanded", "drop"],
-  "commands": ["list", "add", "remove", "clear", "copy_paths", "trash", "copy_to", "move_to", "compress", "reveal"],
+  "views": [
+    "expanded",
+    "drop"
+  ],
+  "commands": [
+    "list",
+    "add",
+    "remove",
+    "clear",
+    "copy_paths",
+    "trash",
+    "copy_to",
+    "move_to",
+    "compress",
+    "reveal",
+    "images",
+    "rename_preview",
+    "rename"
+  ],
   "events": {
-    "emits": ["shelf.changed", "task.started", "task.finished", "task.failed"],
-    "listens": ["shelf.changed", "shelf.add"]
+    "emits": [
+      "shelf.changed",
+      "task.started",
+      "task.finished",
+      "task.failed",
+      "shelf.downloaded"
+    ],
+    "listens": [
+      "shelf.changed",
+      "shelf.add",
+      "shelf.downloaded"
+    ]
   }
 }

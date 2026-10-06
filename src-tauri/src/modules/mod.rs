@@ -25,6 +25,7 @@ mod rules;
 mod notes;
 mod remote;
 mod shelf;
+mod shelf_tools;
 mod system;
 mod terminal;
 
@@ -197,7 +198,7 @@ impl Registry {
             Box::new(launcher::Launcher::default()),
             Box::new(system::SystemInfo::default()),
             Box::new(remote::Remote::default()),
-            Box::new(nettools::NetTools),
+            Box::new(nettools::NetTools::default()),
             Box::new(controls::Controls),
             Box::new(agents::Agents::default()),
             Box::new(askclaude::AskClaude::default()),
@@ -387,7 +388,7 @@ mod tests {
 
     #[test]
     fn nettools_manifest_is_valid() {
-        let m = check_manifest(nettools::NetTools.manifest_json()).unwrap();
+        let m = check_manifest(nettools::NetTools::default().manifest_json()).unwrap();
         assert_eq!(m.id, "nettools");
     }
 

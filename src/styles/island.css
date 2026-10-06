@@ -34,7 +34,12 @@ body {
   position: absolute;
   top: 0;
   left: 50%;
-  transform: translateX(-50%);
+  /* « translate » (et pas « transform ») : l'étirement (gestures.ts) peut alors
+     utiliser scale et rotate autour du bord de l'écran sans décaler l'île. */
+  translate: -50% 0;
+  /* L'arrondi (--r, posé par chaque état) va sur les coins qui ne touchent
+     pas le bord de l'écran : voir « L'île sur un côté » plus bas. */
+  border-radius: 0 0 var(--r, 0) var(--r, 0);
   box-sizing: border-box;
   background: var(--island-bg);
   overflow: hidden;
@@ -57,25 +62,25 @@ body {
   width: 120px;
   height: 0;
   padding: 0;
-  border-radius: 0 0 6px 6px;
+  --r: 6px;
 }
 .island[data-state="peek"] {
   width: 150px;
   height: 8px;
   padding: 0;
-  border-radius: 0 0 8px 8px;
+  --r: 8px;
 }
 .island[data-state="compact"] {
   width: 340px;
   height: 42px;
   padding: 0 14px 0 8px;
-  border-radius: 0 0 21px 21px;
+  --r: 21px;
 }
 .island[data-state="expanded"] {
   width: 640px;
   height: 270px;
   padding: 12px 14px 14px 12px;
-  border-radius: 0 0 26px 26px;
+  --r: 26px;
   align-items: start;
 }
 .island[data-state="drop"] {
@@ -83,7 +88,7 @@ body {
   width: 700px;
   height: 200px;
   padding: 10px 14px;
-  border-radius: 0 0 24px 24px;
+  --r: 24px;
   outline: 2px dashed rgba(124, 196, 255, 0.5);
   outline-offset: -6px;
 }
@@ -91,12 +96,13 @@ body {
   width: 480px;
   height: 104px;
   padding: 10px 14px 10px 10px;
-  border-radius: 0 0 24px 24px;
+  --r: 24px;
 }
 
 /* ── La mascotte ─────────────────────────────────────────────────────────── */
 
 .mascot-slot {
+  position: relative;
   width: 0;
   height: 0;
   cursor: pointer;
@@ -619,6 +625,46 @@ body {
   width: 0;
   background: var(--accent);
   transition: width 500ms linear;
+}
+/* La zone cliquable autour de la barre (module Musique : seekable). */
+.media-seek {
+  position: relative;
+  padding: 6px 0;
+}
+.media-seek.seekable {
+  cursor: pointer;
+}
+.media-seek:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* La pastille : apparaît au survol, suit la position. */
+.media-thumb {
+  position: absolute;
+  top: 50%;
+  left: var(--f, 0%);
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  transform: scale(0);
+  transition: transform 220ms var(--ease);
+  pointer-events: none;
+}
+.media-seek.seekable:hover .media-thumb,
+.media-seek.scrubbing .media-thumb {
+  transform: scale(1);
+}
+.media-seek.scrubbing .media-bar-fill {
+  transition: none;
+}
+.media-seek.seekable:hover .media-bar,
+.media-seek.scrubbing .media-bar {
+  height: 6px;
+  border-radius: 3px;
 }
 .media-times {
   display: flex;
@@ -2197,6 +2243,17 @@ body {
   filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.35));
   pointer-events: none;
 }
+/* Pack « Épurées » : la forme du .svg, remplie avec la couleur du texte. */
+.icon-line {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.22em;
+  background: currentColor;
+  -webkit-mask: var(--src) center / contain no-repeat;
+  mask: var(--src) center / contain no-repeat;
+  pointer-events: none;
+}
 .agents-logo {
   font-size: 14px;
   line-height: 1;
@@ -2205,6 +2262,7 @@ body {
 /* ---- Contrôles : façon centre de contrôle, en verre liquide ---- */
 /* Tout tient dans la hauteur de la vue : pas de défilement. */
 .ctl {
+  position: relative;
   display: flex;
   gap: 12px;
   height: 100%;
@@ -2225,15 +2283,16 @@ body {
   backdrop-filter: blur(18px) saturate(160%);
 }
 
-/* À gauche : les pastilles rondes, deux par ligne. */
+/* À gauche : les pastilles rondes, trois par ligne (deux lignes : tout
+   tient dans la hauteur de la vue, même avec « Épingler »). */
 .ctl-toggles {
   flex: none;
   display: grid;
-  grid-template-columns: repeat(2, 66px);
+  grid-template-columns: repeat(3, 58px);
   align-content: center;
   justify-content: center;
-  gap: 8px 10px;
-  padding: 10px 12px;
+  gap: 10px 6px;
+  padding: 10px;
 }
 .ctl-toggle {
   display: flex;
@@ -2249,15 +2308,15 @@ body {
   cursor: pointer;
 }
 .ctl-toggle-name {
-  max-width: 66px;
+  max-width: 58px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .ctl-dot {
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: flex;
   background: rgba(255, 255, 255, 0.1);
@@ -2271,8 +2330,8 @@ body {
     transform 380ms var(--ease);
 }
 .ctl-dot svg {
-  width: 21px;
-  height: 21px;
+  width: 19px;
+  height: 19px;
   margin: auto;
   fill: none;
   stroke: currentColor;
@@ -2468,5 +2527,721 @@ body {
   .ctl-pill.held,
   .ctl-toggle:active .ctl-dot {
     transform: none;
+  }
+}
+
+/* ── Jouer avec l'île (gestures.ts) ─────────────────────────────────────── */
+/* Une petite poignée apparaît quand la souris est sur le bord intérieur :
+   on peut tirer pour étirer l'île. */
+.island::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 36px;
+  height: 4px;
+  margin-left: -18px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.35);
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+.island.grab-inner::after,
+.island.stretching::after {
+  opacity: 1;
+}
+
+/* ── L'île ailleurs qu'en haut au centre (gestures.ts, island/mod.rs) ──── */
+/* <body data-edge="top|left|right" data-align="start|center|end"> */
+body[data-edge="top"][data-align="start"] .island {
+  left: 0;
+  translate: 0 0;
+  border-radius: 0 0 var(--r, 0) 0;
+}
+body[data-edge="top"][data-align="end"] .island {
+  left: auto;
+  right: 0;
+  translate: 0 0;
+  border-radius: 0 0 0 var(--r, 0);
+}
+body[data-edge="left"] .island,
+body[data-edge="right"] .island {
+  top: 50%;
+  translate: 0 -50%;
+}
+body[data-edge="left"] .island {
+  left: 0;
+  border-radius: 0 var(--r, 0) var(--r, 0) 0;
+}
+body[data-edge="right"] .island {
+  left: auto;
+  right: 0;
+  border-radius: var(--r, 0) 0 0 var(--r, 0);
+}
+body[data-edge="left"][data-align="start"] .island,
+body[data-edge="right"][data-align="start"] .island {
+  top: 0;
+  translate: 0 0;
+}
+body[data-edge="left"][data-align="end"] .island,
+body[data-edge="right"][data-align="end"] .island {
+  top: auto;
+  bottom: 0;
+  translate: 0 0;
+}
+body[data-edge="left"][data-align="start"] .island {
+  border-radius: 0 0 var(--r, 0) 0;
+}
+body[data-edge="left"][data-align="end"] .island {
+  border-radius: 0 var(--r, 0) 0 0;
+}
+body[data-edge="right"][data-align="start"] .island {
+  border-radius: 0 0 0 var(--r, 0);
+}
+body[data-edge="right"][data-align="end"] .island {
+  border-radius: var(--r, 0) 0 0 0;
+}
+/* Sur un côté, les petites formes sont verticales. */
+body[data-edge="left"] .island[data-state="hidden"],
+body[data-edge="right"] .island[data-state="hidden"] {
+  width: 0;
+  height: 120px;
+}
+body[data-edge="left"] .island[data-state="peek"],
+body[data-edge="right"] .island[data-state="peek"] {
+  width: 8px;
+  height: 150px;
+}
+/* La pilule compacte devient verticale : Ondine en haut, le contenu couché
+   dessous (tourné d'un quart de tour, il se lit de haut en bas). */
+body[data-edge="left"] .island[data-state="compact"],
+body[data-edge="right"] .island[data-state="compact"] {
+  width: 42px;
+  height: 340px;
+  padding: 6px 0;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto;
+  justify-items: center;
+  align-items: start;
+}
+body[data-edge="left"] .island[data-state="compact"] .island-content,
+body[data-edge="right"] .island[data-state="compact"] .island-content {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 18px);
+  width: 270px;
+  height: 34px;
+  translate: -50% -50%;
+  rotate: 90deg;
+}
+/* Le bord intérieur d'une île sur un côté : la poignée est verticale. */
+body[data-edge="left"] .island::after,
+body[data-edge="right"] .island::after {
+  left: auto;
+  bottom: auto;
+  top: 50%;
+  width: 4px;
+  height: 36px;
+  margin: -18px 0 0;
+}
+body[data-edge="left"] .island::after {
+  right: 4px;
+}
+body[data-edge="right"] .island::after {
+  left: 4px;
+}
+/* Pendant un déplacement, l'île se soulève un peu. */
+.island.moving {
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  cursor: grabbing;
+}
+
+/* ── Ondine qui pend au bord de l'écran (mascot/hang.ts) ─────────────────── */
+.hang {
+  --hide: 0 -115%;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 84px;
+  height: 84px;
+  margin-left: -42px;
+  cursor: pointer;
+  z-index: 5;
+  translate: var(--hide);
+  transition: translate 650ms cubic-bezier(0.5, 0, 0.75, 0);
+}
+.hang[data-align="start"] {
+  left: 64px;
+  margin-left: 0;
+}
+.hang[data-align="end"] {
+  left: auto;
+  right: 64px;
+  margin-left: 0;
+}
+.hang[data-edge="left"],
+.hang[data-edge="right"] {
+  top: 50%;
+  margin: -42px 0 0;
+}
+.hang[data-edge="left"] {
+  --hide: -115% 0;
+  left: 0;
+}
+.hang[data-edge="right"] {
+  --hide: 115% 0;
+  left: auto;
+  right: 0;
+}
+.hang[data-edge="left"][data-align="start"],
+.hang[data-edge="right"][data-align="start"] {
+  top: 64px;
+  margin-top: 0;
+}
+.hang[data-edge="left"][data-align="end"],
+.hang[data-edge="right"][data-align="end"] {
+  top: auto;
+  bottom: 64px;
+  margin-top: 0;
+}
+/* Elle descend avec un petit rebond, comme une goutte qui s'étire. */
+.hang.in {
+  translate: 0 0;
+  transition: translate 650ms linear(0, 0.18, 0.55, 0.92, 1.12, 1.16, 1.1, 1.02, 0.97, 0.96, 0.98, 1, 1);
+}
+.hang.out {
+  translate: var(--hide);
+}
+/* Elle se balance doucement autour du point où elle est accrochée. */
+.hang-sway {
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 0;
+  animation: hang-sway 2.6s ease-in-out infinite alternate;
+}
+.hang[data-edge="left"] .hang-sway {
+  transform-origin: 0 50%;
+}
+.hang[data-edge="right"] .hang-sway {
+  transform-origin: 100% 50%;
+}
+@keyframes hang-sway {
+  from {
+    rotate: -7deg;
+  }
+  to {
+    rotate: 7deg;
+  }
+}
+.hang-mascot {
+  width: 100%;
+  height: 100%;
+  rotate: var(--spin, 180deg);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+}
+@media (prefers-reduced-motion: reduce) {
+  .hang,
+  .hang.in {
+    transition: none;
+  }
+  .hang-sway {
+    animation: none;
+  }
+}
+
+/* Thème « Verre » : un liseré clair autour de la forme translucide. */
+:root[data-theme="verre"] .island {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+/* ── Micro et caméra utilisés (module Contrôles) ─────────────────────────── */
+
+/* Le point : orange = micro, vert = caméra (comme sur iPhone). Au survol, le
+   nom des applis (attribut title). */
+.privacy-dot {
+  position: absolute;
+  top: 7px;
+  right: 12px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--privacy, #ff9f0a);
+  box-shadow: 0 0 8px var(--privacy, #ff9f0a);
+  opacity: 0;
+  scale: 0.3;
+  pointer-events: none;
+  transition:
+    opacity var(--speed) var(--ease),
+    scale var(--speed) var(--ease);
+}
+.island[data-privacy="mic"] {
+  --privacy: #ff9f0a;
+}
+.island[data-privacy="cam"] {
+  --privacy: #30d158;
+}
+.island:is([data-privacy="mic"], [data-privacy="cam"]):not([data-state="hidden"], [data-state="peek"]) .privacy-dot {
+  opacity: 1;
+  scale: 1;
+  pointer-events: auto;
+}
+/* Île cachée : une petite barre de couleur reste collée au bord de l'écran. */
+.island:is([data-privacy="mic"], [data-privacy="cam"])[data-state="hidden"] {
+  width: 30px;
+  height: 4px;
+  background: var(--privacy);
+  box-shadow: 0 0 10px var(--privacy);
+}
+body[data-edge="left"] .island:is([data-privacy="mic"], [data-privacy="cam"])[data-state="hidden"],
+body[data-edge="right"] .island:is([data-privacy="mic"], [data-privacy="cam"])[data-state="hidden"] {
+  width: 4px;
+  height: 30px;
+}
+/* Sur un côté, le point se met dans le coin du bas (le haut tient Ondine). */
+body[data-edge="left"] .privacy-dot,
+body[data-edge="right"] .privacy-dot {
+  top: auto;
+  bottom: 10px;
+  right: auto;
+  left: calc(50% - 3.5px);
+}
+
+/* Micro coupé : un petit badge rouge sur Ondine. */
+.mascot-slot.mic-muted::after {
+  content: "";
+  position: absolute;
+  right: -3px;
+  bottom: -2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #ff453a
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round'><path d='M12 4a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V7a3 3 0 0 1 3-3zM6 11a6 6 0 0 0 12 0M4 4l16 16'/></svg>")
+    center / 11px no-repeat;
+  box-shadow: 0 0 0 2px var(--island-bg);
+  animation: badge-pop 360ms cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+.island[data-state="compact"] .mascot-slot.mic-muted::after {
+  width: 11px;
+  height: 11px;
+  background-size: 8px;
+}
+@keyframes badge-pop {
+  from {
+    scale: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mascot-slot.mic-muted::after {
+    animation: none;
+  }
+}
+
+/* ── Contrôles : choisir la sortie audio ─────────────────────────────────── */
+
+.ctl-output-btn {
+  cursor: pointer;
+  border-radius: 8px;
+  color: var(--island-fg);
+  transition: background 160ms var(--ease);
+}
+.ctl-output-btn::after {
+  content: " ▾";
+  opacity: 0.6;
+}
+.ctl-output-btn:hover,
+.ctl-output-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+}
+.ctl-menu {
+  position: absolute;
+  z-index: 5;
+  min-width: 180px;
+  max-width: 260px;
+  max-height: calc(100% - 40px);
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--island-bg) 70%, rgba(255, 255, 255, 0.12));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 12px 30px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(24px) saturate(170%);
+  transform-origin: 20% 100%;
+  animation: ctl-menu-in 260ms cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+@keyframes ctl-menu-in {
+  from {
+    opacity: 0;
+    scale: 0.85;
+  }
+}
+.ctl-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: 0;
+  padding: 7px 8px;
+  border-radius: 10px;
+  background: none;
+  color: var(--island-fg);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.ctl-menu-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.ctl-menu-item.on {
+  color: var(--accent);
+}
+.ctl-menu-check {
+  width: 12px;
+  flex: none;
+}
+.ctl-menu-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ctl-menu-empty {
+  padding: 8px;
+  font-size: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ctl-menu {
+    animation: none;
+  }
+}
+
+/* Réseau : l'état surveillé en fond (Internet, VPN, IP publique). */
+.net-status {
+  font-size: 11px;
+  min-height: 0;
+}
+.net-status:empty {
+  display: none;
+}
+
+/* Presse-papiers : le bouton « Aa » et ses quatre casses. */
+.clip-case,
+.clip-case-pick {
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 26px;
+}
+.clip-case-pick {
+  animation: clip-case-in 220ms var(--ease) both;
+}
+@keyframes clip-case-in {
+  from {
+    opacity: 0;
+    scale: 0.7;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .clip-case-pick {
+    animation: none;
+  }
+}
+
+/* Mode présentation : l'île cachée ne laisse plus rien voir au bord de l'écran. */
+body.presenting .island[data-state="hidden"] {
+  opacity: 0;
+}
+
+/* ── Étagère : outils images et renommage ────────────────────────────────── */
+
+.tool {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+.tool-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tool-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+.tool-row.hidden {
+  display: none;
+}
+.tool-row > .muted:first-child {
+  min-width: 84px;
+}
+.tool-seg {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.tool-seg-btn {
+  border: 0;
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: none;
+  color: var(--island-fg);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 180ms var(--ease), color 180ms var(--ease);
+}
+.tool-seg-btn.on {
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--accent);
+}
+.tool-range {
+  width: 140px;
+  accent-color: var(--accent);
+}
+.tool-pattern {
+  flex: 1;
+  min-width: 140px;
+}
+.tool-start {
+  width: 64px;
+}
+.tool-note {
+  margin: 0;
+  font-size: 11px;
+}
+.tool-preview {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+.tool-preview li {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Presse-papiers : générateur de mots de passe. */
+.pw {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pw-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pw-out {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: all;
+}
+.pw-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+.pw-check input {
+  accent-color: var(--accent);
+}
+
+/* Système : préparer un ticket. */
+.sys-ticket {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sys-ticket-text {
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  font: inherit;
+  font-size: 12px;
+}
+
+/* ── Les effets d'animation (Réglages → Apparence → Animations) ────────────
+   Ils servent aux deux designs : en douceur par défaut (« Classique »), plus
+   francs quand <body> porte la classe motion-studio. Le reste est dans
+   src/island/motion.ts. */
+
+/* La pilule rebondit plus franchement (8 % de dépassement au lieu de 4 %).
+   Pas en grand : le panneau toucherait les bords de la fenêtre. */
+.motion-studio .island:not([data-state="expanded"]) {
+  --ease: linear(0, 0.0319, 0.1132, 0.2252, 0.3523, 0.4828, 0.6077, 0.721, 0.8193, 0.9007, 0.9652, 1.0136,
+    1.0475, 1.069, 1.0803, 1.0835, 1.0808, 1.074, 1.0646, 1.054, 1.0431, 1.0327, 1.0232, 1.015, 1.0082,
+    1.0029, 0.9988, 0.996, 1);
+}
+
+/* Survol : les boutons se soulèvent un peu, comme aimantés (plus en Studio). */
+.btn:hover {
+  transform: translateY(-1px);
+}
+.motion-studio .btn:hover {
+  transform: translateY(-1px) scale(1.04);
+}
+
+/* Le reflet qui suit la souris : une lueur ronde sous le curseur (studio.ts
+   pose --mx et --my). --spot est déclaré pour pouvoir s'allumer en fondu. */
+@property --spot {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+.island {
+  --spot-max: 0.04;
+  background-image: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, calc(var(--spot) * var(--spot-max))), transparent 70%);
+  transition-property: width, height, border-radius, padding, --spot;
+  transition-duration: var(--speed), var(--speed), var(--speed), var(--speed), 400ms;
+  transition-timing-function: var(--ease);
+}
+.motion-studio .island {
+  --spot-max: 0.07;
+}
+.island:hover {
+  --spot: 1;
+}
+
+/* Minuteur dans la mini-île : la barre se replie en un petit anneau qui se vide
+   (le rebond de --ease est plus fort en Studio). */
+.timer-compact-bar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: conic-gradient(var(--accent) calc(var(--p, 0) * 1turn), rgba(255, 255, 255, 0.14) 0);
+  mask: radial-gradient(circle, transparent 0 5.5px, #000 6px);
+  -webkit-mask: radial-gradient(circle, transparent 0 5.5px, #000 6px);
+  animation: studio-ring 700ms var(--ease) both;
+}
+.timer-compact-bar i {
+  display: none;
+}
+@keyframes studio-ring {
+  from {
+    width: 70px;
+    height: 4px;
+    border-radius: 2px;
+  }
+}
+
+/* Musique : la barre de progression s'épaissit au survol. */
+.media-bar {
+  transition: height 300ms var(--ease), border-radius 300ms var(--ease);
+}
+.motion-studio .media-seek.seekable:hover .media-bar,
+.motion-studio .media-seek.scrubbing .media-bar {
+  height: 9px;
+  border-radius: 5px;
+}
+
+/* Contrôles : les ondes du haut-parleur suivent le volume. */
+.ctl-pill .wave {
+  transform-box: fill-box;
+  transform-origin: left center;
+  transition:
+    opacity 300ms ease,
+    transform 420ms var(--ease);
+}
+.ctl-pill[data-level="0"] .wave,
+.ctl-pill[data-level="1"] .w2 {
+  opacity: 0;
+  transform: scale(0.4);
+}
+
+/* Notifications empilées : l'icône montre des cartes derrière elle, une par
+   notification en attente ; elles s'écartent au survol. */
+.notif-icon {
+  transition: box-shadow 360ms var(--ease);
+}
+.notif[data-more="1"] .notif-icon {
+  box-shadow: 4px -3px 0 -1px rgba(255, 255, 255, 0.28);
+}
+.notif[data-more="2"] .notif-icon {
+  box-shadow:
+    4px -3px 0 -1px rgba(255, 255, 255, 0.28),
+    8px -6px 0 -2px rgba(255, 255, 255, 0.16);
+}
+.notif[data-more="3"] .notif-icon {
+  box-shadow:
+    4px -3px 0 -1px rgba(255, 255, 255, 0.28),
+    8px -6px 0 -2px rgba(255, 255, 255, 0.16),
+    12px -9px 0 -3px rgba(255, 255, 255, 0.09);
+}
+.notif[data-more]:hover .notif-icon {
+  box-shadow:
+    7px -4px 0 -1px rgba(255, 255, 255, 0.28),
+    14px -8px 0 -2px rgba(255, 255, 255, 0.16),
+    21px -12px 0 -3px rgba(255, 255, 255, 0.09);
+}
+.notif[data-more="0"] .notif-icon {
+  box-shadow: none;
+}
+
+/* « Demander à Claude » : le bouton respire pendant que Claude réfléchit,
+   puis la réponse arrive floue et devient nette. */
+.btn.thinking {
+  animation: studio-breathe 1.6s ease-in-out infinite;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent);
+}
+@keyframes studio-breathe {
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 0%, transparent);
+  }
+}
+.ask-answer {
+  animation: soft-in 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.motion-studio .ask-answer {
+  animation: studio-in 640ms cubic-bezier(0.34, 1.4, 0.5, 1) both;
+}
+@keyframes soft-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes studio-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+    filter: blur(10px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn:hover,
+  .motion-studio .btn:hover {
+    transform: none;
+  }
+  .btn.thinking,
+  .ask-answer,
+  .motion-studio .ask-answer,
+  .timer-compact-bar {
+    animation: none;
   }
 }

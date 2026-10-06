@@ -2,7 +2,7 @@
   "id": "nettools",
   "name": "Réseau",
   "icon": "🌐",
-  "description": "Ping en continu, test d'un port (ouvert, fermé ou bloqué) et recherche DNS, sans ouvrir de console. Seuls ces paquets de test partent, et seulement vers l'adresse que tu tapes.",
+  "description": "Ping en continu, test d'un port (ouvert, fermé ou bloqué) et recherche DNS, sans ouvrir de console. Surveille aussi Internet, les VPN et une liste de serveurs, et prévient quand ça coupe. Seuls les paquets de test partent, vers les adresses que tu donnes. Si tu l'actives, l'adresse IP publique est demandée à api.ipify.org toutes les 10 minutes (ce site voit alors ton adresse IP).",
   "version": "0.1.0",
   "permissions": [
     "network"
@@ -13,10 +13,53 @@
   "commands": [
     "ping",
     "port",
-    "dns"
+    "dns",
+    "status"
   ],
   "events": {
-    "emits": [],
-    "listens": []
+    "emits": [
+      "nettools.internet",
+      "nettools.vpn",
+      "nettools.host",
+      "nettools.public-ip"
+    ],
+    "listens": [
+      "nettools.internet",
+      "nettools.vpn",
+      "nettools.host",
+      "nettools.public-ip"
+    ]
+  },
+  "settings": {
+    "version": 1,
+    "fields": [
+      {
+        "key": "alertInternet",
+        "type": "boolean",
+        "label": "Prévenir quand Internet coupe ou revient",
+        "default": true
+      },
+      {
+        "key": "alertVpn",
+        "type": "boolean",
+        "label": "Prévenir quand un VPN se coupe ou se branche",
+        "default": true
+      },
+      {
+        "key": "watchHosts",
+        "type": "string",
+        "label": "Surveiller ces serveurs (séparés par des virgules ; nom ou nom:port)",
+        "help": "Vérifiés toutes les minutes : ping, ou connexion au port s'il est donné. 10 au plus. Exemple : nas.local, 192.168.1.10:443",
+        "default": "",
+        "maxLength": 600
+      },
+      {
+        "key": "publicIp",
+        "type": "boolean",
+        "label": "Surveiller mon adresse IP publique (contacte api.ipify.org toutes les 10 min)",
+        "help": "Désactivé par défaut : c'est le seul réglage qui contacte un site extérieur. Ce site reçoit ton adresse IP, rien d'autre.",
+        "default": false
+      }
+    ]
   }
 }

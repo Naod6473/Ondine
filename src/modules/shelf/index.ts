@@ -21,6 +21,9 @@ interface ShelfItem {
   exists: boolean;
 }
 
+/** L'outil ouvert dans la vue (images ou renommer), et sur quels fichiers. */
+let tool: { kind: "images" | "rename"; paths: string[] } | null = null;
+
 /** Copie locale de l'étagère, tenue à jour par le sujet "shelf.changed". */
 let items: ShelfItem[] = [];
 const redraws = new Set<() => void>();
@@ -149,9 +152,132 @@ function dropTargets(api: ModuleApi): DropTarget[] {
     ),
     { id: "shelf-path", label: "Copier le chemin", icon: "📋", onDrop: (paths) => actions.copyPaths(api, paths) },
   ];
+  // Les outils s'ouvrent dans l'île : on règle, on voit l'aperçu, puis on confirme.
+  if (s.showTools !== false) {
+    const open = (kind: "images" | "rename") => (paths: string[]) => {
+      tool = { kind, paths };
+      for (const r of redraws) r();
+      api.openIsland("shelf");
+    };
+    targets.push({ id: "shelf-images", label: "Images…", icon: "🖼️", onDrop: open("images") });
+    targets.push({ id: "shelf-rename", label: "Renommer…", icon: "✏️", onDrop: open("rename") });
+  }
   if (s.showCompress) targets.push({ id: "shelf-zip", label: "Compresser", icon: "🗜️", onDrop: (paths) => actions.compress(api, paths) });
   if (s.showTrash) targets.push({ id: "shelf-trash", label: "Corbeille", icon: "🗑️", onDrop: (paths) => actions.trash(api, paths) });
   return targets;
+}
+
+// ── Les outils : images et renommage ─────────────────────────────────────────
+
+/** Un groupe de boutons dont un seul est choisi. */
+function segmented(options: [string, string][], value: string, onPick: (v: string) => void): HTMLElement {
+  const box = el("div", { class: "tool-seg", role: "radiogroup" });
+  for (const [v, label] of options) {
+    const b = el("button", { class: `tool-seg-btn ${v === value ? "on" : ""}`, role: "radio", "aria-checked": String(v === value) }, label);
+    b.onclick = () => {
+      for (const o of box.children) {
+        o.classList.toggle("on", o === b);
+        o.setAttribute("aria-checked", String(o === b));
+      }
+      onPick(v);
+    };
+    box.append(b);
+  }
+  return box;
+}
+
+/** Les réglages choisis restent d'une fois sur l'autre. */
+const toolPrefs = { format: "jpeg", maxWidth: "1920", quality: 85, pattern: "fichier-{n}", start: 1 };
+
+function toolPanel(api: ModuleApi, t: { kind: "images" | "rename"; paths: string[] }, close: () => void): HTMLElement {
+  const n = t.paths.length;
+  const head = el(
+    "div",
+    { class: "tool-head" },
+    el("button", { class: "icon-btn", title: "Retour à l'étagère", onclick: close }, "‹"),
+    el("b", {}, t.kind === "images" ? `🖼️ ${n} image(s)` : `✏️ Renommer ${n} fichier(s)`),
+  );
+  const panel = el("div", { class: "tool" }, head);
+
+  if (t.kind === "images") {
+    const quality = el("input", { type: "range", min: 40, max: 100, step: 5, value: toolPrefs.quality, class: "tool-range" }) as HTMLInputElement;
+    const qualityRow = el("label", { class: "tool-row" }, el("span", { class: "muted" }, "Qualité JPEG"), quality, el("span", { class: "tool-val" }, `${toolPrefs.quality}`));
+    quality.oninput = () => {
+      toolPrefs.quality = Number(quality.value);
+      qualityRow.querySelector(".tool-val")!.textContent = quality.value;
+    };
+    const showQuality = () => qualityRow.classList.toggle("hidden", toolPrefs.format !== "jpeg");
+    showQuality();
+    const go = el("button", { class: "btn small primary" }, `Créer ${n > 1 ? `${n} images` : "l'image"}`);
+    go.onclick = api.handler(() =>
+      attempt(api, "Images", async () => {
+        const r = await api.invoke<{ count: number; failed: number; error?: string | null }>("images", {
+          paths: t.paths,
+          format: toolPrefs.format,
+          maxWidth: Number(toolPrefs.maxWidth),
+          quality: toolPrefs.quality,
+        });
+        if (r.failed) api.notify({ title: `${r.failed} image(s) non traitée(s)`, body: r.error ?? "", icon: "⚠️", priority: "normal" });
+        close();
+      }),
+    );
+    panel.append(
+      el("div", { class: "tool-row" }, el("span", { class: "muted" }, "Format"), segmented([["same", "Garder"], ["png", "PNG"], ["jpeg", "JPEG"]], toolPrefs.format, (v) => {
+        toolPrefs.format = v;
+        showQuality();
+      })),
+      el(
+        "div",
+        { class: "tool-row" },
+        el("span", { class: "muted" }, "Largeur max."),
+        segmented([["0", "Garder"], ["3840", "3840"], ["1920", "1920"], ["1280", "1280"], ["800", "800"], ["400", "400"]], toolPrefs.maxWidth, (v) => (toolPrefs.maxWidth = v)),
+      ),
+      qualityRow,
+      el("p", { class: "muted tool-note" }, "Les originaux ne bougent pas : les nouvelles images sont créées à côté (ex. « photo-1920.jpg »). Annulable quelques secondes."),
+      el("div", { class: "btn-row" }, go),
+    );
+    return panel;
+  }
+
+  // Renommer : modèle, numéro de départ, aperçu, puis confirmation en deux clics.
+  const pattern = el("input", { class: "clip-input tool-pattern", type: "text", value: toolPrefs.pattern, maxlength: 120, spellcheck: "false" }) as HTMLInputElement;
+  const start = el("input", { class: "clip-input tool-start", type: "number", min: 0, max: 99999, value: toolPrefs.start }) as HTMLInputElement;
+  const preview = el("ul", { class: "tool-preview" });
+  const go = confirmButton(api, "btn small primary", `Renommer ${n > 1 ? `les ${n} fichiers` : "le fichier"}`, "Renommer (annulable quelques secondes)", () =>
+    attempt(api, "Renommer", async () => {
+      await api.invoke("rename", { paths: t.paths, pattern: toolPrefs.pattern, start: toolPrefs.start });
+      close();
+    }),
+  );
+  let timer: number | undefined;
+  const refresh = () => {
+    toolPrefs.pattern = pattern.value;
+    toolPrefs.start = Math.max(0, Math.floor(Number(start.value) || 0));
+    window.clearTimeout(timer);
+    timer = window.setTimeout(async () => {
+      try {
+        const plan = await api.invoke<{ from: string; to: string }[]>("rename_preview", { paths: t.paths, pattern: toolPrefs.pattern, start: toolPrefs.start });
+        preview.replaceChildren(
+          ...plan.slice(0, 6).map((p) => el("li", {}, el("span", { class: "muted" }, p.from), " → ", el("b", {}, p.to))),
+          ...(plan.length > 6 ? [el("li", { class: "muted" }, `… et ${plan.length - 6} autre(s)`)] : []),
+        );
+        go.removeAttribute("disabled");
+      } catch (err) {
+        preview.replaceChildren(el("li", { class: "net-bad" }, `⚠️ ${errorText(err)}`));
+        go.setAttribute("disabled", "");
+      }
+    }, 150);
+  };
+  pattern.oninput = refresh;
+  start.oninput = refresh;
+  refresh();
+  panel.append(
+    el("div", { class: "tool-row" }, el("span", { class: "muted" }, "Nouveau nom"), pattern, el("span", { class: "muted" }, "à partir de"), start),
+    el("p", { class: "muted tool-note" }, "{n} = numéro, {nom} = l'ancien nom. L'extension est gardée. Exemple : « vacances-{n} »."),
+    preview,
+    el("div", { class: "btn-row" }, go),
+  );
+  return panel;
 }
 
 export const shelf: IslandModule = {
@@ -159,6 +285,11 @@ export const shelf: IslandModule = {
 
   setup(api) {
     api.on("shelf.changed", (msg) => setItems((msg.payload as { items: ShelfItem[] }).items));
+    // Un fichier vient d'arriver dans Téléchargements : il est sur l'étagère.
+    api.on("shelf.downloaded", (msg) => {
+      const name = (msg.payload as { name?: string } | null)?.name ?? "";
+      api.notify({ title: "Téléchargé, posé sur l'étagère", body: name, icon: "📥", priority: "low", key: "shelf-downloaded", actions: [{ label: "Voir", run: () => api.openIsland("shelf") }] });
+    });
     // L'étagère vit côté Rust : au démarrage (ou après réactivation), on la relit.
     api
       .invoke<{ items: ShelfItem[] }>("list")
@@ -170,6 +301,13 @@ export const shelf: IslandModule = {
     expanded(root, api) {
       const draw = () => {
         root.replaceChildren();
+        if (tool) {
+          root.append(toolPanel(api, tool, () => {
+            tool = null;
+            draw();
+          }));
+          return;
+        }
         if (!items.length) {
           root.append(
             el(
@@ -193,6 +331,14 @@ export const shelf: IslandModule = {
           button("📦 Déplacer vers…", "Déplacer tout vers un dossier", () => actions.moveTo(api, all())),
           // Un favori = le nom du dossier ; copier ou déplacer dépend du réglage.
     ...favorites.map((f) => button(`⭐ ${baseName(f)}`, f, () => toFavorite(api, all(), f))),
+          button("🖼️", "Convertir ou réduire les images de l'étagère", () => {
+            tool = { kind: "images", paths: all() };
+            draw();
+          }),
+          button("✏️", "Renommer les fichiers de l'étagère", () => {
+            tool = { kind: "rename", paths: all() };
+            draw();
+          }),
           confirmButton(api, "btn small", "🗜️", "Tout compresser", () => actions.compress(api, all())),
           confirmButton(api, "btn small", "🗑️", "Tout envoyer à la Corbeille", () => actions.trash(api, all())),
           button("Vider", "Retirer tout de l'étagère (les fichiers ne bougent pas)", () =>

@@ -13,7 +13,16 @@
 //     (%APPDATA%\Ondine\clipboard.json), parce que tu l'as demandé en épinglant ;
 //   - aucun texte copié n'est écrit dans le journal, ni envoyé sur le bus : le
 //     message "clipboard.changed" ne dit que « quelque chose a changé » ;
-//   - effacer (un élément, l'historique, un snippet) propose « Annuler ».
+//   - effacer (un élément, l'historique, un snippet) propose « Annuler » ;
+//   - « liens propres » (réglage, activé par défaut) : quand on copie un lien
+//     plein de traqueurs (utm_source, fbclid, gclid…), on remet dans le
+//     presse-papiers le même lien sans eux. La notification propose « Remettre »
+//     (le lien d'origine, qu'on ne nettoie plus ensuite) ;
+//   - changer la casse d'une copie (MAJUSCULES, minuscules, Titre, Phrase) ;
+//   - générer un mot de passe (hasard du système) : copié marqué « secret »
+//     (ni historique Windows, ni le nôtre, ni cloud), puis effacé du
+//     presse-papiers au bout de 30 s si rien d'autre n'a été copié entre-temps.
+//     Il n'est jamais enregistré ni écrit dans le journal.
 //
 // Le manifeste est le même fichier que celui du front (src/modules/clipboard/manifest.json).
 
@@ -72,6 +81,10 @@ struct Store {
     snippets: Vec<Snippet>,
     /// Le prochain numéro à donner (copie ou snippet).
     next_id: u64,
+    /// Le dernier lien nettoyé, tel qu'il était (pour « Remettre »).
+    original_link: Option<String>,
+    /// Un lien remis exprès avec ses traqueurs : on ne le renettoie pas.
+    keep_as_is: Option<String>,
 }
 
 /// Ce qui est enregistré sur le disque : les épinglés et les snippets.
@@ -141,6 +154,36 @@ impl RustModule for Clipboard {
                 files::copy_text(&text)?;
                 platform::paste_into_previous(ctx.app)?;
                 Ok(Value::Null)
+            }
+            // { id, mode: "upper" | "lower" | "title" | "sentence" } : copie le texte dans cette casse.
+            "transform" => {
+                let text = self.text_of(&args)?;
+                let mode = args.get("mode").and_then(Value::as_str).ok_or("casse inconnue")?;
+                files::copy_text(&change_case(&text, mode)?)?;
+                Ok(Value::Null)
+            }
+            // {} : remet le lien d'avant nettoyage dans le presse-papiers.
+            "restore_link" => {
+                let original = {
+                    let mut s = self.store.locked();
+                    let original = s.original_link.take().ok_or("plus de lien à remettre")?;
+                    s.keep_as_is = Some(original.clone());
+                    original
+                };
+                files::copy_text(&original)?;
+                Ok(Value::Null)
+            }
+            // { length, upper, lower, digits, symbols, ambiguous } → { password }
+            "password_generate" => Ok(json!({ "password": generate_password(&PasswordRules::from_args(&args))? })),
+            // { password } : copié en secret, effacé dans 30 s.
+            "password_copy" => {
+                let text = args.get("password").and_then(Value::as_str).filter(|s| !s.is_empty() && s.len() <= 256).ok_or("mot de passe manquant")?;
+                let seq = platform::copy_secret(text)?;
+                std::thread::spawn(move || {
+                    std::thread::sleep(SECRET_LIFETIME);
+                    platform::clear_clipboard_if(seq);
+                });
+                Ok(json!({ "clearsInSecs": SECRET_LIFETIME.as_secs() }))
             }
             "snippet_save" => self.snippet_save(ctx, &args),
             "snippet_delete" => self.snippet_delete(ctx, arg_id(&args, "id")?),
@@ -337,6 +380,18 @@ fn watch(app: AppHandle, store: Shared) {
                 log::debug("presse-papiers : copie trop longue, ignorée");
                 return;
             }
+            // Un lien plein de traqueurs : on remet le lien propre dans le
+            // presse-papiers. Cette nouvelle copie sera vue au tour suivant.
+            if clean_links_on(&app) && store.locked().keep_as_is.as_deref() != Some(text.as_str()) {
+                if let Some((clean, removed)) = clean_link(&text) {
+                    if files::copy_text(&clean).is_ok() {
+                        store.locked().original_link = Some(text);
+                        // Le message ne contient pas le lien : seulement combien de traqueurs.
+                        bus::emit(&app, ID, "clipboard.link-cleaned", json!({ "removed": removed }));
+                        return;
+                    }
+                }
+            }
             let max = max_items_of(&app);
             if remember(&mut store.locked(), text, now_ms(), max) {
                 changed(&app, &store);
@@ -346,6 +401,165 @@ fn watch(app: AppHandle, store: Shared) {
             log::warn("presse-papiers : panique pendant la lecture d'une copie");
         }
     }
+}
+
+/// Un mot de passe copié est effacé du presse-papiers au bout de…
+const SECRET_LIFETIME: Duration = Duration::from_secs(30);
+
+/// Les familles de caractères d'un mot de passe.
+struct PasswordRules {
+    length: usize,
+    upper: bool,
+    lower: bool,
+    digits: bool,
+    symbols: bool,
+    /// Garder les caractères qui se ressemblent (0 O o, 1 l I |…).
+    ambiguous: bool,
+}
+
+impl PasswordRules {
+    fn from_args(args: &Value) -> Self {
+        let flag = |k: &str| args.get(k).and_then(Value::as_bool).unwrap_or(true);
+        Self {
+            length: args.get("length").and_then(Value::as_u64).unwrap_or(20).clamp(8, 128) as usize,
+            upper: flag("upper"),
+            lower: flag("lower"),
+            digits: flag("digits"),
+            symbols: flag("symbols"),
+            ambiguous: args.get("ambiguous").and_then(Value::as_bool).unwrap_or(false),
+        }
+    }
+}
+
+/// Un nombre au hasard dans 0..n, sans biais (on rejette le haut de l'intervalle).
+fn random_below(n: u32) -> Result<u32, String> {
+    let limit = u32::MAX - (u32::MAX % n);
+    loop {
+        let mut b = [0u8; 4];
+        getrandom::fill(&mut b).map_err(|_| "le hasard du système est indisponible".to_string())?;
+        let v = u32::from_le_bytes(b);
+        if v < limit {
+            return Ok(v % n);
+        }
+    }
+}
+
+/// Un mot de passe avec au moins un caractère de chaque famille choisie.
+fn generate_password(r: &PasswordRules) -> Result<String, String> {
+    const AMBIGUOUS: &str = "0Oo1lI|`'\"";
+    let keep = |set: &str| -> Vec<char> { set.chars().filter(|c| r.ambiguous || !AMBIGUOUS.contains(*c)).collect() };
+    let mut families: Vec<Vec<char>> = Vec::new();
+    if r.upper {
+        families.push(keep("ABCDEFGHIJKLMNOPQRSTUVWXYZ"));
+    }
+    if r.lower {
+        families.push(keep("abcdefghijklmnopqrstuvwxyz"));
+    }
+    if r.digits {
+        families.push(keep("0123456789"));
+    }
+    if r.symbols {
+        families.push(keep("!#$%&*+-=?@^_~.:;,()[]{}"));
+    }
+    if families.is_empty() {
+        return Err("choisis au moins une sorte de caractères".into());
+    }
+    let all: Vec<char> = families.concat();
+    // Un de chaque famille, puis le reste au hasard, puis on mélange.
+    let mut out: Vec<char> = Vec::with_capacity(r.length);
+    for f in &families {
+        out.push(f[random_below(f.len() as u32)? as usize]);
+    }
+    while out.len() < r.length {
+        out.push(all[random_below(all.len() as u32)? as usize]);
+    }
+    for i in (1..out.len()).rev() {
+        let j = random_below(i as u32 + 1)? as usize;
+        out.swap(i, j);
+    }
+    Ok(out.into_iter().collect())
+}
+
+/// Le réglage « liens propres » (activé si absent).
+fn clean_links_on(app: &AppHandle) -> bool {
+    super::with_context(app, ID, |ctx| ctx.settings().get("cleanLinks").and_then(Value::as_bool).unwrap_or(true)).unwrap_or(false)
+}
+
+/// Les paramètres de suivi publicitaire connus (comparés sans tenir compte des majuscules).
+const TRACKERS: &[&str] = &[
+    "fbclid", "gclid", "dclid", "gbraid", "wbraid", "msclkid", "yclid", "twclid", "ttclid", "igshid", "mc_cid", "mc_eid", "_hsenc",
+    "_hsmi", "mkt_tok", "oly_anon_id", "oly_enc_id", "vero_id", "rb_clickid", "s_cid", "__s", "srsltid",
+];
+
+fn is_tracker(key: &str) -> bool {
+    let k = key.to_ascii_lowercase();
+    k.starts_with("utm_") || TRACKERS.contains(&k.as_str())
+}
+
+/// Un lien seul (http ou https, sans espace) débarrassé de ses traqueurs, et
+/// combien on en a retiré. None : pas un lien, ou rien à retirer.
+fn clean_link(text: &str) -> Option<(String, usize)> {
+    let url = text.trim();
+    let lower = url.to_ascii_lowercase();
+    if !(lower.starts_with("http://") || lower.starts_with("https://")) || url.chars().any(char::is_whitespace) {
+        return None;
+    }
+    // [adresse]?[paramètres]#[ancre] : on ne touche qu'aux paramètres.
+    let (before_hash, hash) = match url.split_once('#') {
+        Some((a, h)) => (a, Some(h)),
+        None => (url, None),
+    };
+    let (base, query) = before_hash.split_once('?')?;
+    let params: Vec<&str> = query.split('&').filter(|p| !p.is_empty()).collect();
+    let kept: Vec<&str> = params.iter().copied().filter(|p| !is_tracker(p.split('=').next().unwrap_or(p))).collect();
+    let removed = params.len() - kept.len();
+    if removed == 0 {
+        return None;
+    }
+    let mut clean = base.to_string();
+    if !kept.is_empty() {
+        clean.push('?');
+        clean.push_str(&kept.join("&"));
+    }
+    if let Some(h) = hash {
+        clean.push('#');
+        clean.push_str(h);
+    }
+    Some((clean, removed))
+}
+
+/// Change la casse : "upper" (MAJUSCULES), "lower", "title" (Chaque Mot),
+/// "sentence" (une majuscule au début de chaque phrase).
+fn change_case(text: &str, mode: &str) -> Result<String, String> {
+    Ok(match mode {
+        "upper" => text.to_uppercase(),
+        "lower" => text.to_lowercase(),
+        "title" | "sentence" => {
+            let mut out = String::with_capacity(text.len());
+            // Faut-il une majuscule à la prochaine lettre ?
+            let mut cap = true;
+            for c in text.to_lowercase().chars() {
+                if c.is_alphabetic() {
+                    if cap {
+                        out.extend(c.to_uppercase());
+                    } else {
+                        out.push(c);
+                    }
+                    cap = false;
+                } else {
+                    out.push(c);
+                    if mode == "title" {
+                        // Après une espace ou un tiret : nouveau mot (pas après « ' » : « L'île »).
+                        cap = cap || c.is_whitespace() || c == '-';
+                    } else if matches!(c, '.' | '!' | '?' | '\n') {
+                        cap = true;
+                    }
+                }
+            }
+            out
+        }
+        _ => return Err("casse inconnue".into()),
+    })
 }
 
 /// Le texte du presse-papiers, s'il y en a (None pour une image, des fichiers…).
@@ -488,7 +702,7 @@ fn load() -> Store {
         },
     };
     let next_id = saved.pinned.iter().map(|c| c.id).chain(saved.snippets.iter().map(|n| n.id)).max().unwrap_or(0);
-    Store { clips: saved.pinned, snippets: saved.snippets, next_id }
+    Store { clips: saved.pinned, snippets: saved.snippets, next_id, ..Default::default() }
 }
 
 /// Écrit d'abord un fichier temporaire puis le renomme : jamais de fichier à moitié écrit.
@@ -517,6 +731,41 @@ fn now_ms() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn links_lose_their_trackers() {
+        let (clean, n) = clean_link("https://ex.com/a?utm_source=x&id=4&fbclid=abc#top").unwrap();
+        assert_eq!((clean.as_str(), n), ("https://ex.com/a?id=4#top", 2));
+        let (clean, _) = clean_link(" https://ex.com/?UTM_medium=mail ").unwrap();
+        assert_eq!(clean, "https://ex.com/");
+        assert_eq!(clean_link("https://ex.com/?id=4"), None);
+        assert_eq!(clean_link("voir https://ex.com/?utm_source=x"), None);
+        assert_eq!(clean_link("ftp://ex.com/?utm_source=x"), None);
+    }
+
+    #[test]
+    fn passwords_follow_the_rules() {
+        let rules = |length, symbols| PasswordRules { length, upper: true, lower: true, digits: true, symbols, ambiguous: false };
+        let p = generate_password(&rules(24, true)).unwrap();
+        assert_eq!(p.chars().count(), 24);
+        assert!(p.chars().any(|c| c.is_ascii_uppercase()) && p.chars().any(|c| c.is_ascii_lowercase()) && p.chars().any(|c| c.is_ascii_digit()));
+        assert!(p.chars().any(|c| !c.is_ascii_alphanumeric()));
+        assert!(!p.contains(['0', 'O', 'l', '1', 'I']));
+        let p = generate_password(&rules(12, false)).unwrap();
+        assert!(p.chars().all(|c| c.is_ascii_alphanumeric()));
+        assert_ne!(generate_password(&rules(20, true)).unwrap(), generate_password(&rules(20, true)).unwrap());
+        let none = PasswordRules { length: 10, upper: false, lower: false, digits: false, symbols: false, ambiguous: false };
+        assert!(generate_password(&none).is_err());
+    }
+
+    #[test]
+    fn case_changes() {
+        assert_eq!(change_case("bonjour l'île", "upper").unwrap(), "BONJOUR L'ÎLE");
+        assert_eq!(change_case("BONJOUR", "lower").unwrap(), "bonjour");
+        assert_eq!(change_case("jean-pierre va à l'île", "title").unwrap(), "Jean-Pierre Va À L'île");
+        assert_eq!(change_case("SALUT. ÇA VA ? oui", "sentence").unwrap(), "Salut. Ça va ? Oui");
+        assert!(change_case("x", "bidule").is_err());
+    }
 
     fn texts(s: &Store) -> Vec<&str> {
         s.clips.iter().map(|c| c.text.as_str()).collect()

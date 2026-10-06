@@ -4,7 +4,12 @@
 //     quand l'île s'arrête). Rien n'est copié : on retient seulement où sont les
 //     fichiers, pour agir dessus plus tard ;
 //   - les actions : Corbeille, copier vers, déplacer vers, copier le chemin,
-//     compresser, montrer dans l'Explorateur.
+//     compresser, montrer dans l'Explorateur ;
+//   - les outils (shelf_tools.rs) : convertir / réduire des images, renommer
+//     plusieurs fichiers selon un modèle ;
+//   - Téléchargements (réglage) : un fichier qui vient d'arriver dans le dossier
+//     Téléchargements est posé tout seul sur l'étagère, une fois fini (taille
+//     stable, plus de « .crdownload » / « .part »).
 //
 // Règles appliquées ici :
 //   - chaque chemin reçu du front est validé (ctx.check_path : chemin absolu,
@@ -16,12 +21,16 @@
 // Le manifeste est le même fichier que celui du front (src/modules/shelf/manifest.json).
 
 use crate::sync::LockExt;
+use std::collections::HashMap;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use serde_json::{json, Value};
 use tauri::AppHandle;
 
+use super::shelf_tools::{self, OutFormat};
 use super::{ModuleContext, RustModule};
 use crate::services::undo::DEFAULT_WINDOW;
 use crate::services::bus::BusMessage;
@@ -42,6 +51,11 @@ pub struct Shelf {
 impl RustModule for Shelf {
     fn manifest_json(&self) -> &'static str {
         include_str!("../../../src/modules/shelf/manifest.json")
+    }
+
+    fn start(&self, app: &AppHandle) {
+        let (app, items) = (app.clone(), self.items.clone());
+        std::thread::spawn(move || watch_downloads(app, items));
     }
 
     fn invoke(&self, ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
@@ -94,6 +108,19 @@ impl RustModule for Shelf {
             "copy_to" => self.copy_to(ctx, &args),
             "move_to" => self.move_to(ctx, &args),
             "compress" => self.compress(ctx, &args),
+            // { paths, format: "same"|"png"|"jpeg", maxWidth: 0 (= garder) | px, quality: 30..100 }
+            "images" => images(ctx, &args),
+            // { paths, pattern, start } → [{ from, to }] : l'aperçu, rien n'est renommé.
+            "rename_preview" => {
+                let paths = tool_paths(ctx, &args)?;
+                let plan = shelf_tools::rename_plan(&paths, arg_str(&args, "pattern"), arg_start(&args))?;
+                Ok(json!(plan
+                    .iter()
+                    .map(|(a, b)| json!({ "from": shelf_tools::file_name(a), "to": shelf_tools::file_name(b) }))
+                    .collect::<Vec<_>>()))
+            }
+            // Pareil, mais pour de vrai (après le bouton de confirmation du front).
+            "rename" => self.rename(ctx, &args),
             other => Err(format!("commande inconnue : {other}")),
         }
     }
@@ -110,6 +137,43 @@ impl RustModule for Shelf {
 }
 
 impl Shelf {
+    /// Renomme selon le modèle. Annuler = chacun reprend son ancien nom.
+    fn rename(&self, ctx: &ModuleContext, args: &Value) -> Result<Value, String> {
+        let paths = tool_paths(ctx, args)?;
+        let plan = shelf_tools::rename_plan(&paths, arg_str(args, "pattern"), arg_start(args))?;
+        let done = shelf_tools::apply_renames(&plan)?;
+        // L'étagère suit les fichiers renommés.
+        {
+            let mut items = self.items.locked();
+            for (old, new) in &done {
+                if let Some(slot) = items.iter_mut().find(|p| *p == old) {
+                    *slot = new.clone();
+                }
+            }
+        }
+        changed(ctx.app, &self.items);
+        ctx.log_info(format!("{} fichier(s) renommé(s)", done.len()));
+        let count = done.len();
+        let (items, app) = (self.items.clone(), ctx.app.clone());
+        let undo_id = ctx.offer_undo(
+            &format!("{count} fichier(s) renommé(s)"),
+            DEFAULT_WINDOW,
+            Box::new(move || {
+                shelf_tools::undo_renames(&done)?;
+                let mut list = items.locked();
+                for (old, new) in &done {
+                    if let Some(slot) = list.iter_mut().find(|p| *p == new) {
+                        *slot = old.clone();
+                    }
+                }
+                drop(list);
+                changed(&app, &items);
+                Ok(())
+            }),
+        );
+        Ok(json!({ "count": count, "undoId": undo_id }))
+    }
+
     /// Pose des chemins sur l'étagère (chacun validé) et renvoie combien sont nouveaux.
     fn add(&self, ctx: &ModuleContext, args: &Value) -> Result<usize, String> {
         let paths = checked_paths(ctx, args)?;
@@ -297,6 +361,59 @@ fn finish_task(ctx: &ModuleContext, what: &str, error: &Option<String>) {
     }
 }
 
+fn arg_str<'a>(args: &'a Value, key: &str) -> &'a str {
+    args.get(key).and_then(Value::as_str).unwrap_or("")
+}
+
+fn arg_start(args: &Value) -> u32 {
+    args.get("start").and_then(Value::as_u64).unwrap_or(1).min(99_999) as u32
+}
+
+/// Les chemins d'un outil : validés, des fichiers (pas des dossiers), 100 au plus.
+fn tool_paths(ctx: &ModuleContext, args: &Value) -> Result<Vec<PathBuf>, String> {
+    let paths: Vec<PathBuf> = checked_paths(ctx, args)?.into_iter().filter(|p| p.is_file()).collect();
+    if paths.is_empty() {
+        return Err("aucun fichier (les dossiers sont ignorés)".into());
+    }
+    if paths.len() > shelf_tools::MAX_FILES {
+        return Err(format!("au plus {} fichiers à la fois", shelf_tools::MAX_FILES));
+    }
+    Ok(paths)
+}
+
+/// Convertit / réduit les images. Annuler = les nouvelles images vont à la Corbeille.
+fn images(ctx: &ModuleContext, args: &Value) -> Result<Value, String> {
+    let paths = tool_paths(ctx, args)?;
+    let format = OutFormat::parse(arg_str(args, "format")).ok_or("format inconnu")?;
+    let max_width = args.get("maxWidth").and_then(Value::as_u64).filter(|w| *w > 0).map(|w| w.clamp(16, 16_384) as u32);
+    let quality = args.get("quality").and_then(Value::as_u64).unwrap_or(85).clamp(30, 100) as u8;
+    if format == OutFormat::Same && max_width.is_none() {
+        return Err("choisis un format ou une taille : sinon l'image ne change pas".into());
+    }
+    ctx.emit("task.started", json!({ "label": "Images" }));
+    let mut created = Vec::new();
+    let mut errors = Vec::new();
+    for p in &paths {
+        match shelf_tools::convert_image(p, format, max_width, quality) {
+            Ok(c) => created.push(c),
+            Err(e) => errors.push(e),
+        }
+    }
+    let error = errors.first().cloned();
+    finish_task(ctx, "Images", &error);
+    if created.is_empty() {
+        return Err(error.unwrap_or_else(|| "aucune image créée".into()));
+    }
+    ctx.log_info(format!("{} image(s) créée(s)", created.len()));
+    let count = created.len();
+    let undo_id = ctx.offer_undo(
+        &format!("{count} image(s) créée(s) à côté des originales"),
+        DEFAULT_WINDOW,
+        Box::new(move || files::to_trash(&created)),
+    );
+    Ok(json!({ "count": count, "failed": errors.len(), "error": error, "undoId": undo_id }))
+}
+
 /// « rapport.pdf » ou « 3 éléments ».
 fn label(paths: &[PathBuf]) -> String {
     match paths {
@@ -346,6 +463,76 @@ fn list_json(items: &Items) -> Value {
 
 /// Prévient le front (sujet "shelf.changed") avec la nouvelle liste. Passe par
 /// bus::emit directement : les fonctions d'annulation n'ont pas de ModuleContext.
+// ── Téléchargements → étagère ───────────────────────────────────────────────
+
+/// Les fichiers en cours de téléchargement (navigateurs, gestionnaires).
+fn is_partial(name: &str) -> bool {
+    let n = name.to_lowercase();
+    n.starts_with('.') || n.starts_with("~$") || [".crdownload", ".part", ".partial", ".tmp", ".download", ".opdownload"].iter().any(|e| n.ends_with(e))
+}
+
+/// Regarde le dossier Téléchargements toutes les 3 s. Un nouveau fichier est
+/// posé sur l'étagère quand sa taille n'a pas bougé entre deux tours.
+fn watch_downloads(app: AppHandle, items: Items) {
+    const TICK: Duration = Duration::from_secs(3);
+    // Ce qui était déjà là (nom → taille) ; et les nouveaux en attente (nom → taille vue).
+    let mut known: Option<HashMap<String, u64>> = None;
+    let mut waiting: HashMap<String, u64> = HashMap::new();
+    loop {
+        std::thread::sleep(TICK);
+        let wanted = super::with_context(&app, "shelf", |ctx| ctx.settings().get("watchDownloads").and_then(Value::as_bool).unwrap_or(true));
+        if wanted != Some(true) {
+            known = None;
+            waiting.clear();
+            continue;
+        }
+        let step = catch_unwind(AssertUnwindSafe(|| {
+            let Some(dir) = crate::platform::downloads_dir() else { return };
+            let Ok(entries) = std::fs::read_dir(&dir) else { return };
+            let mut now = HashMap::new();
+            for e in entries.flatten() {
+                let Ok(meta) = e.metadata() else { continue };
+                if meta.is_file() {
+                    now.insert(e.file_name().to_string_lossy().to_string(), meta.len());
+                }
+            }
+            let Some(before) = known.replace(now.clone()) else { return }; // premier tour : on note
+            for (name, size) in &now {
+                if before.contains_key(name) && !waiting.contains_key(name) || is_partial(name) {
+                    continue;
+                }
+                match waiting.get(name) {
+                    // Même taille qu'au tour d'avant : fini.
+                    Some(prev) if prev == size && *size > 0 => {
+                        waiting.remove(name);
+                        let path = dir.join(name);
+                        super::with_context(&app, "shelf", |ctx| {
+                            let args = json!({ "paths": [path.display().to_string()] });
+                            if let Ok(paths) = checked_paths(ctx, &args) {
+                                let mut list = items.locked();
+                                if list.len() < MAX_ITEMS && !list.contains(&paths[0]) {
+                                    list.push(paths[0].clone());
+                                    drop(list);
+                                    changed(&app, &items);
+                                    ctx.emit("shelf.downloaded", json!({ "name": name }));
+                                }
+                            }
+                        });
+                    }
+                    _ => {
+                        waiting.insert(name.clone(), *size);
+                    }
+                }
+            }
+            // Les fichiers disparus ne sont plus attendus.
+            waiting.retain(|n, _| now.contains_key(n));
+        }));
+        if step.is_err() {
+            crate::services::log::warn("étagère : erreur pendant la surveillance des Téléchargements, on continue");
+        }
+    }
+}
+
 fn changed(app: &AppHandle, items: &Items) {
     bus::emit(app, "shelf", "shelf.changed", list_json(items));
 }

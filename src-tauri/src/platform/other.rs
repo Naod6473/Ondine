@@ -48,6 +48,12 @@ pub fn clipboard_sequence() -> u32 {
 pub fn clipboard_is_sensitive() -> bool {
     false
 }
+pub fn copy_secret(_text: &str) -> Result<u32, String> {
+    Err("disponible seulement sous Windows".into())
+}
+pub fn clear_clipboard_if(_seq: u32) -> bool {
+    false
+}
 pub fn paste_into_previous(_app: &AppHandle) -> Result<(), String> {
     Err("disponible seulement sous Windows".into())
 }
@@ -56,6 +62,12 @@ pub fn launch_screen_snip() -> Result<(), String> {
 }
 pub fn pictures_dir() -> Option<PathBuf> {
     Some(base("HOME").join("Pictures"))
+}
+pub fn downloads_dir() -> Option<PathBuf> {
+    Some(base("HOME").join("Downloads"))
+}
+pub fn documents_dir() -> Option<PathBuf> {
+    Some(base("HOME").join("Documents"))
 }
 
 pub fn spawn_console(_program: &str, _args: &[String], _dir: &std::path::Path) -> Result<(), String> {
@@ -159,4 +171,30 @@ pub fn migrate_old_dirs() -> Vec<String> {
 /// Hors Windows : pas de fond Mica.
 pub fn supports_mica() -> bool {
     false
+}
+
+/// Hors Windows : on ne sait pas, on dit « personne n'est là depuis longtemps ».
+pub fn idle_ms() -> u64 {
+    u64::MAX / 2
+}
+
+pub fn presentation_busy() -> bool {
+    false
+}
+
+pub fn system_language() -> &'static str {
+    if std::env::var("LANG").unwrap_or_default().starts_with("fr") { "fr" } else { "en" }
+}
+
+pub fn user_window(_app: &AppHandle) -> Option<isize> {
+    None
+}
+pub fn window_title(_h: isize) -> String {
+    String::new()
+}
+pub fn is_topmost(_h: isize) -> bool {
+    false
+}
+pub fn set_topmost(_h: isize, _on: bool) -> Result<(), String> {
+    Err("disponible seulement sous Windows".into())
 }

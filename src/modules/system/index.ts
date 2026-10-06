@@ -85,6 +85,13 @@ export const system: IslandModule = {
         key: `disk-low-${p.mount}`,
       });
     });
+    api.on("system.battery-low", (msg) => {
+      const p = (msg.payload ?? {}) as { percent?: number };
+      api.notify({ title: "Batterie faible", body: `Plus que ${p.percent ?? "?"} % : pense à brancher le chargeur.`, icon: "🪫", priority: "normal", key: "battery" });
+    });
+    api.on("system.battery-full", () => {
+      api.notify({ title: "Batterie chargée", body: "Tu peux débrancher le chargeur.", icon: "🔋", priority: "low", key: "battery" });
+    });
   },
 
   views: {
@@ -110,8 +117,56 @@ export const system: IslandModule = {
         "📋 Copier pour le support",
       );
       const details = el("div", { class: "sys-details" });
+      // « Préparer un ticket » : le formulaire prend la place du détail.
+      let ticketOpen = false;
+      const ticketForm = () => {
+        const text = el("textarea", { class: "clip-input sys-ticket-text", rows: 4, maxlength: 5000, placeholder: "Que se passe-t-il ? Depuis quand ? Message d'erreur…" }) as HTMLTextAreaElement;
+        const withImage = el("input", { type: "checkbox" }) as HTMLInputElement;
+        const go = el(
+          "button",
+          {
+            class: "btn small primary",
+            onclick: api.handler(async () => {
+              try {
+                await api.invoke("ticket", { description: text.value, withImage: withImage.checked });
+                api.notify({ title: "Ticket prêt", body: "Le dossier est ouvert, et le texte est copié : colle-le dans ta demande.", icon: "🎫", priority: "low", key: "system-ticket" });
+                ticketOpen = false;
+                void refresh();
+              } catch (err) {
+                api.notify({ title: errorText(err), icon: "⚠️", priority: "normal", key: "system-error" });
+              }
+            }),
+          },
+          "Préparer",
+        );
+        const cancel = el("button", { class: "btn small", onclick: () => ((ticketOpen = false), void refresh()) }, "Annuler");
+        details.replaceChildren(
+          el(
+            "div",
+            { class: "sys-ticket" },
+            el("div", { class: "sys-title muted" }, "Préparer un ticket"),
+            text,
+            el("label", { class: "pw-check" }, withImage, "Joindre l'image copiée (fais d'abord ta capture avec Win+Maj+S)"),
+            el("p", { class: "muted tool-note" }, "Un dossier est créé dans Documents\\Ondine\\Tickets avec ta description, les infos du poste et l'image. Rien n'est envoyé."),
+            el("div", { class: "btn-row" }, go, cancel),
+          ),
+        );
+        text.focus();
+      };
+      const ticketBtn = el(
+        "button",
+        {
+          class: "btn small",
+          title: "Ta description + les infos du poste (+ une capture) dans un dossier prêt à joindre",
+          onclick: () => {
+            ticketOpen = true;
+            ticketForm();
+          },
+        },
+        "🎫 Préparer un ticket",
+      );
       root.append(
-        el("div", { class: "sys" }, el("div", { class: "sys-top" }, cpu.node, mem.node, disk.node, el("div", { class: "sys-side" }, facts, copy)), details),
+        el("div", { class: "sys" }, el("div", { class: "sys-top" }, cpu.node, mem.node, disk.node, el("div", { class: "sys-side" }, facts, el("div", { class: "btn-row" }, copy, ticketBtn))), details),
       );
 
       let alive = true;
@@ -137,6 +192,7 @@ export const system: IslandModule = {
           bat ? line("Batterie", bat) : "",
         );
 
+        if (ticketOpen) return;
         details.replaceChildren(
           el("div", { class: "sys-title muted" }, "Disques"),
           ...s.disks.map((d) => {

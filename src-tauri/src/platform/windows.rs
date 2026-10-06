@@ -87,6 +87,58 @@ pub fn cursor_physical() -> Option<(f64, f64)> {
     Some((p.x as f64, p.y as f64))
 }
 
+/// La langue de l'interface quand le réglage vaut « auto » : celle choisie dans
+/// l'installateur (il l'écrit dans HKCU\Software\Ondine, voir
+/// windows/hooks.nsh), sinon celle de Windows. "fr" ou "en".
+pub fn system_language() -> &'static str {
+    use ::windows::core::HSTRING;
+    use ::windows::Win32::Globalization::GetUserDefaultUILanguage;
+    use ::windows::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_SZ};
+    // LANGID de l'installateur, en texte (ex. « 1036 » = français, « 1033 » = anglais).
+    let mut buf = [0u16; 16];
+    let mut size = (buf.len() * 2) as u32;
+    let found = unsafe {
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            &HSTRING::from(r"Software\Ondine"),
+            &HSTRING::from("InstallLanguage"),
+            RRF_RT_REG_SZ,
+            None,
+            Some(buf.as_mut_ptr() as *mut _),
+            Some(&mut size),
+        )
+    }
+    .is_ok();
+    let langid: u16 = if found {
+        let text = String::from_utf16_lossy(&buf[..(size as usize / 2).saturating_sub(1)]);
+        text.trim().parse().unwrap_or(0)
+    } else {
+        unsafe { GetUserDefaultUILanguage() }
+    };
+    // Les 10 bits du bas = la langue principale ; 0x0C = français (France, Belgique, Canada, Suisse…).
+    if langid & 0x3ff == 0x0c { "fr" } else { "en" }
+}
+
+/// Depuis combien de millisecondes personne n'a touché ni la souris ni le clavier.
+pub fn idle_ms() -> u64 {
+    use ::windows::Win32::System::SystemInformation::GetTickCount;
+    use ::windows::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
+    let mut info = LASTINPUTINFO { cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32, dwTime: 0 };
+    if !unsafe { GetLastInputInfo(&mut info) }.as_bool() {
+        return 0;
+    }
+    // Les deux compteurs tournent sur 32 bits : wrapping_sub gère le passage par zéro.
+    unsafe { GetTickCount() }.wrapping_sub(info.dwTime) as u64
+}
+
+/// Vrai pendant une présentation ou une appli en plein écran (jeu, vidéo,
+/// diaporama PowerPoint) : Windows lui-même retient alors ses notifications.
+pub fn presentation_busy() -> bool {
+    use ::windows::Win32::UI::Shell::SHQueryUserNotificationState;
+    // 2 = appli plein écran, 3 = Direct3D plein écran, 4 = mode présentation.
+    matches!(unsafe { SHQueryUserNotificationState() }.map(|s| s.0), Ok(2..=4))
+}
+
 /// Vrai tant que le bouton gauche est enfoncé : le seul signal qu'un glisser
 /// de fichier commence peut-être, avant qu'il n'atteigne la fenêtre.
 pub fn left_button_down() -> bool {
@@ -191,6 +243,79 @@ pub fn is_elevated() -> bool {
 /// Le lire ne touche pas au contenu du presse-papiers.
 pub fn clipboard_sequence() -> u32 {
     unsafe { ::windows::Win32::System::DataExchange::GetClipboardSequenceNumber() }
+}
+
+/// Met un SECRET (mot de passe généré) dans le presse-papiers, marqué comme
+/// le font les gestionnaires de mots de passe : pas d'historique Windows
+/// (Win+V), pas de synchro dans le cloud, ignoré par les outils de surveillance
+/// (dont le nôtre). Renvoie le numéro de copie, pour l'effacer plus tard.
+pub fn copy_secret(text: &str) -> Result<u32, String> {
+    use ::windows::core::w;
+    use ::windows::Win32::Foundation::HANDLE;
+    use ::windows::Win32::System::DataExchange::{CloseClipboard, EmptyClipboard, OpenClipboard, RegisterClipboardFormatW, SetClipboardData};
+    use ::windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
+    use ::windows::Win32::System::Ole::CF_UNICODETEXT;
+
+    /// Copie des octets dans un bloc mémoire que le presse-papiers gardera.
+    unsafe fn block(bytes: &[u8]) -> Result<HANDLE, String> {
+        let mem = GlobalAlloc(GMEM_MOVEABLE, bytes.len()).map_err(|e| e.to_string())?;
+        let ptr = GlobalLock(mem) as *mut u8;
+        if ptr.is_null() {
+            return Err("mémoire indisponible".into());
+        }
+        std::ptr::copy_nonoverlapping(bytes.as_ptr(), ptr, bytes.len());
+        let _ = GlobalUnlock(mem);
+        Ok(HANDLE(mem.0))
+    }
+
+    let wide: Vec<u16> = text.encode_utf16().chain(std::iter::once(0)).collect();
+    let text_bytes: Vec<u8> = wide.iter().flat_map(|c| c.to_le_bytes()).collect();
+    let zero = 0u32.to_le_bytes();
+    unsafe {
+        let mut opened = false;
+        for _ in 0..10 {
+            if OpenClipboard(None).is_ok() {
+                opened = true;
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        if !opened {
+            return Err("le presse-papiers est occupé, réessaie".into());
+        }
+        let result = (|| -> Result<(), String> {
+            EmptyClipboard().map_err(|e| e.to_string())?;
+            // Les marques « ne pas garder » d'abord, le texte ensuite.
+            for name in [w!("ExcludeClipboardContentFromMonitorProcessing"), w!("CanIncludeInClipboardHistory"), w!("CanUploadToCloudClipboard")] {
+                let format = RegisterClipboardFormatW(name);
+                if format != 0 {
+                    SetClipboardData(format, Some(block(&zero)?)).map_err(|e| e.to_string())?;
+                }
+            }
+            SetClipboardData(CF_UNICODETEXT.0 as u32, Some(block(&text_bytes)?)).map_err(|e| e.to_string())?;
+            Ok(())
+        })();
+        let _ = CloseClipboard();
+        result?;
+    }
+    Ok(clipboard_sequence())
+}
+
+/// Vide le presse-papiers s'il contient encore la copie numéro `seq` (rien
+/// n'a été copié depuis) : le mot de passe ne traîne pas.
+pub fn clear_clipboard_if(seq: u32) -> bool {
+    use ::windows::Win32::System::DataExchange::{CloseClipboard, EmptyClipboard, OpenClipboard};
+    if clipboard_sequence() != seq {
+        return false;
+    }
+    unsafe {
+        if OpenClipboard(None).is_err() {
+            return false;
+        }
+        let ok = EmptyClipboard().is_ok();
+        let _ = CloseClipboard();
+        ok
+    }
 }
 
 /// La copie actuelle est-elle marquée « sensible » par l'appli qui l'a faite ?
@@ -310,6 +435,30 @@ pub fn pictures_dir() -> Option<PathBuf> {
     use ::windows::Win32::UI::Shell::{FOLDERID_Pictures, SHGetKnownFolderPath, KF_FLAG_DEFAULT};
     unsafe {
         let raw = SHGetKnownFolderPath(&FOLDERID_Pictures, KF_FLAG_DEFAULT, None).ok()?;
+        let path = raw.to_string().ok().map(PathBuf::from);
+        CoTaskMemFree(Some(raw.0 as *const _));
+        path
+    }
+}
+
+/// Le dossier « Téléchargements » de l'utilisateur.
+pub fn downloads_dir() -> Option<PathBuf> {
+    use ::windows::Win32::System::Com::CoTaskMemFree;
+    use ::windows::Win32::UI::Shell::{FOLDERID_Downloads, SHGetKnownFolderPath, KF_FLAG_DEFAULT};
+    unsafe {
+        let raw = SHGetKnownFolderPath(&FOLDERID_Downloads, KF_FLAG_DEFAULT, None).ok()?;
+        let path = raw.to_string().ok().map(PathBuf::from);
+        CoTaskMemFree(Some(raw.0 as *const _));
+        path
+    }
+}
+
+/// Le dossier « Documents » de l'utilisateur (même s'il est déplacé dans OneDrive).
+pub fn documents_dir() -> Option<PathBuf> {
+    use ::windows::Win32::System::Com::CoTaskMemFree;
+    use ::windows::Win32::UI::Shell::{FOLDERID_Documents, SHGetKnownFolderPath, KF_FLAG_DEFAULT};
+    unsafe {
+        let raw = SHGetKnownFolderPath(&FOLDERID_Documents, KF_FLAG_DEFAULT, None).ok()?;
         let path = raw.to_string().ok().map(PathBuf::from);
         CoTaskMemFree(Some(raw.0 as *const _));
         path
@@ -529,6 +678,42 @@ pub fn shortcut_target(lnk: &std::path::Path) -> Option<PathBuf> {
         }
         Some(PathBuf::from(String::from_utf16_lossy(&buf[..len])))
     }
+}
+
+// ── Garder une fenêtre au premier plan ───────────────────────────────────────
+
+/// La fenêtre « de l'utilisateur » : celle qui avait le focus avant l'île, sinon
+/// celle qui l'a maintenant si ce n'est pas l'île. Un entier (voir PREVIOUS_FOREGROUND).
+pub fn user_window(app: &AppHandle) -> Option<isize> {
+    use ::windows::Win32::UI::WindowsAndMessaging::IsWindow;
+    let island = app.get_webview_window(crate::island::WINDOW_LABEL).and_then(|w| hwnd_of(&w)).map(|h| h.0 as isize);
+    let prev = *PREVIOUS_FOREGROUND.locked();
+    let candidate = if prev != 0 { prev } else { unsafe { GetForegroundWindow() }.0 as isize };
+    let ok = candidate != 0 && Some(candidate) != island && unsafe { IsWindow(Some(HWND(candidate as *mut _))) }.as_bool();
+    ok.then_some(candidate)
+}
+
+/// Le titre d'une fenêtre (« Sans titre - Bloc-notes »).
+pub fn window_title(h: isize) -> String {
+    use ::windows::Win32::UI::WindowsAndMessaging::GetWindowTextW;
+    let mut buf = [0u16; 256];
+    let n = unsafe { GetWindowTextW(HWND(h as *mut _), &mut buf) };
+    String::from_utf16_lossy(&buf[..n.max(0) as usize])
+}
+
+/// Est-elle « toujours au premier plan » ?
+pub fn is_topmost(h: isize) -> bool {
+    use ::windows::Win32::UI::WindowsAndMessaging::WS_EX_TOPMOST;
+    let ex = unsafe { GetWindowLongPtrW(HWND(h as *mut _), GWL_EXSTYLE) };
+    ex & WS_EX_TOPMOST.0 as isize != 0
+}
+
+/// La garde au premier plan (ou la relâche), sans la déplacer ni lui donner le focus.
+pub fn set_topmost(h: isize, on: bool) -> Result<(), String> {
+    use ::windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, HWND_NOTOPMOST, HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE};
+    let after = if on { HWND_TOPMOST } else { HWND_NOTOPMOST };
+    unsafe { SetWindowPos(HWND(h as *mut _), Some(after), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE) }
+        .map_err(|_| "Windows refuse (fenêtre d'une appli lancée en administrateur ?)".to_string())
 }
 
 /// L'île ne rendra PAS le focus à la fenêtre d'avant en se fermant : le

@@ -69,12 +69,17 @@ fn boot(app: AppHandle, shared: State<Shared>, registry: State<Registry>) -> Boo
 fn apply_settings(app: &AppHandle, shared: &Shared, new: Settings) -> Result<(), String> {
     let screen_changed = {
         let mut current = shared.settings.locked();
-        let changed = current.general.screen != new.general.screen;
+        // L'écran, ou la place de l'île sur l'écran : il faut replacer la fenêtre.
+        let changed = current.general.screen != new.general.screen
+            || current.island.edge != new.island.edge
+            || current.island.align != new.island.align
+            || current.island.offset != new.island.offset;
         *current = new.clone();
         changed
     };
     settings::save(&new)?;
     log::set_min_level(log::Level::parse(&new.general.log_level));
+    island::apply_hotkey(app, &new.island.hotkey);
     if screen_changed {
         island::apply_geometry(app, &new.general.screen, shared.gate.collapsed.load(Ordering::Relaxed));
     }
@@ -83,7 +88,8 @@ fn apply_settings(app: &AppHandle, shared: &Shared, new: Settings) -> Result<(),
 }
 
 #[tauri::command]
-fn settings_save(app: AppHandle, shared: State<Shared>, settings: Settings) -> Result<(), String> {
+fn settings_save(app: AppHandle, shared: State<Shared>, mut settings: Settings) -> Result<(), String> {
+    settings.sanitize();
     apply_settings(&app, &shared, settings)
 }
 
@@ -184,6 +190,41 @@ fn island_set_focus(app: AppHandle, focused: bool) {
     if focused {
         let _ = win.set_focus();
     }
+}
+
+/// On a attrapé l'île par son bord extérieur : la fenêtre suit la souris
+/// jusqu'au lâcher, puis s'aimante à un bord (island/mod.rs).
+#[tauri::command]
+fn island_drag_start(app: AppHandle, shared: State<Shared>) {
+    island::drag_start(&app, &shared.gate);
+}
+
+/// Ce que fait la personne devant l'écran : depuis quand elle n'a rien touché,
+/// et si une présentation ou une appli plein écran est en cours.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DeskState {
+    idle_ms: u64,
+    busy: bool,
+}
+
+/// La langue de l'interface, "fr" ou "en" (le réglage, ou « auto » résolu).
+pub fn app_language(settings: &settings::Settings) -> &'static str {
+    match settings.general.language.as_str() {
+        "fr" => "fr",
+        "en" => "en",
+        _ => platform::system_language(),
+    }
+}
+
+#[tauri::command]
+fn ui_language(shared: State<Shared>) -> &'static str {
+    app_language(&shared.settings.locked())
+}
+
+#[tauri::command]
+fn desk_state() -> DeskState {
+    DeskState { idle_ms: platform::idle_ms(), busy: platform::presentation_busy() }
 }
 
 #[tauri::command]
@@ -400,6 +441,9 @@ pub fn run() {
             island_set_rect,
             island_set_focus,
             island_reposition,
+            island_drag_start,
+            desk_state,
+            ui_language,
             log_write,
             logs_open_folder,
             credential_exists,
@@ -414,7 +458,7 @@ pub fn run() {
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
-            tray::build(&handle)?;
+            tray::build(&handle, app_language(&loaded) == "en")?;
             // Avant l'île : voir create_hidden_window.
             create_hidden_window(&handle, "settings", "settings.html", "Réglages — Ondine", (760.0, 720.0), (560.0, 480.0), true);
             create_hidden_window(&handle, "annotate", "annotate.html", "Annoter — Ondine", (1100.0, 760.0), (640.0, 420.0), false);
@@ -426,6 +470,7 @@ pub fn run() {
                 let _ = win.show();
             }
             gate.collapsed.store(true, Ordering::Relaxed);
+            island::apply_hotkey(&handle, &loaded.island.hotkey);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
             // Travail de fond des modules (ex. : Musique surveille le lecteur).
             handle.state::<Registry>().start_all(&handle);

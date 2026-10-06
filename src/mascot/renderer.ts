@@ -4,6 +4,7 @@
 
 import type { AnimationSpec, MascotManifest, MascotState, Mood } from "./types";
 import { PlaceholderCanvasRenderer } from "./renderers/canvas-placeholder";
+import { GumRenderer } from "./renderers/gum";
 import { PosesRenderer } from "./renderers/poses";
 import { SpriteSheetRenderer } from "./renderers/spritesheet";
 
@@ -30,6 +31,7 @@ const RENDERERS: Record<string, RendererFactory> = {
   "canvas-code": () => new PlaceholderCanvasRenderer(),
   spritesheet: (m, assets) => new SpriteSheetRenderer(m, assets),
   poses: (m, assets) => new PosesRenderer(m, assets),
+  gum: () => new GumRenderer(),
   // "lottie":      (m, assets) => new LottieRenderer(m, assets),
   // "rive":        (m, assets) => new RiveRenderer(m, assets),
 };

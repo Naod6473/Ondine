@@ -19,13 +19,17 @@ import { applyTabOrder, mergeOrder } from "../core/tab-order";
 import type { Settings } from "../core/types";
 import { el } from "../island/dom";
 import { icon as iconNode } from "../island/icon";
+import { sounds, setSoundPrefs } from "../island/sounds";
+import { jellyButtons, setStudio, staggerIn, watchContent } from "../island/motion";
 import { reducedMotion } from "../island/tab-pill";
+import { THEMES, themeFor } from "../island/themes";
 import { mascotCatalog } from "../mascot/catalog";
 import { createRenderer, type MascotRenderer } from "../mascot/renderer";
 import { ALL_MODULES } from "../modules";
-import { chip, choice, group, row, stepper, toggle, wideRow } from "./controls";
+import { chip, choice, group, row, segmented, stepper, toggle, wideRow } from "./controls";
 import { settingsRows } from "./form";
 import { NavPill } from "./nav-pill";
+import { startI18n } from "../core/i18n";
 import { connectRules, rulesSection } from "./rules-editor";
 
 const PERMISSION_LABELS: Record<string, string> = {
@@ -56,8 +60,17 @@ const ISLAND_PAGES: Page[] = [
     icon: "⚙️",
     label: "Général",
     sub: "L'écran, le repli de l'île, les notifications et le journal.",
-    keywords: ["Sur quel écran ?", "Replier l'île", "Durée des notifications", "Niveau du journal", "Dossier du journal"],
+    keywords: ["Langue", "Language", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal"],
     render: general,
+  },
+  {
+    id: "look",
+    group: "L'île",
+    icon: "🎨",
+    label: "Apparence",
+    sub: "La couleur de l'île et ses petits sons.",
+    keywords: ["Thème", "Icônes", "Style des icônes", "Animations", "Style des animations", "Studio", "Couleur de l'île", "Couleur personnalisée", "Sons de clic", "Volume des sons"],
+    render: look,
   },
   {
     id: "tabs",
@@ -74,7 +87,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "💧",
     label: "Mascotte",
     sub: "Qui vit dans l'île, et quand elle s'ennuie ou s'endort.",
-    keywords: ["Afficher la mascotte", "Mascotte", "S'ennuie après", "S'endort après", "Tester les animations"],
+    keywords: ["Afficher la mascotte", "Mascotte", "S'ennuie après", "S'endort après", "Ondine vient pendre au bord", "Visites", "Tester les animations"],
     render: mascot,
   },
   {
@@ -164,6 +177,7 @@ async function start() {
   // Fond Mica de Windows 11 : la page devient transparente (voir settings.css).
   if (boot?.mica) document.documentElement.classList.add("mica");
   await settingsStore.connect(boot?.settings ?? null);
+  await startI18n();
   bus = new Bus(windowLabel("settings"));
   await bus.connect();
   try {
@@ -184,7 +198,14 @@ async function start() {
   // Les réglages ont changé. Si c'est nous (un interrupteur…), la page est
   // déjà à jour : on ne la redessine pas, pour ne pas couper son animation.
   // Si c'est ailleurs (l'île, un import), on redessine, sauf pendant la saisie.
-  settingsStore.onChange(() => {
+  // Les effets d'animation de l'île servent aussi ici (Classique ou Studio).
+  setStudio(settingsStore.current.island.motion === "studio");
+  jellyButtons(content);
+  // Les chiffres qui roulent, mais pas les listes : la liste des onglets a
+  // déjà son propre glisser (plus bas, dans la page « Onglets »).
+  watchContent(content, { lists: false });
+  settingsStore.onChange((s) => {
+    setStudio(s.island.motion === "studio");
     syncNav();
     if (performance.now() - lastOwnSave < 1500) return;
     const typing = document.activeElement instanceof HTMLInputElement && document.activeElement.type !== "checkbox";
@@ -343,14 +364,10 @@ function showPage(animate: boolean, direction = 1) {
   }
   content.scrollTop = 0;
   if (reducedMotion() || !old) return;
-  // La nouvelle page arrive dans le sens du déplacement, en fondu.
-  page.animate(
-    [
-      { opacity: 0, transform: `translateY(${direction * 14}px)`, filter: "blur(4px)" },
-      { opacity: 1, transform: "none", filter: "blur(0)" },
-    ],
-    { duration: 320, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
-  );
+  // La nouvelle page glisse un peu dans le sens du déplacement, et ses
+  // morceaux (titre, groupes) arrivent l'un après l'autre, flous puis nets.
+  page.animate([{ transform: `translateY(${direction * 10}px)` }, { transform: "none" }], { duration: 320, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" });
+  staggerIn(page, 0);
 }
 
 function header(pageIcon: string, title: string, sub: string, extra?: HTMLElement): HTMLElement {
@@ -421,9 +438,19 @@ function general(main: HTMLElement) {
   main.append(
     group("L'île", [
       row(
+        "Langue",
+        choice(s.general.language ?? "auto", [["auto", "Automatique"], ["fr", "Français"], ["en", "English"]], (v) => save((d) => (d.general.language = v as Settings["general"]["language"]))),
+        "Automatique : la langue choisie à l'installation, sinon celle de Windows. Les fenêtres se rechargent.",
+      ),
+      row(
         "Sur quel écran ?",
         choice(s.general.screen, [["primary", "Écran principal"], ["cursor", "Suit la souris"]], (v) => save((d) => (d.general.screen = v as Settings["general"]["screen"]))),
         "Seulement si tu as plusieurs écrans : l'île reste sur l'écran principal, ou suit l'écran où se trouve ta souris.",
+      ),
+      row(
+        "Toujours en mini",
+        toggle(s.island.alwaysMini ?? false, (v) => save((d) => (d.island.alwaysMini = v)), "Toujours en mini"),
+        "L'île reste en petite pilule au lieu de disparaître. Elle se cache seulement en mode présentation.",
       ),
       row(
         "Replier l'île",
@@ -431,6 +458,31 @@ function general(main: HTMLElement) {
         "Quand la souris n'est plus dessus, après ce délai.",
       ),
       row("Durée des notifications", stepper(s.island.notificationSecs, 2, 60, (v) => save((d) => (d.island.notificationSecs = v)), 1, "s")),
+      row(
+        "Raccourci pour ouvrir l'île",
+        choice(
+          s.island.hotkey || "off",
+          [["Ctrl+Alt+O", "Ctrl+Alt+O"], ["Ctrl+Shift+O", "Ctrl+Maj+O"], ["Alt+Shift+O", "Alt+Maj+O"], ["Ctrl+Alt+I", "Ctrl+Alt+I"], ["off", "Aucun"]],
+          (v) => save((d) => (d.island.hotkey = v === "off" ? "" : v)),
+        ),
+        "Partout dans Windows : un appui ouvre l'île, un second la referme.",
+      ),
+      row(
+        "Bord de l'écran",
+        choice(s.island.edge, [["top", "En haut"], ["left", "À gauche"], ["right", "À droite"]], (v) =>
+          save((d) => {
+            d.island.edge = v as Settings["island"]["edge"];
+            d.island.align = "center";
+            d.island.offset = 0.5;
+          }, true),
+        ),
+        "Tu peux aussi attraper l'île par son bord collé à l'écran et la poser ailleurs : elle s'aimante aux bords, aux coins et au centre.",
+      ),
+      row(
+        "Mode présentation",
+        toggle(s.island.presentationQuiet ?? true, (v) => save((d) => (d.island.presentationQuiet = v)), "Mode présentation"),
+        "Pendant un diaporama, une vidéo ou un jeu en plein écran, l'île se cache et garde les notifications pour la fin.",
+      ),
     ]),
     group(
       "Journal",
@@ -447,6 +499,80 @@ function general(main: HTMLElement) {
       ],
       "Le journal reste sur ton PC (%LOCALAPPDATA%\\Ondine\\logs). Il ne contient jamais de clé ni de contenu de fichier.",
     ),
+  );
+}
+
+/** La couleur de l'île (thèmes tout faits ou couleur choisie) et les petits sons. */
+function look(main: HTMLElement) {
+  const s = settingsStore.current;
+  const swatch = (id: string, name: string) => {
+    const t = themeFor(id, s.island.color);
+    const b = el(
+      "button",
+      { class: `swatch ${s.island.theme === id ? "active" : ""}`, title: name, "aria-pressed": String(s.island.theme === id), onclick: () => save((d) => (d.island.theme = id), true) },
+      el("span", { class: "swatch-dot" }, el("i", {})),
+      el("span", { class: "swatch-name" }, name),
+    );
+    const dot = b.querySelector<HTMLElement>(".swatch-dot")!;
+    dot.style.background = t.bg;
+    dot.querySelector<HTMLElement>("i")!.style.background = t.accent;
+    return b;
+  };
+  const picker = el("input", { type: "color", class: "color-input", "aria-label": "Couleur personnalisée" }) as HTMLInputElement;
+  picker.value = s.island.color || "#0c0d12";
+  picker.addEventListener("change", () =>
+    save((d) => {
+      d.island.color = picker.value;
+      d.island.theme = "custom";
+    }, true),
+  );
+  setSoundPrefs(s.island.sounds, s.island.soundVolume);
+  main.append(
+    group("Thème", [wideRow(null, el("div", { class: "swatches" }, ...THEMES.map((t) => swatch(t.id, t.name)), swatch("custom", "Personnalisée")), undefined, "Thème")]),
+    group(
+      null,
+      [row("Couleur personnalisée", picker, "Choisis n'importe quelle couleur : si elle est trop claire, l'île l'assombrit juste assez pour que le texte reste lisible.")],
+    ),
+    group("Icônes", [
+      row(
+        "Style des icônes",
+        segmented(s.island.iconPack ?? "color", [["color", "Couleur"], ["line", "Épurées"]], (v) => save((d) => (d.island.iconPack = v as "color" | "line"))),
+        "Couleur : les icônes dessinées pour Ondine. Épurées : au trait, sobres, qui prennent la couleur du texte (Phosphor, licence MIT).",
+      ),
+    ]),
+    group("Animations", [
+      row(
+        "Style des animations",
+        segmented(s.island.motion ?? "classic", [["classic", "Classique"], ["studio", "Studio"]], (v) => save((d) => (d.island.motion = v as "classic" | "studio"))),
+        "Classique : sobre. Studio : façon vidéo de présentation, les éléments arrivent flous puis nets l'un après l'autre, les chiffres roulent, les boutons rebondissent comme de la gélatine.",
+      ),
+    ]),
+    group("Sons", [
+      row("Sons de clic", toggle(s.island.sounds, (v) => save((d) => (d.island.sounds = v)), "Sons de clic"), "De petits « plop » à l'ouverture, à la fermeture et sur les boutons. Fabriqués sur place, sans fichier."),
+      row(
+        "Volume des sons",
+        stepper(Math.round(s.island.soundVolume * 100), 5, 100, (v) => save((d) => (d.island.soundVolume = v / 100)), 5, "%"),
+      ),
+      row(
+        "Écouter",
+        el(
+          "button",
+          {
+            class: "btn small",
+            onclick: () => {
+              const cur = settingsStore.current.island;
+              setSoundPrefs(true, cur.soundVolume);
+              sounds.open();
+              window.setTimeout(() => sounds.tap(), 300);
+              window.setTimeout(() => sounds.drop(), 600);
+              window.setTimeout(() => sounds.close(), 950);
+              window.setTimeout(() => setSoundPrefs(cur.sounds, cur.soundVolume), 1300);
+            },
+          },
+          "▶ Essayer",
+        ),
+      ),
+    ]),
   );
 }
 
@@ -602,6 +728,15 @@ function mascot(main: HTMLElement) {
       row("S'ennuie après", stepper(s.mascot.boredAfterSecs, 10, 3600, (v) => save((d) => (d.mascot.boredAfterSecs = v)), 10, "s")),
       row("S'endort après", stepper(s.mascot.sleepAfterSecs, 20, 7200, (v) => save((d) => (d.mascot.sleepAfterSecs = v)), 10, "s")),
     ]),
+    group(
+      "Visites au bord de l'écran",
+      [
+        row("Ondine vient pendre au bord", toggle(s.mascot.peek, (v) => save((d) => (d.mascot.peek = v)), "Ondine vient pendre au bord")),
+        row("Au plus une visite toutes les", stepper(s.mascot.peekEveryMins, 1, 120, (v) => save((d) => (d.mascot.peekEveryMins = v)), 1, "min")),
+        row("Essayer", el("button", { class: "btn small", onclick: () => bus.emit("mascot.peek-now", null, "settings") }, "Faire venir Ondine")),
+      ],
+      "Quand l'île est cachée et que tu ne touches plus au PC depuis un moment, Ondine descend du bord de l'écran tête en bas, cligne des yeux, puis remonte. Un clic sur elle ouvre l'île. Jamais pendant une présentation ou un plein écran.",
+    ),
   );
   if (!cur) return;
   if (cur.problems.length) main.append(el("p", { class: "banner error" }, "Problèmes dans le manifeste : ", cur.problems.join(" ; ")));

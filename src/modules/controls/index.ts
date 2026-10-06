@@ -36,6 +36,12 @@ interface Radio {
   disabled: boolean;
 }
 
+interface Output {
+  id: string;
+  name: string;
+  default: boolean;
+}
+
 interface Screen {
   id: string;
   name: string;
@@ -59,6 +65,7 @@ const GLYPHS = {
   microphoneOff: "M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM6 11a6 6 0 0 0 12 0M12 17v4M4 4l16 16",
   wifi: "M2 9a15 15 0 0 1 20 0M5.5 12.5a10 10 0 0 1 13 0M9 16a5 5 0 0 1 6 0M12 19.5h.01",
   bluetooth: "M7 7l10 10-5 4V3l5 4L7 17",
+  pin: "M9 3h6l-1 5 3 3v2h-4v7l-1 1-1-1v-7H7v-2l3-3z",
   airplane: "M10.5 3.5a1.5 1.5 0 0 1 3 0V9l7 4v2l-7-2v4.5l2.5 2V21L12 20l-4 1v-1.5l2.5-2V13l-7 2v-2l7-4z",
   mobile: "M5 20v-3M10 20v-7M15 20v-11M20 20V4",
   sun: "M12 8a4 4 0 1 1 0 8a4 4 0 0 1 0-8zM12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4",
@@ -69,9 +76,15 @@ function glyph(kind: keyof typeof GLYPHS): SVGSVGElement {
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", "0 0 24 24");
   svg.setAttribute("aria-hidden", "true");
-  const path = document.createElementNS(ns, "path");
-  path.setAttribute("d", GLYPHS[kind]);
-  svg.append(path);
+  // Le haut-parleur en trois morceaux (corps + deux ondes) : le design Studio
+  // allume les ondes selon le volume (island.css, data-level sur le pilier).
+  const parts = kind === "speakers" ? GLYPHS.speakers.split(/(?=M16 |M18\.5 )/) : [GLYPHS[kind]];
+  parts.forEach((d, i) => {
+    const path = document.createElementNS(ns, "path");
+    path.setAttribute("d", d);
+    if (i > 0) path.setAttribute("class", `wave w${i}`);
+    svg.append(path);
+  });
   return svg;
 }
 
@@ -177,6 +190,8 @@ function devicePillar(api: ModuleApi, device: DeviceId, onState: (level: Level |
   const paint = (level: Level) => {
     p.show(level.volume, level.muted ? "coupé" : `${level.volume} %`);
     p.pill.classList.toggle("muted-dev", level.muted);
+    // 0 = aucune onde, 1 = une, 2 = les deux (design Studio).
+    p.pill.dataset.level = level.muted || level.volume === 0 ? "0" : level.volume < 50 ? "1" : "2";
     p.iconBox.replaceChildren(glyph(level.muted ? off : device));
     onState(level);
   };
@@ -215,6 +230,7 @@ function devicePillar(api: ModuleApi, device: DeviceId, onState: (level: Level |
   const col = column(p.pill, label);
   return {
     node: col.node,
+    caption: col.caption,
     toggleMute,
     update(level: Level | null) {
       p.setOff(!level);
@@ -231,6 +247,74 @@ function devicePillar(api: ModuleApi, device: DeviceId, onState: (level: Level |
       paint(level);
     },
   };
+}
+
+/**
+ * Choisir la sortie audio (casque, haut-parleurs, écran…) : le nom « Son »
+ * sous le pilier devient un bouton qui ouvre une petite liste en verre.
+ * Changer la sortie passe par une API interne de Windows (voir audio.rs).
+ */
+function outputMenu(api: ModuleApi, caption: HTMLElement, host: HTMLElement) {
+  caption.classList.add("ctl-output-btn");
+  caption.setAttribute("role", "button");
+  caption.tabIndex = 0;
+  caption.title = "Choisir la sortie audio";
+  let menu: HTMLElement | null = null;
+  const close = () => {
+    menu?.remove();
+    menu = null;
+    document.removeEventListener("pointerdown", outside, true);
+  };
+  const outside = (e: Event) => {
+    if (menu && !menu.contains(e.target as Node) && e.target !== caption) close();
+  };
+  const open = async () => {
+    if (menu) return close();
+    let list: Output[] = [];
+    try {
+      list = await api.invoke<Output[]>("outputs");
+    } catch (err) {
+      api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "controls-error" });
+      return;
+    }
+    menu = el("div", { class: "ctl-menu", role: "menu" });
+    if (!list.length) menu.append(el("div", { class: "ctl-menu-empty muted" }, "Aucune sortie audio"));
+    for (const o of list) {
+      menu.append(
+        el(
+          "button",
+          {
+            class: `ctl-menu-item ${o.default ? "on" : ""}`,
+            role: "menuitemradio",
+            "aria-checked": String(o.default),
+            title: o.name,
+            onclick: api.handler(async () => {
+              close();
+              if (o.default) return;
+              try {
+                await api.invoke("set_output", { id: o.id });
+                api.notify({ title: `Le son sort sur ${o.name}`, icon: "🎧", priority: "low", key: "controls-output" });
+              } catch (err) {
+                api.notify({ title: errorText(err), icon: "⚠️", priority: "normal", key: "controls-error" });
+              }
+            }),
+          },
+          el("span", { class: "ctl-menu-check" }, o.default ? "✓" : ""),
+          el("span", { class: "ctl-menu-name" }, o.name),
+        ),
+      );
+    }
+    // La liste s'ouvre au-dessus du bouton, à sa gauche (dans la vue, sans déborder).
+    const h = host.getBoundingClientRect();
+    const c = caption.getBoundingClientRect();
+    menu.style.left = `${Math.max(0, c.left - h.left - 8)}px`;
+    menu.style.bottom = `${h.bottom - c.top + 4}px`;
+    host.append(menu);
+    document.addEventListener("pointerdown", outside, true);
+  };
+  caption.addEventListener("click", api.handler(open));
+  caption.addEventListener("keydown", (e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), void open()));
+  return close;
 }
 
 /** Le pilier de luminosité d'un écran. */
@@ -258,7 +342,7 @@ function screenPillar(api: ModuleApi, screen: Screen) {
   };
 }
 
-const TILE_NAMES = { wifi: "Wi-Fi", bluetooth: "Bluetooth", mobile: "Mobile", airplane: "Avion", mic: "Micro" } as const;
+const TILE_NAMES = { wifi: "Wi-Fi", bluetooth: "Bluetooth", mobile: "Mobile", airplane: "Avion", mic: "Micro", pin: "Épingler" } as const;
 type TileId = keyof typeof TILE_NAMES;
 
 /** La carte de pastilles rondes : radios, mode avion, micro coupé. */
@@ -297,6 +381,12 @@ function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>) {
   };
 
   const mic = tile("mic", "microphoneOff", () => onMicToggle());
+  // Garder au premier plan la fenêtre où tu travaillais (celle d'avant l'île).
+  const pin = tile("pin", "pin", async () => {
+    const r = await api.invoke<{ title: string; pinned: boolean }>("toggle_pin");
+    const name = r.title ? `« ${r.title.length > 40 ? `${r.title.slice(0, 40)}…` : r.title} »` : "La fenêtre";
+    api.notify({ title: r.pinned ? `${name} reste au premier plan` : `${name} n'est plus au premier plan`, icon: "📌", priority: "low", key: "controls-pin" });
+  });
   let shown: string | null = null;
 
   return {
@@ -307,11 +397,12 @@ function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>) {
       const key = list.map((r) => r.kind).join(",");
       if (key !== shown) {
         shown = key;
-        for (const id of [...tiles.keys()]) if (id !== "mic") tiles.delete(id);
+        for (const id of [...tiles.keys()]) if (id !== "mic" && id !== "pin") tiles.delete(id);
         card.replaceChildren(
           ...list.map((r) => tile(r.kind, r.kind, (on) => api.invoke("set_radio", { kind: r.kind, on }))),
           ...(list.length ? [tile("airplane", "airplane", (on) => api.invoke("set_airplane", { on }))] : []),
           mic,
+          pin,
         );
       }
       for (const r of list) {
@@ -331,6 +422,14 @@ function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>) {
         airplane.setAttribute("aria-pressed", String(on));
       }
     },
+    /** La pastille « Premier plan » : allumée si la fenêtre d'avant y est déjà. */
+    window(info: { title: string; pinned: boolean } | null) {
+      if (busy) return;
+      pin.disabled = !info;
+      pin.classList.toggle("on", !!info?.pinned);
+      pin.title = !info ? "Aucune fenêtre" : `${info.pinned ? "Relâcher" : "Garder au premier plan"} : ${info.title || "la fenêtre d'avant"}`;
+      pin.setAttribute("aria-pressed", String(!!info?.pinned));
+    },
     /** La pastille « Micro » s'allume (en rouge) quand le micro est coupé. */
     mic(level: Level | null) {
       if (busy) return;
@@ -346,6 +445,24 @@ function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>) {
 export const controls: IslandModule = {
   manifest: manifest as ModuleManifest,
 
+  setup(api) {
+    // Le raccourci micro (Rust) : une petite notification confirme, le badge
+    // d'Ondine (island.ts) reste tant que le micro est coupé.
+    const offMuted = api.on("controls.mic-muted", (msg) => {
+      const p = (msg.payload ?? {}) as { muted?: boolean; source?: string };
+      if (p.source !== "hotkey") return;
+      api.notify({ title: p.muted ? "Micro coupé" : "Micro rétabli", icon: p.muted ? "🔇" : "🎙️", priority: "low", key: "controls-mic", durationMs: 1800 });
+    });
+    const offError = api.on("controls.mic-error", (msg) => {
+      const p = (msg.payload ?? {}) as { message?: string };
+      api.notify({ title: p.message ?? "Le micro ne répond pas", icon: "⚠️", priority: "normal", key: "controls-mic" });
+    });
+    return () => {
+      offMuted();
+      offError();
+    };
+  },
+
   views: {
     expanded(root, api: ModuleApi) {
       // Le micro apparaît deux fois (pastille + pilier) : le pilier tient la pastille à jour.
@@ -353,7 +470,9 @@ export const controls: IslandModule = {
       const microphone = devicePillar(api, "microphone", (level) => toggles.mic(level));
       const toggles = toggleCard(api, () => microphone.toggleMute());
       const screensBox = el("div", { class: "ctl-screens" });
-      root.append(el("div", { class: "ctl" }, toggles.node, el("div", { class: "ctl-card ctl-pillars" }, speakers.node, microphone.node, screensBox)));
+      const ctl = el("div", { class: "ctl" }, toggles.node, el("div", { class: "ctl-card ctl-pillars" }, speakers.node, microphone.node, screensBox));
+      root.append(ctl);
+      const closeMenu = outputMenu(api, speakers.caption, ctl);
       toggles.radios([]);
 
       let alive = true;
@@ -368,7 +487,17 @@ export const controls: IslandModule = {
         }
       };
 
+      const refreshWindow = async () => {
+        try {
+          const win = await api.invoke<{ title: string; pinned: boolean } | null>("window");
+          if (alive) toggles.window(win);
+        } catch {
+          // hors de l'appli
+        }
+      };
+
       const refreshRadios = async () => {
+        void refreshWindow();
         try {
           const list = await api.invoke<Radio[]>("radios");
           if (alive) toggles.radios(list);
@@ -413,6 +542,7 @@ export const controls: IslandModule = {
       ];
       return () => {
         alive = false;
+        closeMenu();
         timers.forEach((t) => window.clearInterval(t));
       };
     },
