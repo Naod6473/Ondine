@@ -14,7 +14,7 @@
     ]
   },
   "views": ["compact", "expanded"],
-  "commands": ["state", "artwork", "toggle", "next", "previous"],
+  "commands": ["state", "artwork", "toggle", "next", "previous", "seek"],
   "events": {
     "emits": ["media.changed"],
     "listens": ["media.changed"]
