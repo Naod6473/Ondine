@@ -15,7 +15,7 @@
 // Pourquoi pas le crate `drag` (celui de tauri-plugin-drag) : il tire sa propre
 // version du crate `windows` et des dépendances d'images, alors qu'ici trois
 // fonctions du Shell suffisent (ILCreateFromPathW, SHCreateDataObject,
-// SHDoDragDrop), toutes déjà dans `windows` 0.61.
+// SHDoDragDrop, et de quoi découper un PIDL), toutes déjà dans `windows` 0.61.
 //
 // Pendant le glisser, `active()` est vrai : la boucle de souris de l'île
 // (island/mod.rs) laisse alors passer la souris partout sauf sur l'île, et
@@ -81,7 +81,7 @@ mod imp {
     use ::windows::Win32::System::Com::IDataObject;
     use ::windows::Win32::System::Ole::{IDropSource, DROPEFFECT_COPY, DROPEFFECT_LINK, DROPEFFECT_MOVE};
     use ::windows::Win32::UI::Shell::Common::ITEMIDLIST;
-    use ::windows::Win32::UI::Shell::{ILCreateFromPathW, ILFree, SHCreateDataObject, SHDoDragDrop};
+    use ::windows::Win32::UI::Shell::{ILClone, ILCreateFromPathW, ILFindLastID, ILFree, ILRemoveLastID, SHCreateDataObject, SHDoDragDrop};
     use tauri::{AppHandle, Manager};
 
     use super::ActiveGuard;
@@ -115,6 +115,12 @@ mod imp {
 
     /// Sur le thread principal : l'objet de données du Shell, puis SHDoDragDrop.
     fn run(app: &AppHandle, paths: &[PathBuf]) -> Result<u32, String> {
+        // Tous les fichiers doivent venir du même dossier : l'objet de données
+        // du Shell décrit « ces éléments, dans ce dossier ».
+        let parent = paths[0].parent().ok_or("chemin sans dossier parent")?;
+        if paths.iter().any(|p| p.parent() != Some(parent)) {
+            return Err("les éléments glissés ensemble doivent être dans le même dossier".into());
+        }
         // Un « PIDL » absolu par fichier (l'identifiant du Shell pour un chemin).
         let mut pidls: Vec<*const ITEMIDLIST> = Vec::new();
         for p in paths {
@@ -126,10 +132,20 @@ mod imp {
             }
             pidls.push(pidl as *const _);
         }
-        // Dossier parent « aucun » = le Bureau, racine du Shell : les PIDL absolus
-        // s'y rattachent, même si les fichiers viennent de dossiers différents.
-        let data: Result<IDataObject, _> = unsafe { SHCreateDataObject(None, Some(&pidls), None) };
+        // Le PIDL du dossier parent (copie du premier, sans son dernier maillon),
+        // et pour chaque fichier son maillon final, relatif à ce dossier.
+        // (Passer des PIDL absolus sans dossier parent donne un objet que
+        // l'Explorateur refuse : curseur 🚫 partout.)
+        let folder = unsafe { ILClone(pidls[0]) };
+        if folder.is_null() {
+            free(&pidls);
+            return Err("mémoire insuffisante".into());
+        }
+        let _ = unsafe { ILRemoveLastID(Some(folder)) };
+        let children: Vec<*const ITEMIDLIST> = pidls.iter().map(|p| unsafe { ILFindLastID(*p) } as *const _).collect();
+        let data: Result<IDataObject, _> = unsafe { SHCreateDataObject(Some(folder as *const _), Some(&children), None) };
         free(&pidls);
+        free(&[folder as *const _]);
         let data = data.map_err(|e| format!("objet de glisser impossible : {e}"))?;
 
         let hwnd = app
