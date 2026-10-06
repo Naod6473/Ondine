@@ -583,7 +583,8 @@ function demoGroup(): HTMLElement {
       ),
       ...(on
         ? [
-            row(
+            // Ligne large : les quatre boutons passent sous le titre au lieu de l'écraser.
+            wideRow(
               "Jouer une scène",
               el(
                 "div",
