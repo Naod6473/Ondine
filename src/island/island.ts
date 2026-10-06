@@ -6,7 +6,7 @@
 //   island.ts (ici)   dessine l'état, écoute la souris, le clavier, le glisser-déposer
 //   Rust (island/)    place la fenêtre, gère les clics traversants, lit la souris
 
-import { flyIcon, jellyButtons, popIn, setStudio, spotlight, staggerIn, studioOn, tabOut, watchContent } from "./studio";
+import { flyIcon, jellyButtons, motionOn, popIn, setStudio, spotlight, staggerIn, tabOut, watchContent } from "./motion";
 import { Bridge, IS_TAURI, onDragDrop, onTauriEvent, type DragDropEvent } from "../core/bridge";
 import type { Bus } from "../core/bus";
 import { logger } from "../core/log";
@@ -580,30 +580,23 @@ export class Island {
     }
     this.renderBanner(n);
 
-    // Le contenu arrive en douceur quand l'île change de forme.
-    if (state !== this.renderedState && state !== "hidden" && state !== "peek" && studioOn()) {
-      this.studioEntrance(state);
-    } else if (state === this.renderedState && (state === "compact" || state === "alert") && studioOn()) {
+    // Le contenu arrive en douceur quand l'île change de forme (motion.ts :
+    // en douceur en Classique, plus franc en Studio).
+    if (state !== this.renderedState && state !== "hidden" && state !== "peek" && motionOn()) {
+      this.entrance(state);
+    } else if (state === this.renderedState && (state === "compact" || state === "alert") && motionOn()) {
       // Même forme, nouvelle notification : elle sort quand même de la pilule.
       const card = this.content.querySelector(".notif");
       if (card) popIn(card);
-    } else if (state !== this.renderedState && state !== "hidden" && state !== "peek" && !reducedMotion()) {
-      this.content.animate(
-        [
-          { opacity: 0, transform: "translateY(-6px) scale(0.98)", filter: "blur(4px)" },
-          { opacity: 1, transform: "none", filter: "blur(0)" },
-        ],
-        { duration: 320, delay: 60, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)", fill: "backwards" },
-      );
     }
     this.renderedState = state;
   }
 
   /**
-   * Arrivée façon « Studio » : les onglets puis les morceaux de la vue passent
-   * de flous à nets l'un après l'autre ; une notification sort de la pilule.
+   * Arrivée du contenu : les onglets puis les morceaux de la vue passent de
+   * flous à nets l'un après l'autre ; une notification sort de la pilule.
    */
-  private studioEntrance(state: IslandState) {
+  private entrance(state: IslandState) {
     const card = this.content.querySelector(".notif");
     if (card && state !== "expanded") {
       popIn(card);
@@ -768,32 +761,12 @@ export class Island {
     }
     old.classList.add("leaving");
     old.style.pointerEvents = "none";
-    const ease = "cubic-bezier(0.2, 0.8, 0.2, 1)";
-    const studio = studioOn();
-    const leaving = studio
-      ? tabOut(old, direction)
-      : old.animate(
-          [
-            { opacity: 1, transform: "none", filter: "blur(0)" },
-            { opacity: 0, transform: `translateX(${-direction * 18}px) scale(0.98)`, filter: "blur(6px)" },
-          ],
-          { duration: 220, easing: ease, fill: "forwards" },
-        );
-    leaving.finished.then(
-        () => old.remove(),
-        () => old.remove(), // animation interrompue (île refermée) : on nettoie quand même
-      );
-    if (studio) {
-      requestAnimationFrame(() => staggerIn(body, 60));
-      return;
-    }
-    body.animate(
-      [
-        { opacity: 0, transform: `translateX(${direction * 24}px) scale(0.98)`, filter: "blur(6px)" },
-        { opacity: 1, transform: "none", filter: "blur(0)" },
-      ],
-      { duration: 380, delay: 40, easing: ease, fill: "backwards" },
+    tabOut(old, direction).finished.then(
+      () => old.remove(),
+      () => old.remove(), // animation interrompue (île refermée) : on nettoie quand même
     );
+    // Le nouveau contenu arrive en cascade une fois dessiné par le module.
+    requestAnimationFrame(() => staggerIn(body, 60));
   }
 
   private renderDrop() {

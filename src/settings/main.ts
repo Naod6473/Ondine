@@ -20,6 +20,7 @@ import type { Settings } from "../core/types";
 import { el } from "../island/dom";
 import { icon as iconNode } from "../island/icon";
 import { sounds, setSoundPrefs } from "../island/sounds";
+import { jellyButtons, setStudio, staggerIn, watchContent } from "../island/motion";
 import { reducedMotion } from "../island/tab-pill";
 import { THEMES, themeFor } from "../island/themes";
 import { mascotCatalog } from "../mascot/catalog";
@@ -197,7 +198,14 @@ async function start() {
   // Les réglages ont changé. Si c'est nous (un interrupteur…), la page est
   // déjà à jour : on ne la redessine pas, pour ne pas couper son animation.
   // Si c'est ailleurs (l'île, un import), on redessine, sauf pendant la saisie.
-  settingsStore.onChange(() => {
+  // Les effets d'animation de l'île servent aussi ici (Classique ou Studio).
+  setStudio(settingsStore.current.island.motion === "studio");
+  jellyButtons(content);
+  // Les chiffres qui roulent, mais pas les listes : la liste des onglets a
+  // déjà son propre glisser (plus bas, dans la page « Onglets »).
+  watchContent(content, { lists: false });
+  settingsStore.onChange((s) => {
+    setStudio(s.island.motion === "studio");
     syncNav();
     if (performance.now() - lastOwnSave < 1500) return;
     const typing = document.activeElement instanceof HTMLInputElement && document.activeElement.type !== "checkbox";
@@ -356,14 +364,10 @@ function showPage(animate: boolean, direction = 1) {
   }
   content.scrollTop = 0;
   if (reducedMotion() || !old) return;
-  // La nouvelle page arrive dans le sens du déplacement, en fondu.
-  page.animate(
-    [
-      { opacity: 0, transform: `translateY(${direction * 14}px)`, filter: "blur(4px)" },
-      { opacity: 1, transform: "none", filter: "blur(0)" },
-    ],
-    { duration: 320, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
-  );
+  // La nouvelle page glisse un peu dans le sens du déplacement, et ses
+  // morceaux (titre, groupes) arrivent l'un après l'autre, flous puis nets.
+  page.animate([{ transform: `translateY(${direction * 10}px)` }, { transform: "none" }], { duration: 320, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" });
+  staggerIn(page, 0);
 }
 
 function header(pageIcon: string, title: string, sub: string, extra?: HTMLElement): HTMLElement {

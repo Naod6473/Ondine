@@ -1,23 +1,39 @@
-// Le design d'animation « Studio » (réglage Apparence → Animations).
+// Les effets d'animation de l'île et des réglages, en deux intensités
+// (réglage Apparence → Animations) :
 //
-// Inspiré des vidéos de présentation d'interface : les éléments arrivent flous
-// puis deviennent nets, l'un après l'autre ; les chiffres « roulent » quand ils
-// changent ; les boutons s'écrasent comme de la gélatine quand on appuie.
+//   Classique : les mêmes effets, en douceur (peu de flou, pas de rebond).
+//   Studio    : façon vidéo de présentation (flou → net franc, rebonds,
+//               boutons en gélatine).
 //
-// Tout passe par la classe `motion-studio` posée sur <body> : en « Classique »,
-// rien de ce fichier ne s'exécute. Et si Windows demande moins d'animations
-// (prefers-reduced-motion), rien ne bouge non plus.
+// Les éléments arrivent l'un après l'autre, les chiffres « roulent » quand ils
+// changent, les listes glissent à leur nouvelle place… Si Windows demande
+// moins d'animations (prefers-reduced-motion), rien ne bouge.
 
 import { reducedMotion } from "./tab-pill";
 
-/** Le design Studio est-il actif (et les animations autorisées) ? */
+/** Les animations sont-elles autorisées ? */
+export function motionOn(): boolean {
+  return !reducedMotion();
+}
+
+/** Le design Studio (la version forte) est-il choisi ? */
 export function studioOn(): boolean {
   return document.body.classList.contains("motion-studio") && !reducedMotion();
 }
 
-/** Active ou coupe le design Studio. */
+/** Active ou coupe le design Studio (classe sur <body>, utilisée aussi en CSS). */
 export function setStudio(on: boolean) {
   document.body.classList.toggle("motion-studio", on);
+}
+
+/**
+ * Les réglages de chaque intensité : flou (px), distance (px), petit zoom de
+ * départ, écart entre deux éléments (ms), durée (ms) et courbe.
+ */
+function feel() {
+  return studioOn()
+    ? { blur: 10, rise: 10, scale: 0.96, gap: 45, ms: 520, ease: SPRING }
+    : { blur: 4, rise: 6, scale: 0.99, gap: 28, ms: 340, ease: OUT };
 }
 
 // La courbe « ressort » : part vite, dépasse un peu, revient se poser.
@@ -41,17 +57,18 @@ function pieces(root: Element): Element[] {
 
 /**
  * Arrivée en cascade : chaque morceau passe de flou et un peu plus bas à net,
- * avec 45 ms d'écart entre deux morceaux.
+ * l'un après l'autre (plus franc en Studio).
  */
 export function staggerIn(root: Element, startDelay = 40) {
-  if (!studioOn()) return;
+  if (!motionOn()) return;
+  const f = feel();
   pieces(root).forEach((piece, i) => {
     piece.animate(
       [
-        { opacity: 0, transform: "translateY(10px) scale(0.96)", filter: "blur(10px)" },
+        { opacity: 0, transform: `translateY(${f.rise}px) scale(${f.scale})`, filter: `blur(${f.blur}px)` },
         { opacity: 1, transform: "none", filter: "blur(0)" },
       ],
-      { duration: 520, delay: startDelay + i * 45, easing: SPRING, fill: "backwards" },
+      { duration: f.ms, delay: startDelay + i * f.gap, easing: f.ease, fill: "backwards" },
     );
   });
   revealTitles(root, startDelay);
@@ -63,18 +80,19 @@ export function staggerIn(root: Element, startDelay = 40) {
 // ── Les titres qui se révèlent ───────────────────────────────────────────────
 
 /** Les titres d'une vue : ils se dévoilent de gauche à droite, flous puis nets. */
-const TITLES = "h2, h3, .media-title, .sys-title, .ask-outgoing-head b";
+const TITLES = "h1, h2, h3, .media-title, .sys-title, .ask-outgoing-head b";
 
 function revealTitles(root: Element, delay: number) {
+  const strong = studioOn();
   root.querySelectorAll<HTMLElement>(TITLES).forEach((title, i) => {
     // Un masque en dégradé glisse sur le texte : les lettres apparaissent une à une.
     // (On ne touche pas au texte lui-même : la traduction anglaise reste intacte.)
     title.animate(
       [
-        { maskImage: "linear-gradient(90deg, #000 40%, transparent 60%)", maskSize: "260% 100%", maskPosition: "100% 0", filter: "blur(5px)", letterSpacing: "0.12em" },
+        { maskImage: "linear-gradient(90deg, #000 40%, transparent 60%)", maskSize: "260% 100%", maskPosition: "100% 0", filter: `blur(${strong ? 5 : 2}px)`, letterSpacing: strong ? "0.12em" : "normal" },
         { maskImage: "linear-gradient(90deg, #000 40%, transparent 60%)", maskSize: "260% 100%", maskPosition: "0% 0", filter: "blur(0)", letterSpacing: "normal" },
       ],
-      { duration: 620, delay: delay + 80 + i * 70, easing: OUT, fill: "backwards" },
+      { duration: strong ? 620 : 420, delay: delay + 60 + i * 60, easing: OUT, fill: "backwards" },
     );
   });
 }
@@ -85,12 +103,15 @@ function revealTitles(root: Element, delay: number) {
 function growCover(root: Element, delay: number) {
   const cover = root.querySelector(".media-cover.large");
   if (!cover) return;
+  const strong = studioOn();
   cover.animate(
     [
-      { transform: "translate(-34px, -30px) scale(0.3)", borderRadius: "50%", filter: "blur(6px)" },
+      strong
+        ? { transform: "translate(-34px, -30px) scale(0.3)", borderRadius: "50%", filter: "blur(6px)" }
+        : { transform: "translate(-14px, -12px) scale(0.7)", filter: "blur(2px)" },
       { transform: "none", filter: "blur(0)" },
     ],
-    { duration: 640, delay, easing: SPRING, fill: "backwards" },
+    { duration: strong ? 640 : 420, delay, easing: strong ? SPRING : OUT, fill: "backwards" },
   );
 }
 
@@ -101,13 +122,14 @@ const drawnViews = new WeakSet<Element>();
 
 /** Système : les anneaux tournent en arrivant, les barres des disques se remplissent. */
 function drawCharts(root: Element, delay: number) {
+  const strong = studioOn();
   root.querySelectorAll(".sys-ring").forEach((ring, i) => {
     ring.animate(
       [
-        { transform: "rotate(-120deg) scale(0.7)", opacity: 0 },
+        { transform: strong ? "rotate(-120deg) scale(0.7)" : "rotate(-40deg) scale(0.92)", opacity: 0 },
         { transform: "none", opacity: 1 },
       ],
-      { duration: 760, delay: delay + i * 90, easing: SPRING, fill: "backwards" },
+      { duration: strong ? 760 : 480, delay: delay + i * (strong ? 90 : 50), easing: strong ? SPRING : OUT, fill: "backwards" },
     );
   });
   // Les disques arrivent un peu après (ils se chargent à part) : voir watchContent.
@@ -121,7 +143,8 @@ function drawBars(view: Element) {
   if (bars.length === 0) return;
   drawnViews.add(view);
   bars.forEach((bar, i) => {
-    bar.animate([{ width: "0%" }, { width: bar.style.width || "0%" }], { duration: 900, delay: i * 80, easing: SPRING, fill: "backwards" });
+    const strong = studioOn();
+    bar.animate([{ width: "0%" }, { width: bar.style.width || "0%" }], { duration: strong ? 900 : 600, delay: i * 60, easing: strong ? SPRING : OUT, fill: "backwards" });
   });
 }
 
@@ -132,7 +155,8 @@ function drawBars(view: Element) {
  * à gauche de la vue en grandissant, puis se dissout dans le contenu.
  */
 export function flyIcon(tab: Element, stage: Element) {
-  if (!studioOn()) return;
+  if (!motionOn()) return;
+  const strong = studioOn();
   const from = tab.querySelector(".tab-icon")?.getBoundingClientRect();
   const to = stage.getBoundingClientRect();
   if (!from || from.width === 0) return;
@@ -155,35 +179,44 @@ export function flyIcon(tab: Element, stage: Element) {
     .animate(
       [
         { transform: "none", opacity: 1, filter: "blur(0)" },
-        { transform: `translate(${dx * 0.6}px, ${dy * 0.6}px) scale(2.2)`, opacity: 1, filter: "blur(0)", offset: 0.55 },
-        { transform: `translate(${dx}px, ${dy}px) scale(2.6)`, opacity: 0, filter: "blur(8px)" },
+        { transform: `translate(${dx * 0.6}px, ${dy * 0.6}px) scale(${strong ? 2.2 : 1.5})`, opacity: strong ? 1 : 0.7, filter: "blur(0)", offset: 0.55 },
+        { transform: `translate(${dx}px, ${dy}px) scale(${strong ? 2.6 : 1.7})`, opacity: 0, filter: `blur(${strong ? 8 : 3}px)` },
       ],
-      { duration: 620, easing: OUT },
+      { duration: strong ? 620 : 420, easing: OUT },
     )
     .finished.finally(() => ghost.remove());
 }
 
-/** Changement d'onglet façon Studio : plus de flou, un léger zoom. */
+/** L'ancien onglet s'en va (en Studio : plus de flou, un léger recul). */
 export function tabOut(old: Element, direction: number): Animation {
+  const strong = studioOn();
   return old.animate(
     [
       { opacity: 1, transform: "none", filter: "blur(0)" },
-      { opacity: 0, transform: `translateX(${-direction * 30}px) scale(0.92)`, filter: "blur(14px)" },
+      strong
+        ? { opacity: 0, transform: `translateX(${-direction * 30}px) scale(0.92)`, filter: "blur(14px)" }
+        : { opacity: 0, transform: `translateX(${-direction * 18}px) scale(0.98)`, filter: "blur(6px)" },
     ],
-    { duration: 260, easing: OUT, fill: "forwards" },
+    { duration: strong ? 260 : 220, easing: OUT, fill: "forwards" },
   );
 }
 
 /** Une notification qui arrive : elle « sort » de la pilule en grossissant. */
 export function popIn(card: Element) {
-  if (!studioOn()) return;
+  if (!motionOn()) return;
+  const strong = studioOn();
   card.animate(
-    [
-      { opacity: 0, transform: "scale(0.6)", filter: "blur(12px)" },
-      { opacity: 1, transform: "scale(1.03)", filter: "blur(0)", offset: 0.6 },
-      { opacity: 1, transform: "none", filter: "blur(0)" },
-    ],
-    { duration: 560, easing: OUT, fill: "backwards" },
+    strong
+      ? [
+          { opacity: 0, transform: "scale(0.6)", filter: "blur(12px)" },
+          { opacity: 1, transform: "scale(1.03)", filter: "blur(0)", offset: 0.6 },
+          { opacity: 1, transform: "none", filter: "blur(0)" },
+        ]
+      : [
+          { opacity: 0, transform: "scale(0.92)", filter: "blur(4px)" },
+          { opacity: 1, transform: "none", filter: "blur(0)" },
+        ],
+    { duration: strong ? 560 : 340, easing: OUT, fill: "backwards" },
   );
 }
 
@@ -199,16 +232,17 @@ const lastText = new WeakMap<Element, string>();
  *  - une liste est redessinée : les lignes glissent jusqu'à leur nouvelle place ;
  *  - les barres des disques arrivent : elles se remplissent.
  */
-export function watchContent(root: Element) {
+export function watchContent(root: Element, opts: { lists?: boolean } = {}) {
+  const lists = opts.lists ?? true;
   const observer = new MutationObserver((records) => {
-    if (!studioOn()) return;
+    if (!motionOn()) return;
     const touched = new Set<Element>();
     let listsChanged = false;
     for (const r of records) {
       const target = r.type === "characterData" ? r.target.parentElement : (r.target as Element);
       if (!target) continue;
       touched.add(target);
-      if (r.type === "childList" && (target.closest(LISTS) || target.querySelector(LISTS))) listsChanged = true;
+      if (lists && r.type === "childList" && (target.closest(LISTS) || target.querySelector(LISTS))) listsChanged = true;
       if (r.type === "childList" && target.querySelector(".sys-bar i")) {
         const view = target.closest(".view");
         if (view) drawBars(view);
@@ -230,7 +264,9 @@ function roll(elem: Element) {
   if (before === undefined || before === text) return;
   // Le sens suit la valeur : un nombre qui monte arrive d'en bas, qui descend d'en haut.
   const up = (parseFloat(text.replace(/[^\d.-]/g, "")) || 0) >= (parseFloat(before.replace(/[^\d.-]/g, "")) || 0);
-  const from = up ? "0.6em" : "-0.6em"; // en « em » : marche aussi dans un dessin SVG
+  const strong = studioOn();
+  const d = strong ? 0.6 : 0.35;
+  const from = `${up ? d : -d}em`; // en « em » : marche aussi dans un dessin SVG
   // Un texte « en ligne » ne peut pas glisser : on en fait un petit bloc.
   if (elem instanceof HTMLElement && getComputedStyle(elem).display === "inline") elem.style.display = "inline-block";
   // L'élément peut déjà être tourné ou déplacé en CSS (le texte du minuteur) :
@@ -239,26 +275,28 @@ function roll(elem: Element) {
   const base = own && own !== "none" ? own : "";
   elem.animate(
     [
-      { transform: `translateY(${from}) ${base}`, filter: "blur(4px)", opacity: 0.2 },
+      { transform: `translateY(${from}) ${base}`, filter: `blur(${strong ? 4 : 2}px)`, opacity: strong ? 0.2 : 0.4 },
       { transform: `translateY(0) ${base}`, filter: "blur(0)", opacity: 1 },
     ],
-    { duration: 340, easing: SPRING },
+    { duration: strong ? 340 : 260, easing: strong ? SPRING : OUT },
   );
 }
 
 // ── La gélatine des boutons ──────────────────────────────────────────────────
 
 /**
- * Appui sur un bouton : il s'écrase un peu ; au relâchement il rebondit
- * (plus large puis plus haut, puis se pose), comme une gomme.
+ * Appui sur un bouton : il s'écrase un peu ; au relâchement il revient (en
+ * Studio il rebondit, plus large puis plus haut, comme une gomme).
  */
 export function jellyButtons(root: Element) {
   root.addEventListener("pointerdown", (e) => {
-    if (!studioOn()) return;
+    if (!motionOn()) return;
+    const strong = studioOn();
     const button = (e.target as Element).closest("button, [role=switch], .ctl-dot");
     // Pas les onglets : on peut les glisser pour les ranger (tab-drag.ts les déplace déjà).
     if (!button || button.classList.contains("tab")) return;
-    const press = button.animate([{ transform: "none" }, { transform: "scale(0.9)" }], {
+    const down = strong ? "scale(0.9)" : "scale(0.95)";
+    const press = button.animate([{ transform: "none" }, { transform: down }], {
       duration: 120,
       easing: OUT,
       fill: "forwards",
@@ -267,14 +305,17 @@ export function jellyButtons(root: Element) {
       button.removeEventListener("pointerup", release);
       button.removeEventListener("pointerleave", release);
       press.cancel();
+      // Classique : il revient simplement ; Studio : il rebondit comme une gomme.
       button.animate(
-        [
-          { transform: "scale(0.9)" },
-          { transform: "scale(1.08, 0.95)", offset: 0.35 },
-          { transform: "scale(0.97, 1.04)", offset: 0.65 },
-          { transform: "none" },
-        ],
-        { duration: 480, easing: "ease-out" },
+        strong
+          ? [
+              { transform: down },
+              { transform: "scale(1.08, 0.95)", offset: 0.35 },
+              { transform: "scale(0.97, 1.04)", offset: 0.65 },
+              { transform: "none" },
+            ]
+          : [{ transform: down }, { transform: "none" }],
+        { duration: strong ? 480 : 200, easing: "ease-out" },
       );
     };
     button.addEventListener("pointerup", release);
@@ -306,6 +347,7 @@ function keyOf(item: HTMLElement): string {
  * place (technique « FLIP ») ; les nouvelles arrivent floues.
  */
 function flipLists(root: Element) {
+  const f = feel();
   const seen = new Map<string, number>();
   root.querySelectorAll<HTMLElement>(LISTS).forEach((list) => {
     // Plusieurs listes de même classe : on les distingue par leur rang.
@@ -329,13 +371,13 @@ function flipLists(root: Element) {
       if (!old) {
         child.animate(
           [
-            { opacity: 0, transform: "scale(0.94)", filter: "blur(8px)" },
+            { opacity: 0, transform: `scale(${f.scale - 0.02})`, filter: `blur(${f.blur * 0.8}px)` },
             { opacity: 1, transform: "none", filter: "blur(0)" },
           ],
-          { duration: 420, easing: SPRING },
+          { duration: f.ms - 100, easing: f.ease },
         );
       } else if (old.x !== pos.x || old.y !== pos.y) {
-        child.animate([{ transform: `translate(${old.x - pos.x}px, ${old.y - pos.y}px)` }, { transform: "none" }], { duration: 480, easing: SPRING });
+        child.animate([{ transform: `translate(${old.x - pos.x}px, ${old.y - pos.y}px)` }, { transform: "none" }], { duration: f.ms - 40, easing: f.ease });
       }
     }
     snapshots.set(id, now);
@@ -347,7 +389,7 @@ function flipLists(root: Element) {
 /** Un reflet doux suit le curseur sur le verre de l'île (voir island.css). */
 export function spotlight(shell: HTMLElement) {
   shell.addEventListener("pointermove", (e) => {
-    if (!studioOn()) return;
+    if (!motionOn()) return;
     const r = shell.getBoundingClientRect();
     shell.style.setProperty("--mx", `${e.clientX - r.left}px`);
     shell.style.setProperty("--my", `${e.clientY - r.top}px`);

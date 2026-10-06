@@ -139,8 +139,14 @@ qu'après la fin de l'animation.
 - **Forme de l'île** : transitions CSS sur largeur, hauteur, arrondi, avec un
   ressort (`--ease` en `linear()`, 420 ms, petit dépassement de 4 %).
   `TRANSITION_MS` dans island.ts doit suivre `--speed`.
-- **Arrivée du contenu** quand l'état change : fondu, léger flou et glissement
-  (Web Animations API, dans `render`).
+- **Arrivée du contenu** quand l'état change : les onglets puis les morceaux de
+  la vue passent de flous à nets l'un après l'autre (`src/island/motion.ts`).
+- **Deux intensités** (Réglages → Apparence → Animations) : « Classique » joue
+  les effets de `motion.ts` en douceur, « Studio » (classe `motion-studio` sur
+  `<body>`) les joue plus franchement. Effets : icône d'onglet qui vole, titres
+  révélés, chiffres qui roulent, listes qui glissent (FLIP), boutons gélatine,
+  notification qui sort de la pilule, reflet sous la souris, anneaux et barres
+  qui se dessinent. Les mêmes servent dans la fenêtre des Réglages.
 - **Changement d'onglet** (`switchTab`) : on ne redessine pas toute la vue. La
   pastille de l'onglet actif (`src/island/tab-pill.ts`) se déplace avec deux
   ressorts, un par bord : le bord qui mène est raide, celui qui suit est mou,

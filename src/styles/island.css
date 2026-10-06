@@ -3045,8 +3045,10 @@ body.presenting .island[data-state="hidden"] {
   font-size: 12px;
 }
 
-/* ── Design d'animation « Studio » (Réglages → Apparence → Animations) ─────
-   Posé par la classe motion-studio sur <body> ; le reste est dans studio.ts. */
+/* ── Les effets d'animation (Réglages → Apparence → Animations) ────────────
+   Ils servent aux deux designs : en douceur par défaut (« Classique »), plus
+   francs quand <body> porte la classe motion-studio. Le reste est dans
+   src/island/motion.ts. */
 
 /* La pilule rebondit plus franchement (8 % de dépassement au lieu de 4 %).
    Pas en grand : le panneau toucherait les bords de la fenêtre. */
@@ -3056,7 +3058,10 @@ body.presenting .island[data-state="hidden"] {
     1.0029, 0.9988, 0.996, 1);
 }
 
-/* Survol : les boutons se soulèvent un peu, comme aimantés. */
+/* Survol : les boutons se soulèvent un peu, comme aimantés (plus en Studio). */
+.btn:hover {
+  transform: translateY(-1px);
+}
 .motion-studio .btn:hover {
   transform: translateY(-1px) scale(1.04);
 }
@@ -3068,18 +3073,23 @@ body.presenting .island[data-state="hidden"] {
   inherits: true;
   initial-value: 0;
 }
-.motion-studio .island {
-  background-image: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, calc(var(--spot) * 0.07)), transparent 70%);
+.island {
+  --spot-max: 0.04;
+  background-image: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, calc(var(--spot) * var(--spot-max))), transparent 70%);
   transition-property: width, height, border-radius, padding, --spot;
   transition-duration: var(--speed), var(--speed), var(--speed), var(--speed), 400ms;
   transition-timing-function: var(--ease);
 }
-.motion-studio .island:hover {
+.motion-studio .island {
+  --spot-max: 0.07;
+}
+.island:hover {
   --spot: 1;
 }
 
-/* Minuteur dans la mini-île : la barre se replie en un petit anneau qui se vide. */
-.motion-studio .timer-compact-bar {
+/* Minuteur dans la mini-île : la barre se replie en un petit anneau qui se vide
+   (le rebond de --ease est plus fort en Studio). */
+.timer-compact-bar {
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -3088,7 +3098,7 @@ body.presenting .island[data-state="hidden"] {
   -webkit-mask: radial-gradient(circle, transparent 0 5.5px, #000 6px);
   animation: studio-ring 700ms var(--ease) both;
 }
-.motion-studio .timer-compact-bar i {
+.timer-compact-bar i {
   display: none;
 }
 @keyframes studio-ring {
@@ -3100,60 +3110,60 @@ body.presenting .island[data-state="hidden"] {
 }
 
 /* Musique : la barre de progression s'épaissit au survol. */
-.motion-studio .media-bar {
+.media-bar {
   transition: height 300ms var(--ease), border-radius 300ms var(--ease);
 }
-.motion-studio .media-progress:hover .media-bar {
+.media-progress:hover .media-bar {
   height: 9px;
   border-radius: 5px;
 }
 
 /* Contrôles : les ondes du haut-parleur suivent le volume. */
-.motion-studio .ctl-pill .wave {
+.ctl-pill .wave {
   transform-box: fill-box;
   transform-origin: left center;
   transition:
     opacity 300ms ease,
     transform 420ms var(--ease);
 }
-.motion-studio .ctl-pill[data-level="0"] .wave,
-.motion-studio .ctl-pill[data-level="1"] .w2 {
+.ctl-pill[data-level="0"] .wave,
+.ctl-pill[data-level="1"] .w2 {
   opacity: 0;
   transform: scale(0.4);
 }
 
 /* Notifications empilées : l'icône montre des cartes derrière elle, une par
    notification en attente ; elles s'écartent au survol. */
-.motion-studio .notif-icon {
+.notif-icon {
   transition: box-shadow 360ms var(--ease);
 }
-.motion-studio .notif[data-more="1"] .notif-icon {
+.notif[data-more="1"] .notif-icon {
   box-shadow: 4px -3px 0 -1px rgba(255, 255, 255, 0.28);
 }
-.motion-studio .notif[data-more="2"] .notif-icon {
+.notif[data-more="2"] .notif-icon {
   box-shadow:
     4px -3px 0 -1px rgba(255, 255, 255, 0.28),
     8px -6px 0 -2px rgba(255, 255, 255, 0.16);
 }
-.motion-studio .notif[data-more="3"] .notif-icon {
+.notif[data-more="3"] .notif-icon {
   box-shadow:
     4px -3px 0 -1px rgba(255, 255, 255, 0.28),
     8px -6px 0 -2px rgba(255, 255, 255, 0.16),
     12px -9px 0 -3px rgba(255, 255, 255, 0.09);
 }
-.motion-studio .notif[data-more]:hover .notif-icon {
+.notif[data-more]:hover .notif-icon {
   box-shadow:
     7px -4px 0 -1px rgba(255, 255, 255, 0.28),
     14px -8px 0 -2px rgba(255, 255, 255, 0.16),
     21px -12px 0 -3px rgba(255, 255, 255, 0.09);
 }
-.motion-studio .notif[data-more="0"] .notif-icon {
+.notif[data-more="0"] .notif-icon {
   box-shadow: none;
 }
 
 /* « Demander à Claude » : le bouton respire pendant que Claude réfléchit,
    puis la réponse arrive floue et devient nette. */
-.motion-studio .btn.thinking {
+.btn.thinking {
   animation: studio-breathe 1.6s ease-in-out infinite;
   box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent);
 }
@@ -3163,8 +3173,18 @@ body.presenting .island[data-state="hidden"] {
     box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 0%, transparent);
   }
 }
+.ask-answer {
+  animation: soft-in 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
 .motion-studio .ask-answer {
   animation: studio-in 640ms cubic-bezier(0.34, 1.4, 0.5, 1) both;
+}
+@keyframes soft-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(4px);
+  }
 }
 @keyframes studio-in {
   from {
@@ -3175,12 +3195,14 @@ body.presenting .island[data-state="hidden"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .btn:hover,
   .motion-studio .btn:hover {
     transform: none;
   }
-  .motion-studio .btn.thinking,
+  .btn.thinking,
+  .ask-answer,
   .motion-studio .ask-answer,
-  .motion-studio .timer-compact-bar {
+  .timer-compact-bar {
     animation: none;
   }
 }
