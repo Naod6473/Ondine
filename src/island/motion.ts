@@ -148,44 +148,7 @@ function drawBars(view: Element) {
   });
 }
 
-// ── L'icône d'onglet qui vole jusqu'au titre ─────────────────────────────────
-
-/**
- * Au changement d'onglet, une copie de l'icône cliquée s'envole jusqu'en haut
- * à gauche de la vue en grandissant, puis se dissout dans le contenu.
- */
-export function flyIcon(tab: Element, stage: Element) {
-  if (!motionOn()) return;
-  const strong = studioOn();
-  const from = tab.querySelector(".tab-icon")?.getBoundingClientRect();
-  const to = stage.getBoundingClientRect();
-  if (!from || from.width === 0) return;
-  const ghost = tab.querySelector(".tab-icon")!.cloneNode(true) as HTMLElement;
-  Object.assign(ghost.style, {
-    position: "fixed",
-    left: `${from.left}px`,
-    top: `${from.top}px`,
-    width: `${from.width}px`,
-    height: `${from.height}px`,
-    display: "grid",
-    placeItems: "center",
-    pointerEvents: "none",
-    zIndex: "50",
-  });
-  document.body.append(ghost);
-  const dx = to.left + 18 - from.left;
-  const dy = to.top + 14 - from.top;
-  ghost
-    .animate(
-      [
-        { transform: "none", opacity: 1, filter: "blur(0)" },
-        { transform: `translate(${dx * 0.6}px, ${dy * 0.6}px) scale(${strong ? 2.2 : 1.5})`, opacity: strong ? 1 : 0.7, filter: "blur(0)", offset: 0.55 },
-        { transform: `translate(${dx}px, ${dy}px) scale(${strong ? 2.6 : 1.7})`, opacity: 0, filter: `blur(${strong ? 8 : 0}px)` },
-      ],
-      { duration: strong ? 620 : 420, easing: OUT },
-    )
-    .finished.finally(() => ghost.remove());
-}
+// ── Le changement d'onglet ───────────────────────────────────────────────────
 
 /** L'ancien onglet s'en va (en Studio : plus de flou, un léger recul). */
 export function tabOut(old: Element, direction: number): Animation {
