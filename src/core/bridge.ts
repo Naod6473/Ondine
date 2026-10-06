@@ -83,7 +83,7 @@ export const Bridge = {
   /** On attrape l'île : la fenêtre suit la souris jusqu'au lâcher, puis s'aimante à un bord. */
   islandDragStart: () => call<void>("island_drag_start"),
   /** Depuis quand personne n'a touché le PC, et si une présentation / un plein écran est en cours. */
-  uiLanguage: () => call<"fr" | "en">("ui_language"),
+  uiLanguage: () => call<string>("ui_language"),
   deskState: () => call<{ idleMs: number; busy: boolean }>("desk_state"),
 
   // Journal
@@ -113,7 +113,19 @@ export const Bridge = {
   profileActivate: (id: string) => callOrThrow<void>("profile_activate", { id }),
   /** Le nom du Wi-Fi connecté (pour la règle d'un profil), ou null. */
   wifiName: () => call<string | null>("profile_wifi_name"),
+  // Diagnostic (src-tauri/src/diagnostics.rs)
+  /** Ouvre dans le navigateur une issue GitHub préremplie (rien n'est envoyé sans la personne). */
+  bugReportOpen: () => callOrThrow<void>("bug_report_open"),
+  /** Mémoire et processeur d'Ondine (+ WebView2). null si la fenêtre n'est pas visible. */
+  selfUsage: () => call<SelfUsage | null>("self_usage"),
 };
+
+export interface SelfUsage {
+  memoryBytes: number;
+  /** Part de tout le processeur (0-100) ; null à la première mesure. */
+  cpuPercent: number | null;
+  processes: number;
+}
 
 /** Écoute un événement Tauri envoyé par le Rust. Sans effet hors de Tauri. */
 export async function onTauriEvent<T>(name: string, handler: (payload: T) => void): Promise<() => void> {

@@ -12,16 +12,43 @@
 // La langue : réglage « Langue » (auto, fr, en). « auto » = celle choisie dans
 // l'installateur, sinon celle de Windows (le Rust la donne : ui_language).
 // Changer la langue traduit les fenêtres sur place, sans les recharger.
+//
+// Une autre langue plus tard : un fichier i18n-xx.json de la même forme, et une
+// ligne dans DICTIONARIES ci-dessous (voir CONTRIBUTING.md, « Ajouter une langue »).
 
 import { Bridge } from "./bridge";
 import { settingsStore } from "./settings-store";
-import dictionary from "./i18n-en.json";
+import english from "./i18n-en.json";
 
-export type Lang = "fr" | "en";
+/** Un dictionnaire : français → autre langue. */
+interface Dictionary {
+  exact: Record<string, string>;
+  patterns: [string, string][];
+}
+
+/** Les langues traduites, par code (le français est la langue d'origine). */
+const DICTIONARIES: Record<string, Dictionary> = {
+  en: english as unknown as Dictionary,
+};
+
+/** "fr", ou un code de DICTIONARIES ("en"…). */
+export type Lang = string;
 
 let lang: Lang = "fr";
-const exact = new Map<string, string>(Object.entries(dictionary.exact as Record<string, string>));
-const patterns: [RegExp, string][] = (dictionary.patterns as [string, string][]).map(([rx, rep]) => [new RegExp(rx), rep]);
+/** Le dictionnaire de la langue courante, prêt à servir (vide en français). */
+let exact = new Map<string, string>();
+let patterns: [RegExp, string][] = [];
+
+function loadDictionary(code: Lang) {
+  const d = DICTIONARIES[code];
+  exact = new Map(Object.entries(d?.exact ?? {}));
+  patterns = (d?.patterns ?? []).map(([rx, rep]) => [new RegExp(rx), rep]);
+}
+
+/** Les langues qu'on sait afficher. */
+export function knownLang(code: string | null | undefined): code is Lang {
+  return code === "fr" || (!!code && code in DICTIONARIES);
+}
 
 export function currentLang(): Lang {
   return lang;
@@ -108,14 +135,18 @@ let originalTitle = "";
 
 /** La langue voulue par le réglage (« auto » : celle de l'installateur ou de Windows). */
 async function wantedLang(setting: string): Promise<Lang> {
-  if (setting === "fr" || setting === "en") return setting;
+  if (knownLang(setting)) return setting;
   const sys = await Bridge.uiLanguage();
-  return sys === "en" ? "en" : sys === "fr" ? "fr" : navigator.language.startsWith("fr") ? "fr" : "en";
+  if (knownLang(sys)) return sys;
+  // Hors de l'appli : la langue du navigateur, sinon l'anglais.
+  const nav = navigator.language.slice(0, 2).toLowerCase();
+  return knownLang(nav) ? nav : "en";
 }
 
 /** Passe toute la page dans la langue `next`, sans recharger la fenêtre. */
 function switchTo(next: Lang) {
   lang = next;
+  loadDictionary(next);
   document.documentElement.lang = lang;
   document.title = t(originalTitle);
   // En français, t() rend le texte tel quel : on retrouve les originaux.

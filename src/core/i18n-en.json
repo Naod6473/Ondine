@@ -1028,7 +1028,13 @@
 "1 calendrier": "1 calendar",
 "ce rendez-vous n'a pas de lien": "this appointment has no link",
 "lien refusé : seuls les liens http(s) s'ouvrent": "link refused: only http(s) links are opened",
-"aucun lien enregistré : ajoute-le dans les réglages du module Agenda": "no link saved: add it in the Calendar module settings"
+"aucun lien enregistré : ajoute-le dans les réglages du module Agenda": "no link saved: add it in the Calendar module settings",
+"Signaler un problème": "Report a problem",
+"Page ouverte dans ton navigateur : relis tout avant d'envoyer.": "Page opened in your browser: check everything before sending.",
+"Ouvre GitHub avec la version, Windows et les 40 dernières lignes du journal (chemins personnels masqués). Tu relis et complètes tout avant d'envoyer : rien ne part sans toi.": "Opens GitHub with the version, Windows and the last 40 lines of the log (personal paths hidden). You review and complete everything before sending: nothing leaves without you.",
+"Ressources utilisées": "Resources used",
+"Mémoire et processeur d'Ondine et de ses fenêtres (WebView2). Mesuré seulement pendant que cette page est ouverte.": "Memory and CPU used by Ondine and its windows (WebView2). Measured only while this page is open.",
+"Disponible dans l'appli seulement.": "Only available in the app."
 },
 "patterns": [
 [
@@ -1970,6 +1976,10 @@
 [
 "^(.+) : aucun lien enregistré : ajoute-le dans les réglages du module Agenda$",
 "$1: no link saved: add it in the Calendar module settings"
+],
+[
+"^(\\d+) Mo · (.+) % du processeur · (\\d+) processus$",
+"$1 MB · $2% CPU · $3 processes"
 ]
 ]
 }

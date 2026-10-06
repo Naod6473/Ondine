@@ -25,7 +25,7 @@
 use crate::sync::LockExt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize, WebviewWindow};
@@ -112,6 +112,51 @@ pub fn snap(cx: f64, cy: f64, w: f64, h: f64) -> Placement {
 /// Marge autour de l'île qui compte encore comme « sur l'île » (px logiques),
 /// pour que le réglage soit déjà basculé quand la souris arrive sur un bouton.
 const HIT_MARGIN: f64 = 14.0;
+
+/// Rythme de lecture de la souris, île visible : normal (≈ 60 Hz) et « au calme »
+/// (≈ 30 Hz). Île cachée : 20 Hz (seulement la bande de réveil).
+const TICK_FAST: Duration = Duration::from_millis(16);
+const TICK_CALM: Duration = Duration::from_millis(33);
+const TICK_HIDDEN: Duration = Duration::from_millis(50);
+/// La souris n'a pas bougé depuis… : rien à envoyer, on peut ralentir.
+const CALM_AFTER: Duration = Duration::from_millis(250);
+/// La souris est à plus de… px logiques de l'île : son regard peut suivre à
+/// 30 Hz, et elle mettrait plusieurs tours à atteindre l'île.
+const FAR_FROM_ISLAND: f64 = 200.0;
+/// On regarde si les écrans ont changé toutes les…
+const SCREEN_CHECK: Duration = Duration::from_millis(500);
+
+/// Combien attendre avant le prochain tour de lecture de la souris.
+///
+/// Chaque tour coûte peu (trois appels Windows : position de la souris, de la
+/// fenêtre, état du bouton), mais 60 réveils par seconde, toute la journée,
+/// c'est le premier poste de travail d'Ondine au repos. Quand rien ne bouge,
+/// ou que la souris est loin, on en fait deux fois moins. Jamais pendant un
+/// appui (glisser de fichier, déplacement de l'île). Au pire, le premier
+/// mouvement après un arrêt est vu 17 ms plus tard ; dès qu'il est vu, on
+/// repasse à 60 Hz.
+pub fn poll_interval(active: bool, busy: bool, still_for: Duration, distance: f64) -> Duration {
+    if !active {
+        TICK_HIDDEN
+    } else if busy {
+        TICK_FAST
+    } else if still_for >= CALM_AFTER || distance > FAR_FROM_ISLAND {
+        TICK_CALM
+    } else {
+        TICK_FAST
+    }
+}
+
+/// Distance (px logiques) entre le point et la forme de l'île ; 0 dedans. Une
+/// île sans taille connue compte comme « tout près » (on ne ralentit pas).
+pub fn distance_outside(r: &IslandRect, x: f64, y: f64) -> f64 {
+    if r.w <= 0.0 || r.h <= 0.0 {
+        return 0.0;
+    }
+    let dx = (r.x - x).max(0.0).max(x - (r.x + r.w));
+    let dy = (r.y - y).max(0.0).max(y - (r.y + r.h));
+    dx.hypot(dy)
+}
 
 #[derive(Serialize, Clone)]
 pub struct CursorPayload {
@@ -358,21 +403,28 @@ fn screen_key(app: &AppHandle) -> Option<(i32, i32, u32, u32, u64)> {
 ///     transparente et qui ne prend pas le focus ne les reçoit pas toujours ;
 ///   - île visible (~60 fois par seconde) : bascule les clics traversants selon que
 ///     la souris est sur l'île ou non, et envoie sa position au front ("cursor"),
-///     pour le survol et le regard de la mascotte ;
-///   - dans les deux cas, surveille les écrans (≈ 2 fois par seconde).
+///     pour le survol et le regard de la mascotte. Au calme (souris immobile
+///     depuis 250 ms, ou à plus de 200 px de l'île), on passe à ~30 fois par
+///     seconde : voir `poll_interval` ;
+///   - dans les deux cas, surveille les écrans (2 fois par seconde).
 pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
     std::thread::spawn(move || {
         let mut was_down = false;
         let mut last_screen = None;
         let mut last = (f64::MIN, f64::MIN);
         let mut in_wake_zone = false;
-        let mut ticks: u32 = 0;
+        let mut last_screen_check = Instant::now();
+        // Quand la souris a bougé pour la dernière fois, et à quelle distance de
+        // l'île elle était : de quoi choisir le rythme du prochain tour.
+        let mut last_move = Instant::now();
+        let mut distance = 0.0;
         loop {
             let active = gate.is_active();
-            std::thread::sleep(Duration::from_millis(if active { 16 } else { 50 }));
+            let busy = was_down || gate.drag.locked().is_some();
+            std::thread::sleep(poll_interval(active, busy, last_move.elapsed(), distance));
 
-            ticks = ticks.wrapping_add(1);
-            if ticks % (if active { 30 } else { 10 }) == 0 {
+            if last_screen_check.elapsed() >= SCREEN_CHECK {
+                last_screen_check = Instant::now();
                 let now = screen_key(&app);
                 if now.is_some() && now != last_screen {
                     let first = last_screen.is_none();
@@ -436,8 +488,10 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 continue;
             }
             last = (x, y);
+            last_move = Instant::now();
 
             let r = *gate.rect.locked();
+            distance = distance_outside(&r, x, y);
             let on_island = r.w > 0.0
                 && x >= r.x - HIT_MARGIN
                 && x <= r.x + r.w + HIT_MARGIN
@@ -510,6 +564,33 @@ pub fn apply_hotkey(app: &AppHandle, wanted: &str) {
 #[cfg(test)]
 mod tests {
     use super::snap;
+    use super::{distance_outside, poll_interval, IslandRect, TICK_CALM, TICK_FAST, TICK_HIDDEN};
+    use std::time::Duration;
+
+    #[test]
+    fn cursor_poll_slows_down_only_when_calm() {
+        let ms = Duration::from_millis;
+        // Île cachée : toujours le rythme lent de la bande de réveil.
+        assert_eq!(poll_interval(false, false, ms(0), 0.0), TICK_HIDDEN);
+        // La souris bouge près de l'île : plein rythme.
+        assert_eq!(poll_interval(true, false, ms(10), 50.0), TICK_FAST);
+        // Immobile, ou loin : au calme.
+        assert_eq!(poll_interval(true, false, ms(400), 0.0), TICK_CALM);
+        assert_eq!(poll_interval(true, false, ms(10), 500.0), TICK_CALM);
+        // Un bouton enfoncé (glisser, déplacement) : jamais ralenti.
+        assert_eq!(poll_interval(true, true, ms(5000), 900.0), TICK_FAST);
+    }
+
+    #[test]
+    fn distance_to_island() {
+        let r = IslandRect { x: 100.0, y: 0.0, w: 200.0, h: 40.0 };
+        assert_eq!(distance_outside(&r, 150.0, 20.0), 0.0);
+        assert_eq!(distance_outside(&r, 50.0, 20.0), 50.0);
+        assert_eq!(distance_outside(&r, 300.0, 70.0), 30.0);
+        assert!((distance_outside(&r, 330.0, 80.0) - 50.0).abs() < 1e-9);
+        // Forme inconnue : « tout près ».
+        assert_eq!(distance_outside(&IslandRect::default(), 999.0, 999.0), 0.0);
+    }
 
     #[test]
     fn island_hotkeys_parse() {

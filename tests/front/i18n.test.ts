@@ -98,6 +98,7 @@ describe("i18n-en.json bien formé", () => {
 
 /** Textes identiques en anglais, ou noms propres : pas besoin d'entrée. */
 const SAME_IN_ENGLISH = new Set([
+  "Modules",
   "Ondine",
   "Notes",
   "📝 Notes",
