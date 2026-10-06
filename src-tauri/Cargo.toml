@@ -120,6 +120,9 @@ windows = { version = "0.61", features = [
   # Contrôles : Wi-Fi, Bluetooth, mode avion.
   "Devices_Radios",
   "Foundation_Collections",
+  # Capture : la pipette (pixels physiques sur chaque écran, fenêtre Win32).
+  "Win32_UI_HiDpi",
+  "Win32_System_LibraryLoader",
 ] }
 
 [profile.release]

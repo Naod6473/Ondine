@@ -541,7 +541,6 @@
 "Consigne donnée à Claude": "Instruction given to Claude",
 "Vide = « Réponds en français, simplement et brièvement… ». Elle est montrée avant chaque envoi.": "Empty = “Answer in French, simply and briefly…”. It's shown before each send.",
 "Proposer « Demander à Claude » quand on dépose un fichier sur l'île": "Offer “Ask Claude” when a file is dropped on the island",
-"Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur ton ordinateur, hors ligne : l'image n'est envoyée nulle part.": "Captures an area of the screen with the Windows tool, then reads its text (OCR) or saves it as PNG. Also works on an image you've already copied. Text recognition runs on your computer, offline: the image is sent nowhere.",
 "Copier le texte lu dans le presse-papiers": "Copy the recognized text to the clipboard",
 "Dossier des captures": "Captures folder",
 "Vide : le dossier Images\\Ondine.": "Empty: the Pictures\\Ondine folder.",
@@ -925,7 +924,21 @@
 "Colle-le comme une image (Ctrl+V).": "Paste it as an image (Ctrl+V).",
 "Copier le QR code impossible": "Couldn't copy the QR code",
 "Vise le code avec l'appareil photo de ton téléphone. Calculé sur ton PC : rien ne passe par Internet.": "Point your phone's camera at the code. Made on your PC: nothing goes over the Internet.",
-"rien à mettre dans le QR code": "nothing to put in the QR code"
+"rien à mettre dans le QR code": "nothing to put in the QR code",
+"Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur ton ordinateur, hors ligne : l'image n'est envoyée nulle part. La pipette copie la couleur d'un point de l'écran.": "Captures an area of the screen with the Windows tool, then reads its text (OCR) or saves it as PNG. Also works on an image you've already copied. Text recognition runs on your computer, offline: the image is sent nowhere. The color picker copies the color of any point on the screen.",
+"Format de la couleur copiée (pipette)": "Copied color format (color picker)",
+"Couleur à l'écran :": "Color on screen:",
+"💧 Pipette": "💧 Color picker",
+"Fige l'écran : clique sur un point pour copier sa couleur (Échap pour annuler, flèches pour bouger d'un pixel)": "Freezes the screen: click a point to copy its color (Esc to cancel, arrow keys to move by one pixel)",
+"Aucune couleur pour l'instant": "No colors yet",
+"Pipette impossible": "Color picker unavailable",
+"Copie impossible": "Copy failed",
+"Pipette : copier une couleur de l'écran": "Color picker: copy a color from the screen",
+"la pipette est déjà ouverte": "the color picker is already open",
+"écran introuvable": "screen not found",
+"capture de l'écran impossible": "couldn't capture the screen",
+"capture de l'écran impossible (mémoire)": "couldn't capture the screen (memory)",
+"couleur invalide": "invalid color"
 },
 "patterns": [
 [
@@ -1835,6 +1848,14 @@
 [
 "^texte\\ trop\\ long\\ pour\\ un\\ QR\\ code\\ \\((\\d+)\\ caractères,\\ (\\d+)\\ au\\ plus\\)$",
 "text too long for a QR code ($1 characters, $2 at most)"
+],
+[
+"^(#[0-9A-F]{6}|rgb\\(.+\\)|hsl\\(.+\\)) copié$",
+"$1 copied"
+],
+[
+"^(.+) : cliquer pour copier$",
+"$1: click to copy"
 ]
 ]
 }

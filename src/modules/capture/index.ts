@@ -5,6 +5,11 @@
 // Windows, attend l'image, puis lit le texte ou enregistre le fichier. Il
 // prévient par "capture.done" ; le texte lu n'est pas dans le message, on le
 // demande avec la commande "last".
+//
+// La pipette : le Rust fige l'écran sous une croix avec une loupe (fenêtre
+// Win32, voir src-tauri/src/platform/picker.rs) ; un clic copie la couleur
+// (HEX, RGB ou HSL selon le réglage) et l'ajoute à l'historique (8 couleurs).
+// La couleur arrive par "capture.color" ; l'historique se demande avec "colors".
 
 import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
@@ -30,6 +35,54 @@ interface Done {
   ok: boolean;
   result?: OcrSummary | SavedFile;
   error?: string;
+}
+
+/** Une couleur de l'historique : la pastille (hex) et ce qui sera copié (text). */
+interface PickedColor {
+  hex: string;
+  text: string;
+}
+
+/** Ce que le Rust publie quand la pipette a choisi (rien si on a annulé). */
+interface ColorDone {
+  ok: boolean;
+  hex?: string;
+  text?: string;
+  error?: string;
+}
+
+/** Les dernières couleurs prises à la pipette, la plus récente en premier. */
+let colors: PickedColor[] = [];
+
+async function loadColors(api: ModuleApi) {
+  try {
+    const r = await api.invoke<{ colors: PickedColor[] }>("colors");
+    colors = r.colors;
+  } catch {
+    colors = []; // hors de l'appli (navigateur)
+  }
+  for (const r of redraws) r();
+}
+
+/** Lance la pipette ; la couleur arrivera par "capture.color". */
+async function pick(api: ModuleApi) {
+  api.closeIsland(); // l'île ne doit pas être sur la photo de l'écran
+  try {
+    await api.invoke("pick_color");
+  } catch (err) {
+    api.notify({ title: "Pipette impossible", body: errorText(err), icon: "⚠️", priority: "normal", key: "capture-color" });
+  }
+}
+
+/** Recopie une couleur de l'historique (dans le format choisi). */
+async function copyColor(api: ModuleApi, hex: string) {
+  try {
+    const r = await api.invoke<{ text: string }>("copy_color", { hex });
+    api.notify({ title: `${r.text} copié`, icon: "💧", priority: "low", key: "capture-color" });
+    void loadColors(api);
+  } catch (err) {
+    api.notify({ title: "Copie impossible", body: errorText(err), icon: "⚠️", priority: "low", key: "capture-color" });
+  }
 }
 
 /** Le dernier texte lu, pour l'onglet. */
@@ -101,6 +154,15 @@ export const capture: IslandModule = {
 
   setup(api) {
     api.on("capture.done", (msg) => report(api, msg.payload as Done));
+    api.on("capture.color", (msg) => {
+      const done = msg.payload as ColorDone;
+      if (done.ok) {
+        api.notify({ title: `${done.text ?? done.hex} copié`, icon: "💧", priority: "low", key: "capture-color" });
+      } else {
+        api.notify({ title: "Pipette impossible", body: done.error, icon: "⚠️", priority: "normal", key: "capture-color" });
+      }
+      void loadColors(api);
+    });
   },
 
   views: {
@@ -138,6 +200,32 @@ export const capture: IslandModule = {
         ),
       );
 
+      // La pipette et ses dernières couleurs (pastilles cliquables).
+      const swatches = el("div", { class: "capture-swatches" });
+      const drawColors = () => {
+        swatches.replaceChildren(
+          ...colors.map((c) =>
+            el("button", {
+              class: "capture-swatch",
+              style: `background:${c.hex}`,
+              title: `${c.text} : cliquer pour copier`,
+              "aria-label": c.text,
+              onclick: api.handler(() => copyColor(api, c.hex)),
+            }),
+          ),
+        );
+        if (!colors.length) swatches.append(el("span", { class: "muted capture-swatch-empty" }, "Aucune couleur pour l'instant"));
+      };
+      actions.append(
+        el(
+          "div",
+          { class: "btn-row" },
+          el("span", { class: "muted capture-label" }, "Couleur à l'écran :"),
+          button("💧 Pipette", "Fige l'écran : clique sur un point pour copier sa couleur (Échap pour annuler, flèches pour bouger d'un pixel)", () => pick(api)),
+          swatches,
+        ),
+      );
+
       const result = el("div", { class: "capture-result" });
       const draw = () => {
         result.replaceChildren();
@@ -162,9 +250,15 @@ export const capture: IslandModule = {
 
       root.append(actions, result);
       draw();
+      drawColors();
       redraws.add(draw);
+      redraws.add(drawColors);
       void loadLast(api);
-      return () => redraws.delete(draw);
+      void loadColors(api);
+      return () => {
+        redraws.delete(draw);
+        redraws.delete(drawColors);
+      };
     },
   },
 };

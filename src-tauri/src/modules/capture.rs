@@ -14,6 +14,12 @@
 //     le demande avec la commande "last" ;
 //   - le dossier des captures est validé (dossiers exclus) et un fichier
 //     enregistré peut être annulé (il part à la Corbeille).
+//
+// La pipette (choisir une couleur à l'écran) vit aussi ici : la fenêtre est
+// dans platform/picker.rs, les calculs (HEX, RGB, HSL, historique) dans
+// capture/color.rs.
+
+mod color;
 
 use crate::sync::LockExt;
 use std::path::PathBuf;
@@ -26,8 +32,10 @@ use base64::Engine;
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter};
 
+use self::color::{Format, Rgb};
 use super::{ModuleContext, RustModule};
-use crate::platform::{self, ocr};
+use crate::platform::{self, ocr, picker};
+use crate::services::bus::BusMessage;
 use crate::services::undo::DEFAULT_WINDOW;
 use crate::services::{bus, files, log, search};
 
@@ -38,6 +46,8 @@ const ANNOTATE_WINDOW: &str = "annotate";
 const MAX_EXPORT_BASE64: usize = 80 * 1024 * 1024;
 /// Combien de temps on attend que tu choisisses la zone.
 const SNIP_TIMEOUT: Duration = Duration::from_secs(120);
+/// Le temps que l'île se replie avant la photo de l'écran de la pipette.
+const PICK_DELAY: Duration = Duration::from_millis(450);
 
 /// Ce que le module retient entre deux commandes.
 #[derive(Default)]
@@ -48,6 +58,9 @@ struct State {
     saved: Option<PathBuf>,
     /// L'image ouverte dans la fenêtre d'annotation (en PNG).
     to_annotate: Option<Vec<u8>>,
+    /// Les dernières couleurs prises à la pipette (la plus récente en tête),
+    /// relues depuis colors.json au premier usage.
+    colors: Option<Vec<Rgb>>,
 }
 
 #[derive(Default)]
@@ -55,6 +68,8 @@ pub struct Capture {
     state: Arc<Mutex<State>>,
     /// Une capture est-elle déjà en attente ? (une seule à la fois)
     waiting: Arc<AtomicBool>,
+    /// La pipette est-elle ouverte ? (une seule à la fois)
+    picking: Arc<AtomicBool>,
 }
 
 /// Que faire de l'image une fois capturée.
@@ -122,6 +137,21 @@ impl RustModule for Capture {
                 super::launcher::open_checked(&path)?;
                 Ok(Value::Null)
             }
+            "pick_color" => {
+                self.pick_color(ctx.app)?;
+                Ok(Value::Null)
+            }
+            "colors" => Ok(colors_json(ctx, &self.state)),
+            "copy_color" => {
+                // Le front n'envoie qu'une couleur « #RRGGBB » : rien d'autre n'est copié.
+                let hex = args.get("hex").and_then(Value::as_str).unwrap_or_default();
+                let rgb = Rgb::from_hex(hex).ok_or("couleur invalide")?;
+                let text = rgb.text(color_format(ctx));
+                files::copy_text(&text)?;
+                // Reprendre une couleur la remonte en tête de l'historique.
+                remember_color(&self.state, rgb);
+                Ok(json!({ "text": text }))
+            }
             "reveal" => {
                 let saved = self.state.locked().saved.clone().ok_or("aucune capture enregistrée")?;
                 let path = ctx.check_path(&saved.display().to_string())?;
@@ -129,6 +159,16 @@ impl RustModule for Capture {
                 Ok(Value::Null)
             }
             other => Err(format!("commande inconnue : {other}")),
+        }
+    }
+
+    /// « capture.pick » : le Lanceur demande la pipette.
+    fn on_event(&self, ctx: &ModuleContext, msg: &BusMessage) {
+        if msg.topic != "capture.pick" {
+            return;
+        }
+        if let Err(e) = self.pick_color(ctx.app) {
+            ctx.emit("capture.color", json!({ "ok": false, "error": e }));
         }
     }
 }
@@ -188,6 +228,108 @@ impl Capture {
         });
         Ok(())
     }
+}
+
+impl Capture {
+    /// Ouvre la pipette dans un fil à part ; la couleur choisie arrive par
+    /// « capture.color » (rien si on annule).
+    fn pick_color(&self, app: &AppHandle) -> Result<(), String> {
+        if self.picking.swap(true, Ordering::SeqCst) {
+            return Err("la pipette est déjà ouverte".into());
+        }
+        let (app, state, picking) = (app.clone(), self.state.clone(), self.picking.clone());
+        std::thread::spawn(move || {
+            // Le temps que l'île se replie : elle ne doit pas être sur la photo.
+            std::thread::sleep(PICK_DELAY);
+            let outcome = std::panic::catch_unwind(picker::pick);
+            picking.store(false, Ordering::SeqCst);
+            let payload = match outcome {
+                Ok(Ok(Some((r, g, b)))) => {
+                    let rgb = Rgb { r, g, b };
+                    let done = super::with_context(&app, ID, |ctx| -> Result<String, String> {
+                        let text = rgb.text(color_format(ctx));
+                        files::copy_text(&text)?;
+                        Ok(text)
+                    });
+                    match done {
+                        None => return, // module coupé entre-temps
+                        Some(Ok(text)) => {
+                            remember_color(&state, rgb);
+                            json!({ "ok": true, "hex": rgb.hex(), "text": text })
+                        }
+                        Some(Err(error)) => json!({ "ok": false, "error": error }),
+                    }
+                }
+                Ok(Ok(None)) => return, // annulée (Échap) : rien à dire
+                Ok(Err(error)) => json!({ "ok": false, "error": error }),
+                Err(_) => {
+                    log::warn("capture : panique dans la pipette");
+                    json!({ "ok": false, "error": "erreur interne" })
+                }
+            };
+            bus::emit(&app, ID, "capture.color", payload);
+        });
+        Ok(())
+    }
+}
+
+/// Le format choisi dans les réglages (HEX par défaut).
+fn color_format(ctx: &ModuleContext) -> Format {
+    Format::parse(ctx.settings().get("colorFormat").and_then(Value::as_str))
+}
+
+/// L'historique des couleurs (relu depuis le fichier la première fois).
+fn colors_of(state: &mut State) -> &mut Vec<Rgb> {
+    state.colors.get_or_insert_with(load_colors)
+}
+
+/// Ajoute une couleur à l'historique et l'enregistre.
+fn remember_color(state: &Arc<Mutex<State>>, rgb: Rgb) {
+    let mut s = state.locked();
+    let colors = colors_of(&mut s);
+    color::push_history(colors, rgb);
+    if let Err(e) = save_colors(colors) {
+        log::warn(format!("capture : historique des couleurs non enregistré : {e}"));
+    }
+}
+
+/// L'historique pour l'onglet : chaque couleur en HEX (la pastille) et dans le
+/// format choisi (ce qui sera copié).
+fn colors_json(ctx: &ModuleContext, state: &Arc<Mutex<State>>) -> Value {
+    let format = color_format(ctx);
+    let mut s = state.locked();
+    let list: Vec<Value> = colors_of(&mut s).iter().map(|c| json!({ "hex": c.hex(), "text": c.text(format) })).collect();
+    json!({ "colors": list })
+}
+
+fn colors_file() -> PathBuf {
+    platform::config_dir().join("colors.json")
+}
+
+/// Relit colors.json (une liste de « #RRGGBB »). Un fichier abîmé est mis de
+/// côté, jamais effacé ; une valeur qui n'est pas une couleur est ignorée.
+fn load_colors() -> Vec<Rgb> {
+    let Ok(text) = std::fs::read_to_string(colors_file()) else { return Vec::new() };
+    match serde_json::from_str::<Vec<String>>(&text) {
+        Ok(list) => list.iter().filter_map(|h| Rgb::from_hex(h)).take(color::HISTORY_MAX).collect(),
+        Err(e) => {
+            let aside = platform::config_dir().join(format!("colors.broken-{}.json", platform::local_time().file_stamp()));
+            let _ = std::fs::rename(colors_file(), &aside);
+            log::warn(format!("capture : couleurs illisibles ({e}), mises de côté dans {}", aside.display()));
+            Vec::new()
+        }
+    }
+}
+
+/// Écrit colors.json (via un fichier temporaire renommé).
+fn save_colors(colors: &[Rgb]) -> Result<(), String> {
+    let dir = platform::config_dir();
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let list: Vec<String> = colors.iter().map(|c| c.hex()).collect();
+    let json = serde_json::to_string_pretty(&list).map_err(|e| e.to_string())?;
+    let tmp = dir.join("colors.json.tmp");
+    std::fs::write(&tmp, json).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, colors_file()).map_err(|e| e.to_string())
 }
 
 /// Le travail du thread de capture. None = abandonnée (Échap, ou autre chose copié).

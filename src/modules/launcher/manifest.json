@@ -76,7 +76,8 @@
       "timer.start",
       "remote.connect",
       "agents.launch",
-      "notes.open"
+      "notes.open",
+      "capture.pick"
     ],
     "listens": [
       "launcher.open",

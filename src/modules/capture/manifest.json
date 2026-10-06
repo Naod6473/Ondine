@@ -2,7 +2,7 @@
   "id": "capture",
   "name": "Capture",
   "icon": "✂️",
-  "description": "Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur ton ordinateur, hors ligne : l'image n'est envoyée nulle part.",
+  "description": "Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur ton ordinateur, hors ligne : l'image n'est envoyée nulle part. La pipette copie la couleur d'un point de l'écran.",
   "version": "0.1.0",
   "permissions": ["clipboard", "files"],
   "settings": {
@@ -21,13 +21,24 @@
         "help": "Vide : le dossier Images\\Ondine.",
         "default": [],
         "max": 1
+      },
+      {
+        "key": "colorFormat",
+        "type": "select",
+        "label": "Format de la couleur copiée (pipette)",
+        "default": "hex",
+        "options": [
+          { "value": "hex", "label": "HEX (#3A7BD5)" },
+          { "value": "rgb", "label": "RGB (rgb(58, 123, 213))" },
+          { "value": "hsl", "label": "HSL (hsl(215, 65%, 53%))" }
+        ]
       }
     ]
   },
   "views": ["expanded"],
-  "commands": ["snip", "ocr_clipboard", "save_clipboard", "shelf_clipboard", "annotate_clipboard", "annotate_image", "annotate_export", "last", "copy_last", "reveal", "search", "open"],
+  "commands": ["snip", "ocr_clipboard", "save_clipboard", "shelf_clipboard", "annotate_clipboard", "annotate_image", "annotate_export", "last", "copy_last", "reveal", "search", "open", "pick_color", "colors", "copy_color"],
   "events": {
-    "emits": ["capture.done", "shelf.add"],
-    "listens": ["capture.done"]
+    "emits": ["capture.done", "shelf.add", "capture.color"],
+    "listens": ["capture.done", "capture.color", "capture.pick"]
   }
 }
