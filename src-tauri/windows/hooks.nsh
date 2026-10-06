@@ -9,7 +9,9 @@
   WriteRegStr HKCU "Software\Ondine" "InstallLanguage" "$LANGUAGE"
 !macroend
 
-; À la désinstallation, on retire cette petite clé.
+; À la désinstallation, on retire cette petite clé, et le lancement avec
+; Windows (valeur « Ondine » de Run, écrite par l'appli, voir platform::set_autostart).
 !macro NSIS_HOOK_POSTUNINSTALL
   DeleteRegKey HKCU "Software\Ondine"
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Ondine"
 !macroend
