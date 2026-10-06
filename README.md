@@ -7,6 +7,8 @@
 <i>A little island at the top of your Windows screen.</i>
 </p>
 
+<p align="center"><a href="https://ondine.pissits.com"><b>ondine.pissits.com</b></a> · <a href="https://github.com/Naod6473/Ondine/releases/latest">Télécharger · Download</a></p>
+
 ---
 
 **Français** · [English](#english)
