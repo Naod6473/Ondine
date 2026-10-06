@@ -40,18 +40,41 @@ const DEFAULT_INSTRUCTION_TU: &str = "Tu aides quelqu'un sur son PC Windows. Ré
 /// La question quand le champ est vide (le champ l'annonce : « vide = … »).
 const DEFAULT_QUESTION: &str = "Expliquez-moi ceci.";
 const DEFAULT_QUESTION_TU: &str = "Explique-moi ceci.";
+/// Interface en anglais : consigne et question en anglais (sinon Claude
+/// répondrait en français à quelqu'un qui a choisi l'anglais).
+const DEFAULT_INSTRUCTION_EN: &str = "You are helping someone on their Windows PC. Answer in English, simply and briefly. If you are not sure, say so instead of making things up.";
+const DEFAULT_QUESTION_EN: &str = "Explain this to me.";
 
-/// Vrai quand l'interface tutoie (réglage « Tutoiement », en français).
-fn tutoie(ctx: &ModuleContext) -> bool {
+/// La façon de s'adresser à la personne, d'après la langue et le réglage.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Voice {
+    Vous,
+    Tu,
+    English,
+}
+
+/// Anglais, tutoiement (réglage « Tutoiement », en français) ou vouvoiement.
+fn voice(ctx: &ModuleContext) -> Voice {
     use tauri::Manager;
     let shared = ctx.app.state::<crate::Shared>();
     let s = shared.settings.locked();
-    crate::services::settings::tutoie(&s.general, crate::app_language(&s))
+    let lang = crate::app_language(&s);
+    if lang == "en" {
+        Voice::English
+    } else if crate::services::settings::tutoie(&s.general, lang) {
+        Voice::Tu
+    } else {
+        Voice::Vous
+    }
 }
 
-/// La consigne et la question par défaut, au « vous » ou au « tu ».
-fn defaults(tu: bool) -> (&'static str, &'static str) {
-    if tu { (DEFAULT_INSTRUCTION_TU, DEFAULT_QUESTION_TU) } else { (DEFAULT_INSTRUCTION, DEFAULT_QUESTION) }
+/// La consigne et la question par défaut, selon la façon de s'adresser.
+fn defaults(voice: Voice) -> (&'static str, &'static str) {
+    match voice {
+        Voice::Vous => (DEFAULT_INSTRUCTION, DEFAULT_QUESTION),
+        Voice::Tu => (DEFAULT_INSTRUCTION_TU, DEFAULT_QUESTION_TU),
+        Voice::English => (DEFAULT_INSTRUCTION_EN, DEFAULT_QUESTION_EN),
+    }
 }
 
 const TEXT_EXTENSIONS: &[&str] = &[
@@ -122,7 +145,7 @@ impl RustModule for AskClaude {
                 let id = args.get("id").and_then(Value::as_u64).ok_or("rien de préparé")?;
                 let prepared = self.prepared.locked().clone().filter(|p| p.id == id).ok_or("l'aperçu a changé : vérifiez ce qui part, puis renvoyez")?;
                 let question: String = args.get("question").and_then(Value::as_str).unwrap_or("").trim().chars().take(MAX_QUESTION).collect();
-                let question = if question.is_empty() { defaults(tutoie(ctx)).1.to_string() } else { question };
+                let question = if question.is_empty() { defaults(voice(ctx)).1.to_string() } else { question };
                 let key = ctx.credential("anthropic-api-key")?.ok_or("Pas de clé API Anthropic : ajoutez-la dans Réglages → Identifiants.")?;
                 let body = request_body(&prepared, &question, &prepared.model, max_tokens(ctx), &prepared.instruction);
                 ctx.log_info(format!("demande envoyée à Claude ({} octets)", body.to_string().len()));
@@ -151,7 +174,7 @@ fn max_tokens(ctx: &ModuleContext) -> u64 {
 
 fn instruction(ctx: &ModuleContext) -> String {
     let s = ctx.settings().get("instruction").and_then(Value::as_str).unwrap_or("").trim().chars().take(500).collect::<String>();
-    if s.is_empty() { defaults(tutoie(ctx)).0.to_string() } else { s }
+    if s.is_empty() { defaults(voice(ctx)).0.to_string() } else { s }
 }
 
 /// Lit un fichier déposé : du texte (UTF-8) ou une image, avec des limites de taille.
@@ -265,9 +288,11 @@ mod tests {
 
     #[test]
     fn defaults_follow_address() {
-        assert_eq!(defaults(false), (DEFAULT_INSTRUCTION, "Expliquez-moi ceci."));
-        let (instruction, question) = defaults(true);
+        assert_eq!(defaults(Voice::Vous), (DEFAULT_INSTRUCTION, "Expliquez-moi ceci."));
+        let (instruction, question) = defaults(Voice::Tu);
         assert!(instruction.starts_with("Tu aides") && question == "Explique-moi ceci.");
+        let (instruction, question) = defaults(Voice::English);
+        assert!(instruction.contains("Answer in English") && question == "Explain this to me.");
     }
 
     #[test]

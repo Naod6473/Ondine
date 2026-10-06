@@ -616,7 +616,7 @@ function demoGroup(): HTMLElement {
       row(
         "Mode démo",
         toggle(on, (v) => save((d) => (d.general.demo = v), true), "Mode démo"),
-        "L'île montre de fausses données (musique, agenda, notes, presse-papiers…) au lieu des tiennes. Aucune action n'est faite pour de vrai.",
+        "L'île montre de fausses données (musique, agenda, notes, presse-papiers…) au lieu des vôtres. Aucune action n'est faite pour de vrai.",
       ),
       ...(on
         ? [

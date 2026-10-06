@@ -829,7 +829,7 @@
 "L'île reste en petite pilule au lieu de disparaître. Elle se cache seulement en mode présentation.": "The island stays as a small pill instead of disappearing. It only hides in presentation mode.",
 "Captures d'écran": "Screenshots",
 "Mode démo": "Demo mode",
-"L'île montre de fausses données (musique, agenda, notes, presse-papiers…) au lieu des tiennes. Aucune action n'est faite pour de vrai.": "The island shows fake data (music, calendar, notes, clipboard…) instead of yours. No action is really performed.",
+"L'île montre de fausses données (musique, agenda, notes, presse-papiers…) au lieu des vôtres. Aucune action n'est faite pour de vrai.": "The island shows fake data (music, calendar, notes, clipboard…) instead of yours. No action is really performed.",
 "Jouer une scène": "Play a scene",
 "Claude a fini": "Claude is done",
 "Demande d'autorisation": "Permission request",
@@ -1051,7 +1051,16 @@
 "S'adresser à moi": "Address me as",
 "Vouvoiement": "Formal (vous)",
 "Tutoiement": "Informal (tu)",
-"Les aides et les messages disent « vous » ou « tu ». Les boutons ne changent pas.": "Help texts and messages say “vous” or “tu” (French only). Buttons don't change."
+"Les aides et les messages disent « vous » ou « tu ». Les boutons ne changent pas.": "Help texts and messages say “vous” or “tu” (French only). Buttons don't change.",
+"Avion": "Airplane",
+"Son": "Sound",
+"Micro": "Mic",
+"Recommencer": "Start over",
+"Travail": "Work",
+"Identifiants": "Credentials",
+"Sauvegarde": "Backup",
+"Maison": "Home",
+"Mobile": "Mobile"
 },
 "patterns": [
 [

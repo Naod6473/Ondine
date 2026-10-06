@@ -18,9 +18,9 @@ const DICT = JSON.parse(RAW) as { exact: Record<string, string>; patterns: [stri
 const EXACT = new Map(Object.entries(DICT.exact));
 
 /** Un texte au « vous » : vous, votre, vos, ou un impératif en -ez (« Collez »). */
-const VOUS = /(?<![\p{L}-])(?:vous|votre|vos)(?![\p{L}])|\p{L}{2,}ez(?![\p{L}])/iu;
+const VOUS = /(?<![\p{L}-])(?:vous|votre|vos|vôtres?)(?![\p{L}])|\p{L}{2,}ez(?![\p{L}])/iu;
 /** Un texte qui vouvoie encore (pour les versions tutoyées). */
-const STILL_VOUS = /(?<![\p{L}-])(?:vous|votre|vos)(?![\p{L}])/iu;
+const STILL_VOUS = /(?<![\p{L}-])(?:vous|votre|vos|vôtres?)(?![\p{L}])/iu;
 
 /** Même recherche que t() dans src/core/i18n.ts. */
 function tu(fr: string): string {
