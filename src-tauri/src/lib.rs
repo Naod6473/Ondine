@@ -470,11 +470,14 @@ pub fn run() {
 
             if let Some(win) = island::window(&handle) {
                 platform::make_non_activating(&win);
-                // On démarre en bande de réveil : le front décidera quoi montrer.
-                island::apply_geometry(&handle, &loaded.general.screen, true);
+                // On démarre en bande de réveil, sauf si le front a déjà demandé le
+                // panneau : version installée, la page se charge très vite et peut
+                // parler pendant ce setup (la création des fenêtres de réglages fait
+                // tourner la boucle de messages). Forcer la bande ici laissait l'île
+                // affichée dans une fenêtre de 6 px (« Toujours en mini »).
+                island::apply_geometry(&handle, &loaded.general.screen, gate.collapsed.load(Ordering::Relaxed));
                 let _ = win.show();
             }
-            gate.collapsed.store(true, Ordering::Relaxed);
             island::apply_hotkey(&handle, &loaded.island.hotkey);
             island::spawn_cursor_poll(handle.clone(), gate.clone());
             // Travail de fond des modules (ex. : Musique surveille le lecteur).
