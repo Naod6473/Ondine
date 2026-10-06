@@ -73,6 +73,14 @@ Les traductions anglaises sont dans `src/core/i18n-en.json`, en deux parties :
   précises d'abord.
 
 Chaque nouveau texte d'interface ajoute sa ligne (à la fin de la partie).
+
+**Vouvoiement / tutoiement** : en français, l'interface vouvoie (« Vérifiez
+votre connexion ») ; boutons et libellés sont à l'infinitif. Le réglage
+« S'adresser à moi » (`general.address`) peut la faire tutoyer, avec le même
+mécanisme : `src/core/i18n-fr-tu.json` (même forme) donne la version au « tu »
+de chaque phrase au « vous ». Une nouvelle phrase au « vous » ajoute aussi sa
+ligne là ; le test `tests/front/i18n-fr-tu.test.ts` refuse une entrée dont le
+texte n'existe plus dans le code.
 Ce que l'utilisateur tape ou copie n'est jamais traduit (`textarea`, zones
 éditables, et tout ce qui est marqué `data-no-i18n`).
 

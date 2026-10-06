@@ -64,7 +64,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "⚙️",
     label: "Général",
     sub: "L'écran, le repli de l'île, les notifications et le journal.",
-    keywords: ["Langue", "Language", "Lancer avec Windows", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal", "Signaler un problème", "Ressources utilisées", "Performances", "Économie d'énergie automatique sur batterie"],
+    keywords: ["Langue", "Language", "Lancer avec Windows", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal", "Signaler un problème", "Ressources utilisées", "Performances", "Économie d'énergie automatique sur batterie", "S'adresser à moi", "Tutoiement", "Vouvoiement"],
     render: general,
   },
   {
@@ -447,6 +447,21 @@ function results(page: HTMLElement, q: string) {
 
 // ── Pages ─────────────────────────────────────────────────────────────────────
 
+/**
+ * « S'adresser à moi » : vouvoiement (par défaut) ou tutoiement. Ne concerne
+ * que le français : la ligne est masquée quand l'interface est en anglais
+ * (classe fr-only, voir settings.css ; i18n.ts met à jour <html lang>).
+ */
+function addressRow(s: Settings): HTMLElement {
+  const r = row(
+    "S'adresser à moi",
+    choice(s.general.address === "tu" ? "tu" : "vous", [["vous", "Vouvoiement"], ["tu", "Tutoiement"]], (v) => save((d) => (d.general.address = v === "tu" ? "tu" : "vous"))),
+    "Les aides et les messages disent « vous » ou « tu ». Les boutons ne changent pas.",
+  );
+  r.classList.add("fr-only");
+  return r;
+}
+
 function general(main: HTMLElement) {
   const s = settingsStore.current;
   main.append(
@@ -456,6 +471,7 @@ function general(main: HTMLElement) {
         choice(s.general.language ?? "auto", [["auto", "Automatique"], ["fr", "Français"], ["en", "English"]], (v) => save((d) => (d.general.language = v as Settings["general"]["language"]))),
         "Automatique : la langue choisie à l'installation, sinon celle de Windows. Les fenêtres se rechargent.",
       ),
+      addressRow(s),
       row(
         "Lancer avec Windows",
         toggle(s.general.autostart !== false, (v) => save((d) => (d.general.autostart = v)), "Lancer avec Windows"),
@@ -600,7 +616,7 @@ function demoGroup(): HTMLElement {
       row(
         "Mode démo",
         toggle(on, (v) => save((d) => (d.general.demo = v), true), "Mode démo"),
-        "L'île montre de fausses données (musique, agenda, notes, presse-papiers…) au lieu des tiennes. Aucune action n'est faite pour de vrai.",
+        "L'île montre de fausses données (musique, agenda, notes, presse-papiers…) au lieu des vôtres. Aucune action n'est faite pour de vrai.",
       ),
       ...(on
         ? [
