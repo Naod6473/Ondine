@@ -47,5 +47,12 @@
     "windows": {
       "nsis": { "installMode": "currentUser", "languages": ["French", "English"], "displayLanguageSelector": true, "installerHooks": "./windows/hooks.nsh" }
     }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "CLE_PUBLIQUE_A_REMPLACER",
+      "endpoints": ["https://github.com/Naod6473/Ondine/releases/latest/download/latest.json"],
+      "windows": { "installMode": "passive" }
+    }
   }
 }

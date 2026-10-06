@@ -15,6 +15,7 @@ mod platform;
 mod services;
 mod sync;
 mod tray;
+mod update;
 
 use crate::sync::LockExt;
 use std::sync::atomic::Ordering;
@@ -426,6 +427,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         // Raccourcis clavier globaux : réservés par le module Règles (Rust seulement).
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        // Mises à jour : appelé seulement depuis le Rust (voir update.rs).
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(Shared { settings: Mutex::new(loaded.clone()), gate: gate.clone() })
         .manage(Registry::new())
         .manage(UndoService::default())
@@ -455,6 +458,8 @@ pub fn run() {
             settings_open_window,
             window_hide,
             app_quit,
+            update::update_check,
+            update::update_install,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

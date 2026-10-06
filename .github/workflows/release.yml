@@ -7,6 +7,12 @@
 #      (ou lancer « release » à la main depuis l'onglet Actions) ;
 #   3. GitHub construit l'installateur (*-setup.exe) et crée un BROUILLON de
 #      version : rien n'est public tant que tu ne cliques pas « Publish ».
+#
+# Mises à jour automatiques : l'installateur est signé avec la clé privée des
+# mises à jour (secrets TAURI_SIGNING_PRIVATE_KEY et
+# TAURI_SIGNING_PRIVATE_KEY_PASSWORD du dépôt), et un fichier latest.json est
+# ajouté à la version. Ondine le lit sur « releases/latest » : une version
+# marquée « pre-release » n'est donc jamais proposée en mise à jour.
 name: release
 
 on:
@@ -43,9 +49,18 @@ jobs:
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
+          # Fichiers de mise à jour (signature .sig) seulement ici : une
+          # construction sur ton PC n'a pas besoin de la clé privée.
+          args: '--config {"bundle":{"createUpdaterArtifacts":true}}'
+          includeUpdaterJson: true
+          updaterJsonPreferNsis: true
           tagName: v__VERSION__
           releaseName: "Ondine v__VERSION__"
           releaseBody: "Télécharge le fichier *-setup.exe ci-dessous pour installer Ondine sur Windows 10 ou 11."
           releaseDraft: true
-          prerelease: true
+          # Pas « pre-release » : le bouton Télécharger du site et les mises à
+          # jour pointent vers « latest », qui ignore les pre-releases.
+          prerelease: false

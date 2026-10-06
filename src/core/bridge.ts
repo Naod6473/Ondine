@@ -52,6 +52,12 @@ export interface BootInfo {
   mica?: boolean;
 }
 
+export interface UpdateInfo {
+  version: string;
+  current: string;
+  notes: string | null;
+}
+
 export const Bridge = {
   boot: () => call<BootInfo>("boot"),
 
@@ -95,6 +101,11 @@ export const Bridge = {
   moduleInvoke: <T>(module: string, command: string, args: unknown) =>
     callOrThrow<T>("module_invoke", { module, command, args: args ?? null }),
   undoRun: (id: number) => callOrThrow<string>("undo_run", { id }),
+
+  // Mises à jour (voir src-tauri/src/update.rs). null = déjà à jour.
+  updateCheck: () => callOrThrow<UpdateInfo | null>("update_check"),
+  /** Télécharge et installe : Ondine se ferme puis se relance toute seule. */
+  updateInstall: () => callOrThrow<void>("update_install"),
 
   quit: () => call<void>("app_quit"),
 };

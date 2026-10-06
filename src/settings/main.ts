@@ -484,6 +484,7 @@ function general(main: HTMLElement) {
         "Pendant un diaporama, une vidéo ou un jeu en plein écran, l'île se cache et garde les notifications pour la fin.",
       ),
     ]),
+    updatesGroup(),
     group(
       "Journal",
       [
@@ -501,6 +502,66 @@ function general(main: HTMLElement) {
     ),
     demoGroup(),
   );
+}
+
+/**
+ * Les mises à jour : le réglage automatique, et un bouton pour chercher tout
+ * de suite (src-tauri/src/update.rs). L'île propose aussi les nouvelles
+ * versions d'elle-même (src/core/updates.ts).
+ */
+function updatesGroup(): HTMLElement {
+  const s = settingsStore.current;
+  const version = el("span", { class: "muted" }, "");
+  void Bridge.boot().then((b) => {
+    if (b) version.textContent = b.version;
+  });
+  const status = el("span", { class: "muted", "aria-live": "polite" }, "");
+  const install = el(
+    "button",
+    {
+      class: "btn small",
+      onclick: async () => {
+        install.disabled = true;
+        status.textContent = "Téléchargement… Ondine va se fermer puis revenir.";
+        try {
+          await Bridge.updateInstall();
+        } catch (err) {
+          status.textContent = `La mise à jour a échoué : ${errorText(err)}`;
+          install.disabled = false;
+        }
+      },
+    },
+    "Installer",
+  );
+  install.hidden = true;
+  const search = el(
+    "button",
+    {
+      class: "btn small",
+      onclick: async () => {
+        search.disabled = true;
+        install.hidden = true;
+        status.textContent = "Recherche…";
+        try {
+          const info = await Bridge.updateCheck();
+          status.textContent = info ? `La version ${info.version} est disponible.` : "Ondine est à jour.";
+          install.hidden = !info;
+        } catch {
+          status.textContent = "Impossible de joindre GitHub. Vérifie ta connexion à Internet.";
+        }
+        search.disabled = false;
+      },
+    },
+    "Rechercher maintenant",
+  );
+  return group("Mises à jour", [
+    row(
+      "Mises à jour automatiques",
+      toggle(s.general.autoUpdate !== false, (v) => save((d) => (d.general.autoUpdate = v)), "Mises à jour automatiques"),
+      "Au démarrage puis une fois par jour, Ondine regarde sur GitHub si une nouvelle version existe et te la propose. Rien ne s'installe sans ton accord.",
+    ),
+    row("Version installée", el("div", { class: "chips" }, version, search, install, status)),
+  ]);
 }
 
 /**

@@ -45,6 +45,8 @@ pub struct General {
     /// Mode démo : l'île montre de fausses données (captures d'écran, vidéo).
     /// Tout se passe dans l'interface ; le Rust ne fait que garder le choix.
     pub demo: bool,
+    /// Chercher une nouvelle version au démarrage (puis chaque jour) et la proposer.
+    pub auto_update: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -133,7 +135,7 @@ impl Default for Settings {
 
 impl Default for General {
     fn default() -> Self {
-        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into(), welcomed: false, demo: false }
+        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into(), welcomed: false, demo: false, auto_update: true }
     }
 }
 
