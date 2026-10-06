@@ -7,6 +7,9 @@
 // à chaque changement : chaque tâche garde son élément HTML (repéré par son
 // numéro), ce qui laisse les animations CSS se faire (case qui se coche, texte
 // qui se barre, tâche qui arrive ou qui part).
+//
+// Le Lanceur (recherche dans l'île) publie « notes.open » { kind, id } : l'onglet
+// s'ouvre alors sur cette note (dans l'éditeur) ou sur cette tâche (mise en avant).
 
 import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
@@ -35,6 +38,10 @@ interface Data {
 let data: Data = { notes: [], todos: [] };
 let pane: "todo" | "notes" = "todo";
 const redraws = new Set<() => void>();
+/** Ce que le Lanceur a demandé d'ouvrir, en attendant que la vue soit là. */
+let wanted: { kind: "note" | "todo"; id: number } | null = null;
+/** La vue affichée, si elle l'est : pour suivre une demande du Lanceur sur place. */
+let jump: (() => void) | null = null;
 
 async function refresh(api: ModuleApi) {
   try {
@@ -99,6 +106,13 @@ export const notes: IslandModule = {
 
   setup(api) {
     api.on("notes.changed", () => void refresh(api));
+    api.on("notes.open", (msg) => {
+      const p = msg.payload as { kind?: string; id?: number } | null;
+      if (typeof p?.id !== "number") return;
+      wanted = { kind: p.kind === "todo" ? "todo" : "note", id: p.id };
+      pane = wanted.kind === "todo" ? "todo" : "notes";
+      jump?.(); // l'onglet était déjà affiché
+    });
     void refresh(api).then(() => {
       const open = data.todos.filter((t) => !t.done).length;
       if (api.settings().showTodoCount && open) {
@@ -167,7 +181,7 @@ export const notes: IslandModule = {
             { class: "icon-btn todo-del", title: "Supprimer", onclick: api.handler(() => attempt(api, () => api.invoke("todo_delete", { id: t.id }))) },
             "×",
           );
-          const li = el("li", { class: "todo-item" }, check, text, del);
+          const li = el("li", { class: "todo-item", "data-id": String(t.id) }, check, text, del);
           return { li, text };
         };
 
@@ -349,10 +363,39 @@ export const notes: IslandModule = {
 
       const redraw = () => draw();
       redraws.add(redraw);
+
+      /** Suit la demande du Lanceur : ouvre la note, ou met la tâche en avant. */
+      const follow = () => {
+        const w = wanted;
+        if (!w) return;
+        wanted = null;
+        if (w.kind === "note") {
+          openNote = data.notes.some((n) => n.id === w.id) ? w.id : null;
+          show("notes", false);
+          pill.jumpTo(segButtons.notes);
+          return;
+        }
+        show("todo", false);
+        pill.jumpTo(segButtons.todo);
+        highlight(w.id);
+      };
+
+      /** Fait clignoter doucement une tâche et la fait défiler jusqu'à elle. */
+      const highlight = (id: number) => {
+        const li = body.querySelector<HTMLElement>(`.todo-item[data-id="${id}"]`);
+        if (!li) return;
+        li.scrollIntoView({ block: "nearest" });
+        li.classList.add("found");
+        window.setTimeout(() => li.classList.remove("found"), 1600);
+      };
+      jump = follow;
+
       show(pane, false);
       requestAnimationFrame(() => pill.jumpTo(segButtons[pane]));
+      if (wanted) requestAnimationFrame(follow);
       void refresh(api);
       return () => {
+        if (jump === follow) jump = null;
         redraws.delete(redraw);
         pill.stop();
       };

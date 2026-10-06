@@ -290,6 +290,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `agents.event` `{source, kind, title, body, project, at}` | Agents IA (Rust) | notification (✋ « attend ta permission » en priorité haute, ✅ « a fini ») et historique |
 | `agents.projects` `{tools, projects: [{index, name}]}` | Agents IA (Rust) | le Lanceur propose « Claude Code · projet », « Codex · projet »… |
 | `agents.launch` `{tool, index?}` | Lanceur (front) | Agents IA ouvre cet agent dans ce projet |
+| `notes.open` `{kind: "note"\|"todo", id}` | Lanceur (front, recherche dans l'île) | l'onglet Notes s'ouvre sur cette note (éditeur) ou cette tâche (mise en avant) |
 | `agents.changed` | Agents IA (Rust) | l'onglet redessine le tableau des sessions |
 | `agents.ask` `{id, kind, who, question, detail, options, session, until}` | Agents IA (Rust : outil MCP ou permission) | alerte avec un bouton par choix (permission : Autoriser… / Refuser / Au terminal) |
 | `agents.ask.closed` `{id, expired, gone}` | Agents IA (Rust) | remplace l'alerte par « Réponse envoyée », « Pas de réponse » ou « Réglé ailleurs » |
@@ -633,6 +634,33 @@ qui surveille dossiers et lecteurs).
   (`timer.start`), « Ouvrir un terminal » (`terminal.open`), réglages.
 - Tri (`search.ts`) : début du nom > début d'un mot > initiales (« gdp ») >
   contenu > lettres dans l'ordre ; sans accents ni majuscules.
+- **Recherche dans l'île** (`island-search.ts`, réglage `searchIsland`, activé
+  par défaut) : à partir de 2 lettres, 140 ms après la dernière frappe, le
+  front appelle `launcher.search {query}`. Le Rust du Lanceur appelle la
+  commande `search {query, limit: 5}` de Notes, Presse-papiers, Étagère et
+  Capture par `modules::invoke` (qui vérifie qu'ils sont activés et pas en
+  panne) et renvoie `{groups: [{source, items}]}`. L'île montre une section
+  par source, sous les applis (8 au plus dans ce cas). Fonctions communes dans
+  `services/search.rs` : `normalize` (minuscules, accents retirés, blancs
+  regroupés), `score` (début du texte 100 > début d'un mot 80 > chaque mot
+  tapé commence un mot 70 > contenu 60 > chaque mot quelque part 40), `best`
+  (note, puis le plus récent), `excerpt` (extrait d'une ligne autour du mot).
+  - Notes : notes (première ligne = titre, qui compte plus que le reste) et
+    tâches (une tâche faite passe après). Action : `notes.open`.
+  - Presse-papiers : historique et snippets, extrait de 90 caractères. Les
+    copies sensibles n'ont jamais été lues, donc jamais trouvées. Action :
+    `open_found` → `clipboard.copy` (recopier).
+  - Étagère : noms des éléments ; ceux qui sont maintenant dans un dossier
+    exclu (ou disparus) sont écartés. Action : `shelf.open {path}` (chemin
+    revalidé, doit être sur l'étagère).
+  - Capture : les images du dossier des captures (nom + date en toutes
+    lettres, « 6 octobre 2026 », pour trouver par le mois) et le dernier texte
+    lu (gardé en mémoire seulement). Action : `capture.open {name}` (un simple
+    nom de fichier, cherché dans le dossier des captures) ou `copy_last`.
+  - Ouvrir un fichier (`launcher::open_checked`) : un dossier → Explorateur ;
+    un exécutable n'est jamais lancé, seulement montré dans l'Explorateur.
+  - Rien ne passe par le bus ni par le journal (seulement « résultat de l'île
+    ouvert (source) »). En mode démo, des résultats inventés (`demo.ts`).
 
 ### `api.openIsland(tab?)`
 

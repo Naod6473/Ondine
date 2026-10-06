@@ -25,7 +25,7 @@
     ]
   },
   "views": ["expanded"],
-  "commands": ["snip", "ocr_clipboard", "save_clipboard", "shelf_clipboard", "annotate_clipboard", "annotate_image", "annotate_export", "last", "copy_last", "reveal"],
+  "commands": ["snip", "ocr_clipboard", "save_clipboard", "shelf_clipboard", "annotate_clipboard", "annotate_image", "annotate_export", "last", "copy_last", "reveal", "search", "open"],
   "events": {
     "emits": ["capture.done", "shelf.add"],
     "listens": ["capture.done"]

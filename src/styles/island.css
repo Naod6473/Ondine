@@ -1027,6 +1027,11 @@ body {
   padding: 2px 4px;
   border-radius: 8px;
 }
+/* Une tâche ouverte depuis le Lanceur : un bref halo. */
+.todo-item.found {
+  background: rgba(79, 184, 255, 0.18);
+  transition: background 600ms ease;
+}
 .todo-item:hover {
   background: rgba(255, 255, 255, 0.05);
 }
@@ -1579,6 +1584,17 @@ body {
 }
 .launch-foot.bad {
   color: #ffb4a8;
+}
+/* Recherche dans l'île : un titre par section (Notes, Presse-papiers…). */
+.launch-section {
+  padding: 8px 8px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.launch-item.done .launch-text b {
+  text-decoration: line-through;
+  opacity: 0.7;
 }
 
 /* Système (Outils IT) */

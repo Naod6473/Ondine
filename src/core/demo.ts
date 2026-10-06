@@ -178,6 +178,55 @@ const SHELF = [
   { path: `${HOME}\\Documents\\Rapport annuel.pdf`, name: "Rapport annuel.pdf", isDir: false, exists: true },
 ];
 
+/** Des captures inventées (« Recherche dans l'île »). */
+const CAPTURES = [
+  { name: "Capture 2026-10-02 09.41.12.png", date: "2 octobre 2026 à 09:41" },
+  { name: "Capture 2026-09-28 16.05.47.png", date: "28 septembre 2026 à 16:05" },
+  { name: "Maquette de l'onglet Notes.png", date: "21 septembre 2026 à 11:20" },
+];
+
+/** « Été » → « ete » : comme la recherche du Rust (sans accents ni majuscules). */
+function plain(text: string): string {
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+/** La recherche dans l'île, sur les fausses données : 5 résultats au plus par source. */
+function islandSearch(query: string) {
+  const q = plain(query.trim());
+  if (q.length < 2) return { groups: [] };
+  const hit = (...texts: string[]) => texts.some((t) => plain(t).includes(q));
+  const n = notes();
+  const clips = clipboard("");
+  const groups = [
+    {
+      source: "notes",
+      items: [
+        ...n.notes.filter((x) => hit(x.text)).map((x) => {
+          const [title, ...rest] = x.text.split("\n");
+          return { kind: "note", id: x.id, title, detail: rest.join(" · "), at: x.updated };
+        }),
+        ...n.todos.filter((x) => hit(x.text)).map((x) => ({ kind: "todo", id: x.id, title: x.text, done: x.done, at: x.created })),
+      ],
+    },
+    {
+      source: "clipboard",
+      items: [
+        ...clips.items.filter((x) => hit(x.preview)).map((x) => ({ kind: "clip", id: x.id, title: x.preview, pinned: x.pinned, at: x.at })),
+        ...clips.snippets.filter((x) => hit(x.name, x.text)).map((x) => ({ kind: "snippet", id: x.id, title: x.name, detail: x.text.replace(/\n/g, " ") })),
+      ],
+    },
+    {
+      source: "shelf",
+      items: SHELF.filter((x) => hit(x.name)).map((x) => ({ kind: "file", path: x.path, title: x.name, detail: x.path.slice(0, x.path.lastIndexOf("\\")) })),
+    },
+    {
+      source: "capture",
+      items: CAPTURES.filter((x) => hit(x.name, x.date)).map((x) => ({ kind: "file", name: x.name, title: x.name, detail: x.date })),
+    },
+  ];
+  return { groups: groups.map((g) => ({ ...g, items: g.items.slice(0, 5) })).filter((g) => g.items.length) };
+}
+
 function system() {
   return {
     host: "PC-ONDINE",
@@ -363,6 +412,8 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         hotkey: "",
         hotkeyError: null,
       };
+    case "launcher.search":
+      return islandSearch(String(args.query ?? ""));
     case "terminal.start_dir":
       return { dir: HOME };
     case "capture.last":
