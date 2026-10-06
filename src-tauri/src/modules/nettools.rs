@@ -36,7 +36,11 @@ use crate::platform;
 use crate::services::log;
 
 const PING_TIMEOUT_MS: u32 = 1000;
-const PORT_TIMEOUT: Duration = Duration::from_secs(2);
+// Windows ne répond pas « fermé » tout de suite : quand un port refuse la
+// connexion, il réessaie encore deux fois (environ 2 s en tout). Avec 2 s
+// d'attente, un port fermé passait pour « silencieux » (vu sur la machine
+// Windows de GitHub). On attend donc un peu plus.
+const PORT_TIMEOUT: Duration = Duration::from_secs(4);
 
 const ID: &str = "nettools";
 const WATCH_TICK: Duration = Duration::from_secs(5);

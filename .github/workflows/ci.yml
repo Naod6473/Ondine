@@ -1,0 +1,40 @@
+# Vérifications automatiques : à chaque push sur main et à chaque PR,
+# GitHub vérifie le code sur une machine Windows (comme celle de Simon).
+# Rien n'est publié ici : on vérifie seulement que tout compile et que les
+# tests passent.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verifier:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Dépendances de l'interface
+        run: npm ci
+
+      - name: Vérifier l'interface (TypeScript + Vite)
+        run: npm run build
+
+      - name: Tests Rust
+        working-directory: src-tauri
+        run: cargo test --locked
