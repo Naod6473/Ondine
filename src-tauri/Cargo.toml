@@ -1,6 +1,6 @@
 [package]
 name = "ondine"
-version = "1.0.0"
+version = "1.0.1"
 description = "L'île : une interface intelligente en haut de l'écran Windows"
 edition = "2021"
 license = "MIT"
