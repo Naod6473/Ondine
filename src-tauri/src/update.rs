@@ -79,3 +79,43 @@ async fn install(app: &AppHandle) -> Result<(), String> {
     // Hors de Windows, l'installateur ne relance pas l'appli : on le fait nous-mêmes.
     app.restart();
 }
+
+// ── « Quoi de neuf » : la page de la version sur GitHub ──────────────────────
+
+/// La page d'une version publiée sur GitHub (notes complètes, installateur).
+const RELEASES_URL: &str = "https://github.com/Naod6473/Ondine/releases/tag/v";
+
+/// L'adresse de la page de `version`, ou None si ce n'est pas un numéro de
+/// version (« 1.0.1 », « 1.1.0-beta.2 ») : rien d'autre ne part au navigateur.
+fn release_url(version: &str) -> Option<String> {
+    let ok = !version.is_empty()
+        && version.len() <= 40
+        && version.starts_with(|c: char| c.is_ascii_digit())
+        && version.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '+'));
+    ok.then(|| format!("{RELEASES_URL}{version}"))
+}
+
+/// Bouton « Tout voir » de la notification « Quoi de neuf » : ouvre dans le
+/// navigateur la page GitHub de la version qui tourne. Le front ne donne
+/// aucune adresse : c'est toujours celle de notre propre version.
+#[tauri::command]
+pub fn release_page_open() -> Result<(), String> {
+    let url = release_url(env!("CARGO_PKG_VERSION")).ok_or("numéro de version inattendu")?;
+    log::info("nouveautés : page de la version ouverte dans le navigateur");
+    crate::platform::shell_open(&url)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn release_page_of_a_version() {
+        assert_eq!(release_url("1.0.1").as_deref(), Some("https://github.com/Naod6473/Ondine/releases/tag/v1.0.1"));
+        assert_eq!(release_url("1.1.0-beta.2").as_deref(), Some("https://github.com/Naod6473/Ondine/releases/tag/v1.1.0-beta.2"));
+        assert!(release_url(env!("CARGO_PKG_VERSION")).is_some());
+        for bad in ["", "dev", "1.0.1/../../x", "1.0 1", "1.0.1?a=b"] {
+            assert_eq!(release_url(bad), None, "{bad}");
+        }
+    }
+}

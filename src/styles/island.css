@@ -366,6 +366,15 @@ body {
   width: 580px;
   height: 150px;
 }
+/* Un texte sur plusieurs lignes (« Quoi de neuf » : une puce par ligne). */
+.notif.lines .notif-body {
+  white-space: pre-line;
+  line-height: 1.4;
+}
+.island[data-state="alert"]:has(.notif.lines) {
+  width: 600px;
+  height: 196px;
+}
 .notif.prio-critical .notif-title {
   color: #ff8a8a;
 }

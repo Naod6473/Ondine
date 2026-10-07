@@ -1,4 +1,6 @@
 // Le bloc « À propos » de la page Général des réglages :
+//   - « Voir les nouveautés » : l'île montre « Quoi de neuf dans Ondine X.Y.Z »,
+//     comme après une mise à jour (src/core/whats-new.ts) ;
 //   - « Signaler un problème » : ouvre dans le navigateur une issue GitHub
 //     préremplie (version, Windows, 40 dernières lignes du journal avec les
 //     chemins personnels masqués). Rien ne part sans la personne : elle relit
@@ -31,10 +33,13 @@ function demoUsage(): SelfUsage {
   return { memoryBytes: (88 + Math.random() * 6) * 1024 * 1024, cpuPercent: 0.2 + Math.random() * 0.4, processes: 6 };
 }
 
-export function aboutGroup(): HTMLElement {
+/** `whatsNew` : demande à l'île de montrer « Quoi de neuf » (sujet « app.whats-new », voir core/whats-new.ts). */
+export function aboutGroup(whatsNew: () => void): HTMLElement {
   // ── Version ──
   const version = el("span", { class: "muted" }, "…");
   void Bridge.boot().then((b) => (version.textContent = b ? `Ondine ${b.version}` : "Ondine"));
+  // ── Nouveautés : la même notification qu'après une mise à jour ──
+  const news = el("button", { class: "btn small", onclick: whatsNew }, "Voir les nouveautés");
 
   // ── Signaler un problème ──
   const status = el("span", { class: "muted", "aria-live": "polite" }, "");
@@ -73,6 +78,7 @@ export function aboutGroup(): HTMLElement {
     "À propos",
     [
       row("Version", version, "La version installée de cette copie d'Ondine."),
+      row("Nouveautés", news, "Ce qui a changé dans cette version, comme après une mise à jour : la notification s'affiche dans l'île."),
       wideRow(
         "Signaler un problème",
         el("div", { class: "chips" }, report, status),

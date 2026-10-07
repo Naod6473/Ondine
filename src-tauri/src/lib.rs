@@ -495,6 +495,7 @@ pub fn run() {
             app_quit,
             update::update_check,
             update::update_install,
+            update::release_page_open,
             profile_activate,
             profile_wifi_name,
             diagnostics::bug_report_open,

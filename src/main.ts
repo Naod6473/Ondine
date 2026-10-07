@@ -13,6 +13,7 @@ import { settingsStore } from "./core/settings-store";
 import { currentLang, startI18n } from "./core/i18n";
 import { Island } from "./island/island";
 import { startUpdates } from "./core/updates";
+import { startWhatsNew } from "./core/whats-new";
 import { startPerf } from "./core/perf";
 import { ALL_MODULES } from "./modules";
 
@@ -55,6 +56,9 @@ async function start() {
   bus.emit("app.ready", { version: boot?.version ?? "dev" });
   // Une nouvelle version sur GitHub ? Proposée dans une notification (core/updates.ts).
   startUpdates(notifications);
+  // Juste après une mise à jour : « Quoi de neuf » (core/whats-new.ts). Avant
+  // le mot de bienvenue, qui marque general.welcomed.
+  startWhatsNew(bus, notifications, boot?.version ?? null);
   // Premier démarrage (dans l'appli, pas dans le navigateur) : un mot de bienvenue.
   if (boot && !settingsStore.current.general.welcomed) welcome(bus, notifications);
   log.info(`île prête (${boot?.version ?? "navigateur"})`);

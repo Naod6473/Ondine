@@ -65,7 +65,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "⚙️",
     label: "Général",
     sub: "L'écran, le repli de l'île, les notifications et le journal.",
-    keywords: ["Langue", "Language", "Lancer avec Windows", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal", "Signaler un problème", "Ressources utilisées", "Performances", "Économie d'énergie automatique sur batterie", "S'adresser à moi", "Tutoiement", "Vouvoiement"],
+    keywords: ["Langue", "Language", "Lancer avec Windows", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal", "Signaler un problème", "Voir les nouveautés", "Ressources utilisées", "Performances", "Économie d'énergie automatique sur batterie", "S'adresser à moi", "Tutoiement", "Vouvoiement"],
     render: general,
   },
   {
@@ -555,7 +555,7 @@ function general(main: HTMLElement) {
       ],
       "Le journal reste sur votre PC (%LOCALAPPDATA%\\Ondine\\logs). Il ne contient jamais de clé ni de contenu de fichier.",
     ),
-    aboutGroup(),
+    aboutGroup(() => bus.emit("app.whats-new", null, "settings")),
     demoGroup(),
   );
 }
