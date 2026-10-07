@@ -1877,6 +1877,29 @@ body {
 .sys-clock small {
   font-size: 11px;
 }
+/* Redémarrage en attente (system/reboot.ts) : une ligne discrète sous les jauges. */
+.sys-reboot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px 4px 10px;
+  border-radius: 10px;
+  background: rgba(255, 198, 92, 0.08);
+  border: 1px solid rgba(255, 198, 92, 0.22);
+}
+.sys-reboot[hidden] {
+  display: none;
+}
+.sys-reboot-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sys-reboot .btn {
+  flex: none;
+}
 
 /* Accès distants (Outils IT) */
 .remote {
@@ -2473,12 +2496,20 @@ body {
 }
 
 /* ---- Contrôles : façon centre de contrôle, en verre liquide ---- */
-/* Tout tient dans la hauteur de la vue : pas de défilement. */
+/* Tout tient dans la hauteur de la vue : pas de défilement. En haut les deux
+   cartes (.ctl), en bas la bande des clés USB quand il y en a (.ctl-usb). */
+.ctl-root {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
+}
 .ctl {
   position: relative;
   display: flex;
   gap: 12px;
-  height: 100%;
+  flex: 1;
   min-height: 0;
   box-sizing: border-box;
   padding: 2px 2px 4px;
@@ -2496,16 +2527,21 @@ body {
   backdrop-filter: blur(18px) saturate(160%);
 }
 
-/* À gauche : les pastilles rondes, trois par ligne (deux lignes : tout
-   tient dans la hauteur de la vue, même avec « Épingler »). */
+/* À gauche : les pastilles rondes, quatre par ligne (deux lignes : tout
+   tient dans la hauteur de la vue, même avec « Sombre » et « Veilleuse »). */
 .ctl-toggles {
   flex: none;
   display: grid;
-  grid-template-columns: repeat(3, 58px);
+  grid-template-columns: repeat(4, 54px);
   align-content: center;
   justify-content: center;
-  gap: 10px 6px;
+  gap: 10px 4px;
   padding: 10px;
+}
+/* Une clé USB branchée : les pastilles se serrent pour laisser la place à la bande. */
+.ctl-root:has(> .ctl-usb:not([hidden])) .ctl-toggles {
+  padding-block: 6px;
+  row-gap: 6px;
 }
 .ctl-toggle {
   display: flex;
@@ -2521,7 +2557,7 @@ body {
   cursor: pointer;
 }
 .ctl-toggle-name {
-  max-width: 58px;
+  max-width: 54px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2577,6 +2613,12 @@ body {
 }
 .ctl-toggle.on[data-kind="mic"] .ctl-dot {
   --glow: #ff4f4f;
+}
+.ctl-toggle.on[data-kind="dark"] .ctl-dot {
+  --glow: #6e6af0;
+}
+.ctl-toggle.on[data-kind="night"] .ctl-dot {
+  --glow: #ff8a3d;
 }
 .ctl-toggle:disabled {
   opacity: 0.38;
@@ -2729,6 +2771,60 @@ body {
 .ctl-pill.off .ctl-fill,
 .ctl-pill.off .ctl-pct {
   visibility: hidden;
+}
+/* En bas : les clés USB et disques amovibles, chacune avec « Éjecter ». */
+.ctl-usb {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 4px 6px 4px 12px;
+  border-radius: 16px;
+}
+.ctl-usb[hidden] {
+  display: none;
+}
+.ctl-usb-title {
+  flex: none;
+  max-width: 96px;
+  font-size: 10.5px;
+  line-height: 1.2;
+  color: var(--muted);
+}
+/* Plusieurs clés : côte à côte ; au-delà de la largeur, on fait défiler la bande. */
+.ctl-usb-list {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.ctl-usb-item {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 220px;
+  padding: 3px 4px 3px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 12px;
+}
+.ctl-usb-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ctl-usb-letter {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.ctl-usb-item .btn {
+  flex: none;
+  border-radius: 999px;
 }
 @media (prefers-reduced-motion: reduce) {
   .ctl-dot,

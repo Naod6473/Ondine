@@ -23,6 +23,11 @@
 // le demandes, par exemple une capture Win+Maj+S) dans un dossier
 // Documents\Ondine\Tickets\Ticket <date>, et le texte dans le presse-papiers.
 // Rien n'est envoyé : tu joins le dossier toi-même. Annulable (Corbeille).
+//
+// « Redémarrage en attente » (platform::reboot) : la commande `reboot` dit si
+// Windows attend un redémarrage, depuis quand et pourquoi ; `open_update`
+// ouvre la page Windows Update des Paramètres. Ondine ne redémarre jamais le
+// PC elle-même. Le résumé pour le support le mentionne aussi.
 
 use crate::sync::LockExt;
 use std::collections::HashSet;
@@ -142,10 +147,17 @@ impl RustModule for SystemInfo {
         match command {
             "snapshot" => Ok(snapshot(&self.state)),
             // { description, withImage } → { folder }
-            "ticket" => ticket(ctx, &snapshot(&self.state), &args),
+            "ticket" => ticket(ctx, &support_snapshot(&self.state), &args),
+            // {} → { pending, sinceSecs, reasons: ["updates" | "servicing"] }
+            "reboot" => Ok(json!(platform::reboot::pending())),
+            // {} : la page Windows Update des Paramètres (Ondine ne redémarre jamais le PC).
+            "open_update" => {
+                platform::shell_open("ms-settings:windowsupdate")?;
+                Ok(Value::Null)
+            }
             "copy_support" => {
                 ctx.require("clipboard")?;
-                files::copy_text(&support_text(&snapshot(&self.state)))?;
+                files::copy_text(&support_text(&support_snapshot(&self.state)))?;
                 log::info("système : résumé copié pour le support");
                 Ok(Value::Null)
             }
@@ -308,6 +320,26 @@ fn snapshot(state: &Shared) -> Value {
     })
 }
 
+/// La photo pour le support : la même, avec le redémarrage en attente (lu
+/// seulement ici, pas toutes les 2 s).
+fn support_snapshot(state: &Shared) -> Value {
+    let mut s = snapshot(state);
+    s["reboot"] = json!(platform::reboot::pending());
+    s
+}
+
+/// « Redémarrage en attente : oui, depuis 3 j (mises à jour de Windows) ».
+fn reboot_line(r: &Value, now_secs: u64) -> Option<String> {
+    if r["pending"].as_bool() != Some(true) {
+        return None;
+    }
+    let since = r["sinceSecs"].as_u64().unwrap_or(0);
+    let how_long = if since > 0 && since <= now_secs { format!(", depuis {}", uptime_text(now_secs - since)) } else { String::new() };
+    let updates = r["reasons"].as_array().is_some_and(|a| a.iter().any(|x| x == "updates"));
+    let why = if updates { "mises à jour de Windows" } else { "composants de Windows" };
+    Some(format!("Redémarrage en attente : oui{how_long} ({why})"))
+}
+
 fn is_link_local(ip: &std::net::IpAddr) -> bool {
     match ip {
         std::net::IpAddr::V4(v4) => v4.is_link_local(),
@@ -416,6 +448,10 @@ fn support_text(s: &Value) -> String {
             if b["charging"].as_bool() == Some(true) { " (en charge)" } else { "" }
         ));
     }
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    if let Some(line) = reboot_line(&s["reboot"], now) {
+        out.push(line);
+    }
     out.join("\r\n")
 }
 
@@ -495,5 +531,17 @@ mod tests {
         assert!(t.contains("Allumé depuis : 1 h 1 min"));
         assert!(t.contains("Wi-Fi : 192.168.1.20 (MAC AA:BB:CC:DD:EE:FF)"));
         assert!(!t.contains("Batterie"));
+        assert!(!t.contains("Redémarrage"));
+    }
+
+    #[test]
+    fn reboot_line_for_support() {
+        let now = 1_791_374_400;
+        let r = json!({ "pending": true, "sinceSecs": now - 3 * 86_400 - 3600, "reasons": ["updates", "servicing"] });
+        assert_eq!(reboot_line(&r, now).as_deref(), Some("Redémarrage en attente : oui, depuis 3 j 1 h (mises à jour de Windows)"));
+        let r = json!({ "pending": true, "sinceSecs": 0, "reasons": ["servicing"] });
+        assert_eq!(reboot_line(&r, now).as_deref(), Some("Redémarrage en attente : oui (composants de Windows)"));
+        assert_eq!(reboot_line(&json!({ "pending": false, "sinceSecs": 0, "reasons": [] }), now), None);
+        assert_eq!(reboot_line(&Value::Null, now), None);
     }
 }

@@ -332,6 +332,8 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `notes.todo-toggled` `{done}` | Notes (Rust) | une tâche cochée (`true`) ou décochée : Bilan de la semaine compte (jamais le texte de la tâche) |
 | `weekly.show` | réglages (« Voir le bilan maintenant ») | Bilan de la semaine montre la semaine en cours (`peek`), sans rien consommer |
 | `app.whats-new` | réglages (« Voir les nouveautés ») | l'île montre « Quoi de neuf dans Ondine X.Y.Z » pour la version installée |
+| `controls.usb-added` `{root, letter, label, removable}` | Contrôles (Rust, fil de fond, réglage `usbNotify`) | notification 🔌 « Clé USB branchée » avec « Ouvrir » et « Éjecter » |
+| `controls.usb-ejected` `{root, letter, label, removable, ok, veto?, blocker?, error?, code?}` | Contrôles (Rust, fil d'éjection) | notification ✅ « Vous pouvez retirer la clé E: en toute sécurité. », ou ⚠️ avec qui bloque ; la bande USB de l'onglet se met à jour |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -915,6 +917,23 @@ s'il n'existe pas ou est désactivé).
   `src/settings/field-checks.ts` écrit sous le champ les villes inconnues ou
   en trop (un champ texte de manifeste peut ainsi demander une vérification
   nommée, sans que la valeur soit refusée).
+- Redémarrage en attente (`platform/reboot.rs`, lecture seule) : `reboot` →
+  `{pending, sinceSecs, reasons}`. Deux clés de HKLM : `…\WindowsUpdate\Auto
+  Update\RebootRequired` (raison `updates`) et `…\Component Based
+  Servicing\RebootPending` (`servicing`) ; la date = la dernière écriture de
+  la clé (`RegQueryInfoKeyW`), la plus ancienne des deux. Une clé présente
+  mais fermée à l'utilisateur compte comme « en attente, date inconnue ».
+  `PendingFileRenameOperations` est ignoré (trop de faux positifs).
+  `open_update` ouvre `ms-settings:windowsupdate` : Ondine ne redémarre
+  jamais le PC. Le résumé pour le support ajoute une ligne quand c'est le cas.
+- Côté front, `reboot.ts` : la ligne de l'onglet (relue chaque minute tant
+  qu'il est ouvert) et le rappel doux (réglage `rebootReminder`) : un coup
+  d'œil 2 min après le démarrage puis toutes les 10 min, notification au plus
+  une fois par jour (date gardée dans `localStorage`), après un jour
+  d'attente, jamais micro utilisé (`controls.media-use`, comme Pauses) ni en
+  présentation ou plein écran (`Bridge.deskState().busy`), ni quand personne
+  n'est là (5 min sans clavier ni souris : il attend le retour). La règle est
+  dans `reboot-text.ts` (testée).
 
 ### Module Accès distants (`src/modules/remote/`, `src-tauri/src/modules/remote.rs`)
 
@@ -995,6 +1014,35 @@ s'il n'existe pas ou est désactivé).
   vrai mode avion : on éteint tout en retenant ce qui était allumé, et on le
   rallume à la sortie (Wi-Fi + Bluetooth si l'île a redémarré entre-temps).
   NON VÉRIFIÉ : que Windows autorise une appli classique (hors Store).
+- Mode sombre (`platform/theme.rs`) : `theme` → `{dark, mixed, night}` (relu
+  toutes les 2 s avec les radios). Lecture de `AppsUseLightTheme` et
+  `SystemUsesLightTheme` (HKCU `…\Themes\Personalize`) ; `set_dark {on}`
+  écrit les deux, puis envoie `WM_SETTINGCHANGE` « ImmersiveColorSet » à
+  toutes les fenêtres (`SendMessageTimeoutW`, `SMTO_ABORTIFHUNG`, dans un
+  fil à part).
+- Éclairage nocturne (`platform/nightlight.rs`) : la valeur binaire `Data` de
+  la clé CloudStore `…\bluelightreductionstate`. Windows n'en publie pas le
+  format : on ne le lit et on ne l'écrit que s'il a EXACTEMENT la forme connue
+  (en-têtes, entiers LEB128, marque `10 00` = allumé), vérifiée par `parse`
+  avant et après la modification (tests sur de vrais exemples). Sinon
+  `night.supported = false`, rien n'est écrit, et `set_night` ouvre
+  `ms-settings:nightlight` (réponse `{opened: true}`).
+- Clés USB (`platform/eject.rs`) : `usb_drives` → `[{root, letter, label,
+  removable, ejecting}]` : les lecteurs amovibles, et les disques « fixes »
+  branchés en USB (`IOCTL_STORAGE_QUERY_PROPERTY`, `BusTypeUsb`), jamais le
+  disque de Windows. `eject {root}` lance l'éjection dans un fil à part
+  (méthode standard : volume → numéro de disque → nœud SetupDi → parent
+  marqué `DN_REMOVABLE` → `CM_Request_Device_EjectW` avec un veto à remplir,
+  donc sans fenêtre de Windows ; 3 essais). Le résultat part sur
+  `controls.usb-ejected`. Refus : le programme vient du veto (types 3 et 4)
+  ou de l'événement 225 de Kernel-PnP (`EvtQuery` sur `System` et
+  `Microsoft-Windows-Kernel-PnP/Configuration`, les dernières secondes) ; le
+  message est choisi par le front (`usb-text.ts`, testé). `open_drive
+  {root}` ouvre la clé dans l'Explorateur.
+- Le fil de fond compare la liste des clés à chaque tour (2 s) et publie
+  `controls.usb-added` pour chaque nouvelle (pas celles déjà là au
+  démarrage), si le réglage `usbNotify` est coché. Le journal ne note jamais
+  le nom d'un volume ni d'un programme.
 
 ## Agents IA (`src/modules/agents/`, `src-tauri/src/modules/agents.rs`, `src-tauri/src/cli.rs`)
 

@@ -11,6 +11,7 @@ import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-
 import { el } from "../../island/dom";
 import { pacedInterval } from "../../core/perf";
 import { worldClocks } from "./world-clocks";
+import { rebootRow, watchReboot } from "./reboot";
 
 interface Disk {
   mount: string;
@@ -118,6 +119,8 @@ export const system: IslandModule = {
     api.on("system.battery-full", () => {
       api.notify({ title: "Batterie chargée", body: "Vous pouvez débrancher le chargeur.", icon: "🔋", priority: "low", key: "battery" });
     });
+    // Redémarrage en attente (reboot.ts) : le rappel doux.
+    return watchReboot(api);
   },
 
   views: {
@@ -198,8 +201,10 @@ export const system: IslandModule = {
       );
       // Horloges du monde (réglage), entre les jauges et le détail : world-clocks.ts.
       const clocks = worldClocks(api);
+      // Redémarrage en attente (reboot.ts) : une ligne sous les jauges, cachée sinon.
+      const reboot = rebootRow(api);
       root.append(
-        el("div", { class: "sys" }, el("div", { class: "sys-top" }, cpu.node, mem.node, disk.node, el("div", { class: "sys-side" }, facts, el("div", { class: "btn-row" }, copy, ticketBtn))), clocks.node, details),
+        el("div", { class: "sys" }, el("div", { class: "sys-top" }, cpu.node, mem.node, disk.node, el("div", { class: "sys-side" }, facts, el("div", { class: "btn-row" }, copy, ticketBtn))), reboot.node, clocks.node, details),
       );
 
       let alive = true;
@@ -271,6 +276,7 @@ export const system: IslandModule = {
         alive = false;
         stopTimer();
         clocks.stop();
+        reboot.stop();
       };
     },
   },

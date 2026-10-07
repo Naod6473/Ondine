@@ -132,6 +132,11 @@ windows = { version = "0.61", features = [
   "Win32_NetworkManagement_WiFi",
   # Étagère : glisser des fichiers vers l'Explorateur (PIDL, SHCreateDataObject).
   "Win32_UI_Shell_Common",
+  # Contrôles : éjecter une clé USB (numéro du disque, arbre des périphériques,
+  # CM_Request_Device_EjectW) et lire l'événement 225 qui nomme le programme qui bloque.
+  "Win32_System_Ioctl",
+  "Win32_Devices_DeviceAndDriverInstallation",
+  "Win32_System_EventLog",
 ] }
 
 [profile.release]

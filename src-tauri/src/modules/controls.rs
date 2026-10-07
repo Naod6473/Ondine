@@ -18,6 +18,15 @@
 //
 // « Premier plan » : garde la fenêtre où tu travaillais (celle d'avant l'île)
 // au-dessus des autres, comme une vidéo en incrustation. Un second appui la relâche.
+//
+// Clés USB (platform::eject) : l'onglet liste les clés et disques USB branchés
+// (« usb_drives ») et propose « Éjecter ». L'éjection peut prendre quelques
+// secondes : elle se fait dans un fil à part, et le résultat arrive par
+// "controls.usb-ejected". Le fil de fond prévient aussi quand une clé est
+// branchée ("controls.usb-added", réglage usbNotify).
+//
+// Mode sombre et éclairage nocturne de Windows (platform::theme,
+// platform::nightlight) : deux pastilles de plus.
 
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -34,6 +43,8 @@ use crate::services::{bus, log};
 use crate::services::perf::{self, Loop};
 use crate::platform::brightness;
 use crate::platform::radios::{self, Kind};
+use crate::platform::eject::{self, DriveCache, EjectError, Ejectable};
+use crate::platform::{nightlight, theme};
 
 const ID: &str = "controls";
 
@@ -42,6 +53,11 @@ pub const MIC_HOTKEYS: &[&str] = &["Ctrl+Alt+M", "Ctrl+Shift+M", "Alt+Shift+M", 
 
 /// Le raccourci micro actuellement enregistré auprès de Windows ("" = aucun).
 static MIC_HOTKEY: Mutex<String> = Mutex::new(String::new());
+
+/// Ce qu'on sait déjà des lecteurs (partagé par le fil de fond et l'onglet).
+static DRIVES: Mutex<DriveCache> = Mutex::new(Vec::new());
+/// Les lecteurs en cours d'éjection (« E:\ »).
+static EJECTING: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
 #[derive(Default)]
 pub struct Controls;
@@ -53,6 +69,20 @@ fn arg_device(args: &Value) -> Result<Device, String> {
         Some("microphone") => Ok(Device::Microphone),
         _ => Err("périphérique inconnu (speakers ou microphone)".into()),
     }
+}
+
+/// Les clés et disques USB branchés.
+fn usb_drives() -> Vec<Ejectable> {
+    eject::ejectable_drives(&mut DRIVES.locked())
+}
+
+/// { root } → le lecteur, s'il est bien une clé ou un disque USB branché.
+fn arg_drive(args: &Value) -> Result<Ejectable, String> {
+    let letter = args.get("root").and_then(Value::as_str).and_then(eject::letter_of).ok_or("lecteur inconnu")?;
+    usb_drives()
+        .into_iter()
+        .find(|d| d.letter == format!("{letter}:"))
+        .ok_or_else(|| "ce lecteur n'est plus branché".to_string())
 }
 
 /// L'état d'un périphérique, ou `null` s'il n'y en a pas (pas de micro branché…).
@@ -151,6 +181,54 @@ impl RustModule for Controls {
                 radios::set_airplane(on)?;
                 Ok(Value::Null)
             }
+            // {} → [{ root, letter, label, removable, ejecting }] : les clés et disques USB.
+            "usb_drives" => {
+                let busy = EJECTING.locked().clone();
+                let list: Vec<Value> = usb_drives()
+                    .into_iter()
+                    .map(|d| {
+                        let ejecting = busy.contains(&d.root);
+                        json!({ "root": d.root, "letter": d.letter, "label": d.label, "removable": d.removable, "ejecting": ejecting })
+                    })
+                    .collect();
+                Ok(json!(list))
+            }
+            // { root } : éjecte ce lecteur, dans un fil à part. La réponse arrive
+            // par "controls.usb-ejected" (quelques secondes plus tard).
+            "eject" => {
+                let drive = arg_drive(&args)?;
+                start_eject(ctx.app.clone(), drive)?;
+                Ok(Value::Null)
+            }
+            // { root } : ouvre le lecteur dans l'Explorateur.
+            "open_drive" => {
+                let drive = arg_drive(&args)?;
+                crate::platform::shell_open(&drive.root)?;
+                Ok(Value::Null)
+            }
+            // {} → { dark, mixed, night: { supported, on } }
+            "theme" => {
+                let t = theme::get();
+                Ok(json!({ "dark": t.dark, "mixed": t.mixed, "night": nightlight::get() }))
+            }
+            // { on: bool } : Windows en sombre (applis et barre des tâches) ou en clair.
+            "set_dark" => {
+                let on = args.get("on").and_then(Value::as_bool).ok_or("« on » doit valoir true ou false")?;
+                theme::set_dark(on)?;
+                Ok(Value::Null)
+            }
+            // { on: bool } → { opened } : allume ou éteint l'éclairage nocturne.
+            // opened = true : la valeur de Windows n'a pas la forme connue, rien
+            // n'est écrit et la page des Paramètres s'ouvre à la place.
+            "set_night" => {
+                let on = args.get("on").and_then(Value::as_bool).ok_or("« on » doit valoir true ou false")?;
+                if nightlight::set(on)? {
+                    Ok(json!({ "opened": false }))
+                } else {
+                    crate::platform::shell_open("ms-settings:nightlight")?;
+                    Ok(json!({ "opened": true }))
+                }
+            }
             _ => Err(format!("commande non gérée : {command}")),
         }
     }
@@ -173,6 +251,54 @@ impl RustModule for Controls {
     }
 }
 
+/// Lance l'éjection dans un fil à part (Windows peut mettre plusieurs secondes
+/// à répondre), puis publie le résultat : "controls.usb-ejected" { root,
+/// letter, label, removable, ok, veto?, blocker?, error?, code? }.
+/// Le front en fait le message (« Vous pouvez retirer la clé E: … »).
+fn start_eject(app: AppHandle, drive: Ejectable) -> Result<(), String> {
+    {
+        let mut busy = EJECTING.locked();
+        if busy.contains(&drive.root) {
+            return Err("éjection déjà en cours".into());
+        }
+        busy.push(drive.root.clone());
+    }
+    std::thread::spawn(move || {
+        let result = catch_unwind(AssertUnwindSafe(|| eject::eject(&drive.root))).unwrap_or(Err(EjectError::Failed(0)));
+        EJECTING.locked().retain(|r| r != &drive.root);
+        let mut payload = json!({
+            "root": drive.root, "letter": drive.letter, "label": drive.label, "removable": drive.removable, "ok": result.is_ok(),
+        });
+        // Le journal note ce qui s'est passé, jamais le nom du volume ni du programme.
+        match result {
+            Ok(()) => log::info("contrôles : lecteur USB éjecté"),
+            Err(EjectError::Veto { kind, blocker }) => {
+                log::info(format!("contrôles : éjection refusée par Windows (veto {kind})"));
+                payload["veto"] = json!(kind);
+                payload["blocker"] = json!(blocker);
+            }
+            Err(EjectError::Gone) => payload["error"] = json!("gone"),
+            Err(EjectError::NotRemovable) => payload["error"] = json!("not-removable"),
+            Err(EjectError::Failed(code)) => {
+                log::warn(format!("contrôles : éjection impossible (code {code})"));
+                payload["error"] = json!("failed");
+                payload["code"] = json!(code);
+            }
+        }
+        bus::emit(&app, ID, "controls.usb-ejected", payload);
+    });
+    Ok(())
+}
+
+/// Les clés branchées depuis le tour d'avant (rien au premier tour : celles
+/// déjà là au démarrage ne sont pas annoncées).
+fn new_drives<'a>(before: Option<&[String]>, now: &'a [Ejectable]) -> Vec<&'a Ejectable> {
+    match before {
+        None => Vec::new(),
+        Some(before) => now.iter().filter(|d| !before.contains(&d.root)).collect(),
+    }
+}
+
 /// Coupe le micro s'il était ouvert, le rétablit sinon. Renvoie le nouvel état.
 fn toggle_mic() -> Result<bool, String> {
     let muted = !audio::get(Device::Microphone)?.muted;
@@ -180,10 +306,13 @@ fn toggle_mic() -> Result<bool, String> {
     Ok(muted)
 }
 
-/// Le thread de fond : micro / caméra utilisés, micro coupé, raccourci micro.
+/// Le thread de fond : micro / caméra utilisés, micro coupé, raccourci micro,
+/// clés USB branchées.
 fn watch(app: AppHandle) {
     let mut last_use = MediaUse::default();
     let mut last_muted: Option<bool> = None;
+    // Les lecteurs USB du tour d'avant (None : pas encore regardé).
+    let mut last_usb: Option<Vec<String>> = None;
     loop {
         // Toutes les 2 s (1 s en haute, 3 s en éco : services/perf.rs).
         std::thread::sleep(perf::every(Loop::Controls));
@@ -194,14 +323,27 @@ fn watch(app: AppHandle) {
                 bus::emit(&app, ID, "controls.media-use", json!(last_use));
             }
             apply_mic_hotkey(&app, "");
+            last_usb = None;
             continue;
         }
         let step = catch_unwind(AssertUnwindSafe(|| {
-            let wanted = super::with_context(&app, ID, |ctx| {
-                // Absent (réglages jamais ouverts) : le raccourci par défaut du manifeste.
-                ctx.settings().get("micHotkey").and_then(Value::as_str).unwrap_or("Ctrl+Alt+M").to_string()
-            });
-            apply_mic_hotkey(&app, &wanted.unwrap_or_default());
+            let (wanted, usb_notify) = super::with_context(&app, ID, |ctx| {
+                let s = ctx.settings();
+                // Absents (réglages jamais ouverts) : les valeurs par défaut du manifeste.
+                let hotkey = s.get("micHotkey").and_then(Value::as_str).unwrap_or("Ctrl+Alt+M").to_string();
+                (hotkey, s.get("usbNotify").and_then(Value::as_bool).unwrap_or(true))
+            })
+            .unwrap_or_default();
+            apply_mic_hotkey(&app, &wanted);
+
+            // Une clé USB vient d'être branchée ? Le front affiche « Ouvrir » / « Éjecter ».
+            let drives = usb_drives();
+            if usb_notify {
+                for d in new_drives(last_usb.as_deref(), &drives) {
+                    bus::emit(&app, ID, "controls.usb-added", json!(d));
+                }
+            }
+            last_usb = Some(drives.into_iter().map(|d| d.root).collect());
 
             let now = media_use::current();
             if now != last_use {
@@ -261,6 +403,19 @@ fn apply_mic_hotkey(app: &AppHandle, wanted: &str) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn only_new_drives_are_announced() {
+        use super::{new_drives, Ejectable};
+        let drive = |l: char| Ejectable { root: format!("{l}:\\"), letter: format!("{l}:"), label: String::new(), removable: true };
+        let now = [drive('E'), drive('F')];
+        // Premier tour : celles déjà branchées au démarrage ne sont pas annoncées.
+        assert!(new_drives(None, &now).is_empty());
+        let before = vec!["E:\\".to_string()];
+        let added: Vec<&str> = new_drives(Some(&before), &now).iter().map(|d| d.letter.as_str()).collect();
+        assert_eq!(added, ["F:"]);
+        assert!(new_drives(Some(&["E:\\".to_string(), "F:\\".to_string()]), &now).is_empty());
+    }
+
     #[test]
     fn mic_hotkeys_parse() {
         use tauri_plugin_global_shortcut::Shortcut;
