@@ -12,7 +12,7 @@ import { Bridge } from "../../core/bridge";
 import { errorText } from "../../core/log";
 import type { ModuleApi } from "../../core/module-types";
 import { el } from "../../island/dom";
-import { pendingSince, pendingText, reasonText, shouldRemind, type RebootState } from "./reboot-text";
+import { pendingText, reasonText, shouldRemind, type RebootState } from "./reboot-text";
 
 /** Le rappel regarde toutes les 10 min (une simple lecture du registre). */
 const CHECK_MS = 10 * 60_000;
@@ -82,7 +82,8 @@ export function watchReboot(api: ModuleApi): () => void {
     if (!remind) return;
     rememberReminder(now);
     api.notify({
-      title: pendingText(pendingSince(state, firstSeen, now), now),
+      // La durée seulement si Windows donne la date (sinon « Redémarrage en attente »).
+      title: pendingText(state.sinceSecs, now),
       body: "Windows attend un redémarrage pour terminer ses mises à jour. Redémarrez quand cela vous arrange.",
       icon: "🔄",
       priority: "normal",
@@ -115,7 +116,6 @@ export function rebootRow(api: ModuleApi) {
     el("button", { class: "btn small", type: "button", onclick: api.handler(() => openUpdate(api)) }, "Ouvrir Windows Update"),
   );
   let alive = true;
-  let firstSeen = 0;
 
   const refresh = async () => {
     let state: RebootState | null = null;
@@ -127,9 +127,9 @@ export function rebootRow(api: ModuleApi) {
     if (!alive) return;
     node.hidden = !state?.pending;
     if (!state?.pending) return;
-    const now = nowSecs();
-    firstSeen ||= now;
-    text.textContent = pendingText(pendingSince(state, firstSeen, now), now);
+    // La durée seulement si Windows donne la date : « depuis moins d'une
+    // heure » compté depuis l'ouverture de l'onglet serait trompeur.
+    text.textContent = pendingText(state.sinceSecs, nowSecs());
     why.textContent = reasonText(state.reasons);
   };
 
