@@ -143,8 +143,21 @@ le Bluetooth et le mode avion, sans ouvrir Windows. La sortie audio se choisit
 sous le curseur du son. Les écrans externes doivent accepter le réglage DDC/CI
 (souvent activé dans leur menu).
 
+Deux pastilles de plus : **Sombre** passe Windows en mode sombre ou clair
+(applis et barre des tâches ensemble), **Veilleuse** allume ou éteint
+l'éclairage nocturne. Si Ondine ne reconnaît pas la façon dont votre Windows
+range l'éclairage nocturne, elle n'y touche pas et ouvre la page des
+Paramètres à la place.
+
+**Clés USB et disques amovibles** : quand une clé (ou un disque USB) est
+branchée, une bande en bas de l'onglet la montre avec son nom, sa lettre et un
+bouton **Éjecter** (la méthode « Retirer le périphérique en toute sécurité »
+de Windows). Si un programme la garde ouverte, Ondine dit lequel quand Windows
+le sait (par exemple WINWORD.EXE), sinon pourquoi Windows refuse.
+
 - **Raccourci pour couper / rétablir le micro** : Ctrl+Alt+M (ou Ctrl+Maj+M, Alt+Maj+M, Pause, aucun). Il marche partout, même en visio ; Ondine porte un petit badge tant que le micro est coupé.
 - **Montrer un point quand une appli utilise le micro ou la caméra** (oui) : orange pour le micro, vert pour la caméra. Rien n'est écouté : Ondine lit seulement ce que Windows note pour sa page Confidentialité.
+- **Prévenir quand une clé USB est branchée** (oui) : une notification avec **Ouvrir** et **Éjecter**.
 
 ### Étagère
 
@@ -255,8 +268,14 @@ L'état du PC d'un coup d'œil : processeur, mémoire, disques, adresses IP et
 MAC, batterie, version de Windows, météo (si elle est activée). **Copier pour
 le support** copie un résumé à coller dans un ticket. Tout est lu sur le PC.
 
+Quand Windows attend un redémarrage (mises à jour installées, composants de
+Windows), une ligne le dit : « Redémarrage en attente depuis 3 jours (mises à
+jour de Windows) », avec un bouton **Ouvrir Windows Update**. Le résumé pour
+le support le mentionne aussi. Ondine ne redémarre jamais le PC elle-même.
+
 - **Prévenir quand un disque a moins de** 10 % de place libre ; **quand la batterie descend à** 20 % ; **quand la batterie est chargée** (oui)
 - **L'humeur d'Ondine suit le PC** (oui) : elle transpire quand le processeur est à fond, fatigue quand la batterie est faible ou qu'il est tard.
+- **Rappeler un redémarrage en attente** (oui) : une notification douce, au plus une fois par jour, après un jour d'attente, jamais pendant un appel (micro utilisé) ni une présentation.
 
 ### Accès distants
 

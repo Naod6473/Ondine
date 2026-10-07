@@ -139,8 +139,20 @@ mode, without opening Windows settings. The audio output is picked under the
 volume slider. External monitors must accept DDC/CI (often enabled in their
 menu).
 
+Two more toggles: **Dark** switches Windows between dark and light mode (apps
+and taskbar together), **Night light** turns Windows night light on or off. If
+Ondine doesn't recognize how your Windows stores the night light setting, it
+leaves it alone and opens the Settings page instead.
+
+**USB drives and removable disks**: when a USB drive (or USB disk) is plugged
+in, a strip at the bottom of the tab shows it with its name, its letter and an
+**Eject** button (Windows' "Safely remove hardware" method). If a program
+still has it open, Ondine names it when Windows knows (for example
+WINWORD.EXE), otherwise it says why Windows refused.
+
 - **Shortcut to mute / unmute the microphone**: Ctrl+Alt+M (or Ctrl+Shift+M, Alt+Shift+M, Pause, none). Works everywhere, even in a video call; Ondine wears a small badge while the mic is muted.
 - **Show a dot when an app uses the microphone or camera** (on): orange for the mic, green for the camera. Nothing is recorded: Ondine only reads what Windows notes for its Privacy page.
+- **Notify when a USB drive is plugged in** (on): a notification with **Open** and **Eject**.
 
 ### Shelf
 
@@ -247,8 +259,14 @@ Your PC at a glance: CPU, memory, disks, IP and MAC addresses, battery, Windows
 version, weather (if enabled). **Copy for support** copies a summary to paste
 into a ticket. Everything is read on the PC.
 
+When Windows is waiting for a restart (installed updates, Windows components),
+a line says so: "Restart pending for 3 days (Windows updates)", with an **Open
+Windows Update** button. The support summary mentions it too. Ondine never
+restarts the PC itself.
+
 - **Warn when a disk has less than** 10 % free space; **when the battery drops to** 20 %; **when the battery is charged** (on)
 - **Ondine's mood follows the PC** (on): she sweats when the CPU is maxed out, gets tired when the battery is low or it's late.
+- **Remind me of a pending restart** (on): a gentle notification, at most once a day, after a day of waiting, never during a call (mic in use) or a presentation.
 
 ### Remote access
 
