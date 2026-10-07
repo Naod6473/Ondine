@@ -24,14 +24,26 @@ mod nettools;
 mod rules;
 mod notes;
 mod remote;
+// Wake-on-LAN des Accès distants : paquet magique, adresses MAC.
+mod remote_wol;
 mod shelf;
+// « Vers le téléphone » de l'Étagère : un petit serveur web le temps d'un envoi.
+mod shelf_phone;
+// Étagère → cible « Empreinte » : SHA-256 (ou l'algorithme d'une empreinte copiée).
+mod shelf_hash;
 mod shelf_tools;
 mod system;
 mod terminal;
 mod clipboard_qr;
 mod weather;
+// Le bilan de la semaine (Pomodoros, concentration, tâches cochées).
+mod weekly;
 // Installer les hooks d'Ondine dans la configuration de Claude Code, Codex, Gemini.
 mod agents_hooks;
+// Le bilan de fin de tâche d'un agent (ce qui a changé dans le dépôt git).
+mod agents_git;
+// « Reprendre » : la dernière session de Claude Code d'un projet.
+mod agents_resume;
 
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -204,6 +216,7 @@ impl Registry {
             Box::new(agents::Agents::default()),
             Box::new(askclaude::AskClaude::default()),
             Box::new(weather::WeatherModule::default()),
+            Box::new(weekly::Weekly::default()),
         ];
 
         let mut entries = Vec::new();
@@ -416,6 +429,14 @@ mod tests {
     fn rules_manifest_is_valid() {
         let m = check_manifest(rules::Rules::default().manifest_json()).unwrap();
         assert_eq!(m.id, "rules");
+    }
+
+    #[test]
+    fn weekly_manifest_is_valid() {
+        let m = check_manifest(weekly::Weekly::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "weekly");
+        assert!(m.events.listens.iter().any(|t| t == "timer.work-session"));
+        assert!(m.events.listens.iter().any(|t| t == "notes.todo-toggled"));
     }
 
     #[test]

@@ -1,8 +1,9 @@
 {
   "id": "capture",
   "name": "Capture",
+  "tip": "Choisissez Texte, Annoter, PNG ou Étagère, puis sélectionnez une zone de l'écran.",
   "icon": "✂️",
-  "description": "Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur votre ordinateur, hors ligne : l'image n'est envoyée nulle part. La pipette copie la couleur d'un point de l'écran.",
+  "description": "Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur votre ordinateur, hors ligne : l'image n'est envoyée nulle part. La pipette copie la couleur d'un point de l'écran. « Enregistrer un GIF » filme une zone de l'écran en GIF animé (30 s au plus), posé sur l'étagère.",
   "version": "0.1.0",
   "permissions": ["clipboard", "files"],
   "settings": {
@@ -32,13 +33,29 @@
           { "value": "rgb", "label": "RGB (rgb(58, 123, 213))" },
           { "value": "hsl", "label": "HSL (hsl(215, 65%, 53%))" }
         ]
+      },
+      {
+        "key": "gifSeconds",
+        "type": "number",
+        "label": "Durée maximale d'un GIF (secondes)",
+        "help": "L'enregistrement s'arrête tout seul au bout de ce temps, ou avant avec « Arrêter ». 30 secondes au plus.",
+        "default": 10,
+        "min": 2,
+        "max": 30,
+        "step": 1
+      },
+      {
+        "key": "gifCursor",
+        "type": "boolean",
+        "label": "Montrer la souris dans les GIF",
+        "default": true
       }
     ]
   },
   "views": ["expanded"],
-  "commands": ["snip", "ocr_clipboard", "save_clipboard", "shelf_clipboard", "annotate_clipboard", "annotate_image", "annotate_export", "last", "copy_last", "reveal", "search", "open", "pick_color", "colors", "copy_color"],
+  "commands": ["snip", "ocr_clipboard", "save_clipboard", "shelf_clipboard", "annotate_clipboard", "annotate_image", "annotate_export", "last", "copy_last", "reveal", "search", "open", "pick_color", "colors", "copy_color", "gif_start", "gif_stop"],
   "events": {
-    "emits": ["capture.done", "shelf.add", "capture.color"],
-    "listens": ["capture.done", "capture.color", "capture.pick"]
+    "emits": ["capture.done", "shelf.add", "capture.color", "capture.gif"],
+    "listens": ["capture.done", "capture.color", "capture.pick", "capture.gif"]
   }
 }

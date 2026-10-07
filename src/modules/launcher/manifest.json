@@ -1,11 +1,13 @@
 {
   "id": "launcher",
   "name": "Lanceur",
+  "tip": "Tapez quelques lettres puis Entrée ; le raccourci (Alt+Espace par défaut) ouvre cette recherche de n'importe où.",
   "icon": "🚀",
-  "description": "Un raccourci clavier (Alt+Espace par défaut) ouvre une recherche : applications du menu Démarrer, outils Windows (Services, Gestionnaire de périphériques…), fichiers récents, serveurs favoris (Accès distants) et actions de l'île. Il cherche aussi dans l'île : notes et tâches, presse-papiers, étagère et captures. Entrée pour ouvrir.",
+  "description": "Un raccourci clavier (Alt+Espace par défaut) ouvre une recherche : applications du menu Démarrer, outils Windows (Services, Gestionnaire de périphériques…), fichiers récents, serveurs favoris (Accès distants) et actions de l'île. Il cherche aussi dans l'île : notes et tâches, presse-papiers, étagère et captures. Entrée pour ouvrir. Il fait aussi les calculs (« 18 % de 240 », « 1 Go en Mio », « 255 en hex », « 192.168.1.0/26 », « 15 h Montréal ») et crée des GUID : Entrée copie le résultat.",
   "version": "0.1.0",
   "permissions": [
-    "files"
+    "files",
+    "clipboard"
   ],
   "settings": {
     "version": 1,
@@ -66,7 +68,8 @@
     "launch",
     "forget_focus",
     "search",
-    "open_found"
+    "open_found",
+    "copy"
   ],
   "events": {
     "emits": [
@@ -75,6 +78,7 @@
       "terminal.open",
       "timer.start",
       "remote.connect",
+      "remote.wake",
       "agents.launch",
       "notes.open",
       "capture.pick",

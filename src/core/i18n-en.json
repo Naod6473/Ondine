@@ -507,7 +507,6 @@
 "… quand il commence dans moins de (minutes)": "… when it starts in less than (minutes)",
 "Récap du soir : les rendez-vous de demain à (heure, 0 = jamais)": "Evening recap: tomorrow's appointments at (hour, 0 = never)",
 "Agents IA": "AI agents",
-"Lance Claude Code, Codex ou Gemini CLI dans un de vos projets en un clic. Un tableau montre les sessions en cours ; « Y aller » ramène devant la bonne fenêtre. Claude Code, Codex et Gemini CLI préviennent l'île : « attend votre permission », « a fini ». Ils passent par la commande « ondine.exe notify » et un canal local réservé à votre compte Windows : rien ne passe par Internet. Branchée comme serveur MCP, l'île laisse aussi l'agent vous envoyer un message, une progression, lancer le minuteur ou vous poser une question à choix. Le mode concentration met leurs notifications en attente et vous fait un résumé à la fin. Si vous l'activez (désactivé par défaut), vous pouvez aussi autoriser ou refuser une action de Claude Code ou Codex depuis l'île, après confirmation. L'île n'exécute jamais rien, ne décide jamais à votre place, et ne lit ni ce que vous tapez ni les réponses de l'IA.": "Launch Claude Code, Codex or Gemini CLI in one of your projects with one click. A board shows running sessions; “Go there” brings the right window to the front. Claude Code, Codex and Gemini CLI notify the island: “waiting for your permission”, “finished”. They go through the “ondine.exe notify” command and a local channel reserved for your Windows account: nothing goes over the Internet. Hooked up as an MCP server, the island also lets the agent send you a message, a progress update, start the timer or ask you a multiple-choice question. Focus mode holds their notifications and gives you a summary at the end. If you enable it (off by default), you can also allow or deny an action from Claude Code or Codex from the island, after confirmation. The island never runs anything, never decides for you, and reads neither what you type nor the AI's replies.",
 "Projets pour les agents": "Projects for agents",
 "Un bouton par projet dans l'onglet et dans le lanceur. Vide = votre dossier utilisateur.": "One button per project in the tab and in the launcher. Empty = your user folder.",
 "Ouvrir les agents dans": "Open agents in",
@@ -537,13 +536,11 @@
 "Dossier des captures": "Captures folder",
 "Vide : le dossier Images\\Ondine.": "Empty: the Pictures\\Ondine folder.",
 "Presse-papiers": "Clipboard",
-"Garde l'historique de vos copies de texte (recherche, épinglage), colle sans mise en forme, range vos textes fréquents en snippets, retire les traqueurs des liens copiés (utm_source, fbclid…) change la casse d'un texte en un clic, et génère des mots de passe (copiés en secret, effacés au bout de 30 s, jamais enregistrés). Les copies que Windows signale comme sensibles (mots de passe) sont ignorées. L'historique reste en mémoire et disparaît à la fermeture de l'île ; seuls les éléments épinglés et les snippets sont enregistrés, sur votre ordinateur.": "Keeps the history of your text copies (search, pinning), pastes without formatting, stores your frequent texts as snippets, strips trackers from copied links (utm_source, fbclid…), changes a text's case in one click, and generates passwords (copied secretly, erased after 30 s, never saved). Copies that Windows flags as sensitive (passwords) are ignored. The history stays in memory and disappears when the island closes; only pinned items and snippets are saved, on your computer.",
 "Nombre de copies gardées": "Number of copies kept",
 "Les éléments épinglés ne comptent pas.": "Pinned items don't count.",
 "Nettoyer les liens copiés (retirer utm_source, fbclid, gclid…)": "Clean copied links (remove utm_source, fbclid, gclid…)",
 "Le lien propre remplace le lien copié ; la notification propose de remettre l'original.": "The clean link replaces the copied one; the notification offers to restore the original.",
 "Contrôles": "Controls",
-"Le volume des haut-parleurs et du micro, la luminosité des écrans, le Wi-Fi, le Bluetooth et le mode avion, sans ouvrir Windows. Un point orange (micro) ou vert (caméra) sur l'île montre quand une appli s'en sert, et un raccourci coupe le micro de partout. Agit sur les périphériques que Windows utilise par défaut ; les écrans externes doivent accepter le réglage DDC/CI (souvent activé dans leur menu). Rien n'est écouté ni enregistré : on lit seulement ce que Windows note pour sa page Confidentialité.": "Speaker and microphone volume, screen brightness, Wi-Fi, Bluetooth and airplane mode, without opening Windows. An orange (microphone) or green (camera) dot on the island shows when an app is using them, and a shortcut mutes the mic everywhere. Acts on the devices Windows uses by default; external screens must support DDC/CI adjustment (often enabled in their menu). Nothing is listened to or recorded: it only reads what Windows logs for its Privacy page.",
 "Raccourci pour couper / rétablir le micro": "Shortcut to mute / unmute the microphone",
 "Marche partout, même en visio. Ondine porte un petit badge tant que le micro est coupé.": "Works everywhere, even in video calls. Ondine wears a little badge while the mic is muted.",
 "Aucun": "None",
@@ -579,12 +576,11 @@
 "Vous rappelle de faire une petite pause après un long moment devant l'écran. Se tait pendant une présentation, un appel (micro utilisé) ou si vous venez déjà de vous arrêter. Tout se passe sur votre PC : on regarde seulement depuis quand la souris et le clavier sont utilisés.": "Reminds you to take a short break after a long time at the screen. Stays quiet during a presentation, a call (microphone in use) or if you've just stopped. Everything happens on your PC: it only checks how long the mouse and keyboard have been in use.",
 "Une pause toutes les (minutes d'écran, 0 = jamais)": "A break every (screen minutes, 0 = never)",
 "Ne rien dire pendant un appel (micro utilisé)": "Say nothing during a call (microphone in use)",
-"Vos serveurs Bureau à distance (RDP) et SSH en favoris, ouverts en un clic depuis l'île ou le lanceur. Enregistrés sur votre ordinateur (%APPDATA%\\Ondine\\remote.json), sans aucun mot de passe. « Tester » vérifie seulement que le serveur répond.": "Your Remote Desktop (RDP) and SSH servers as favorites, opened in one click from the island or the launcher. Saved on your computer (%APPDATA%\\Ondine\\remote.json), with no passwords at all. “Test” only checks that the server responds.",
 "Ouvrir SSH dans": "Open SSH in",
 "Bureau à distance en plein écran": "Remote Desktop in full screen",
 "Tester les serveurs à l'ouverture de l'onglet": "Test servers when the tab opens",
 "Automatisations « Quand… alors… » : un fichier arrive dans un dossier, une clé USB est branchée, un raccourci clavier est pressé, ou un événement de l'île. Tout déplacement propose « Annuler », rien n'est supprimé définitivement, et aucune règle ne peut lancer de programme.": "“When… then…” automations: a file arrives in a folder, a USB drive is plugged in, a keyboard shortcut is pressed, or an island event. Every move offers “Undo”, nothing is permanently deleted, and no rule can launch a program.",
-"Glissez des fichiers sur l'île pour les poser sur l'étagère, les envoyer à la Corbeille, les copier ou les déplacer (dossiers favoris compris), copier leur chemin, les compresser, convertir ou réduire des images, ou renommer plusieurs fichiers d'un coup (avec aperçu). Toute action sur les fichiers est annulable quelques secondes.": "Drag files onto the island to drop them on the shelf, send them to the Recycle Bin, copy or move them (favorite folders included), copy their path, compress them, convert or shrink images, or rename several files at once (with preview). Every file action can be undone for a few seconds.",
+"Glissez des fichiers sur l'île pour les poser sur l'étagère, les envoyer à la Corbeille, les copier ou les déplacer (dossiers favoris compris), copier leur chemin, les compresser, calculer leur empreinte (SHA-256, ou comparer à une empreinte copiée), convertir ou réduire des images, ou renommer plusieurs fichiers d'un coup (avec aperçu). Toute action sur les fichiers est annulable quelques secondes. « Vers le téléphone » envoie un fichier à un téléphone du même Wi-Fi par un QR code : réseau local seulement, 5 minutes au plus, rien ne passe par Internet.": "Drag files onto the island to drop them on the shelf, send them to the Recycle Bin, copy or move them (favorite folders included), copy their path, compress them, compute their hash (SHA-256, or compare it with a copied hash), convert or shrink images, or rename several files at once (with preview). Every file action can be undone for a few seconds. “To the phone” sends a file to a phone on the same Wi-Fi with a QR code: local network only, 5 minutes at most, nothing goes over the Internet.",
 "Dossiers favoris": "Favorite folders",
 "Chacun devient une cible quand vous glissez des fichiers sur l'île.": "Each one becomes a target when you drag files onto the island.",
 "Lâcher sur un favori…": "Drop on a favorite…",
@@ -596,7 +592,6 @@
 "Poser sur l'étagère chaque nouveau fichier téléchargé": "Put each newly downloaded file on the shelf",
 "Le dossier Téléchargements est regardé toutes les 3 secondes ; le fichier arrive quand le téléchargement est fini.": "The Downloads folder is checked every 3 seconds; the file arrives once the download is finished.",
 "Système": "System",
-"L'état du PC d'un coup d'œil : processeur, mémoire, disques, adresses IP et MAC, batterie, version de Windows. Un bouton copie un résumé à coller dans un ticket de support. Prévient quand un disque est presque plein, quand la batterie est faible ou chargée. Ondine transpire quand le processeur est à fond. Tout est lu sur le PC : rien ne part sur Internet.": "Your PC's status at a glance: processor, memory, disks, IP and MAC addresses, battery, Windows version. One button copies a summary to paste into a support ticket. Warns you when a disk is almost full, when the battery is low or charged. Ondine sweats when the processor is maxed out. Everything is read on the PC: nothing is sent over the Internet.",
 "Prévenir quand un disque a moins de (% de place libre, 0 = jamais)": "Warn when a disk has less than (% free space, 0 = never)",
 "Prévenir quand la batterie descend à (%, 0 = jamais)": "Warn when the battery drops to (%, 0 = never)",
 "Prévenir quand la batterie est chargée": "Warn when the battery is charged",
@@ -884,9 +879,9 @@
 "Dernier texte lu": "Last text read",
 "Créer l'image": "Create the image",
 "Renommer le fichier": "Rename the file",
-"Un raccourci clavier (Alt+Espace par défaut) ouvre une recherche : applications du menu Démarrer, outils Windows (Services, Gestionnaire de périphériques…), fichiers récents, serveurs favoris (Accès distants) et actions de l'île. Il cherche aussi dans l'île : notes et tâches, presse-papiers, étagère et captures. Entrée pour ouvrir.": "A keyboard shortcut (Alt+Space by default) opens a search: Start menu apps, Windows tools (Services, Device Manager…), recent files, favorite servers (Remote access) and island actions. It also searches the island: notes and tasks, clipboard, shelf and captures. Enter to open.",
-"Une appli, un fichier, une note, une copie… (ou « 10 min »)": "An app, a file, a note, a copy… (or “10 min”)",
-"Tapez le nom d'une appli, d'un fichier, d'un onglet, ou un mot de vos notes.": "Type the name of an app, a file, a tab, or a word from your notes.",
+"Un raccourci clavier (Alt+Espace par défaut) ouvre une recherche : applications du menu Démarrer, outils Windows (Services, Gestionnaire de périphériques…), fichiers récents, serveurs favoris (Accès distants) et actions de l'île. Il cherche aussi dans l'île : notes et tâches, presse-papiers, étagère et captures. Entrée pour ouvrir. Il fait aussi les calculs (« 18 % de 240 », « 1 Go en Mio », « 255 en hex », « 192.168.1.0/26 », « 15 h Montréal ») et crée des GUID : Entrée copie le résultat.": "A keyboard shortcut (Alt+Space by default) opens a search: Start menu apps, Windows tools (Services, Device Manager…), recent files, favorite servers (Remote access) and island actions. It also searches the island: notes and tasks, clipboard, shelf and captures. Enter to open. It also does calculations (“18% of 240”, “1 GB in MiB”, “255 in hex”, “192.168.1.0/26”, “3 pm Montreal”) and creates GUIDs: Enter copies the result.",
+"Une appli, un fichier, une note, un calcul… (ou « 10 min »)": "An app, a file, a note, a calculation… (or “10 min”)",
+"Tapez le nom d'une appli, d'un fichier, d'un onglet, un mot de vos notes, ou un calcul (« 18 % de 240 », « 1 Go en Mio »).": "Type the name of an app, a file, a tab, a word from your notes, or a calculation (“18% of 240”, “1 GB in MiB”).",
 "Chercher aussi dans l'île (notes, presse-papiers, étagère, captures)": "Also search the island (notes, clipboard, shelf, captures)",
 "5 résultats au plus par source, groupés. Les dossiers exclus (Confidentialité) ne sont jamais montrés.": "At most 5 results per source, grouped. Excluded folders (Privacy) are never shown.",
 "Notes et tâches": "Notes and tasks",
@@ -915,7 +910,6 @@
 "Copier le QR code impossible": "Couldn't copy the QR code",
 "Visez le code avec l'appareil photo de votre téléphone. Calculé sur votre PC : rien ne passe par Internet.": "Point your phone's camera at the code. Made on your PC: nothing goes over the Internet.",
 "rien à mettre dans le QR code": "nothing to put in the QR code",
-"Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur votre ordinateur, hors ligne : l'image n'est envoyée nulle part. La pipette copie la couleur d'un point de l'écran.": "Captures an area of the screen with the Windows tool, then reads its text (OCR) or saves it as PNG. Also works on an image you've already copied. Text recognition runs on your computer, offline: the image is sent nowhere. The color picker copies the color of any point on the screen.",
 "Format de la couleur copiée (pipette)": "Copied color format (color picker)",
 "Couleur à l'écran :": "Color on screen:",
 "💧 Pipette": "💧 Color picker",
@@ -991,7 +985,6 @@
 "Averses de neige": "Snow showers",
 "Orage": "Thunderstorm",
 "Orage avec grêle": "Thunderstorm with hail",
-"Vos prochains rendez-vous, venant de plusieurs calendriers : des fichiers .ics (export d'Outlook, Google Agenda, Thunderbird…) ou les adresses secrètes iCal de vos agendas en ligne, chacun avec son nom et sa couleur. Un fichier est relu dès qu'il change ; un lien est retéléchargé toutes les 15 minutes. Un clic sur un rendez-vous ouvre son lien (réunion Teams, Meet, Zoom…). Lecture seule : rien n'est envoyé, et les adresses restent dans le Gestionnaire d'identifiants.": "Your upcoming appointments from several calendars: .ics files (exported from Outlook, Google Calendar, Thunderbird…) or the secret iCal addresses of your online calendars, each with its own name and color. A file is re-read as soon as it changes; a link is re-downloaded every 15 minutes. Clicking an appointment opens its link (Teams, Meet, Zoom meeting…). Read-only: nothing is sent, and the addresses stay in the Credential Manager.",
 "Calendriers": "Calendars",
 "Ajoutez un fichier .ics (relu tout seul quand il change) ou l'adresse secrète iCal d'un agenda en ligne (Google Agenda : Paramètres → votre agenda → « Adresse secrète au format iCal »). Le lien est rangé dans le Gestionnaire d'identifiants de Windows, jamais dans les réglages. Gardez-le pour vous : il donne accès à tout votre agenda.": "Add an .ics file (re-read automatically when it changes) or the secret iCal address of an online calendar (Google Calendar: Settings → your calendar → “Secret address in iCal format”). The link is stored in the Windows Credential Manager, never in the settings. Keep it to yourself: it gives access to your whole calendar.",
 "Aucun calendrier.": "No calendar.",
@@ -1158,7 +1151,224 @@
 "Surprises cachées et carnet des trésors": "Hidden surprises and treasure book",
 "Masqués par défaut, pour garder la surprise.": "Hidden by default, to keep the surprise.",
 "Il serait temps de dormir, non ?": "Isn't it time to sleep?",
-"C'est bon, je l'ai !": "Got it, I've got it!"
+"C'est bon, je l'ai !": "Got it, I've got it!",
+"Calcul": "Calc",
+"Durée": "Duration",
+"Heure": "Time",
+"Nouveau GUID": "New GUID",
+"Nouveau GUID au format Windows": "New GUID in Windows format",
+"Un identifiant neuf, en minuscules": "A fresh identifier, in lowercase",
+"En majuscules et entre accolades, comme dans le Registre": "Uppercase and in braces, as in the Registry",
+"Horloges du monde": "World clocks",
+"4 villes au plus, séparées par des virgules (ex. : Montréal, Tokyo). Elles s'affichent dans l'onglet Système. Les heures sont calculées sur le PC.": "Up to 4 cities, separated by commas (e.g. Montreal, Tokyo). They are shown in the System tab. Times are computed on the PC.",
+"Lance Claude Code, Codex ou Gemini CLI dans un de vos projets en un clic, ou reprend la dernière session. Un tableau montre les sessions en cours ; « Y aller » ramène devant la bonne fenêtre. Claude Code, Codex et Gemini CLI préviennent l'île : « attend votre permission », « a fini », avec ce qui a changé dans le projet (git). Ils passent par la commande « ondine.exe notify » et un canal local réservé à votre compte Windows : rien ne passe par Internet. Branchée comme serveur MCP, l'île laisse aussi l'agent vous envoyer un message, une progression, lancer le minuteur ou vous poser une question à choix. Le mode concentration met leurs notifications en attente et vous fait un résumé à la fin. Si vous l'activez (désactivé par défaut), vous pouvez aussi autoriser ou refuser une action de Claude Code ou Codex depuis l'île, après confirmation. L'île n'exécute rien de ce que les agents lui envoient (elle lance seulement git, en lecture seule, pour le bilan) et ne décide jamais à votre place. Elle ne lit pas ce que vous tapez : seule la dernière phrase d'une session de Claude Code s'affiche à côté de « Reprendre », sans quitter votre PC.": "Launch Claude Code, Codex or Gemini CLI in one of your projects with one click, or resume the last session. A board shows running sessions; “Go there” brings the right window to the front. Claude Code, Codex and Gemini CLI notify the island: “waiting for your permission”, “finished”, with what changed in the project (git). They go through the “ondine.exe notify” command and a local channel reserved for your Windows account: nothing goes over the Internet. Hooked up as an MCP server, the island also lets the agent send you a message, a progress update, start the timer or ask you a multiple-choice question. Focus mode holds their notifications and gives you a summary at the end. If you enable it (off by default), you can also allow or deny an action from Claude Code or Codex from the island, after confirmation. The island runs nothing the agents send it (it only runs git, read-only, for the summary) and never decides for you. It doesn't read what you type: only the last line of a Claude Code session is shown next to “Resume”, without leaving your PC.",
+"Vos prochains rendez-vous, venant de plusieurs calendriers : des fichiers .ics (export d'Outlook, Google Agenda, Thunderbird…) ou les adresses secrètes iCal de vos agendas en ligne, chacun avec son nom et sa couleur. Un fichier est relu dès qu'il change ; un lien est retéléchargé toutes les 15 minutes. Un clic sur un rendez-vous ouvre son lien (réunion Teams, Meet, Zoom…). Juste avant une réunion en ligne, l'île vous propose de la rejoindre en un clic (et met la musique en pause). Lecture seule : rien n'est envoyé, et les adresses restent dans le Gestionnaire d'identifiants.": "Your upcoming appointments from several calendars: .ics files (exported from Outlook, Google Calendar, Thunderbird…) or the secret iCal addresses of your online calendars, each with its own name and color. A file is re-read as soon as it changes; a link is re-downloaded every 15 minutes. Clicking an appointment opens its link (Teams, Meet, Zoom meeting…). Just before an online meeting, the island offers to join it in one click (and pauses the music). Read-only: nothing is sent, and the addresses stay in the Credential Manager.",
+"Afficher la dernière phrase de la session à côté de « Reprendre »": "Show the session's last line next to “Resume”",
+"Lue à la fin de l'historique de Claude Code, sur votre PC. Elle n'est ni envoyée ni écrite dans le journal.": "Read from the end of the Claude Code history, on your PC. It is never sent or written to the log.",
+"Montrer ce qui a changé quand un agent a fini": "Show what changed when an agent is done",
+"Si le dossier de la session est un dépôt git : « 3 fichiers modifiés, +120 −14 », avec « Ouvrir dans VS Code » et « Terminal ici ». Ondine lance git en lecture seule, 3 secondes au plus.": "If the session folder is a git repository: “3 files changed, +120 −14”, with “Open in VS Code” and “Terminal here”. Ondine runs git read-only, for 3 seconds at most.",
+"Ouvrir dans VS Code": "Open in VS Code",
+"VS Code": "VS Code",
+"↻ Reprendre": "↻ Resume",
+"Continuer la dernière conversation (claude --continue)": "Continue the last conversation (claude --continue)",
+"Reprendre la dernière session (codex resume --last)": "Resume the last session (codex resume --last)",
+"Vous :": "You:",
+"Claude :": "Claude:",
+"VS Code n'est pas installé sur ce PC": "VS Code isn't installed on this PC",
+"ce n'est pas un dossier": "this isn't a folder",
+"Gemini CLI : la reprise d'une session n'est pas proposée ici": "Gemini CLI: resuming a session isn't offered here",
+"Proposer de rejoindre la réunion (minutes avant, 0 = jamais)": "Offer to join the meeting (minutes before, 0 = never)",
+"Pour une réunion Teams, Meet, Zoom ou Webex : une alerte « Réunion dans 2 min » avec « Rejoindre », une seule fois par rendez-vous. Rejoindre met la musique en pause et vous prévient si votre micro est coupé.": "For a Teams, Meet, Zoom or Webex meeting: a “Meeting in 2 min” alert with “Join”, only once per appointment. Joining pauses the music and warns you if your mic is muted.",
+"Votre micro est coupé": "Your mic is muted",
+"Rétablir le micro": "Unmute the mic",
+"Vos serveurs Bureau à distance (RDP) et SSH en favoris, ouverts en un clic depuis l'île ou le lanceur. Enregistrés sur votre ordinateur (%APPDATA%\\Ondine\\remote.json), sans aucun mot de passe. « Tester » vérifie seulement que le serveur répond. Avec son adresse MAC, un favori éteint peut être réveillé (Wake-on-LAN, réseau local seulement).": "Your Remote Desktop (RDP) and SSH servers as favorites, opened in one click from the island or the launcher. Saved on your computer (%APPDATA%\\Ondine\\remote.json), with no passwords at all. “Test” only checks that the server responds. With its MAC address, a favorite that is off can be woken up (Wake-on-LAN, local network only).",
+"Paquet envoyé sur le réseau local. Test toutes les 5 s, 2 min au plus.": "Packet sent on the local network. Checking every 5 s, for 2 min at most.",
+"Réveil impossible": "Couldn't wake it up",
+"Il répondait déjà.": "It was already responding.",
+"Vérifiez que le Wake-on-LAN est activé (BIOS et carte réseau) et que le serveur est sur le même réseau local.": "Check that Wake-on-LAN is enabled (BIOS and network card) and that the server is on the same local network.",
+"Réveil en cours…": "Waking up…",
+"Réveil en cours… (cliquer renvoie le paquet)": "Waking up… (click to send the packet again)",
+"Réveiller (Wake-on-LAN)": "Wake up (Wake-on-LAN)",
+"Réveiller": "Wake up",
+"AA:BB:CC:DD:EE:FF (facultatif)": "AA:BB:CC:DD:EE:FF (optional)",
+"Pour « Réveiller » (Wake-on-LAN). Serveur allumé, « arp -a » dans un terminal la donne.": "For “Wake up” (Wake-on-LAN). With the server on, “arp -a” in a terminal shows it.",
+"Adresse MAC (réveil)": "MAC address (wake-up)",
+"ce favori n'a pas d'adresse MAC : ajoutez-la (✎) pour pouvoir le réveiller": "this favorite has no MAC address: add it (✎) to be able to wake it up",
+"adresse MAC invalide : 12 chiffres hexadécimaux, ex. AA:BB:CC:DD:EE:FF": "invalid MAC address: 12 hexadecimal digits, e.g. AA:BB:CC:DD:EE:FF",
+"adresse MAC invalide : ce n'est pas celle d'une carte réseau": "invalid MAC address: that's not a network card's address",
+"📱 Vers le téléphone": "📱 To the phone",
+"Vers le téléphone": "To the phone",
+"Vers le téléphone (même Wi-Fi, QR code)": "To the phone (same Wi-Fi, QR code)",
+"Le téléphone a reçu le fichier": "The phone received the file",
+"Lien vers le téléphone expiré": "Link to the phone expired",
+"Envoi vers le téléphone impossible": "Couldn't send to the phone",
+"Le téléphone télécharge…": "The phone is downloading…",
+"Scannez le QR code avec l'appareil photo du téléphone.": "Scan the QR code with the phone's camera.",
+"Le lien a expiré.": "The link has expired.",
+"L'adresse, si le téléphone ne lit pas le QR code": "The address, in case the phone can't read the QR code",
+"Le téléphone doit être sur le même Wi-Fi que le PC. La première fois, Windows peut demander d'autoriser Ondine sur les réseaux privés : acceptez, sinon le téléphone ne trouvera pas le PC.": "The phone must be on the same Wi-Fi as the PC. The first time, Windows may ask you to allow Ondine on private networks: accept, otherwise the phone won't find the PC.",
+"Fermer le partage tout de suite": "Close the share right away",
+"Expire dans": "Expires in",
+"cet élément n'est plus sur l'étagère": "this item is no longer on the Shelf",
+"seul un fichier peut être envoyé au téléphone (pas un dossier)": "only a file can be sent to the phone (not a folder)",
+"aucun réseau local trouvé : connectez le PC au Wi-Fi (ou au réseau) de la maison ou du bureau, le même que le téléphone, puis réessayez": "no local network found: connect the PC to the home or office Wi-Fi (or network), the same one as the phone, then try again",
+"Glissez un fichier sur l'île pour le poser ici.": "Drag a file onto the island to put it here.",
+"Cliquez sur une copie pour la coller dans la fenêtre où vous étiez.": "Click a copied item to paste it into the window you were in.",
+"Choisissez Texte, Annoter, PNG ou Étagère, puis sélectionnez une zone de l'écran.": "Choose Text, Annotate, PNG or Shelf, then select an area of the screen.",
+"Choisissez une durée : le temps qui reste s'affiche aussi dans la mini-île.": "Pick a duration: the time left also shows in the mini island.",
+"Tapez une tâche puis Entrée ; double-cliquez sur une tâche pour la modifier.": "Type a task then Enter; double-click a task to edit it.",
+"Ajoutez vos calendriers dans les réglages, puis cliquez sur un rendez-vous pour rejoindre sa réunion.": "Add your calendars in the settings, then click an event to join its meeting.",
+"Déposez un dossier sur l'île pour y ouvrir un terminal.": "Drop a folder onto the island to open a terminal there.",
+"Cliquez sur « Copier pour le support » : tout est prêt à coller dans un ticket.": "Click \"Copy for support\": everything is ready to paste into a ticket.",
+"Tapez une adresse puis RDP ou SSH ; ★ l'enregistre en favori.": "Type an address then RDP or SSH; ★ saves it as a favorite.",
+"Tapez un nom ou une adresse, puis Entrée pour un ping en continu.": "Type a name or an address, then Enter for a continuous ping.",
+"Branchez Claude Code, Codex ou Gemini une fois : ils vous préviendront ici quand ils ont fini ou vous attendent.": "Connect Claude Code, Codex or Gemini once: they'll let you know here when they're done or waiting for you.",
+"Collez une erreur ou déposez un fichier sur l'île : vous verrez tout ce qui part avant l'envoi.": "Paste an error or drop a file onto the island: you'll see everything that goes out before it's sent.",
+"Tapez quelques lettres puis Entrée ; le raccourci (Alt+Espace par défaut) ouvre cette recherche de n'importe où.": "Type a few letters then Enter; the shortcut (Alt+Space by default) opens this search from anywhere.",
+"Créez vos règles dans Réglages → Règles ; ici, vous les suivez et pouvez tout mettre en pause.": "Create your rules in Settings → Rules; here, you follow them and can pause everything.",
+"Cliquez sur la barre de progression pour avancer ou reculer dans le morceau.": "Click the progress bar to skip forward or back in the track.",
+"Glissez un pilier vers le haut ou le bas pour régler le son, le micro ou la luminosité.": "Drag a slider up or down to set the sound, the mic or the brightness.",
+"Voir les nouveautés": "See what's new",
+"Nouveautés": "What's new",
+"Ce qui a changé dans cette version, comme après une mise à jour : la notification s'affiche dans l'île.": "What changed in this version, as after an update: the notification shows in the island.",
+"Tout voir": "See all",
+"Toutes les nouveautés de cette version sont sur GitHub.": "Everything new in this version is on GitHub.",
+"Astuces": "Tips",
+"Astuces à la première ouverture d'un onglet": "Tips the first time a tab opens",
+"La première fois que vous ouvrez un onglet, une petite bulle d'Ondine explique son geste principal.": "The first time you open a tab, a small bubble from Ondine explains its main gesture.",
+"Revoir les astuces": "Show the tips again",
+"Les astuces reviendront à la prochaine ouverture de chaque onglet.": "The tips will come back the next time each tab opens.",
+"Bilan de la semaine": "Weekly summary",
+"Chaque semaine, au jour et à l'heure choisis (vendredi 17 h par défaut), Ondine résume dans une notification ce que vous avez fait : Pomodoros terminés, temps de concentration (séances de travail du Minuteur) et tâches cochées dans Notes. Seulement s'il s'est passé quelque chose. PC éteint à l'heure dite : le bilan arrive au démarrage suivant, dans les 2 jours. Les compteurs restent sur votre PC et ne contiennent que des nombres, jamais le texte de vos tâches.": "Every week, on the day and at the time you choose (Friday 5 p.m. by default), Ondine sums up in a notification what you've done: Pomodoros completed, focus time (Timer work sessions) and tasks checked off in Notes. Only if something happened. PC off at that time: the summary comes at the next startup, within 2 days. The counters stay on your PC and only hold numbers, never the text of your tasks.",
+"Chaque semaine, au jour et à l'heure choisis (vendredi 17 h par défaut), Ondine résume dans une notification ce que vous avez fait : Pomodoros terminés, temps de concentration (séances de travail du Minuteur) et tâches cochées dans Notes.": "Every week, on the day and at the time you choose (Friday 5 p.m. by default), Ondine sums up in a notification what you've done: Pomodoros completed, focus time (Timer work sessions) and tasks checked off in Notes.",
+"Jour du bilan": "Summary day",
+"Heure du bilan": "Summary time",
+"L'heure de votre PC. Ce qui est fait après compte pour la semaine suivante.": "Your PC's time. What you do afterwards counts for the next week.",
+"Le bilan de votre semaine": "Your week in review",
+"Votre semaine jusqu'ici": "Your week so far",
+"Rien de compté pour l'instant : lancez un Pomodoro ou cochez une tâche dans Notes.": "Nothing counted yet: start a Pomodoro or check off a task in Notes.",
+"1 Pomodoro terminé": "1 Pomodoro completed",
+"1 tâche cochée": "1 task checked off",
+"Aperçu": "Preview",
+"Voir le bilan maintenant": "See the summary now",
+"Ce qui est compté depuis le dernier bilan : la notification s'affiche dans l'île. Le vrai bilan arrivera quand même à l'heure dite.": "What's been counted since the last summary: the notification shows in the island. The real summary will still come at the set time.",
+"Activez d'abord le module.": "Turn the module on first.",
+"Le volume des haut-parleurs et du micro, la luminosité des écrans, le Wi-Fi, le Bluetooth, le mode avion, le mode sombre et l'éclairage nocturne de Windows, sans ouvrir Windows. Les clés et disques USB s'éjectent d'un clic. Un point orange (micro) ou vert (caméra) sur l'île montre quand une appli s'en sert, et un raccourci coupe le micro de partout. Agit sur les périphériques que Windows utilise par défaut ; les écrans externes doivent accepter le réglage DDC/CI (souvent activé dans leur menu). Rien n'est écouté ni enregistré : on lit seulement ce que Windows note pour sa page Confidentialité.": "Speaker and microphone volume, screen brightness, Wi-Fi, Bluetooth, airplane mode, and Windows dark mode and night light, without opening Windows. USB drives and disks eject in one click. An orange (microphone) or green (camera) dot on the island shows when an app is using them, and a shortcut mutes the mic everywhere. Acts on the devices Windows uses by default; external screens must support DDC/CI adjustment (often enabled in their menu). Nothing is listened to or recorded: it only reads what Windows logs for its Privacy page.",
+"L'état du PC d'un coup d'œil : processeur, mémoire, disques, adresses IP et MAC, batterie, version de Windows, redémarrage en attente. Un bouton copie un résumé à coller dans un ticket de support. Prévient quand un disque est presque plein, quand la batterie est faible ou chargée. Ondine transpire quand le processeur est à fond. Tout est lu sur le PC : rien ne part sur Internet.": "Your PC's status at a glance: processor, memory, disks, IP and MAC addresses, battery, Windows version, pending restart. One button copies a summary to paste into a support ticket. Warns you when a disk is almost full, when the battery is low or charged. Ondine sweats when the processor is maxed out. Everything is read on the PC: nothing is sent over the Internet.",
+"Sombre": "Dark",
+"Veilleuse": "Night light",
+"Mode sombre de Windows : activé": "Windows dark mode: on",
+"Mode sombre de Windows : en partie (applis ou barre des tâches)": "Windows dark mode: partly (apps or taskbar)",
+"Mode sombre de Windows : désactivé": "Windows dark mode: off",
+"Éclairage nocturne : ouvrir les paramètres de Windows": "Night light: open Windows settings",
+"Éclairage nocturne : activé": "Night light: on",
+"Éclairage nocturne : désactivé": "Night light: off",
+"Windows ne permet pas de changer le mode sombre ici": "Windows doesn't allow changing dark mode here",
+"Windows refuse de changer l'éclairage nocturne": "Windows refused to change night light",
+"Clés USB et disques amovibles": "USB drives and removable disks",
+"Éjecter": "Eject",
+"Éjection…": "Ejecting…",
+"Disque USB": "USB disk",
+"Le lecteur n'est plus visible : il a peut-être déjà été retiré.": "The drive is no longer visible: it may already have been removed.",
+"Windows ne propose pas de retirer ce lecteur en toute sécurité.": "Windows doesn't offer to safely remove this drive.",
+"L'Explorateur de fichiers utilise encore ce lecteur. Fermez ses fenêtres puis réessayez.": "File Explorer is still using this drive. Close its windows and try again.",
+"Un pilote ou un autre périphérique bloque l'éjection. Réessayez dans un moment.": "A driver or another device is blocking the eject. Try again in a moment.",
+"Windows demande des droits d'administrateur pour éjecter ce lecteur.": "Windows requires administrator rights to eject this drive.",
+"Windows ne permet pas d'éjecter ce lecteur.": "Windows doesn't allow ejecting this drive.",
+"Un programme utilise encore la clé. Fermez-le puis réessayez.": "A program is still using the USB drive. Close it and try again.",
+"Un programme utilise encore le disque. Fermez-le puis réessayez.": "A program is still using the disk. Close it and try again.",
+"lecteur inconnu": "unknown drive",
+"ce lecteur n'est plus branché": "this drive is no longer plugged in",
+"éjection déjà en cours": "already ejecting",
+"Prévenir quand une clé USB est branchée": "Notify when a USB drive is plugged in",
+"Avec deux boutons : « Ouvrir » et « Éjecter ». Les clés et disques USB branchés s'éjectent aussi depuis l'onglet.": "With two buttons: \"Open\" and \"Eject\". Plugged-in USB drives and disks can also be ejected from the tab.",
+"Redémarrage en attente": "Restart pending",
+"Redémarrage en attente depuis 1 jour": "Restart pending for 1 day",
+"Redémarrage en attente depuis moins d'une heure": "Restart pending for less than an hour",
+"(mises à jour de Windows)": "(Windows updates)",
+"(composants de Windows)": "(Windows components)",
+"Ouvrir Windows Update": "Open Windows Update",
+"Windows attend un redémarrage pour terminer ses mises à jour. Redémarrez quand cela vous arrange.": "Windows is waiting for a restart to finish its updates. Restart whenever it suits you.",
+"Rappeler un redémarrage en attente": "Remind me of a pending restart",
+"Au plus une fois par jour, après un jour d'attente, jamais pendant un appel ni une présentation. Ondine ne redémarre jamais le PC elle-même.": "At most once a day, after a day of waiting, never during a call or a presentation. Ondine never restarts the PC itself.",
+"Garde l'historique de vos copies de texte (recherche, épinglage), colle sans mise en forme, range vos textes fréquents en snippets, retire les traqueurs des liens copiés (utm_source, fbclid…) change la casse d'un texte en un clic, décode un jeton JWT, du Base64, une adresse encodée (%20), un horodatage Unix ou met en forme du JSON, et génère des mots de passe (copiés en secret, effacés au bout de 30 s, jamais enregistrés). Les copies que Windows signale comme sensibles (mots de passe) sont ignorées. L'historique reste en mémoire et disparaît à la fermeture de l'île ; seuls les éléments épinglés et les snippets sont enregistrés, sur votre ordinateur.": "Keeps the history of your text copies (search, pinning), pastes without formatting, stores your frequent texts as snippets, strips trackers from copied links (utm_source, fbclid…), changes a text's case in one click, decodes a JWT, Base64, an encoded address (%20), a Unix timestamp or formats JSON, and generates passwords (copied secretly, erased after 30 s, never saved). Copies that Windows flags as sensitive (passwords) are ignored. The history stays in memory and disappears when the island closes; only pinned items and snippets are saved, on your computer.",
+"Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur votre ordinateur, hors ligne : l'image n'est envoyée nulle part. La pipette copie la couleur d'un point de l'écran. « Enregistrer un GIF » filme une zone de l'écran en GIF animé (30 s au plus), posé sur l'étagère.": "Captures an area of the screen with the Windows tool, then reads its text (OCR) or saves it as PNG. Also works on an image you've already copied. Text recognition runs on your computer, offline: the image is sent nowhere. The color picker copies the color of any point on the screen. “Record a GIF” films an area of the screen as an animated GIF (30 s at most), put on the Shelf.",
+"Décoder": "Decode",
+"Mettre en forme": "Format",
+"Lire la date": "Read the date",
+"Décoder ce jeton JWT : en-tête, contenu et dates (la signature n'est pas vérifiée)": "Decode this JWT: header, payload and dates (the signature is not verified)",
+"Décoder ce texte en Base64": "Decode this Base64 text",
+"Décoder les caractères %xx de ce texte": "Decode the %xx characters of this text",
+"Mettre en forme ce JSON (une valeur par ligne, avec des retraits)": "Format this JSON (one value per line, indented)",
+"Lire la date de cet horodatage Unix": "Read the date of this Unix timestamp",
+"Signature non vérifiée : ce décodage ne prouve pas que le jeton est authentique ni qu'il n'a pas été modifié.": "Signature not verified: decoding does not prove that the token is genuine or that it has not been altered.",
+"Ce texte n'est pas un jeton JWT (trois parties séparées par des points).": "This text is not a JWT (three parts separated by dots).",
+"L'en-tête du jeton ne se décode pas.": "The token header cannot be decoded.",
+"Le contenu du jeton ne se décode pas.": "The token payload cannot be decoded.",
+"Ce texte n'est pas du Base64 (il contient des espaces).": "This text is not Base64 (it contains spaces).",
+"Ce texte n'est pas du Base64 valide.": "This text is not valid Base64.",
+"Ce Base64 ne contient pas de texte lisible (peut-être une image ou un fichier).": "This Base64 does not contain readable text (maybe an image or a file).",
+"Ce texte contient des %xx invalides.": "This text contains invalid %xx sequences.",
+"Ce texte n'est pas du JSON valide.": "This text is not valid JSON.",
+"Ce nombre n'est pas une date plausible (entre 2000 et 2050).": "This number is not a plausible date (between 2000 and 2050).",
+"Ce texte ne se décode pas.": "This text cannot be decoded.",
+"Algorithme": "Algorithm",
+"aucune signature": "no signature",
+"Émis le (iat)": "Issued at (iat)",
+"Valable à partir du (nbf)": "Valid from (nbf)",
+"Expire le (exp)": "Expires (exp)",
+"expiré": "expired",
+"encore valide": "still valid",
+"pas encore valide": "not valid yet",
+"Jeton JWT": "JWT",
+"En-tête": "Header",
+"Contenu": "Payload",
+"Texte (JSON mis en forme)": "Text (formatted JSON)",
+"Texte": "Text",
+"Base64 décodé": "Decoded Base64",
+"Texte décodé": "Decoded text",
+"Paramètres": "Parameters",
+"Adresse décodée": "Decoded URL",
+"JSON mis en forme": "Formatted JSON",
+"Horodatage Unix (millisecondes)": "Unix timestamp (milliseconds)",
+"Horodatage Unix (secondes)": "Unix timestamp (seconds)",
+"Heure locale": "Local time",
+"Décodé sur votre PC : rien n'est envoyé ni enregistré.": "Decoded on your PC: nothing is sent or saved.",
+"Copier ce texte": "Copy this text",
+"Empreinte": "Hash",
+"Cible « Empreinte » (SHA-256)": "“Hash” target (SHA-256)",
+"Si le presse-papiers contient une empreinte (MD5, SHA-1, SHA-256 ou SHA-512), le fichier lui est comparé.": "If the clipboard contains a hash (MD5, SHA-1, SHA-256 or SHA-512), the file is compared with it.",
+"Empreinte impossible": "Hash failed",
+"Empreinte copiée": "Hash copied",
+"Empreinte arrêtée": "Hash stopped",
+"Identique ✓": "Identical ✓",
+"Différente ✗": "Different ✗",
+"aucun fichier (les dossiers n'ont pas d'empreinte)": "no file (folders have no hash)",
+"une empreinte est déjà en cours de calcul": "a hash is already being computed",
+"ce résultat n'est plus disponible": "this result is no longer available",
+"rien à copier": "nothing to copy",
+"erreur interne": "internal error",
+"illisible": "unreadable",
+"GIF animé :": "Animated GIF:",
+"🎞️ Enregistrer un GIF": "🎞️ Record a GIF",
+"⏹️ Arrêter le GIF": "⏹️ Stop the GIF",
+"⏳ GIF en cours…": "⏳ GIF in progress…",
+"Choisissez une zone de l'écran, puis enregistrez-la en GIF animé (durée maximale dans les réglages du module)": "Choose an area of the screen, then record it as an animated GIF (maximum length in the module settings)",
+"Arrêter l'enregistrement et créer le GIF": "Stop recording and create the GIF",
+"Glissez pour choisir la zone du GIF · Clic : tout l'écran · Échap : annuler": "Drag to choose the GIF area · Click: whole screen · Esc: cancel",
+"Création du GIF…": "Creating the GIF…",
+"GIF impossible": "GIF failed",
+"Durée maximale d'un GIF (secondes)": "Maximum GIF length (seconds)",
+"L'enregistrement s'arrête tout seul au bout de ce temps, ou avant avec « Arrêter ». 30 secondes au plus.": "Recording stops by itself after this time, or earlier with “Stop”. 30 seconds at most.",
+"Montrer la souris dans les GIF": "Show the mouse pointer in GIFs",
+"un GIF est déjà en cours": "a GIF is already in progress",
+"zone vide": "empty area",
+"copie de l'écran impossible": "couldn't copy the screen",
+"aucune image enregistrée": "no image recorded",
+"image trop grande pour un GIF": "image too large for a GIF",
+"image de la mauvaise taille": "image of the wrong size",
+"Historique": "History",
+"a fini à l'instant": "finished just now"
 },
 "patterns": [
 [
@@ -1962,6 +2172,10 @@
 "until $1"
 ],
 [
+"^a fini il y a (\\d+) min$",
+"finished $1 min ago"
+],
+[
 "^a\\ fini\\ (.+?)$",
 "finished $1"
 ],
@@ -2148,6 +2362,270 @@
 [
 "^Trésor\\ trouvé\\ \\((\\d+)\\ /\\ (\\d+)\\)\\ :\\ à\\ retrouver\\ dans\\ Réglages\\ →\\ Mascotte\\.$",
 "Treasure found ($1 / $2): see Settings → Mascot."
+],
+[
+"^Ville\\ inconnue,\\ ignorée\\ :\\ (.+)$",
+"Unknown city, ignored: $1"
+],
+[
+"^Villes\\ inconnues,\\ ignorées\\ :\\ (.+)$",
+"Unknown cities, ignored: $1"
+],
+[
+"^(\\d+)\\ villes\\ au\\ plus\\.\\ En\\ trop\\ :\\ (.+)$",
+"$1 cities at most. Too many: $2"
+],
+[
+"^(.+?) a fini · 1 fichier modifié, \\+(\\d+) −(\\d+)$",
+"$1 is done · 1 file changed, +$2 −$3"
+],
+[
+"^(.+?) a fini · (\\d+) fichiers modifiés, \\+(\\d+) −(\\d+)$",
+"$1 is done · $2 files changed, +$3 −$4"
+],
+[
+"^(.+) · Projet (.+)$",
+"$1 · Project $2"
+],
+[
+"^il y a (\\d+) j$",
+"$1 d ago"
+],
+[
+"^Réunion dans (\\d+) min : (.+)$",
+"Meeting in $1 min: $2"
+],
+[
+"^La réunion commence : (.+)$",
+"The meeting is starting: $1"
+],
+[
+"^VS Code ne s'ouvre pas : (.+)$",
+"VS Code won't open: $1"
+],
+[
+"^Réveil de (.+)…$",
+"Waking $1…"
+],
+[
+"^(.+) est réveillé$",
+"$1 is awake"
+],
+[
+"^Il répond après (\\d+) s\\.$",
+"Responding after $1 s."
+],
+[
+"^(.+) ne répond toujours pas$",
+"$1 still isn't responding"
+],
+[
+"^Réveiller (.+)$",
+"Wake up $1"
+],
+[
+"^impossible d'ouvrir le partage sur le réseau local \\((.+)\\)$",
+"can't open the share on the local network ($1)"
+],
+[
+"^paquet de réveil impossible à envoyer \\((.*)\\)$",
+"couldn't send the wake-up packet ($1)"
+],
+[
+"^fichier illisible : (.+)$",
+"unreadable file: $1"
+],
+[
+"^(\\d+),(\\d) (K|M|G)o$",
+"$1.$2 $3B"
+],
+[
+"^(\\d+) (K|M|G)o$",
+"$1 $2B"
+],
+[
+"^(\\d+) o$",
+"$1 B"
+],
+[
+"^Quoi\\ de\\ neuf\\ dans\\ Ondine\\ (.+)$",
+"What's new in Ondine $1"
+],
+[
+"^(\\d+)\\ Pomodoros\\ terminés$",
+"$1 Pomodoros completed"
+],
+[
+"^(\\d+)\\ tâches\\ cochées$",
+"$1 tasks checked off"
+],
+[
+"^(\\d+\\ (?:min|h(?:\\ \\d{2})?))\\ de\\ concentration$",
+"$1 of focus"
+],
+[
+"^Clé USB branchée : (.+) \\(([A-Z]:)\\)$",
+"USB drive plugged in: $1 ($2)"
+],
+[
+"^Clé USB branchée \\(([A-Z]:)\\)$",
+"USB drive plugged in ($1)"
+],
+[
+"^Disque USB branché : (.+) \\(([A-Z]:)\\)$",
+"USB disk plugged in: $1 ($2)"
+],
+[
+"^Disque USB branché \\(([A-Z]:)\\)$",
+"USB disk plugged in ($1)"
+],
+[
+"^Clé USB \\(([A-Z]:)\\)$",
+"USB drive ($1)"
+],
+[
+"^Disque USB \\(([A-Z]:)\\)$",
+"USB disk ($1)"
+],
+[
+"^Vous pouvez retirer la clé ([A-Z]:) en toute sécurité\\.$",
+"You can safely remove the USB drive $1."
+],
+[
+"^Vous pouvez retirer le disque ([A-Z]:) en toute sécurité\\.$",
+"You can safely remove the disk $1."
+],
+[
+"^La clé ([A-Z]:) n'est pas éjectée$",
+"USB drive $1 was not ejected"
+],
+[
+"^Le disque ([A-Z]:) n'est pas éjecté$",
+"Disk $1 was not ejected"
+],
+[
+"^Windows refuse l'éjection \\(code (\\d+)\\)\\. Réessayez dans un moment\\.$",
+"Windows refused to eject (code $1). Try again in a moment."
+],
+[
+"^Le service « (.+) » utilise encore ce lecteur\\. Réessayez dans un moment\\.$",
+"The \"$1\" service is still using this drive. Try again in a moment."
+],
+[
+"^« (.+) » utilise encore ce lecteur\\. Fermez-le puis réessayez\\.$",
+"\"$1\" is still using this drive. Close it and try again."
+],
+[
+"^Redémarrage en attente depuis (\\d+) jours$",
+"Restart pending for $1 days"
+],
+[
+"^Redémarrage en attente depuis (\\d+) h$",
+"Restart pending for $1 h"
+],
+[
+"^il y a (\\d+) s$",
+"$1 s ago"
+],
+[
+"^dans (\\d+) s$",
+"in $1 s"
+],
+[
+"^dans (\\d+) j$",
+"in $1 d"
+],
+[
+"^il y a (\\d+) ans$",
+"$1 years ago"
+],
+[
+"^dans (\\d+) ans$",
+"in $1 years"
+],
+[
+"^Empreinte (MD5|SHA-1|SHA-256|SHA-512)…$",
+"$1 hash…"
+],
+[
+"^Comparaison (MD5|SHA-1|SHA-256|SHA-512)…$",
+"Comparing $1…"
+],
+[
+"^Empreinte (MD5|SHA-1|SHA-256|SHA-512) : (\\d+) %$",
+"$1 hash: $2%"
+],
+[
+"^Comparaison (MD5|SHA-1|SHA-256|SHA-512) : (\\d+) %$",
+"Comparing $1: $2%"
+],
+[
+"^Empreintes (MD5|SHA-1|SHA-256|SHA-512) \\((\\d+) fichiers\\)$",
+"$1 hashes ($2 files)"
+],
+[
+"^Identiques ✓ \\((\\d+) fichiers\\)$",
+"Identical ✓ ($1 files)"
+],
+[
+"^Différentes ✗ : (\\d+) sur (\\d+)$",
+"Different ✗: $1 of $2"
+],
+[
+"^(\\d+) fichiers au plus à la fois \\(vous en avez glissé (\\d+)\\)$",
+"$1 files at most at a time (you dropped $2)"
+],
+[
+"^ouverture impossible : (.+)$",
+"unable to open: $1"
+],
+[
+"^lecture impossible : (.+)$",
+"unable to read: $1"
+],
+[
+"^calcul impossible : (.+)$",
+"unable to compute: $1"
+],
+[
+"^Enregistrement du GIF \\((\\d+) s au plus\\)$",
+"Recording the GIF ($1 s max)"
+],
+[
+"^GIF enregistré \\((\\d+) s, (\\d+) Ko\\)$",
+"GIF saved ($1 s, $2 KB)"
+],
+[
+"^GIF enregistré \\((\\d+) s, (\\d+),(\\d) Mo\\)$",
+"GIF saved ($1 s, $2.$3 MB)"
+],
+[
+"^enregistrement impossible : (.+)$",
+"couldn't save: $1"
+],
+[
+"^écriture du GIF impossible : (.+)$",
+"couldn't write the GIF: $1"
+],
+[
+"^fenêtre de sélection impossible à ouvrir : (.+)$",
+"couldn't open the selection window: $1"
+],
+[
+"^capture de l'écran impossible : (.+)$",
+"couldn't capture the screen: $1"
+],
+[
+"^(\\d+) copie\\(s\\), (\\d+) épinglée\\(s\\)$",
+"$1 cop(ies), $2 pinned"
+],
+[
+"^(\\d+) copie\\(s\\)$",
+"$1 cop(ies)"
+],
+[
+"^(.+?) a fini$",
+"$1 is done"
 ]
 ]
 }

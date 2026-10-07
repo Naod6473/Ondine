@@ -87,6 +87,11 @@ const state = {
   speakers: { volume: 62, muted: false },
   microphone: { volume: 80, muted: false },
   radios: { wifi: true, bluetooth: true },
+  /** Mode sombre et éclairage nocturne de Windows (onglet Contrôles). */
+  dark: false,
+  night: false,
+  /** Une clé USB inventée est branchée (onglet Contrôles). */
+  usbKey: true,
   brightness: 70,
   output: "speakers",
   pinnedClips: new Set<number>([1]),
@@ -159,13 +164,21 @@ function notes() {
   };
 }
 
+/** Un jeton JWT inventé (bouton « Décoder » du Presse-papiers) : émis il y a 1 h, valable 8 h. */
+function demoJwt(): string {
+  const part = (o: object) => btoa(JSON.stringify(o)).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const iat = Math.floor(Date.now() / 1000 / 60) * 60 - 3600;
+  return `${part({ alg: "HS256", typ: "JWT" })}.${part({ sub: "demo", name: "Camille", role: "support", iat, exp: iat + 8 * 3600 })}.q3vN8kH2pL0sT5wY7zB1cD4fG6jM9nR2tV5xA8eC0Eo`;
+}
+
 function clipboard(query: string) {
+  const jwt = demoJwt();
   const items = [
     { id: 1, preview: "https://ondine.pissits.com", chars: 26, at: Date.now() - 2 * MIN },
+    { id: 5, preview: jwt, chars: jwt.length, at: Date.now() - 5 * MIN },
     { id: 2, preview: "git commit -m \"Ondine 1.0\"", chars: 26, at: Date.now() - 9 * MIN },
     { id: 3, preview: "Rendez-vous jeudi à 14 h devant la gare", chars: 39, at: Date.now() - 40 * MIN },
     { id: 4, preview: "#4FB8FF", chars: 7, at: Date.now() - 2 * 3600_000 },
-    { id: 5, preview: "ipconfig /flushdns", chars: 18, at: Date.now() - 5 * 3600_000 },
   ]
     .map((i) => ({ ...i, pinned: state.pinnedClips.has(i.id) }))
     .filter((i) => !query || i.preview.toLowerCase().includes(query.toLowerCase()));
@@ -312,6 +325,9 @@ function agentsHistory() {
 
 const RULE_EMPTY = { extensions: [], nameContains: "", minKb: null, maxKb: null };
 
+/** La clé USB inventée de l'onglet Contrôles. */
+const DEMO_USB = { root: "E:\\", letter: "E:", label: "KINGSTON", removable: true, ejecting: false };
+
 /** L'historique de la pipette (module Capture) : une petite palette inventée. */
 const DEMO_COLORS = ["#3A7BD5", "#00D2FF", "#F7B733", "#FC4A1A", "#6A3093", "#2ECC71", "#1F2937", "#F5F5F4"];
 
@@ -391,6 +407,21 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return { title: "Présentation.pptx - PowerPoint", pinned: false };
     case "controls.toggle_pin":
       return { title: "Présentation.pptx - PowerPoint", pinned: true };
+    case "controls.theme":
+      return { dark: state.dark, mixed: false, night: { supported: true, on: state.night } };
+    case "controls.set_dark":
+      state.dark = args.on === true;
+      return null;
+    case "controls.set_night":
+      state.night = args.on === true;
+      return { opened: false };
+    case "controls.usb_drives":
+      return state.usbKey ? [DEMO_USB] : [];
+    case "controls.eject":
+      // Comme le Rust : la réponse arrive un peu plus tard, par le bus.
+      state.usbKey = false;
+      window.setTimeout(() => bus.inject("controls.usb-ejected", { ...DEMO_USB, ok: true }, "controls"), 800);
+      return null;
 
     // Agenda, notes, presse-papiers, étagère
     case "agenda.upcoming":
@@ -434,6 +465,11 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     case "shelf.copy_to":
     case "shelf.move_to":
       return { count: Array.isArray(args.paths) ? args.paths.length : 1, error: null };
+    // Vers le téléphone : aucun serveur n'est ouvert, l'adresse est inventée.
+    case "shelf.phone_share": {
+      const name = String(args.path ?? "").split("\\").pop() || "Présentation.pptx";
+      return { id: 1, url: `http://192.168.1.20:51234/4f1c2a9e7b3d4c5a8e6f0a1b2c3d4e5f/${encodeURIComponent(name)}`, qr: demoQr().image, name, size: 2_516_582, seconds: 300 };
+    }
 
     // Système, réseau, accès distants
     case "system.snapshot":
@@ -450,11 +486,18 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return {
         favorites: [
           { id: 1, name: "Serveur web", kind: "ssh", host: "web.exemple.fr", port: 22, user: "admin" },
-          { id: 2, name: "Poste de l'accueil", kind: "rdp", host: "accueil.exemple.local", port: null, user: "" },
+          { id: 2, name: "Poste de l'accueil", kind: "rdp", host: "accueil.exemple.local", port: null, user: "", mac: "02:4F:4E:44:49:4E" },
         ],
       };
     case "remote.probe":
       return { online: true, ms: 10 + Number(args.id) * 7 };
+    // Réveiller : rien ne part, le « poste » répond au bout de 4 s.
+    case "remote.wake": {
+      const fav = { id: Number(args.id), name: "Poste de l'accueil" };
+      bus.inject("remote.waking", fav, "remote");
+      window.setTimeout(() => bus.inject("remote.wake-done", { ...fav, awake: true, secs: 4, ms: 3 }, "remote"), 4000);
+      return { sent: 3 };
+    }
     case "rules.list":
       return {
         rules: [
@@ -497,6 +540,9 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return agentsHistory();
     case "agents.projects":
       return { tools: ["claude", "codex", "gemini"], projects: [{ path: `${HOME}\\Projets\\site-ondine`, name: "site-ondine" }] };
+    // « Reprendre » : la dernière phrase de la dernière session du projet.
+    case "agents.last_sessions":
+      return [{ index: 0, found: true, who: "assistant", text: "Le site est à jour.", at: Date.now() - 2 * 3600_000 }];
     case "agents.hook_config":
       return { exe: "C:\\Program Files\\Ondine\\ondine.exe" };
     case "agents.answer":
@@ -535,6 +581,9 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     case "weather.current":
       // Une fausse météo : un bel après-midi à Lyon.
       return { place: "Lyon", temp: 21.4, min: 12.1, max: 23.6, wind: 9, code: 1, isDay: true, icon: "🌤️", label: "Plutôt dégagé", unit: "c", at: "15:00" };
+    case "weekly.peek":
+      // « Voir le bilan maintenant » : une belle semaine inventée (« due » reste null : pas de vrai bilan en démo).
+      return { pomodoros: 9, focusMinutes: 215, todos: 14, until: "" };
     default:
       // Toute autre action : on fait comme si c'était fait, sans rien toucher.
       return null;

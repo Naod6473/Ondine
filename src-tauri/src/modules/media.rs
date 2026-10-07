@@ -11,6 +11,9 @@
 // message donne un numéro `artwork`, et le front la demande avec la commande
 // "artwork" quand ce numéro change.
 //
+// "media.pause" (bus) met en pause ce qui joue : l'Agenda le demande quand
+// vous rejoignez une réunion. Rien ne repart si c'était déjà en pause.
+//
 // Rien n'est envoyé hors de l'ordinateur ni écrit dans le journal.
 
 use crate::sync::LockExt;
@@ -23,6 +26,7 @@ use tauri::AppHandle;
 
 use super::{ModuleContext, RustModule};
 use crate::platform::media::{self, Control, NowPlaying};
+use crate::services::bus::BusMessage;
 use crate::services::{bus, log};
 use crate::services::perf::{self, Loop};
 
@@ -65,6 +69,28 @@ impl RustModule for Media {
             "seek" => media::control(Control::Seek(seek_target(&args)?)).map(|_| Value::Null),
             other => Err(format!("commande inconnue : {other}")),
         }
+    }
+
+    /// "media.pause" : un autre module demande le silence (l'Agenda, quand
+    /// vous rejoignez une réunion). Seulement si quelque chose joue : une
+    /// musique déjà en pause ne repart jamais.
+    fn on_event(&self, _ctx: &ModuleContext, msg: &BusMessage) {
+        if msg.topic != "media.pause" {
+            return;
+        }
+        let playing = self.state.locked().current.as_ref().is_some_and(|p| p.status == "playing");
+        if !playing {
+            return;
+        }
+        // Dans un fil à part : le message peut arriver par le fil de l'interface,
+        // qu'on ne bloque pas le temps que Windows réponde.
+        let who = msg.source.clone();
+        std::thread::spawn(move || {
+            media::init_thread();
+            if let Err(e) = media::control(Control::Pause) {
+                log::warn(format!("musique : pause demandée par {who} : {e}"));
+            }
+        });
     }
 }
 

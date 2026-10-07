@@ -1,6 +1,6 @@
 [package]
 name = "ondine"
-version = "1.0.1"
+version = "1.1.0"
 description = "L'île : une interface intelligente en haut de l'écran Windows"
 edition = "2021"
 license = "MIT"
@@ -59,6 +59,16 @@ qrcode = { version = "0.14", default-features = false }
 # Lire le config.toml de Codex (installer les hooks d'Ondine). Déjà compilé
 # pour Tauri (tauri-utils) : aucun code en plus.
 toml = "1"
+# Empreinte d'un fichier glissé sur l'île (Étagère) : SHA-256 (déjà compilé
+# pour Tauri), et MD5, SHA-1, SHA-512 pour comparer avec une empreinte copiée.
+# Crates RustCrypto, sans code C.
+sha2 = "0.10"
+sha1 = "0.10"
+md-5 = "0.10"
+# GIF animé (Capture → « Enregistrer un GIF ») : l'encodeur qu'utilise déjà la
+# crate image (aucun code en plus), appelé directement pour n'écrire que la
+# partie de l'image qui a changé d'une image à l'autre (fichier bien plus léger).
+gif = "0.14"
 
 [target.'cfg(windows)'.dependencies]
 # Gestionnaire d'identifiants Windows. Version 3 volontairement : la 4 a changé d'API.
@@ -132,6 +142,11 @@ windows = { version = "0.61", features = [
   "Win32_NetworkManagement_WiFi",
   # Étagère : glisser des fichiers vers l'Explorateur (PIDL, SHCreateDataObject).
   "Win32_UI_Shell_Common",
+  # Contrôles : éjecter une clé USB (numéro du disque, arbre des périphériques,
+  # CM_Request_Device_EjectW) et lire l'événement 225 qui nomme le programme qui bloque.
+  "Win32_System_Ioctl",
+  "Win32_Devices_DeviceAndDriverInstallation",
+  "Win32_System_EventLog",
 ] }
 
 [profile.release]

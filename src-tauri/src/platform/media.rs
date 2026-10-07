@@ -33,9 +33,13 @@ pub struct NowPlaying {
 }
 
 /// Les commandes qu'on peut envoyer au lecteur.
+// (Sous Linux, `control` ne lit pas la position de Seek : pas d'avertissement pour ça.)
+#[cfg_attr(not(windows), allow(dead_code))]
 #[derive(Debug, Clone, Copy)]
 pub enum Control {
     TogglePlayPause,
+    /// Mettre en pause (rien ne repart si c'était déjà en pause).
+    Pause,
     Next,
     Previous,
     /// Aller à cette position, en millisecondes depuis le début du morceau.
@@ -187,12 +191,13 @@ mod win {
         read().map_err(|e| format!("pochette illisible : {e}"))
     }
 
-    /// Envoie lecture/pause, suivant ou précédent au lecteur actuel.
+    /// Envoie lecture/pause, pause, suivant ou précédent au lecteur actuel.
     pub fn control(action: Control) -> Result<(), String> {
         let manager = manager()?;
         let session = session(&manager).ok_or("aucun lecteur en cours")?;
         let op = match action {
             Control::TogglePlayPause => session.TryTogglePlayPauseAsync(),
+            Control::Pause => session.TryPauseAsync(),
             Control::Next => session.TrySkipNextAsync(),
             Control::Previous => session.TrySkipPreviousAsync(),
             Control::Seek(ms) => {

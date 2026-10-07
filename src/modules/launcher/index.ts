@@ -9,6 +9,11 @@
 //
 // « Recherche dans l'île » (island-search.ts) : sous ces résultats, une
 // section par module (notes, presse-papiers, étagère, captures).
+//
+// Calculs (calc.ts) : quand la recherche est un calcul (« 18 % de 240 »,
+// « 1 Go en Mio », « 192.168.1.0/26 », « 15 h Montréal »…), la réponse vient
+// en premier ; Entrée la copie (commande Rust "copy", permission clipboard).
+// « guid » propose un GUID neuf, copié de la même façon.
 
 import manifest from "./manifest.json";
 import { Bridge } from "../../core/bridge";
@@ -20,6 +25,8 @@ import { el } from "../../island/dom";
 import { agentIcon, icon, setLabel } from "../../island/icon";
 import { reducedMotion } from "../../island/tab-pill";
 import { ALL_MODULES } from "..";
+import { currentLang } from "../../core/i18n";
+import { type CalcKind, calculate, newGuid } from "./calc";
 import { normalize, score } from "./search";
 import { type FoundGroup, MIN_QUERY, rowsOf, searchIsland, SECTIONS } from "./island-search";
 
@@ -60,10 +67,14 @@ const ICONS = { app: "📦", tool: "🛠️", recent: "📄" };
 const TAGS = { app: "Appli", tool: "Outil", recent: "Récent" };
 /** À égalité de note : d'abord l'île, puis les applis, les outils, les fichiers. */
 const KIND_BONUS = { action: 4, app: 3, tool: 2, recent: 1 };
+/** Un calcul passe avant tout le reste (le minuteur « 10 min » a 120). */
+const CALC_SCORE = 1000;
+const CALC_ICONS: Record<CalcKind, string> = { math: "🧮", base: "🧮", convert: "📏", temp: "🌡️", duration: "⏳", subnet: "🌐", time: "🕐" };
+const CALC_TAGS: Record<CalcKind, string> = { math: "Calcul", base: "Calcul", convert: "Conversion", temp: "Conversion", duration: "Durée", subnet: "Réseau", time: "Heure" };
 
 let listing: Listing = { items: [], hotkey: "", hotkeyError: null };
 /** Les serveurs favoris du module Accès distants (reçus par le bus « remote.changed »). */
-let servers: { id: number; name: string; kind: "rdp" | "ssh" }[] = [];
+let servers: { id: number; name: string; kind: "rdp" | "ssh"; wake?: boolean }[] = [];
 /** Les projets et agents proposés (module Agents IA, sujet « agents.projects »). */
 let agentProjects: { index: number; name: string }[] = [];
 let agentTools: string[] = ["claude"];
@@ -82,6 +93,31 @@ async function load(api: ModuleApi) {
 
 function fail(api: ModuleApi, err: unknown) {
   api.notify({ title: errorText(err), icon: "⚠️", priority: "normal", key: "launcher-error" });
+}
+
+/**
+ * Copie un résultat (calcul, GUID) dans le presse-papiers par le Rust, le dit
+ * dans une petite notification, et referme l'île.
+ */
+async function copyText(api: ModuleApi, text: string) {
+  await api.invoke("copy", { text });
+  // Dans la notification : la première ligne seulement (le résumé d'un sous-réseau en a six).
+  const first = text.split("\n")[0];
+  api.notify({ title: "Copié", body: first.length > 80 ? `${first.slice(0, 79)}…` : first, icon: "📋", priority: "low", key: "launcher-copied" });
+  api.closeIsland();
+}
+
+/** Les réponses si la recherche est un calcul (sinon aucune), dans la langue de l'interface. */
+function calcResults(api: ModuleApi, query: string): Result[] {
+  return calculate(query, currentLang() === "en" ? "en" : "fr").map((a, i) => ({
+    key: `calc-${i}`,
+    name: a.title,
+    detail: a.detail,
+    icon: CALC_ICONS[a.kind],
+    tag: CALC_TAGS[a.kind],
+    score: CALC_SCORE - i,
+    run: () => copyText(api, a.copy),
+  }));
 }
 
 /** Les actions de l'île qui correspondent à la recherche. */
@@ -107,6 +143,17 @@ function islandActions(api: ModuleApi, query: string): Result[] {
         score: 120,
         run: () => (api.emit("timer.start", { minutes: n }), close()),
       });
+    }
+  }
+  // « guid », « uuid » : un identifiant neuf à chaque Entrée (tiré au hasard
+  // par le système). Seulement à partir de 3 lettres qui ressemblent vraiment.
+  const guidScore = Math.max(...["guid", "uuid", "nouveau guid", "new guid"].map((w) => score(w, query)));
+  if (normalize(query).length >= 3 && guidScore >= 60) {
+    for (const g of [
+      { key: "guid", name: "Nouveau GUID", detail: "Un identifiant neuf, en minuscules", make: () => newGuid() },
+      { key: "guid-win", name: "Nouveau GUID au format Windows", detail: "En majuscules et entre accolades, comme dans le Registre", make: () => `{${newGuid().toUpperCase()}}` },
+    ]) {
+      out.push({ key: g.key, name: g.name, detail: g.detail, icon: "🆔", tag: "Île", score: guidScore + KIND_BONUS.action, run: () => copyText(api, g.make()) });
     }
   }
   if (settingsStore.moduleEnabled("terminal")) {
@@ -160,6 +207,22 @@ function islandActions(api: ModuleApi, query: string): Result[] {
           run: () => (api.emit("remote.connect", { id: srv.id }), close()),
         });
       }
+      // « Réveiller NAS » : seulement pour un favori qui a une adresse MAC (Wake-on-LAN).
+      if (srv.wake) {
+        const name = `Réveiller ${srv.name}`;
+        const w = Math.max(score(name, query), score(`wake ${srv.name}`, query) - 5, score(`wol ${srv.name}`, query) - 5);
+        if (w > 0) {
+          out.push({
+            key: `remote-wake-${srv.id}`,
+            name,
+            detail: "Wake-on-LAN",
+            icon: "⏰",
+            tag: label,
+            score: w + KIND_BONUS.app,
+            run: () => (api.emit("remote.wake", { id: srv.id }), close()),
+          });
+        }
+      }
     }
   }
   // Un onglet par module affiché dans l'île.
@@ -187,7 +250,7 @@ function results(api: ModuleApi, query: string): Result[] {
       api.closeIsland();
     },
   }));
-  const all = [...(q ? islandActions(api, q) : []), ...found].filter((r) => r.score > 0);
+  const all = [...(q ? calcResults(api, q) : []), ...(q ? islandActions(api, q) : []), ...found].filter((r) => r.score > 0);
   // Tri stable : à note égale, l'ordre d'origine (récents du plus récent au plus ancien).
   return all.sort((a, b) => b.score - a.score).slice(0, MAX_RESULTS);
 }
@@ -231,7 +294,7 @@ export const launcher: IslandModule = {
       const search = el("input", {
         class: "clip-search launch-search",
         type: "search",
-        placeholder: "Une appli, un fichier, une note, une copie… (ou « 10 min »)",
+        placeholder: "Une appli, un fichier, une note, un calcul… (ou « 10 min »)",
         spellcheck: "false",
         autocomplete: "off",
       }) as HTMLInputElement;
@@ -319,7 +382,7 @@ export const launcher: IslandModule = {
         }
         list.replaceChildren(...rows);
         if (!current.length) {
-          list.append(el("li", { class: "muted launch-empty" }, search.value.trim() ? "Rien trouvé." : "Tapez le nom d'une appli, d'un fichier, d'un onglet, ou un mot de vos notes."));
+          list.append(el("li", { class: "muted launch-empty" }, search.value.trim() ? "Rien trouvé." : "Tapez le nom d'une appli, d'un fichier, d'un onglet, un mot de vos notes, ou un calcul (« 18 % de 240 », « 1 Go en Mio »)."));
         }
         setLabel(
           foot,

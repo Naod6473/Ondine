@@ -18,6 +18,8 @@ import { DEMO_PICKED_FOLDER, demoOn } from "../../core/demo";
 import type { DropTarget, IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
 import { setLabel } from "../../island/icon";
+import { phonePanel, phoneShown, setupPhone, startPhone } from "./phone";
+import { hashTarget, listenHash } from "./hash";
 
 interface ShelfItem {
   path: string;
@@ -238,6 +240,7 @@ function dropTargets(api: ModuleApi): DropTarget[] {
     targets.push({ id: "shelf-images", label: "Images…", icon: "🖼️", onDrop: open("images") });
     targets.push({ id: "shelf-rename", label: "Renommer…", icon: "✏️", onDrop: open("rename") });
   }
+  if (s.showHash !== false) targets.push(hashTarget(api));
   if (s.showCompress) targets.push({ id: "shelf-zip", label: "Compresser", icon: "🗜️", onDrop: (paths) => actions.compress(api, paths) });
   if (s.showTrash) targets.push({ id: "shelf-trash", label: "Corbeille", icon: "🗑️", onDrop: (paths) => actions.trash(api, paths) });
   return targets;
@@ -361,10 +364,16 @@ export const shelf: IslandModule = {
 
   setup(api) {
     api.on("shelf.changed", (msg) => setItems((msg.payload as { items: ShelfItem[] }).items));
+    // La cible « Empreinte » : progression et résultat du calcul (hash.ts).
+    listenHash(api);
     // Un fichier vient d'arriver dans Téléchargements : il est sur l'étagère.
     api.on("shelf.downloaded", (msg) => {
       const name = (msg.payload as { name?: string } | null)?.name ?? "";
       api.notify({ title: "Téléchargé, posé sur l'étagère", body: name, icon: "📥", priority: "low", key: "shelf-downloaded", actions: [{ label: "Voir", run: () => api.openIsland("shelf") }] });
+    });
+    // « Vers le téléphone » (phone.ts) : son panneau remplace la liste pendant le partage.
+    setupPhone(api, () => {
+      for (const r of redraws) r();
     });
     // L'étagère vit côté Rust : au démarrage (ou après réactivation), on la relit.
     api
@@ -377,6 +386,10 @@ export const shelf: IslandModule = {
     expanded(root, api) {
       const draw = () => {
         root.replaceChildren();
+        if (phoneShown()) {
+          root.append(phonePanel(api)!);
+          return;
+        }
         if (tool) {
           root.append(toolPanel(api, tool, () => {
             tool = null;
@@ -442,6 +455,9 @@ export const shelf: IslandModule = {
               item.exists ? el("button", { class: "icon-btn", title: "Copier vers un dossier…", onclick: api.handler(() => actions.copyTo(api, one)) }, "📄") : null,
               item.exists ? el("button", { class: "icon-btn", title: "Déplacer vers un dossier…", onclick: api.handler(() => actions.moveTo(api, one)) }, "📦") : null,
               item.exists ? el("button", { class: "icon-btn", title: "Copier le chemin", onclick: api.handler(() => actions.copyPaths(api, one)) }, "📋") : null,
+              item.exists && !item.isDir
+                ? el("button", { class: "icon-btn", title: "Vers le téléphone (même Wi-Fi, QR code)", onclick: api.handler(() => startPhone(api, item.path)) }, "📱")
+                : null,
               item.exists ? confirmButton(api, "icon-btn", "🗑️", "Envoyer à la Corbeille", () => actions.trash(api, one)) : null,
               el(
                 "button",

@@ -151,6 +151,19 @@ const LINE_ONLY: Record<string, string> = {
   "⛈": "cloud-lightning",
   "🌡": "thermometer",
   "🙂": "smiley",
+  // Lanceur : calculs, conversions, heures du monde, GUID.
+  "🧮": "calculator",
+  "📏": "ruler",
+  "🕐": "clock",
+  "🆔": "identification-card",
+  // Accès distants (réveil) et Étagère (vers le téléphone).
+  "⏰": "alarm",
+  "📱": "device-mobile",
+  // Étagère (empreinte) et Capture (GIF animé).
+  "#⃣": "hash",
+  "❌": "x-circle",
+  "🎞": "film-strip",
+  "🔴": "record",
 };
 
 /** Les images connues. Une clé « logo: » absente retombe sur FALLBACK. */

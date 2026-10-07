@@ -163,6 +163,8 @@ impl RustModule for Notes {
                 if done {
                     ctx.emit("task.finished", json!({ "label": "tâche cochée" }));
                 }
+                // Pour le bilan de la semaine : cochée ou décochée, jamais son texte.
+                ctx.emit("notes.todo-toggled", json!({ "done": done }));
                 changed(ctx.app, &self.data);
                 Ok(json!({ "done": done }))
             }

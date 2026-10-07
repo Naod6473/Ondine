@@ -17,6 +17,15 @@ Ondine ne se connecte à Internet que dans ces cas :
 | Vous lancez un ping, un test de port, un accès RDP/SSH ou un agent IA | la machine ou le service que vous avez choisi | Ce que vous avez demandé. |
 | Vous avez activé la Météo (désactivée par défaut) et saisi une ville, au plus toutes les 30 minutes | geocoding-api.open-meteo.com, api.open-meteo.com | Le nom de la ville (une fois, quand elle change), puis ses coordonnées arrondies à 2 décimales (environ 1 km). |
 | Vous cliquez « Signaler un problème » (Réglages → Général → À propos) | github.com, dans votre navigateur | Rien tant que vous n'envoyez pas : la page d'une nouvelle issue s'ouvre, préremplie avec la version, Windows et les 40 dernières lignes du journal (chemins personnels masqués). Vous relisez, modifiez ou abandonnez. |
+| Vous cliquez « Tout voir » dans « Quoi de neuf » (après une mise à jour, ou Réglages → Général → À propos → Voir les nouveautés) | github.com, dans votre navigateur | Rien : la page de la version installée s'ouvre. Les nouveautés montrées dans l'île viennent du CHANGELOG intégré à l'appli, sans connexion. |
+
+Sur le **réseau local** seulement (rien ne sort sur Internet), et seulement quand
+vous le demandez :
+
+| Quand | Quoi | Ce qui part |
+|---|---|---|
+| Vous cliquez « Réveiller » sur un favori des Accès distants (ou dans le lanceur) | Un « paquet magique » Wake-on-LAN en diffusion (UDP, port 9) sur chaque réseau local du PC, puis un test de connexion vers le serveur toutes les 5 s pendant 2 min au plus | L'adresse MAC du favori, rien d'autre. Une diffusion ne passe pas les box ni les routeurs. |
+| Vous cliquez « Vers le téléphone » sur un fichier de l'Étagère | Ondine ouvre un petit serveur web sur l'adresse privée du PC (192.168.x.x, 10.x.x.x, 172.16-31.x.x), sur un port au hasard | Ce seul fichier, à qui ouvre l'adresse secrète (un jeton au hasard de 128 bits, montré en QR code). Toute autre adresse reçoit « introuvable ». Le serveur se ferme après un téléchargement complet, au bout de 5 minutes ou sur « Arrêter ». Il n'écoute jamais en dehors de ces moments, ni sur une adresse publique. |
 
 Les clés et mots de passe sont rangés dans le Gestionnaire d'identifiants de Windows,
 jamais en clair dans un fichier.
@@ -45,5 +54,22 @@ specifically requested by the user, with one exception: the update check.
 - **Report a problem** (Settings → General → About): opens a new GitHub issue page in
   your browser, prefilled with the version, Windows and the last 40 log lines
   (personal paths hidden). Nothing is sent until you review it and click Submit.
+- **See all** in "What's new" (after an update, or Settings → General → About → See
+  what's new): opens the installed version's release page on github.com in your
+  browser. The changes shown in the island come from the CHANGELOG built into the
+  app, with no connection.
+
+On the **local network** only (nothing goes over the Internet), and only when you ask:
+
+- **Wake up** (Remote access, or the launcher): a Wake-on-LAN "magic packet" is
+  broadcast (UDP, port 9) on each local network of the PC; it only contains the
+  favorite's MAC address and does not cross routers. Then a connection test to
+  the server every 5 s for up to 2 min.
+- **To the phone** (Shelf): Ondine opens a tiny web server on the PC's private
+  address (192.168.x.x, 10.x.x.x, 172.16-31.x.x), on a random port. It serves
+  that one file to whoever opens the secret address (a random 128-bit token,
+  shown as a QR code); any other address gets "not found". It closes after one
+  complete download, after 5 minutes, or on "Stop", and never listens on a
+  public address.
 
 Keys and passwords are stored in the Windows Credential Manager, never in plain text.

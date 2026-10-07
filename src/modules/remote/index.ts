@@ -5,6 +5,10 @@
 // (on tape une adresse, on clique RDP ou SSH), la liste des favoris avec un
 // point vert / rouge selon que le serveur répond, et le petit formulaire
 // pour ajouter ou modifier un favori.
+//
+// « Réveiller » (⏰, favori avec une adresse MAC) : le Rust envoie le paquet
+// Wake-on-LAN, puis teste le serveur toutes les 5 s (2 min au plus). Les
+// nouvelles arrivent par le bus : « remote.waking », puis « remote.wake-done ».
 
 import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
@@ -21,6 +25,8 @@ interface Favorite {
   host: string;
   port: number | null;
   user: string;
+  /** « AA:BB:CC:DD:EE:FF » pour le réveiller (Wake-on-LAN), absente sinon. */
+  mac?: string;
 }
 
 /** Ce qu'on sait de chaque serveur : en ligne (avec le temps de réponse), hors ligne, en cours. */
@@ -33,6 +39,8 @@ const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
 let favorites: Favorite[] = [];
 const probes = new Map<number, Probe>();
 const redraws = new Set<() => void>();
+/** Les favoris en cours de réveil (le Rust attend qu'ils répondent). */
+const waking = new Set<number>();
 
 async function refresh(api: ModuleApi) {
   try {
@@ -55,6 +63,7 @@ function target(f: Pick<Favorite, "host" | "port" | "user">): string {
 /** Teste tous les favoris en même temps ; chaque point se met à jour dès sa réponse. */
 function probeAll(api: ModuleApi) {
   for (const f of favorites) {
+    if (waking.has(f.id)) continue; // le réveil teste déjà ce serveur
     probes.set(f.id, { state: "wait" });
     api
       .invoke<{ online: boolean; ms?: number }>("probe", { id: f.id })
@@ -65,14 +74,70 @@ function probeAll(api: ModuleApi) {
   redraws.forEach((r) => r());
 }
 
+/** « Réveiller » : le Rust envoie le paquet ; la suite arrive par le bus. */
+async function wake(api: ModuleApi, f: Favorite) {
+  try {
+    await api.invoke("wake", { id: f.id });
+  } catch (err) {
+    api.notify({ title: "Réveil impossible", body: errorText(err), icon: "⚠️", priority: "normal", key: `remote-wake-${f.id}` });
+  }
+}
+
+/** Les nouvelles du réveil (bouton de l'onglet ou lanceur) : notifications et point d'état. */
+function listenWake(api: ModuleApi) {
+  api.on("remote.waking", (msg) => {
+    const p = msg.payload as { id: number; name: string };
+    waking.add(p.id);
+    probes.set(p.id, { state: "wait" });
+    redraws.forEach((r) => r());
+    api.notify({
+      title: `Réveil de ${p.name}…`,
+      body: "Paquet envoyé sur le réseau local. Test toutes les 5 s, 2 min au plus.",
+      icon: "⏰",
+      priority: "low",
+      key: `remote-wake-${p.id}`,
+    });
+  });
+  api.on("remote.wake-done", (msg) => {
+    const p = msg.payload as { id?: number; name?: string; awake?: boolean; secs?: number; ms?: number; error?: string };
+    if (p.error) {
+      api.notify({ title: "Réveil impossible", body: p.error, icon: "⚠️", priority: "normal", key: "remote-wake-error" });
+      return;
+    }
+    if (p.id === undefined) return;
+    waking.delete(p.id);
+    probes.set(p.id, p.awake ? { state: "up", ms: p.ms ?? 0 } : { state: "down" });
+    redraws.forEach((r) => r());
+    if (p.awake) {
+      const secs = p.secs ?? 0;
+      api.notify({
+        title: `${p.name} est réveillé`,
+        body: secs > 0 ? `Il répond après ${secs} s.` : "Il répondait déjà.",
+        icon: "✅",
+        priority: "normal",
+        key: `remote-wake-${p.id}`,
+      });
+    } else {
+      api.notify({
+        title: `${p.name} ne répond toujours pas`,
+        body: "Vérifiez que le Wake-on-LAN est activé (BIOS et carte réseau) et que le serveur est sur le même réseau local.",
+        icon: "⚠️",
+        priority: "normal",
+        key: `remote-wake-${p.id}`,
+      });
+    }
+  });
+}
+
 export const remote: IslandModule = {
   manifest: manifest as ModuleManifest,
 
   setup(api) {
     api.on("remote.changed", () => void refresh(api));
-    // Le lanceur apprend la liste par le bus (numéro, nom, type ; pas l'adresse).
+    listenWake(api);
+    // Le lanceur apprend la liste par le bus (numéro, nom, type, réveil possible ; ni l'adresse ni la MAC).
     void refresh(api).then(() =>
-      api.emit("remote.changed", { favorites: favorites.map(({ id, name, kind }) => ({ id, name, kind })) }),
+      api.emit("remote.changed", { favorites: favorites.map(({ id, name, kind, mac }) => ({ id, name, kind, wake: !!mac })) }),
     );
   },
 
@@ -130,8 +195,28 @@ export const remote: IslandModule = {
           const p = probes.get(f.id);
           const dot = el("span", {
             class: `remote-dot ${p?.state ?? "unknown"}`,
-            title: !p ? "Pas encore testé" : p.state === "wait" ? "Test en cours…" : p.state === "up" ? `Répond (${p.ms} ms)` : "Ne répond pas",
+            title: waking.has(f.id)
+              ? "Réveil en cours…"
+              : !p
+                ? "Pas encore testé"
+                : p.state === "wait"
+                  ? "Test en cours…"
+                  : p.state === "up"
+                    ? `Répond (${p.ms} ms)`
+                    : "Ne répond pas",
           });
+          // ⏰ Réveiller : seulement avec une adresse MAC.
+          const wakeBtn = f.mac
+            ? el(
+                "button",
+                {
+                  class: `icon-btn remote-wake${waking.has(f.id) ? " busy" : ""}`,
+                  title: waking.has(f.id) ? "Réveil en cours… (cliquer renvoie le paquet)" : "Réveiller (Wake-on-LAN)",
+                  onclick: api.handler(() => wake(api, f)),
+                },
+                "⏰",
+              )
+            : null;
           return el(
             "li",
             { class: "remote-item" },
@@ -143,6 +228,7 @@ export const remote: IslandModule = {
               dot,
               el("span", { class: "launch-tag" }, KIND_LABEL[f.kind]),
             ),
+            wakeBtn,
             el("button", { class: "icon-btn", title: "Modifier", onclick: api.handler(() => openForm(f, "")) }, "✎"),
             el(
               "button",
@@ -171,6 +257,16 @@ export const remote: IslandModule = {
         const host = input(f?.host ?? prefill, "srv-01.domaine.local ou 192.168.1.10", 253);
         const port = input(f?.port ? String(f.port) : "", "par défaut", 5);
         const user = input(f?.user ?? "", "admin (facultatif)", 100);
+        const mac = el("input", {
+          class: "clip-input",
+          type: "text",
+          value: f?.mac ?? "",
+          placeholder: "AA:BB:CC:DD:EE:FF (facultatif)",
+          title: "Pour « Réveiller » (Wake-on-LAN). Serveur allumé, « arp -a » dans un terminal la donne.",
+          spellcheck: "false",
+          autocomplete: "off",
+          maxlength: 17,
+        }) as HTMLInputElement;
         const kind = el(
           "select",
           { class: "clip-input" },
@@ -188,7 +284,7 @@ export const remote: IslandModule = {
 
         const save = api.handler(async () => {
           try {
-            await api.invoke("save", { id: f?.id, name: name.value, kind: kind.value, host: host.value, port: port.value, user: user.value });
+            await api.invoke("save", { id: f?.id, name: name.value, kind: kind.value, host: host.value, port: port.value, user: user.value, mac: mac.value });
             editing = null;
             quick.value = "";
             await refresh(api);
@@ -205,6 +301,7 @@ export const remote: IslandModule = {
             field("Adresse", host),
             field("Port", port),
             userField,
+            field("Adresse MAC (réveil)", mac),
             el(
               "div",
               { class: "btn-row remote-actions" },

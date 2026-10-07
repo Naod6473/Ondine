@@ -7,8 +7,17 @@ import { resolve } from "node:path";
 // src/mascot/catalog.ts : Vite les embarque au moment du build.
 export default defineConfig({
   clearScreen: false,
-  // Port fixe : tauri.conf.json pointe dessus (devUrl).
-  server: { port: 1420, strictPort: true, host: "127.0.0.1" },
+  server: {
+    // Port fixe : tauri.conf.json pointe dessus (devUrl).
+    port: 1420,
+    strictPort: true,
+    host: "127.0.0.1",
+    // Ne pas surveiller le Rust : pendant `tauri dev`, cargo écrit et verrouille
+    // des centaines de fichiers dans src-tauri/target, et Windows refuse alors
+    // de les surveiller (EBUSY), ce qui arrête Vite. Tauri recompile le Rust
+    // de lui-même.
+    watch: { ignored: ["**/src-tauri/**"] },
+  },
   envPrefix: ["VITE_", "TAURI_ENV_"],
   build: {
     // WebView2 est un Chromium récent.

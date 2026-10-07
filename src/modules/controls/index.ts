@@ -7,14 +7,20 @@
 //
 // Le Rust (src-tauri/src/modules/controls.rs) lit et change les réglages de
 // Windows. Tant que l'onglet est ouvert, on relit le son chaque seconde (le
-// volume a pu changer avec les touches du clavier), les radios toutes les 2 s
-// et les écrans toutes les 5 s (leur réponse est lente).
+// volume a pu changer avec les touches du clavier), les radios, le mode
+// sombre, l'éclairage nocturne et les clés USB toutes les 2 s, et les écrans
+// toutes les 5 s (leur réponse est lente).
+//
+// Les clés USB (bande du bas, notifications « branchée » et « éjectée ») sont
+// dans usb.ts.
 
 import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
 import { pacedInterval } from "../../core/perf";
+import { usbStrip, wireUsbNotifications } from "./usb";
+import type { UsbDrive } from "./usb-text";
 
 type DeviceId = "speakers" | "microphone";
 
@@ -49,6 +55,16 @@ interface Screen {
   brightness: number;
 }
 
+/** Le mode sombre et l'éclairage nocturne de Windows (commande `theme`). */
+interface ThemeState {
+  /** Applis et barre des tâches en sombre. */
+  dark: boolean;
+  /** L'un en sombre, l'autre en clair (mode « Personnalisé » de Windows). */
+  mixed: boolean;
+  /** supported = false : Ondine ne sait pas lire la valeur de Windows (la pastille ouvre les Paramètres). */
+  night: { supported: boolean; on: boolean };
+}
+
 // Le son est relu chaque seconde, les radios toutes les 2 s, la luminosité
 // toutes les 5 s (c'est lent) : "controlsSound", "controlsRadios",
 // "controlsScreens" de src/core/perf.ts (selon le mode de performance).
@@ -70,6 +86,10 @@ const GLYPHS = {
   airplane: "M10.5 3.5a1.5 1.5 0 0 1 3 0V9l7 4v2l-7-2v4.5l2.5 2V21L12 20l-4 1v-1.5l2.5-2V13l-7 2v-2l7-4z",
   mobile: "M5 20v-3M10 20v-7M15 20v-11M20 20V4",
   sun: "M12 8a4 4 0 1 1 0 8a4 4 0 0 1 0-8zM12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4",
+  /** Mode sombre : un croissant de lune. */
+  moon: "M20 14.5A8.5 8.5 0 1 1 9.5 4a7.5 7.5 0 0 0 10.5 10.5z",
+  /** Éclairage nocturne : un soleil couchant sur l'horizon. */
+  night: "M3 18h18M7 18a5 5 0 0 1 10 0M12 8v3M5.6 11.6l1.6 1.6M18.4 11.6l-1.6 1.6M7 21h10",
 };
 
 function glyph(kind: keyof typeof GLYPHS): SVGSVGElement {
@@ -343,10 +363,12 @@ function screenPillar(api: ModuleApi, screen: Screen) {
   };
 }
 
-const TILE_NAMES = { wifi: "Wi-Fi", bluetooth: "Bluetooth", mobile: "Mobile", airplane: "Avion", mic: "Micro", pin: "Épingler" } as const;
+const TILE_NAMES = { wifi: "Wi-Fi", bluetooth: "Bluetooth", mobile: "Mobile", airplane: "Avion", mic: "Micro", pin: "Épingler", dark: "Sombre", night: "Veilleuse" } as const;
 type TileId = keyof typeof TILE_NAMES;
+/** Les pastilles toujours là (les radios, elles, dépendent du PC). */
+const FIXED_TILES: TileId[] = ["mic", "pin", "dark", "night"];
 
-/** La carte de pastilles rondes : radios, mode avion, micro coupé. */
+/** La carte de pastilles rondes : radios, mode avion, micro coupé, premier plan, mode sombre, éclairage nocturne. */
 function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>) {
   const fail = (err: unknown) => api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "controls-error" });
   const card = el("div", { class: "ctl-card ctl-toggles" });
@@ -388,6 +410,14 @@ function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>) {
     const name = r.title ? `« ${r.title.length > 40 ? `${r.title.slice(0, 40)}…` : r.title} »` : "La fenêtre";
     api.notify({ title: r.pinned ? `${name} reste au premier plan` : `${name} n'est plus au premier plan`, icon: "📌", priority: "low", key: "controls-pin" });
   });
+  // Le mode sombre de Windows (applis et barre des tâches).
+  const dark = tile("dark", "moon", (on) => api.invoke("set_dark", { on }));
+  // L'éclairage nocturne. Si Ondine ne reconnaît pas la valeur de Windows, rien
+  // n'est écrit et le Rust ouvre la page des Paramètres à la place.
+  const night = tile("night", "night", async (on) => {
+    const r = await api.invoke<{ opened: boolean }>("set_night", { on });
+    if (r.opened) night.classList.remove("on");
+  });
   let shown: string | null = null;
 
   return {
@@ -398,12 +428,14 @@ function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>) {
       const key = list.map((r) => r.kind).join(",");
       if (key !== shown) {
         shown = key;
-        for (const id of [...tiles.keys()]) if (id !== "mic" && id !== "pin") tiles.delete(id);
+        for (const id of [...tiles.keys()]) if (!FIXED_TILES.includes(id)) tiles.delete(id);
         card.replaceChildren(
           ...list.map((r) => tile(r.kind, r.kind, (on) => api.invoke("set_radio", { kind: r.kind, on }))),
           ...(list.length ? [tile("airplane", "airplane", (on) => api.invoke("set_airplane", { on }))] : []),
           mic,
           pin,
+          dark,
+          night,
         );
       }
       for (const r of list) {
@@ -431,6 +463,25 @@ function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>) {
       pin.title = !info ? "Aucune fenêtre" : `${info.pinned ? "Relâcher" : "Garder au premier plan"} : ${info.title || "la fenêtre d'avant"}`;
       pin.setAttribute("aria-pressed", String(!!info?.pinned));
     },
+    /** Les pastilles « Sombre » et « Veilleuse », d'après Windows. */
+    theme(t: ThemeState) {
+      if (busy) return;
+      dark.classList.toggle("on", t.dark);
+      dark.title = t.dark
+        ? "Mode sombre de Windows : activé"
+        : t.mixed
+          ? "Mode sombre de Windows : en partie (applis ou barre des tâches)"
+          : "Mode sombre de Windows : désactivé";
+      dark.setAttribute("aria-pressed", String(t.dark));
+      const nightOn = t.night.supported && t.night.on;
+      night.classList.toggle("on", nightOn);
+      night.title = !t.night.supported
+        ? "Éclairage nocturne : ouvrir les paramètres de Windows"
+        : nightOn
+          ? "Éclairage nocturne : activé"
+          : "Éclairage nocturne : désactivé";
+      night.setAttribute("aria-pressed", String(nightOn));
+    },
     /** La pastille « Micro » s'allume (en rouge) quand le micro est coupé. */
     mic(level: Level | null) {
       if (busy) return;
@@ -447,20 +498,24 @@ export const controls: IslandModule = {
   manifest: manifest as ModuleManifest,
 
   setup(api) {
-    // Le raccourci micro (Rust) : une petite notification confirme, le badge
-    // d'Ondine (island.ts) reste tant que le micro est coupé.
+    // Le raccourci micro, ou un autre module (« Rétablir le micro » de
+    // l'Agenda) : une petite notification confirme, le badge d'Ondine
+    // (island.ts) reste tant que le micro est coupé.
     const offMuted = api.on("controls.mic-muted", (msg) => {
       const p = (msg.payload ?? {}) as { muted?: boolean; source?: string };
-      if (p.source !== "hotkey") return;
+      if (p.source !== "hotkey" && p.source !== "request") return;
       api.notify({ title: p.muted ? "Micro coupé" : "Micro rétabli", icon: p.muted ? "🔇" : "🎙️", priority: "low", key: "controls-mic", durationMs: 1800 });
     });
     const offError = api.on("controls.mic-error", (msg) => {
       const p = (msg.payload ?? {}) as { message?: string };
       api.notify({ title: p.message ?? "Le micro ne répond pas", icon: "⚠️", priority: "normal", key: "controls-mic" });
     });
+    // Clé USB branchée (« Ouvrir », « Éjecter ») et résultat d'une éjection.
+    const offUsb = wireUsbNotifications(api);
     return () => {
       offMuted();
       offError();
+      offUsb();
     };
   },
 
@@ -472,7 +527,9 @@ export const controls: IslandModule = {
       const toggles = toggleCard(api, () => microphone.toggleMute());
       const screensBox = el("div", { class: "ctl-screens" });
       const ctl = el("div", { class: "ctl" }, toggles.node, el("div", { class: "ctl-card ctl-pillars" }, speakers.node, microphone.node, screensBox));
-      root.append(ctl);
+      // En bas, les clés USB branchées (la bande se cache quand il n'y en a pas).
+      const usb = usbStrip(api);
+      root.append(el("div", { class: "ctl-root" }, ctl, usb.node));
       const closeMenu = outputMenu(api, speakers.caption, ctl);
       toggles.radios([]);
 
@@ -497,8 +554,28 @@ export const controls: IslandModule = {
         }
       };
 
+      const refreshTheme = async () => {
+        try {
+          const t = await api.invoke<ThemeState>("theme");
+          if (alive) toggles.theme(t);
+        } catch {
+          // hors de l'appli : les pastilles restent éteintes
+        }
+      };
+
+      const refreshUsb = async () => {
+        try {
+          const list = await api.invoke<UsbDrive[]>("usb_drives");
+          if (alive) usb.update(list);
+        } catch {
+          // hors de l'appli : pas de clé USB
+        }
+      };
+
       const refreshRadios = async () => {
         void refreshWindow();
+        void refreshTheme();
+        void refreshUsb();
         try {
           const list = await api.invoke<Radio[]>("radios");
           if (alive) toggles.radios(list);
@@ -544,6 +621,7 @@ export const controls: IslandModule = {
       return () => {
         alive = false;
         closeMenu();
+        usb.stop();
         timers.forEach((stop) => stop());
       };
     },

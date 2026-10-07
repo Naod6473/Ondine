@@ -1,6 +1,7 @@
 {
   "id": "notes",
   "name": "Notes",
+  "tip": "Tapez une tâche puis Entrée ; double-cliquez sur une tâche pour la modifier.",
   "icon": "📝",
   "description": "Notes rapides et liste de choses à faire. Tout est enregistré sur votre ordinateur (%APPDATA%\\Ondine\\notes.json). Supprimer propose « Annuler ».",
   "version": "0.1.0",
@@ -14,7 +15,7 @@
   "views": ["expanded"],
   "commands": ["list", "note_save", "note_delete", "todo_add", "todo_toggle", "todo_edit", "todo_delete", "todo_clear_done", "search"],
   "events": {
-    "emits": ["notes.changed", "task.finished"],
+    "emits": ["notes.changed", "task.finished", "notes.todo-toggled"],
     "listens": ["notes.changed", "notes.open"]
   }
 }

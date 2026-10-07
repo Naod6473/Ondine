@@ -15,8 +15,13 @@
 //
 // « Tester » ouvre une simple connexion TCP vers le port (3389 ou 22 par
 // défaut) pour savoir si le serveur répond : rien n'est envoyé.
+//
+// « Réveiller » (Wake-on-LAN, remote_wol.rs) : un favori peut avoir une
+// adresse MAC. Le paquet de réveil part sur le réseau local, puis on teste le
+// serveur toutes les 5 s, 2 min au plus, et on prévient quand il répond.
 
 use crate::sync::LockExt;
+use std::collections::HashSet;
 use std::net::{TcpStream, ToSocketAddrs};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -26,6 +31,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tauri::AppHandle;
 
+use super::remote_wol;
 use super::{ModuleContext, RustModule};
 use crate::platform;
 use crate::services::bus::{self, BusMessage};
@@ -35,6 +41,9 @@ use crate::services::undo::DEFAULT_WINDOW;
 const ID: &str = "remote";
 const MAX_FAVORITES: usize = 200;
 const PROBE_TIMEOUT: Duration = Duration::from_millis(1500);
+/// Après un réveil : on teste le serveur toutes les 5 s, 2 min au plus.
+const WAKE_EVERY: Duration = Duration::from_secs(5);
+const WAKE_WAIT: Duration = Duration::from_secs(120);
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -72,6 +81,10 @@ struct Favorite {
     /// Pour SSH seulement (RDP demande l'utilisateur dans sa propre fenêtre).
     #[serde(default)]
     user: String,
+    /// Facultatif : l'adresse MAC pour le réveiller (« AA:BB:CC:DD:EE:FF »).
+    /// Absente des anciens fichiers : vide, et rien n'est écrit si elle l'est.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    mac: String,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -88,6 +101,8 @@ type Shared = Arc<Mutex<Data>>;
 #[derive(Default)]
 pub struct Remote {
     data: Shared,
+    /// Les favoris qu'on est en train de réveiller (un seul suivi par favori).
+    waking: Arc<Mutex<HashSet<u64>>>,
 }
 
 impl RustModule for Remote {
@@ -170,24 +185,47 @@ impl RustModule for Remote {
                     None => json!({ "online": false }),
                 })
             }
+            // { id } → { sent } : envoie le paquet de réveil (Wake-on-LAN).
+            "wake" => {
+                let fav = self.find(arg_id(&args)?)?;
+                let sent = self.wake(ctx, fav)?;
+                Ok(json!({ "sent": sent }))
+            }
             other => Err(format!("commande inconnue : {other}")),
         }
     }
 
     /// "remote.connect" `{id}` : le lanceur demande d'ouvrir un favori.
+    /// "remote.wake" `{id}` : le lanceur demande de le réveiller.
     fn on_event(&self, ctx: &ModuleContext, msg: &BusMessage) {
-        if msg.topic != "remote.connect" {
-            return;
-        }
-        let result = msg
-            .payload
-            .get("id")
-            .and_then(Value::as_u64)
-            .ok_or_else(|| "favori manquant".to_string())
-            .and_then(|id| self.find(id))
-            .and_then(|fav| connect(ctx, &fav));
-        if let Err(e) = result {
-            ctx.log_warn(format!("connexion demandée par le lanceur : {e}"));
+        let fav = || {
+            let id = msg.payload.get("id").and_then(Value::as_u64).ok_or_else(|| "favori manquant".to_string())?;
+            self.find(id)
+        };
+        match msg.topic.as_str() {
+            "remote.connect" => {
+                if let Err(e) = fav().and_then(|f| connect(ctx, &f)) {
+                    ctx.log_warn(format!("connexion demandée par le lanceur : {e}"));
+                }
+            }
+            "remote.wake" => {
+                // Le bus arrive sur le fil de l'interface : l'envoi se fait à côté.
+                let (app, waking) = (ctx.app.clone(), self.waking.clone());
+                let started = ctx.require("network").and_then(|_| fav()).map(|f| {
+                    std::thread::spawn(move || {
+                        if let Err(e) = wake_and_watch(&app, &waking, f) {
+                            log::write(log::Level::Warn, ID, &format!("réveil demandé par le lanceur : {e}"));
+                            // Le lanceur s'est refermé : l'erreur est dite par une notification.
+                            bus::emit(&app, ID, "remote.wake-done", json!({ "error": e }));
+                        }
+                    });
+                });
+                if let Err(e) = started {
+                    ctx.log_warn(format!("réveil demandé par le lanceur : {e}"));
+                    ctx.emit("remote.wake-done", json!({ "error": e }));
+                }
+            }
+            _ => {}
         }
     }
 }
@@ -196,6 +234,71 @@ impl Remote {
     fn find(&self, id: u64) -> Result<Favorite, String> {
         let d = self.data.locked();
         d.favorites.iter().find(|f| f.id == id).cloned().ok_or_else(|| "favori introuvable".into())
+    }
+
+    /// Le bouton « Réveiller » de l'onglet (commande `wake`).
+    fn wake(&self, ctx: &ModuleContext, fav: Favorite) -> Result<usize, String> {
+        ctx.require("network")?;
+        wake_and_watch(ctx.app, &self.waking, fav)
+    }
+}
+
+// ── Réveiller (Wake-on-LAN) ──────────────────────────────────────────────────
+
+/// Envoie le paquet de réveil, puis (dans un fil à part) teste le serveur
+/// toutes les 5 s jusqu'à ce qu'il réponde, 2 min au plus. Le front est
+/// prévenu par "remote.waking" (paquet parti) puis "remote.wake-done".
+/// Renvoie le nombre d'envois partis.
+fn wake_and_watch(app: &AppHandle, waking: &Arc<Mutex<HashSet<u64>>>, fav: Favorite) -> Result<usize, String> {
+    if fav.mac.is_empty() {
+        return Err("ce favori n'a pas d'adresse MAC : ajoutez-la (✎) pour pouvoir le réveiller".into());
+    }
+    let mac = remote_wol::parse_mac(&fav.mac)?;
+    let sent = remote_wol::wake(mac)?;
+    // Le journal ne note ni l'adresse ni la MAC.
+    log::write(log::Level::Info, ID, &format!("paquet de réveil envoyé ({sent} envois)"));
+    bus::emit(app, ID, "remote.waking", json!({ "id": fav.id, "name": fav.name }));
+    // Déjà en train d'attendre ce serveur (deuxième clic) : le paquet est
+    // reparti, le fil qui attend continue.
+    if !waking.locked().insert(fav.id) {
+        return Ok(sent);
+    }
+    let (app, waking) = (app.clone(), waking.clone());
+    std::thread::spawn(move || {
+        let id = fav.id;
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| wait_awake(&app, &fav)));
+        waking.locked().remove(&id);
+        match result {
+            Ok(Some(payload)) => bus::emit(&app, ID, "remote.wake-done", payload),
+            Ok(None) => {} // module désactivé entre-temps : rien à dire
+            Err(_) => log::warn("accès distants : erreur pendant l'attente du réveil"),
+        }
+    });
+    Ok(sent)
+}
+
+/// Teste le serveur toutes les WAKE_EVERY, WAKE_WAIT au plus (le premier test
+/// tout de suite : il était peut-être déjà allumé). None si le module a été
+/// désactivé pendant l'attente.
+fn wait_awake(app: &AppHandle, fav: &Favorite) -> Option<Value> {
+    let port = fav.port.unwrap_or(fav.kind.default_port());
+    let start = Instant::now();
+    let mut tick = 0u32;
+    loop {
+        if !super::is_active(app, ID) {
+            return None;
+        }
+        if let Some(ms) = probe(&fav.host, port) {
+            let secs = start.elapsed().as_secs();
+            return Some(json!({ "id": fav.id, "name": fav.name, "awake": true, "secs": secs, "ms": ms }));
+        }
+        tick += 1;
+        let next = WAKE_EVERY * tick;
+        if next > WAKE_WAIT {
+            return Some(json!({ "id": fav.id, "name": fav.name, "awake": false, "secs": WAKE_WAIT.as_secs() }));
+        }
+        // On dort jusqu'au prochain test (un test lent ne décale pas les suivants).
+        std::thread::sleep(next.saturating_sub(start.elapsed()));
     }
 }
 
@@ -266,10 +369,13 @@ fn read_favorite(args: &Value) -> Result<Favorite, String> {
     let kind = Kind::parse(&text("kind"))?;
     let host = text("host");
     let user = text("user");
+    let mac = text("mac");
     check_host(&host)?;
     if !user.is_empty() {
         check_user(&user)?;
     }
+    // Rangée sous une seule forme : « AA:BB:CC:DD:EE:FF ».
+    let mac = if mac.is_empty() { String::new() } else { remote_wol::format_mac(remote_wol::parse_mac(&mac)?) };
     let port = match args.get("port") {
         None | Some(Value::Null) => None,
         Some(v) => {
@@ -282,7 +388,7 @@ fn read_favorite(args: &Value) -> Result<Favorite, String> {
         }
     };
     let name = if name.is_empty() { host.clone() } else { name.chars().take(60).collect() };
-    Ok(Favorite { id: 0, name, kind, host, port, user: if kind == Kind::Ssh { user } else { String::new() } })
+    Ok(Favorite { id: 0, name, kind, host, port, user: if kind == Kind::Ssh { user } else { String::new() }, mac })
 }
 
 /// Un nom de serveur (srv-01.domaine.local), une IPv4 ou une IPv6.
@@ -324,14 +430,14 @@ fn arg_id(args: &Value) -> Result<u64, String> {
 // ── Enregistrer ──────────────────────────────────────────────────────────────
 
 /// Enregistre, puis prévient (le lanceur s'en sert) : seulement le numéro, le
-/// nom et le type, pas l'adresse.
+/// nom, le type et s'il peut être réveillé ; ni l'adresse ni la MAC.
 fn changed(app: &AppHandle, data: &Shared) {
     let list: Vec<Value> = {
         let d = data.locked();
         if let Err(e) = save(&d) {
             log::warn(format!("accès distants : enregistrement impossible : {e}"));
         }
-        d.favorites.iter().map(|f| json!({ "id": f.id, "name": f.name, "kind": f.kind })).collect()
+        d.favorites.iter().map(|f| json!({ "id": f.id, "name": f.name, "kind": f.kind, "wake": !f.mac.is_empty() })).collect()
     };
     bus::emit(app, ID, "remote.changed", json!({ "favorites": list }));
 }
@@ -343,13 +449,8 @@ fn file() -> PathBuf {
 /// Relit le fichier. Un fichier abîmé est mis de côté, jamais effacé.
 fn load() -> Data {
     let Ok(text) = std::fs::read_to_string(file()) else { return Data::default() };
-    match serde_json::from_str::<Data>(&text) {
-        Ok(mut d) => {
-            // Modifié à la main ? On ne garde que les favoris valides.
-            d.favorites.retain(|f| check_host(&f.host).is_ok() && (f.user.is_empty() || check_user(&f.user).is_ok()));
-            d.next_id = d.next_id.max(d.favorites.iter().map(|f| f.id).max().unwrap_or(0));
-            d
-        }
+    match parse_data(&text) {
+        Ok(d) => d,
         Err(e) => {
             let aside = platform::config_dir().join(format!("remote.broken-{}.json", platform::local_time().file_stamp()));
             let _ = std::fs::rename(file(), &aside);
@@ -357,6 +458,19 @@ fn load() -> Data {
             Data::default()
         }
     }
+}
+
+/// Lit le contenu de remote.json. Les anciens fichiers (sans « mac ») restent lisibles.
+fn parse_data(text: &str) -> Result<Data, serde_json::Error> {
+    let mut d = serde_json::from_str::<Data>(text)?;
+    // Modifié à la main ? On ne garde que les favoris valides.
+    d.favorites.retain(|f| check_host(&f.host).is_ok() && (f.user.is_empty() || check_user(&f.user).is_ok()));
+    // Une adresse MAC abîmée est oubliée (le favori, lui, reste).
+    for f in &mut d.favorites {
+        f.mac = remote_wol::parse_mac(&f.mac).map(remote_wol::format_mac).unwrap_or_default();
+    }
+    d.next_id = d.next_id.max(d.favorites.iter().map(|f| f.id).max().unwrap_or(0));
+    Ok(d)
 }
 
 fn save(d: &Data) -> Result<(), String> {
@@ -408,6 +522,38 @@ mod tests {
         assert_eq!(fav("ssh", "srv", json!(""), "").unwrap().port, None);
         assert!(fav("ssh", "srv", json!(70000), "").is_err());
         assert!(fav("telnet", "srv", Value::Null, "").is_err());
+    }
+
+    #[test]
+    fn mac_is_optional_and_normalized() {
+        let with = |mac: &str| read_favorite(&json!({ "kind": "rdp", "host": "nas", "mac": mac }));
+        assert_eq!(with("").unwrap().mac, "");
+        assert_eq!(with("aa-bb-cc-dd-ee-ff").unwrap().mac, "AA:BB:CC:DD:EE:FF");
+        assert_eq!(with("AABBCCDDEEFF").unwrap().mac, "AA:BB:CC:DD:EE:FF");
+        assert!(with("AA:BB:CC").unwrap_err().contains("MAC"));
+        // Pas de champ du tout (ancien front) : pas de MAC.
+        assert_eq!(fav("ssh", "srv", Value::Null, "").unwrap().mac, "");
+    }
+
+    #[test]
+    fn old_files_are_still_read() {
+        // Un remote.json d'avant le Wake-on-LAN : aucun champ « mac ».
+        let old = r#"{ "favorites": [ { "id": 3, "name": "NAS", "kind": "ssh", "host": "nas.local", "port": null, "user": "admin" } ], "nextId": 3 }"#;
+        let d = parse_data(old).unwrap();
+        assert_eq!(d.favorites.len(), 1);
+        assert_eq!(d.favorites[0].mac, "");
+        // Réécrit sans MAC : le fichier ne change pas de forme (pas de « mac »: "").
+        assert!(!serde_json::to_string(&d).unwrap().contains("mac"));
+
+        // Une MAC écrite à la main : remise en forme ; abîmée : oubliée, le favori reste.
+        let hand = r#"{ "favorites": [
+            { "id": 1, "name": "A", "kind": "rdp", "host": "a", "mac": "00-11-22-33-44-55" },
+            { "id": 2, "name": "B", "kind": "rdp", "host": "b", "mac": "pas une mac" } ] }"#;
+        let d = parse_data(hand).unwrap();
+        assert_eq!(d.favorites[0].mac, "00:11:22:33:44:55");
+        assert_eq!(d.favorites[1].mac, "");
+        assert_eq!(d.next_id, 2);
+        assert!(serde_json::to_string(&d).unwrap().contains(r#""mac":"00:11:22:33:44:55""#));
     }
 
     #[test]

@@ -5,6 +5,9 @@
 // répétitions, fusionne et trie les rendez-vous, et prévient par
 // "agenda.changed" ; on redemande alors la liste avec la commande "upcoming".
 // Un peu avant un rendez-vous, il publie "agenda.reminder" : l'île s'ouvre en alerte.
+// Deux minutes avant une réunion en ligne, "agenda.join" : « Réunion dans
+// 2 min » avec « Rejoindre » (lien ouvert, musique en pause, et un mot si le
+// micro est coupé, avec « Rétablir le micro »).
 //
 // Un clic sur un rendez-vous qui a un lien (réunion Teams, Meet, Zoom, page
 // web) l'ouvre : commande "open". On ne connaît que la SORTE de lien ;
@@ -155,6 +158,40 @@ async function openLink(api: ModuleApi, m: Meeting) {
   }
 }
 
+/**
+ * « Rejoindre » une réunion en ligne : son lien s'ouvre comme d'un clic, le
+ * Rust demande au module Musique de mettre en pause ce qui joue, et si le
+ * micro est coupé (le Rust le lit au moment du clic), on le dit, avec de quoi
+ * le rétablir.
+ */
+async function join(api: ModuleApi, m: Meeting) {
+  let micMuted = false;
+  try {
+    const r = await api.invoke<{ micMuted?: boolean } | null>("join", { calendar: m.calendar ?? "", key: m.key });
+    micMuted = r?.micMuted === true;
+  } catch (err) {
+    api.notify({ title: "Agenda", body: errorText(err), icon: "⚠️", priority: "low", key: "agenda-error" });
+    return;
+  }
+  if (!micMuted) return;
+  api.notify({
+    title: "Votre micro est coupé",
+    body: m.title,
+    icon: "🔇",
+    priority: "high",
+    key: `agenda-${m.key}`,
+    durationMs: 15_000,
+    // Le module Contrôles rétablit le micro et confirme (« Micro rétabli »).
+    actions: [{ label: "Rétablir le micro", run: () => api.emit("controls.mic-set", { muted: false }) }],
+  });
+}
+
+/** Le bouton d'un rendez-vous dans une notification : « Rejoindre » une réunion, « Ouvrir » un lien web. */
+function linkAction(api: ModuleApi, m: Meeting) {
+  if (!m.link) return undefined;
+  return m.link === "web" ? [{ label: "Ouvrir", run: () => void openLink(api, m) }] : [{ label: "Rejoindre", run: () => void join(api, m) }];
+}
+
 /** La pastille de couleur du calendrier. */
 function dot(m: Meeting): HTMLElement {
   const d = el("span", { class: "agenda-dot", title: m.calendarName ?? "", "aria-hidden": "true" });
@@ -211,8 +248,35 @@ export const agenda: IslandModule = {
         icon: "📅",
         priority: "high",
         key: `agenda-${m.key}`,
-        actions: m.link ? [{ label: m.link === "web" ? "Ouvrir" : "Rejoindre", run: () => void openLink(api, m) }] : undefined,
+        actions: linkAction(api, m),
       });
+    });
+    // Une réunion en ligne commence dans 2 min : on propose de la rejoindre
+    // (une seule fois par rendez-vous, décidé par le Rust). Même clé que le
+    // rappel : elle le remplace s'il est encore affiché.
+    api.on("agenda.join", (msg) => {
+      const { key } = (msg.payload ?? {}) as { key?: string };
+      void (async () => {
+        let m = listing.events.find((e) => e.key === key);
+        if (!m) {
+          await refresh(api); // la liste n'était peut-être pas encore à jour
+          m = listing.events.find((e) => e.key === key);
+        }
+        if (!m?.link) return;
+        const meeting = m;
+        const left = meeting.start - Date.now();
+        const min = Math.max(0, Math.ceil(left / MINUTE));
+        api.notify({
+          title: min > 0 ? `Réunion dans ${min} min : ${meeting.title}` : `La réunion commence : ${meeting.title}`,
+          body: [timeRange(meeting), meeting.location].filter(Boolean).join(" · "),
+          icon: "🎥",
+          priority: "high",
+          key: `agenda-${meeting.key}`,
+          // Visible jusqu'au début de la réunion (30 s au moins, 5 min au plus).
+          durationMs: Math.min(5 * MINUTE, Math.max(30_000, left + MINUTE)),
+          actions: linkAction(api, meeting),
+        });
+      })();
     });
     // Calendriers changés dans les réglages : on relit ce qui a changé, tout de suite.
     const off = api.onSettingsChange(() => void refresh(api, "reload", { force: false }));

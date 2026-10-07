@@ -25,11 +25,13 @@ import type { MascotManifest } from "../mascot/types";
 import { clear, el } from "./dom";
 import { icon } from "./icon";
 import { IslandStateMachine, type IslandState } from "./island-state";
+import { contentHeight, FIT_ATTR, fitHeight } from "./fit";
 import { enableGestures, grabZone, type Edge } from "./gestures";
 import { sounds, setSoundPrefs } from "./sounds";
 import { enableTabDrag, flip } from "./tab-drag";
 import { applyTheme } from "./themes";
 import { reducedMotion, TabPill } from "./tab-pill";
+import { Tips } from "./tips";
 
 const log = logger("island");
 
@@ -101,6 +103,12 @@ export class Island {
   /** Cible de dépôt sous le curseur pendant un glisser. */
   private dropHover: HTMLElement | null = null;
   private collapseTimer: number | null = null;
+  /** L'île ouverte agrandie pour un contenu à montrer en entier (fit.ts) : sa hauteur, sinon null. */
+  private fitH: number | null = null;
+  /** La fenêtre a le panneau haut (le Rust le sait aussi). */
+  private tall = false;
+  private tallTimer: number | undefined;
+  private fitQueued = false;
   private hoverMascotSince = 0;
   private hoverMascotFired = false;
   /** Le dernier appui sur l'île était un geste (étirer, déplacer), pas un clic. */
@@ -114,6 +122,8 @@ export class Island {
   private focusTabsOnOpen = false;
   /** Les surprises cachées (src/eggs/). */
   private eggs: EasterEggs;
+  /** La bulle d'astuce à la première ouverture d'un onglet (tips.ts). */
+  private tips = new Tips();
 
   constructor(
     private readonly root: HTMLElement,
@@ -296,6 +306,8 @@ export class Island {
     // fonctionne, et on rend le focus à l'appli d'avant en sortant.
     if (to === "expanded") void Bridge.islandSetFocus(true);
     if (from === "expanded") void Bridge.islandSetFocus(false);
+    // L'astuce d'un onglet ne vit que dans l'île ouverte (jamais par-dessus une alerte).
+    if (from === "expanded") this.tips.hide();
     if (to !== "hidden") this.mascot?.activity();
     // Petits sons : une bulle qui monte à l'ouverture, qui redescend à la fermeture.
     if (to === "expanded") sounds.open();
@@ -375,6 +387,43 @@ export class Island {
     // pour décider où les clics passent au travers.
     new ResizeObserver(() => this.pushRect()).observe(this.shell);
     this.shell.addEventListener("transitionend", () => this.pushRect());
+    // Le contenu change (un QR code s'ouvre, un autre onglet) : l'île ouverte
+    // grandit pour le montrer en entier, ou reprend sa taille (fit.ts).
+    new MutationObserver(() => this.scheduleFit()).observe(this.content, { childList: true, subtree: true });
+  }
+
+  private scheduleFit() {
+    if (this.fitQueued) return;
+    this.fitQueued = true;
+    requestAnimationFrame(() => {
+      this.fitQueued = false;
+      void this.applyFit();
+    });
+  }
+
+  /** L'île ouverte prend la hauteur de son contenu marqué `data-island-fit`, ou sa taille habituelle. */
+  private async applyFit() {
+    const view = this.fsm.state === "expanded" ? this.expandedUi?.body : undefined;
+    const target = view?.querySelector(`[${FIT_ATTR}]`) ? fitHeight(this.shell.offsetHeight, view.clientHeight, contentHeight(view)) : null;
+    if (target === this.fitH) return;
+    this.fitH = target;
+    window.clearTimeout(this.tallTimer);
+    if (target === null) {
+      this.shell.style.removeProperty("--fit-h");
+      // La fenêtre rend le panneau haut une fois l'île revenue à sa taille.
+      this.tallTimer = window.setTimeout(() => {
+        if (this.fitH !== null || !this.tall) return;
+        this.tall = false;
+        void Bridge.islandSetTall(false);
+      }, TRANSITION_MS + 100);
+      return;
+    }
+    // La fenêtre d'abord (sinon l'île grandirait coupée), puis l'île, avec son ressort.
+    if (!this.tall) {
+      this.tall = true;
+      await Bridge.islandSetTall(true);
+    }
+    if (this.fitH === target) this.shell.style.setProperty("--fit-h", `${target}px`);
   }
 
   /** Le bord de l'écran où se trouve l'île (posé sur <body> par applySettings). */
@@ -699,6 +748,11 @@ export class Island {
     this.unmountView = this.registry.mountView(first.module.manifest.id, "compact", slot);
   }
 
+  /** La phrase d'astuce d'un onglet (champ `tip` de son manifeste). */
+  private tipOf(id: string): string | undefined {
+    return this.registry.withView("expanded").find((t) => t.module.manifest.id === id)?.module.manifest.tip;
+  }
+
   /** Les modules qui ont un onglet, dans l'ordre choisi par l'utilisateur. */
   private orderedTabs() {
     return applyTabOrder(this.registry.withView("expanded"), (t) => t.module.manifest.id, settingsStore.current.island.tabOrder ?? []);
@@ -776,8 +830,10 @@ export class Island {
     if (active && this.focusTabsOnOpen) active.focus();
     this.focusTabsOnOpen = false;
 
-    if (this.activeTab) this.unmountView = this.registry.mountView(this.activeTab, "expanded", body);
-    else {
+    if (this.activeTab) {
+      this.unmountView = this.registry.mountView(this.activeTab, "expanded", body);
+      this.tips.show(this.activeTab, this.tipOf(this.activeTab), this.content);
+    } else {
       const benched = this.registry.benchedNames();
       body.append(
         el(
@@ -869,6 +925,7 @@ export class Island {
     this.activeTab = id;
     this.renderedKey = ["expanded", id, "", ""].join("|");
     this.unmountView = this.registry.mountView(id, "expanded", body);
+    this.tips.show(id, this.tipOf(id), this.content);
 
     if (reducedMotion()) {
       old.remove();
@@ -930,7 +987,8 @@ export class Island {
       "div",
       // Plusieurs boutons (une question à choix) : ils passent sur leur propre ligne.
       {
-        class: `notif ${big ? "big" : ""} ${(n.actions?.length ?? 0) > 1 ? "many" : ""} prio-${n.priority}`,
+        // « lines » : un texte sur plusieurs lignes (« Quoi de neuf ») : l'alerte grandit (island.css).
+        class: `notif ${big ? "big" : ""} ${(n.actions?.length ?? 0) > 1 ? "many" : ""} ${n.body?.includes("\n") ? "lines" : ""} prio-${n.priority} ${n.tone ? `tone-${n.tone}` : ""} ${n.wide ? "wide" : ""}`,
         // Combien attendent derrière (design Studio : l'icône s'empile, voir island.css).
         "data-more": String(Math.min(this.notifications.waiting(), 3)),
       },

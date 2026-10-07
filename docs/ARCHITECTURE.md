@@ -23,6 +23,8 @@ ondine/
 ├─ settings.html              page de la fenêtre de réglages
 ├─ annotate.html              page de la fenêtre d'annotation des captures
 ├─ scripts/gen-icons.mjs      dessine l'icône de l'appli (npm run icons)
+├─ scripts/winget-manifests.mjs  refait les manifestes winget d'une version (télécharge l'installateur, SHA-256)
+├─ packaging/winget/          manifestes winget prêts (Naod6473.Ondine), pas encore proposés à Microsoft ; README = comment les soumettre
 ├─ mascots/                   UNE MASCOTTE = UN DOSSIER (manifest.json + fichiers)
 │  ├─ goutte-gomme/           la goutte gomme, dessinée en code (gum.ts)
 │  ├─ goutte-classique/       la première goutte, mêmes poses et animations que goutte/
@@ -37,10 +39,13 @@ ondine/
 │  │  ├─ module-registry.ts   démarre, isole et met à l'écart les modules
 │  │  ├─ settings-store.ts    réglages côté front (copie synchronisée)
 │  │  ├─ types.ts             forme des réglages (miroir du Rust)
+│  │  ├─ world-cities.ts · world-time.ts   villes et fuseaux, heure ailleurs (horloges, Lanceur)
+│  │  ├─ whats-new.ts         « Quoi de neuf » après une mise à jour (changelog.ts lit CHANGELOG.md)
 │  │  └─ log.ts               journal côté front (écrit dans le fichier du Rust)
 │  ├─ island/
 │  │  ├─ island-state.ts      machine à états de l'île (sans DOM)
 │  │  ├─ island.ts            dessin, souris, clavier, glisser-déposer
+│  │  ├─ tips.ts              la bulle d'astuce à la première ouverture d'un onglet (règles : tip-state.ts)
 │  │  └─ dom.ts               petite aide `el()` pour créer du HTML sans framework
 │  ├─ mascot/
 │  │  ├─ renderer.ts          contrat MascotRenderer + liste des moteurs
@@ -57,7 +62,8 @@ ondine/
 │  │  ├─ notes/               Notes rapides et to-do (phase 6)
 │  │  ├─ agenda/              Prochain rendez-vous depuis un .ics (phase 6)
 │  │  ├─ terminal/            Ouvrir cmd / PowerShell en un clic (phase 7)
-│  │  └─ media/               Musique en cours de lecture (phase 3)
+│  │  ├─ media/               Musique en cours de lecture (phase 3)
+│  │  └─ weekly/              Bilan de la semaine (sans onglet)
 │  ├─ settings/               fenêtre de réglages (formulaires générés)
 │  ├─ annotate/               fenêtre d'annotation (dessin sur une capture)
 │  └─ styles/                 island.css, settings.css
@@ -69,7 +75,7 @@ ondine/
       ├─ tray.rs              icône de la zone de notification
       ├─ island/mod.rs        placement multi-écrans/DPI, clics traversants, souris
       ├─ platform/            tout le Win32 (windows.rs) ; other.rs = bouchons ; media.rs = SMTC ; ocr.rs = OCR
-      ├─ services/            réglages, journal, identifiants, bus, annulation, confidentialité, fichiers, ics
+      ├─ services/            réglages, journal, identifiants, bus, annulation, confidentialité, fichiers, ics, réseau local
       └─ modules/             registre des modules Rust + shelf.rs, clipboard.rs, capture.rs, notes.rs, agenda.rs, terminal.rs, media.rs
 ```
 
@@ -158,6 +164,11 @@ qu'après la fin de l'animation.
   révélés, chiffres qui roulent, listes qui glissent (FLIP), boutons gélatine,
   notification qui sort de la pilule, reflet sous la souris, anneaux et barres
   qui se dessinent. Les mêmes servent dans la fenêtre des Réglages.
+- **L'île qui s'adapte au contenu** (`src/island/fit.ts`) : un contenu à
+  montrer en entier (un QR code) porte l'attribut `data-island-fit` ; l'île
+  ouverte grandit alors juste assez (jusqu'à 480 px, variable CSS `--fit-h`),
+  avec le même ressort, puis reprend sa taille quand il s'en va. La fenêtre
+  passe d'abord au panneau haut (`island_set_tall`, 720 × 530).
 - **Changement d'onglet** (`switchTab`) : on ne redessine pas toute la vue. La
   pastille de l'onglet actif (`src/island/tab-pill.ts`) se déplace avec deux
   ressorts, un par bord : le bord qui mène est raide, celui qui suit est mou,
@@ -188,6 +199,7 @@ Lu à la fois par le front (import) et par le Rust (`include_str!`).
 {
   "id": "hello",                      // minuscules, chiffres, tirets (exemple fictif)
   "name": "Bonjour", "icon": "👋", "description": "…", "version": "0.1.0",
+  "tip": "Cliquez sur « Saluer » pour dire bonjour.",   // module à onglet : la bulle de la 1re ouverture
   "permissions": [],                  // files, clipboard, network, claude-api, credentials
   "settings": { "version": 1, "fields": [
     { "key": "name", "type": "string", "label": "Ton prénom", "default": "Simon" }
@@ -208,7 +220,9 @@ Ce qui est vérifié, et où :
 - **Événements** : un module ne peut publier que ce qu'il déclare dans `emits`,
   et écouter que ce que couvre `listens` (front et Rust).
 - **Réglages** : l'écran est généré depuis `settings.fields` ; chaque valeur est
-  ramenée à quelque chose de valide (bornes, options) avant usage.
+  ramenée à quelque chose de valide (bornes, options) avant usage. Un champ
+  `string` peut ajouter `"check": "cities"` (vérifications nommées de
+  `src/settings/field-checks.ts`) : un avertissement s'affiche sous le champ.
 
 ### Les deux moitiés d'un module
 
@@ -298,9 +312,13 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `launcher.open` | Lanceur (Rust, raccourci global) | l'île s'ouvre sur l'onglet Lanceur, recherche prête |
 | `launcher.hotkey-error` `{text}` | Lanceur (Rust) | notification : raccourci déjà pris |
 | `system.disk-low` `{mount, freePct, freeGb}` | Système (Rust, toutes les 30 s) | notification 💽 : disque presque plein |
-| `remote.changed` `{favorites: [{id, name, kind}]}` | Accès distants (Rust, et front au démarrage) | le Lanceur met à jour ses serveurs (sans les adresses) |
+| `remote.changed` `{favorites: [{id, name, kind, wake}]}` | Accès distants (Rust, et front au démarrage) | le Lanceur met à jour ses serveurs (sans les adresses ni les MAC ; `wake` = a une adresse MAC) |
 | `remote.connect` `{id}` | Lanceur (front) | Accès distants ouvre ce favori |
-| `agents.event` `{source, kind, title, body, project, at}` | Agents IA (Rust) | notification (✋ « attend ta permission » en priorité haute, ✅ « a fini ») et historique |
+| `remote.wake` `{id}` | Lanceur (front) | Accès distants envoie le paquet Wake-on-LAN de ce favori |
+| `remote.waking` `{id, name}` | Accès distants (Rust) | paquet parti : notification ⏰, le point du favori « respire » |
+| `remote.wake-done` `{id, name, awake, secs, ms?}` ou `{error}` | Accès distants (Rust) | notification « NAS est réveillé » / « ne répond toujours pas » (ou l'erreur) |
+| `shelf.phone` `{id, state}` | Étagère (Rust, fil du petit serveur) | « Vers le téléphone » : `sending` (le téléphone télécharge), puis `done` (notification), `expired` ou `stopped` ; le panneau se ferme |
+| `agents.event` `{source, kind, title, body, project, at, changes?}` | Agents IA (Rust) | notification (✋ « attend ta permission » en priorité haute, ✅ « a fini », avec le bilan git `changes` s'il y en a un) et historique |
 | `agents.projects` `{tools, projects: [{index, name}]}` | Agents IA (Rust) | le Lanceur propose « Claude Code · projet », « Codex · projet »… |
 | `agents.launch` `{tool, index?}` | Lanceur (front) | Agents IA ouvre cet agent dans ce projet |
 | `notes.open` `{kind: "note"\|"todo", id}` | Lanceur (front, recherche dans l'île) | l'onglet Notes s'ouvre sur cette note (éditeur) ou cette tâche (mise en avant) |
@@ -312,6 +330,18 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `claude.thinking` / `claude.done` | Agents IA (Rust) | la mascotte réfléchit tant qu'une session de Claude Code travaille |
 | `capture.pick` | Lanceur (front) | Capture ouvre la pipette |
 | `capture.color` `{ok, hex, text, error?}` | Capture (Rust) | notification « #3A7BD5 copié » ; l'onglet redemande l'historique (`colors`) |
+| `agenda.join` `{key, minutes}` | Agenda (Rust) | alerte « Réunion dans 2 min : … » avec « Rejoindre » (une fois par réunion en ligne) |
+| `media.pause` | Agenda (Rust, « Rejoindre ») | Musique met en pause ce qui joue (rien si c'est déjà en pause) |
+| `controls.mic-set` `{muted}` | Agenda (front, « Rétablir le micro ») | Contrôles coupe ou rétablit le micro, puis publie `controls.mic-muted` (`source: "request"`) |
+| `timer.work-session` `{seconds, completed}` | Minuteur (front) | une séance de travail Pomodoro s'arrête (finie, en pause, passée, remise à zéro, module coupé) : Bilan de la semaine ajoute le temps, et un Pomodoro si `completed` |
+| `notes.todo-toggled` `{done}` | Notes (Rust) | une tâche cochée (`true`) ou décochée : Bilan de la semaine compte (jamais le texte de la tâche) |
+| `weekly.show` | réglages (« Voir le bilan maintenant ») | Bilan de la semaine montre la semaine en cours (`peek`), sans rien consommer |
+| `app.whats-new` | réglages (« Voir les nouveautés ») | l'île montre « Quoi de neuf dans Ondine X.Y.Z » pour la version installée |
+| `controls.usb-added` `{root, letter, label, removable}` | Contrôles (Rust, fil de fond, réglage `usbNotify`) | notification 🔌 « Clé USB branchée » avec « Ouvrir » et « Éjecter » |
+| `controls.usb-ejected` `{root, letter, label, removable, ok, veto?, blocker?, error?, code?}` | Contrôles (Rust, fil d'éjection) | notification ✅ « Vous pouvez retirer la clé E: en toute sécurité. », ou ⚠️ avec qui bloque ; la bande USB de l'onglet se met à jour |
+| `shelf.hash-progress` `{job, percent}` | Étagère (Rust, cible « Empreinte ») | la notification « Empreinte SHA-256 : 45 % » (une fois par seconde, au-delà de 64 Mo) |
+| `shelf.hashed` `{job, algo, compared, cancelled, results: [{name, hex, matches} ou {name, error}]}` | Étagère (Rust) | notification « Identique ✓ » / « Différente ✗ » ou l'empreinte, avec « Copier » (`hash_copy {job}`) ; le texte copié n'est jamais dans le message |
+| `capture.gif` `{state: recording / encoding / done / cancelled / error, …}` | Capture (Rust) | notification avec « Arrêter », puis « Création du GIF… », puis « GIF enregistré » (« Montrer dans l'Explorateur ») ; le bouton de l'onglet suit l'état |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -350,6 +380,14 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
   chemins relatifs, inexistants ou situés dans un dossier exclu (après résolution
   des `..` et des liens). Un module qui envoie du contenu à l'API Claude déclare
   `claude-api` (affiché dans les réglages) et montre ce qui part avant l'envoi.
+- **Réseau local** (`lan.rs`) : les adresses IPv4 des cartes réseau en marche
+  (crate `sysinfo`, sans 127.0.0.1 ni 169.254.x.x), l'adresse de diffusion d'un
+  réseau (`broadcast`), l'adresse de la route par défaut (une « connexion »
+  UDP vers 192.0.2.1, adresse de documentation : aucun paquet ne part) et le
+  choix de l'adresse privée à donner à un téléphone (`pick_private` : celle de
+  la route par défaut si elle est privée et pas virtuelle, sinon une vraie carte
+  avant une carte de VPN / machine virtuelle, 192.168 > 172.16 > 10). Utilisé
+  par le Wake-on-LAN et « Vers le téléphone ».
 
 ## La mascotte
 
@@ -482,7 +520,8 @@ Front : `src/modules/shelf/index.ts`. Rust : `src-tauri/src/modules/shelf.rs`.
   envoie au front l'événement `file-drag` (`enter`/`over`/`leave`/`drop`, chemins,
   position en pixels physiques). Elle ne lit que la liste des chemins.
 - **Par élément** : 📂 Montrer dans l'Explorateur, 📄 Copier vers…, 📦 Déplacer
-  vers… (mêmes commandes `copy_to` / `move_to`, donc même annulation), 📋, 🗑️, ×.
+  vers… (mêmes commandes `copy_to` / `move_to`, donc même annulation), 📋,
+  📱 Vers le téléphone (fichiers seulement, voir plus bas), 🗑️, ×.
 - **Sortir un élément en le glissant (Windows)** : appuyer sur une ligne puis
   bouger de 6 px appelle `drag_out`. Le Rust (`platform/drag_out.rs`) crée un
   objet de données du Shell (`SHCreateDataObject` avec les PIDL des fichiers)
@@ -498,6 +537,38 @@ Front : `src/modules/shelf/index.ts`. Rust : `src-tauri/src/modules/shelf.rs`.
 - La boîte « Choisir un dossier » est la commande `dialog_pick_folder`
   (plugin officiel `tauri-plugin-dialog`), appelée depuis le Rust uniquement :
   les pages n'ont pas accès au plugin directement.
+- **📱 Vers le téléphone** (`shelf_phone.rs`, front `phone.ts` ; permission
+  `network`) : sur un fichier de l'étagère (`phone_share {path}`, chemin validé
+  et présent sur l'étagère). Le Rust choisit l'adresse privée du PC
+  (`services/lan.rs` ; aucune → refus avec un message clair), ouvre un
+  `TcpListener` (std, aucune crate) sur cette adresse et un port donné par
+  Windows, et tire un jeton de 128 bits (`getrandom`). Seule l'adresse
+  `http://IP:port/<jeton>/<nom encodé>` sert le fichier (GET ; HEAD = en-têtes
+  seulement ; autre méthode = 405) ; toute autre adresse = 404 vide, une demande
+  illisible = 400. Comparaison du jeton en temps constant ; nom trop long →
+  `fichier.ext` dans l'adresse (le vrai nom part dans `Content-Disposition:
+  attachment`). Envoi par morceaux de 64 Ko (gros fichiers), un fil par
+  connexion (8 au plus). « Téléchargement complet » = tout écrit ET le
+  téléphone ferme proprement la connexion (une annulation la réinitialise).
+  Fin : un téléchargement complet, 5 minutes (un envoi commencé peut finir) ou
+  `phone_stop` ; un nouveau partage arrête le précédent. Le fil prévient par
+  `shelf.phone` `{id, state}`. L'île montre le QR code (`clipboard_qr.rs`,
+  mêmes classes CSS que le Presse-papiers), l'adresse, le compte à rebours et
+  « Arrêter » ; `phone_status` le retrouve si l'île redémarre. Le journal ne
+  contient ni l'adresse ni le jeton. Pare-feu : Windows demande la première
+  fois d'autoriser Ondine (réseaux privés).
+- **Empreinte** (cible de dépôt, réglage `showHash` ; `src/modules/shelf/hash.ts`,
+  `src-tauri/src/modules/shelf_hash.rs`) : `hash {paths}` calcule dans un thread
+  (fichiers seulement, 5 au plus, un calcul à la fois), en lisant par blocs de
+  1 Mo ; crates RustCrypto `sha2`, `sha1`, `md-5` (testées sur des vecteurs
+  connus). Si le presse-papiers (lu par le Rust, jamais s'il est marqué
+  sensible) contient une empreinte hexadécimale (32/40/64/128 chiffres → MD5,
+  SHA-1, SHA-256, SHA-512 ; aussi dans une liste sha256sum ou certutil), le
+  même algorithme est calculé et comparé ; sinon SHA-256. Résultat par
+  `shelf.hashed`, progression par `shelf.hash-progress`, `hash_cancel` pour
+  « Arrêter », `hash_copy {job}` recopie le résultat (une ligne `empreinte  nom`
+  par fichier). La notification utilise `tone` (titre vert / rouge) et `wide`
+  (île plus grande pour l'empreinte entière) de `api.notify`.
 
 ## Module Musique (phase 3)
 
@@ -520,6 +591,9 @@ et l'accès à Windows dans `src-tauri/src/platform/media.rs`.
   (notification basse), désactivable dans les réglages.
 - **Confidentialité** : le module ne fait que lire ce que Windows expose déjà ;
   rien ne sort de l'ordinateur, aucun titre n'est écrit dans le journal.
+- **Mettre en pause** (`media.pause`, publié par l'Agenda quand on rejoint
+  une réunion) : si quelque chose joue, un fil appelle `TryPauseAsync` sur la
+  session SMTC en cours.
 
 ## Module Presse-papiers (phase 4)
 
@@ -554,6 +628,16 @@ et l'accès à Windows dans `src-tauri/src/platform/windows.rs` (« Presse-papie
   l'île, data URL) ou en pixels (« Copier l'image », ~512 px, via arboard).
   Niveau de correction M, 1 000 caractères au plus (au-delà, le code serait
   trop serré pour un téléphone) : message clair sinon. Aucun service en ligne.
+- **Décoder** (`src/modules/clipboard/decode.ts`, TypeScript pur, testé dans
+  `tests/front/clipboard-decode.test.ts` avec beaucoup de faux positifs) :
+  `detect` reconnaît sur l'aperçu un horodatage Unix (10 ou 13 chiffres, entre
+  2000 et 2050), un JWT (`alg` dans l'en-tête), du JSON, du texte en `%xx`, ou du
+  Base64 strict (standard ou URL) qui donne du texte UTF-8 lisible ; la ligne
+  montre alors « Décoder », « Mettre en forme » ou « Lire la date ». Au clic, le
+  front demande le texte entier (`full {id}`), `decode` le met en forme (JSON
+  réindenté sans perdre les grands nombres, dates locale / UTC / ISO) et
+  l'onglet l'affiche (`data-no-i18n`), avec « Copier » (`copy {text}`). Rien
+  n'est journalisé ; les erreurs ne citent jamais le texte.
 - **Confidentialité** : aucun texte copié dans le journal ni sur le bus ; rien ne
   sort de l'ordinateur.
 
@@ -609,6 +693,24 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   (sans doublon) dans `%APPDATA%\Ondine\colors.json`, pastilles cliquables
   dans l'onglet (`colors`, `copy_color {hex}` : seule une couleur `#RRGGBB`
   est acceptée).
+- **GIF animé** (`gif_start {hint}`, `gif_stop`) : l'outil de capture de Windows
+  ne dit pas où est la zone choisie, donc `platform/record.rs` ouvre sa propre
+  sélection, sur le modèle de la pipette (photo du bureau assombrie, zone tracée
+  claire avec sa taille ; clic seul ou Entrée = tout l'écran ; Échap, clic droit,
+  perte du focus = annuler ; l'aide est traduite par le front). Puis, dans le
+  même fil : `Grabber` copie la zone 10 fois par seconde (`BitBlt`, ou
+  `StretchBlt` en `HALFTONE` si elle dépasse 960 px ; sans `CAPTUREBLT`, qui
+  ferait clignoter la souris), dessine la souris (`GetCursorInfo`,
+  `DrawIconEx`) ; `Outline` pose un cadre rouge à l'extérieur de la zone
+  (fenêtres traversantes) ; l'île est retirée des captures
+  (`SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)`, sur le fil principal).
+  Un deuxième fil écrit le GIF (`modules/capture/gif.rs`, crate `gif`, testé) :
+  seul le rectangle qui a changé est écrit (`DisposalMethod::Keep`), une palette
+  par image (NeuQuant), délais tirés de l'heure réelle des images (une image
+  sautée si l'écriture prend du retard ne décale pas le rythme). Fichier
+  `Capture … .gif` dans le dossier des captures, `shelf.add`, « Annuler »
+  (Corbeille) ; un GIF raté part à la Corbeille. Étapes publiées sur
+  `capture.gif`. Réglages `gifSeconds` (10 s, de 2 à 30) et `gifCursor`.
 - **Ordre des onglets** : réglage `island.tabOrder` (liste d'ids ; vide = ordre
   d'origine ; un module absent se met à la fin). On le change en glissant un
   onglet dans l'île (`src/island/tab-drag.ts` : l'onglet suit la souris, les
@@ -641,6 +743,11 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   n'est PAS activé : pas d'API publique fiable (FocusSessionManager est une
   fonction à accès limité, la clé de registre des notifications n'est relue
   qu'au redémarrage du service, WNF n'est pas documenté).
+- Bilan de la semaine : chaque séance de travail Pomodoro qui s'arrête publie
+  `timer.work-session {seconds, completed}`. `seconds` = ce que le compte à
+  rebours a avancé depuis le départ (ou la reprise) : un PC en veille pendant
+  la séance ne compte jamais plus que la séance. `completed` seulement à la
+  fin naturelle d'une séance de travail (pas « Passer »).
 
 ### Module Notes (`src/modules/notes/`, `src-tauri/src/modules/notes.rs`)
 
@@ -651,6 +758,8 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   les animations (case cochée, texte barré, arrivée, départ) se font sans tout
   redessiner. Double-clic pour modifier une tâche.
 - Le texte des notes ne passe jamais par le bus ni par le journal.
+- Cocher / décocher une tâche publie `notes.todo-toggled {done}` (pour le
+  bilan de la semaine).
 
 ### Module Agenda (`src/modules/agenda/`, `src-tauri/src/modules/agenda.rs`)
 
@@ -684,6 +793,16 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   locale de l'ordinateur (juste si l'agenda est dans le même fuseau).
 - Pilule : « Dans 12 min · Titre » quand un rendez-vous approche
   (`compactWithinMin`), puis « En cours » avec une barre qui se remplit.
+- Rejoindre une réunion : `joinMin` minutes avant (2 par défaut, 0 = jamais)
+  un rendez-vous dont le lien est une réunion (Teams, Meet, Zoom, Webex :
+  `link_kind` autre que `web`), le thread publie `agenda.join {key, minutes}`
+  une seule fois (`joined`) et le compte aussi comme rappelé : pas de rappel
+  en double. Le front montre « Réunion dans 2 min : Titre » avec
+  « Rejoindre » → commande `join {calendar, key}` (ouvre le lien comme `open`,
+  puis publie `media.pause`, et répond `{micMuted}` : le micro par défaut lu
+  par Core Audio, seulement si le module Contrôles est actif) ; micro coupé →
+  une alerte « Votre micro est coupé » propose « Rétablir le micro »
+  (`controls.mic-set {muted: false}`).
 
 ## Phase 7 : automatisation
 
@@ -789,6 +908,24 @@ qui surveille dossiers et lecteurs).
     un exécutable n'est jamais lancé, seulement montré dans l'Explorateur.
   - Rien ne passe par le bus ni par le journal (seulement « résultat de l'île
     ouvert (source) »). En mode démo, des résultats inventés (`demo.ts`).
+- **Calculs** (`calc.ts`, front seulement, testé dans `tests/front/calc.test.ts`) :
+  `calculate(query, lang)` renvoie les réponses (titre, détail, texte à copier)
+  si la recherche est un calcul, sinon `[]`. Elles passent avant tout (note
+  1000). Un analyseur à descente récursive écrit à la main (pas d'`eval`) :
+  `+ - * / × ÷ ^`, parenthèses, `%` (« 18 % de 240 », « 240 + 18 % »),
+  racine, pi ; nombres à la française (virgule, espaces de milliers) ou à
+  l'anglaise selon `currentLang()`. Puis : conversions « X unité en unité »
+  (octets 1000 / 1024, bits — `B` octet, `b` bit —, débits, durées,
+  températures, longueurs, masses, vitesses), « taille à débit » (temps de
+  transfert), bases (`0x`, `0b`, `0o`, « en hex »…), sous-réseau IPv4 (un
+  résumé puis une ligne par valeur), heures du monde (« 15 h Montréal »,
+  « heure à Tokyo », par `src/core/world-time.ts`). Garde-fous contre les faux
+  positifs : un nombre seul, une date, une version, un numéro de téléphone ou
+  une IP seule ne donnent rien. Entrée → commande `copy {text}` du Lanceur
+  (permission `clipboard`, le texte n'est pas journalisé) puis notification
+  « Copié ».
+- « guid » / « uuid » : « Nouveau GUID » (`crypto.randomUUID`) et sa version
+  Windows `{MAJUSCULES}`, copiés de la même façon.
 
 ### `api.openIsland(tab?)`
 
@@ -817,6 +954,34 @@ s'il n'existe pas ou est désactivé).
   tant que l'onglet est ouvert.
 - Avec plus de 8 onglets, la barre d'onglets se resserre (`.tabs.dense`) en
   attendant la navigation à la souris prévue plus tard.
+- **Horloges du monde** (`world-clocks.ts`, front seulement) : réglage
+  `worldClocks`, des villes séparées par des virgules (4 au plus). La table
+  des villes (`src/core/world-cities.ts`, ~200 villes, noms FR / EN, fuseau
+  IANA ; un nom IANA tapé tel quel marche aussi) et les calculs
+  (`src/core/world-time.ts` : `Intl.DateTimeFormat({ timeZone })`, donc les
+  fuseaux de Windows, rien sur Internet) sont partagés avec le Lanceur. Une
+  rangée sous les jauges, redessinée au début de chaque minute tant que
+  l'onglet est ouvert. Le champ de réglage porte `"check": "cities"` :
+  `src/settings/field-checks.ts` écrit sous le champ les villes inconnues ou
+  en trop (un champ texte de manifeste peut ainsi demander une vérification
+  nommée, sans que la valeur soit refusée).
+- Redémarrage en attente (`platform/reboot.rs`, lecture seule) : `reboot` →
+  `{pending, sinceSecs, reasons}`. Deux clés de HKLM : `…\WindowsUpdate\Auto
+  Update\RebootRequired` (raison `updates`) et `…\Component Based
+  Servicing\RebootPending` (`servicing`) ; la date = la dernière écriture de
+  la clé (`RegQueryInfoKeyW`), la plus ancienne des deux. Une clé présente
+  mais fermée à l'utilisateur compte comme « en attente, date inconnue ».
+  `PendingFileRenameOperations` est ignoré (trop de faux positifs).
+  `open_update` ouvre `ms-settings:windowsupdate` : Ondine ne redémarre
+  jamais le PC. Le résumé pour le support ajoute une ligne quand c'est le cas.
+- Côté front, `reboot.ts` : la ligne de l'onglet (relue chaque minute tant
+  qu'il est ouvert) et le rappel doux (réglage `rebootReminder`) : un coup
+  d'œil 2 min après le démarrage puis toutes les 10 min, notification au plus
+  une fois par jour (date gardée dans `localStorage`), après un jour
+  d'attente, jamais micro utilisé (`controls.media-use`, comme Pauses) ni en
+  présentation ou plein écran (`Bridge.deskState().busy`), ni quand personne
+  n'est là (5 min sans clavier ni souris : il attend le retour). La règle est
+  dans `reboot-text.ts` (testée).
 
 ### Module Accès distants (`src/modules/remote/`, `src-tauri/src/modules/remote.rs`)
 
@@ -836,8 +1001,21 @@ s'il n'existe pas ou est désactivé).
   (3389 / 22 par défaut, 1,5 s au plus), rien n'est envoyé. Point vert avec
   le temps de réponse, ou rouge.
 - Le journal note le type de connexion, jamais l'adresse.
-- Lanceur : il reçoit la liste par `remote.changed` (numéro, nom, type) et
-  demande l'ouverture par `remote.connect {id}`.
+- Lanceur : il reçoit la liste par `remote.changed` (numéro, nom, type, `wake`)
+  et demande l'ouverture par `remote.connect {id}`, le réveil par
+  `remote.wake {id}` (« Réveiller NAS », pour un favori avec adresse MAC).
+- **Wake-on-LAN** (`remote_wol.rs`) : adresse MAC facultative par favori
+  (`mac` dans remote.json, absente des anciens fichiers ; lue sous les formes
+  `AA:BB:…`, `AA-BB-…`, `AABB…`, rangée `AA:BB:CC:DD:EE:FF` ; une MAC abîmée à
+  la main est oubliée, pas le favori). `wake {id}` : paquet magique (6 × FF puis
+  16 × la MAC, 102 octets) en UDP port 9, std::net, envoyé 3 fois : vers
+  255.255.255.255 par la route par défaut, puis depuis chaque carte IPv4 en
+  marche vers 255.255.255.255 et son adresse de diffusion (`services/lan.rs`).
+  Puis un fil teste le serveur (même `probe` que « Tester ») tout de suite puis
+  toutes les 5 s, 2 min au plus → `remote.waking`, puis `remote.wake-done`.
+  Un seul fil d'attente par favori (un deuxième clic renvoie le paquet). Le
+  journal ne contient ni l'adresse ni la MAC. Venue du lanceur (bus, fil de
+  l'interface), la demande est traitée dans un fil à part.
 
 ### Module Réseau (`src/modules/nettools/`, `src-tauri/src/modules/nettools.rs`)
 
@@ -860,6 +1038,10 @@ s'il n'existe pas ou est désactivé).
   `IAudioEndpointVolume`). Aucune permission : rien n'est lu ni envoyé.
 - `state` → `{speakers, microphone}` (`{volume 0-100, muted}` ou `null` sans
   périphérique) ; `set_volume {device, volume}` ; `set_muted {device, muted}`.
+- Bus : `controls.mic-set {muted}` (publié par l'Agenda, « Rétablir le
+  micro ») coupe ou rétablit le micro dans un fil, puis publie
+  `controls.mic-muted {muted, source: "request"}` (confirmation affichée comme
+  pour le raccourci) ou `controls.mic-error`.
 - Vue façon centre de contrôle, en verre liquide, sans défilement : à gauche
   une carte de pastilles (radios, mode avion, micro coupé), à droite des
   piliers verticaux (son, micro, un par écran) faits maison (`role="slider"`,
@@ -880,6 +1062,35 @@ s'il n'existe pas ou est désactivé).
   vrai mode avion : on éteint tout en retenant ce qui était allumé, et on le
   rallume à la sortie (Wi-Fi + Bluetooth si l'île a redémarré entre-temps).
   NON VÉRIFIÉ : que Windows autorise une appli classique (hors Store).
+- Mode sombre (`platform/theme.rs`) : `theme` → `{dark, mixed, night}` (relu
+  toutes les 2 s avec les radios). Lecture de `AppsUseLightTheme` et
+  `SystemUsesLightTheme` (HKCU `…\Themes\Personalize`) ; `set_dark {on}`
+  écrit les deux, puis envoie `WM_SETTINGCHANGE` « ImmersiveColorSet » à
+  toutes les fenêtres (`SendMessageTimeoutW`, `SMTO_ABORTIFHUNG`, dans un
+  fil à part).
+- Éclairage nocturne (`platform/nightlight.rs`) : la valeur binaire `Data` de
+  la clé CloudStore `…\bluelightreductionstate`. Windows n'en publie pas le
+  format : on ne le lit et on ne l'écrit que s'il a EXACTEMENT la forme connue
+  (en-têtes, entiers LEB128, marque `10 00` = allumé), vérifiée par `parse`
+  avant et après la modification (tests sur de vrais exemples). Sinon
+  `night.supported = false`, rien n'est écrit, et `set_night` ouvre
+  `ms-settings:nightlight` (réponse `{opened: true}`).
+- Clés USB (`platform/eject.rs`) : `usb_drives` → `[{root, letter, label,
+  removable, ejecting}]` : les lecteurs amovibles, et les disques « fixes »
+  branchés en USB (`IOCTL_STORAGE_QUERY_PROPERTY`, `BusTypeUsb`), jamais le
+  disque de Windows. `eject {root}` lance l'éjection dans un fil à part
+  (méthode standard : volume → numéro de disque → nœud SetupDi → parent
+  marqué `DN_REMOVABLE` → `CM_Request_Device_EjectW` avec un veto à remplir,
+  donc sans fenêtre de Windows ; 3 essais). Le résultat part sur
+  `controls.usb-ejected`. Refus : le programme vient du veto (types 3 et 4)
+  ou de l'événement 225 de Kernel-PnP (`EvtQuery` sur `System` et
+  `Microsoft-Windows-Kernel-PnP/Configuration`, les dernières secondes) ; le
+  message est choisi par le front (`usb-text.ts`, testé). `open_drive
+  {root}` ouvre la clé dans l'Explorateur.
+- Le fil de fond compare la liste des clés à chaque tour (2 s) et publie
+  `controls.usb-added` pour chaque nouvelle (pas celles déjà là au
+  démarrage), si le réglage `usbNotify` est coché. Le journal ne note jamais
+  le nom d'un volume ni d'un programme.
 
 ## Agents IA (`src/modules/agents/`, `src-tauri/src/modules/agents.rs`, `src-tauri/src/cli.rs`)
 
@@ -945,6 +1156,37 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
 - Lancer un agent (`launch {tool, path? | index?}`) : `claude`, `codex` ou
   `gemini` (liste fermée, enum `Tool`), même mécanisme que ci-dessus.
   Réglages « Proposer Claude Code / Codex / Gemini CLI ».
+- « Reprendre » (`launch {…, resume: true}`) : les mots fixes de
+  `Tool::resume_args` sont ajoutés après le chemin complet du programme
+  (`--continue` pour Claude Code, `resume --last` pour Codex ; Gemini CLI :
+  refus). À côté, la dernière phrase de la session (`last_sessions` →
+  `[{index, found, text?, who?, at?}]`, logique dans `modules/agents_resume.rs`) :
+  le dossier `~/.claude/projects/<dossier encodé>` (chaque caractère qui n'est
+  pas une lettre ou un chiffre ASCII devient « - », comme Claude Code ; les
+  noms de plus de 200 caractères sont retrouvés par leur début), son `.jsonl`
+  le plus récent (hors `agent-*`), dont seule la fin est lue (256 Ko, puis
+  2 Mo). Lignes cassées ignorées ; on garde le dernier texte `user` ou
+  `assistant` (pas les résultats d'outils, les sous-agents, les commandes
+  `<command-…>`), sur une ligne, coupé à 120 caractères. Réglage
+  `resumePreview` (activé) ; jamais journalisé.
+- Bilan de fin de tâche (`modules/agents_git.rs`, réglage `showChanges`,
+  activé) : à « a fini », le dossier du hook (`cwd`) passe par `check_path`.
+  S'il est dans un dépôt git (un parent avec `.git`, jamais le dossier
+  utilisateur ni la racine d'un disque) et que `git.exe` est trouvé dans le
+  PATH (chemin complet), un fil lance `git status --porcelain=v1 -z -uall`
+  puis `git diff --numstat -z HEAD` (`platform/devtools.rs` :
+  `run_with_timeout`, 3 s au total, 4 Mo de sortie au plus, sans console ;
+  `--no-optional-locks`, `core.fsmonitor=false`, `--no-ext-diff`,
+  `--no-textconv`, `GIT_TERMINAL_PROMPT=0` : lecture seule, aucun programme du
+  dépôt lancé). Les nouveaux fichiers sont comptés à la main (200 fichiers et
+  1 Mo chacun au plus). L'événement reçoit `changes {files, added, removed,
+  names, dir, vscode, terminal}` et la notification « Claude a fini · 3
+  fichiers modifiés, +120 −14 » (alerte) propose « Ouvrir dans VS Code »
+  (`open_vscode {path}` : `code.cmd` du PATH ou
+  `%LOCALAPPDATA%\Programs\Microsoft VS Code\Code.exe`, lancé par son chemin
+  complet avec le dossier en seul paramètre) et « Terminal ici »
+  (`terminal.open {path}`). Sans dépôt, sans git ou trop long : la
+  notification d'avant.
 - Tableau des sessions (`history` → `sessions`) : une ligne par session
   (`outil:session_id`) avec son état (`working`, `waiting`, `done`, `idle`
   après 1 h sans nouvelles) et depuis quand ; oubliée 2 h après sa dernière
@@ -1039,6 +1281,68 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
 - Pas d'onglet : vue compacte (icône + température + ville) quand aucun autre
   module n'occupe la pilule. Mode démo : une fausse météo (Lyon, 21°).
 
+## Bilan de la semaine (`src/modules/weekly/`, `src-tauri/src/modules/weekly.rs`)
+
+- Module sans onglet, sans permission. Réglages `day` ("1" lundi … "7"
+  dimanche, "5" par défaut) et `time` ("17:00", par demi-heure). Le désactiver
+  (Réglages → Onglets → Sans onglet) arrête tout : plus de comptes, plus de bilan.
+- Les comptes sont tenus par le Rust, qui écoute `timer.work-session` et
+  `notes.todo-toggled` (rien n'est compté en mode démo) : Pomodoros terminés,
+  secondes de concentration (4 h au plus par séance), tâches cochées (moins les
+  décochées, jamais sous zéro). Fichier `%APPDATA%\Ondine\weekly.json` :
+  `{current: {until, tally}, closed, lastShown}`, que des nombres et des dates
+  (heure du PC, à la minute) ; écrit via un fichier temporaire renommé, hors du
+  thread de l'interface ; un fichier abîmé est mis de côté.
+- Une « semaine » va d'un bilan au suivant (`next_slot` : le prochain jour et
+  heure réglés, strictement après maintenant). Le front demande `due` toutes
+  les minutes (cadence `weeklyCheck`) et une première fois 20 s après le
+  démarrage : le Rust fait avancer les semaines (`roll`) et rend le bilan une
+  seule fois (`take_due`), seulement s'il y a quelque chose (une minute de
+  concentration au moins, ou un Pomodoro, ou une tâche). PC éteint à l'heure
+  dite : le bilan sort encore dans les 2 jours, après il est oublié. Deux bilans
+  sont toujours à 6 jours d'écart au moins (jour du bilan changé : la semaine
+  trop courte s'ajoute à la suivante).
+- Bilan : `mascot.emote {emotion: "celebrate"}` puis une notification
+  `normal` de 15 s, « Le bilan de votre semaine » : « 3 Pomodoros terminés ·
+  2 h 05 de concentration · 7 tâches cochées » (chaque morceau traduit par
+  `t()`, `summary.ts`). `weekly.show` (bouton des réglages) montre `peek`, la
+  semaine en cours. Mode démo : `due` reste vide, `peek` répond une fausse
+  semaine.
+
+## Quoi de neuf (`src/core/whats-new.ts`, `src/core/changelog.ts`)
+
+- Réglage `general.lastSeenVersion` (vérifié par le Rust : 40 caractères au
+  plus, chiffres, lettres, `.`, `-`, `+`). Au démarrage de l'île, avant le mot
+  de bienvenue : même version → rien ; rien de noté et pas encore de bienvenue
+  (premier lancement) → la version est seulement notée ; sinon (mise à jour,
+  y compris depuis une version d'avant ce réglage) → notée, et la
+  notification. Jamais en mode démo ni dans un navigateur.
+- `CHANGELOG.md` est intégré à la construction (`?raw` de Vite). `changelog.ts`
+  lit les sections `## [X.Y.Z] · date` et leurs puces (une puce peut tenir sur
+  plusieurs lignes) ; chaque puce est « français · English » : on garde la
+  moitié de la langue de l'interface (coupure au premier « · » qui suit une
+  fin de phrase). Trois puces au plus, 120 caractères chacune.
+- Notification `high` et `sticky` (l'île s'ouvre en alerte, plus grande quand
+  le texte a plusieurs lignes : classe `lines`), avec « Tout voir » →
+  commande `release_page_open` (Rust, `update.rs`) : ouvre
+  `https://github.com/Naod6473/Ondine/releases/tag/v<version de l'appli>` dans
+  le navigateur ; la version vient du Rust, pas de la page. Réglages →
+  Général → À propos → « Voir les nouveautés » publie `app.whats-new`.
+
+## Astuces d'onglet (`src/island/tips.ts`, `src/island/tip-state.ts`)
+
+- Chaque module à onglet a un champ `tip` dans son manifeste : son geste
+  principal en une phrase, au « vous » (test : `tests/front/tips.test.ts`
+  vérifie la phrase, sa traduction anglaise et son tutoiement).
+- La première fois qu'un onglet s'affiche dans l'île ouverte, une bulle
+  (`.tip-bubble`, en bas à gauche du contenu) montre la phrase avec « OK ».
+  L'onglet est noté dans `island.tipsSeen` (64 au plus, vérifié par le Rust)
+  après « OK » ou 3 s à l'écran. La bulle disparaît quand l'île quitte l'état
+  `expanded` : jamais par-dessus une alerte. Jamais en mode démo. Arrivée
+  animée, sauf avec « réduire les animations ».
+- Réglages → Onglets → Astuces : `island.tips` (oui) et « Revoir les
+  astuces » (vide `tipsSeen`).
+
 ## Demander à Claude (`src/modules/askclaude/`, `src-tauri/src/modules/askclaude.rs`)
 
 Une erreur collée, un fichier texte ou une image (capture), une question :
@@ -1128,6 +1432,7 @@ Front (ms) :
 | Mascotte : ennui, sommeil | 2 000 | 2 000 | 4 000 | |
 | Ondine pend au bord ? / mode présentation | 15 000 / 2 000 | 15 000 / 4 000 | 30 000 / 8 000 | |
 | Pauses | 30 000 | 30 000 | 60 000 | |
+| Bilan de la semaine : l'heure du bilan ? | 60 000 | 60 000 | 120 000 | une première fois 20 s après le démarrage |
 | Dessins continus (mascotte, anneau du minuteur, chrono) | 60 im/s | 60 im/s | 30 im/s | `frameLoop` |
 
 En éco, en plus : les effets « Studio » (flou → net) sont remplacés par ceux de

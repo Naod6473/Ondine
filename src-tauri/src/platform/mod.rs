@@ -24,6 +24,18 @@ pub mod picker;
 pub mod wifi;
 // Glisser des fichiers de l'île vers l'Explorateur (Étagère). Contient sa propre version Linux.
 pub mod drag_out;
+// Agents IA : lancer git avec un délai maximum, trouver et ouvrir VS Code. Contient sa propre version Linux.
+pub mod devtools;
+// Éjecter une clé ou un disque USB, et dire quel programme bloque (Contrôles). Contient sa propre version Linux.
+pub mod eject;
+// Windows attend-il un redémarrage, depuis quand (Système) ? Contient sa propre version Linux.
+pub mod reboot;
+// Le mode sombre de Windows (Contrôles). Contient sa propre version Linux.
+pub mod theme;
+// L'éclairage nocturne de Windows (Contrôles). Contient sa propre version Linux.
+pub mod nightlight;
+// Capture → GIF animé : choisir une zone de l'écran, la copier dix fois par seconde. Contient sa propre version Linux.
+pub mod record;
 
 #[cfg(windows)]
 mod drop_target;

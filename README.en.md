@@ -28,14 +28,52 @@ The intro video is on the website: [ondine.pissits.com](https://ondine.pissits.c
 
 ## Contents
 
+- [What's new](#whats-new)
 - [Install](#install)
 - [Getting started](#getting-started)
 - [The tabs](#the-tabs): [Music](#music) · [Controls](#controls) · [Shelf](#shelf) · [Clipboard](#clipboard) · [Capture](#capture) · [Timer](#timer) · [Notes](#notes) · [Calendar](#calendar) · [Terminal](#terminal) · [System](#system) · [Remote access](#remote-access) · [Network](#network) · [AI agents](#ai-agents) · [Ask Claude](#ask-claude) · [Launcher](#launcher) · [Rules](#rules)
-- [No tab: Breaks and Weather](#no-tab-breaks-and-weather)
+- [No tab: Breaks, Weather and Weekly summary](#no-tab-breaks-weather-and-weekly-summary)
 - [Settings](#settings)
 - [Privacy and security](#privacy-and-security)
 - [Build from source](#build-from-source)
 - [License and credits](#license-and-credits)
+
+---
+
+## What's new
+
+New in version 1.1.0 (the full list is in the
+[CHANGELOG](CHANGELOG.md)). Click a picture to read the details.
+
+<table>
+<tr>
+<td width="50%" valign="top"><a href="#launcher"><img src="docs/captures/en/lanceur-calcul.webp" width="380" alt="Launcher: 192.168.1.0/26 gives the number of hosts, the mask, the network and the first address"></a><br><b><a href="#launcher">Calculations in the Launcher</a></b>: math, percentages, units, bytes, IPv4 subnets and the time in another city; Enter copies the result.</td>
+<td width="50%" valign="top"><a href="#clipboard"><img src="docs/captures/en/presse-papiers-decoder.webp" width="380" alt="Clipboard: a decoded JWT, with its algorithm and its issue and expiry dates"></a><br><b><a href="#clipboard">Decode a copy</a></b>: a JWT, Base64, an encoded address, compact JSON or a Unix timestamp, read in plain text on your PC.</td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="#shelf"><img src="docs/captures/en/etagere-telephone.webp" width="380" alt="Shelf: the “To the phone” QR code for Présentation.pptx, expiring in 4:59"></a><br><b><a href="#shelf">To the phone</a></b>: a file from the shelf goes to your phone through a QR code, on the same Wi-Fi, without going over the Internet.</td>
+<td width="50%" valign="top"><a href="#controls"><img src="docs/captures/en/onglet-controls.webp" width="380" alt="Controls tab: the Dark and Night light toggles on, and a KINGSTON USB drive with Eject"></a><br><b><a href="#controls">Dark, Night light and USB drives</a></b>: Windows dark mode and night light in one click, and "Eject" for each plugged-in USB drive.</td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="#system"><img src="docs/captures/en/systeme-horloges.webp" width="380" alt="System tab: the clocks of Montreal (−6 h) and Tokyo (+7 h)"></a><br><b><a href="#system">World clocks</a></b>: up to 4 cities in the System tab, with the time difference (and "tomorrow" when the day changes).</td>
+<td width="50%" valign="top"><a href="#capture"><img src="docs/captures/en/onglet-capture.webp" width="380" alt="Capture tab: the new Animated GIF row, with Record a GIF"></a><br><b><a href="#capture">Animated GIF</a></b>: an area of the screen recorded as an animated GIF, saved with your screenshots and put on the shelf.</td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="#ai-agents"><img src="docs/captures/en/agent-bilan.webp" width="347" alt="Alert: Claude is done, 3 files changed, +120 −14, with Go there, Open in VS Code and Terminal here"></a><br><b><a href="#ai-agents">When an agent is done</a></b>: the changed files and "Open in VS Code"; in the tab, "Resume" reopens the last session.</td>
+<td width="50%" valign="top"><a href="#calendar"><img src="docs/captures/en/agenda-rejoindre.webp" width="293" alt="Alert: Meeting in 2 min, Revue du site, Google Meet, with Join"></a><br><b><a href="#calendar">Join the meeting</a></b>: two minutes before a video call, one click opens it, pauses the music and warns you if your mic is muted.</td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="#updates"><img src="docs/captures/en/quoi-de-neuf.webp" width="358" alt="Alert: What's new in Ondine 1.0.1, three changes, with See all and OK"></a><br><b><a href="#updates">What's new</a></b>: after an update, the island shows the version's main changes once.</td>
+<td width="50%" valign="top"><a href="#the-tabs"><img src="docs/captures/en/astuce-onglet.webp" width="380" alt="Empty Shelf tab, with the tip bubble: Drag a file onto the island to put it here"></a><br><b><a href="#the-tabs">A tip for each tab</a></b>: the first time a tab opens, a bubble explains its main gesture in one sentence.</td>
+</tr>
+</table>
+
+Also:
+
+- **SHA-256 hash**: drop a file on the "Hash" target; if you copied a hash, Ondine tells you whether it matches ([Shelf](#shelf)).
+- **Wake a remote PC** (Wake-on-LAN), from the tab or the Launcher ([Remote access](#remote-access)).
+- **Pending restart**: the System tab shows it, with a gentle reminder ([System](#system)).
+- **Weekly summary**: completed Pomodoros, focus time and checked tasks ([No tab](#no-tab-breaks-weather-and-weekly-summary)).
 
 ---
 
@@ -54,6 +92,10 @@ The intro video is on the website: [ondine.pissits.com](https://ondine.pissits.c
    by GitHub Actions from this repository's public source code
    ([release.yml](.github/workflows/release.yml)).
 
+**Coming soon: `winget install Naod6473.Ondine`** — *not available yet*: the
+package hasn't been submitted to Microsoft's winget catalog yet. In the
+meantime, use the installer above.
+
 On first launch, Ondine says hello at the top of the screen and explains how to
 open it. It then starts with Windows (setting **Start with Windows**).
 
@@ -64,6 +106,14 @@ offers it to you; **nothing is installed without your consent**. You can also
 check right away (Settings → General → Updates → **Check now**) or turn the
 check off (**Automatic updates**). Updates are verified with a signature
 (Tauri's update key) before they are installed.
+
+On the first launch after an update, the island shows **"What's new in Ondine
+X.Y.Z"** once: the version's three main changes (taken from the
+[CHANGELOG](CHANGELOG.md), built into the app), and **See all**, which opens the
+version's page on GitHub. To see it again: Settings → General → About → **See
+what's new**.
+
+<p align="center"><img src="docs/captures/en/quoi-de-neuf.webp" width="656" alt="Alert: What's new in Ondine 1.0.1, three changes, with See all and OK"></p>
 
 ### Uninstall
 
@@ -119,6 +169,10 @@ Each tab is a module. You can turn them off, reorder them (Settings → Tabs) an
 adjust each one in its Settings page. Below, each module's main settings, with
 their default value.
 
+The first time you open a tab, a small bubble from Ondine explains its main
+gesture in one sentence ("Drag a file onto the island to put it here."); **OK**
+closes it. See [Settings → Tabs](#tabs).
+
 ### Music
 
 <img src="docs/captures/en/onglet-media.webp" width="696" alt="Music tab: artwork, title, progress bar and buttons">
@@ -132,15 +186,27 @@ bar. Ondine only reads what Windows already exposes.
 
 ### Controls
 
-<img src="docs/captures/en/onglet-controls.webp" width="696" alt="Controls tab: Wi-Fi, Bluetooth, airplane mode, volume, microphone, brightness">
+<img src="docs/captures/en/onglet-controls.webp" width="696" alt="Controls tab: Wi-Fi, Bluetooth, airplane mode, mic, Dark, Night light, volume, brightness, and a USB drive with Eject">
 
 Speaker and microphone volume, screen brightness, Wi-Fi, Bluetooth and airplane
 mode, without opening Windows settings. The audio output is picked under the
 volume slider. External monitors must accept DDC/CI (often enabled in their
 menu).
 
+Two more toggles: **Dark** switches Windows between dark and light mode (apps
+and taskbar together), **Night light** turns Windows night light on or off. If
+Ondine doesn't recognize how your Windows stores the night light setting, it
+leaves it alone and opens the Settings page instead.
+
+**USB drives and removable disks**: when a USB drive (or USB disk) is plugged
+in, a strip at the bottom of the tab shows it with its name, its letter and an
+**Eject** button (Windows' "Safely remove hardware" method). If a program
+still has it open, Ondine names it when Windows knows (for example
+WINWORD.EXE), otherwise it says why Windows refused.
+
 - **Shortcut to mute / unmute the microphone**: Ctrl+Alt+M (or Ctrl+Shift+M, Alt+Shift+M, Pause, none). Works everywhere, even in a video call; Ondine wears a small badge while the mic is muted.
 - **Show a dot when an app uses the microphone or camera** (on): orange for the mic, green for the camera. Nothing is recorded: Ondine only reads what Windows notes for its Privacy page.
+- **Notify when a USB drive is plugged in** (on): a notification with **Open** and **Eject**.
 
 ### Shelf
 
@@ -153,8 +219,19 @@ them to the Recycle Bin, or drag them out of the island to Explorer or the
 desktop (Ctrl: copy, Shift: move). Every file action can be undone for a few
 seconds.
 
+**📱 To the phone** (on a file of the shelf): the island shows a QR code; point
+the phone's camera at it and the phone's browser downloads the file. The phone
+must be on **the same Wi-Fi** as the PC: Ondine opens a tiny server on the local
+network only (never on the Internet), which serves that one file at a secret
+address (a random 128-bit token), then closes after one complete download, after
+5 minutes, or on "Stop". The first time, Windows may ask you to allow Ondine on
+**private networks**: accept, otherwise the phone won't find the PC.
+
+<img src="docs/captures/en/etagere-telephone.webp" width="696" alt="Shelf: the “To the phone” QR code for Présentation.pptx, its address on the local network, Stop and the time left">
+
 - **Favorite folders**: each becomes a target when you drag files onto the island; **Dropping on a favorite** copies (default) or moves.
 - **"Recycle Bin", "Compress", "Images" and "Rename" targets** (on)
+- **"Hash" target (SHA-256)** (on): drop a file on it to compute its SHA-256 (a multi-GB ISO works, with **Stop**). If the clipboard contains a hash (MD5, SHA-1, SHA-256 or SHA-512, alone or in a `sha256sum` / `certutil` list), the same algorithm is computed and the island says **Identical ✓** (green) or **Different ✗** (red). The full result is shown, with **Copy**; 5 files at most at a time.
 - **Put each newly downloaded file on the shelf** (on): the Downloads folder is checked every 3 seconds.
 
 ### Clipboard
@@ -168,12 +245,21 @@ clipboard after 30 s, never saved). Copies that Windows flags as sensitive
 (password managers) are ignored. The history stays in memory and is gone when
 Ondine closes; only pinned items and snippets are saved.
 
+A button shows up on a copy it can read: **Decode** for a **JWT** (header and
+payload as readable JSON, `iat` / `nbf` / `exp` dates spelled out; the
+signature is **not** verified), **Base64** that gives text, or an encoded
+address (`%20`); **Format** for compact JSON; **Read the date** for a Unix
+timestamp (10 or 13 digits). The result is shown in the tab, with **Copy**;
+everything happens on your PC and nothing is written to the log.
+
+<img src="docs/captures/en/presse-papiers-decoder.webp" width="696" alt="Clipboard: a decoded JWT, with the signature warning, the algorithm, the issue date and the expiry date (still valid)">
+
 - **Number of copies kept**: 50 (10 to 500; pinned items don't count)
 - **Clean copied links** (on): removes `utm_source`, `fbclid`, `gclid`…; the notification offers to restore the original.
 
 ### Capture
 
-<img src="docs/captures/en/onglet-capture.webp" width="696" alt="Capture tab: text, annotate, PNG, shelf, color picker and recent colors">
+<img src="docs/captures/en/onglet-capture.webp" width="696" alt="Capture tab: text, annotate, PNG, shelf, color picker and recent colors, Record a GIF">
 
 Capture an area of the screen with the Windows tool, then: **Text** (the text
 in the image is read by Windows OCR, on your PC, offline), **Annotate** (arrow,
@@ -182,9 +268,18 @@ actions work on an image you already copied. The **color picker** freezes the
 screen under a magnifier and copies the color of a point; recent colors stay
 one click away.
 
+**Record a GIF**: draw an area of the screen (a simple click takes the whole
+screen, Esc cancels); it is filmed at 10 frames per second, with a red frame
+around it, until **Stop** or the maximum length. The animated GIF goes to the
+screenshot folder and onto the shelf (**Show in Explorer**, **Undo**). An area
+wider than 960 pixels is scaled down; the island doesn't show up in the GIF
+(Windows 10 version 2004 or later). No MP4 video.
+
 - **Copy the recognized text to the clipboard** (on)
 - **Screenshot folder**: `Pictures\Ondine` by default
 - **Copied color format (color picker)**: HEX (`#3A7BD5`), RGB or HSL
+- **Maximum GIF length**: 10 seconds (2 to 30)
+- **Show the mouse pointer in GIFs** (on)
 
 ### Timer
 
@@ -199,6 +294,9 @@ when it's over. From the launcher, type "10 min" to start a timer.
 are not silenced (for that, start a "Focus" session in the Windows 11 Clock
 app).
 
+Pomodoro work sessions count toward the
+[weekly summary](#no-tab-breaks-weather-and-weekly-summary).
+
 - **Pomodoro**: work 25 min, short break 5 min, long break 15 min every 4 sessions; **chain work and breaks automatically** (on)
 - **Play a sound at the end** (on), **Show the time in the island's pill** (on), **Focus mode during Pomodoro** (on)
 
@@ -207,7 +305,8 @@ app).
 <img src="docs/captures/en/onglet-notes.webp" width="696" alt="Notes tab: to-do list">
 
 Quick notes and a to-do list, saved on your PC (`%APPDATA%\Ondine\notes.json`).
-Deleting offers "Undo".
+Deleting offers "Undo". Checked-off tasks count toward the
+[weekly summary](#no-tab-breaks-weather-and-weekly-summary).
 
 - **Remind me of pending tasks at startup** (off)
 
@@ -222,8 +321,17 @@ an online calendar, downloaded again every 15 minutes. Clicking an event opens
 its link (Teams, Meet, Zoom…). Read-only; addresses are stored in the Windows
 Credential Manager, never in the settings file.
 
+Two minutes before an online meeting (Teams, Meet, Zoom, Webex), a "Meeting in
+2 min" alert offers **Join**: the link opens, the music pauses, and if your mic
+is muted (with the Controls tab on), a second alert says so, with **Unmute the
+mic**. Only one offer per event; it replaces the reminder if both come at the
+same time.
+
+<p align="center"><img src="docs/captures/en/agenda-rejoindre.webp" width="536" alt="Alert: Meeting in 2 min, Revue du site, 17:15 – 18:00, Google Meet, with Join"></p>
+
 - **Show events for the next**: 60 days (7 to 365)
 - **Reminder before an event**: 10 min (0 = never)
+- **Offer to join the meeting**: 2 min before (0 = never, up to 30)
 - **Show the next event in the island's pill** (on) when it starts within 30 min
 - **Evening recap**: tomorrow's events at 6 pm (0 = never)
 
@@ -247,8 +355,17 @@ Your PC at a glance: CPU, memory, disks, IP and MAC addresses, battery, Windows
 version, weather (if enabled). **Copy for support** copies a summary to paste
 into a ticket. Everything is read on the PC.
 
+When Windows is waiting for a restart (installed updates, Windows components),
+a line says so: "Restart pending for 3 days (Windows updates)", with an **Open
+Windows Update** button. The support summary mentions it too. Ondine never
+restarts the PC itself.
+
 - **Warn when a disk has less than** 10 % free space; **when the battery drops to** 20 %; **when the battery is charged** (on)
 - **Ondine's mood follows the PC** (on): she sweats when the CPU is maxed out, gets tired when the battery is low or it's late.
+- **World clocks** (empty): up to 4 cities separated by commas, for example `Montreal, Tokyo`. The tab shows the time in each, "tomorrow" or "yesterday" when the day differs, and the difference with here ("+6 h"). About 200 major cities (French or English names, accents optional) and `UTC`; an unknown city is flagged under the field. Times are computed on the PC.
+- **Remind me of a pending restart** (on): a gentle notification, at most once a day, after a day of waiting, never during a call (mic in use) or a presentation.
+
+<img src="docs/captures/en/systeme-horloges.webp" width="696" alt="System tab, further down: the clocks of Montreal (08:02, −6 h) and Tokyo (21:02, +7 h), then the disks and the network">
 
 ### Remote access
 
@@ -257,6 +374,14 @@ into a ticket. Everything is read on the PC.
 Your Remote Desktop (RDP) and SSH servers as favorites, opened in one click from
 the island or the launcher. Saved on your PC (`%APPDATA%\Ondine\remote.json`),
 **without any password**. "Test" only checks that the server answers.
+
+**⏰ Wake up (Wake-on-LAN)**: give a favorite its MAC address (optional;
+`AA:BB:CC:DD:EE:FF`, `AA-BB-…` or `AABBCCDDEEFF`; with the server on, `arp -a`
+shows it). The ⏰ button sends the "magic packet" on the local network (on every
+network card), then tests the server every 5 s for up to 2 min: the island says
+"NAS is awake" as soon as it answers, or that it still isn't responding. The
+launcher also offers "Wake up NAS". Wake-on-LAN must be enabled on the machine
+to wake (BIOS and network card), on the same local network.
 
 - **Open SSH in**: a console window (default) or Windows Terminal
 - **Remote Desktop in full screen** (off); **Test the servers when the tab opens** (on)
@@ -276,7 +401,7 @@ servers, and tells you when something drops.
 
 ### AI agents
 
-<img src="docs/captures/en/onglet-agents.webp" width="696" alt="AI agents tab: launch Claude Code, Codex or Gemini CLI, running sessions, latest messages">
+<img src="docs/captures/en/onglet-agents.webp" width="696" alt="AI agents tab: launch Claude Code, Codex or Gemini CLI, Resume the project's last session, running sessions">
 
 Launch **Claude Code**, **Codex** or **Gemini CLI** in one of your projects with
 one click. A board shows running sessions; "Go there" brings the right window
@@ -285,6 +410,21 @@ island: "waiting for your permission", "finished". They go through the
 `ondine.exe notify` command and a local channel reserved for your Windows
 account: nothing goes over the Internet, and the island only accepts messages
 from its own copy of `ondine.exe`.
+
+**Resume**: next to each project, this button reopens Claude Code where you
+left it (`claude --continue`; for Codex: `codex resume --last`), with, in small
+print, the last line exchanged and its date ("2 h ago"). That line is read from
+the end of Claude Code's session file, on your PC: it is never sent or written
+to the log.
+
+**End-of-task summary**: when an agent is done in a git repository, the
+notification says what changed ("3 files changed, +120 −14", and the most
+touched files), with **Open in VS Code** (if VS Code is installed) and
+**Terminal here**. Ondine runs `git status` and `git diff --numstat` read-only,
+for 3 seconds at most; without git or outside a repository, the notification
+stays as before.
+
+<p align="center"><img src="docs/captures/en/agent-bilan.webp" width="636" alt="Alert: Claude is done, 3 files changed, +120 −14 (index.html, style.css, README.md), with Go there, Open in VS Code and Terminal here"></p>
 
 **Connect an agent in 3 steps:**
 
@@ -309,13 +449,16 @@ Optionally, the island can also be added as an **MCP server**: the agent can
 then send you a message, its progress, start the timer or ask you a
 multiple-choice question. The **Focus** button (25 min, 1 h, 2 h or until
 stopped) holds their notifications and gives you a summary at the end. The
-island never runs anything, never decides for you, and reads neither what you
-type nor the AI's replies.
+island runs nothing the agents send it (it only runs git, read-only, for the
+summary), never decides for you, and doesn't read what you type: only the last
+line of a session is shown next to "Resume".
 
 - **Projects for agents**: up to 8 folders, one button each (in the tab and the launcher)
 - **Open agents in**: a console window (default) or Windows Terminal
 - **Offer Claude Code / Codex / Gemini CLI** (on)
+- **Show the session's last line next to "Resume"** (on)
 - **Notify when Claude waits for my answer or permission** (on), **when Claude is done** (on)
+- **Show what changed when an agent is done** (on): the git summary above
 - **Accept MCP tools** (on)
 - **Allow / Deny from the island** (**off** by default): when Claude Code or Codex asks permission to use a tool, the island shows the command with "Allow" (to confirm) and "Deny". After turning it on, reinstall the hooks (step 3 above). Without an answer within the chosen delay (1 min by default), the question goes back to the terminal.
 - **The mascot thinks while Claude works** (on)
@@ -341,9 +484,23 @@ only displayed: nothing is executed.
 <img src="docs/captures/en/lanceur-recherche.webp" width="696" alt="Launcher: searching “no” finds Notes, the color picker, Claude Code and a recent file">
 
 **Alt+Space** opens a search: Start menu apps, Windows tools (Services, Device
-Manager…), recent files, favorite servers, agent projects and island actions
+Manager…), recent files, favorite servers (and "Wake up …" for those with a MAC
+address), agent projects and island actions
 ("10 min" starts a timer). It also searches **inside the island**: notes and
 tasks, clipboard, shelf and screenshots. ↑ ↓ to choose, Enter to open.
+
+It also **calculates**: when the search is a calculation, the answer comes first
+and **Enter copies it** (small "Copied" notification).
+
+<img src="docs/captures/en/lanceur-calcul.webp" width="696" alt="Launcher: 192.168.1.0/26 gives 62 hosts, the mask 255.255.255.192, the network and the first address">
+
+- Math: `2 + 3 * 4`, `(1.5 + 2) ^ 2`, `1,200 / 3`, `18% of 240`, `240 + 18%`, `15%` (= 0.15), `sqrt 2`. Numbers follow the interface language (in French: decimal comma, spaces between thousands).
+- Units: `1 GB in MiB`, `100 Mbit/s in MB/s`, `90 min in h`, `20 °C in °F`, `10 km -> mi`, `5 lb in kg`. Bytes: KB, MB, GB, TB are powers of 1000, KiB, MiB, GiB, TiB powers of 1024 (B = byte, b = bit).
+- Transfer time: `1 GB at 100 Mbit/s` → 1 min 20 s.
+- Bases: `0x1F`, `0b1010`, `255 in hex`, `0xFF in decimal`, `42 in binary`.
+- IPv4 subnet: `192.168.1.0/26` or `192.168.1.10 255.255.255.0` → network, mask, first and last address, broadcast, number of hosts (Enter on the first line copies the summary, on another line just that value).
+- World time: `3 pm Montreal`, `15:30 in Tokyo` → "15:00 in Montreal = 21:00 here"; `time in Tokyo` → the time there. About 200 cities, computed on the PC.
+- `guid`: a fresh GUID (lowercase, or Windows style `{…}` in uppercase).
 
 - **Shortcut**: Alt+Space (or Ctrl+Space, Ctrl+Alt+Space, Ctrl+Shift+Space, Win+Shift+Space, none)
 - **Offer recently opened files** (on); **Also search the island** (on, at most 5 results per source). Excluded folders are never shown.
@@ -364,7 +521,7 @@ and can pause them all.
 
 ---
 
-## No tab: Breaks and Weather
+## No tab: Breaks, Weather and Weekly summary
 
 <p align="center"><img src="docs/captures/en/mini-meteo.webp" width="396" alt="Weather in the mini island: 21° in Lyon"></p>
 
@@ -381,6 +538,18 @@ screen (**every 50 minutes of screen time** by default, 0 = never). Stays quiet
 during a presentation, a call (**Say nothing during a call**, on) or if you
 just took a break. Ondine only looks at how long the mouse and keyboard have
 been in use.
+
+**Weekly summary**: every week, a notification sums up what you've done:
+**Pomodoros completed**, **focus time** (Timer work sessions) and **tasks
+checked off** in Notes, and the mascot celebrates. Only if something happened.
+If the PC was off at that time, the summary comes at the next startup (within 2
+days), once a week at most. The counters stay on your PC
+(`%APPDATA%\Ondine\weekly.json`) and only hold numbers, never the text of your
+tasks. Settings: **Summary day** (Friday) and **Summary time** (17:00); **See the
+summary now** shows the current week. To stop it, turn the module off
+(Settings → Tabs → No tab).
+
+<p align="center"><img src="docs/captures/en/bilan-semaine.webp" width="636" alt="Alert: Your week so far, 9 Pomodoros completed, 3 h 35 of focus, 14 tasks checked off"></p>
 
 ---
 
@@ -405,7 +574,7 @@ page (on/off switch, permissions, full description, settings).
 - **Updates**: automatic (on), check now, installed version
 - **Performance**: High performance, **Balanced** (default) or Power saving; **Automatic power saving on battery** (on)
 - **Log**: level and folder (`%LOCALAPPDATA%\Ondine\logs`); it never contains keys or file contents
-- **About**: **Report a problem** opens a prefilled GitHub issue in your browser (version, Windows, last 40 log lines, personal paths hidden); you review everything before sending. **Resources used**: Ondine's memory and CPU.
+- **About**: **See what's new** shows the installed version's "What's new" again; **Report a problem** opens a prefilled GitHub issue in your browser (version, Windows, last 40 log lines, personal paths hidden); you review everything before sending. **Resources used**: Ondine's memory and CPU.
 - **Screenshots**: [demo mode](#getting-started)
 
 ### Appearance
@@ -425,6 +594,9 @@ Animations respect Windows' "Animation effects" (reduce motion) setting.
 
 Turn each module on or off, and order the tabs (drag a row, or use ↑ ↓;
 "Original order" resets it). You can also drag tabs directly in the island.
+
+- **Tips the first time a tab opens** (on): the small bubble that explains a tab's main gesture, the first time only (never in demo mode or over an alert)
+- **Show the tips again**: they'll come back the next time each tab opens
 
 ### Mascot
 
@@ -461,6 +633,8 @@ hours, or by Wi-Fi network name.
   full list: [PRIVACY.md](PRIVACY.md#english).
 - Ask Claude sends the text you chose to Anthropic's API, with **your** key,
   only after showing you what will be sent.
+- "To the phone" (Shelf) and "Wake up" (Remote access) stay on the local
+  network, only when you click: nothing goes over the Internet.
 - Keys and secret links are stored in the Windows Credential Manager, never in
   plain text in a file or in the log.
 - Nothing is ever deleted for good: the Recycle Bin, with undo.

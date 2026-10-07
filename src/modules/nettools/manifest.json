@@ -1,6 +1,7 @@
 {
   "id": "nettools",
   "name": "Réseau",
+  "tip": "Tapez un nom ou une adresse, puis Entrée pour un ping en continu.",
   "icon": "🌐",
   "description": "Ping en continu, test d'un port (ouvert, fermé ou bloqué) et recherche DNS, sans ouvrir de console. Surveille aussi Internet, les VPN et une liste de serveurs, et prévient quand ça coupe. Seuls les paquets de test partent, vers les adresses que vous donnez. Si vous l'activez, l'adresse IP publique est demandée à api.ipify.org toutes les 10 minutes (ce site voit alors votre adresse IP).",
   "version": "0.1.0",

@@ -1,6 +1,7 @@
 {
   "id": "timer",
   "name": "Minuteur",
+  "tip": "Choisissez une durée : le temps qui reste s'affiche aussi dans la mini-île.",
   "icon": "⏱️",
   "description": "Minuteur, Pomodoro et chronomètre. Le temps qui reste s'affiche dans la pilule de l'île, et l'île vous prévient (avec un petit son) quand c'est fini.",
   "version": "0.1.0",
@@ -21,7 +22,7 @@
   "views": ["compact", "expanded"],
   "commands": [],
   "events": {
-    "emits": ["timer.done", "task.finished", "timer.focus"],
+    "emits": ["timer.done", "task.finished", "timer.focus", "timer.work-session"],
     "listens": ["timer.start"]
   }
 }

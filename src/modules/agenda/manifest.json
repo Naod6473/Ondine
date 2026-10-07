@@ -1,8 +1,9 @@
 {
   "id": "agenda",
   "name": "Agenda",
+  "tip": "Ajoutez vos calendriers dans les réglages, puis cliquez sur un rendez-vous pour rejoindre sa réunion.",
   "icon": "📅",
-  "description": "Vos prochains rendez-vous, venant de plusieurs calendriers : des fichiers .ics (export d'Outlook, Google Agenda, Thunderbird…) ou les adresses secrètes iCal de vos agendas en ligne, chacun avec son nom et sa couleur. Un fichier est relu dès qu'il change ; un lien est retéléchargé toutes les 15 minutes. Un clic sur un rendez-vous ouvre son lien (réunion Teams, Meet, Zoom…). Lecture seule : rien n'est envoyé, et les adresses restent dans le Gestionnaire d'identifiants.",
+  "description": "Vos prochains rendez-vous, venant de plusieurs calendriers : des fichiers .ics (export d'Outlook, Google Agenda, Thunderbird…) ou les adresses secrètes iCal de vos agendas en ligne, chacun avec son nom et sa couleur. Un fichier est relu dès qu'il change ; un lien est retéléchargé toutes les 15 minutes. Un clic sur un rendez-vous ouvre son lien (réunion Teams, Meet, Zoom…). Juste avant une réunion en ligne, l'île vous propose de la rejoindre en un clic (et met la musique en pause). Lecture seule : rien n'est envoyé, et les adresses restent dans le Gestionnaire d'identifiants.",
   "version": "0.2.0",
   "permissions": [
     "files",
@@ -40,6 +41,16 @@
         "step": 5
       },
       {
+        "key": "joinMin",
+        "type": "number",
+        "label": "Proposer de rejoindre la réunion (minutes avant, 0 = jamais)",
+        "help": "Pour une réunion Teams, Meet, Zoom ou Webex : une alerte « Réunion dans 2 min » avec « Rejoindre », une seule fois par rendez-vous. Rejoindre met la musique en pause et vous prévient si votre micro est coupé.",
+        "default": 2,
+        "min": 0,
+        "max": 30,
+        "step": 1
+      },
+      {
         "key": "showCompact",
         "type": "boolean",
         "label": "Afficher le prochain rendez-vous dans la pilule de l'île",
@@ -72,17 +83,22 @@
   "commands": [
     "upcoming",
     "reload",
-    "open"
+    "open",
+    "join"
   ],
   "events": {
     "emits": [
       "agenda.changed",
       "agenda.reminder",
-      "mascot.emote"
+      "mascot.emote",
+      "agenda.join",
+      "media.pause",
+      "controls.mic-set"
     ],
     "listens": [
       "agenda.changed",
-      "agenda.reminder"
+      "agenda.reminder",
+      "agenda.join"
     ]
   }
 }

@@ -16,7 +16,11 @@ export type ViewKind = "compact" | "expanded" | "drop";
 
 /** Un champ de réglage : l'écran de réglages est généré à partir de cette liste. */
 export type SettingField =
-  | { key: string; type: "string"; label: string; help?: string; default: string; maxLength?: number }
+  /**
+   * Un texte. `check` : une vérification nommée (src/settings/field-checks.ts)
+   * qui écrit un avertissement sous le champ, sans refuser la valeur.
+   */
+  | { key: string; type: "string"; label: string; help?: string; default: string; maxLength?: number; check?: FieldCheck }
   | { key: string; type: "number"; label: string; help?: string; default: number; min?: number; max?: number; step?: number }
   | { key: string; type: "boolean"; label: string; help?: string; default: boolean }
   | { key: string; type: "select"; label: string; help?: string; default: string; options: { value: string; label: string }[] }
@@ -30,6 +34,9 @@ export type SettingField =
    * réglages : elle va dans le Gestionnaire d'identifiants (« agenda-ical-url-<id> »).
    */
   | { key: string; type: "calendars"; label: string; help?: string; default: CalendarEntry[]; max?: number };
+
+/** Les vérifications de champ texte connues : "cities" = noms de villes (horloges du monde). */
+export type FieldCheck = "cities";
 
 /** Un calendrier du module Agenda, tel que rangé dans les réglages. */
 export interface CalendarEntry {
@@ -49,6 +56,12 @@ export interface ModuleManifest {
   /** Un emoji pour l'instant (une image plus tard). */
   icon: string;
   description: string;
+  /**
+   * Pour un module à onglet : son geste principal, en une phrase (vouvoiement).
+   * Ondine le montre dans une petite bulle la première fois qu'on ouvre
+   * l'onglet (src/island/tips.ts).
+   */
+  tip?: string;
   version: string;
   permissions: Permission[];
   settings?: { version: number; fields: SettingField[] };

@@ -1,0 +1,38 @@
+# Created with scripts/winget-manifests.mjs (https://github.com/Naod6473/Ondine)
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.locale.1.10.0.schema.json
+
+PackageIdentifier: Naod6473.Ondine
+PackageVersion: 1.0.1
+PackageLocale: fr-FR
+Publisher: Naod6473
+PublisherUrl: "https://github.com/Naod6473"
+PublisherSupportUrl: "https://github.com/Naod6473/Ondine/issues"
+PrivacyUrl: "https://github.com/Naod6473/Ondine/blob/main/PRIVACY.md"
+Author: Naod6473
+PackageName: Ondine
+PackageUrl: "https://github.com/Naod6473/Ondine"
+License: MIT
+LicenseUrl: "https://github.com/Naod6473/Ondine/blob/main/LICENSE"
+Copyright: "Copyright (c) 2026 Naod6473"
+ShortDescription: "Une petite île en haut de l'écran de Windows : musique, presse-papiers, minuteur, agenda, notes, agents IA et outils IT, sans changer de fenêtre."
+Description: "Ondine vit en haut de l'écran, comme l'île dynamique d'un iPhone. Approchez la souris : une pilule apparaît, avec Ondine, la petite goutte qui réagit à ce qui se passe. Cliquez : l'île s'ouvre sur vos outils (musique, presse-papiers, captures, minuteur, agenda, notes, agents IA, outils réseau…), sans changer de fenêtre. Gratuite, open source (MIT), sans télémétrie, en français et en anglais."
+Tags:
+- ile-dynamique
+- productivite
+- pomodoro
+- presse-papiers
+- notes
+- agenda
+- lanceur
+- capture-ecran
+- agents-ia
+- claude
+- outils-it
+- tauri
+ReleaseNotes: |-
+  - Au premier lancement : la mascotte Gomme et la mini-île toujours affichée.
+  - « Y aller » ramène bien la fenêtre de Windows Terminal dans la version installée.
+  - Plus besoin du « Visual C++ Redistributable » sur un PC neuf.
+ReleaseNotesUrl: "https://github.com/Naod6473/Ondine/releases/tag/v1.0.1"
+ManifestType: locale
+ManifestVersion: 1.10.0

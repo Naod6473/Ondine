@@ -1,8 +1,9 @@
 {
   "id": "remote",
   "name": "Accès distants",
+  "tip": "Tapez une adresse puis RDP ou SSH ; ★ l'enregistre en favori.",
   "icon": "📡",
-  "description": "Vos serveurs Bureau à distance (RDP) et SSH en favoris, ouverts en un clic depuis l'île ou le lanceur. Enregistrés sur votre ordinateur (%APPDATA%\\Ondine\\remote.json), sans aucun mot de passe. « Tester » vérifie seulement que le serveur répond.",
+  "description": "Vos serveurs Bureau à distance (RDP) et SSH en favoris, ouverts en un clic depuis l'île ou le lanceur. Enregistrés sur votre ordinateur (%APPDATA%\\Ondine\\remote.json), sans aucun mot de passe. « Tester » vérifie seulement que le serveur répond. Avec son adresse MAC, un favori éteint peut être réveillé (Wake-on-LAN, réseau local seulement).",
   "version": "0.1.0",
   "permissions": ["network"],
   "settings": {
@@ -23,9 +24,9 @@
     ]
   },
   "views": ["expanded"],
-  "commands": ["list", "save", "delete", "connect", "probe"],
+  "commands": ["list", "save", "delete", "connect", "probe", "wake"],
   "events": {
-    "emits": ["remote.changed"],
-    "listens": ["remote.connect", "remote.changed"]
+    "emits": ["remote.changed", "remote.waking", "remote.wake-done"],
+    "listens": ["remote.connect", "remote.changed", "remote.wake", "remote.waking", "remote.wake-done"]
   }
 }

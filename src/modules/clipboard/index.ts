@@ -12,18 +12,27 @@
 // « QR code » : le Rust dessine le QR code de la copie (sur le PC, sans
 // Internet) et renvoie une image SVG ; on l'affiche en grand, pour la lire
 // avec l'appareil photo d'un téléphone.
+//
+// « Décoder » : quand une copie ressemble à un jeton JWT, du Base64, une
+// adresse encodée (%xx), du JSON compact ou un horodatage Unix, sa ligne
+// propose un bouton (decode.ts reconnaît et décode, ici, sans rien envoyer).
+// Le résultat s'affiche dans l'onglet, avec « Copier ». Pour une longue copie,
+// on demande au Rust le texte entier ("full") ; rien n'est journalisé.
 
 import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
 import { setLabel } from "../../island/icon";
+import { DECODE_ACTIONS, decode, DecodeError, detect, type Decoded, type DecodeKind } from "./decode";
 
 /** Une copie, telle que le Rust l'envoie (seulement un aperçu du texte). */
 interface ClipItem {
   id: number;
   preview: string;
   chars: number;
+  /** L'aperçu n'est que le début du texte (il finit par « … »). */
+  truncated?: boolean;
   pinned: boolean;
   /** Heure de la copie, en ms depuis 1970. */
   at: number;
@@ -77,6 +86,51 @@ async function copy(api: ModuleApi, args: unknown) {
   if (await attempt(api, "Copier", () => api.invoke("copy", args))) {
     api.notify({ title: "Copié", icon: "📋", priority: "low", key: "clipboard-copied" });
   }
+}
+
+/**
+ * Le résultat d'un décodage : le titre, l'avertissement éventuel (JWT), les
+ * lignes « étiquette : valeur » (dates…) puis les blocs de texte. Ce qui vient
+ * de la copie est marqué data-no-i18n (jamais traduit), en police à chasse fixe.
+ */
+function decodedView(api: ModuleApi, d: Decoded): HTMLElement[] {
+  const out: HTMLElement[] = [el("div", { class: "clip-decode-title" }, el("b", {}, d.title))];
+  if (d.warning) out.push(el("p", { class: "clip-decode-warn" }, "⚠️ ", el("span", {}, d.warning)));
+  if (d.facts.length) {
+    out.push(
+      el(
+        "div",
+        { class: "clip-facts" },
+        ...d.facts.map((f) =>
+          el(
+            "div",
+            { class: "clip-fact" },
+            el("span", { class: "muted clip-fact-label" }, f.label),
+            el("code", { class: "clip-fact-value", "data-no-i18n": true }, f.value),
+            f.note ? el("span", { class: "muted clip-fact-note" }, f.note) : null,
+            f.status ? el("span", { class: `clip-fact-status ${f.status.tone}` }, f.status.text) : null,
+            el("button", { class: "icon-btn", title: "Copier", onclick: api.handler(() => copy(api, { text: f.value })) }, "📋"),
+          ),
+        ),
+      ),
+    );
+  }
+  for (const b of d.blocks) {
+    out.push(
+      el(
+        "div",
+        { class: "clip-decode-block" },
+        el(
+          "div",
+          { class: "clip-decode-label" },
+          el("span", { class: "muted" }, b.label),
+          el("button", { class: "btn small", title: "Copier ce texte", onclick: api.handler(() => copy(api, { text: b.text })) }, "Copier"),
+        ),
+        el("pre", { class: "clip-decoded", "data-no-i18n": true }, b.text),
+      ),
+    );
+  }
+  return out;
 }
 
 /** Les choix du générateur de mots de passe (gardés pendant que l'île tourne). */
@@ -138,12 +192,15 @@ export const clipboard: IslandModule = {
       let editing: SnippetItem | "new" | null = null;
       /** La copie montrée en QR code (même chose : on ne redessine pas par-dessus). */
       let qrFor: ClipItem | null = null;
+      /** La copie décodée (même chose). */
+      let decodeFor: { item: ClipItem; kind: DecodeKind } | null = null;
       let alive = true;
 
       const setTab = (tab: typeof view.tab) => {
         view.tab = tab;
         editing = null;
         qrFor = null;
+        decodeFor = null;
         for (const b of tabs.querySelectorAll<HTMLElement>(".tab")) b.classList.toggle("active", b.dataset.tab === tab);
         draw();
       };
@@ -155,13 +212,14 @@ export const clipboard: IslandModule = {
           return; // hors de l'appli (navigateur) : liste vide
         }
         // (L'onglet mot de passe ne se redessine pas : il garderait le même mot de passe affiché.)
-        if (alive && !editing && !qrFor && view.tab !== "password") draw();
+        if (alive && !editing && !qrFor && !decodeFor && view.tab !== "password") draw();
       };
 
       // ── Le corps : la liste de l'onglet choisi ──
       const draw = () => {
         body.replaceChildren();
         if (view.tab === "history" && qrFor) drawQr(qrFor);
+        else if (view.tab === "history" && decodeFor) drawDecoded(decodeFor);
         else if (view.tab === "history") drawHistory();
         else if (view.tab === "password") drawPassword();
         else if (editing) drawForm(editing);
@@ -183,6 +241,9 @@ export const clipboard: IslandModule = {
         }
         const list = el("ul", { class: "clip-list" });
         for (const item of last.items) {
+          // Un JWT, du Base64, du JSON… ? (Sur l'aperçu : pour une longue copie,
+          // seulement son début ; le décodage se fera sur le texte entier.)
+          const kind = detect(item.truncated ? item.preview.replace(/…$/, "") : item.preview, !!item.truncated);
           list.append(
             el(
               "li",
@@ -196,6 +257,13 @@ export const clipboard: IslandModule = {
               el(
                 "span",
                 { class: "clip-actions" },
+                kind
+                  ? el(
+                      "button",
+                      { class: "icon-btn clip-case clip-decode", title: DECODE_ACTIONS[kind].title, onclick: api.handler(() => openDecode(item, kind)) },
+                      DECODE_ACTIONS[kind].label,
+                    )
+                  : null,
                 el(
                   "button",
                   {
@@ -295,7 +363,8 @@ export const clipboard: IslandModule = {
         body.append(
           el(
             "div",
-            { class: "clip-qr-view" },
+            // L'île grandit pour montrer le QR code en entier (src/island/fit.ts).
+            { class: "clip-qr-view", "data-island-fit": true },
             box,
             el("p", { class: "muted clip-qr-text" }, item.preview),
             el("div", { class: "btn-row" }, copyBtn, el("button", { class: "btn small", onclick: api.handler(closeQr) }, "‹ Retour")),
@@ -312,6 +381,52 @@ export const clipboard: IslandModule = {
             // Texte trop long, copie disparue… : on le dit à la place du code.
             if (qrFor === item) box.replaceChildren(el("p", { class: "clip-qr-error" }, "⚠️ ", el("span", {}, errorText(err))));
           }
+        })();
+      };
+
+      // ── Décoder une copie (JWT, Base64, %xx, JSON, horodatage) ──
+      const openDecode = (item: ClipItem, kind: DecodeKind) => {
+        decodeFor = { item, kind };
+        draw();
+      };
+      const closeDecode = () => {
+        decodeFor = null;
+        draw();
+      };
+
+      const drawDecoded = (target: { item: ClipItem; kind: DecodeKind }) => {
+        const box = el("div", { class: "clip-decode" }, el("p", { class: "muted" }, "…"));
+        body.append(
+          el(
+            "div",
+            { class: "clip-decode-view" },
+            el("div", { class: "btn-row" }, el("button", { class: "btn small", onclick: api.handler(closeDecode) }, "‹ Retour")),
+            box,
+            el("p", { class: "muted tool-note" }, "Décodé sur votre PC : rien n'est envoyé ni enregistré."),
+          ),
+        );
+        const fail = (message: string) => box.replaceChildren(el("p", { class: "clip-qr-error" }, "⚠️ ", el("span", {}, message)));
+        void (async () => {
+          let text = target.item.preview;
+          if (target.item.truncated) {
+            try {
+              text = (await api.invoke<{ text: string }>("full", { id: target.item.id })).text;
+            } catch (err) {
+              if (decodeFor === target) fail(errorText(err)); // copie disparue entre-temps…
+              return;
+            }
+          }
+          if (decodeFor !== target) return;
+          let result: Decoded;
+          try {
+            // Sur le texte entier, on revérifie ce que c'est (le début pouvait tromper).
+            result = decode(text, detect(text) ?? target.kind);
+          } catch (err) {
+            // Pas de journal : le texte copié ne doit pas y aller, même en partie.
+            fail(err instanceof DecodeError ? err.message : "Ce texte ne se décode pas.");
+            return;
+          }
+          box.replaceChildren(...decodedView(api, result));
         })();
       };
 

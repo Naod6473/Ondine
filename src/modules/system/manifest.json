@@ -1,8 +1,9 @@
 {
   "id": "system",
   "name": "Système",
+  "tip": "Cliquez sur « Copier pour le support » : tout est prêt à coller dans un ticket.",
   "icon": "📊",
-  "description": "L'état du PC d'un coup d'œil : processeur, mémoire, disques, adresses IP et MAC, batterie, version de Windows. Un bouton copie un résumé à coller dans un ticket de support. Prévient quand un disque est presque plein, quand la batterie est faible ou chargée. Ondine transpire quand le processeur est à fond. Tout est lu sur le PC : rien ne part sur Internet.",
+  "description": "L'état du PC d'un coup d'œil : processeur, mémoire, disques, adresses IP et MAC, batterie, version de Windows, redémarrage en attente. Un bouton copie un résumé à coller dans un ticket de support. Prévient quand un disque est presque plein, quand la batterie est faible ou chargée. Ondine transpire quand le processeur est à fond. Tout est lu sur le PC : rien ne part sur Internet.",
   "version": "0.1.0",
   "permissions": [
     "clipboard",
@@ -40,6 +41,22 @@
         "type": "boolean",
         "label": "L'humeur d'Ondine suit le PC (processeur à fond, batterie faible, heure tardive)",
         "default": true
+      },
+      {
+        "key": "worldClocks",
+        "type": "string",
+        "label": "Horloges du monde",
+        "help": "4 villes au plus, séparées par des virgules (ex. : Montréal, Tokyo). Elles s'affichent dans l'onglet Système. Les heures sont calculées sur le PC.",
+        "default": "",
+        "maxLength": 200,
+        "check": "cities"
+      },
+      {
+        "key": "rebootReminder",
+        "type": "boolean",
+        "label": "Rappeler un redémarrage en attente",
+        "help": "Au plus une fois par jour, après un jour d'attente, jamais pendant un appel ni une présentation. Ondine ne redémarre jamais le PC elle-même.",
+        "default": true
       }
     ]
   },
@@ -49,7 +66,9 @@
   "commands": [
     "snapshot",
     "copy_support",
-    "ticket"
+    "ticket",
+    "reboot",
+    "open_update"
   ],
   "events": {
     "emits": [
@@ -62,7 +81,8 @@
       "system.disk-low",
       "system.battery-low",
       "system.battery-full",
-      "weather.updated"
+      "weather.updated",
+      "controls.media-use"
     ]
   }
 }

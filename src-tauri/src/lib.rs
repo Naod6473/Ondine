@@ -206,6 +206,20 @@ fn island_set_collapsed(app: AppHandle, shared: State<Shared>, collapsed: bool) 
     shared.gate.set_active(!collapsed);
 }
 
+/// L'île ouverte grandit pour montrer un contenu en entier (src/island/fit.ts) :
+/// la fenêtre passe au panneau haut avant, et revient après.
+#[tauri::command]
+fn island_set_tall(app: AppHandle, shared: State<Shared>, tall: bool) {
+    if shared.gate.tall.swap(tall, Ordering::Relaxed) == tall {
+        return;
+    }
+    // Île cachée : la bande garde sa taille ; le panneau prendra la bonne au réveil.
+    if !shared.gate.collapsed.load(Ordering::Relaxed) {
+        let pref = shared.settings.locked().general.screen.clone();
+        island::apply_geometry(&app, &pref, false);
+    }
+}
+
 /// Le front envoie la forme actuelle de l'île ; le Rust en déduit les clics traversants.
 #[tauri::command]
 fn island_set_rect(shared: State<Shared>, x: f64, y: f64, width: f64, height: f64) {
@@ -476,6 +490,7 @@ pub fn run() {
             dialog_pick_folder,
             dialog_pick_file,
             island_set_collapsed,
+            island_set_tall,
             island_set_rect,
             island_set_focus,
             island_reposition,
@@ -495,6 +510,7 @@ pub fn run() {
             app_quit,
             update::update_check,
             update::update_install,
+            update::release_page_open,
             profile_activate,
             profile_wifi_name,
             diagnostics::bug_report_open,

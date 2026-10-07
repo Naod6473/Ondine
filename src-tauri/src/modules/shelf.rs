@@ -7,9 +7,13 @@
 //     compresser, montrer dans l'Explorateur ;
 //   - les outils (shelf_tools.rs) : convertir / réduire des images, renommer
 //     plusieurs fichiers selon un modèle ;
+//   - l'empreinte (shelf_hash.rs) : SHA-256 d'un fichier, ou comparaison avec
+//     une empreinte copiée (MD5, SHA-1, SHA-256, SHA-512), calculée dans un thread ;
 //   - Téléchargements (réglage) : un fichier qui vient d'arriver dans le dossier
 //     Téléchargements est posé tout seul sur l'étagère, une fois fini (taille
-//     stable, plus de « .crdownload » / « .part »).
+//     stable, plus de « .crdownload » / « .part ») ;
+//   - « Vers le téléphone » (shelf_phone.rs) : un fichier de l'étagère est
+//     servi un court moment sur le réseau local, son adresse en QR code.
 //
 // Règles appliquées ici :
 //   - chaque chemin reçu du front est validé (ctx.check_path : chemin absolu,
@@ -29,6 +33,8 @@ use std::sync::{Arc, Mutex};
 use serde_json::{json, Value};
 use tauri::AppHandle;
 
+use super::shelf_phone;
+use super::shelf_hash;
 use super::shelf_tools::{self, OutFormat};
 use super::{ModuleContext, RustModule};
 use crate::services::undo::DEFAULT_WINDOW;
@@ -47,6 +53,8 @@ type Items = Arc<Mutex<Vec<PathBuf>>>;
 #[derive(Default)]
 pub struct Shelf {
     items: Items,
+    /// « Vers le téléphone » : le partage en cours (un seul à la fois).
+    phone: shelf_phone::Phone,
 }
 
 impl RustModule for Shelf {
@@ -75,6 +83,20 @@ impl RustModule for Shelf {
                 let revealed = super::launcher::open_checked(&path)?;
                 Ok(json!({ "revealed": revealed }))
             }
+            // { path } → { id, url, qr, name, size, seconds } : « Vers le
+            // téléphone », pour un fichier de l'étagère (shelf_phone.rs).
+            "phone_share" => {
+                let path = ctx.check_path(arg_str(&args, "path"))?;
+                if !self.items.locked().contains(&path) {
+                    return Err("cet élément n'est plus sur l'étagère".into());
+                }
+                self.phone.share(ctx, &path)
+            }
+            "phone_stop" => {
+                self.phone.stop();
+                Ok(Value::Null)
+            }
+            "phone_status" => Ok(self.phone.status()),
             "add" => {
                 let added = self.add(ctx, &args)?;
                 Ok(json!({ "added": added }))
@@ -137,6 +159,21 @@ impl RustModule for Shelf {
             }
             // Pareil, mais pour de vrai (après le bouton de confirmation du front).
             "rename" => self.rename(ctx, &args),
+            // { paths } → { job, algo, compare } : l'empreinte, calculée dans un
+            // thread ; le résultat arrive par "shelf.hashed".
+            "hash" => {
+                let paths: Vec<PathBuf> = checked_paths(ctx, &args)?.into_iter().filter(|p| p.is_file()).collect();
+                shelf_hash::start(ctx, paths)
+            }
+            "hash_cancel" => {
+                shelf_hash::cancel();
+                Ok(Value::Null)
+            }
+            // { job } : copie le résultat de ce calcul.
+            "hash_copy" => {
+                ctx.require("clipboard")?;
+                shelf_hash::copy(&args)
+            }
             other => Err(format!("commande inconnue : {other}")),
         }
     }
