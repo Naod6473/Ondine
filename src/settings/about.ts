@@ -11,7 +11,7 @@ import { Bridge, IS_TAURI, type SelfUsage } from "../core/bridge";
 import { demoOn } from "../core/demo";
 import { errorText } from "../core/log";
 import { el } from "../island/dom";
-import { group, row } from "./controls";
+import { group, row, wideRow } from "./controls";
 
 const REFRESH_MS = 2000;
 
@@ -32,6 +32,10 @@ function demoUsage(): SelfUsage {
 }
 
 export function aboutGroup(): HTMLElement {
+  // ── Version ──
+  const version = el("span", { class: "muted" }, "…");
+  void Bridge.boot().then((b) => (version.textContent = b ? `Ondine ${b.version}` : "Ondine"));
+
   // ── Signaler un problème ──
   const status = el("span", { class: "muted", "aria-live": "polite" }, "");
   const report = el(
@@ -68,7 +72,8 @@ export function aboutGroup(): HTMLElement {
   return group(
     "À propos",
     [
-      row(
+      row("Version", version, "La version installée de cette copie d'Ondine."),
+      wideRow(
         "Signaler un problème",
         el("div", { class: "chips" }, report, status),
         "Ouvre GitHub avec la version, Windows et les 40 dernières lignes du journal (chemins personnels masqués). Vous relisez et complétez tout avant d'envoyer : rien ne part sans vous.",

@@ -123,10 +123,16 @@ Dans l'onglet 🤖, ouvre « Brancher Claude Code, Codex ou Gemini ».
 
 ### 2.1 Claude Code prévient l'île
 
-1. ☐ Choisis « Claude Code », puis « 📋 Copier la configuration ».
-2. ☐ Colle-la dans `%USERPROFILE%\.claude\settings.json`.
-   - S'il y a déjà un bloc `"hooks"`, fusionne-les.
-   - Puis relance Claude Code.
+1. ☐ Choisis « Claude Code » : l'état s'affiche (« Installé », « Ancien
+   chemin » ou « Non installé ») avec le chemin complet du fichier.
+2. ☐ « ⚡ Installer automatiquement », puis relance Claude Code.
+   - L'état passe à « Installé » ; une copie `settings.json.ondine-<date>.bak`
+     est à côté ; les autres hooks (Coucou…) et réglages sont toujours là.
+   - Avec un ancien hook vers `target\debug\ondine.exe` : « Ancien chemin »,
+     et l'installation le remplace.
+   - « Retirer » n'enlève que les entrées d'Ondine.
+   - À la main (autre possibilité) : « 📋 Copier la configuration », à
+     coller dans le fichier affiché (fusionner s'il y a déjà un bloc `"hooks"`).
 3. ☐ « Essayer » : la notification « ✅ Claude a fini · Island » apparaît.
 4. ☐ Dans Claude Code, demande une tâche :
    - la mascotte réfléchit ;

@@ -180,6 +180,8 @@ let preview: MascotRenderer | null = null;
 let pill: NavPill | null = null;
 /** Quand on a enregistré nous-mêmes pour la dernière fois (voir `start`). */
 let lastOwnSave = 0;
+/** La version d'Ondine (« 1.0.0 »), affichée à côté de « Réglages ». */
+let appVersion = "";
 
 const app = document.getElementById("app")!;
 const nav = el("nav", { class: "sidebar", "aria-label": "Pages des réglages" });
@@ -187,6 +189,7 @@ const content = el("main", { class: "content" });
 
 async function start() {
   const boot = await Bridge.boot();
+  appVersion = boot?.version ?? "";
   // Fond Mica de Windows 11 : la page devient transparente (voir settings.css).
   if (boot?.mica) document.documentElement.classList.add("mica");
   await settingsStore.connect(boot?.settings ?? null);
@@ -314,7 +317,12 @@ function drawNav() {
     list.append(item);
   }
   nav.replaceChildren(
-    el("div", { class: "brand" }, el("span", { class: "brand-drop" }, iconNode("💧")), el("span", {}, "Réglages")),
+    el(
+      "div",
+      { class: "brand" },
+      el("span", { class: "brand-drop" }, iconNode("💧")),
+      el("span", {}, "Réglages", appVersion ? el("small", { class: "brand-version" }, appVersion) : null),
+    ),
     search,
     list,
   );
