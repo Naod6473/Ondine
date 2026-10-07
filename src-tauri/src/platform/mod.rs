@@ -24,6 +24,8 @@ pub mod picker;
 pub mod wifi;
 // Glisser des fichiers de l'île vers l'Explorateur (Étagère). Contient sa propre version Linux.
 pub mod drag_out;
+// Windows attend-il un redémarrage, depuis quand (Système) ? Contient sa propre version Linux.
+pub mod reboot;
 
 #[cfg(windows)]
 mod drop_target;

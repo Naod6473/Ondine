@@ -1833,6 +1833,29 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Redémarrage en attente (system/reboot.ts) : une ligne discrète sous les jauges. */
+.sys-reboot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px 4px 10px;
+  border-radius: 10px;
+  background: rgba(255, 198, 92, 0.08);
+  border: 1px solid rgba(255, 198, 92, 0.22);
+}
+.sys-reboot[hidden] {
+  display: none;
+}
+.sys-reboot-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sys-reboot .btn {
+  flex: none;
+}
 
 /* Accès distants (Outils IT) */
 .remote {
