@@ -76,7 +76,7 @@
         "key": "permissions",
         "type": "boolean",
         "label": "Autoriser / Refuser depuis l'île",
-        "help": "Quand Claude Code ou Codex demande la permission d'utiliser un outil, l'île vous montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Il faut aussi coller le hook d'autorisation (onglet Agents IA). Sans réponse, la question passe au terminal.",
+        "help": "Quand Claude Code ou Codex demande la permission d'utiliser un outil, l'île vous montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Après l'avoir activé, cliquez à nouveau sur « Installer automatiquement » (onglet Agents IA). L'agent ne demande rien en mode automatique : laissez-le en mode normal. Sans réponse, la question passe au terminal.",
         "default": false
       },
       {

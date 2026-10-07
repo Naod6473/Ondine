@@ -521,7 +521,6 @@
 "Accepter les outils MCP (message, progression, minuteur, question)": "Accept MCP tools (message, progress, timer, question)",
 "Utilisé seulement si vous avez ajouté l'île comme serveur MCP dans votre agent.": "Only used if you added the island as an MCP server in your agent.",
 "Autoriser / Refuser depuis l'île": "Allow / Deny from the island",
-"Quand Claude Code ou Codex demande la permission d'utiliser un outil, l'île vous montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Il faut aussi coller le hook d'autorisation (onglet Agents IA). Sans réponse, la question passe au terminal.": "When Claude Code or Codex asks permission to use a tool, the island shows you the command with “Allow” (to confirm) and “Deny”. You also need to paste the permission hook (AI agents tab). With no answer, the question falls back to the terminal.",
 "Attendre ma réponse dans l'île": "Wait for my answer in the island",
 "30 secondes": "30 seconds",
 "La mascotte réfléchit pendant que Claude travaille": "The mascot thinks while Claude works",
@@ -1085,7 +1084,11 @@
 "⚠️ Fichier illisible (JSON ou TOML invalide) : Ondine n'y touche pas. Corrigez-le ou utilisez la copie.": "⚠️ Unreadable file (invalid JSON or TOML): Ondine leaves it alone. Fix it or use the copy.",
 "Fichier :": "File:",
 "⚠️ Un autre programme répond aussi aux demandes de permission (PermissionRequest) : deux réponses concurrentes.": "⚠️ Another program also answers permission requests (PermissionRequest): two competing answers.",
-"Ou à la main": "Or by hand"
+"Ou à la main": "Or by hand",
+"Choisissez l'outil, puis cliquez sur « Installer automatiquement ».": "Choose the tool, then click \"Install automatically\".",
+"Relancez l'agent, puis cliquez sur « Essayer » : une notification doit apparaître.": "Restart the agent, then click \"Try\": a notification should appear.",
+"Pour répondre aux permissions depuis l'île : activez « Autoriser / Refuser depuis l'île » dans les réglages, puis réinstallez. L'agent ne demande rien en mode automatique.": "To answer permissions from the island: turn on \"Allow / Deny from the island\" in settings, then reinstall. The agent asks nothing in auto mode.",
+"Quand Claude Code ou Codex demande la permission d'utiliser un outil, l'île vous montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Après l'avoir activé, cliquez à nouveau sur « Installer automatiquement » (onglet Agents IA). L'agent ne demande rien en mode automatique : laissez-le en mode normal. Sans réponse, la question passe au terminal.": "When Claude Code or Codex asks permission to use a tool, the island shows you the command with \"Allow\" (to confirm) and \"Deny\". After turning it on, click \"Install automatically\" again (AI agents tab). The agent asks nothing in auto mode: keep it in normal mode. Without an answer, the question goes to the terminal."
 },
 "patterns": [
 [

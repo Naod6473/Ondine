@@ -488,6 +488,13 @@ export const agents: IslandModule = {
       };
       guide.append(
         el("summary", {}, "Brancher Claude Code, Codex ou Gemini"),
+        el(
+          "ol",
+          { class: "muted agents-quick" },
+          el("li", {}, "Choisissez l'outil, puis cliquez sur « Installer automatiquement »."),
+          el("li", {}, "Relancez l'agent, puis cliquez sur « Essayer » : une notification doit apparaître."),
+          el("li", {}, "Pour répondre aux permissions depuis l'île : activez « Autoriser / Refuser depuis l'île » dans les réglages, puis réinstallez. L'agent ne demande rien en mode automatique."),
+        ),
         el("div", { class: "net-chips agents-tools" }, ...toolButtons),
         hookState,
         el("div", { class: "btn-row" }, install, uninstall, test),

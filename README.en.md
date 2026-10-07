@@ -280,11 +280,30 @@ servers, and tells you when something drops.
 
 Launch **Claude Code**, **Codex** or **Gemini CLI** in one of your projects with
 one click. A board shows running sessions; "Go there" brings the right window
-to the front. Once connected (the **Connect Claude Code, Codex or Gemini**
-section at the bottom of the tab: a button copies the configuration to paste,
-then **Try**), agents notify the island: "waiting for your permission",
-"finished". They go through the `ondine.exe notify` command and a local channel
-reserved for your Windows account: nothing goes over the Internet.
+to the front, Windows Terminal included. Once connected, agents notify the
+island: "waiting for your permission", "finished". They go through the
+`ondine.exe notify` command and a local channel reserved for your Windows
+account: nothing goes over the Internet, and the island only accepts messages
+from its own copy of `ondine.exe`.
+
+**Connect an agent in 3 steps:**
+
+1. In the AI agents tab, open **Connect Claude Code, Codex or Gemini**, choose
+   the tool, then click **⚡ Install automatically**. Ondine adds its hooks to the
+   tool's file (`%USERPROFILE%\.claude\settings.json` for Claude Code,
+   `%USERPROFILE%\.codex\config.toml` for Codex, `%USERPROFILE%\.gemini\settings.json`
+   for Gemini CLI) and keeps everything else, including other programs' hooks.
+   A `.bak` copy is made before each write, and **Remove** only takes out what
+   Ondine added.
+2. Restart the agent, then click **Try**: a notification should appear.
+3. To **allow or deny from the island**: turn on "Allow / Deny from the
+   island" (Settings → AI agents), then click **Install automatically** again.
+   The agent asks nothing in auto mode (Claude Code's "auto mode"): keep it in
+   normal mode.
+
+If the state shows **Old path** (for example after an update or after moving
+Ondine), just click **Install automatically** again. Copying by hand is still
+possible, under **Or by hand**.
 
 Optionally, the island can also be added as an **MCP server**: the agent can
 then send you a message, its progress, start the timer or ask you a
@@ -298,7 +317,7 @@ type nor the AI's replies.
 - **Offer Claude Code / Codex / Gemini CLI** (on)
 - **Notify when Claude waits for my answer or permission** (on), **when Claude is done** (on)
 - **Accept MCP tools** (on)
-- **Allow / Deny from the island** (**off** by default): when Claude Code or Codex asks permission to use a tool, the island shows the command with "Allow" (to confirm) and "Deny". You also need to paste the permission hook. Without an answer within the chosen delay (1 min by default), the question goes back to the terminal.
+- **Allow / Deny from the island** (**off** by default): when Claude Code or Codex asks permission to use a tool, the island shows the command with "Allow" (to confirm) and "Deny". After turning it on, reinstall the hooks (step 3 above). Without an answer within the chosen delay (1 min by default), the question goes back to the terminal.
 - **The mascot thinks while Claude works** (on)
 
 ### Ask Claude

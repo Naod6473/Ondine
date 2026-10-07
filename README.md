@@ -289,11 +289,30 @@ serveurs, et prévient quand ça coupe.
 
 Lance **Claude Code**, **Codex** ou **Gemini CLI** dans un de vos projets en un
 clic. Un tableau montre les sessions en cours ; « Y aller » ramène devant la
-bonne fenêtre. Une fois branchés (bloc **Brancher Claude Code, Codex ou Gemini**
-en bas de l'onglet : un bouton copie la configuration à coller, puis
-**Essayer**), les agents préviennent l'île : « attend votre permission », « a
-fini ». Ils passent par la commande `ondine.exe notify` et un canal local
-réservé à votre compte Windows : rien ne passe par Internet.
+bonne fenêtre, y compris dans Windows Terminal. Une fois branchés, les agents
+préviennent l'île : « attend votre permission », « a fini ». Ils passent par la
+commande `ondine.exe notify` et un canal local réservé à votre compte Windows :
+rien ne passe par Internet, et l'île n'accepte que les messages de sa propre
+copie d'`ondine.exe`.
+
+**Brancher un agent, en 3 étapes :**
+
+1. Dans l'onglet Agents IA, ouvrez **Brancher Claude Code, Codex ou Gemini**,
+   choisissez l'outil, puis cliquez sur **⚡ Installer automatiquement**. Ondine
+   ajoute ses hooks dans le fichier de l'outil (`%USERPROFILE%\.claude\settings.json`
+   pour Claude Code, `%USERPROFILE%\.codex\config.toml` pour Codex,
+   `%USERPROFILE%\.gemini\settings.json` pour Gemini CLI) en gardant tout le
+   reste, y compris les hooks d'autres programmes. Une copie `.bak` est faite
+   avant chaque écriture, et **Retirer** enlève seulement ce qu'Ondine a ajouté.
+2. Relancez l'agent, puis cliquez sur **Essayer** : une notification doit apparaître.
+3. Pour **autoriser ou refuser depuis l'île** : activez le réglage
+   « Autoriser / Refuser depuis l'île » (Réglages → Agents IA), puis cliquez à
+   nouveau sur **Installer automatiquement**. L'agent ne demande rien en mode
+   automatique (« auto mode » de Claude Code) : laissez-le en mode normal.
+
+Si l'état affiche **Ancien chemin** (par exemple après une mise à jour ou un
+déplacement d'Ondine), cliquez simplement à nouveau sur **Installer
+automatiquement**. La copie à la main reste possible, sous **Ou à la main**.
 
 En option, l'île peut aussi être branchée comme **serveur MCP** : l'agent peut
 alors vous envoyer un message, sa progression, lancer le minuteur ou vous poser
@@ -307,7 +326,7 @@ vous tapez ni les réponses de l'IA.
 - **Proposer Claude Code / Codex / Gemini CLI** (oui)
 - **Prévenir quand Claude attend ma réponse ou ma permission** (oui), **quand Claude a fini** (oui)
 - **Accepter les outils MCP** (oui)
-- **Autoriser / Refuser depuis l'île** (**non** par défaut) : quand Claude Code ou Codex demande la permission d'utiliser un outil, l'île montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Il faut aussi coller le hook d'autorisation. Sans réponse dans le délai choisi (1 min par défaut), la question repasse au terminal.
+- **Autoriser / Refuser depuis l'île** (**non** par défaut) : quand Claude Code ou Codex demande la permission d'utiliser un outil, l'île montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Après l'avoir activé, réinstallez les hooks (étape 3 ci-dessus). Sans réponse dans le délai choisi (1 min par défaut), la question repasse au terminal.
 - **La mascotte réfléchit pendant que Claude travaille** (oui)
 
 ### Demander à Claude
