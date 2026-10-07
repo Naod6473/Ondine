@@ -1,5 +1,31 @@
 # Changements · Changelog
 
+## Pas encore publié · Unreleased
+
+- Calculs dans le lanceur : opérations, pourcentages, unités, octets,
+  sous-réseaux IPv4 et heure dans une autre ville. · Calculations in the
+  launcher: math, percentages, units, bytes, IPv4 subnets and time in another
+  city.
+- Envoyer un fichier de l'étagère au téléphone par un QR code, sur le Wi-Fi
+  local. · Send a shelf file to your phone with a QR code, over local Wi-Fi.
+- Quand un agent a fini : les fichiers modifiés, « Ouvrir dans VS Code » et
+  « Reprendre » la dernière session. · When an agent finishes: changed files,
+  "Open in VS Code", and "Resume" the last session.
+- Décoder une copie (JWT, Base64, URL, JSON, date Unix) et vérifier
+  l'empreinte SHA-256 d'un fichier. · Decode a copy (JWT, Base64, URL, JSON,
+  Unix time) and check a file's SHA-256 hash.
+- Enregistrer une zone de l'écran en GIF animé. · Record a screen area as an
+  animated GIF.
+- Éjecter une clé USB, mode sombre et éclairage nocturne dans Contrôles. ·
+  Eject a USB drive, dark mode and night light in Controls.
+- Réveiller un PC à distance (Wake-on-LAN) et redémarrage en attente signalé.
+  · Wake a remote PC (Wake-on-LAN) and pending restart notice.
+- Rejoindre une réunion en un clic, horloges du monde et bilan de la semaine.
+  · One-click meeting join, world clocks and weekly summary.
+- « Quoi de neuf » après une mise à jour et une astuce à la première ouverture
+  de chaque onglet. · "What's new" after an update and a tip the first time
+  each tab opens.
+
 ## 1.0.1 · 2026-10-07
 
 - Au premier lancement : la mascotte Gomme et la mini-île toujours affichée.

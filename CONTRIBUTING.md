@@ -35,7 +35,8 @@ cd src-tauri; cargo test; cd ..         # tests Rust (réglages, bus, journal, c
 ## Tests à la main
 
 Les listes de tests sur Windows et l'installation sur un autre PC :
-[docs/tests/TESTS.md](docs/tests/TESTS.md) et [docs/tests/TESTS-nuit.md](docs/tests/TESTS-nuit.md).
+[docs/tests/TESTS.md](docs/tests/TESTS.md), [docs/tests/TESTS-nuit.md](docs/tests/TESTS-nuit.md)
+et [docs/tests/TESTS-idees-apres-1-0.md](docs/tests/TESTS-idees-apres-1-0.md) (les nouveautés d'après la 1.0).
 
 ## Construire l'installateur
 
