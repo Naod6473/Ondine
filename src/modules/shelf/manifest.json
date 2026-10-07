@@ -2,11 +2,12 @@
   "id": "shelf",
   "name": "Étagère",
   "icon": "🧺",
-  "description": "Glissez des fichiers sur l'île pour les poser sur l'étagère, les envoyer à la Corbeille, les copier ou les déplacer (dossiers favoris compris), copier leur chemin, les compresser, convertir ou réduire des images, ou renommer plusieurs fichiers d'un coup (avec aperçu). Toute action sur les fichiers est annulable quelques secondes.",
+  "description": "Glissez des fichiers sur l'île pour les poser sur l'étagère, les envoyer à la Corbeille, les copier ou les déplacer (dossiers favoris compris), copier leur chemin, les compresser, convertir ou réduire des images, ou renommer plusieurs fichiers d'un coup (avec aperçu). Toute action sur les fichiers est annulable quelques secondes. « Vers le téléphone » envoie un fichier à un téléphone du même Wi-Fi par un QR code : réseau local seulement, 5 minutes au plus, rien ne passe par Internet.",
   "version": "0.1.0",
   "permissions": [
     "files",
-    "clipboard"
+    "clipboard",
+    "network"
   ],
   "settings": {
     "version": 1,
@@ -81,7 +82,10 @@
     "rename",
     "search",
     "open",
-    "drag_out"
+    "drag_out",
+    "phone_share",
+    "phone_stop",
+    "phone_status"
   ],
   "events": {
     "emits": [
@@ -89,12 +93,14 @@
       "task.started",
       "task.finished",
       "task.failed",
-      "shelf.downloaded"
+      "shelf.downloaded",
+      "shelf.phone"
     ],
     "listens": [
       "shelf.changed",
       "shelf.add",
-      "shelf.downloaded"
+      "shelf.downloaded",
+      "shelf.phone"
     ]
   }
 }

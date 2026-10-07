@@ -70,7 +70,7 @@ ondine/
       ├─ tray.rs              icône de la zone de notification
       ├─ island/mod.rs        placement multi-écrans/DPI, clics traversants, souris
       ├─ platform/            tout le Win32 (windows.rs) ; other.rs = bouchons ; media.rs = SMTC ; ocr.rs = OCR
-      ├─ services/            réglages, journal, identifiants, bus, annulation, confidentialité, fichiers, ics
+      ├─ services/            réglages, journal, identifiants, bus, annulation, confidentialité, fichiers, ics, réseau local
       └─ modules/             registre des modules Rust + shelf.rs, clipboard.rs, capture.rs, notes.rs, agenda.rs, terminal.rs, media.rs
 ```
 
@@ -301,8 +301,12 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `launcher.open` | Lanceur (Rust, raccourci global) | l'île s'ouvre sur l'onglet Lanceur, recherche prête |
 | `launcher.hotkey-error` `{text}` | Lanceur (Rust) | notification : raccourci déjà pris |
 | `system.disk-low` `{mount, freePct, freeGb}` | Système (Rust, toutes les 30 s) | notification 💽 : disque presque plein |
-| `remote.changed` `{favorites: [{id, name, kind}]}` | Accès distants (Rust, et front au démarrage) | le Lanceur met à jour ses serveurs (sans les adresses) |
+| `remote.changed` `{favorites: [{id, name, kind, wake}]}` | Accès distants (Rust, et front au démarrage) | le Lanceur met à jour ses serveurs (sans les adresses ni les MAC ; `wake` = a une adresse MAC) |
 | `remote.connect` `{id}` | Lanceur (front) | Accès distants ouvre ce favori |
+| `remote.wake` `{id}` | Lanceur (front) | Accès distants envoie le paquet Wake-on-LAN de ce favori |
+| `remote.waking` `{id, name}` | Accès distants (Rust) | paquet parti : notification ⏰, le point du favori « respire » |
+| `remote.wake-done` `{id, name, awake, secs, ms?}` ou `{error}` | Accès distants (Rust) | notification « NAS est réveillé » / « ne répond toujours pas » (ou l'erreur) |
+| `shelf.phone` `{id, state}` | Étagère (Rust, fil du petit serveur) | « Vers le téléphone » : `sending` (le téléphone télécharge), puis `done` (notification), `expired` ou `stopped` ; le panneau se ferme |
 | `agents.event` `{source, kind, title, body, project, at, changes?}` | Agents IA (Rust) | notification (✋ « attend ta permission » en priorité haute, ✅ « a fini », avec le bilan git `changes` s'il y en a un) et historique |
 | `agents.projects` `{tools, projects: [{index, name}]}` | Agents IA (Rust) | le Lanceur propose « Claude Code · projet », « Codex · projet »… |
 | `agents.launch` `{tool, index?}` | Lanceur (front) | Agents IA ouvre cet agent dans ce projet |
@@ -356,6 +360,14 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
   chemins relatifs, inexistants ou situés dans un dossier exclu (après résolution
   des `..` et des liens). Un module qui envoie du contenu à l'API Claude déclare
   `claude-api` (affiché dans les réglages) et montre ce qui part avant l'envoi.
+- **Réseau local** (`lan.rs`) : les adresses IPv4 des cartes réseau en marche
+  (crate `sysinfo`, sans 127.0.0.1 ni 169.254.x.x), l'adresse de diffusion d'un
+  réseau (`broadcast`), l'adresse de la route par défaut (une « connexion »
+  UDP vers 192.0.2.1, adresse de documentation : aucun paquet ne part) et le
+  choix de l'adresse privée à donner à un téléphone (`pick_private` : celle de
+  la route par défaut si elle est privée et pas virtuelle, sinon une vraie carte
+  avant une carte de VPN / machine virtuelle, 192.168 > 172.16 > 10). Utilisé
+  par le Wake-on-LAN et « Vers le téléphone ».
 
 ## La mascotte
 
@@ -488,7 +500,8 @@ Front : `src/modules/shelf/index.ts`. Rust : `src-tauri/src/modules/shelf.rs`.
   envoie au front l'événement `file-drag` (`enter`/`over`/`leave`/`drop`, chemins,
   position en pixels physiques). Elle ne lit que la liste des chemins.
 - **Par élément** : 📂 Montrer dans l'Explorateur, 📄 Copier vers…, 📦 Déplacer
-  vers… (mêmes commandes `copy_to` / `move_to`, donc même annulation), 📋, 🗑️, ×.
+  vers… (mêmes commandes `copy_to` / `move_to`, donc même annulation), 📋,
+  📱 Vers le téléphone (fichiers seulement, voir plus bas), 🗑️, ×.
 - **Sortir un élément en le glissant (Windows)** : appuyer sur une ligne puis
   bouger de 6 px appelle `drag_out`. Le Rust (`platform/drag_out.rs`) crée un
   objet de données du Shell (`SHCreateDataObject` avec les PIDL des fichiers)
@@ -504,6 +517,26 @@ Front : `src/modules/shelf/index.ts`. Rust : `src-tauri/src/modules/shelf.rs`.
 - La boîte « Choisir un dossier » est la commande `dialog_pick_folder`
   (plugin officiel `tauri-plugin-dialog`), appelée depuis le Rust uniquement :
   les pages n'ont pas accès au plugin directement.
+- **📱 Vers le téléphone** (`shelf_phone.rs`, front `phone.ts` ; permission
+  `network`) : sur un fichier de l'étagère (`phone_share {path}`, chemin validé
+  et présent sur l'étagère). Le Rust choisit l'adresse privée du PC
+  (`services/lan.rs` ; aucune → refus avec un message clair), ouvre un
+  `TcpListener` (std, aucune crate) sur cette adresse et un port donné par
+  Windows, et tire un jeton de 128 bits (`getrandom`). Seule l'adresse
+  `http://IP:port/<jeton>/<nom encodé>` sert le fichier (GET ; HEAD = en-têtes
+  seulement ; autre méthode = 405) ; toute autre adresse = 404 vide, une demande
+  illisible = 400. Comparaison du jeton en temps constant ; nom trop long →
+  `fichier.ext` dans l'adresse (le vrai nom part dans `Content-Disposition:
+  attachment`). Envoi par morceaux de 64 Ko (gros fichiers), un fil par
+  connexion (8 au plus). « Téléchargement complet » = tout écrit ET le
+  téléphone ferme proprement la connexion (une annulation la réinitialise).
+  Fin : un téléchargement complet, 5 minutes (un envoi commencé peut finir) ou
+  `phone_stop` ; un nouveau partage arrête le précédent. Le fil prévient par
+  `shelf.phone` `{id, state}`. L'île montre le QR code (`clipboard_qr.rs`,
+  mêmes classes CSS que le Presse-papiers), l'adresse, le compte à rebours et
+  « Arrêter » ; `phone_status` le retrouve si l'île redémarre. Le journal ne
+  contient ni l'adresse ni le jeton. Pare-feu : Windows demande la première
+  fois d'autoriser Ondine (réseaux privés).
 
 ## Module Musique (phase 3)
 
@@ -884,8 +917,21 @@ s'il n'existe pas ou est désactivé).
   (3389 / 22 par défaut, 1,5 s au plus), rien n'est envoyé. Point vert avec
   le temps de réponse, ou rouge.
 - Le journal note le type de connexion, jamais l'adresse.
-- Lanceur : il reçoit la liste par `remote.changed` (numéro, nom, type) et
-  demande l'ouverture par `remote.connect {id}`.
+- Lanceur : il reçoit la liste par `remote.changed` (numéro, nom, type, `wake`)
+  et demande l'ouverture par `remote.connect {id}`, le réveil par
+  `remote.wake {id}` (« Réveiller NAS », pour un favori avec adresse MAC).
+- **Wake-on-LAN** (`remote_wol.rs`) : adresse MAC facultative par favori
+  (`mac` dans remote.json, absente des anciens fichiers ; lue sous les formes
+  `AA:BB:…`, `AA-BB-…`, `AABB…`, rangée `AA:BB:CC:DD:EE:FF` ; une MAC abîmée à
+  la main est oubliée, pas le favori). `wake {id}` : paquet magique (6 × FF puis
+  16 × la MAC, 102 octets) en UDP port 9, std::net, envoyé 3 fois : vers
+  255.255.255.255 par la route par défaut, puis depuis chaque carte IPv4 en
+  marche vers 255.255.255.255 et son adresse de diffusion (`services/lan.rs`).
+  Puis un fil teste le serveur (même `probe` que « Tester ») tout de suite puis
+  toutes les 5 s, 2 min au plus → `remote.waking`, puis `remote.wake-done`.
+  Un seul fil d'attente par favori (un deuxième clic renvoie le paquet). Le
+  journal ne contient ni l'adresse ni la MAC. Venue du lanceur (bus, fil de
+  l'interface), la demande est traitée dans un fil à part.
 
 ### Module Réseau (`src/modules/nettools/`, `src-tauri/src/modules/nettools.rs`)
 

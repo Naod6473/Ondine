@@ -1187,7 +1187,39 @@
 "Proposer de rejoindre la réunion (minutes avant, 0 = jamais)": "Offer to join the meeting (minutes before, 0 = never)",
 "Pour une réunion Teams, Meet, Zoom ou Webex : une alerte « Réunion dans 2 min » avec « Rejoindre », une seule fois par rendez-vous. Rejoindre met la musique en pause et vous prévient si votre micro est coupé.": "For a Teams, Meet, Zoom or Webex meeting: a “Meeting in 2 min” alert with “Join”, only once per appointment. Joining pauses the music and warns you if your mic is muted.",
 "Votre micro est coupé": "Your mic is muted",
-"Rétablir le micro": "Unmute the mic"
+"Rétablir le micro": "Unmute the mic",
+"Vos serveurs Bureau à distance (RDP) et SSH en favoris, ouverts en un clic depuis l'île ou le lanceur. Enregistrés sur votre ordinateur (%APPDATA%\\Ondine\\remote.json), sans aucun mot de passe. « Tester » vérifie seulement que le serveur répond. Avec son adresse MAC, un favori éteint peut être réveillé (Wake-on-LAN, réseau local seulement).": "Your Remote Desktop (RDP) and SSH servers as favorites, opened in one click from the island or the launcher. Saved on your computer (%APPDATA%\\Ondine\\remote.json), with no passwords at all. “Test” only checks that the server responds. With its MAC address, a favorite that is off can be woken up (Wake-on-LAN, local network only).",
+"Glissez des fichiers sur l'île pour les poser sur l'étagère, les envoyer à la Corbeille, les copier ou les déplacer (dossiers favoris compris), copier leur chemin, les compresser, convertir ou réduire des images, ou renommer plusieurs fichiers d'un coup (avec aperçu). Toute action sur les fichiers est annulable quelques secondes. « Vers le téléphone » envoie un fichier à un téléphone du même Wi-Fi par un QR code : réseau local seulement, 5 minutes au plus, rien ne passe par Internet.": "Drag files onto the island to drop them on the shelf, send them to the Recycle Bin, copy or move them (favorite folders included), copy their path, compress them, convert or shrink images, or rename several files at once (with preview). Every file action can be undone for a few seconds. “To the phone” sends a file to a phone on the same Wi-Fi with a QR code: local network only, 5 minutes at most, nothing goes over the Internet.",
+"Paquet envoyé sur le réseau local. Test toutes les 5 s, 2 min au plus.": "Packet sent on the local network. Checking every 5 s, for 2 min at most.",
+"Réveil impossible": "Couldn't wake it up",
+"Il répondait déjà.": "It was already responding.",
+"Vérifiez que le Wake-on-LAN est activé (BIOS et carte réseau) et que le serveur est sur le même réseau local.": "Check that Wake-on-LAN is enabled (BIOS and network card) and that the server is on the same local network.",
+"Réveil en cours…": "Waking up…",
+"Réveil en cours… (cliquer renvoie le paquet)": "Waking up… (click to send the packet again)",
+"Réveiller (Wake-on-LAN)": "Wake up (Wake-on-LAN)",
+"Réveiller": "Wake up",
+"AA:BB:CC:DD:EE:FF (facultatif)": "AA:BB:CC:DD:EE:FF (optional)",
+"Pour « Réveiller » (Wake-on-LAN). Serveur allumé, « arp -a » dans un terminal la donne.": "For “Wake up” (Wake-on-LAN). With the server on, “arp -a” in a terminal shows it.",
+"Adresse MAC (réveil)": "MAC address (wake-up)",
+"ce favori n'a pas d'adresse MAC : ajoutez-la (✎) pour pouvoir le réveiller": "this favorite has no MAC address: add it (✎) to be able to wake it up",
+"adresse MAC invalide : 12 chiffres hexadécimaux, ex. AA:BB:CC:DD:EE:FF": "invalid MAC address: 12 hexadecimal digits, e.g. AA:BB:CC:DD:EE:FF",
+"adresse MAC invalide : ce n'est pas celle d'une carte réseau": "invalid MAC address: that's not a network card's address",
+"📱 Vers le téléphone": "📱 To the phone",
+"Vers le téléphone": "To the phone",
+"Vers le téléphone (même Wi-Fi, QR code)": "To the phone (same Wi-Fi, QR code)",
+"Le téléphone a reçu le fichier": "The phone received the file",
+"Lien vers le téléphone expiré": "Link to the phone expired",
+"Envoi vers le téléphone impossible": "Couldn't send to the phone",
+"Le téléphone télécharge…": "The phone is downloading…",
+"Scannez le QR code avec l'appareil photo du téléphone.": "Scan the QR code with the phone's camera.",
+"Le lien a expiré.": "The link has expired.",
+"L'adresse, si le téléphone ne lit pas le QR code": "The address, in case the phone can't read the QR code",
+"Le téléphone doit être sur le même Wi-Fi que le PC. La première fois, Windows peut demander d'autoriser Ondine sur les réseaux privés : acceptez, sinon le téléphone ne trouvera pas le PC.": "The phone must be on the same Wi-Fi as the PC. The first time, Windows may ask you to allow Ondine on private networks: accept, otherwise the phone won't find the PC.",
+"Fermer le partage tout de suite": "Close the share right away",
+"Expire dans": "Expires in",
+"cet élément n'est plus sur l'étagère": "this item is no longer on the Shelf",
+"seul un fichier peut être envoyé au téléphone (pas un dossier)": "only a file can be sent to the phone (not a folder)",
+"aucun réseau local trouvé : connectez le PC au Wi-Fi (ou au réseau) de la maison ou du bureau, le même que le téléphone, puis réessayez": "no local network found: connect the PC to the home or office Wi-Fi (or network), the same one as the phone, then try again"
 },
 "patterns": [
 [
@@ -2217,6 +2249,50 @@
 [
 "^VS Code ne s'ouvre pas : (.+)$",
 "VS Code won't open: $1"
+],
+[
+"^Réveil de (.+)…$",
+"Waking $1…"
+],
+[
+"^(.+) est réveillé$",
+"$1 is awake"
+],
+[
+"^Il répond après (\\d+) s\\.$",
+"Responding after $1 s."
+],
+[
+"^(.+) ne répond toujours pas$",
+"$1 still isn't responding"
+],
+[
+"^Réveiller (.+)$",
+"Wake up $1"
+],
+[
+"^impossible d'ouvrir le partage sur le réseau local \\((.+)\\)$",
+"can't open the share on the local network ($1)"
+],
+[
+"^paquet de réveil impossible à envoyer \\((.*)\\)$",
+"couldn't send the wake-up packet ($1)"
+],
+[
+"^fichier illisible : (.+)$",
+"unreadable file: $1"
+],
+[
+"^(\\d+),(\\d) (K|M|G)o$",
+"$1.$2 $3B"
+],
+[
+"^(\\d+) (K|M|G)o$",
+"$1 $2B"
+],
+[
+"^(\\d+) o$",
+"$1 B"
 ]
 ]
 }

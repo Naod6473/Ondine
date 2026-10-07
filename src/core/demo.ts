@@ -434,6 +434,11 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     case "shelf.copy_to":
     case "shelf.move_to":
       return { count: Array.isArray(args.paths) ? args.paths.length : 1, error: null };
+    // Vers le téléphone : aucun serveur n'est ouvert, l'adresse est inventée.
+    case "shelf.phone_share": {
+      const name = String(args.path ?? "").split("\\").pop() || "Présentation.pptx";
+      return { id: 1, url: `http://192.168.1.20:51234/4f1c2a9e7b3d4c5a8e6f0a1b2c3d4e5f/${encodeURIComponent(name)}`, qr: demoQr().image, name, size: 2_516_582, seconds: 300 };
+    }
 
     // Système, réseau, accès distants
     case "system.snapshot":
@@ -450,11 +455,18 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return {
         favorites: [
           { id: 1, name: "Serveur web", kind: "ssh", host: "web.exemple.fr", port: 22, user: "admin" },
-          { id: 2, name: "Poste de l'accueil", kind: "rdp", host: "accueil.exemple.local", port: null, user: "" },
+          { id: 2, name: "Poste de l'accueil", kind: "rdp", host: "accueil.exemple.local", port: null, user: "", mac: "02:4F:4E:44:49:4E" },
         ],
       };
     case "remote.probe":
       return { online: true, ms: 10 + Number(args.id) * 7 };
+    // Réveiller : rien ne part, le « poste » répond au bout de 4 s.
+    case "remote.wake": {
+      const fav = { id: Number(args.id), name: "Poste de l'accueil" };
+      bus.inject("remote.waking", fav, "remote");
+      window.setTimeout(() => bus.inject("remote.wake-done", { ...fav, awake: true, secs: 4, ms: 3 }, "remote"), 4000);
+      return { sent: 3 };
+    }
     case "rules.list":
       return {
         rules: [

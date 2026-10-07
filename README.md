@@ -157,6 +157,15 @@ fichiers d'un coup (avec aperçu), les envoyer à la Corbeille, ou les faire
 glisser hors de l'île vers l'Explorateur ou le Bureau (Ctrl : copier, Maj :
 déplacer). Toute action sur les fichiers est annulable quelques secondes.
 
+**📱 Vers le téléphone** (sur un fichier de l'étagère) : l'île montre un QR code ;
+visez-le avec l'appareil photo du téléphone, et le navigateur du téléphone
+télécharge le fichier. Le téléphone doit être sur **le même Wi-Fi** que le PC :
+Ondine ouvre un tout petit serveur sur le réseau local seulement (jamais sur
+Internet), qui sert ce seul fichier à une adresse secrète (un jeton au hasard de
+128 bits), puis se ferme après un téléchargement complet, au bout de 5 minutes
+ou sur « Arrêter ». La première fois, Windows peut demander d'autoriser Ondine
+sur les **réseaux privés** : acceptez, sinon le téléphone ne trouvera pas le PC.
+
 - **Dossiers favoris** : chacun devient une cible quand vous glissez des fichiers sur l'île ; **Lâcher sur un favori** copie (par défaut) ou déplace.
 - **Cibles « Corbeille », « Compresser », « Images » et « Renommer »** (oui)
 - **Poser sur l'étagère chaque nouveau fichier téléchargé** (oui) : le dossier Téléchargements est regardé toutes les 3 secondes.
@@ -275,6 +284,14 @@ depuis l'île ou le lanceur. Enregistrés sur votre PC
 (`%APPDATA%\Ondine\remote.json`), **sans aucun mot de passe**. « Tester »
 vérifie seulement que le serveur répond.
 
+**⏰ Réveiller (Wake-on-LAN)** : donnez à un favori son adresse MAC (facultatif ;
+`AA:BB:CC:DD:EE:FF`, `AA-BB-…` ou `AABBCCDDEEFF` ; serveur allumé, `arp -a` la
+donne). Le bouton ⏰ envoie le « paquet magique » sur le réseau local (sur chaque
+carte réseau), puis teste le serveur toutes les 5 s pendant 2 min au plus : l'île
+dit « NAS est réveillé » dès qu'il répond, ou qu'il ne répond toujours pas. Le
+lanceur propose aussi « Réveiller NAS ». Le Wake-on-LAN doit être activé sur la
+machine à réveiller (BIOS et carte réseau), sur le même réseau local.
+
 - **Ouvrir SSH dans** : une fenêtre de console (par défaut) ou Windows Terminal
 - **Bureau à distance en plein écran** (non) ; **Tester les serveurs à l'ouverture de l'onglet** (oui)
 
@@ -376,7 +393,7 @@ seulement affichée : rien n'est exécuté.
 
 **Alt+Espace** ouvre une recherche : applications du menu Démarrer, outils
 Windows (Services, Gestionnaire de périphériques…), fichiers récents, serveurs
-favoris, projets des agents et actions de l'île (« 10 min » lance un
+favoris (et « Réveiller … » pour ceux qui ont une adresse MAC), projets des agents et actions de l'île (« 10 min » lance un
 minuteur). Il cherche aussi **dans l'île** : notes et tâches, presse-papiers,
 étagère et captures. ↑ ↓ pour choisir, Entrée pour ouvrir.
 
@@ -510,6 +527,8 @@ tout seul**, selon les jours et les heures, ou le nom du Wi-Fi.
   ou le demandez. La liste complète : [PRIVACY.md](PRIVACY.md).
 - « Demander à Claude » envoie le texte choisi à l'API d'Anthropic, avec **votre**
   clé, seulement après vous avoir montré ce qui part.
+- « Vers le téléphone » (Étagère) et « Réveiller » (Accès distants) restent sur
+  le réseau local, seulement quand vous cliquez : rien ne part sur Internet.
 - Les clés et liens secrets sont rangés dans le Gestionnaire d'identifiants de
   Windows, jamais en clair dans un fichier ni dans le journal.
 - Rien n'est supprimé définitivement : tout passe par la Corbeille, avec une annulation.

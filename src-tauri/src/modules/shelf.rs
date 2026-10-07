@@ -9,7 +9,9 @@
 //     plusieurs fichiers selon un modèle ;
 //   - Téléchargements (réglage) : un fichier qui vient d'arriver dans le dossier
 //     Téléchargements est posé tout seul sur l'étagère, une fois fini (taille
-//     stable, plus de « .crdownload » / « .part »).
+//     stable, plus de « .crdownload » / « .part ») ;
+//   - « Vers le téléphone » (shelf_phone.rs) : un fichier de l'étagère est
+//     servi un court moment sur le réseau local, son adresse en QR code.
 //
 // Règles appliquées ici :
 //   - chaque chemin reçu du front est validé (ctx.check_path : chemin absolu,
@@ -29,6 +31,7 @@ use std::sync::{Arc, Mutex};
 use serde_json::{json, Value};
 use tauri::AppHandle;
 
+use super::shelf_phone;
 use super::shelf_tools::{self, OutFormat};
 use super::{ModuleContext, RustModule};
 use crate::services::undo::DEFAULT_WINDOW;
@@ -47,6 +50,8 @@ type Items = Arc<Mutex<Vec<PathBuf>>>;
 #[derive(Default)]
 pub struct Shelf {
     items: Items,
+    /// « Vers le téléphone » : le partage en cours (un seul à la fois).
+    phone: shelf_phone::Phone,
 }
 
 impl RustModule for Shelf {
@@ -75,6 +80,20 @@ impl RustModule for Shelf {
                 let revealed = super::launcher::open_checked(&path)?;
                 Ok(json!({ "revealed": revealed }))
             }
+            // { path } → { id, url, qr, name, size, seconds } : « Vers le
+            // téléphone », pour un fichier de l'étagère (shelf_phone.rs).
+            "phone_share" => {
+                let path = ctx.check_path(arg_str(&args, "path"))?;
+                if !self.items.locked().contains(&path) {
+                    return Err("cet élément n'est plus sur l'étagère".into());
+                }
+                self.phone.share(ctx, &path)
+            }
+            "phone_stop" => {
+                self.phone.stop();
+                Ok(Value::Null)
+            }
+            "phone_status" => Ok(self.phone.status()),
             "add" => {
                 let added = self.add(ctx, &args)?;
                 Ok(json!({ "added": added }))
