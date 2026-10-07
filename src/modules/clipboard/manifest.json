@@ -1,6 +1,7 @@
 {
   "id": "clipboard",
   "name": "Presse-papiers",
+  "tip": "Cliquez sur une copie pour la coller dans la fenêtre où vous étiez.",
   "icon": "📋",
   "description": "Garde l'historique de vos copies de texte (recherche, épinglage), colle sans mise en forme, range vos textes fréquents en snippets, retire les traqueurs des liens copiés (utm_source, fbclid…) change la casse d'un texte en un clic, et génère des mots de passe (copiés en secret, effacés au bout de 30 s, jamais enregistrés). Les copies que Windows signale comme sensibles (mots de passe) sont ignorées. L'historique reste en mémoire et disparaît à la fermeture de l'île ; seuls les éléments épinglés et les snippets sont enregistrés, sur votre ordinateur.",
   "version": "0.1.0",

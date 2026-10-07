@@ -1,6 +1,7 @@
 {
   "id": "rules",
   "name": "Règles",
+  "tip": "Créez vos règles dans Réglages → Règles ; ici, vous les suivez et pouvez tout mettre en pause.",
   "icon": "⚡",
   "description": "Automatisations « Quand… alors… » : un fichier arrive dans un dossier, une clé USB est branchée, un raccourci clavier est pressé, ou un événement de l'île. Tout déplacement propose « Annuler », rien n'est supprimé définitivement, et aucune règle ne peut lancer de programme.",
   "version": "0.1.0",

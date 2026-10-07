@@ -106,6 +106,8 @@ export const Bridge = {
   updateCheck: () => callOrThrow<UpdateInfo | null>("update_check"),
   /** Télécharge et installe : Ondine se ferme puis se relance toute seule. */
   updateInstall: () => callOrThrow<void>("update_install"),
+  /** « Quoi de neuf » → « Tout voir » : la page GitHub de la version qui tourne (src-tauri/src/update.rs). */
+  releasePageOpen: () => callOrThrow<void>("release_page_open"),
 
   quit: () => call<void>("app_quit"),
 

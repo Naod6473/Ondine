@@ -31,7 +31,7 @@ The intro video is on the website: [ondine.pissits.com](https://ondine.pissits.c
 - [Install](#install)
 - [Getting started](#getting-started)
 - [The tabs](#the-tabs): [Music](#music) · [Controls](#controls) · [Shelf](#shelf) · [Clipboard](#clipboard) · [Capture](#capture) · [Timer](#timer) · [Notes](#notes) · [Calendar](#calendar) · [Terminal](#terminal) · [System](#system) · [Remote access](#remote-access) · [Network](#network) · [AI agents](#ai-agents) · [Ask Claude](#ask-claude) · [Launcher](#launcher) · [Rules](#rules)
-- [No tab: Breaks and Weather](#no-tab-breaks-and-weather)
+- [No tab: Breaks, Weather and Weekly summary](#no-tab-breaks-weather-and-weekly-summary)
 - [Settings](#settings)
 - [Privacy and security](#privacy-and-security)
 - [Build from source](#build-from-source)
@@ -54,6 +54,10 @@ The intro video is on the website: [ondine.pissits.com](https://ondine.pissits.c
    by GitHub Actions from this repository's public source code
    ([release.yml](.github/workflows/release.yml)).
 
+**Coming soon: `winget install Naod6473.Ondine`** — *not available yet*: the
+package hasn't been submitted to Microsoft's winget catalog yet. In the
+meantime, use the installer above.
+
 On first launch, Ondine says hello at the top of the screen and explains how to
 open it. It then starts with Windows (setting **Start with Windows**).
 
@@ -64,6 +68,12 @@ offers it to you; **nothing is installed without your consent**. You can also
 check right away (Settings → General → Updates → **Check now**) or turn the
 check off (**Automatic updates**). Updates are verified with a signature
 (Tauri's update key) before they are installed.
+
+On the first launch after an update, the island shows **"What's new in Ondine
+X.Y.Z"** once: the version's three main changes (taken from the
+[CHANGELOG](CHANGELOG.md), built into the app), and **See all**, which opens the
+version's page on GitHub. To see it again: Settings → General → About → **See
+what's new**.
 
 ### Uninstall
 
@@ -118,6 +128,10 @@ afterwards.
 Each tab is a module. You can turn them off, reorder them (Settings → Tabs) and
 adjust each one in its Settings page. Below, each module's main settings, with
 their default value.
+
+The first time you open a tab, a small bubble from Ondine explains its main
+gesture in one sentence ("Drag a file onto the island to put it here."); **OK**
+closes it. See [Settings → Tabs](#tabs).
 
 ### Music
 
@@ -207,6 +221,9 @@ when it's over. From the launcher, type "10 min" to start a timer.
 are not silenced (for that, start a "Focus" session in the Windows 11 Clock
 app).
 
+Pomodoro work sessions count toward the
+[weekly summary](#no-tab-breaks-weather-and-weekly-summary).
+
 - **Pomodoro**: work 25 min, short break 5 min, long break 15 min every 4 sessions; **chain work and breaks automatically** (on)
 - **Play a sound at the end** (on), **Show the time in the island's pill** (on), **Focus mode during Pomodoro** (on)
 
@@ -215,7 +232,8 @@ app).
 <img src="docs/captures/en/onglet-notes.webp" width="696" alt="Notes tab: to-do list">
 
 Quick notes and a to-do list, saved on your PC (`%APPDATA%\Ondine\notes.json`).
-Deleting offers "Undo".
+Deleting offers "Undo". Checked-off tasks count toward the
+[weekly summary](#no-tab-breaks-weather-and-weekly-summary).
 
 - **Remind me of pending tasks at startup** (off)
 
@@ -416,7 +434,7 @@ and can pause them all.
 
 ---
 
-## No tab: Breaks and Weather
+## No tab: Breaks, Weather and Weekly summary
 
 <p align="center"><img src="docs/captures/en/mini-meteo.webp" width="396" alt="Weather in the mini island: 21° in Lyon"></p>
 
@@ -433,6 +451,16 @@ screen (**every 50 minutes of screen time** by default, 0 = never). Stays quiet
 during a presentation, a call (**Say nothing during a call**, on) or if you
 just took a break. Ondine only looks at how long the mouse and keyboard have
 been in use.
+
+**Weekly summary**: every week, a notification sums up what you've done:
+**Pomodoros completed**, **focus time** (Timer work sessions) and **tasks
+checked off** in Notes, and the mascot celebrates. Only if something happened.
+If the PC was off at that time, the summary comes at the next startup (within 2
+days), once a week at most. The counters stay on your PC
+(`%APPDATA%\Ondine\weekly.json`) and only hold numbers, never the text of your
+tasks. Settings: **Summary day** (Friday) and **Summary time** (17:00); **See the
+summary now** shows the current week. To stop it, turn the module off
+(Settings → Tabs → No tab).
 
 ---
 
@@ -457,7 +485,7 @@ page (on/off switch, permissions, full description, settings).
 - **Updates**: automatic (on), check now, installed version
 - **Performance**: High performance, **Balanced** (default) or Power saving; **Automatic power saving on battery** (on)
 - **Log**: level and folder (`%LOCALAPPDATA%\Ondine\logs`); it never contains keys or file contents
-- **About**: **Report a problem** opens a prefilled GitHub issue in your browser (version, Windows, last 40 log lines, personal paths hidden); you review everything before sending. **Resources used**: Ondine's memory and CPU.
+- **About**: **See what's new** shows the installed version's "What's new" again; **Report a problem** opens a prefilled GitHub issue in your browser (version, Windows, last 40 log lines, personal paths hidden); you review everything before sending. **Resources used**: Ondine's memory and CPU.
 - **Screenshots**: [demo mode](#getting-started)
 
 ### Appearance
@@ -477,6 +505,9 @@ Animations respect Windows' "Animation effects" (reduce motion) setting.
 
 Turn each module on or off, and order the tabs (drag a row, or use ↑ ↓;
 "Original order" resets it). You can also drag tabs directly in the island.
+
+- **Tips the first time a tab opens** (on): the small bubble that explains a tab's main gesture, the first time only (never in demo mode or over an alert)
+- **Show the tips again**: they'll come back the next time each tab opens
 
 ### Mascot
 

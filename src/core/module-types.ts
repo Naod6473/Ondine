@@ -56,6 +56,12 @@ export interface ModuleManifest {
   /** Un emoji pour l'instant (une image plus tard). */
   icon: string;
   description: string;
+  /**
+   * Pour un module à onglet : son geste principal, en une phrase (vouvoiement).
+   * Ondine le montre dans une petite bulle la première fois qu'on ouvre
+   * l'onglet (src/island/tips.ts).
+   */
+  tip?: string;
   version: string;
   permissions: Permission[];
   settings?: { version: number; fields: SettingField[] };

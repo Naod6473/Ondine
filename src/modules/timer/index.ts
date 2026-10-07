@@ -8,6 +8,9 @@
 // d'une séance Pomodoro, l'île s'ouvre en alerte, avec un petit son, et la
 // mascotte fait la fête (sujet "task.finished").
 //
+// Bilan de la semaine : chaque séance de travail Pomodoro qui s'arrête publie
+// "timer.work-session" {seconds, completed} (voir « Séances de travail » plus bas).
+//
 // Mode concentration (réglage « focusQuiet ») : pendant une séance de travail
 // Pomodoro qui tourne, on publie "timer.focus" {on: true} ; l'île met alors
 // ses notifications en attente (voir island.ts, wireFocus). En pause, à l'arrêt
@@ -171,6 +174,33 @@ function syncFocus(api: ModuleApi, force?: boolean) {
   api.emit("timer.focus", { on: wanted });
 }
 
+// ── Séances de travail, pour le bilan de la semaine ─────────────────────────
+//
+// Quand une séance de travail Pomodoro s'arrête (finie, mise en pause, passée,
+// remise à zéro, module coupé), on publie "timer.work-session"
+// {seconds, completed} : le module Bilan de la semaine fait les comptes.
+// `seconds` = ce que le compte à rebours a avancé : un PC en veille pendant la
+// séance ne compte jamais plus que la séance elle-même.
+
+/** Ce qui restait (ms) quand la séance de travail a commencé à tourner ; null = rien ne tourne. */
+let workFrom: number | null = null;
+
+/** La séance de travail en cours s'arrête : on publie sa durée. */
+function endWork(api: ModuleApi, completed: boolean) {
+  if (workFrom === null) return;
+  const left = completed ? 0 : remaining(pomodoro.clock);
+  const seconds = Math.max(0, Math.round((workFrom - left) / 1000));
+  workFrom = null;
+  if (seconds > 0 || completed) api.emit("timer.work-session", { seconds, completed });
+}
+
+/** Suit la séance de travail : commence à compter quand elle tourne, publie quand elle s'arrête. */
+function trackWork(api: ModuleApi) {
+  const working = pomodoro.phase === "work" && running(pomodoro.clock);
+  if (working && workFrom === null) workFrom = remaining(pomodoro.clock);
+  else if (!working) endWork(api, false);
+}
+
 /** Quelque chose tourne-t-il ? (pour la pilule) */
 function anyActive(): boolean {
   return running(timer) || running(pomodoro.clock) || stopwatch.startedAt !== null;
@@ -181,9 +211,13 @@ function tick(api: ModuleApi) {
     reset(timer);
     finished(api, "Minuteur terminé", `${clock(timer.total)} écoulées`, "⏱️");
   }
+  trackWork(api);
   if (running(pomodoro.clock) && remaining(pomodoro.clock) === 0) {
     const ended = pomodoro.phase;
-    if (ended === "work") pomodoro.done++;
+    if (ended === "work") {
+      pomodoro.done++;
+      endWork(api, true);
+    }
     pomodoro.phase = nextPhase(api);
     reset(pomodoro.clock, phaseMs(api, pomodoro.phase));
     const auto = Boolean(api.settings().autoNext);
@@ -195,6 +229,8 @@ function tick(api: ModuleApi) {
       ended === "work" ? "☕" : "🍅",
     );
   }
+  // Une séance de travail enchaînée après une pause commence à compter.
+  trackWork(api);
   syncFocus(api);
   // La pilule n'a besoin d'être changée que quand ça démarre ou s'arrête.
   const active = anyActive();
@@ -281,7 +317,9 @@ export const timerModule: IslandModule = {
       stopTick();
       off();
       offStart();
-      // Module coupé en pleine séance : les notifications de l'île reprennent.
+      // Module coupé en pleine séance : le temps déjà passé compte pour le bilan.
+      endWork(api, false);
+      // Et les notifications de l'île reprennent.
       syncFocus(api, false);
     };
   },
@@ -406,6 +444,7 @@ export const timerModule: IslandModule = {
           pomodoro.started = true;
           if (running(pomodoro.clock)) pause(pomodoro.clock);
           else start(pomodoro.clock);
+          trackWork(api);
           syncFocus(api);
         }, "btn primary");
         const tomatoes = el("div", { class: "timer-tomatoes" });
@@ -424,12 +463,15 @@ export const timerModule: IslandModule = {
                 { class: "btn-row" },
                 toggle,
                 button("⏭ Passer", "Passer à la phase suivante", () => {
+                  // Le temps passé compte, mais la séance n'est pas « terminée ».
+                  endWork(api, false);
                   if (pomodoro.phase === "work") pomodoro.done++;
                   pomodoro.phase = nextPhase(api);
                   reset(pomodoro.clock, phaseMs(api, pomodoro.phase));
                   syncFocus(api);
                 }),
                 button("↺ Réinitialiser", "Recommencer à zéro", () => {
+                  endWork(api, false);
                   pomodoro.phase = "work";
                   pomodoro.done = 0;
                   pomodoro.started = false;

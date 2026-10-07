@@ -23,6 +23,8 @@ ondine/
 ├─ settings.html              page de la fenêtre de réglages
 ├─ annotate.html              page de la fenêtre d'annotation des captures
 ├─ scripts/gen-icons.mjs      dessine l'icône de l'appli (npm run icons)
+├─ scripts/winget-manifests.mjs  refait les manifestes winget d'une version (télécharge l'installateur, SHA-256)
+├─ packaging/winget/          manifestes winget prêts (Naod6473.Ondine), pas encore proposés à Microsoft ; README = comment les soumettre
 ├─ mascots/                   UNE MASCOTTE = UN DOSSIER (manifest.json + fichiers)
 │  ├─ goutte-gomme/           la goutte gomme, dessinée en code (gum.ts)
 │  ├─ goutte-classique/       la première goutte, mêmes poses et animations que goutte/
@@ -38,10 +40,12 @@ ondine/
 │  │  ├─ settings-store.ts    réglages côté front (copie synchronisée)
 │  │  ├─ types.ts             forme des réglages (miroir du Rust)
 │  │  ├─ world-cities.ts · world-time.ts   villes et fuseaux, heure ailleurs (horloges, Lanceur)
+│  │  ├─ whats-new.ts         « Quoi de neuf » après une mise à jour (changelog.ts lit CHANGELOG.md)
 │  │  └─ log.ts               journal côté front (écrit dans le fichier du Rust)
 │  ├─ island/
 │  │  ├─ island-state.ts      machine à états de l'île (sans DOM)
 │  │  ├─ island.ts            dessin, souris, clavier, glisser-déposer
+│  │  ├─ tips.ts              la bulle d'astuce à la première ouverture d'un onglet (règles : tip-state.ts)
 │  │  └─ dom.ts               petite aide `el()` pour créer du HTML sans framework
 │  ├─ mascot/
 │  │  ├─ renderer.ts          contrat MascotRenderer + liste des moteurs
@@ -58,7 +62,8 @@ ondine/
 │  │  ├─ notes/               Notes rapides et to-do (phase 6)
 │  │  ├─ agenda/              Prochain rendez-vous depuis un .ics (phase 6)
 │  │  ├─ terminal/            Ouvrir cmd / PowerShell en un clic (phase 7)
-│  │  └─ media/               Musique en cours de lecture (phase 3)
+│  │  ├─ media/               Musique en cours de lecture (phase 3)
+│  │  └─ weekly/              Bilan de la semaine (sans onglet)
 │  ├─ settings/               fenêtre de réglages (formulaires générés)
 │  ├─ annotate/               fenêtre d'annotation (dessin sur une capture)
 │  └─ styles/                 island.css, settings.css
@@ -189,6 +194,7 @@ Lu à la fois par le front (import) et par le Rust (`include_str!`).
 {
   "id": "hello",                      // minuscules, chiffres, tirets (exemple fictif)
   "name": "Bonjour", "icon": "👋", "description": "…", "version": "0.1.0",
+  "tip": "Cliquez sur « Saluer » pour dire bonjour.",   // module à onglet : la bulle de la 1re ouverture
   "permissions": [],                  // files, clipboard, network, claude-api, credentials
   "settings": { "version": 1, "fields": [
     { "key": "name", "type": "string", "label": "Ton prénom", "default": "Simon" }
@@ -322,6 +328,10 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `agenda.join` `{key, minutes}` | Agenda (Rust) | alerte « Réunion dans 2 min : … » avec « Rejoindre » (une fois par réunion en ligne) |
 | `media.pause` | Agenda (Rust, « Rejoindre ») | Musique met en pause ce qui joue (rien si c'est déjà en pause) |
 | `controls.mic-set` `{muted}` | Agenda (front, « Rétablir le micro ») | Contrôles coupe ou rétablit le micro, puis publie `controls.mic-muted` (`source: "request"`) |
+| `timer.work-session` `{seconds, completed}` | Minuteur (front) | une séance de travail Pomodoro s'arrête (finie, en pause, passée, remise à zéro, module coupé) : Bilan de la semaine ajoute le temps, et un Pomodoro si `completed` |
+| `notes.todo-toggled` `{done}` | Notes (Rust) | une tâche cochée (`true`) ou décochée : Bilan de la semaine compte (jamais le texte de la tâche) |
+| `weekly.show` | réglages (« Voir le bilan maintenant ») | Bilan de la semaine montre la semaine en cours (`peek`), sans rien consommer |
+| `app.whats-new` | réglages (« Voir les nouveautés ») | l'île montre « Quoi de neuf dans Ondine X.Y.Z » pour la version installée |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -683,6 +693,11 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   n'est PAS activé : pas d'API publique fiable (FocusSessionManager est une
   fonction à accès limité, la clé de registre des notifications n'est relue
   qu'au redémarrage du service, WNF n'est pas documenté).
+- Bilan de la semaine : chaque séance de travail Pomodoro qui s'arrête publie
+  `timer.work-session {seconds, completed}`. `seconds` = ce que le compte à
+  rebours a avancé depuis le départ (ou la reprise) : un PC en veille pendant
+  la séance ne compte jamais plus que la séance. `completed` seulement à la
+  fin naturelle d'une séance de travail (pas « Passer »).
 
 ### Module Notes (`src/modules/notes/`, `src-tauri/src/modules/notes.rs`)
 
@@ -693,6 +708,8 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   les animations (case cochée, texte barré, arrivée, départ) se font sans tout
   redessiner. Double-clic pour modifier une tâche.
 - Le texte des notes ne passe jamais par le bus ni par le journal.
+- Cocher / décocher une tâche publie `notes.todo-toggled {done}` (pour le
+  bilan de la semaine).
 
 ### Module Agenda (`src/modules/agenda/`, `src-tauri/src/modules/agenda.rs`)
 
@@ -1168,6 +1185,68 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
 - Pas d'onglet : vue compacte (icône + température + ville) quand aucun autre
   module n'occupe la pilule. Mode démo : une fausse météo (Lyon, 21°).
 
+## Bilan de la semaine (`src/modules/weekly/`, `src-tauri/src/modules/weekly.rs`)
+
+- Module sans onglet, sans permission. Réglages `day` ("1" lundi … "7"
+  dimanche, "5" par défaut) et `time` ("17:00", par demi-heure). Le désactiver
+  (Réglages → Onglets → Sans onglet) arrête tout : plus de comptes, plus de bilan.
+- Les comptes sont tenus par le Rust, qui écoute `timer.work-session` et
+  `notes.todo-toggled` (rien n'est compté en mode démo) : Pomodoros terminés,
+  secondes de concentration (4 h au plus par séance), tâches cochées (moins les
+  décochées, jamais sous zéro). Fichier `%APPDATA%\Ondine\weekly.json` :
+  `{current: {until, tally}, closed, lastShown}`, que des nombres et des dates
+  (heure du PC, à la minute) ; écrit via un fichier temporaire renommé, hors du
+  thread de l'interface ; un fichier abîmé est mis de côté.
+- Une « semaine » va d'un bilan au suivant (`next_slot` : le prochain jour et
+  heure réglés, strictement après maintenant). Le front demande `due` toutes
+  les minutes (cadence `weeklyCheck`) et une première fois 20 s après le
+  démarrage : le Rust fait avancer les semaines (`roll`) et rend le bilan une
+  seule fois (`take_due`), seulement s'il y a quelque chose (une minute de
+  concentration au moins, ou un Pomodoro, ou une tâche). PC éteint à l'heure
+  dite : le bilan sort encore dans les 2 jours, après il est oublié. Deux bilans
+  sont toujours à 6 jours d'écart au moins (jour du bilan changé : la semaine
+  trop courte s'ajoute à la suivante).
+- Bilan : `mascot.emote {emotion: "celebrate"}` puis une notification
+  `normal` de 15 s, « Le bilan de votre semaine » : « 3 Pomodoros terminés ·
+  2 h 05 de concentration · 7 tâches cochées » (chaque morceau traduit par
+  `t()`, `summary.ts`). `weekly.show` (bouton des réglages) montre `peek`, la
+  semaine en cours. Mode démo : `due` reste vide, `peek` répond une fausse
+  semaine.
+
+## Quoi de neuf (`src/core/whats-new.ts`, `src/core/changelog.ts`)
+
+- Réglage `general.lastSeenVersion` (vérifié par le Rust : 40 caractères au
+  plus, chiffres, lettres, `.`, `-`, `+`). Au démarrage de l'île, avant le mot
+  de bienvenue : même version → rien ; rien de noté et pas encore de bienvenue
+  (premier lancement) → la version est seulement notée ; sinon (mise à jour,
+  y compris depuis une version d'avant ce réglage) → notée, et la
+  notification. Jamais en mode démo ni dans un navigateur.
+- `CHANGELOG.md` est intégré à la construction (`?raw` de Vite). `changelog.ts`
+  lit les sections `## [X.Y.Z] · date` et leurs puces (une puce peut tenir sur
+  plusieurs lignes) ; chaque puce est « français · English » : on garde la
+  moitié de la langue de l'interface (coupure au premier « · » qui suit une
+  fin de phrase). Trois puces au plus, 120 caractères chacune.
+- Notification `high` et `sticky` (l'île s'ouvre en alerte, plus grande quand
+  le texte a plusieurs lignes : classe `lines`), avec « Tout voir » →
+  commande `release_page_open` (Rust, `update.rs`) : ouvre
+  `https://github.com/Naod6473/Ondine/releases/tag/v<version de l'appli>` dans
+  le navigateur ; la version vient du Rust, pas de la page. Réglages →
+  Général → À propos → « Voir les nouveautés » publie `app.whats-new`.
+
+## Astuces d'onglet (`src/island/tips.ts`, `src/island/tip-state.ts`)
+
+- Chaque module à onglet a un champ `tip` dans son manifeste : son geste
+  principal en une phrase, au « vous » (test : `tests/front/tips.test.ts`
+  vérifie la phrase, sa traduction anglaise et son tutoiement).
+- La première fois qu'un onglet s'affiche dans l'île ouverte, une bulle
+  (`.tip-bubble`, en bas à gauche du contenu) montre la phrase avec « OK ».
+  L'onglet est noté dans `island.tipsSeen` (64 au plus, vérifié par le Rust)
+  après « OK » ou 3 s à l'écran. La bulle disparaît quand l'île quitte l'état
+  `expanded` : jamais par-dessus une alerte. Jamais en mode démo. Arrivée
+  animée, sauf avec « réduire les animations ».
+- Réglages → Onglets → Astuces : `island.tips` (oui) et « Revoir les
+  astuces » (vide `tipsSeen`).
+
 ## Demander à Claude (`src/modules/askclaude/`, `src-tauri/src/modules/askclaude.rs`)
 
 Une erreur collée, un fichier texte ou une image (capture), une question :
@@ -1257,6 +1336,7 @@ Front (ms) :
 | Mascotte : ennui, sommeil | 2 000 | 2 000 | 4 000 | |
 | Ondine pend au bord ? / mode présentation | 15 000 / 2 000 | 15 000 / 4 000 | 30 000 / 8 000 | |
 | Pauses | 30 000 | 30 000 | 60 000 | |
+| Bilan de la semaine : l'heure du bilan ? | 60 000 | 60 000 | 120 000 | une première fois 20 s après le démarrage |
 | Dessins continus (mascotte, anneau du minuteur, chrono) | 60 im/s | 60 im/s | 30 im/s | `frameLoop` |
 
 En éco, en plus : les effets « Studio » (flou → net) sont remplacés par ceux de

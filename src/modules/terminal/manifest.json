@@ -1,6 +1,7 @@
 {
   "id": "terminal",
   "name": "Terminal",
+  "tip": "Déposez un dossier sur l'île pour y ouvrir un terminal.",
   "icon": "🖥️",
   "description": "Ouvre cmd, PowerShell, PowerShell 7 ou Windows Terminal en un clic, dans le dossier de votre choix (aussi en administrateur). Déposez un dossier sur l'île pour y ouvrir un terminal. L'île ne tape jamais de commande à votre place.",
   "version": "0.1.0",

@@ -31,7 +31,7 @@ La vidéo de présentation est sur le site : [ondine.pissits.com](https://ondine
 - [Installer](#installer)
 - [Premiers pas](#premiers-pas)
 - [Les onglets](#les-onglets) : [Musique](#musique) · [Contrôles](#contrôles) · [Étagère](#étagère) · [Presse-papiers](#presse-papiers) · [Capture](#capture) · [Minuteur](#minuteur) · [Notes](#notes) · [Agenda](#agenda) · [Terminal](#terminal) · [Système](#système) · [Accès distants](#accès-distants) · [Réseau](#réseau) · [Agents IA](#agents-ia) · [Demander à Claude](#demander-à-claude) · [Lanceur](#lanceur) · [Règles](#règles)
-- [Sans onglet : Pauses et Météo](#sans-onglet--pauses-et-météo)
+- [Sans onglet : Pauses, Météo et Bilan de la semaine](#sans-onglet--pauses-météo-et-bilan-de-la-semaine)
 - [Réglages](#réglages)
 - [Vie privée et sécurité](#vie-privée-et-sécurité)
 - [Construire depuis les sources](#construire-depuis-les-sources)
@@ -55,6 +55,10 @@ La vidéo de présentation est sur le site : [ondine.pissits.com](https://ondine
    L'installateur est construit par GitHub Actions à partir du code public de
    ce dépôt ([release.yml](.github/workflows/release.yml)).
 
+**Bientôt : `winget install Naod6473.Ondine`** — *pas encore disponible* : le
+paquet n'a pas encore été proposé au catalogue winget de Microsoft. En
+attendant, utilisez l'installateur ci-dessus.
+
 Au premier démarrage, Ondine vous dit bonjour en haut de l'écran et explique
 comment l'ouvrir. Elle se lance ensuite avec Windows (réglage
 **Lancer avec Windows**).
@@ -67,6 +71,12 @@ Vous pouvez aussi chercher tout de suite (Réglages → Général → Mises à j
 **Rechercher maintenant**) ou couper la vérification (**Mises à jour
 automatiques**). Les mises à jour sont vérifiées par une signature (clé de
 mise à jour de Tauri) avant d'être installées.
+
+Au premier démarrage après une mise à jour, l'île montre une fois **« Quoi de
+neuf dans Ondine X.Y.Z »** : les trois principales nouveautés de la version
+(tirées du [CHANGELOG](CHANGELOG.md), intégré à l'appli), et **Tout voir**, qui
+ouvre la page de la version sur GitHub. Pour la revoir : Réglages → Général →
+À propos → **Voir les nouveautés**.
 
 ### Désinstaller
 
@@ -121,6 +131,10 @@ téléchargé »…). Pensez à l'éteindre ensuite.
 Chaque onglet est un module. On peut les éteindre, les réordonner (Réglages →
 Onglets) et régler chacun dans sa page des Réglages. Ci-dessous, les réglages
 principaux de chacun, avec leur valeur par défaut.
+
+La première fois que vous ouvrez un onglet, une petite bulle d'Ondine explique
+son geste principal en une phrase (« Glissez un fichier sur l'île pour le poser
+ici. ») ; **OK** la referme. Voir [Réglages → Onglets](#onglets).
 
 ### Musique
 
@@ -214,6 +228,9 @@ notifications de l'île attendent (sauf les urgentes) et arrivent à la pause,
 avec un résumé. Les bannières de Windows ne sont pas coupées (pour cela,
 lancez une séance « Focus » dans l'appli Horloge de Windows 11).
 
+Les séances de travail Pomodoro comptent pour le
+[bilan de la semaine](#sans-onglet--pauses-météo-et-bilan-de-la-semaine).
+
 - **Pomodoro** : travail 25 min, pause courte 5 min, pause longue 15 min toutes les 4 séances ; **enchaîner automatiquement** (oui)
 - **Jouer un son à la fin** (oui), **Afficher le temps dans la pilule** (oui), **Mode concentration pendant le Pomodoro** (oui)
 
@@ -222,7 +239,9 @@ lancez une séance « Focus » dans l'appli Horloge de Windows 11).
 <img src="docs/captures/fr/onglet-notes.webp" width="696" alt="Onglet Notes : liste de choses à faire">
 
 Des notes rapides et une liste de choses à faire, enregistrées sur votre PC
-(`%APPDATA%\Ondine\notes.json`). Supprimer propose « Annuler ».
+(`%APPDATA%\Ondine\notes.json`). Supprimer propose « Annuler ». Les tâches
+cochées comptent pour le
+[bilan de la semaine](#sans-onglet--pauses-météo-et-bilan-de-la-semaine).
 
 - **Rappeler les tâches à faire au démarrage** (non)
 
@@ -428,7 +447,7 @@ peut tout mettre en pause.
 
 ---
 
-## Sans onglet : Pauses et Météo
+## Sans onglet : Pauses, Météo et Bilan de la semaine
 
 <p align="center"><img src="docs/captures/fr/mini-meteo.webp" width="396" alt="La météo dans la mini-île : 21° à Lyon"></p>
 
@@ -445,6 +464,17 @@ devant l'écran (**toutes les 50 minutes d'écran** par défaut, 0 = jamais). Se
 tait pendant une présentation, un appel (**Ne rien dire pendant un appel**,
 oui) ou si vous venez déjà de vous arrêter. Ondine regarde seulement depuis
 quand la souris et le clavier sont utilisés.
+
+**Bilan de la semaine** — chaque semaine, une notification résume ce que vous
+avez fait : **Pomodoros terminés**, **temps de concentration** (séances de
+travail du Minuteur) et **tâches cochées** dans Notes, et la mascotte fait la
+fête. Seulement s'il s'est passé quelque chose. Si le PC était éteint à l'heure
+dite, le bilan arrive au démarrage suivant (dans les 2 jours), une seule fois
+par semaine. Les compteurs restent sur votre PC (`%APPDATA%\Ondine\weekly.json`)
+et ne contiennent que des nombres, jamais le texte de vos tâches. Réglages :
+**Jour du bilan** (vendredi) et **Heure du bilan** (17:00) ; **Voir le bilan
+maintenant** montre la semaine en cours. Pour ne plus le recevoir, désactivez
+le module (Réglages → Onglets → Sans onglet).
 
 ---
 
@@ -470,7 +500,7 @@ complète, réglages).
 - **Mises à jour** : automatiques (oui), rechercher maintenant, version installée
 - **Performances** : Performance haute, **Équilibrée** (par défaut) ou Économie d'énergie ; **Économie d'énergie automatique sur batterie** (oui)
 - **Journal** : niveau et dossier (`%LOCALAPPDATA%\Ondine\logs`) ; il ne contient jamais de clé ni de contenu de fichier
-- **À propos** : **Signaler un problème** ouvre dans votre navigateur une issue GitHub préremplie (version, Windows, 40 dernières lignes du journal, chemins personnels masqués) ; vous relisez tout avant d'envoyer. **Ressources utilisées** : mémoire et processeur d'Ondine.
+- **À propos** : **Voir les nouveautés** remontre « Quoi de neuf » de la version installée ; **Signaler un problème** ouvre dans votre navigateur une issue GitHub préremplie (version, Windows, 40 dernières lignes du journal, chemins personnels masqués) ; vous relisez tout avant d'envoyer. **Ressources utilisées** : mémoire et processeur d'Ondine.
 - **Captures d'écran** : le [mode démo](#premiers-pas)
 
 ### Apparence
@@ -491,6 +521,9 @@ Les animations respectent « Réduire les animations » de Windows.
 Activez ou désactivez chaque module, et rangez les onglets (glisser une ligne,
 ou ↑ ↓ ; « Ordre d'origine » pour revenir au départ). On peut aussi glisser les
 onglets directement dans l'île.
+
+- **Astuces à la première ouverture d'un onglet** (oui) : la petite bulle qui explique le geste principal d'un onglet, la première fois seulement (jamais en mode démo ni par-dessus une alerte)
+- **Revoir les astuces** : elles reviendront à la prochaine ouverture de chaque onglet
 
 ### Mascotte
 

@@ -1,6 +1,7 @@
 {
   "id": "agenda",
   "name": "Agenda",
+  "tip": "Ajoutez vos calendriers dans les réglages, puis cliquez sur un rendez-vous pour rejoindre sa réunion.",
   "icon": "📅",
   "description": "Vos prochains rendez-vous, venant de plusieurs calendriers : des fichiers .ics (export d'Outlook, Google Agenda, Thunderbird…) ou les adresses secrètes iCal de vos agendas en ligne, chacun avec son nom et sa couleur. Un fichier est relu dès qu'il change ; un lien est retéléchargé toutes les 15 minutes. Un clic sur un rendez-vous ouvre son lien (réunion Teams, Meet, Zoom…). Juste avant une réunion en ligne, l'île vous propose de la rejoindre en un clic (et met la musique en pause). Lecture seule : rien n'est envoyé, et les adresses restent dans le Gestionnaire d'identifiants.",
   "version": "0.2.0",

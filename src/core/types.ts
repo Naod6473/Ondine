@@ -26,6 +26,8 @@ export interface Settings {
     ecoOnBattery?: boolean;
     /** En français : vouvoyer ("vous") ou tutoyer ("tu") l'utilisateur (src/core/i18n.ts). */
     address?: "vous" | "tu";
+    /** La dernière version lancée : « Quoi de neuf » une fois après une mise à jour (src/core/whats-new.ts). */
+    lastSeenVersion?: string;
   };
   island: {
     /** Replier l'île quand la souris n'est plus dessus depuis ce nombre de secondes. */
@@ -54,6 +56,10 @@ export interface Settings {
     alwaysMini: boolean;
     /** Style des animations : "classic" (sobre) ou "studio" (flou → net, chiffres qui roulent, gélatine). */
     motion: "classic" | "studio";
+    /** Une bulle d'Ondine explique chaque onglet la première fois (src/island/tips.ts). */
+    tips: boolean;
+    /** Les onglets (ids de modules) dont l'astuce a déjà été vue. */
+    tipsSeen: string[];
   };
   mascot: {
     enabled: boolean;
@@ -118,7 +124,7 @@ export interface Profiles {
 export function defaultSettings(): Settings {
   return {
     version: 2,
-    general: { screen: "primary", logLevel: "info", language: "auto", welcomed: false, demo: false, autoUpdate: true, autostart: true, perfMode: "balanced", ecoOnBattery: true, address: "vous" },
+    general: { screen: "primary", logLevel: "info", language: "auto", welcomed: false, demo: false, autoUpdate: true, autostart: true, perfMode: "balanced", ecoOnBattery: true, address: "vous", lastSeenVersion: "" },
     island: {
       collapseSecs: 1.5,
       notificationSecs: 6,
@@ -135,6 +141,8 @@ export function defaultSettings(): Settings {
       iconPack: "color",
       alwaysMini: true,
       motion: "classic",
+      tips: true,
+      tipsSeen: [],
     },
     mascot: { enabled: true, id: "goutte-gomme", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5, surprises: "all", treasures: [] },
     privacy: { excludedFolders: [] },

@@ -34,6 +34,8 @@ mod system;
 mod terminal;
 mod clipboard_qr;
 mod weather;
+// Le bilan de la semaine (Pomodoros, concentration, tâches cochées).
+mod weekly;
 // Installer les hooks d'Ondine dans la configuration de Claude Code, Codex, Gemini.
 mod agents_hooks;
 // Le bilan de fin de tâche d'un agent (ce qui a changé dans le dépôt git).
@@ -212,6 +214,7 @@ impl Registry {
             Box::new(agents::Agents::default()),
             Box::new(askclaude::AskClaude::default()),
             Box::new(weather::WeatherModule::default()),
+            Box::new(weekly::Weekly::default()),
         ];
 
         let mut entries = Vec::new();
@@ -424,6 +427,14 @@ mod tests {
     fn rules_manifest_is_valid() {
         let m = check_manifest(rules::Rules::default().manifest_json()).unwrap();
         assert_eq!(m.id, "rules");
+    }
+
+    #[test]
+    fn weekly_manifest_is_valid() {
+        let m = check_manifest(weekly::Weekly::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "weekly");
+        assert!(m.events.listens.iter().any(|t| t == "timer.work-session"));
+        assert!(m.events.listens.iter().any(|t| t == "notes.todo-toggled"));
     }
 
     #[test]

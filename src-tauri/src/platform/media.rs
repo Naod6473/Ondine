@@ -43,6 +43,8 @@ pub enum Control {
     Next,
     Previous,
     /// Aller à cette position, en millisecondes depuis le début du morceau.
+    /// (Hors Windows, la version vide ne lit jamais la position.)
+    #[cfg_attr(not(windows), allow(dead_code))]
     Seek(u64),
 }
 

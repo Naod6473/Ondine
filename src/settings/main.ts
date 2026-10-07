@@ -65,7 +65,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "⚙️",
     label: "Général",
     sub: "L'écran, le repli de l'île, les notifications et le journal.",
-    keywords: ["Langue", "Language", "Lancer avec Windows", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal", "Signaler un problème", "Ressources utilisées", "Performances", "Économie d'énergie automatique sur batterie", "S'adresser à moi", "Tutoiement", "Vouvoiement"],
+    keywords: ["Langue", "Language", "Lancer avec Windows", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Niveau du journal", "Dossier du journal", "Signaler un problème", "Voir les nouveautés", "Ressources utilisées", "Performances", "Économie d'énergie automatique sur batterie", "S'adresser à moi", "Tutoiement", "Vouvoiement"],
     render: general,
   },
   {
@@ -83,7 +83,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "🗂️",
     label: "Onglets",
     sub: "Les modules actifs et l'ordre de leurs onglets dans l'île.",
-    keywords: ["Ordre des onglets", "Activer un module", "Désactiver un module", "Ordre d'origine"],
+    keywords: ["Ordre des onglets", "Activer un module", "Désactiver un module", "Ordre d'origine", "Astuces à la première ouverture d'un onglet", "Revoir les astuces"],
     render: tabs,
   },
   {
@@ -555,7 +555,7 @@ function general(main: HTMLElement) {
       ],
       "Le journal reste sur votre PC (%LOCALAPPDATA%\\Ondine\\logs). Il ne contient jamais de clé ni de contenu de fichier.",
     ),
-    aboutGroup(),
+    aboutGroup(() => bus.emit("app.whats-new", null, "settings")),
     demoGroup(),
   );
 }
@@ -812,6 +812,35 @@ function tabs(main: HTMLElement) {
   if (without.length) {
     main.append(group("Sans onglet", without.map((man) => row(`${man.icon}  ${man.name}`, enableToggle(man), undefined, man.name))));
   }
+  main.append(tipsGroup());
+}
+
+/**
+ * Les astuces (src/island/tips.ts) : la bulle d'Ondine à la première ouverture
+ * d'un onglet, et « Revoir les astuces », qui oublie les onglets déjà vus.
+ */
+function tipsGroup(): HTMLElement {
+  const s = settingsStore.current;
+  const status = el("span", { class: "muted", "aria-live": "polite" }, "");
+  const again = el(
+    "button",
+    {
+      class: "btn small",
+      onclick: () => {
+        save((d) => (d.island.tipsSeen = []));
+        status.textContent = "Les astuces reviendront à la prochaine ouverture de chaque onglet.";
+      },
+    },
+    "Revoir les astuces",
+  );
+  return group("Astuces", [
+    row(
+      "Astuces à la première ouverture d'un onglet",
+      toggle(s.island.tips !== false, (v) => save((d) => (d.island.tips = v)), "Astuces à la première ouverture d'un onglet"),
+      "La première fois que vous ouvrez un onglet, une petite bulle d'Ondine explique son geste principal.",
+    ),
+    row("Revoir les astuces", el("div", { class: "chips" }, again, status)),
+  ]);
 }
 
 /** L'interrupteur « module activé ». */
@@ -861,7 +890,39 @@ function modulePage(main: HTMLElement, man: ModuleManifest, compact = false) {
       ),
     ),
   );
+  if (!compact && man.id === "weekly") main.append(weeklyGroup(man));
   if (!compact) main.append(el("p", { class: "version" }, `${man.name} · version ${man.version}`));
+}
+
+/**
+ * Bilan de la semaine : « Voir le bilan maintenant » montre dans l'île la
+ * semaine en cours (sujet « weekly.show », voir src/modules/weekly), sans
+ * rien changer au vrai bilan.
+ */
+function weeklyGroup(man: ModuleManifest): HTMLElement {
+  const status = el("span", { class: "muted", "aria-live": "polite" }, "");
+  const now = el(
+    "button",
+    {
+      class: "btn small",
+      onclick: () => {
+        if (!settingsStore.moduleEnabled(man.id)) {
+          status.textContent = "Activez d'abord le module.";
+          return;
+        }
+        status.textContent = "";
+        bus.emit("weekly.show", null, "settings");
+      },
+    },
+    "Voir le bilan maintenant",
+  );
+  return group("Aperçu", [
+    row(
+      "Voir le bilan maintenant",
+      el("div", { class: "chips" }, now, status),
+      "Ce qui est compté depuis le dernier bilan : la notification s'affiche dans l'île. Le vrai bilan arrivera quand même à l'heure dite.",
+    ),
+  ]);
 }
 
 function mascot(main: HTMLElement) {

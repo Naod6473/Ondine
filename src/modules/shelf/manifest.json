@@ -1,6 +1,7 @@
 {
   "id": "shelf",
   "name": "Étagère",
+  "tip": "Glissez un fichier sur l'île pour le poser ici.",
   "icon": "🧺",
   "description": "Glissez des fichiers sur l'île pour les poser sur l'étagère, les envoyer à la Corbeille, les copier ou les déplacer (dossiers favoris compris), copier leur chemin, les compresser, convertir ou réduire des images, ou renommer plusieurs fichiers d'un coup (avec aperçu). Toute action sur les fichiers est annulable quelques secondes. « Vers le téléphone » envoie un fichier à un téléphone du même Wi-Fi par un QR code : réseau local seulement, 5 minutes au plus, rien ne passe par Internet.",
   "version": "0.1.0",
