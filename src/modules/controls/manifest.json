@@ -1,6 +1,7 @@
 {
   "id": "controls",
   "name": "Contrôles",
+  "tip": "Glissez un pilier vers le haut ou le bas pour régler le son, le micro ou la luminosité.",
   "icon": "🎚️",
   "description": "Le volume des haut-parleurs et du micro, la luminosité des écrans, le Wi-Fi, le Bluetooth et le mode avion, sans ouvrir Windows. Un point orange (micro) ou vert (caméra) sur l'île montre quand une appli s'en sert, et un raccourci coupe le micro de partout. Agit sur les périphériques que Windows utilise par défaut ; les écrans externes doivent accepter le réglage DDC/CI (souvent activé dans leur menu). Rien n'est écouté ni enregistré : on lit seulement ce que Windows note pour sa page Confidentialité.",
   "version": "0.1.0",

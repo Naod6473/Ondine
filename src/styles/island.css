@@ -3512,3 +3512,61 @@ body.retro .island .btn {
     scale: 0.6;
   }
 }
+
+/* ── Astuce à la première ouverture d'un onglet (src/island/tips.ts) ─────── */
+
+/* Une petite bulle d'Ondine, en bas à gauche de l'île ouverte : sa pointe
+   remonte vers la mascotte. Par-dessus le contenu, sans le pousser. */
+.tip-bubble {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 6;
+  max-width: min(460px, calc(100% - 24px));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px 5px 9px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--island-bg) 84%, var(--accent));
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  color: var(--island-fg);
+  font-size: 12px;
+  line-height: 1.35;
+  animation: tip-in 320ms var(--ease-out) both;
+}
+.tip-bubble::before {
+  content: "";
+  position: absolute;
+  left: 26px;
+  top: -6px;
+  width: 10px;
+  height: 10px;
+  background: inherit;
+  border-left: inherit;
+  border-top: inherit;
+  transform: rotate(45deg);
+}
+.tip-icon {
+  flex: none;
+  font-size: 14px;
+}
+.tip-text {
+  flex: 1;
+  min-width: 0;
+}
+.tip-bubble .btn {
+  flex: none;
+}
+@keyframes tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tip-bubble {
+    animation: none;
+  }
+}

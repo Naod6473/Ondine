@@ -1,6 +1,7 @@
 {
   "id": "system",
   "name": "Système",
+  "tip": "Cliquez sur « Copier pour le support » : tout est prêt à coller dans un ticket.",
   "icon": "📊",
   "description": "L'état du PC d'un coup d'œil : processeur, mémoire, disques, adresses IP et MAC, batterie, version de Windows. Un bouton copie un résumé à coller dans un ticket de support. Prévient quand un disque est presque plein, quand la batterie est faible ou chargée. Ondine transpire quand le processeur est à fond. Tout est lu sur le PC : rien ne part sur Internet.",
   "version": "0.1.0",

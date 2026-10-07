@@ -1158,7 +1158,33 @@
 "Surprises cachées et carnet des trésors": "Hidden surprises and treasure book",
 "Masqués par défaut, pour garder la surprise.": "Hidden by default, to keep the surprise.",
 "Il serait temps de dormir, non ?": "Isn't it time to sleep?",
-"C'est bon, je l'ai !": "Got it, I've got it!"
+"C'est bon, je l'ai !": "Got it, I've got it!",
+"Glissez un fichier sur l'île pour le poser ici.": "Drag a file onto the island to put it here.",
+"Cliquez sur une copie pour la coller dans la fenêtre où vous étiez.": "Click a copied item to paste it into the window you were in.",
+"Choisissez Texte, Annoter, PNG ou Étagère, puis sélectionnez une zone de l'écran.": "Choose Text, Annotate, PNG or Shelf, then select an area of the screen.",
+"Choisissez une durée : le temps qui reste s'affiche aussi dans la mini-île.": "Pick a duration: the time left also shows in the mini island.",
+"Tapez une tâche puis Entrée ; double-cliquez sur une tâche pour la modifier.": "Type a task then Enter; double-click a task to edit it.",
+"Ajoutez vos calendriers dans les réglages, puis cliquez sur un rendez-vous pour rejoindre sa réunion.": "Add your calendars in the settings, then click an event to join its meeting.",
+"Déposez un dossier sur l'île pour y ouvrir un terminal.": "Drop a folder onto the island to open a terminal there.",
+"Cliquez sur « Copier pour le support » : tout est prêt à coller dans un ticket.": "Click \"Copy for support\": everything is ready to paste into a ticket.",
+"Tapez une adresse puis RDP ou SSH ; ★ l'enregistre en favori.": "Type an address then RDP or SSH; ★ saves it as a favorite.",
+"Tapez un nom ou une adresse, puis Entrée pour un ping en continu.": "Type a name or an address, then Enter for a continuous ping.",
+"Branchez Claude Code, Codex ou Gemini une fois : ils vous préviendront ici quand ils ont fini ou vous attendent.": "Connect Claude Code, Codex or Gemini once: they'll let you know here when they're done or waiting for you.",
+"Collez une erreur ou déposez un fichier sur l'île : vous verrez tout ce qui part avant l'envoi.": "Paste an error or drop a file onto the island: you'll see everything that goes out before it's sent.",
+"Tapez quelques lettres puis Entrée ; le raccourci (Alt+Espace par défaut) ouvre cette recherche de n'importe où.": "Type a few letters then Enter; the shortcut (Alt+Space by default) opens this search from anywhere.",
+"Créez vos règles dans Réglages → Règles ; ici, vous les suivez et pouvez tout mettre en pause.": "Create your rules in Settings → Rules; here, you follow them and can pause everything.",
+"Cliquez sur la barre de progression pour avancer ou reculer dans le morceau.": "Click the progress bar to skip forward or back in the track.",
+"Glissez un pilier vers le haut ou le bas pour régler le son, le micro ou la luminosité.": "Drag a slider up or down to set the sound, the mic or the brightness.",
+"Voir les nouveautés": "See what's new",
+"Nouveautés": "What's new",
+"Ce qui a changé dans cette version, comme après une mise à jour : la notification s'affiche dans l'île.": "What changed in this version, as after an update: the notification shows in the island.",
+"Tout voir": "See all",
+"Toutes les nouveautés de cette version sont sur GitHub.": "Everything new in this version is on GitHub.",
+"Astuces": "Tips",
+"Astuces à la première ouverture d'un onglet": "Tips the first time a tab opens",
+"La première fois que vous ouvrez un onglet, une petite bulle d'Ondine explique son geste principal.": "The first time you open a tab, a small bubble from Ondine explains its main gesture.",
+"Revoir les astuces": "Show the tips again",
+"Les astuces reviendront à la prochaine ouverture de chaque onglet.": "The tips will come back the next time each tab opens."
 },
 "patterns": [
 [
@@ -2148,6 +2174,10 @@
 [
 "^Trésor\\ trouvé\\ \\((\\d+)\\ /\\ (\\d+)\\)\\ :\\ à\\ retrouver\\ dans\\ Réglages\\ →\\ Mascotte\\.$",
 "Treasure found ($1 / $2): see Settings → Mascot."
+],
+[
+"^Quoi\\ de\\ neuf\\ dans\\ Ondine\\ (.+)$",
+"What's new in Ondine $1"
 ]
 ]
 }

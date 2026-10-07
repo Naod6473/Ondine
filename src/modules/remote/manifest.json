@@ -1,6 +1,7 @@
 {
   "id": "remote",
   "name": "Accès distants",
+  "tip": "Tapez une adresse puis RDP ou SSH ; ★ l'enregistre en favori.",
   "icon": "📡",
   "description": "Vos serveurs Bureau à distance (RDP) et SSH en favoris, ouverts en un clic depuis l'île ou le lanceur. Enregistrés sur votre ordinateur (%APPDATA%\\Ondine\\remote.json), sans aucun mot de passe. « Tester » vérifie seulement que le serveur répond.",
   "version": "0.1.0",

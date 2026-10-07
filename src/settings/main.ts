@@ -83,7 +83,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "🗂️",
     label: "Onglets",
     sub: "Les modules actifs et l'ordre de leurs onglets dans l'île.",
-    keywords: ["Ordre des onglets", "Activer un module", "Désactiver un module", "Ordre d'origine"],
+    keywords: ["Ordre des onglets", "Activer un module", "Désactiver un module", "Ordre d'origine", "Astuces à la première ouverture d'un onglet", "Revoir les astuces"],
     render: tabs,
   },
   {
@@ -812,6 +812,35 @@ function tabs(main: HTMLElement) {
   if (without.length) {
     main.append(group("Sans onglet", without.map((man) => row(`${man.icon}  ${man.name}`, enableToggle(man), undefined, man.name))));
   }
+  main.append(tipsGroup());
+}
+
+/**
+ * Les astuces (src/island/tips.ts) : la bulle d'Ondine à la première ouverture
+ * d'un onglet, et « Revoir les astuces », qui oublie les onglets déjà vus.
+ */
+function tipsGroup(): HTMLElement {
+  const s = settingsStore.current;
+  const status = el("span", { class: "muted", "aria-live": "polite" }, "");
+  const again = el(
+    "button",
+    {
+      class: "btn small",
+      onclick: () => {
+        save((d) => (d.island.tipsSeen = []));
+        status.textContent = "Les astuces reviendront à la prochaine ouverture de chaque onglet.";
+      },
+    },
+    "Revoir les astuces",
+  );
+  return group("Astuces", [
+    row(
+      "Astuces à la première ouverture d'un onglet",
+      toggle(s.island.tips !== false, (v) => save((d) => (d.island.tips = v)), "Astuces à la première ouverture d'un onglet"),
+      "La première fois que vous ouvrez un onglet, une petite bulle d'Ondine explique son geste principal.",
+    ),
+    row("Revoir les astuces", el("div", { class: "chips" }, again, status)),
+  ]);
 }
 
 /** L'interrupteur « module activé ». */

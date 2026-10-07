@@ -1,6 +1,7 @@
 {
   "id": "agents",
   "name": "Agents IA",
+  "tip": "Branchez Claude Code, Codex ou Gemini une fois : ils vous préviendront ici quand ils ont fini ou vous attendent.",
   "icon": "🤖",
   "description": "Lance Claude Code, Codex ou Gemini CLI dans un de vos projets en un clic. Un tableau montre les sessions en cours ; « Y aller » ramène devant la bonne fenêtre. Claude Code, Codex et Gemini CLI préviennent l'île : « attend votre permission », « a fini ». Ils passent par la commande « ondine.exe notify » et un canal local réservé à votre compte Windows : rien ne passe par Internet. Branchée comme serveur MCP, l'île laisse aussi l'agent vous envoyer un message, une progression, lancer le minuteur ou vous poser une question à choix. Le mode concentration met leurs notifications en attente et vous fait un résumé à la fin. Si vous l'activez (désactivé par défaut), vous pouvez aussi autoriser ou refuser une action de Claude Code ou Codex depuis l'île, après confirmation. L'île n'exécute jamais rien, ne décide jamais à votre place, et ne lit ni ce que vous tapez ni les réponses de l'IA.",
   "version": "0.1.0",

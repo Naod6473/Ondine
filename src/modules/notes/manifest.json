@@ -1,6 +1,7 @@
 {
   "id": "notes",
   "name": "Notes",
+  "tip": "Tapez une tâche puis Entrée ; double-cliquez sur une tâche pour la modifier.",
   "icon": "📝",
   "description": "Notes rapides et liste de choses à faire. Tout est enregistré sur votre ordinateur (%APPDATA%\\Ondine\\notes.json). Supprimer propose « Annuler ».",
   "version": "0.1.0",

@@ -1,6 +1,7 @@
 {
   "id": "askclaude",
   "name": "Demander à Claude",
+  "tip": "Collez une erreur ou déposez un fichier sur l'île : vous verrez tout ce qui part avant l'envoi.",
   "icon": "💬",
   "description": "Collez une erreur, ou déposez un fichier texte ou une capture sur l'île, posez votre question : Claude répond. ENVOIE DU CONTENU À L'API CLAUDE (api.anthropic.com) : avant chaque envoi, l'île vous montre exactement ce qui part, et rien ne part sans votre clic. Les dossiers exclus sont refusés. La clé API reste dans le Gestionnaire d'identifiants Windows. La réponse est seulement affichée : rien n'est exécuté.",
   "version": "0.1.0",

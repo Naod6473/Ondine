@@ -188,6 +188,7 @@ Lu à la fois par le front (import) et par le Rust (`include_str!`).
 {
   "id": "hello",                      // minuscules, chiffres, tirets (exemple fictif)
   "name": "Bonjour", "icon": "👋", "description": "…", "version": "0.1.0",
+  "tip": "Cliquez sur « Saluer » pour dire bonjour.",   // module à onglet : la bulle de la 1re ouverture
   "permissions": [],                  // files, clipboard, network, claude-api, credentials
   "settings": { "version": 1, "fields": [
     { "key": "name", "type": "string", "label": "Ton prénom", "default": "Simon" }
