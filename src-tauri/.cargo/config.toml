@@ -1,0 +1,4 @@
+# Le runtime C de Microsoft (vcruntime140.dll) est intégré à ondine.exe : un PC
+# neuf sans « Visual C++ Redistributable » lance quand même Ondine.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
