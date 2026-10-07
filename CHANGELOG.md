@@ -40,6 +40,12 @@
   a real click or Enter, agents are launched by full path.
 - README complet en français et en anglais, avec captures. · Full README
   in French and English, with screenshots.
+- Agents IA : installation automatique des hooks (Claude Code, Codex, Gemini
+  CLI), avec sauvegarde et bouton « Retirer ». · Automatic hook install,
+  with backup and a Remove button.
+- « Y aller » retrouve la fenêtre de Windows Terminal. · "Go to" finds the
+  Windows Terminal window.
+- La version s'affiche dans les réglages. · Version shown in settings.
 
 ## 1.0.0-beta.3
 

@@ -302,13 +302,17 @@ fn header(line: &str) -> Option<(bool, String)> {
     t.strip_prefix('[').and_then(|r| r.strip_suffix(']')).map(|inner| (false, norm(inner)))
 }
 
+/// Un morceau du fichier TOML : son en-tête (tableau « [[…]] » ou non, nom),
+/// absent pour ce qui précède le premier, et ses lignes.
+type Chunk<'a> = (Option<(bool, String)>, Vec<&'a str>);
+
 /// Le texte sans les sections « [[hooks.X.hooks]] » qui lancent ondine.exe
 /// (et leur « [[hooks.X]] » s'il ne lui reste rien), ni le commentaire
 /// « # Ondine… » juste au-dessus. Les commentaires et l'ordre du reste sont gardés.
 fn toml_strip_text(text: &str) -> String {
     let nl = eol(text);
     // Des morceaux : ce qui précède le premier en-tête, puis un par en-tête.
-    let mut chunks: Vec<(Option<(bool, String)>, Vec<&str>)> = vec![(None, vec![])];
+    let mut chunks: Vec<Chunk> = vec![(None, vec![])];
     for line in text.lines() {
         match header(line) {
             Some(h) => chunks.push((Some(h), vec![line])),
