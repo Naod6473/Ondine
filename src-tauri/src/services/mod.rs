@@ -12,6 +12,7 @@
 // - profiles    : les profils (Travail, Maison…) et leur changement automatique
 // - ics_calendars : la liste des calendriers de l'Agenda, sa migration, la fusion
 // - perf        : les modes de performance (haute, équilibrée, éco) et le rythme des boucles
+// - lan         : le réseau local (cartes IPv4, adresses de diffusion, adresse privée du PC)
 
 pub mod bus;
 pub mod credentials;
@@ -25,3 +26,4 @@ pub mod undo;
 pub mod search;
 pub mod profiles;
 pub mod perf;
+pub mod lan;
