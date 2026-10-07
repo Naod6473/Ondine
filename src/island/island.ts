@@ -16,10 +16,12 @@ import { isAlert, type IslandNotification, type NotificationQueue } from "../cor
 import { settingsStore } from "../core/settings-store";
 import { applyTabOrder, mergeOrder } from "../core/tab-order";
 import type { Settings } from "../core/types";
+import { EasterEggs } from "../eggs/eggs";
 import { findMascot } from "../mascot/catalog";
 import { Hanger } from "../mascot/hang";
 import { MascotController } from "../mascot/mascot-state";
 import { createRenderer } from "../mascot/renderer";
+import type { MascotManifest } from "../mascot/types";
 import { clear, el } from "./dom";
 import { icon } from "./icon";
 import { IslandStateMachine, type IslandState } from "./island-state";
@@ -82,6 +84,8 @@ export class Island {
   private mediaUse: { mic: string[]; cam: string[] } = { mic: [], cam: [] };
   private mascot: MascotController | null = null;
   private mascotId = "";
+  /** Le manifeste de la mascotte affichée (pour les surprises). */
+  private mascotManifest: MascotManifest | null = null;
 
   /** Ce qui est affiché dans `content`, pour ne pas tout redessiner sans raison. */
   private renderedKey = "";
@@ -108,6 +112,8 @@ export class Island {
   private presenting = false;
   /** Ouverte au clavier (raccourci) : le focus va sur l'onglet actif. */
   private focusTabsOnOpen = false;
+  /** Les surprises cachées (src/eggs/). */
+  private eggs: EasterEggs;
 
   constructor(
     private readonly root: HTMLElement,
@@ -126,13 +132,23 @@ export class Island {
       onClick: () => this.fsm.open(),
       onShowChange: (on) => this.onHangChange(on),
     });
+    this.eggs = new EasterEggs(
+      {
+        shell: this.shell,
+        slot: this.mascotSlot,
+        state: () => this.fsm.state,
+        manifest: () => (this.mascot ? this.mascotManifest : null),
+      },
+      this.bus,
+      this.notifications,
+    );
     pacedInterval(() => void this.maybePeek(), "peekCheck");
     pacedInterval(() => void this.checkPresentation(), "presentationCheck");
     // Économie d'énergie : pas d'effets « Studio » (flous coûteux), ils reviennent ensuite.
     onPerfChange(() => setStudio(settingsStore.current.island.motion === "studio" && perfMode() !== "eco"));
     // Dans un navigateur (npm run dev) : window.ondinePeek() la fait venir tout de suite.
     // Et window.ondineBus.emit("controls.media-use", { mic: ["Zoom"], cam: [] }) simule un message.
-    if (!IS_TAURI) Object.assign(window, { ondinePeek: () => this.hanger.show(), ondineBus: this.bus });
+    if (!IS_TAURI) Object.assign(window, { ondinePeek: () => this.hanger.show(), ondineBus: this.bus, ondineEggs: this.eggs });
 
     this.notifications.defaultDurationMs = settingsStore.current.island.notificationSecs * 1000;
     let wasAlert = false;
@@ -207,6 +223,7 @@ export class Island {
       this.mascot = null;
       this.mascotId = wanted;
       const entry = wanted ? findMascot(wanted) : null;
+      this.mascotManifest = entry?.manifest ?? null;
       if (entry) {
         const renderer = createRenderer(entry.manifest, entry.assets);
         renderer.mount(this.mascotSlot);
@@ -494,6 +511,7 @@ export class Island {
     if (!this.mascot) return;
     const m = this.mascotSlot.getBoundingClientRect();
     this.mascot.lookAt(x - (m.left + m.width / 2), y - (m.top + m.height / 2));
+    this.eggs.pointer(x, y);
     if (inside) this.mascot.activity();
 
     // Survol prolongé de la mascotte.

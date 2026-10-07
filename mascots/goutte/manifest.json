@@ -2012,6 +2012,98 @@
       "transitionsTo": [
         "*"
       ]
+    },
+    {
+      "name": "pluie-glitch",
+      "source": {
+        "poses": [
+          "glitch-1",
+          "glitch-2",
+          "glitch-3",
+          "glitch-4",
+          "glitch-5",
+          "glitch-6",
+          "glitch-7",
+          "glitch-8"
+        ],
+        "poseMs": 150,
+        "fadeMs": 50,
+        "effect": "shake"
+      },
+      "durationMs": 1300,
+      "loop": false,
+      "priority": 4,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "esquive",
+      "source": {
+        "poses": [
+          "surprise",
+          "surprise",
+          "surprise",
+          "clin"
+        ],
+        "poseMs": 650,
+        "fadeMs": 200,
+        "effect": "dodge",
+        "wide": true
+      },
+      "durationMs": 2600,
+      "loop": false,
+      "priority": 4,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "danse",
+      "source": {
+        "poses": [
+          "danse-1",
+          "danse-2",
+          "danse-3",
+          "danse-4",
+          "danse-5",
+          "danse-6",
+          "danse-7",
+          "danse-8"
+        ],
+        "poseMs": 150,
+        "fadeMs": 60
+      },
+      "durationMs": 1200,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ]
+    },
+    {
+      "name": "fondue",
+      "source": {
+        "poses": [
+          "fondue-1",
+          "fondue-2",
+          "fondue-3",
+          "fondue-4",
+          "fondue-5",
+          "fondue-6",
+          "fondue-7",
+          "fondue-8"
+        ],
+        "poseMs": 380,
+        "fadeMs": 150,
+        "overlay": "sweat"
+      },
+      "durationMs": 3400,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ]
     }
   ]
 }

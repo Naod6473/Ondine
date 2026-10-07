@@ -119,7 +119,20 @@
 "Choisissez l'outil, puis cliquez sur « Installer automatiquement ».": "Choisis l'outil, puis clique sur « Installer automatiquement ».",
 "Relancez l'agent, puis cliquez sur « Essayer » : une notification doit apparaître.": "Relance l'agent, puis clique sur « Essayer » : une notification doit apparaître.",
 "Pour répondre aux permissions depuis l'île : activez « Autoriser / Refuser depuis l'île » dans les réglages, puis réinstallez. L'agent ne demande rien en mode automatique.": "Pour répondre aux permissions depuis l'île : active « Autoriser / Refuser depuis l'île » dans les réglages, puis réinstalle. L'agent ne demande rien en mode automatique.",
-"Quand Claude Code ou Codex demande la permission d'utiliser un outil, l'île vous montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Après l'avoir activé, cliquez à nouveau sur « Installer automatiquement » (onglet Agents IA). L'agent ne demande rien en mode automatique : laissez-le en mode normal. Sans réponse, la question passe au terminal.": "Quand Claude Code ou Codex demande la permission d'utiliser un outil, l'île te montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Après l'avoir activé, clique à nouveau sur « Installer automatiquement » (onglet Agents IA). L'agent ne demande rien en mode automatique : laisse-le en mode normal. Sans réponse, la question passe au terminal."
+"Quand Claude Code ou Codex demande la permission d'utiliser un outil, l'île vous montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Après l'avoir activé, cliquez à nouveau sur « Installer automatiquement » (onglet Agents IA). L'agent ne demande rien en mode automatique : laissez-le en mode normal. Sans réponse, la question passe au terminal.": "Quand Claude Code ou Codex demande la permission d'utiliser un outil, l'île te montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Après l'avoir activé, clique à nouveau sur « Installer automatiquement » (onglet Agents IA). L'agent ne demande rien en mode automatique : laisse-le en mode normal. Sans réponse, la question passe au terminal.",
+"Demandez-lui de se réveiller, dans le Lanceur.": "Demande-lui de se réveiller, dans le Lanceur.",
+"Cliquez sur Ondine. Encore. Et encore.": "Clique sur Ondine. Encore. Et encore.",
+"Tournez autour d'elle avec la souris.": "Tourne autour d'elle avec la souris.",
+"Demandez la réponse au Lanceur.": "Demande la réponse au Lanceur.",
+"Regardez bien son dos, au printemps.": "Regarde bien son dos, au printemps.",
+"En décembre, ouvrez l'île.": "En décembre, ouvre l'île.",
+"Laissez la mini-île tranquille un bon moment.": "Laisse la mini-île tranquille un bon moment.",
+"Lancez trois agents IA en même temps.": "Lance trois agents IA en même temps.",
+"Ouvrez l'île au milieu de la nuit.": "Ouvre l'île au milieu de la nuit.",
+"Oubliez de redémarrer le PC pendant une semaine.": "Oublie de redémarrer le PC pendant une semaine.",
+"Prenez beaucoup, beaucoup de captures.": "Prends beaucoup, beaucoup de captures.",
+"Montez le son à fond.": "Monte le son à fond.",
+"Copiez cinq fois la même chose.": "Copie cinq fois la même chose."
 },
 "patterns": [
 [

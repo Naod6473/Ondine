@@ -115,6 +115,11 @@ pub struct MascotPrefs {
     pub peek: bool,
     /// Au plus une visite toutes les… (minutes).
     pub peek_every_mins: f64,
+    /// Les surprises cachées (src/eggs/) : "all" (toutes), "seasonal" (le
+    /// calendrier seulement) ou "none".
+    pub surprises: String,
+    /// Le carnet des trésors : les ids des surprises déjà trouvées.
+    pub treasures: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -175,7 +180,7 @@ impl Default for IslandPrefs {
 
 impl Default for MascotPrefs {
     fn default() -> Self {
-        Self { enabled: true, id: "goutte".into(), bored_after_secs: 60.0, sleep_after_secs: 180.0, peek: true, peek_every_mins: 5.0 }
+        Self { enabled: true, id: "goutte".into(), bored_after_secs: 60.0, sleep_after_secs: 180.0, peek: true, peek_every_mins: 5.0, surprises: "all".into(), treasures: Vec::new() }
     }
 }
 
@@ -232,6 +237,13 @@ impl Settings {
         i.hotkey = i.hotkey.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '+').take(40).collect();
         let m = &mut self.mascot;
         m.peek_every_mins = if m.peek_every_mins.is_finite() { m.peek_every_mins.clamp(1.0, 120.0) } else { 5.0 };
+        if !matches!(m.surprises.as_str(), "all" | "seasonal" | "none") {
+            m.surprises = "all".into();
+        }
+        // Des ids courts ([a-z0-9-]), sans doublon : le carnet ne grossit jamais sans fin.
+        let mut seen = std::collections::HashSet::new();
+        m.treasures.retain(|t| t.len() <= 32 && !t.is_empty() && t.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-') && seen.insert(t.clone()));
+        m.treasures.truncate(64);
         crate::services::profiles::sanitize(&mut self.profiles);
     }
 
@@ -367,6 +379,17 @@ mod tests {
         assert!(parse(r#"{ "version": 2, "island": { "collapseSecs": 2 } }"#).unwrap().island.tab_order.is_empty());
         let s = parse(r#"{ "version": 2, "island": { "tabOrder": ["notes", "shelf"] } }"#).unwrap();
         assert_eq!(s.island.tab_order, ["notes", "shelf"]);
+    }
+
+    #[test]
+    fn surprises_and_treasures_are_checked() {
+        let s = parse(r#"{ "version": 2 }"#).unwrap();
+        assert_eq!(s.mascot.surprises, "all");
+        assert!(s.mascot.treasures.is_empty());
+        let s = parse(r#"{ "version": 2, "mascot": { "surprises": "lots", "treasures": ["split", "split", "Bad Id", "", "code-rain"] } }"#).unwrap();
+        assert_eq!(s.mascot.surprises, "all");
+        assert_eq!(s.mascot.treasures, ["split", "code-rain"]);
+        assert_eq!(parse(r#"{ "version": 2, "mascot": { "surprises": "none" } }"#).unwrap().mascot.surprises, "none");
     }
 
     #[test]

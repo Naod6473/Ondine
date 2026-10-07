@@ -36,5 +36,11 @@ export const EFFECTS: Record<SpriteEffect, (t: number, p: number) => Partial<Mot
   // Bâillement : la goutte s'étire vers le haut, puis se tasse.
   stretch: (_t, p) => ({ squash: 1 + Math.sin(Math.min(1, p * 1.3) * Math.PI) * 0.12, rot: Math.sin(p * Math.PI) * 0.05 }),
   // Oups : un petit sursaut en arrière, puis elle se tasse un peu.
+  // Esquive au ralenti (pluie de code) : elle se penche loin en arrière, très lentement, puis se redresse.
+  dodge: (_t, p) => {
+    const k = Math.sin(Math.min(1, p * 1.15) * Math.PI);
+    const bell = k * k * (3 - 2 * k);
+    return { rot: -0.55 * bell, dx: -0.1 * bell, squash: 1 + 0.1 * bell };
+  },
   flinch: (_t, p) => ({ dy: -Math.sin(Math.min(1, p * 4) * Math.PI) * 0.04, squash: p < 0.25 ? 1.06 : 1 - Math.sin(((p - 0.25) / 0.75) * Math.PI) * 0.04 }),
 };

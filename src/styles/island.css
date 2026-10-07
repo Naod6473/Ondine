@@ -3417,3 +3417,89 @@ body[data-perf="eco"] .ctl-card,
 body[data-perf="eco"] .ctl-menu {
   backdrop-filter: none;
 }
+
+/* ── Surprises cachées (src/eggs/) ────────────────────────────────────────── */
+
+/* Les grands effets (pluie de code, feux d'artifice, neige…) : par-dessus toute l'île. */
+.egg-fx {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Le calque d'Ondine (8 bits, division, poisson d'avril) : plus grand qu'elle. */
+.mascot-fx {
+  position: absolute;
+  left: -100%;
+  top: -30%;
+  width: 300%;
+  height: 160%;
+  pointer-events: none;
+  z-index: 2;
+}
+.mascot-slot.fx-hide > .mascot-canvas {
+  opacity: 0;
+}
+.mascot-slot:has(.mascot-fx) {
+  z-index: 3;
+}
+
+/* Halloween : Ondine en fantôme, translucide, qui flotte. */
+.mascot-slot.egg-ghost {
+  opacity: 0.6;
+  animation: egg-ghost 3.2s ease-in-out infinite;
+}
+@keyframes egg-ghost {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -3px;
+  }
+}
+
+/* Mode 8 bits : police à chasse fixe, lignes de balayage, icônes en gros pixels. */
+body.retro .island {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  letter-spacing: 0;
+}
+body.retro .island::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 3px);
+  border-radius: inherit;
+}
+body.retro .island img {
+  image-rendering: pixelated;
+}
+body.retro .island .tab.active,
+body.retro .island .btn {
+  border-radius: 2px;
+}
+
+/* PC allumé depuis plus d'une semaine : une petite toile d'araignée dans le coin. */
+.egg-web {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0.45;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26' fill='none' stroke='white' stroke-width='0.7' stroke-linecap='round'%3E%3Cpath d='M26 0 0 26M26 0 6 26M26 0 0 20M26 0 13 26M26 0 0 12'/%3E%3Cpath d='M20 0q1 5 6 6M14 0q2 10 12 12M8 0q2 15 18 18M2 0q3 20 24 24'/%3E%3C/svg%3E") no-repeat right top / contain;
+  animation: egg-web-in 600ms ease-out;
+}
+@keyframes egg-web-in {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}

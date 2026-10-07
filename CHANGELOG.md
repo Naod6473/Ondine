@@ -1,5 +1,21 @@
 # Changements · Changelog
 
+## Prochaine version
+
+- Surprises cachées : pluie de code, Ondine 8 bits (code Konami), la goutte qui
+  se divise en deux, le goûter de la mini-île, des jours de fête (Nouvel an,
+  poisson d'avril, neige en décembre…) et un carnet des trésors dans les
+  réglages. Désactivables. · Hidden surprises: code rain, 8-bit Ondine
+  (Konami code), the drop that splits in two, the mini-island snack, holidays
+  and a treasure book in settings. Can be turned off.
+- Ondine réagit au PC : baguette quand trois agents IA travaillent, bonnet de
+  nuit, lunettes de soleil le vendredi soir, café le lundi matin, mains sur les
+  oreilles à 100 % de volume… · Ondine reacts to the PC: a baton when three AI
+  agents work, a nightcap, Friday sunglasses, Monday coffee, hands over her
+  ears at full volume…
+- Ondine danse quand de la musique joue et que l'île est réduite. · Ondine
+  dances while music plays on the mini island.
+
 ## 1.0.0 · 2026-10-06
 
 - Recherche dans l'île : notes, presse-papiers, étagère, captures et apps, sans

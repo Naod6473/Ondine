@@ -273,6 +273,9 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `mascot.emote` `{emotion}` | tout module | montre cette émotion (un état, ex. `sad`), si la mascotte l'a |
 | `agents.ask`, `agents.event` « waiting » | Agents IA | question (la goutte violette et son « ? ») |
 | `mascot.state` | mascotte | |
+| `mascot.dance` `{on}` | surprises (src/eggs/) | elle danse en boucle (musique + mini-île) ; les autres réactions passent puis la danse reprend |
+| `easter.word` `{word}` | Lanceur (mot magique + Entrée) | une surprise : `code-rain`, `retro`, `barrel-roll`, `answer` |
+| `easter.snack` | réglages (bouton « Essayer ») | Ondine mange la mini-île au prochain passage en mini |
 | `undo.offered` / `undo.done` / `undo.expired` | service d'annulation | bouton « Annuler » |
 | `module.crashed` | Rust | l'île prévient |
 | `shelf.changed` `{items}` | Étagère (Rust) | la vue de l'étagère se redessine |
@@ -411,6 +414,47 @@ bus ──▶ MascotController (mascot-state.ts) ──▶ MascotRenderer (rende
   fichiers, relance l'appli, choisis-la dans Réglages → Mascotte et teste chaque
   animation. Un manifeste invalide est signalé, et l'île garde la provisoire.
   Tant que son moteur n'est pas branché, la provisoire la remplace.
+
+## Les surprises (`src/eggs/`)
+
+Des easter eggs, tous dans l'île, sans fichier ni réseau. `eggs.ts` relie les
+déclencheurs aux effets ; le réglage `mascot.surprises` (`all`, `seasonal`,
+`none`) les filtre, rien ne se montre pendant une présentation, et avec
+« réduire les animations » ou en économie d'énergie Ondine réagit (une
+émotion) sans les grands effets.
+
+| Déclencheur | Effet |
+|---|---|
+| Lanceur : « réveille-toi », « wake up » + Entrée | pluie de code (`fx-layer.ts`), Ondine bugge (`pluie-glitch`) puis esquive au ralenti une goutte (`esquive`, effet `dodge`) |
+| Code Konami (île ouverte), ou « rétro » | mode 8 bits jusqu'à ce que l'île se cache : Ondine en gros pixels (`mascot-fx.ts`), sons en onde carrée, `body.retro` |
+| 15 clics rapides sur Ondine | elle se divise en deux gouttes puis se recolle (filtre SVG « goo » : flou + seuil) |
+| 2 tours de souris autour d'elle | le tournis (`etourdie`) |
+| « tonneau », « barrel roll » | l'île fait un tour complet |
+| « la réponse » | Ondine réfléchit, puis « 42 » |
+| Mini-île tranquille (au plus toutes les 20 min, une chance sur 4 toutes les 30 s) | « le goûter » : elle traverse la mini-île en mangeant le contenu (`clip-path`), revient, le contenu réapparaît |
+| Musique + mini-île | elle danse tant que ça joue (`mascot.dance`) |
+| Calendrier (`calendar.ts`), à l'ouverture, une fois par jour | 1/1 et 14/7 feux d'artifice, 14/2 cœurs, 1/4 poisson en papier dans le dos (tombe au clic), 21/6 trésor de la danse, 31/10 fantôme, décembre neige qui s'entasse ; Météo : pluie (éclaboussures), canicule (`fondue`) |
+
+- **Réactions au PC** (`context.ts`, permises sauf avec « Surprises : aucune ») :
+  3 agents IA au travail → baguette de cheffe d'orchestre ; un agent qui finit
+  après plus d'une heure → victoire ; 2 h – 6 h → bonnet de nuit et, une fois
+  par nuit, « Il serait temps de dormir, non ? » ; PC allumé depuis plus de 7
+  jours → toile d'araignée (`.egg-web`) ; 100e capture → flash ; vendredi dès
+  17 h → lunettes de soleil ; lundi 8 h 30 – 10 h 30 → café ; volume à 100 % →
+  mains sur les oreilles ; batterie ≤ 2 % débranchée → panique, puis
+  soulagement au branchement ; même texte copié 5 fois → « C'est bon, je l'ai ! ».
+  Les données viennent des modules (`Bridge.moduleInvoke`), seulement s'ils sont
+  activés. Les accessoires sont dessinés en code par `MascotFx`.
+- **Calques** : `FxLayer` pose un canvas sur toute l'île le temps d'un effet ;
+  `MascotFx` pose un canvas plus grand que la mascotte et recopie à chaque image
+  `canvas.mascot-canvas` (n'importe quel moteur), transformé. Rien ne tourne
+  entre deux surprises.
+- **Carnet des trésors** (`treasures.ts`) : chaque surprise trouvée est ajoutée
+  à `mascot.treasures` (vérifié par le Rust) et annoncée une fois ; la page
+  Mascotte des réglages montre le carnet (noms trouvés, indices pour les autres).
+- Les animations propres à la goutte (`pluie-glitch`, `esquive`, `danse`,
+  `fondue`) sont dans son manifeste ; une mascotte qui ne les a pas montre une
+  émotion à la place.
 
 ## Module Étagère (phase 2)
 

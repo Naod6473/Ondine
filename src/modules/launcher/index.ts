@@ -15,6 +15,7 @@ import { Bridge } from "../../core/bridge";
 import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { settingsStore } from "../../core/settings-store";
+import { magicWord } from "../../eggs/words";
 import { el } from "../../island/dom";
 import { agentIcon, icon, setLabel } from "../../island/icon";
 import { reducedMotion } from "../../island/tab-pill";
@@ -355,6 +356,14 @@ export const launcher: IslandModule = {
             select(selected + (e.key === "ArrowDown" ? 1 : -1));
           } else if (e.key === "Enter") {
             e.preventDefault();
+            // Un mot magique (« réveille-toi », « rétro »…) : une surprise d'Ondine (src/eggs/).
+            const word = settingsStore.current.mascot.surprises === "all" ? magicWord(search.value) : null;
+            if (word) {
+              api.emit("easter.word", { word });
+              search.value = "";
+              draw();
+              return;
+            }
             return run(current[selected]);
           }
           // Échap : l'île s'en occupe (elle se referme).

@@ -19,6 +19,8 @@
 //   mascot.clicked ×3 rapides → annoyed, ×6 → dizzy           mascot.hover-long → love
 //   inactivité → bored puis sleep  activité pendant sleep → wake
 //   mascot.play {animation} → joue cette animation (tests depuis les réglages)
+//   mascot.dance {on} → elle danse en boucle (musique + mini-île, src/eggs/) :
+//     les autres réactions passent, puis elle reprend la danse
 //   Humeur suivant le PC (réglage « ondineMood » du module Système) :
 //   system.cpu-busy {on} → worried (elle transpire), humeur grognon tant que ça dure
 //   system.battery-low → sad, paupières lourdes ; system.battery-full → happy
@@ -74,6 +76,8 @@ export class MascotController {
   private thinking = false;
   private moodUntil = 0;
   private lastReaction = 0;
+  /** Elle danse (message mascot.dance) : la danse remplace le repos. */
+  private dance = false;
   /** Le processeur est à fond (message system.cpu-busy). */
   private cpuBusy = false;
   private stopInactivity: () => void;
@@ -114,6 +118,13 @@ export class MascotController {
     const anim = this.animationFor(state);
     if (!anim) return false;
     if (!force && !this.allowed(anim)) return false;
+    // Pendant la danse, un état « de fond » (repos, ennui, inquiétude…) ne
+    // l'arrête pas : elle reprend la danse. Seuls le travail et la réflexion
+    // passent devant ; les réactions ponctuelles jouent, puis la danse revient.
+    if (this.dance && anim.loop && this.tasks === 0 && !this.thinking && state !== "sleep") {
+      if (this.current?.name !== "danse") this.playAnimation("danse");
+      return true;
+    }
     this.state = state;
     this.current = anim;
     this.renderer.setState(state);
@@ -168,6 +179,7 @@ export class MascotController {
         return;
       }
     }
+    if (this.dance && this.tasks === 0 && !this.thinking) return this.playAnimation("danse");
     this.request(this.baseState(), true);
   }
 
@@ -195,7 +207,7 @@ export class MascotController {
     const idleMs = Date.now() - this.lastActivity;
     if (this.moodUntil && Date.now() > this.moodUntil) this.moodUntil = 0;
     if (!this.moodUntil) this.renderer.setMood(this.baseMood());
-    if (this.tasks > 0 || this.thinking) return;
+    if (this.tasks > 0 || this.thinking || this.dance) return;
     if (idleMs > this.timings.sleepAfterMs && this.state !== "sleep") this.request("sleep");
     else if (idleMs > this.timings.boredAfterMs && this.state === "idle") this.request("bored");
   }
@@ -258,6 +270,13 @@ export class MascotController {
     });
     on("system.battery-full", () => moodFollowsPc() && this.request("happy"));
     on("mascot.play", (p: { animation?: string }) => p?.animation && this.playAnimation(p.animation));
+    on("mascot.dance", (p: { on?: boolean } | null) => {
+      const want = !!p?.on && this.manifest.animations.some((a) => a.name === "danse");
+      if (want === this.dance) return;
+      this.dance = want;
+      if (want) this.playAnimation("danse");
+      else this.request(this.baseState(), true);
+    });
   }
 
   /** Une petite réaction à une notification (si la mascotte a l'émotion, et pas trop souvent). */
