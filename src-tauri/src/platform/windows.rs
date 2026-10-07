@@ -1264,17 +1264,44 @@ fn process_names() -> std::collections::HashMap<u32, String> {
     out
 }
 
-/// La fenêtre de console de ce programme, si elle est visible (sinon 0).
+/// La fenêtre de la console où tourne l'agent, si elle est visible (sinon 0).
+/// « ondine.exe notify » n'a pas de console à lui : il s'attache un instant à
+/// celle de son parent (l'agent). Quand Windows Terminal est le terminal par
+/// défaut, cette console est une fenêtre cachée dont la « propriétaire » est
+/// la fenêtre de Windows Terminal : c'est elle qu'on rend.
 pub fn own_console_window() -> isize {
-    use ::windows::Win32::System::Console::GetConsoleWindow;
-    use ::windows::Win32::UI::WindowsAndMessaging::IsWindowVisible;
+    use ::windows::Win32::System::Console::{
+        AttachConsole, FreeConsole, GetConsoleWindow, GetStdHandle, SetStdHandle, ATTACH_PARENT_PROCESS, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+    };
+    use ::windows::Win32::UI::WindowsAndMessaging::{GetWindow, IsWindowVisible, GW_OWNER};
     unsafe {
-        let h = GetConsoleWindow();
-        if !h.0.is_null() && IsWindowVisible(h).as_bool() {
+        let mut h = GetConsoleWindow();
+        // Nos entrée et sortie (des tuyaux vers l'agent) sont gardées telles
+        // quelles : s'attacher à une console ne doit pas les détourner.
+        let std = [STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, STD_ERROR_HANDLE].map(|k| (k, GetStdHandle(k)));
+        let attached = h.0.is_null() && AttachConsole(ATTACH_PARENT_PROCESS).is_ok();
+        if attached {
+            h = GetConsoleWindow();
+        }
+        let found = if h.0.is_null() {
+            0
+        } else if IsWindowVisible(h).as_bool() {
             h.0 as isize
         } else {
-            0
+            match GetWindow(h, GW_OWNER) {
+                Ok(owner) if !owner.0.is_null() && IsWindowVisible(owner).as_bool() => owner.0 as isize,
+                _ => 0,
+            }
+        };
+        if attached {
+            let _ = FreeConsole();
+            for (kind, handle) in std {
+                if let Ok(handle) = handle {
+                    let _ = SetStdHandle(kind, handle);
+                }
+            }
         }
+        found
     }
 }
 
