@@ -1,7 +1,9 @@
 # Changements · Changelog
 
-## Prochaine version
+## 1.0.0 · 2026-10-07
 
+- Au premier lancement : la mascotte Gomme et la mini-île toujours affichée.
+  · On first launch: the Gomme mascot and the always-visible mini island.
 - Surprises cachées : pluie de code, Ondine 8 bits (code Konami), la goutte qui
   se divise en deux, le goûter de la mini-île, des jours de fête (Nouvel an,
   poisson d'avril, neige en décembre…) et un carnet des trésors dans les
@@ -15,9 +17,6 @@
   ears at full volume…
 - Ondine danse quand de la musique joue et que l'île est réduite. · Ondine
   dances while music plays on the mini island.
-
-## 1.0.0 · 2026-10-06
-
 - Recherche dans l'île : notes, presse-papiers, étagère, captures et apps, sans
   accents ni majuscules. · In-island search across notes, clipboard, shelf,
   captures and apps.

@@ -473,6 +473,7 @@ mod tests {
         let a = Profile { id: "a".into(), name: "A".into(), values: ProfileValues { always_mini: Some(true), ..Default::default() }, rule: ProfileRule::default() };
         let b = Profile { id: "b".into(), name: "B".into(), values: ProfileValues { tab_order: Some(vec!["notes".into()]), ..Default::default() }, rule: ProfileRule::default() };
         let mut s = settings_with(vec![a, b]);
+        s.island.always_mini = false;
         switch(&mut s, "a");
         assert!(s.island.always_mini);
         switch(&mut s, "b");
