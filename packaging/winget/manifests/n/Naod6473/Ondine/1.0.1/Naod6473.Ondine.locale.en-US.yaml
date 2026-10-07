@@ -1,0 +1,39 @@
+# Created with scripts/winget-manifests.mjs (https://github.com/Naod6473/Ondine)
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.10.0.schema.json
+
+PackageIdentifier: Naod6473.Ondine
+PackageVersion: 1.0.1
+PackageLocale: en-US
+Publisher: Naod6473
+PublisherUrl: "https://github.com/Naod6473"
+PublisherSupportUrl: "https://github.com/Naod6473/Ondine/issues"
+PrivacyUrl: "https://github.com/Naod6473/Ondine/blob/main/PRIVACY.md"
+Author: Naod6473
+PackageName: Ondine
+PackageUrl: "https://github.com/Naod6473/Ondine"
+License: MIT
+LicenseUrl: "https://github.com/Naod6473/Ondine/blob/main/LICENSE"
+Copyright: "Copyright (c) 2026 Naod6473"
+ShortDescription: "A little island at the top of your Windows screen: music, clipboard, timer, calendar, notes, AI agents and IT tools, without switching windows."
+Description: "Ondine lives at the top of your screen, like an iPhone's Dynamic Island. Move the mouse up: a pill appears, with Ondine, a little water drop that reacts to what happens. Click: the island opens onto your tools (music, clipboard, screenshots, timer, calendar, notes, AI agents, network tools…), without switching windows. Free, open source (MIT), no telemetry, in English and French."
+Moniker: ondine
+Tags:
+- dynamic-island
+- productivity
+- pomodoro
+- clipboard
+- notes
+- calendar
+- launcher
+- screenshot
+- ai-agents
+- claude
+- it-tools
+- tauri
+ReleaseNotes: |-
+  - On first launch: the Gomme mascot and the always-visible mini island.
+  - "Go there" brings back the Windows Terminal window in the installed version.
+  - No more need for the Visual C++ Redistributable on a fresh PC.
+ReleaseNotesUrl: "https://github.com/Naod6473/Ondine/releases/tag/v1.0.1"
+ManifestType: defaultLocale
+ManifestVersion: 1.10.0
