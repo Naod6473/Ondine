@@ -26,6 +26,7 @@
 // en entier. Chaque surprise
 // découverte entre dans le carnet des trésors (réglage mascot.treasures).
 
+import { Bridge } from "../core/bridge";
 import type { Bus } from "../core/bus";
 import type { NotificationQueue } from "../core/notifications";
 import { perfMode } from "../core/perf";
@@ -122,6 +123,9 @@ export class EasterEggs {
     const timer = window.setInterval(() => this.maybeSnack(), SNACK_CHECK_MS);
     this.offs.push(() => window.clearInterval(timer));
     on("media.changed", (p: MediaPayload | null) => this.mediaChanged(musicPlaying(p)));
+    // Le module Musique ne publie qu'aux changements : une musique lancée avant
+    // l'île, il faut la demander (au démarrage, puis à chaque mini-île).
+    void this.askMusic();
     const keys = (e: KeyboardEvent) => {
       if (this.hooks.state() !== "expanded") return;
       if (this.konami.push(e.key) && this.allowed("secret") && this.hooks.manifest()) this.setRetro(!this.retro);
@@ -425,6 +429,7 @@ export class EasterEggs {
       this.hooks.shell.querySelector<HTMLElement>(".island-content")?.getAnimations().forEach((a) => a.cancel());
     }
     this.syncDance();
+    if (to === "compact") void this.askMusic();
     if (to === "compact" && this.snackWanted) window.setTimeout(() => void this.snack(), 600);
     if (to === "hidden" && this.retro) this.setRetro(false);
     if (to !== "hidden") this.applyDay();
@@ -514,6 +519,15 @@ export class EasterEggs {
     this.emote("happy");
     if (this.visuals()) void this.fx.play("snow", { pile: { from, to } });
     return true;
+  }
+
+  private async askMusic() {
+    if (!settingsStore.moduleEnabled("media")) return;
+    try {
+      this.mediaChanged(musicPlaying(await Bridge.moduleInvoke<MediaPayload>("media", "state", null)));
+    } catch {
+      // hors de l'appli (navigateur) : pas de musique
+    }
   }
 
   private mediaChanged(playing: boolean | null) {
