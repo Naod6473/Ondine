@@ -46,9 +46,12 @@ The intro video is on the website: [ondine.pissits.com](https://ondine.pissits.c
 2. Run it. The installer offers English or French; Ondine uses that language
    on first launch. It installs for your account only: no administrator rights
    needed.
-3. Until the installer is code-signed, Windows may show **"Windows protected
-   your PC"** (SmartScreen): click **More info**, then **Run anyway**. The
-   installer is built by GitHub Actions from this repository
+3. The installer is not signed with a code-signing certificate (they cost
+   money, and Ondine is a free project). Windows will therefore probably show
+   **"Windows protected your PC"** (SmartScreen): click **More info**, then
+   **Run anyway**. The message only means Windows does not know the
+   publisher, not that a problem was found. The installer is built
+   by GitHub Actions from this repository's public source code
    ([release.yml](.github/workflows/release.yml)).
 
 On first launch, Ondine says hello at the top of the screen and explains how to
@@ -444,17 +447,13 @@ hours, or by Wi-Fi network name.
 - Nothing is ever deleted for good: the Recycle Bin, with undo.
 - Found a vulnerability? Please report it privately: [SECURITY.md](SECURITY.md#english).
 
-### Code signing policy
+### Signing
 
-Free code signing provided by [SignPath.io](https://about.signpath.io), certificate
-by [SignPath Foundation](https://signpath.org). Team roles and details:
-[CODE_SIGNING.md](CODE_SIGNING.md). Privacy: [PRIVACY.md](PRIVACY.md).
-
-This is being set up: the SignPath application is in progress, so current
-releases are not Authenticode-signed yet (updates are already signed with minisign).
-
-Only the installer and the program built by GitHub Actions from this
-repository are signed, and every signing request is approved by hand.
+The installer and `Ondine.exe` are not Authenticode-signed (hence the
+SmartScreen warning on install). They are built only by GitHub Actions from this
+repository. Automatic updates are signed (minisign): Ondine rejects any update
+whose signature does not match the key embedded in the app. Details:
+[CODE_SIGNING.md](CODE_SIGNING.md).
 
 ---
 
