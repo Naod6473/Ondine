@@ -63,7 +63,7 @@ const KIND_BONUS = { action: 4, app: 3, tool: 2, recent: 1 };
 
 let listing: Listing = { items: [], hotkey: "", hotkeyError: null };
 /** Les serveurs favoris du module Accès distants (reçus par le bus « remote.changed »). */
-let servers: { id: number; name: string; kind: "rdp" | "ssh" }[] = [];
+let servers: { id: number; name: string; kind: "rdp" | "ssh"; wake?: boolean }[] = [];
 /** Les projets et agents proposés (module Agents IA, sujet « agents.projects »). */
 let agentProjects: { index: number; name: string }[] = [];
 let agentTools: string[] = ["claude"];
@@ -159,6 +159,22 @@ function islandActions(api: ModuleApi, query: string): Result[] {
           score: best + KIND_BONUS.app,
           run: () => (api.emit("remote.connect", { id: srv.id }), close()),
         });
+      }
+      // « Réveiller NAS » : seulement pour un favori qui a une adresse MAC (Wake-on-LAN).
+      if (srv.wake) {
+        const name = `Réveiller ${srv.name}`;
+        const w = Math.max(score(name, query), score(`wake ${srv.name}`, query) - 5, score(`wol ${srv.name}`, query) - 5);
+        if (w > 0) {
+          out.push({
+            key: `remote-wake-${srv.id}`,
+            name,
+            detail: "Wake-on-LAN",
+            icon: "⏰",
+            tag: label,
+            score: w + KIND_BONUS.app,
+            run: () => (api.emit("remote.wake", { id: srv.id }), close()),
+          });
+        }
       }
     }
   }

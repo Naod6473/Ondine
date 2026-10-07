@@ -75,6 +75,7 @@
       "terminal.open",
       "timer.start",
       "remote.connect",
+      "remote.wake",
       "agents.launch",
       "notes.open",
       "capture.pick",

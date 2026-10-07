@@ -24,6 +24,8 @@ mod nettools;
 mod rules;
 mod notes;
 mod remote;
+// Wake-on-LAN des Accès distants : paquet magique, adresses MAC.
+mod remote_wol;
 mod shelf;
 mod shelf_tools;
 mod system;
