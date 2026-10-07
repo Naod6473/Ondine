@@ -98,7 +98,7 @@ const TERMINALS: [&str; 7] = ["windowsterminal.exe", "conhost.exe", "openconsole
 ///    plus lointain) ;
 /// 2. sinon (chaîne coupée, par exemple par Git Bash), une fenêtre dont le
 ///    titre contient le nom du projet (VS Code, terminal renommé…) ;
-/// 3. sinon, le seul terminal ouvert, s'il n'y en a qu'un.
+/// 3. sinon, le seul terminal ouvert, ou le seul dont le titre vient d'un agent.
 #[cfg_attr(not(windows), allow(dead_code))]
 pub fn pick_agent_window(windows: &[AgentWindow], pids: &[u32], project: &str) -> Option<isize> {
     if let Some(w) = pids.iter().find_map(|p| windows.iter().find(|w| w.pid == *p)) {
@@ -111,11 +111,24 @@ pub fn pick_agent_window(windows: &[AgentWindow], pids: &[u32], project: &str) -
             return Some(w.hwnd);
         }
     }
-    let mut terminals = windows.iter().filter(|w| TERMINALS.contains(&w.exe.as_str()));
-    match (terminals.next(), terminals.next()) {
+    let terminals: Vec<&AgentWindow> = windows.iter().filter(|w| TERMINALS.contains(&w.exe.as_str())).collect();
+    if let [w] = terminals.as_slice() {
+        return Some(w.hwnd);
+    }
+    // Plusieurs terminaux : celui dont le titre est posé par l'agent (Claude
+    // Code met « ✳ » ou une autre étoile devant le sujet de la session).
+    let mut marked = terminals.iter().filter(|w| agent_title(&w.title));
+    match (marked.next(), marked.next()) {
         (Some(w), None) => Some(w.hwnd),
         _ => None,
     }
+}
+
+/// Un titre de terminal posé par un agent : une étoile de Claude Code en tête,
+/// ou le nom d'un agent.
+fn agent_title(title: &str) -> bool {
+    let t = title.trim_start();
+    t.starts_with(['✳', '✢', '✶', '✻', '✽', '✺', '·', '*']) || ["claude", "codex", "gemini"].iter().any(|n| t.to_lowercase().contains(n))
 }
 
 #[cfg(test)]
@@ -147,9 +160,12 @@ mod tests {
         assert_eq!(pick_agent_window(&list, &[99], "Ondine"), Some(1));
         // Ni l'un ni l'autre : le seul terminal ouvert.
         assert_eq!(pick_agent_window(&list, &[], "autre-projet"), Some(2));
-        // Deux terminaux : on ne devine pas.
+        // Deux terminaux : on ne devine pas…
         let two = [win(2, 20, "a", "windowsterminal.exe"), win(4, 40, "b", "mintty.exe")];
         assert_eq!(pick_agent_window(&two, &[], "x"), None);
+        // … sauf si un seul porte le titre posé par Claude Code.
+        let marked = [win(2, 20, "npm run tauri dev", "windowsterminal.exe"), win(4, 40, "✳ Permissions pour créer", "windowsterminal.exe")];
+        assert_eq!(pick_agent_window(&marked, &[], "x"), Some(4));
         // Deux fenêtres au titre ambigu : on passe au terminal unique.
         let amb = [win(1, 10, "app — code", "code.exe"), win(5, 50, "app.txt", "notepad.exe"), win(2, 20, "z", "windowsterminal.exe")];
         assert_eq!(pick_agent_window(&amb, &[], "app"), Some(2));
