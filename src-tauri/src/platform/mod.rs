@@ -24,6 +24,8 @@ pub mod picker;
 pub mod wifi;
 // Glisser des fichiers de l'île vers l'Explorateur (Étagère). Contient sa propre version Linux.
 pub mod drag_out;
+// Capture → GIF animé : choisir une zone de l'écran, la copier dix fois par seconde. Contient sa propre version Linux.
+pub mod record;
 
 #[cfg(windows)]
 mod drop_target;

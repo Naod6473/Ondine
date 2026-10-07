@@ -915,7 +915,7 @@
 "Copier le QR code impossible": "Couldn't copy the QR code",
 "Visez le code avec l'appareil photo de votre téléphone. Calculé sur votre PC : rien ne passe par Internet.": "Point your phone's camera at the code. Made on your PC: nothing goes over the Internet.",
 "rien à mettre dans le QR code": "nothing to put in the QR code",
-"Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur votre ordinateur, hors ligne : l'image n'est envoyée nulle part. La pipette copie la couleur d'un point de l'écran.": "Captures an area of the screen with the Windows tool, then reads its text (OCR) or saves it as PNG. Also works on an image you've already copied. Text recognition runs on your computer, offline: the image is sent nowhere. The color picker copies the color of any point on the screen.",
+"Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur votre ordinateur, hors ligne : l'image n'est envoyée nulle part. La pipette copie la couleur d'un point de l'écran. « Enregistrer un GIF » filme une zone de l'écran en GIF animé (30 s au plus), posé sur l'étagère.": "Captures an area of the screen with the Windows tool, then reads its text (OCR) or saves it as PNG. Also works on an image you've already copied. Text recognition runs on your computer, offline: the image is sent nowhere. The color picker copies the color of any point on the screen. “Record a GIF” films an area of the screen as an animated GIF (30 s at most), put on the Shelf.",
 "Format de la couleur copiée (pipette)": "Copied color format (color picker)",
 "Couleur à l'écran :": "Color on screen:",
 "💧 Pipette": "💧 Color picker",
@@ -1214,7 +1214,25 @@
 "ce résultat n'est plus disponible": "this result is no longer available",
 "rien à copier": "nothing to copy",
 "erreur interne": "internal error",
-"illisible": "unreadable"
+"illisible": "unreadable",
+"GIF animé :": "Animated GIF:",
+"🎞️ Enregistrer un GIF": "🎞️ Record a GIF",
+"⏹️ Arrêter le GIF": "⏹️ Stop the GIF",
+"⏳ GIF en cours…": "⏳ GIF in progress…",
+"Choisissez une zone de l'écran, puis enregistrez-la en GIF animé (durée maximale dans les réglages du module)": "Choose an area of the screen, then record it as an animated GIF (maximum length in the module settings)",
+"Arrêter l'enregistrement et créer le GIF": "Stop recording and create the GIF",
+"Glissez pour choisir la zone du GIF · Clic : tout l'écran · Échap : annuler": "Drag to choose the GIF area · Click: whole screen · Esc: cancel",
+"Création du GIF…": "Creating the GIF…",
+"GIF impossible": "GIF failed",
+"Durée maximale d'un GIF (secondes)": "Maximum GIF length (seconds)",
+"L'enregistrement s'arrête tout seul au bout de ce temps, ou avant avec « Arrêter ». 30 secondes au plus.": "Recording stops by itself after this time, or earlier with “Stop”. 30 seconds at most.",
+"Montrer la souris dans les GIF": "Show the mouse pointer in GIFs",
+"un GIF est déjà en cours": "a GIF is already in progress",
+"zone vide": "empty area",
+"copie de l'écran impossible": "couldn't copy the screen",
+"aucune image enregistrée": "no image recorded",
+"image trop grande pour un GIF": "image too large for a GIF",
+"image de la mauvaise taille": "image of the wrong size"
 },
 "patterns": [
 [
@@ -2272,6 +2290,34 @@
 [
 "^calcul impossible : (.+)$",
 "unable to compute: $1"
+],
+[
+"^Enregistrement du GIF \\((\\d+) s au plus\\)$",
+"Recording the GIF ($1 s max)"
+],
+[
+"^GIF enregistré \\((\\d+) s, (\\d+) Ko\\)$",
+"GIF saved ($1 s, $2 KB)"
+],
+[
+"^GIF enregistré \\((\\d+) s, (\\d+),(\\d) Mo\\)$",
+"GIF saved ($1 s, $2.$3 MB)"
+],
+[
+"^enregistrement impossible : (.+)$",
+"couldn't save: $1"
+],
+[
+"^écriture du GIF impossible : (.+)$",
+"couldn't write the GIF: $1"
+],
+[
+"^fenêtre de sélection impossible à ouvrir : (.+)$",
+"couldn't open the selection window: $1"
+],
+[
+"^capture de l'écran impossible : (.+)$",
+"couldn't capture the screen: $1"
 ]
 ]
 }

@@ -65,6 +65,10 @@ toml = "1"
 sha2 = "0.10"
 sha1 = "0.10"
 md-5 = "0.10"
+# GIF animé (Capture → « Enregistrer un GIF ») : l'encodeur qu'utilise déjà la
+# crate image (aucun code en plus), appelé directement pour n'écrire que la
+# partie de l'image qui a changé d'une image à l'autre (fichier bien plus léger).
+gif = "0.14"
 
 [target.'cfg(windows)'.dependencies]
 # Gestionnaire d'identifiants Windows. Version 3 volontairement : la 4 a changé d'API.

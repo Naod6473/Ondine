@@ -153,6 +153,8 @@ const LINE_ONLY: Record<string, string> = {
   "🙂": "smiley",
   "#⃣": "hash",
   "❌": "x-circle",
+  "🎞": "film-strip",
+  "🔴": "record",
 };
 
 /** Les images connues. Une clé « logo: » absente retombe sur FALLBACK. */

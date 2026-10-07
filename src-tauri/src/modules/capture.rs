@@ -18,12 +18,25 @@
 // La pipette (choisir une couleur à l'écran) vit aussi ici : la fenêtre est
 // dans platform/picker.rs, les calculs (HEX, RGB, HSL, historique) dans
 // capture/color.rs.
+//
+// « Enregistrer un GIF » aussi : on choisit une zone de l'écran (fenêtre de
+// sélection et prise des images dans platform/record.rs), elle est copiée dix
+// fois par seconde pendant 10 s au plus (réglable, 30 s maximum) ou jusqu'à
+// « Arrêter », et les images deviennent un GIF animé (capture/gif.rs) dans un
+// deuxième fil, pour que la prise des images garde son rythme. Le GIF va dans
+// le dossier des captures, sur l'étagère, et peut être annulé (Corbeille).
+// Pas de vidéo MP4 : il faudrait un encodeur vidéo (Media Foundation ou une
+// grosse crate) pour un usage plus rare.
 
 mod color;
+mod gif;
 
 use crate::sync::LockExt;
+use std::io::{BufWriter, Write};
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{self, TrySendError};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -33,7 +46,9 @@ use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter};
 
 use self::color::{Format, Rgb};
+use self::gif::GifWriter;
 use super::{ModuleContext, RustModule};
+use crate::platform::record::{self, Area};
 use crate::platform::{self, ocr, picker};
 use crate::services::bus::BusMessage;
 use crate::services::undo::DEFAULT_WINDOW;
@@ -48,6 +63,16 @@ const MAX_EXPORT_BASE64: usize = 80 * 1024 * 1024;
 const SNIP_TIMEOUT: Duration = Duration::from_secs(120);
 /// Le temps que l'île se replie avant la photo de l'écran de la pipette.
 const PICK_DELAY: Duration = Duration::from_millis(450);
+/// GIF : durée maximale par défaut, et bornes du réglage « gifSeconds » (secondes).
+const GIF_DEFAULT_SECONDS: u64 = 10;
+const GIF_MIN_SECONDS: u64 = 2;
+const GIF_MAX_SECONDS: u64 = 30;
+/// GIF : une image toutes les… (10 par seconde).
+const GIF_FRAME_EVERY: Duration = Duration::from_millis(100);
+/// GIF : images en attente d'écriture, au plus (environ 1,5 Mo chacune en
+/// 960 × 540). Si l'écriture prend du retard, les images en trop sont sautées
+/// (le GIF garde le bon rythme : la précédente reste affichée plus longtemps).
+const GIF_QUEUE: usize = 20;
 
 /// Ce que le module retient entre deux commandes.
 #[derive(Default)]
@@ -70,6 +95,10 @@ pub struct Capture {
     waiting: Arc<AtomicBool>,
     /// La pipette est-elle ouverte ? (une seule à la fois)
     picking: Arc<AtomicBool>,
+    /// Un GIF est-il en cours (choix de la zone, enregistrement, écriture) ? (un seul à la fois)
+    gif_busy: Arc<AtomicBool>,
+    /// « Arrêter » a été demandé pour le GIF en cours.
+    gif_stop: Arc<AtomicBool>,
 }
 
 /// Que faire de l'image une fois capturée.
@@ -142,6 +171,17 @@ impl RustModule for Capture {
                 Ok(Value::Null)
             }
             "colors" => Ok(colors_json(ctx, &self.state)),
+            // { hint } : choisir une zone de l'écran, puis l'enregistrer en GIF.
+            // Répond tout de suite ; la suite arrive par "capture.gif".
+            "gif_start" => {
+                self.gif_start(ctx, &args)?;
+                Ok(Value::Null)
+            }
+            // « Arrêter » : le GIF en cours s'arrête à la prochaine image et s'écrit.
+            "gif_stop" => {
+                self.gif_stop.store(true, Ordering::SeqCst);
+                Ok(Value::Null)
+            }
             "copy_color" => {
                 // Le front n'envoie qu'une couleur « #RRGGBB » : rien d'autre n'est copié.
                 let hex = args.get("hex").and_then(Value::as_str).unwrap_or_default();
@@ -271,6 +311,242 @@ impl Capture {
         });
         Ok(())
     }
+}
+
+// ── GIF animé ────────────────────────────────────────────────────────────────
+
+/// Ce dont le fil du GIF a besoin.
+struct GifJob {
+    app: AppHandle,
+    state: Arc<Mutex<State>>,
+    /// Le dossier des captures (déjà vérifié).
+    dir: PathBuf,
+    /// Durée maximale de l'enregistrement.
+    seconds: u64,
+    /// Dessiner la souris sur les images.
+    cursor: bool,
+    /// L'aide affichée pendant le choix de la zone (traduite par le front).
+    hint: String,
+    stop: Arc<AtomicBool>,
+}
+
+/// Ce que le fil de prise des images envoie au fil d'écriture.
+enum GifMsg {
+    /// Une image (RGB) et le moment où elle a été prise.
+    Frame(Vec<u8>, Duration),
+    /// Fin de l'enregistrement, à ce moment-là.
+    End(Duration),
+}
+
+impl Capture {
+    /// Lance le GIF dans un fil à part : choix de la zone, enregistrement,
+    /// écriture. Chaque étape est annoncée par "capture.gif" { state } :
+    /// "recording", "encoding", puis "done", "cancelled" ou "error".
+    fn gif_start(&self, ctx: &ModuleContext, args: &Value) -> Result<(), String> {
+        let hint: String = args.get("hint").and_then(Value::as_str).unwrap_or_default().chars().take(200).collect();
+        let settings = ctx.settings();
+        let seconds = settings
+            .get("gifSeconds")
+            .and_then(Value::as_f64)
+            .map(|v| v.round().max(0.0) as u64)
+            .unwrap_or(GIF_DEFAULT_SECONDS)
+            .clamp(GIF_MIN_SECONDS, GIF_MAX_SECONDS);
+        let cursor = settings.get("gifCursor").and_then(Value::as_bool).unwrap_or(true);
+        // Le dossier est vérifié tout de suite : un dossier exclu ou absent est
+        // signalé avant même de choisir la zone.
+        let dir = capture_dir(ctx, true)?;
+        if self.gif_busy.swap(true, Ordering::SeqCst) {
+            return Err("un GIF est déjà en cours".into());
+        }
+        self.gif_stop.store(false, Ordering::SeqCst);
+        let job = GifJob { app: ctx.app.clone(), state: self.state.clone(), dir, seconds, cursor, hint, stop: self.gif_stop.clone() };
+        let busy = self.gif_busy.clone();
+        let spawned = std::thread::Builder::new().name("ondine-gif".into()).spawn(move || {
+            let outcome = catch_unwind(AssertUnwindSafe(|| record_gif(&job)));
+            busy.store(false, Ordering::SeqCst);
+            let payload = outcome.unwrap_or_else(|_| {
+                log::warn("capture : panique pendant le GIF");
+                json!({ "state": "error", "error": "erreur interne" })
+            });
+            bus::emit(&job.app, ID, "capture.gif", payload);
+        });
+        if let Err(e) = spawned {
+            self.gif_busy.store(false, Ordering::SeqCst);
+            return Err(format!("enregistrement impossible : {e}"));
+        }
+        Ok(())
+    }
+}
+
+/// Le travail du fil du GIF. Renvoie le dernier message "capture.gif".
+fn record_gif(job: &GifJob) -> Value {
+    // Le temps que l'île se replie : elle ne doit pas être sur la photo du bureau.
+    std::thread::sleep(Duration::from_millis(400));
+    let area = match record::select_area(&job.hint) {
+        Ok(Some(area)) => area,
+        Ok(None) => return json!({ "state": "cancelled" }),
+        Err(e) => return json!({ "state": "error", "error": e }),
+    };
+    record_area(job, area).unwrap_or_else(|e| json!({ "state": "error", "error": e }))
+}
+
+/// Tant qu'il existe, l'île est absente des captures d'écran (et du GIF).
+struct IslandHidden<'a> {
+    app: &'a AppHandle,
+    hidden: bool,
+}
+
+impl<'a> IslandHidden<'a> {
+    fn new(app: &'a AppHandle) -> Self {
+        let hidden = record::hide_from_capture(app, true);
+        if !hidden {
+            log::info("capture : l'île ne peut pas être retirée du GIF (Windows 10 version 2004 ou plus requis)");
+        }
+        IslandHidden { app, hidden }
+    }
+}
+
+impl Drop for IslandHidden<'_> {
+    fn drop(&mut self) {
+        if self.hidden {
+            record::hide_from_capture(self.app, false);
+        }
+    }
+}
+
+/// Enregistre la zone choisie, puis écrit le GIF. Ok = le message "done".
+fn record_area(job: &GifJob, area: Area) -> Result<Value, String> {
+    let (width, height) = gif::fit_size(area.width, area.height, gif::MAX_SIDE);
+    // Pendant l'enregistrement, l'île est absente du GIF (vous la voyez quand même).
+    let hidden = IslandHidden::new(&job.app);
+    // Le temps que la fenêtre de sélection disparaisse de l'écran, et que
+    // Windows retire l'île des captures, avant la première image.
+    std::thread::sleep(Duration::from_millis(250));
+    let grabber = record::Grabber::new(area, width, height, job.cursor)?;
+    let path = files::unique_dest(&job.dir, capture_name("gif").as_ref());
+    let file = std::fs::File::create(&path).map_err(|e| format!("enregistrement impossible : {e}"))?;
+
+    // L'écriture du GIF, dans un deuxième fil : la prise des images garde son rythme.
+    let (tx, rx) = mpsc::sync_channel::<GifMsg>(GIF_QUEUE);
+    let writer = std::thread::Builder::new()
+        .name("ondine-gif-ecriture".into())
+        .spawn(move || catch_unwind(AssertUnwindSafe(|| write_gif(file, width, height, rx))).unwrap_or_else(|_| Err("erreur interne".into())));
+    let writer = match writer {
+        Ok(w) => w,
+        Err(e) => {
+            let _ = files::to_trash(std::slice::from_ref(&path));
+            return Err(format!("enregistrement impossible : {e}"));
+        }
+    };
+
+    let mut first_error = None;
+    let mut skipped = 0u32;
+    let end = {
+        // Pendant l'enregistrement : un cadre rouge autour de la zone (à l'extérieur).
+        // Le cadre et la copie de l'écran sont lâchés à la fin de ce bloc.
+        let outline = record::Outline::show(area);
+        let mut grabber = grabber;
+        bus::emit(&job.app, ID, "capture.gif", json!({ "state": "recording", "seconds": job.seconds, "width": width, "height": height }));
+        let limit = Duration::from_secs(job.seconds);
+        let mut grabbed = 0u32;
+        let start = Instant::now();
+        loop {
+            let at = start.elapsed();
+            if at >= limit || job.stop.load(Ordering::SeqCst) {
+                break;
+            }
+            outline.pump();
+            match grabber.grab() {
+                Ok(rgb) => {
+                    grabbed += 1;
+                    match tx.try_send(GifMsg::Frame(rgb, at)) {
+                        Ok(()) => {}
+                        // L'écriture a du retard : on saute cette image.
+                        Err(TrySendError::Full(_)) => skipped += 1,
+                        // L'écriture s'est arrêtée (une erreur, lue plus bas).
+                        Err(TrySendError::Disconnected(_)) => break,
+                    }
+                }
+                // Dès la première image : on abandonne. En route (écran verrouillé
+                // un instant…) : on saute l'image.
+                Err(e) if grabbed == 0 => {
+                    first_error = Some(e);
+                    break;
+                }
+                Err(_) => skipped += 1,
+            }
+            // La prochaine image, au prochain dixième de seconde (sans rattraper
+            // les images manquées : l'image d'avant reste affichée plus longtemps).
+            let now = start.elapsed();
+            let ticks = now.as_millis() / GIF_FRAME_EVERY.as_millis() + 1;
+            let next = GIF_FRAME_EVERY * ticks as u32;
+            std::thread::sleep(next.saturating_sub(now).min(limit.saturating_sub(now)));
+        }
+        start.elapsed().min(limit)
+    };
+    drop(hidden);
+    // L'île et le cadre sont rendus : reste l'écriture des dernières images.
+    let _ = tx.send(GifMsg::End(end));
+    drop(tx);
+    bus::emit(&job.app, ID, "capture.gif", json!({ "state": "encoding" }));
+    let written = writer.join().unwrap_or_else(|_| Err("erreur interne".into()));
+    let frames = match (first_error, written) {
+        (None, Ok(frames)) => frames,
+        (error, written) => {
+            // Le fichier commencé part à la Corbeille (jamais supprimé pour de bon).
+            if let Err(e) = files::to_trash(std::slice::from_ref(&path)) {
+                log::warn(format!("capture : GIF inachevé laissé dans le dossier des captures ({e})"));
+            }
+            return Err(error.or(written.err()).unwrap_or_else(|| "erreur interne".into()));
+        }
+    };
+
+    let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+    let bytes = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+    let tenths = end.as_millis() / 100;
+    let undo_id = super::with_context(&job.app, ID, |ctx| {
+        // Le journal dit ce qui a été fait, jamais ce qu'il y avait à l'écran.
+        ctx.log_info(format!("GIF enregistré ({frames} images, {}.{} s, {} Ko, {skipped} sautées)", tenths / 10, tenths % 10, bytes / 1024));
+        // Les modules ne s'appellent pas : on passe par le bus.
+        ctx.emit("shelf.add", json!({ "paths": [path.display().to_string()] }));
+        job.state.locked().saved = Some(path.clone());
+        let undo_path = path.clone();
+        ctx.offer_undo(&format!("« {name} » enregistrée"), DEFAULT_WINDOW, Box::new(move || files::to_trash(&[undo_path])))
+    });
+    Ok(json!({
+        "state": "done",
+        "name": name,
+        "path": path.display().to_string(),
+        "frames": frames,
+        "seconds": tenths as f64 / 10.0,
+        "bytes": bytes,
+        "undoId": undo_id,
+    }))
+}
+
+/// Le fil d'écriture : reçoit les images et les ajoute au GIF. Ok = le nombre d'images.
+fn write_gif(file: std::fs::File, width: u32, height: u32, rx: mpsc::Receiver<GifMsg>) -> Result<u32, String> {
+    let mut gif = GifWriter::new(BufWriter::new(file), width, height)?;
+    let mut end = Duration::ZERO;
+    for msg in rx {
+        match msg {
+            GifMsg::Frame(rgb, at) => {
+                gif.push(&rgb, at)?;
+                end = at;
+            }
+            GifMsg::End(at) => {
+                end = at;
+                break;
+            }
+        }
+    }
+    let frames = gif.frames();
+    if frames == 0 {
+        return Err("aucune image enregistrée".into());
+    }
+    let mut out = gif.finish(end)?;
+    out.flush().map_err(|e| format!("écriture du GIF impossible : {e}"))?;
+    Ok(frames)
 }
 
 /// Le format choisi dans les réglages (HEX par défaut).
@@ -433,14 +709,15 @@ fn read_image() -> Result<(u32, u32, Vec<u8>), String> {
 /// Écrit le PNG dans le dossier des captures et renvoie son chemin.
 fn save_png(ctx: &ModuleContext, png: &[u8]) -> Result<PathBuf, String> {
     let dir = capture_dir(ctx, true)?;
-    let t = platform::local_time();
-    let name = format!(
-        "Capture {:04}-{:02}-{:02} {:02}.{:02}.{:02}.png",
-        t.year, t.month, t.day, t.hour, t.minute, t.second
-    );
-    let path = files::unique_dest(&dir, name.as_ref());
+    let path = files::unique_dest(&dir, capture_name("png").as_ref());
     std::fs::write(&path, png).map_err(|e| format!("enregistrement impossible : {e}"))?;
     Ok(path)
+}
+
+/// « Capture 2026-10-06 14.03.22.png » (ou .gif) : le nom d'une capture prise maintenant.
+fn capture_name(extension: &str) -> String {
+    let t = platform::local_time();
+    format!("Capture {:04}-{:02}-{:02} {:02}.{:02}.{:02}.{extension}", t.year, t.month, t.day, t.hour, t.minute, t.second)
 }
 
 /// Le dossier choisi dans les réglages, sinon Images\Ondine (créé si besoin,
@@ -532,7 +809,7 @@ fn date_of(time: std::time::SystemTime) -> (String, u64) {
 /// Les images que l'île sait enregistrer (et qu'on peut proposer d'ouvrir).
 fn is_image(path: &std::path::Path) -> bool {
     let ext = path.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
-    matches!(ext.as_str(), "png" | "jpg" | "jpeg")
+    matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "gif")
 }
 
 /// Le chemin d'une capture d'après son nom : un simple nom de fichier image,
@@ -563,6 +840,7 @@ mod tests {
         assert!(!super::is_plain_name("sous/dossier.png"));
         assert!(!super::is_plain_name(".."));
         assert!(super::is_image(std::path::Path::new("a.PNG")));
+        assert!(super::is_image(std::path::Path::new("Capture 2026-10-07 10.00.00.gif")));
         assert!(!super::is_image(std::path::Path::new("a.exe")));
     }
 
