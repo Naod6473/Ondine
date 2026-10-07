@@ -94,7 +94,7 @@ function rustDefaults(): Record<string, Record<string, unknown>> {
 describe("valeurs par défaut", () => {
   test("le lecteur de settings.rs trouve bien les réglages", () => {
     const rust = rustDefaults();
-    assert.equal(rust.island.alwaysMini, false);
+    assert.equal(rust.island.alwaysMini, true);
     assert.equal(rust.island.motion, "classic");
     assert.ok(Object.keys(rust.general).length >= 4);
   });
@@ -137,7 +137,7 @@ describe("valeurs par défaut", () => {
 
   test("valeurs sensées", () => {
     const d = defaultSettings();
-    assert.equal(d.island.alwaysMini, false);
+    assert.equal(d.island.alwaysMini, true);
     assert.ok(d.island.collapseSecs > 0);
     assert.ok(d.island.offset >= 0 && d.island.offset <= 1);
     assert.ok(d.island.soundVolume >= 0 && d.island.soundVolume <= 1);

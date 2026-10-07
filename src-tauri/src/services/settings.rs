@@ -172,7 +172,7 @@ impl Default for IslandPrefs {
             hotkey: "Ctrl+Alt+O".into(),
             presentation_quiet: true,
             icon_pack: "color".into(),
-            always_mini: false,
+            always_mini: true,
             motion: default_motion(),
         }
     }
@@ -180,7 +180,7 @@ impl Default for IslandPrefs {
 
 impl Default for MascotPrefs {
     fn default() -> Self {
-        Self { enabled: true, id: "goutte".into(), bored_after_secs: 60.0, sleep_after_secs: 180.0, peek: true, peek_every_mins: 5.0, surprises: "all".into(), treasures: Vec::new() }
+        Self { enabled: true, id: "goutte-gomme".into(), bored_after_secs: 60.0, sleep_after_secs: 180.0, peek: true, peek_every_mins: 5.0, surprises: "all".into(), treasures: Vec::new() }
     }
 }
 

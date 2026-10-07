@@ -503,7 +503,7 @@ function general(main: HTMLElement) {
       ),
       row(
         "Toujours en mini",
-        toggle(s.island.alwaysMini ?? false, (v) => save((d) => (d.island.alwaysMini = v)), "Toujours en mini"),
+        toggle(s.island.alwaysMini ?? true, (v) => save((d) => (d.island.alwaysMini = v)), "Toujours en mini"),
         "L'île reste en petite pilule au lieu de disparaître. Elle se cache seulement en mode présentation.",
       ),
       row(

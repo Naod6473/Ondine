@@ -70,5 +70,5 @@ export function findMascot(id: string): CatalogEntry | null {
   const all = mascotCatalog();
   const valid = (e: CatalogEntry) => e.problems.length === 0;
   const byId = (wanted: string) => all.find((e) => e.manifest.id === wanted && valid(e));
-  return byId(id) ?? byId("goutte") ?? all.find((e) => e.manifest.id === "goutte-gomme") ?? null;
+  return byId(id) ?? byId("goutte-gomme") ?? byId("goutte") ?? null;
 }
