@@ -155,6 +155,7 @@ seconds.
 
 - **Favorite folders**: each becomes a target when you drag files onto the island; **Dropping on a favorite** copies (default) or moves.
 - **"Recycle Bin", "Compress", "Images" and "Rename" targets** (on)
+- **"Hash" target (SHA-256)** (on): drop a file on it to compute its SHA-256 (a multi-GB ISO works, with **Stop**). If the clipboard contains a hash (MD5, SHA-1, SHA-256 or SHA-512, alone or in a `sha256sum` / `certutil` list), the same algorithm is computed and the island says **Identical ✓** (green) or **Different ✗** (red). The full result is shown, with **Copy**; 5 files at most at a time.
 - **Put each newly downloaded file on the shelf** (on): the Downloads folder is checked every 3 seconds.
 
 ### Clipboard
@@ -167,6 +168,13 @@ of a copy; a **password** generator (copied secretly, cleared from the
 clipboard after 30 s, never saved). Copies that Windows flags as sensitive
 (password managers) are ignored. The history stays in memory and is gone when
 Ondine closes; only pinned items and snippets are saved.
+
+A button shows up on a copy it can read: **Decode** for a **JWT** (header and
+payload as readable JSON, `iat` / `nbf` / `exp` dates spelled out; the
+signature is **not** verified), **Base64** that gives text, or an encoded
+address (`%20`); **Format** for compact JSON; **Read the date** for a Unix
+timestamp (10 or 13 digits). The result is shown in the tab, with **Copy**;
+everything happens on your PC and nothing is written to the log.
 
 - **Number of copies kept**: 50 (10 to 500; pinned items don't count)
 - **Clean copied links** (on): removes `utm_source`, `fbclid`, `gclid`…; the notification offers to restore the original.
@@ -182,9 +190,18 @@ actions work on an image you already copied. The **color picker** freezes the
 screen under a magnifier and copies the color of a point; recent colors stay
 one click away.
 
+**Record a GIF**: draw an area of the screen (a simple click takes the whole
+screen, Esc cancels); it is filmed at 10 frames per second, with a red frame
+around it, until **Stop** or the maximum length. The animated GIF goes to the
+screenshot folder and onto the shelf (**Show in Explorer**, **Undo**). An area
+wider than 960 pixels is scaled down; the island doesn't show up in the GIF
+(Windows 10 version 2004 or later). No MP4 video.
+
 - **Copy the recognized text to the clipboard** (on)
 - **Screenshot folder**: `Pictures\Ondine` by default
 - **Copied color format (color picker)**: HEX (`#3A7BD5`), RGB or HSL
+- **Maximum GIF length**: 10 seconds (2 to 30)
+- **Show the mouse pointer in GIFs** (on)
 
 ### Timer
 
