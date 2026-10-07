@@ -2,7 +2,7 @@
   "id": "controls",
   "name": "Contrôles",
   "icon": "🎚️",
-  "description": "Le volume des haut-parleurs et du micro, la luminosité des écrans, le Wi-Fi, le Bluetooth et le mode avion, sans ouvrir Windows. Un point orange (micro) ou vert (caméra) sur l'île montre quand une appli s'en sert, et un raccourci coupe le micro de partout. Agit sur les périphériques que Windows utilise par défaut ; les écrans externes doivent accepter le réglage DDC/CI (souvent activé dans leur menu). Rien n'est écouté ni enregistré : on lit seulement ce que Windows note pour sa page Confidentialité.",
+  "description": "Le volume des haut-parleurs et du micro, la luminosité des écrans, le Wi-Fi, le Bluetooth, le mode avion, le mode sombre et l'éclairage nocturne de Windows, sans ouvrir Windows. Les clés et disques USB s'éjectent d'un clic. Un point orange (micro) ou vert (caméra) sur l'île montre quand une appli s'en sert, et un raccourci coupe le micro de partout. Agit sur les périphériques que Windows utilise par défaut ; les écrans externes doivent accepter le réglage DDC/CI (souvent activé dans leur menu). Rien n'est écouté ni enregistré : on lit seulement ce que Windows note pour sa page Confidentialité.",
   "version": "0.1.0",
   "permissions": [],
   "views": [
@@ -22,17 +22,27 @@
     "outputs",
     "set_output",
     "window",
-    "toggle_pin"
+    "toggle_pin",
+    "usb_drives",
+    "eject",
+    "open_drive",
+    "theme",
+    "set_dark",
+    "set_night"
   ],
   "events": {
     "emits": [
       "controls.media-use",
       "controls.mic-muted",
-      "controls.mic-error"
+      "controls.mic-error",
+      "controls.usb-added",
+      "controls.usb-ejected"
     ],
     "listens": [
       "controls.mic-muted",
-      "controls.mic-error"
+      "controls.mic-error",
+      "controls.usb-added",
+      "controls.usb-ejected"
     ]
   },
   "settings": {
@@ -71,6 +81,13 @@
         "key": "privacyDot",
         "type": "boolean",
         "label": "Montrer un point quand une appli utilise le micro ou la caméra",
+        "default": true
+      },
+      {
+        "key": "usbNotify",
+        "type": "boolean",
+        "label": "Prévenir quand une clé USB est branchée",
+        "help": "Avec deux boutons : « Ouvrir » et « Éjecter ». Les clés et disques USB branchés s'éjectent aussi depuis l'onglet.",
         "default": true
       }
     ]

@@ -87,6 +87,11 @@ const state = {
   speakers: { volume: 62, muted: false },
   microphone: { volume: 80, muted: false },
   radios: { wifi: true, bluetooth: true },
+  /** Mode sombre et éclairage nocturne de Windows (onglet Contrôles). */
+  dark: false,
+  night: false,
+  /** Une clé USB inventée est branchée (onglet Contrôles). */
+  usbKey: true,
   brightness: 70,
   output: "speakers",
   pinnedClips: new Set<number>([1]),
@@ -312,6 +317,9 @@ function agentsHistory() {
 
 const RULE_EMPTY = { extensions: [], nameContains: "", minKb: null, maxKb: null };
 
+/** La clé USB inventée de l'onglet Contrôles. */
+const DEMO_USB = { root: "E:\\", letter: "E:", label: "KINGSTON", removable: true, ejecting: false };
+
 /** L'historique de la pipette (module Capture) : une petite palette inventée. */
 const DEMO_COLORS = ["#3A7BD5", "#00D2FF", "#F7B733", "#FC4A1A", "#6A3093", "#2ECC71", "#1F2937", "#F5F5F4"];
 
@@ -391,6 +399,21 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return { title: "Présentation.pptx - PowerPoint", pinned: false };
     case "controls.toggle_pin":
       return { title: "Présentation.pptx - PowerPoint", pinned: true };
+    case "controls.theme":
+      return { dark: state.dark, mixed: false, night: { supported: true, on: state.night } };
+    case "controls.set_dark":
+      state.dark = args.on === true;
+      return null;
+    case "controls.set_night":
+      state.night = args.on === true;
+      return { opened: false };
+    case "controls.usb_drives":
+      return state.usbKey ? [DEMO_USB] : [];
+    case "controls.eject":
+      // Comme le Rust : la réponse arrive un peu plus tard, par le bus.
+      state.usbKey = false;
+      window.setTimeout(() => bus.inject("controls.usb-ejected", { ...DEMO_USB, ok: true }, "controls"), 800);
+      return null;
 
     // Agenda, notes, presse-papiers, étagère
     case "agenda.upcoming":

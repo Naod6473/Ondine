@@ -133,7 +133,11 @@
 "Prenez beaucoup, beaucoup de captures.": "Prends beaucoup, beaucoup de captures.",
 "Montez le son à fond.": "Monte le son à fond.",
 "Copiez cinq fois la même chose.": "Copie cinq fois la même chose.",
-"Windows attend un redémarrage pour terminer ses mises à jour. Redémarrez quand cela vous arrange.": "Windows attend un redémarrage pour terminer ses mises à jour. Redémarre quand ça t'arrange."
+"Windows attend un redémarrage pour terminer ses mises à jour. Redémarrez quand cela vous arrange.": "Windows attend un redémarrage pour terminer ses mises à jour. Redémarre quand ça t'arrange.",
+"L'Explorateur de fichiers utilise encore ce lecteur. Fermez ses fenêtres puis réessayez.": "L'Explorateur de fichiers utilise encore ce lecteur. Ferme ses fenêtres puis réessaie.",
+"Un pilote ou un autre périphérique bloque l'éjection. Réessayez dans un moment.": "Un pilote ou un autre périphérique bloque l'éjection. Réessaie dans un moment.",
+"Un programme utilise encore la clé. Fermez-le puis réessayez.": "Un programme utilise encore la clé. Ferme-le puis réessaie.",
+"Un programme utilise encore le disque. Fermez-le puis réessayez.": "Un programme utilise encore le disque. Ferme-le puis réessaie."
 },
 "patterns": [
 [
@@ -227,6 +231,26 @@
 [
 "^Collez\\-la\\ dans\\ (.+)\\.$",
 "Colle-la dans $1."
+],
+[
+"^Vous pouvez retirer la clé ([A-Z]:) en toute sécurité\\.$",
+"Tu peux retirer la clé $1 en toute sécurité."
+],
+[
+"^Vous pouvez retirer le disque ([A-Z]:) en toute sécurité\\.$",
+"Tu peux retirer le disque $1 en toute sécurité."
+],
+[
+"^Windows refuse l'éjection \\(code (\\d+)\\)\\. Réessayez dans un moment\\.$",
+"Windows refuse l'éjection (code $1). Réessaie dans un moment."
+],
+[
+"^Le service « (.+) » utilise encore ce lecteur\\. Réessayez dans un moment\\.$",
+"Le service « $1 » utilise encore ce lecteur. Réessaie dans un moment."
+],
+[
+"^« (.+) » utilise encore ce lecteur\\. Fermez-le puis réessayez\\.$",
+"« $1 » utilise encore ce lecteur. Ferme-le puis réessaie."
 ]
 ]
 }

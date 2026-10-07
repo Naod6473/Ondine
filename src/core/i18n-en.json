@@ -543,7 +543,7 @@
 "Nettoyer les liens copiés (retirer utm_source, fbclid, gclid…)": "Clean copied links (remove utm_source, fbclid, gclid…)",
 "Le lien propre remplace le lien copié ; la notification propose de remettre l'original.": "The clean link replaces the copied one; the notification offers to restore the original.",
 "Contrôles": "Controls",
-"Le volume des haut-parleurs et du micro, la luminosité des écrans, le Wi-Fi, le Bluetooth et le mode avion, sans ouvrir Windows. Un point orange (micro) ou vert (caméra) sur l'île montre quand une appli s'en sert, et un raccourci coupe le micro de partout. Agit sur les périphériques que Windows utilise par défaut ; les écrans externes doivent accepter le réglage DDC/CI (souvent activé dans leur menu). Rien n'est écouté ni enregistré : on lit seulement ce que Windows note pour sa page Confidentialité.": "Speaker and microphone volume, screen brightness, Wi-Fi, Bluetooth and airplane mode, without opening Windows. An orange (microphone) or green (camera) dot on the island shows when an app is using them, and a shortcut mutes the mic everywhere. Acts on the devices Windows uses by default; external screens must support DDC/CI adjustment (often enabled in their menu). Nothing is listened to or recorded: it only reads what Windows logs for its Privacy page.",
+"Le volume des haut-parleurs et du micro, la luminosité des écrans, le Wi-Fi, le Bluetooth, le mode avion, le mode sombre et l'éclairage nocturne de Windows, sans ouvrir Windows. Les clés et disques USB s'éjectent d'un clic. Un point orange (micro) ou vert (caméra) sur l'île montre quand une appli s'en sert, et un raccourci coupe le micro de partout. Agit sur les périphériques que Windows utilise par défaut ; les écrans externes doivent accepter le réglage DDC/CI (souvent activé dans leur menu). Rien n'est écouté ni enregistré : on lit seulement ce que Windows note pour sa page Confidentialité.": "Speaker and microphone volume, screen brightness, Wi-Fi, Bluetooth, airplane mode, and Windows dark mode and night light, without opening Windows. USB drives and disks eject in one click. An orange (microphone) or green (camera) dot on the island shows when an app is using them, and a shortcut mutes the mic everywhere. Acts on the devices Windows uses by default; external screens must support DDC/CI adjustment (often enabled in their menu). Nothing is listened to or recorded: it only reads what Windows logs for its Privacy page.",
 "Raccourci pour couper / rétablir le micro": "Shortcut to mute / unmute the microphone",
 "Marche partout, même en visio. Ondine porte un petit badge tant que le micro est coupé.": "Works everywhere, even in video calls. Ondine wears a little badge while the mic is muted.",
 "Aucun": "None",
@@ -1159,6 +1159,33 @@
 "Masqués par défaut, pour garder la surprise.": "Hidden by default, to keep the surprise.",
 "Il serait temps de dormir, non ?": "Isn't it time to sleep?",
 "C'est bon, je l'ai !": "Got it, I've got it!",
+"Sombre": "Dark",
+"Veilleuse": "Night light",
+"Mode sombre de Windows : activé": "Windows dark mode: on",
+"Mode sombre de Windows : en partie (applis ou barre des tâches)": "Windows dark mode: partly (apps or taskbar)",
+"Mode sombre de Windows : désactivé": "Windows dark mode: off",
+"Éclairage nocturne : ouvrir les paramètres de Windows": "Night light: open Windows settings",
+"Éclairage nocturne : activé": "Night light: on",
+"Éclairage nocturne : désactivé": "Night light: off",
+"Windows ne permet pas de changer le mode sombre ici": "Windows doesn't allow changing dark mode here",
+"Windows refuse de changer l'éclairage nocturne": "Windows refused to change night light",
+"Clés USB et disques amovibles": "USB drives and removable disks",
+"Éjecter": "Eject",
+"Éjection…": "Ejecting…",
+"Disque USB": "USB disk",
+"Le lecteur n'est plus visible : il a peut-être déjà été retiré.": "The drive is no longer visible: it may already have been removed.",
+"Windows ne propose pas de retirer ce lecteur en toute sécurité.": "Windows doesn't offer to safely remove this drive.",
+"L'Explorateur de fichiers utilise encore ce lecteur. Fermez ses fenêtres puis réessayez.": "File Explorer is still using this drive. Close its windows and try again.",
+"Un pilote ou un autre périphérique bloque l'éjection. Réessayez dans un moment.": "A driver or another device is blocking the eject. Try again in a moment.",
+"Windows demande des droits d'administrateur pour éjecter ce lecteur.": "Windows requires administrator rights to eject this drive.",
+"Windows ne permet pas d'éjecter ce lecteur.": "Windows doesn't allow ejecting this drive.",
+"Un programme utilise encore la clé. Fermez-le puis réessayez.": "A program is still using the USB drive. Close it and try again.",
+"Un programme utilise encore le disque. Fermez-le puis réessayez.": "A program is still using the disk. Close it and try again.",
+"lecteur inconnu": "unknown drive",
+"ce lecteur n'est plus branché": "this drive is no longer plugged in",
+"éjection déjà en cours": "already ejecting",
+"Prévenir quand une clé USB est branchée": "Notify when a USB drive is plugged in",
+"Avec deux boutons : « Ouvrir » et « Éjecter ». Les clés et disques USB branchés s'éjectent aussi depuis l'onglet.": "With two buttons: \"Open\" and \"Eject\". Plugged-in USB drives and disks can also be ejected from the tab.",
 "Redémarrage en attente": "Restart pending",
 "Redémarrage en attente depuis 1 jour": "Restart pending for 1 day",
 "Redémarrage en attente depuis moins d'une heure": "Restart pending for less than an hour",
@@ -2157,6 +2184,58 @@
 [
 "^Trésor\\ trouvé\\ \\((\\d+)\\ /\\ (\\d+)\\)\\ :\\ à\\ retrouver\\ dans\\ Réglages\\ →\\ Mascotte\\.$",
 "Treasure found ($1 / $2): see Settings → Mascot."
+],
+[
+"^Clé USB branchée : (.+) \\(([A-Z]:)\\)$",
+"USB drive plugged in: $1 ($2)"
+],
+[
+"^Clé USB branchée \\(([A-Z]:)\\)$",
+"USB drive plugged in ($1)"
+],
+[
+"^Disque USB branché : (.+) \\(([A-Z]:)\\)$",
+"USB disk plugged in: $1 ($2)"
+],
+[
+"^Disque USB branché \\(([A-Z]:)\\)$",
+"USB disk plugged in ($1)"
+],
+[
+"^Clé USB \\(([A-Z]:)\\)$",
+"USB drive ($1)"
+],
+[
+"^Disque USB \\(([A-Z]:)\\)$",
+"USB disk ($1)"
+],
+[
+"^Vous pouvez retirer la clé ([A-Z]:) en toute sécurité\\.$",
+"You can safely remove the USB drive $1."
+],
+[
+"^Vous pouvez retirer le disque ([A-Z]:) en toute sécurité\\.$",
+"You can safely remove the disk $1."
+],
+[
+"^La clé ([A-Z]:) n'est pas éjectée$",
+"USB drive $1 was not ejected"
+],
+[
+"^Le disque ([A-Z]:) n'est pas éjecté$",
+"Disk $1 was not ejected"
+],
+[
+"^Windows refuse l'éjection \\(code (\\d+)\\)\\. Réessayez dans un moment\\.$",
+"Windows refused to eject (code $1). Try again in a moment."
+],
+[
+"^Le service « (.+) » utilise encore ce lecteur\\. Réessayez dans un moment\\.$",
+"The \"$1\" service is still using this drive. Try again in a moment."
+],
+[
+"^« (.+) » utilise encore ce lecteur\\. Fermez-le puis réessayez\\.$",
+"\"$1\" is still using this drive. Close it and try again."
 ],
 [
 "^Redémarrage en attente depuis (\\d+) jours$",
