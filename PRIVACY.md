@@ -17,6 +17,7 @@ Ondine ne se connecte à Internet que dans ces cas :
 | Vous lancez un ping, un test de port, un accès RDP/SSH ou un agent IA | la machine ou le service que vous avez choisi | Ce que vous avez demandé. |
 | Vous avez activé la Météo (désactivée par défaut) et saisi une ville, au plus toutes les 30 minutes | geocoding-api.open-meteo.com, api.open-meteo.com | Le nom de la ville (une fois, quand elle change), puis ses coordonnées arrondies à 2 décimales (environ 1 km). |
 | Vous cliquez « Signaler un problème » (Réglages → Général → À propos) | github.com, dans votre navigateur | Rien tant que vous n'envoyez pas : la page d'une nouvelle issue s'ouvre, préremplie avec la version, Windows et les 40 dernières lignes du journal (chemins personnels masqués). Vous relisez, modifiez ou abandonnez. |
+| Vous cliquez « Tout voir » dans « Quoi de neuf » (après une mise à jour, ou Réglages → Général → À propos → Voir les nouveautés) | github.com, dans votre navigateur | Rien : la page de la version installée s'ouvre. Les nouveautés montrées dans l'île viennent du CHANGELOG intégré à l'appli, sans connexion. |
 
 Les clés et mots de passe sont rangés dans le Gestionnaire d'identifiants de Windows,
 jamais en clair dans un fichier.
@@ -45,5 +46,9 @@ specifically requested by the user, with one exception: the update check.
 - **Report a problem** (Settings → General → About): opens a new GitHub issue page in
   your browser, prefilled with the version, Windows and the last 40 log lines
   (personal paths hidden). Nothing is sent until you review it and click Submit.
+- **See all** in "What's new" (after an update, or Settings → General → About → See
+  what's new): opens the installed version's release page on github.com in your
+  browser. The changes shown in the island come from the CHANGELOG built into the
+  app, with no connection.
 
 Keys and passwords are stored in the Windows Credential Manager, never in plain text.
