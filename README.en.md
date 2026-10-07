@@ -249,6 +249,7 @@ into a ticket. Everything is read on the PC.
 
 - **Warn when a disk has less than** 10 % free space; **when the battery drops to** 20 %; **when the battery is charged** (on)
 - **Ondine's mood follows the PC** (on): she sweats when the CPU is maxed out, gets tired when the battery is low or it's late.
+- **World clocks** (empty): up to 4 cities separated by commas, for example `Montreal, Tokyo`. The tab shows the time in each, "tomorrow" or "yesterday" when the day differs, and the difference with here ("+6 h"). About 200 major cities (French or English names, accents optional) and `UTC`; an unknown city is flagged under the field. Times are computed on the PC.
 
 ### Remote access
 
@@ -344,6 +345,17 @@ only displayed: nothing is executed.
 Manager…), recent files, favorite servers, agent projects and island actions
 ("10 min" starts a timer). It also searches **inside the island**: notes and
 tasks, clipboard, shelf and screenshots. ↑ ↓ to choose, Enter to open.
+
+It also **calculates**: when the search is a calculation, the answer comes first
+and **Enter copies it** (small "Copied" notification).
+
+- Math: `2 + 3 * 4`, `(1.5 + 2) ^ 2`, `1,200 / 3`, `18% of 240`, `240 + 18%`, `15%` (= 0.15), `sqrt 2`. Numbers follow the interface language (in French: decimal comma, spaces between thousands).
+- Units: `1 GB in MiB`, `100 Mbit/s in MB/s`, `90 min in h`, `20 °C in °F`, `10 km -> mi`, `5 lb in kg`. Bytes: KB, MB, GB, TB are powers of 1000, KiB, MiB, GiB, TiB powers of 1024 (B = byte, b = bit).
+- Transfer time: `1 GB at 100 Mbit/s` → 1 min 20 s.
+- Bases: `0x1F`, `0b1010`, `255 in hex`, `0xFF in decimal`, `42 in binary`.
+- IPv4 subnet: `192.168.1.0/26` or `192.168.1.10 255.255.255.0` → network, mask, first and last address, broadcast, number of hosts (Enter on the first line copies the summary, on another line just that value).
+- World time: `3 pm Montreal`, `15:30 in Tokyo` → "15:00 in Montreal = 21:00 here"; `time in Tokyo` → the time there. About 200 cities, computed on the PC.
+- `guid`: a fresh GUID (lowercase, or Windows style `{…}` in uppercase).
 
 - **Shortcut**: Alt+Space (or Ctrl+Space, Ctrl+Alt+Space, Ctrl+Shift+Space, Win+Shift+Space, none)
 - **Offer recently opened files** (on); **Also search the island** (on, at most 5 results per source). Excluded folders are never shown.

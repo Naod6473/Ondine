@@ -37,6 +37,7 @@ ondine/
 │  │  ├─ module-registry.ts   démarre, isole et met à l'écart les modules
 │  │  ├─ settings-store.ts    réglages côté front (copie synchronisée)
 │  │  ├─ types.ts             forme des réglages (miroir du Rust)
+│  │  ├─ world-cities.ts · world-time.ts   villes et fuseaux, heure ailleurs (horloges, Lanceur)
 │  │  └─ log.ts               journal côté front (écrit dans le fichier du Rust)
 │  ├─ island/
 │  │  ├─ island-state.ts      machine à états de l'île (sans DOM)
@@ -208,7 +209,9 @@ Ce qui est vérifié, et où :
 - **Événements** : un module ne peut publier que ce qu'il déclare dans `emits`,
   et écouter que ce que couvre `listens` (front et Rust).
 - **Réglages** : l'écran est généré depuis `settings.fields` ; chaque valeur est
-  ramenée à quelque chose de valide (bornes, options) avant usage.
+  ramenée à quelque chose de valide (bornes, options) avant usage. Un champ
+  `string` peut ajouter `"check": "cities"` (vérifications nommées de
+  `src/settings/field-checks.ts`) : un avertissement s'affiche sous le champ.
 
 ### Les deux moitiés d'un module
 
@@ -789,6 +792,24 @@ qui surveille dossiers et lecteurs).
     un exécutable n'est jamais lancé, seulement montré dans l'Explorateur.
   - Rien ne passe par le bus ni par le journal (seulement « résultat de l'île
     ouvert (source) »). En mode démo, des résultats inventés (`demo.ts`).
+- **Calculs** (`calc.ts`, front seulement, testé dans `tests/front/calc.test.ts`) :
+  `calculate(query, lang)` renvoie les réponses (titre, détail, texte à copier)
+  si la recherche est un calcul, sinon `[]`. Elles passent avant tout (note
+  1000). Un analyseur à descente récursive écrit à la main (pas d'`eval`) :
+  `+ - * / × ÷ ^`, parenthèses, `%` (« 18 % de 240 », « 240 + 18 % »),
+  racine, pi ; nombres à la française (virgule, espaces de milliers) ou à
+  l'anglaise selon `currentLang()`. Puis : conversions « X unité en unité »
+  (octets 1000 / 1024, bits — `B` octet, `b` bit —, débits, durées,
+  températures, longueurs, masses, vitesses), « taille à débit » (temps de
+  transfert), bases (`0x`, `0b`, `0o`, « en hex »…), sous-réseau IPv4 (un
+  résumé puis une ligne par valeur), heures du monde (« 15 h Montréal »,
+  « heure à Tokyo », par `src/core/world-time.ts`). Garde-fous contre les faux
+  positifs : un nombre seul, une date, une version, un numéro de téléphone ou
+  une IP seule ne donnent rien. Entrée → commande `copy {text}` du Lanceur
+  (permission `clipboard`, le texte n'est pas journalisé) puis notification
+  « Copié ».
+- « guid » / « uuid » : « Nouveau GUID » (`crypto.randomUUID`) et sa version
+  Windows `{MAJUSCULES}`, copiés de la même façon.
 
 ### `api.openIsland(tab?)`
 
@@ -817,6 +838,17 @@ s'il n'existe pas ou est désactivé).
   tant que l'onglet est ouvert.
 - Avec plus de 8 onglets, la barre d'onglets se resserre (`.tabs.dense`) en
   attendant la navigation à la souris prévue plus tard.
+- **Horloges du monde** (`world-clocks.ts`, front seulement) : réglage
+  `worldClocks`, des villes séparées par des virgules (4 au plus). La table
+  des villes (`src/core/world-cities.ts`, ~200 villes, noms FR / EN, fuseau
+  IANA ; un nom IANA tapé tel quel marche aussi) et les calculs
+  (`src/core/world-time.ts` : `Intl.DateTimeFormat({ timeZone })`, donc les
+  fuseaux de Windows, rien sur Internet) sont partagés avec le Lanceur. Une
+  rangée sous les jauges, redessinée au début de chaque minute tant que
+  l'onglet est ouvert. Le champ de réglage porte `"check": "cities"` :
+  `src/settings/field-checks.ts` écrit sous le champ les villes inconnues ou
+  en trop (un champ texte de manifeste peut ainsi demander une vérification
+  nommée, sans que la valeur soit refusée).
 
 ### Module Accès distants (`src/modules/remote/`, `src-tauri/src/modules/remote.rs`)
 
