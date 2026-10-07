@@ -24,6 +24,8 @@ pub mod picker;
 pub mod wifi;
 // Glisser des fichiers de l'île vers l'Explorateur (Étagère). Contient sa propre version Linux.
 pub mod drag_out;
+// Agents IA : lancer git avec un délai maximum, trouver et ouvrir VS Code. Contient sa propre version Linux.
+pub mod devtools;
 
 #[cfg(windows)]
 mod drop_target;

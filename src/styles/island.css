@@ -2155,6 +2155,34 @@ body {
   background: var(--line);
   margin: 0 2px;
 }
+/* Une ligne par projet : nouvelle session, « Reprendre », la dernière phrase en petit. */
+.agents-projects {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.agents-projects:empty {
+  display: none;
+}
+.agents-project {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.agents-project .btn {
+  flex: none;
+}
+.agents-last {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .agents-subtitle {
   font-size: 11px;
   margin-top: 2px;
