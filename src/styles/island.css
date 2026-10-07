@@ -769,8 +769,12 @@ body {
 .clip-head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 6px;
+}
+/* Des onglets un peu plus serrés : la recherche garde la place de « Chercher… ». */
+.clip-tabs .tab {
+  padding-inline: 6px;
 }
 .clip-search,
 .clip-input {
@@ -1964,12 +1968,11 @@ body {
 .sys-reboot[hidden] {
   display: none;
 }
+/* Le texte passe à la ligne plutôt que d'être coupé (« (mises à jour … »). */
 .sys-reboot-text {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.3;
 }
 .sys-reboot .btn {
   flex: none;

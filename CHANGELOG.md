@@ -1,5 +1,17 @@
 # Changements · Changelog
 
+## Pas encore publié · Unreleased
+
+- Des textes restés en français dans l'île en anglais sont traduits :
+  batterie, mémoire, agenda, règles, aide des agents, et l'exemple des zones
+  de texte (Demander à Claude, ticket). · Texts left in French in the English
+  island are translated: battery, memory, calendar, rules, agent help, and the
+  hint in text boxes (Ask Claude, ticket).
+- La recherche du Presse-papiers n'est plus coupée, et le redémarrage en
+  attente passe à la ligne au lieu d'être tronqué. · The Clipboard search box
+  is no longer cut off, and the pending restart notice wraps instead of being
+  truncated.
+
 ## 1.1.0 · 2026-10-07
 
 - Calculs dans le lanceur : opérations, pourcentages, unités, octets,

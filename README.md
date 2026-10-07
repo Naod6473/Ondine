@@ -63,7 +63,7 @@ Les nouveautés de la version 1.1.0 (la liste complète est dans le
 <td width="50%" valign="top"><a href="#agenda"><img src="docs/captures/fr/agenda-rejoindre.webp" width="293" alt="Alerte : Réunion dans 2 min, Revue du site, Google Meet, avec Rejoindre"></a><br><b><a href="#agenda">Rejoindre la réunion</a></b> : deux minutes avant une visio, un clic l'ouvre, met la musique en pause et prévient si le micro est coupé.</td>
 </tr>
 <tr>
-<td width="50%" valign="top"><a href="#mises-à-jour"><img src="docs/captures/fr/quoi-de-neuf.webp" width="358" alt="Alerte : Quoi de neuf dans Ondine 1.0.1, trois nouveautés, avec Tout voir et OK"></a><br><b><a href="#mises-à-jour">Quoi de neuf</a></b> : après une mise à jour, l'île montre une fois les principales nouveautés de la version.</td>
+<td width="50%" valign="top"><a href="#mises-à-jour"><img src="docs/captures/fr/quoi-de-neuf.webp" width="358" alt="Alerte : Quoi de neuf dans Ondine 1.1.0, trois nouveautés, avec Tout voir et OK"></a><br><b><a href="#mises-à-jour">Quoi de neuf</a></b> : après une mise à jour, l'île montre une fois les principales nouveautés de la version.</td>
 <td width="50%" valign="top"><a href="#les-onglets"><img src="docs/captures/fr/astuce-onglet.webp" width="380" alt="Onglet Étagère vide, avec la bulle d'astuce : Glissez un fichier sur l'île pour le poser ici"></a><br><b><a href="#les-onglets">Une astuce par onglet</a></b> : la première fois qu'un onglet s'ouvre, une bulle explique son geste principal en une phrase.</td>
 </tr>
 </table>
@@ -116,7 +116,7 @@ neuf dans Ondine X.Y.Z »** : les trois principales nouveautés de la version
 ouvre la page de la version sur GitHub. Pour la revoir : Réglages → Général →
 À propos → **Voir les nouveautés**.
 
-<p align="center"><img src="docs/captures/fr/quoi-de-neuf.webp" width="656" alt="Alerte : Quoi de neuf dans Ondine 1.0.1, trois nouveautés, avec Tout voir et OK"></p>
+<p align="center"><img src="docs/captures/fr/quoi-de-neuf.webp" width="656" alt="Alerte : Quoi de neuf dans Ondine 1.1.0, trois nouveautés, avec Tout voir et OK"></p>
 
 ### Désinstaller
 

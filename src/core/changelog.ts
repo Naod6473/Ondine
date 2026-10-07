@@ -104,8 +104,16 @@ export function whatsNewLines(text: string, version: string, lang: string, max =
   if (!section) return null;
   return section.items.slice(0, max).map((item) => {
     const halves = splitBilingual(item);
-    return shorten(lang === "fr" ? halves.fr : halves.en, maxChars);
+    return lang === "fr" ? frenchSpaces(shorten(halves.fr, maxChars)) : shorten(halves.en, maxChars);
   });
+}
+
+/**
+ * Les espaces insécables du français : « Reprendre » ne se coupe pas en fin de
+ * ligne entre le guillemet et le mot, ni « fini : » avant les deux-points.
+ */
+export function frenchSpaces(line: string): string {
+  return line.replace(/« /g, "«\u00a0").replace(/ ([»:;?!])/g, "\u00a0$1");
 }
 
 /**

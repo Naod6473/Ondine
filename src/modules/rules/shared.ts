@@ -132,9 +132,13 @@ export function actionText(a: Action): string {
   }
 }
 
-/** « Quand un fichier arrive dans Downloads (.pdf) → déplacer dans PDF, notifier… » */
-export function summary(r: Rule, topics: Listing["topics"] = []): string {
-  return `${triggerText(r.trigger, topics)}${conditionsText(r.conditions, r.trigger)} → ${r.actions.map(actionText).join(", ")}`;
+/**
+ * Le résumé d'une règle, « Quand un fichier arrive dans Downloads (.pdf) →
+ * déplacer dans PDF, notifier… », en morceaux : chacun se traduit à part (i18n.ts).
+ */
+export function summaryParts(r: Rule, topics: Listing["topics"] = []): string[] {
+  const actions = r.actions.map(actionText).flatMap((a, i) => (i ? [", ", a] : [a]));
+  return [triggerText(r.trigger, topics), conditionsText(r.conditions, r.trigger), " → ", ...actions].filter(Boolean);
 }
 
 /** Des règles prêtes à adapter. Un dossier vide = à choisir avant d'enregistrer. */

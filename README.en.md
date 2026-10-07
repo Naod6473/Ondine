@@ -63,7 +63,7 @@ New in version 1.1.0 (the full list is in the
 <td width="50%" valign="top"><a href="#calendar"><img src="docs/captures/en/agenda-rejoindre.webp" width="293" alt="Alert: Meeting in 2 min, Revue du site, Google Meet, with Join"></a><br><b><a href="#calendar">Join the meeting</a></b>: two minutes before a video call, one click opens it, pauses the music and warns you if your mic is muted.</td>
 </tr>
 <tr>
-<td width="50%" valign="top"><a href="#updates"><img src="docs/captures/en/quoi-de-neuf.webp" width="358" alt="Alert: What's new in Ondine 1.0.1, three changes, with See all and OK"></a><br><b><a href="#updates">What's new</a></b>: after an update, the island shows the version's main changes once.</td>
+<td width="50%" valign="top"><a href="#updates"><img src="docs/captures/en/quoi-de-neuf.webp" width="358" alt="Alert: What's new in Ondine 1.1.0, three changes, with See all and OK"></a><br><b><a href="#updates">What's new</a></b>: after an update, the island shows the version's main changes once.</td>
 <td width="50%" valign="top"><a href="#the-tabs"><img src="docs/captures/en/astuce-onglet.webp" width="380" alt="Empty Shelf tab, with the tip bubble: Drag a file onto the island to put it here"></a><br><b><a href="#the-tabs">A tip for each tab</a></b>: the first time a tab opens, a bubble explains its main gesture in one sentence.</td>
 </tr>
 </table>
@@ -113,7 +113,7 @@ X.Y.Z"** once: the version's three main changes (taken from the
 version's page on GitHub. To see it again: Settings → General → About → **See
 what's new**.
 
-<p align="center"><img src="docs/captures/en/quoi-de-neuf.webp" width="656" alt="Alert: What's new in Ondine 1.0.1, three changes, with See all and OK"></p>
+<p align="center"><img src="docs/captures/en/quoi-de-neuf.webp" width="656" alt="Alert: What's new in Ondine 1.1.0, three changes, with See all and OK"></p>
 
 ### Uninstall
 

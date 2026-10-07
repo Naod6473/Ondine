@@ -168,7 +168,7 @@ export const clipboard: IslandModule = {
       const search = el("input", {
         class: "clip-search",
         type: "search",
-        placeholder: "Rechercher…",
+        placeholder: "Chercher…",
         value: view.query,
         spellcheck: "false",
       });

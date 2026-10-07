@@ -156,10 +156,26 @@ function applyAttr(elem: Element, name: string) {
   if (shown !== v) elem.setAttribute(name, shown);
 }
 
+/** Ce qui vient de l'utilisateur (champs de saisie, notes, presse-papiers) n'est pas touché. */
+const USER_TEXT = "[data-no-i18n], textarea, [contenteditable='true']";
+
 function skipped(elem: Element): boolean {
-  // Ce qui vient de l'utilisateur (champs de saisie, notes, presse-papiers) n'est pas touché.
-  return elem.closest("[data-no-i18n], textarea, [contenteditable='true']") !== null;
+  return elem.closest(USER_TEXT) !== null;
 }
+
+/**
+ * Le placeholder et la bulle d'une zone de texte sont de l'appli, même si son
+ * contenu est à l'utilisateur.
+ */
+function applyFieldAttrs(elem: Element) {
+  const parent = elem.parentElement;
+  if (elem.tagName === "TEXTAREA" && (!parent || !skipped(parent))) for (const a of ATTRS) applyAttr(elem, a);
+}
+
+/** Le parcours d'un morceau de page saute ce qui vient de l'utilisateur (et tout ce qu'il contient). */
+const userFilter: NodeFilter = {
+  acceptNode: (n) => (n.nodeType === Node.ELEMENT_NODE && (n as Element).matches(USER_TEXT) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+};
 
 function translateNode(node: Node) {
   if (node.nodeType === Node.TEXT_NODE) {
@@ -169,15 +185,16 @@ function translateNode(node: Node) {
   }
   if (node.nodeType !== Node.ELEMENT_NODE) return;
   const elem = node as Element;
-  if (skipped(elem)) return;
+  if (skipped(elem)) return applyFieldAttrs(elem);
   for (const a of ATTRS) applyAttr(elem, a);
-  const walker = document.createTreeWalker(elem, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+  const walker = document.createTreeWalker(elem, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, userFilter);
   let n = walker.nextNode();
   while (n) {
     if (n.nodeType === Node.TEXT_NODE) applyText(n);
     else for (const a of ATTRS) applyAttr(n as Element, a);
     n = walker.nextNode();
   }
+  for (const field of elem.querySelectorAll("textarea")) applyFieldAttrs(field);
 }
 
 let originalTitle = "";
@@ -234,6 +251,7 @@ export async function startI18n(): Promise<void> {
       else if (r.type === "attributes") {
         const e = r.target as Element;
         if (!skipped(e)) applyAttr(e, r.attributeName!);
+        else applyFieldAttrs(e);
       } else r.addedNodes.forEach(translateNode);
     }
   }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTRS });

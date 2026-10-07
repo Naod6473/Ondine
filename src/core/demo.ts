@@ -505,7 +505,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
           { id: 2, name: "Clé USB branchée", enabled: true, trigger: { type: "drive" }, conditions: RULE_EMPTY, actions: [{ type: "reveal" }] },
         ],
         paused: false,
-        history: [{ at: Date.now() - 12 * MIN, rule: "Ranger les PDF", subject: "Facture-octobre.pdf", ok: true, message: "Déplacé dans PDF" }],
+        history: [{ at: Date.now() - 12 * MIN, rule: "Ranger les PDF", subject: "Facture-octobre.pdf", ok: true, message: "déplacé dans PDF" }],
         errors: {},
         topics: [],
       };

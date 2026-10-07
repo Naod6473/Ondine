@@ -1368,9 +1368,96 @@
 "image trop grande pour un GIF": "image too large for a GIF",
 "image de la mauvaise taille": "image of the wrong size",
 "Historique": "History",
-"a fini à l'instant": "finished just now"
+"a fini à l'instant": "finished just now",
+"Batterie": "Battery",
+"Aujourd'hui": "Today",
+"Demain": "Tomorrow",
+"1 événement lu": "1 event read",
+"aujourd'hui": "today",
+"Chercher…": "Search…",
+"mettre à la corbeille": "move to Recycle Bin",
+"poser sur l'étagère": "put on the shelf",
+"montrer dans l'explorateur": "show in Explorer",
+"ouvrir un terminal": "open a terminal",
+"coller sans mise en forme": "paste without formatting"
 },
 "patterns": [
+[
+"^demain à (.+)$",
+"tomorrow at $1"
+],
+[
+"^Autoriser\\ /\\ Refuser\\ depuis\\ l'île\\ \\(activé\\)\\ :\\ quand\\ (.+?)\\ demande\\ une\\ permission,\\ l'île\\ montre\\ la\\ commande\\ avec\\ «\\ Autoriser\\ »\\ \\(à\\ confirmer\\)\\ et\\ «\\ Refuser\\ »\\.\\ Sans\\ réponse\\ à\\ temps,\\ la\\ question\\ passe\\ au\\ terminal\\.\\ Collez\\ ce\\ hook\\ en\\ plus,\\ de\\ la\\ même\\ façon\\.$",
+"Allow / Deny from the island (on): when $1 asks for a permission, the island shows the command with \"Allow\" (to confirm) and \"Deny\". If there's no reply in time, the question falls back to the terminal. Paste this hook in addition, the same way."
+],
+[
+"^Autoriser\\ /\\ Refuser\\ depuis\\ l'île\\ \\(désactivé\\ dans\\ les\\ réglages\\)\\ :\\ quand\\ (.+?)\\ demande\\ une\\ permission,\\ l'île\\ montre\\ la\\ commande\\ avec\\ «\\ Autoriser\\ »\\ \\(à\\ confirmer\\)\\ et\\ «\\ Refuser\\ »\\.\\ Sans\\ réponse\\ à\\ temps,\\ la\\ question\\ passe\\ au\\ terminal\\.\\ Collez\\ ce\\ hook\\ en\\ plus,\\ de\\ la\\ même\\ façon\\.$",
+"Allow / Deny from the island (off in the settings): when $1 asks for a permission, the island shows the command with \"Allow\" (to confirm) and \"Deny\". If there's no reply in time, the question falls back to the terminal. Paste this hook in addition, the same way."
+],
+[
+"^📅 Dans (\\d+) min · (.+)$",
+"📅 In $1 min · $2"
+],
+[
+"^📅 Dans (\\d+) h (\\d+) · (.+)$",
+"📅 In $1 h $2 · $3"
+],
+[
+"^📅 Dans (\\d+) h · (.+)$",
+"📅 In $1 h · $2"
+],
+[
+"^📅 En cours · (.+)$",
+"📅 Now · $1"
+],
+[
+"^📅 Aujourd'hui · (.+)$",
+"📅 Today · $1"
+],
+[
+"^📅 Demain à (.+?) · (.+)$",
+"📅 Tomorrow at $1 · $2"
+],
+[
+"^📅 Demain · (.+)$",
+"📅 Tomorrow · $1"
+],
+[
+"^(.+?) % · en charge$",
+"$1% · charging"
+],
+[
+"^(.+?) % · branché$",
+"$1% · plugged in"
+],
+[
+"^(.+?) / (.+?) Go$",
+"$1 / $2 GB"
+],
+[
+"^Quand un fichier arrive dans (.+) \\(et ses sous-dossiers\\)$",
+"When a file arrives in $1 (and its subfolders)"
+],
+[
+"^(\\d+) calendriers$",
+"$1 calendars"
+],
+[
+"^(\\d+) événements lus$",
+"$1 events read"
+],
+[
+"^(\\d+) événements lus \\(le plus récent : (.+)\\)$",
+"$1 events read (latest: $2)"
+],
+[
+"^1 événement lu \\(le plus récent : (.+)\\)$",
+"1 event read (latest: $1)"
+],
+[
+"^Demain à (.+)$",
+"Tomorrow at $1"
+],
 [
 "^Autoriser\\ /\\ Refuser\\ depuis\\ l'île\\ \\((.+?)\\)\\ :\\ quand\\ (.+?)\\ demande\\ une\\ permission,\\ l'île\\ montre\\ la\\ commande\\ avec\\ «\\ Autoriser\\ »\\ \\(à\\ confirmer\\)\\ et\\ «\\ Refuser\\ »\\.\\ Sans\\ réponse\\ à\\ temps,\\ la\\ question\\ passe\\ au\\ terminal\\.\\ Collez\\ ce\\ hook\\ en\\ plus,\\ de\\ la\\ même\\ façon\\.$",
 "Allow / Deny from the island ($1): when $2 asks for a permission, the island shows the command with \"Allow\" (to confirm) and \"Deny\". If there's no reply in time, the question falls back to the terminal. Paste this hook in addition, the same way."
@@ -1449,7 +1536,7 @@
 ],
 [
 "^Processeur\\ :\\ (.+?)\\ \\((.+?)\\ cœurs\\ logiques\\),\\ (.+?)\\ %\\ utilisé$",
-"Processor: $1 ($1 logical cores), $1 % used"
+"Processor: $1 ($2 logical cores), $3% used"
 ],
 [
 "^le\\ serveur\\ a\\ répondu\\ (.+?),\\ nouvel\\ essai\\ dans\\ 15\\ minutes$",
@@ -1501,7 +1588,7 @@
 ],
 [
 "^Disque\\ (.+?)\\ :\\ (.+?)\\ Go\\ libres\\ sur\\ (.+?)\\ Go$",
-"Disk $1: $1 GB free of $1 GB"
+"Disk $1: $2 GB free of $3 GB"
 ],
 [
 "^le\\ raccourci\\ micro\\ (.+?)\\ est\\ refusé\\ :\\ (.+?)$",
@@ -1545,7 +1632,7 @@
 ],
 [
 "^Mémoire\\ :\\ (.+?)\\ Go\\ utilisés\\ sur\\ (.+?)\\ Go$",
-"Memory: $1 GB used of $1 GB"
+"Memory: $1 GB used of $2 GB"
 ],
 [
 "^Windows\\ ne\\ liste\\ pas\\ les\\ radios\\ \\((.+?)\\)$",
@@ -1625,7 +1712,7 @@
 ],
 [
 "^Réseau\\ (.+?)\\ :\\ (.+?)\\ \\(MAC\\ (.+?)\\)$",
-"Network $1: $1 (MAC $1)"
+"Network $1: $2 (MAC $3)"
 ],
 [
 "^(.+?)\\ n'est\\ plus\\ dans\\ la\\ Corbeille$",
@@ -1697,7 +1784,7 @@
 ],
 [
 "^Système\\ :\\ (.+?)\\ \\(build\\ (.+?)\\)$",
-"System: $1 (build $1)"
+"System: $1 (build $2)"
 ],
 [
 "^(.+?)\\ \\(glisser\\ pour\\ déplacer\\)$",
@@ -2626,6 +2713,10 @@
 [
 "^(.+?) a fini$",
 "$1 is done"
+],
+[
+"^(.+) à (\\d{1,2}:\\d{2})$",
+"$1 at $2"
 ]
 ]
 }
