@@ -42,7 +42,7 @@ La vidéo de présentation est sur le site : [ondine.pissits.com](https://ondine
 
 ## Nouveautés
 
-Ce qui arrive dans la prochaine version (la liste complète est dans le
+Les nouveautés de la version 1.1.0 (la liste complète est dans le
 [CHANGELOG](CHANGELOG.md)). Cliquez sur une image pour lire le détail.
 
 <table>

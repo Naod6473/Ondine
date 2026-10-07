@@ -42,7 +42,7 @@ The intro video is on the website: [ondine.pissits.com](https://ondine.pissits.c
 
 ## What's new
 
-Coming in the next version (the full list is in the
+New in version 1.1.0 (the full list is in the
 [CHANGELOG](CHANGELOG.md)). Click a picture to read the details.
 
 <table>

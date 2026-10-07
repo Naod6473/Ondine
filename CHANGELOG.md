@@ -1,6 +1,6 @@
 # Changements · Changelog
 
-## Pas encore publié · Unreleased
+## 1.1.0 · 2026-10-07
 
 - Calculs dans le lanceur : opérations, pourcentages, unités, octets,
   sous-réseaux IPv4 et heure dans une autre ville. · Calculations in the
