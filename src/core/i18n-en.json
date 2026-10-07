@@ -884,9 +884,9 @@
 "Dernier texte lu": "Last text read",
 "Créer l'image": "Create the image",
 "Renommer le fichier": "Rename the file",
-"Un raccourci clavier (Alt+Espace par défaut) ouvre une recherche : applications du menu Démarrer, outils Windows (Services, Gestionnaire de périphériques…), fichiers récents, serveurs favoris (Accès distants) et actions de l'île. Il cherche aussi dans l'île : notes et tâches, presse-papiers, étagère et captures. Entrée pour ouvrir.": "A keyboard shortcut (Alt+Space by default) opens a search: Start menu apps, Windows tools (Services, Device Manager…), recent files, favorite servers (Remote access) and island actions. It also searches the island: notes and tasks, clipboard, shelf and captures. Enter to open.",
-"Une appli, un fichier, une note, une copie… (ou « 10 min »)": "An app, a file, a note, a copy… (or “10 min”)",
-"Tapez le nom d'une appli, d'un fichier, d'un onglet, ou un mot de vos notes.": "Type the name of an app, a file, a tab, or a word from your notes.",
+"Un raccourci clavier (Alt+Espace par défaut) ouvre une recherche : applications du menu Démarrer, outils Windows (Services, Gestionnaire de périphériques…), fichiers récents, serveurs favoris (Accès distants) et actions de l'île. Il cherche aussi dans l'île : notes et tâches, presse-papiers, étagère et captures. Entrée pour ouvrir. Il fait aussi les calculs (« 18 % de 240 », « 1 Go en Mio », « 255 en hex », « 192.168.1.0/26 », « 15 h Montréal ») et crée des GUID : Entrée copie le résultat.": "A keyboard shortcut (Alt+Space by default) opens a search: Start menu apps, Windows tools (Services, Device Manager…), recent files, favorite servers (Remote access) and island actions. It also searches the island: notes and tasks, clipboard, shelf and captures. Enter to open. It also does calculations (“18% of 240”, “1 GB in MiB”, “255 in hex”, “192.168.1.0/26”, “3 pm Montreal”) and creates GUIDs: Enter copies the result.",
+"Une appli, un fichier, une note, un calcul… (ou « 10 min »)": "An app, a file, a note, a calculation… (or “10 min”)",
+"Tapez le nom d'une appli, d'un fichier, d'un onglet, un mot de vos notes, ou un calcul (« 18 % de 240 », « 1 Go en Mio »).": "Type the name of an app, a file, a tab, a word from your notes, or a calculation (“18% of 240”, “1 GB in MiB”).",
 "Chercher aussi dans l'île (notes, presse-papiers, étagère, captures)": "Also search the island (notes, clipboard, shelf, captures)",
 "5 résultats au plus par source, groupés. Les dossiers exclus (Confidentialité) ne sont jamais montrés.": "At most 5 results per source, grouped. Excluded folders (Privacy) are never shown.",
 "Notes et tâches": "Notes and tasks",
@@ -1158,7 +1158,16 @@
 "Surprises cachées et carnet des trésors": "Hidden surprises and treasure book",
 "Masqués par défaut, pour garder la surprise.": "Hidden by default, to keep the surprise.",
 "Il serait temps de dormir, non ?": "Isn't it time to sleep?",
-"C'est bon, je l'ai !": "Got it, I've got it!"
+"C'est bon, je l'ai !": "Got it, I've got it!",
+"Calcul": "Calc",
+"Durée": "Duration",
+"Heure": "Time",
+"Nouveau GUID": "New GUID",
+"Nouveau GUID au format Windows": "New GUID in Windows format",
+"Un identifiant neuf, en minuscules": "A fresh identifier, in lowercase",
+"En majuscules et entre accolades, comme dans le Registre": "Uppercase and in braces, as in the Registry",
+"Horloges du monde": "World clocks",
+"4 villes au plus, séparées par des virgules (ex. : Montréal, Tokyo). Elles s'affichent dans l'onglet Système. Les heures sont calculées sur le PC.": "Up to 4 cities, separated by commas (e.g. Montreal, Tokyo). They are shown in the System tab. Times are computed on the PC."
 },
 "patterns": [
 [
@@ -2148,6 +2157,18 @@
 [
 "^Trésor\\ trouvé\\ \\((\\d+)\\ /\\ (\\d+)\\)\\ :\\ à\\ retrouver\\ dans\\ Réglages\\ →\\ Mascotte\\.$",
 "Treasure found ($1 / $2): see Settings → Mascot."
+],
+[
+"^Ville\\ inconnue,\\ ignorée\\ :\\ (.+)$",
+"Unknown city, ignored: $1"
+],
+[
+"^Villes\\ inconnues,\\ ignorées\\ :\\ (.+)$",
+"Unknown cities, ignored: $1"
+],
+[
+"^(\\d+)\\ villes\\ au\\ plus\\.\\ En\\ trop\\ :\\ (.+)$",
+"$1 cities at most. Too many: $2"
 ]
 ]
 }
