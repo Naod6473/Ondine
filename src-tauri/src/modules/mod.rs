@@ -30,6 +30,8 @@ mod system;
 mod terminal;
 mod clipboard_qr;
 mod weather;
+// Installer les hooks d'Ondine dans la configuration de Claude Code, Codex, Gemini.
+mod agents_hooks;
 
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};

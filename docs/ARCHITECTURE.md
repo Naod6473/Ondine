@@ -910,6 +910,17 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
 - Configuration proposée (`hook_config`, bouton « Copier la configuration ») :
   forme `command` + `args` (Claude Code lance ondine.exe directement, sans
   Git Bash ni PowerShell, donc aucun échappement du chemin).
+- Installation automatique (`hook_status`, `hook_install {tool}`,
+  `hook_remove {tool}`, permission `files`, logique dans
+  `modules/agents_hooks.rs`) : Ondine écrit les mêmes entrées que la copie
+  dans `.claude\settings.json` (ou `CLAUDE_CONFIG_DIR`), `.codex\config.toml`
+  (ou `CODEX_HOME`) ou `.gemini\settings.json`. Fusion : tout le reste est
+  gardé ; les entrées dont le programme s'appelle `ondine.exe` (quel que soit
+  le dossier) sont remplacées. Copie `nom.ondine-<date>.bak`, puis fichier
+  temporaire renommé. Fichier invalide : refus, jamais réécrit. Codex : le
+  texte TOML est modifié section par section (commentaires gardés), puis
+  relu et comparé ; au moindre écart, refus. État affiché : Installé /
+  Ancien chemin (un autre ondine.exe, refusé par le canal) / Non installé.
 - Lancer Claude Code (`launch_claude {path? | index?}`, permission `files`) :
   `cmd.exe /k claude` dans le dossier (cmd trouve `claude.exe` ou `claude.cmd`
   dans le PATH ; la fenêtre reste ouverte si Claude n'est pas installé), ou

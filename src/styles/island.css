@@ -2114,6 +2114,19 @@ body {
   display: block;
   margin-top: 2px;
 }
+/* Hooks installés / ancien chemin / non installé, et le fichier concerné. */
+.agents-hook-state {
+  margin: 6px 0 4px;
+  display: grid;
+  gap: 2px;
+}
+.agents-hook-badge {
+  font-weight: 600;
+}
+.agents-hook-badge.stale,
+.agents-hook-badge.unreadable {
+  color: var(--warning, #f5b14c);
+}
 @media (prefers-reduced-motion: reduce) {
   .agents-item {
     animation: none;

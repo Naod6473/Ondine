@@ -163,7 +163,7 @@ pub fn own_console_window() -> isize {
     0
 }
 
-pub fn focus_agent_window(_hwnd: isize, _pids: &[u32]) -> Result<(), String> {
+pub fn focus_agent_window(_hwnd: isize, _pids: &[u32], _project: &str) -> Result<(), String> {
     Err("disponible seulement sous Windows".into())
 }
 
