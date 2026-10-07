@@ -53,6 +53,15 @@ c'est voulu (le réglage qui retient la version vue est nouveau).
 4. L'île en haut, à gauche puis à droite de l'écran : jamais de QR code coupé
    par le bord de la fenêtre.
 
+## Corrigé après vos premiers tests : le bilan de la semaine montre ses chiffres
+
+Avant, la notification n'affichait que son titre (les chiffres étaient
+cachés). Maintenant c'est une alerte : Réglages → Modules → Bilan de la
+semaine → **Voir le bilan maintenant** ouvre l'île avec « Votre semaine
+jusqu'ici » et les chiffres en dessous (ou « Rien de compté pour
+l'instant… »). Au vrai bilan, la goutte fait la fête après l'arrivée de
+l'alerte.
+
 ---
 
 # Partie 1 : Lanceur : calculs, GUID, horloges du monde

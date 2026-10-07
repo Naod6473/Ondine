@@ -565,6 +565,8 @@ et ne contiennent que des nombres, jamais le texte de vos tâches. Réglages :
 maintenant** montre la semaine en cours. Pour ne plus le recevoir, désactivez
 le module (Réglages → Onglets → Sans onglet).
 
+<p align="center"><img src="docs/captures/fr/bilan-semaine.webp" width="636" alt="Alerte : Votre semaine jusqu'ici, 9 Pomodoros terminés, 3 h 35 de concentration, 14 tâches cochées"></p>
+
 ---
 
 ## Réglages

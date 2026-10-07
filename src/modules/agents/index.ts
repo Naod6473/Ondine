@@ -14,6 +14,7 @@
 
 import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
+import { t } from "../../core/i18n";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import type { NotificationAction } from "../../core/notifications";
 import { Bridge } from "../../core/bridge";
@@ -728,7 +729,8 @@ export const agents: IslandModule = {
                     "span",
                     { class: "launch-text" },
                     el("b", {}, e.changes?.files ? `${e.title} · ${changesLine(e.changes)}` : e.title),
-                    el("small", { class: "muted" }, [e.project, e.body, ago(e.at)].filter(Boolean).join(" · ")),
+                    // « il y a 6 min » traduit à part : la ligne entière (projet, message) ne l'est pas.
+                    el("small", { class: "muted" }, [e.project, e.body, t(ago(e.at))].filter(Boolean).join(" · ")),
                   ),
                 ),
               )

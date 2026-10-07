@@ -1366,7 +1366,9 @@
 "copie de l'écran impossible": "couldn't copy the screen",
 "aucune image enregistrée": "no image recorded",
 "image trop grande pour un GIF": "image too large for a GIF",
-"image de la mauvaise taille": "image of the wrong size"
+"image de la mauvaise taille": "image of the wrong size",
+"Historique": "History",
+"a fini à l'instant": "finished just now"
 },
 "patterns": [
 [
@@ -2170,6 +2172,10 @@
 "until $1"
 ],
 [
+"^a fini il y a (\\d+) min$",
+"finished $1 min ago"
+],
+[
 "^a\\ fini\\ (.+?)$",
 "finished $1"
 ],
@@ -2608,6 +2614,18 @@
 [
 "^capture de l'écran impossible : (.+)$",
 "couldn't capture the screen: $1"
+],
+[
+"^(\\d+) copie\\(s\\), (\\d+) épinglée\\(s\\)$",
+"$1 cop(ies), $2 pinned"
+],
+[
+"^(\\d+) copie\\(s\\)$",
+"$1 cop(ies)"
+],
+[
+"^(.+?) a fini$",
+"$1 is done"
 ]
 ]
 }

@@ -30,7 +30,10 @@ function notify(api: ModuleApi, title: string, w: WeekTally) {
     title,
     body: summaryParts(w).map((p) => t(p)).join(" · "),
     icon: "🎉",
-    priority: "normal",
+    // En alerte : une notification « normal » ne montre que son titre dans la
+    // pilule, et le bilan, ce sont les chiffres.
+    priority: "high",
+    wide: true,
     key: "weekly",
     durationMs: SHOW_MS,
   });
@@ -44,8 +47,9 @@ export const weekly: IslandModule = {
       try {
         const due = await api.invoke<WeekTally | null>("due");
         if (!due || !summaryParts(due).length) return;
-        api.emit("mascot.emote", { emotion: "celebrate" });
         notify(api, "Le bilan de votre semaine", due);
+        // Après l'alerte, qui met la goutte en « alerte » : elle fait la fête.
+        api.emit("mascot.emote", { emotion: "celebrate" });
       } catch (e) {
         api.log.warn(`bilan de la semaine : ${String(e)}`);
       }
@@ -62,7 +66,8 @@ export const weekly: IslandModule = {
             title: "Votre semaine jusqu'ici",
             body: "Rien de compté pour l'instant : lancez un Pomodoro ou cochez une tâche dans Notes.",
             icon: "🎉",
-            priority: "normal",
+            priority: "high",
+            wide: true,
             key: "weekly",
           });
         }

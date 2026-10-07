@@ -549,6 +549,8 @@ tasks. Settings: **Summary day** (Friday) and **Summary time** (17:00); **See th
 summary now** shows the current week. To stop it, turn the module off
 (Settings → Tabs → No tab).
 
+<p align="center"><img src="docs/captures/en/bilan-semaine.webp" width="636" alt="Alert: Your week so far, 9 Pomodoros completed, 3 h 35 of focus, 14 tasks checked off"></p>
+
 ---
 
 ## Settings
