@@ -1264,6 +1264,32 @@ fn process_names() -> std::collections::HashMap<u32, String> {
     out
 }
 
+/// La vraie fenêtre à montrer pour `h` : sa fenêtre propriétaire tout en haut
+/// (la fenêtre de console « fantôme » d'un onglet Windows Terminal appartient
+/// à la fenêtre de Windows Terminal), si elle est visible et a un titre.
+/// None pour une fenêtre cachée, sans titre ou « fantôme ».
+fn usable_window(h: isize) -> Option<isize> {
+    use ::windows::Win32::Foundation::HWND;
+    use ::windows::Win32::UI::WindowsAndMessaging::{GetAncestor, GetClassNameW, GetWindowTextLengthW, IsWindow, IsWindowVisible, GA_ROOTOWNER};
+    if h == 0 {
+        return None;
+    }
+    unsafe {
+        let mut w = HWND(h as *mut _);
+        if !IsWindow(Some(w)).as_bool() {
+            return None;
+        }
+        let root = GetAncestor(w, GA_ROOTOWNER);
+        if !root.0.is_null() {
+            w = root;
+        }
+        let mut class = [0u16; 64];
+        let n = GetClassNameW(w, &mut class).max(0) as usize;
+        let ghost = String::from_utf16_lossy(&class[..n]) == "PseudoConsoleWindow";
+        (IsWindowVisible(w).as_bool() && GetWindowTextLengthW(w) > 0 && !ghost).then_some(w.0 as isize)
+    }
+}
+
 /// La fenêtre de la console où tourne l'agent, si elle est visible (sinon 0).
 /// « ondine.exe notify » n'a pas de console à lui : il s'attache un instant à
 /// celle de son parent (l'agent). Quand Windows Terminal est le terminal par
@@ -1273,7 +1299,6 @@ pub fn own_console_window() -> isize {
     use ::windows::Win32::System::Console::{
         AttachConsole, FreeConsole, GetConsoleWindow, GetStdHandle, SetStdHandle, ATTACH_PARENT_PROCESS, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
     };
-    use ::windows::Win32::UI::WindowsAndMessaging::{GetWindow, IsWindowVisible, GW_OWNER};
     unsafe {
         let mut h = GetConsoleWindow();
         // Nos entrée et sortie (des tuyaux vers l'agent) sont gardées telles
@@ -1283,16 +1308,7 @@ pub fn own_console_window() -> isize {
         if attached {
             h = GetConsoleWindow();
         }
-        let found = if h.0.is_null() {
-            0
-        } else if IsWindowVisible(h).as_bool() {
-            h.0 as isize
-        } else {
-            match GetWindow(h, GW_OWNER) {
-                Ok(owner) if !owner.0.is_null() && IsWindowVisible(owner).as_bool() => owner.0 as isize,
-                _ => 0,
-            }
-        };
+        let found = if h.0.is_null() { 0 } else { usable_window(h.0 as isize).unwrap_or(0) };
         if attached {
             let _ = FreeConsole();
             for (kind, handle) in std {
@@ -1314,7 +1330,7 @@ pub fn focus_agent_window(hwnd: isize, pids: &[u32], project: &str) -> Result<()
     use ::windows::Win32::Foundation::{LPARAM, HWND};
     use ::windows::Win32::UI::Input::KeyboardAndMouse::{SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP, VK_MENU};
     use ::windows::Win32::UI::WindowsAndMessaging::{
-        EnumWindows, GetWindow, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindow, IsWindowVisible, SetForegroundWindow, ShowWindow, GW_OWNER, SW_RESTORE,
+        EnumWindows, GetWindow, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindowVisible, SetForegroundWindow, ShowWindow, GW_OWNER, SW_RESTORE,
     };
 
     // Les fenêtres principales visibles (avec un titre, sans propriétaire), leur programme et leur titre.
@@ -1333,13 +1349,22 @@ pub fn focus_agent_window(hwnd: isize, pids: &[u32], project: &str) -> Result<()
         BOOL(1) // continuer
     }
 
-    let direct = HWND(hwnd as *mut _);
-    let target = if hwnd != 0 && unsafe { IsWindow(Some(direct)).as_bool() && IsWindowVisible(direct).as_bool() } {
-        Some(direct)
+    let names = process_names();
+    let describe = |h: isize| {
+        let mut pid = 0u32;
+        let mut buf = [0u16; 256];
+        let n = unsafe {
+            GetWindowThreadProcessId(HWND(h as *mut _), Some(&mut pid));
+            GetWindowTextW(HWND(h as *mut _), &mut buf).max(0) as usize
+        };
+        format!("{} « {} »", names.get(&pid).map(String::as_str).unwrap_or("?"), String::from_utf16_lossy(&buf[..n]))
+    };
+    let target = if let Some(direct) = usable_window(hwnd) {
+        crate::services::log::info(format!("agents : Y aller → {} (console du hook)", describe(direct)));
+        Some(HWND(direct as *mut _))
     } else {
         let mut raw: Vec<(isize, u32, String)> = Vec::new();
         let _ = unsafe { EnumWindows(Some(collect), LPARAM(&mut raw as *mut _ as isize)) };
-        let names = process_names();
         let windows: Vec<super::AgentWindow> = raw
             .into_iter()
             .map(|(h, pid, title)| super::AgentWindow { hwnd: h, pid, title, exe: names.get(&pid).cloned().unwrap_or_default() })
@@ -1348,6 +1373,9 @@ pub fn focus_agent_window(hwnd: isize, pids: &[u32], project: &str) -> Result<()
         if found.is_none() {
             let chain: Vec<String> = pids.iter().map(|p| format!("{p}:{}", names.get(p).map(String::as_str).unwrap_or("?"))).collect();
             crate::services::log::warn(format!("agents : fenêtre introuvable (programmes au-dessus du hook : {} ; projet : « {project} »)", if chain.is_empty() { "aucun".into() } else { chain.join(" > ") }));
+        }
+        if let Some(h) = found {
+            crate::services::log::info(format!("agents : Y aller → {} (cherchée)", describe(h)));
         }
         found.map(|h| HWND(h as *mut _))
     };
