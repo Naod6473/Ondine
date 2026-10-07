@@ -362,7 +362,8 @@ body {
   flex-wrap: wrap;
   justify-content: flex-end;
 }
-.island[data-state="alert"]:has(.notif.many) {
+.island[data-state="alert"]:has(.notif.many),
+.island[data-state="alert"]:has(.notif.wide) {
   width: 580px;
   height: 150px;
 }
@@ -371,6 +372,16 @@ body {
 }
 .notif.prio-high .notif-title {
   color: #ffcf4a;
+}
+/* Un résultat bon ou mauvais (empreinte identique ou différente). */
+.notif.tone-good .notif-title {
+  color: #7ee8a2;
+}
+.notif.tone-bad .notif-title {
+  color: #ff9c8f;
+}
+.notif-body {
+  overflow-wrap: anywhere;
 }
 .banner-slot .notif {
   margin-top: 8px;

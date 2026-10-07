@@ -38,6 +38,10 @@ export interface NotificationRequest {
   /** Identifiant de sujet : une nouvelle notification de même clé remplace l'ancienne. */
   key?: string;
   actions?: NotificationAction[];
+  /** Le titre en vert (« Identique ✓ ») ou en rouge (« Différente ✗ »). */
+  tone?: "good" | "bad";
+  /** En alerte, une île plus large et plus haute : pour un long texte (une empreinte entière). */
+  wide?: boolean;
 }
 
 export interface IslandNotification extends NotificationRequest {

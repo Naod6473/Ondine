@@ -584,7 +584,7 @@
 "Bureau à distance en plein écran": "Remote Desktop in full screen",
 "Tester les serveurs à l'ouverture de l'onglet": "Test servers when the tab opens",
 "Automatisations « Quand… alors… » : un fichier arrive dans un dossier, une clé USB est branchée, un raccourci clavier est pressé, ou un événement de l'île. Tout déplacement propose « Annuler », rien n'est supprimé définitivement, et aucune règle ne peut lancer de programme.": "“When… then…” automations: a file arrives in a folder, a USB drive is plugged in, a keyboard shortcut is pressed, or an island event. Every move offers “Undo”, nothing is permanently deleted, and no rule can launch a program.",
-"Glissez des fichiers sur l'île pour les poser sur l'étagère, les envoyer à la Corbeille, les copier ou les déplacer (dossiers favoris compris), copier leur chemin, les compresser, convertir ou réduire des images, ou renommer plusieurs fichiers d'un coup (avec aperçu). Toute action sur les fichiers est annulable quelques secondes.": "Drag files onto the island to drop them on the shelf, send them to the Recycle Bin, copy or move them (favorite folders included), copy their path, compress them, convert or shrink images, or rename several files at once (with preview). Every file action can be undone for a few seconds.",
+"Glissez des fichiers sur l'île pour les poser sur l'étagère, les envoyer à la Corbeille, les copier ou les déplacer (dossiers favoris compris), copier leur chemin, les compresser, calculer leur empreinte (SHA-256, ou comparer à une empreinte copiée), convertir ou réduire des images, ou renommer plusieurs fichiers d'un coup (avec aperçu). Toute action sur les fichiers est annulable quelques secondes.": "Drag files onto the island to drop them on the shelf, send them to the Recycle Bin, copy or move them (favorite folders included), copy their path, compress them, compute their hash (SHA-256, or compare it with a copied hash), convert or shrink images, or rename several files at once (with preview). Every file action can be undone for a few seconds.",
 "Dossiers favoris": "Favorite folders",
 "Chacun devient une cible quand vous glissez des fichiers sur l'île.": "Each one becomes a target when you drag files onto the island.",
 "Lâcher sur un favori…": "Drop on a favorite…",
@@ -1200,7 +1200,21 @@
 "Horodatage Unix (secondes)": "Unix timestamp (seconds)",
 "Heure locale": "Local time",
 "Décodé sur votre PC : rien n'est envoyé ni enregistré.": "Decoded on your PC: nothing is sent or saved.",
-"Copier ce texte": "Copy this text"
+"Copier ce texte": "Copy this text",
+"Empreinte": "Hash",
+"Cible « Empreinte » (SHA-256)": "“Hash” target (SHA-256)",
+"Si le presse-papiers contient une empreinte (MD5, SHA-1, SHA-256 ou SHA-512), le fichier lui est comparé.": "If the clipboard contains a hash (MD5, SHA-1, SHA-256 or SHA-512), the file is compared with it.",
+"Empreinte impossible": "Hash failed",
+"Empreinte copiée": "Hash copied",
+"Empreinte arrêtée": "Hash stopped",
+"Identique ✓": "Identical ✓",
+"Différente ✗": "Different ✗",
+"aucun fichier (les dossiers n'ont pas d'empreinte)": "no file (folders have no hash)",
+"une empreinte est déjà en cours de calcul": "a hash is already being computed",
+"ce résultat n'est plus disponible": "this result is no longer available",
+"rien à copier": "nothing to copy",
+"erreur interne": "internal error",
+"illisible": "unreadable"
 },
 "patterns": [
 [
@@ -2214,6 +2228,50 @@
 [
 "^dans (\\d+) ans$",
 "in $1 years"
+],
+[
+"^Empreinte (MD5|SHA-1|SHA-256|SHA-512)…$",
+"$1 hash…"
+],
+[
+"^Comparaison (MD5|SHA-1|SHA-256|SHA-512)…$",
+"Comparing $1…"
+],
+[
+"^Empreinte (MD5|SHA-1|SHA-256|SHA-512) : (\\d+) %$",
+"$1 hash: $2%"
+],
+[
+"^Comparaison (MD5|SHA-1|SHA-256|SHA-512) : (\\d+) %$",
+"Comparing $1: $2%"
+],
+[
+"^Empreintes (MD5|SHA-1|SHA-256|SHA-512) \\((\\d+) fichiers\\)$",
+"$1 hashes ($2 files)"
+],
+[
+"^Identiques ✓ \\((\\d+) fichiers\\)$",
+"Identical ✓ ($1 files)"
+],
+[
+"^Différentes ✗ : (\\d+) sur (\\d+)$",
+"Different ✗: $1 of $2"
+],
+[
+"^(\\d+) fichiers au plus à la fois \\(vous en avez glissé (\\d+)\\)$",
+"$1 files at most at a time (you dropped $2)"
+],
+[
+"^ouverture impossible : (.+)$",
+"unable to open: $1"
+],
+[
+"^lecture impossible : (.+)$",
+"unable to read: $1"
+],
+[
+"^calcul impossible : (.+)$",
+"unable to compute: $1"
 ]
 ]
 }

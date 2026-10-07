@@ -2,7 +2,7 @@
   "id": "shelf",
   "name": "Étagère",
   "icon": "🧺",
-  "description": "Glissez des fichiers sur l'île pour les poser sur l'étagère, les envoyer à la Corbeille, les copier ou les déplacer (dossiers favoris compris), copier leur chemin, les compresser, convertir ou réduire des images, ou renommer plusieurs fichiers d'un coup (avec aperçu). Toute action sur les fichiers est annulable quelques secondes.",
+  "description": "Glissez des fichiers sur l'île pour les poser sur l'étagère, les envoyer à la Corbeille, les copier ou les déplacer (dossiers favoris compris), copier leur chemin, les compresser, calculer leur empreinte (SHA-256, ou comparer à une empreinte copiée), convertir ou réduire des images, ou renommer plusieurs fichiers d'un coup (avec aperçu). Toute action sur les fichiers est annulable quelques secondes.",
   "version": "0.1.0",
   "permissions": [
     "files",
@@ -53,6 +53,13 @@
         "default": true
       },
       {
+        "key": "showHash",
+        "type": "boolean",
+        "label": "Cible « Empreinte » (SHA-256)",
+        "help": "Si le presse-papiers contient une empreinte (MD5, SHA-1, SHA-256 ou SHA-512), le fichier lui est comparé.",
+        "default": true
+      },
+      {
         "key": "watchDownloads",
         "type": "boolean",
         "label": "Poser sur l'étagère chaque nouveau fichier téléchargé",
@@ -81,7 +88,10 @@
     "rename",
     "search",
     "open",
-    "drag_out"
+    "drag_out",
+    "hash",
+    "hash_cancel",
+    "hash_copy"
   ],
   "events": {
     "emits": [
@@ -89,12 +99,16 @@
       "task.started",
       "task.finished",
       "task.failed",
-      "shelf.downloaded"
+      "shelf.downloaded",
+      "shelf.hashed",
+      "shelf.hash-progress"
     ],
     "listens": [
       "shelf.changed",
       "shelf.add",
-      "shelf.downloaded"
+      "shelf.downloaded",
+      "shelf.hashed",
+      "shelf.hash-progress"
     ]
   }
 }
