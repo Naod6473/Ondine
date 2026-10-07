@@ -11,7 +11,12 @@
 //   - les rendez-vous de tous les calendriers sont fusionnés et triés ; si la
 //     liste a changé, "agenda.changed" est publié ;
 //   - si un rendez-vous commence bientôt (réglage « rappel ») :
-//     "agenda.reminder" est publié, une seule fois par rendez-vous.
+//     "agenda.reminder" est publié, une seule fois par rendez-vous ;
+//   - si une réunion en ligne (Teams, Meet, Zoom, Webex) commence dans moins
+//     de 2 min (réglage « joinMin ») : "agenda.join", une seule fois par
+//     rendez-vous, à la place du rappel s'ils tombent ensemble. « Rejoindre »
+//     (commande "join") ouvre le lien, publie "media.pause" et dit si le
+//     micro est coupé.
 //
 // Comme pour les notes, les messages du bus ne contiennent pas le texte des
 // rendez-vous : le front le demande avec la commande "upcoming". Rien n'est
@@ -40,6 +45,7 @@ use tauri::{AppHandle, Manager};
 
 use super::{ModuleContext, RustModule};
 use crate::platform;
+use crate::platform::audio::{self, Device};
 use crate::services::credentials::{self, ICAL_URL};
 use crate::services::ics::{self, Event, Occurrence};
 use crate::services::ics_calendars::{self, Calendar, Source, LEGACY_LINK_ID};
@@ -85,6 +91,8 @@ struct State {
     links: HashMap<String, String>,
     /// Les rendez-vous déjà rappelés (leur clé).
     reminded: HashSet<String>,
+    /// Les réunions pour lesquelles « Rejoindre » a déjà été proposé (leur clé).
+    joined: HashSet<String>,
     /// Le dernier message publié, pour ne pas répéter le même.
     last_payload: Value,
 }
@@ -122,19 +130,36 @@ impl RustModule for Agenda {
             }
             // Clic sur un rendez-vous : on ouvre son lien (navigateur, Teams, Zoom…).
             "open" => {
-                let text = |k: &str| args.get(k).and_then(Value::as_str).unwrap_or("").to_string();
-                let url = self.state.locked().links.get(&link_id(&text("calendar"), &text("key"))).cloned();
-                let url = url.ok_or("ce rendez-vous n'a pas de lien")?;
-                // Vérifié encore une fois juste avant d'ouvrir : jamais autre chose que http(s).
-                if !ics::is_web_url(&url) {
-                    return Err("lien refusé : seuls les liens http(s) s'ouvrent".into());
-                }
-                platform::shell_open(&url).map_err(|e| format!("lien non ouvert : {e}"))?;
+                open_link(&self.state, &args)?;
                 Ok(Value::Null)
+            }
+            // « Rejoindre » une réunion : on ouvre son lien comme un clic, puis
+            // on demande au module Musique de mettre en pause ce qui joue.
+            // Réponse : { micMuted } (le micro par défaut de Windows est-il
+            // coupé ? seulement si le module Contrôles, qui sait le rétablir,
+            // est actif).
+            "join" => {
+                open_link(&self.state, &args)?;
+                ctx.emit("media.pause", Value::Null);
+                let mic_muted = super::is_active(ctx.app, "controls") && audio::get(Device::Microphone).is_ok_and(|l| l.muted);
+                Ok(json!({ "micMuted": mic_muted }))
             }
             other => Err(format!("commande inconnue : {other}")),
         }
     }
+}
+
+/// Ouvre le lien d'un rendez-vous affiché (`{calendar, key}` : le front ne
+/// connaît pas l'adresse, elle est reprise ici).
+fn open_link(state: &Shared, args: &Value) -> Result<(), String> {
+    let text = |k: &str| args.get(k).and_then(Value::as_str).unwrap_or("").to_string();
+    let url = state.locked().links.get(&link_id(&text("calendar"), &text("key"))).cloned();
+    let url = url.ok_or("ce rendez-vous n'a pas de lien")?;
+    // Vérifié encore une fois juste avant d'ouvrir : jamais autre chose que http(s).
+    if !ics::is_web_url(&url) {
+        return Err("lien refusé : seuls les liens http(s) s'ouvrent".into());
+    }
+    platform::shell_open(&url).map_err(|e| format!("lien non ouvert : {e}"))
 }
 
 /// Ce que renvoie la commande "upcoming".
@@ -235,6 +260,7 @@ fn migrate_settings(app: &AppHandle) {
 fn refresh(ctx: &ModuleContext, state: &Shared) {
     let settings = ctx.settings();
     let reminder_min = settings.get("reminderMin").and_then(Value::as_i64).unwrap_or(10).clamp(0, 240);
+    let join_min = settings.get("joinMin").and_then(Value::as_i64).unwrap_or(2).clamp(0, 30);
     let horizon = settings.get("horizonDays").and_then(Value::as_i64).unwrap_or(HORIZON_DEFAULT).clamp(1, 365);
     let legacy_link = ics_calendars::needs_migration(&settings) && ctx.require("credentials").is_ok() && legacy_link_exists();
     let calendars = ics_calendars::effective(&settings, legacy_link);
@@ -269,18 +295,9 @@ fn refresh(ctx: &ModuleContext, state: &Shared) {
 
     let mut s = state.locked();
 
-    // Rappels : un rendez-vous (pas une journée entière) qui commence dans
-    // moins de `reminder_min` minutes, et pas encore rappelé. Le même
-    // rendez-vous dans deux calendriers n'est rappelé qu'une fois.
-    let mut reminders = Vec::new();
-    if reminder_min > 0 {
-        for (_, o) in merged.iter().filter(|(_, o)| !o.all_day && o.start >= now) {
-            let key = key_of(o);
-            if o.start - now <= chrono::Duration::minutes(reminder_min) && s.reminded.insert(key.clone()) {
-                reminders.push(key);
-            }
-        }
-    }
+    // Rappels (« Dans 10 min ») et propositions de rejoindre une réunion (« Réunion dans 2 min »).
+    let st = &mut *s;
+    let (reminders, joins) = due(&merged, now, reminder_min, join_min, &mut st.reminded, &mut st.joined);
 
     s.upcoming = upcoming;
     s.links = links;
@@ -302,6 +319,44 @@ fn refresh(ctx: &ModuleContext, state: &Shared) {
     for key in reminders {
         ctx.emit("agenda.reminder", json!({ "key": key, "minutes": reminder_min }));
     }
+    for key in joins {
+        ctx.emit("agenda.join", json!({ "key": key, "minutes": join_min }));
+    }
+}
+
+/// Une réunion en ligne (Teams, Meet, Zoom, Webex), pas un simple lien web.
+fn is_meeting(o: &Occurrence) -> bool {
+    o.link.as_deref().is_some_and(|l| ics::link_kind(l) != "web")
+}
+
+/// Ce qu'il faut annoncer maintenant : (rappels, propositions de rejoindre),
+/// par clé de rendez-vous. Seulement les rendez-vous à venir, pas les
+/// journées entières ; le même rendez-vous dans deux calendriers compte une fois.
+///   - rappel : commence dans moins de `reminder_min` minutes (0 = jamais) ;
+///   - rejoindre : une réunion en ligne qui commence dans moins de `join_min`
+///     minutes (0 = jamais), proposée une seule fois. Elle remplace le rappel
+///     s'ils tombent ensemble, et il n'y a plus de rappel après elle.
+fn due(
+    merged: &[(usize, Occurrence)],
+    now: NaiveDateTime,
+    reminder_min: i64,
+    join_min: i64,
+    reminded: &mut HashSet<String>,
+    joined: &mut HashSet<String>,
+) -> (Vec<String>, Vec<String>) {
+    let within = |o: &Occurrence, min: i64| min > 0 && o.start - now <= chrono::Duration::minutes(min);
+    let (mut reminders, mut joins) = (Vec::new(), Vec::new());
+    for (_, o) in merged.iter().filter(|(_, o)| !o.all_day && o.start >= now) {
+        let key = key_of(o);
+        if is_meeting(o) && within(o, join_min) && joined.insert(key.clone()) {
+            // La proposition vaut rappel : pas de « Dans 2 min » en plus.
+            reminded.insert(key.clone());
+            joins.push(key);
+        } else if within(o, reminder_min) && reminded.insert(key.clone()) {
+            reminders.push(key);
+        }
+    }
+    (reminders, joins)
 }
 
 /// Ce qu'on a lu correspond-il encore à ce calendrier ?
@@ -486,4 +541,66 @@ fn to_json(cal: &Calendar, o: &Occurrence) -> Value {
         // Seulement la SORTE de lien (« teams », « web »…) : l'adresse reste ici.
         "link": o.link.as_deref().map(ics::link_kind),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::NaiveDate;
+
+    fn at(h: u32, m: u32) -> NaiveDateTime {
+        NaiveDate::from_ymd_opt(2026, 10, 7).unwrap().and_hms_opt(h, m, 0).unwrap()
+    }
+
+    fn meeting(title: &str, start: NaiveDateTime, link: Option<&str>) -> (usize, Occurrence) {
+        let o = Occurrence { summary: title.into(), location: String::new(), start, end: start + chrono::Duration::minutes(30), all_day: false, link: link.map(String::from) };
+        (0, o)
+    }
+
+    const TEAMS: Option<&str> = Some("https://teams.microsoft.com/l/meetup-join/abc");
+
+    #[test]
+    fn join_is_offered_once_two_minutes_before() {
+        let list = [meeting("Point hebdo", at(10, 0), TEAMS)];
+        let (mut reminded, mut joined) = (HashSet::new(), HashSet::new());
+        // 10 min avant : le rappel habituel seulement.
+        assert_eq!(due(&list, at(9, 50), 10, 2, &mut reminded, &mut joined), (vec![key_of(&list[0].1)], vec![]));
+        // 5 min avant : rien de nouveau.
+        assert_eq!(due(&list, at(9, 55), 10, 2, &mut reminded, &mut joined), (vec![], vec![]));
+        // 2 min avant : la proposition de rejoindre, une seule fois.
+        assert_eq!(due(&list, at(9, 58), 10, 2, &mut reminded, &mut joined), (vec![], vec![key_of(&list[0].1)]));
+        assert_eq!(due(&list, at(9, 59), 10, 2, &mut reminded, &mut joined), (vec![], vec![]));
+        // Commencé : plus rien.
+        assert_eq!(due(&list, at(10, 1), 10, 2, &mut HashSet::new(), &mut HashSet::new()), (vec![], vec![]));
+    }
+
+    #[test]
+    fn join_replaces_a_reminder_at_the_same_time() {
+        let list = [meeting("Démo", at(10, 0), TEAMS)];
+        // L'île démarre 1 min avant : une seule notification, la proposition.
+        let (mut reminded, mut joined) = (HashSet::new(), HashSet::new());
+        assert_eq!(due(&list, at(9, 59), 10, 2, &mut reminded, &mut joined), (vec![], vec![key_of(&list[0].1)]));
+        // Rappel réglé plus court que la proposition : pas de rappel après elle.
+        let (mut reminded, mut joined) = (HashSet::new(), HashSet::new());
+        assert_eq!(due(&list, at(9, 58), 1, 2, &mut reminded, &mut joined).1.len(), 1);
+        assert_eq!(due(&list, at(9, 59), 1, 2, &mut reminded, &mut joined), (vec![], vec![]));
+    }
+
+    #[test]
+    fn only_online_meetings_and_never_at_zero() {
+        let web = meeting("Lire la doc", at(10, 0), Some("https://example.com/doc"));
+        let none = meeting("Café", at(10, 0), None);
+        let zoom = meeting("Client", at(10, 0), Some("https://us02web.zoom.us/j/123"));
+        let list = [web, none, zoom];
+        let (reminders, joins) = due(&list, at(9, 59), 10, 2, &mut HashSet::new(), &mut HashSet::new());
+        assert_eq!(reminders.len(), 2); // le lien web et le café : rappel normal
+        assert_eq!(joins, vec![key_of(&list[2].1)]);
+        // 0 = jamais : seulement les rappels.
+        let (reminders, joins) = due(&list, at(9, 59), 10, 0, &mut HashSet::new(), &mut HashSet::new());
+        assert_eq!((reminders.len(), joins.len()), (3, 0));
+        // Une journée entière n'est jamais proposée.
+        let mut all_day = meeting("Séminaire", at(10, 0), TEAMS);
+        all_day.1.all_day = true;
+        assert_eq!(due(&[all_day], at(9, 59), 10, 2, &mut HashSet::new(), &mut HashSet::new()), (vec![], vec![]));
+    }
 }
