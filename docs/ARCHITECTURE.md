@@ -300,7 +300,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `system.disk-low` `{mount, freePct, freeGb}` | Système (Rust, toutes les 30 s) | notification 💽 : disque presque plein |
 | `remote.changed` `{favorites: [{id, name, kind}]}` | Accès distants (Rust, et front au démarrage) | le Lanceur met à jour ses serveurs (sans les adresses) |
 | `remote.connect` `{id}` | Lanceur (front) | Accès distants ouvre ce favori |
-| `agents.event` `{source, kind, title, body, project, at}` | Agents IA (Rust) | notification (✋ « attend ta permission » en priorité haute, ✅ « a fini ») et historique |
+| `agents.event` `{source, kind, title, body, project, at, changes?}` | Agents IA (Rust) | notification (✋ « attend ta permission » en priorité haute, ✅ « a fini », avec le bilan git `changes` s'il y en a un) et historique |
 | `agents.projects` `{tools, projects: [{index, name}]}` | Agents IA (Rust) | le Lanceur propose « Claude Code · projet », « Codex · projet »… |
 | `agents.launch` `{tool, index?}` | Lanceur (front) | Agents IA ouvre cet agent dans ce projet |
 | `notes.open` `{kind: "note"\|"todo", id}` | Lanceur (front, recherche dans l'île) | l'onglet Notes s'ouvre sur cette note (éditeur) ou cette tâche (mise en avant) |
@@ -312,6 +312,9 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `claude.thinking` / `claude.done` | Agents IA (Rust) | la mascotte réfléchit tant qu'une session de Claude Code travaille |
 | `capture.pick` | Lanceur (front) | Capture ouvre la pipette |
 | `capture.color` `{ok, hex, text, error?}` | Capture (Rust) | notification « #3A7BD5 copié » ; l'onglet redemande l'historique (`colors`) |
+| `agenda.join` `{key, minutes}` | Agenda (Rust) | alerte « Réunion dans 2 min : … » avec « Rejoindre » (une fois par réunion en ligne) |
+| `media.pause` | Agenda (Rust, « Rejoindre ») | Musique met en pause ce qui joue (rien si c'est déjà en pause) |
+| `controls.mic-set` `{muted}` | Agenda (front, « Rétablir le micro ») | Contrôles coupe ou rétablit le micro, puis publie `controls.mic-muted` (`source: "request"`) |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -520,6 +523,9 @@ et l'accès à Windows dans `src-tauri/src/platform/media.rs`.
   (notification basse), désactivable dans les réglages.
 - **Confidentialité** : le module ne fait que lire ce que Windows expose déjà ;
   rien ne sort de l'ordinateur, aucun titre n'est écrit dans le journal.
+- **Mettre en pause** (`media.pause`, publié par l'Agenda quand on rejoint
+  une réunion) : si quelque chose joue, un fil appelle `TryPauseAsync` sur la
+  session SMTC en cours.
 
 ## Module Presse-papiers (phase 4)
 
@@ -684,6 +690,16 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   locale de l'ordinateur (juste si l'agenda est dans le même fuseau).
 - Pilule : « Dans 12 min · Titre » quand un rendez-vous approche
   (`compactWithinMin`), puis « En cours » avec une barre qui se remplit.
+- Rejoindre une réunion : `joinMin` minutes avant (2 par défaut, 0 = jamais)
+  un rendez-vous dont le lien est une réunion (Teams, Meet, Zoom, Webex :
+  `link_kind` autre que `web`), le thread publie `agenda.join {key, minutes}`
+  une seule fois (`joined`) et le compte aussi comme rappelé : pas de rappel
+  en double. Le front montre « Réunion dans 2 min : Titre » avec
+  « Rejoindre » → commande `join {calendar, key}` (ouvre le lien comme `open`,
+  puis publie `media.pause`, et répond `{micMuted}` : le micro par défaut lu
+  par Core Audio, seulement si le module Contrôles est actif) ; micro coupé →
+  une alerte « Votre micro est coupé » propose « Rétablir le micro »
+  (`controls.mic-set {muted: false}`).
 
 ## Phase 7 : automatisation
 
@@ -860,6 +876,10 @@ s'il n'existe pas ou est désactivé).
   `IAudioEndpointVolume`). Aucune permission : rien n'est lu ni envoyé.
 - `state` → `{speakers, microphone}` (`{volume 0-100, muted}` ou `null` sans
   périphérique) ; `set_volume {device, volume}` ; `set_muted {device, muted}`.
+- Bus : `controls.mic-set {muted}` (publié par l'Agenda, « Rétablir le
+  micro ») coupe ou rétablit le micro dans un fil, puis publie
+  `controls.mic-muted {muted, source: "request"}` (confirmation affichée comme
+  pour le raccourci) ou `controls.mic-error`.
 - Vue façon centre de contrôle, en verre liquide, sans défilement : à gauche
   une carte de pastilles (radios, mode avion, micro coupé), à droite des
   piliers verticaux (son, micro, un par écran) faits maison (`role="slider"`,
@@ -945,6 +965,37 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
 - Lancer un agent (`launch {tool, path? | index?}`) : `claude`, `codex` ou
   `gemini` (liste fermée, enum `Tool`), même mécanisme que ci-dessus.
   Réglages « Proposer Claude Code / Codex / Gemini CLI ».
+- « Reprendre » (`launch {…, resume: true}`) : les mots fixes de
+  `Tool::resume_args` sont ajoutés après le chemin complet du programme
+  (`--continue` pour Claude Code, `resume --last` pour Codex ; Gemini CLI :
+  refus). À côté, la dernière phrase de la session (`last_sessions` →
+  `[{index, found, text?, who?, at?}]`, logique dans `modules/agents_resume.rs`) :
+  le dossier `~/.claude/projects/<dossier encodé>` (chaque caractère qui n'est
+  pas une lettre ou un chiffre ASCII devient « - », comme Claude Code ; les
+  noms de plus de 200 caractères sont retrouvés par leur début), son `.jsonl`
+  le plus récent (hors `agent-*`), dont seule la fin est lue (256 Ko, puis
+  2 Mo). Lignes cassées ignorées ; on garde le dernier texte `user` ou
+  `assistant` (pas les résultats d'outils, les sous-agents, les commandes
+  `<command-…>`), sur une ligne, coupé à 120 caractères. Réglage
+  `resumePreview` (activé) ; jamais journalisé.
+- Bilan de fin de tâche (`modules/agents_git.rs`, réglage `showChanges`,
+  activé) : à « a fini », le dossier du hook (`cwd`) passe par `check_path`.
+  S'il est dans un dépôt git (un parent avec `.git`, jamais le dossier
+  utilisateur ni la racine d'un disque) et que `git.exe` est trouvé dans le
+  PATH (chemin complet), un fil lance `git status --porcelain=v1 -z -uall`
+  puis `git diff --numstat -z HEAD` (`platform/devtools.rs` :
+  `run_with_timeout`, 3 s au total, 4 Mo de sortie au plus, sans console ;
+  `--no-optional-locks`, `core.fsmonitor=false`, `--no-ext-diff`,
+  `--no-textconv`, `GIT_TERMINAL_PROMPT=0` : lecture seule, aucun programme du
+  dépôt lancé). Les nouveaux fichiers sont comptés à la main (200 fichiers et
+  1 Mo chacun au plus). L'événement reçoit `changes {files, added, removed,
+  names, dir, vscode, terminal}` et la notification « Claude a fini · 3
+  fichiers modifiés, +120 −14 » (alerte) propose « Ouvrir dans VS Code »
+  (`open_vscode {path}` : `code.cmd` du PATH ou
+  `%LOCALAPPDATA%\Programs\Microsoft VS Code\Code.exe`, lancé par son chemin
+  complet avec le dossier en seul paramètre) et « Terminal ici »
+  (`terminal.open {path}`). Sans dépôt, sans git ou trop long : la
+  notification d'avant.
 - Tableau des sessions (`history` → `sessions`) : une ligne par session
   (`outil:session_id`) avec son état (`working`, `waiting`, `done`, `idle`
   après 1 h sans nouvelles) et depuis quand ; oubliée 2 h après sa dernière

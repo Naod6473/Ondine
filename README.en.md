@@ -222,8 +222,15 @@ an online calendar, downloaded again every 15 minutes. Clicking an event opens
 its link (Teams, Meet, Zoom…). Read-only; addresses are stored in the Windows
 Credential Manager, never in the settings file.
 
+Two minutes before an online meeting (Teams, Meet, Zoom, Webex), a "Meeting in
+2 min" alert offers **Join**: the link opens, the music pauses, and if your mic
+is muted (with the Controls tab on), a second alert says so, with **Unmute the
+mic**. Only one offer per event; it replaces the reminder if both come at the
+same time.
+
 - **Show events for the next**: 60 days (7 to 365)
 - **Reminder before an event**: 10 min (0 = never)
+- **Offer to join the meeting**: 2 min before (0 = never, up to 30)
 - **Show the next event in the island's pill** (on) when it starts within 30 min
 - **Evening recap**: tomorrow's events at 6 pm (0 = never)
 
@@ -286,6 +293,19 @@ island: "waiting for your permission", "finished". They go through the
 account: nothing goes over the Internet, and the island only accepts messages
 from its own copy of `ondine.exe`.
 
+**Resume**: next to each project, this button reopens Claude Code where you
+left it (`claude --continue`; for Codex: `codex resume --last`), with, in small
+print, the last line exchanged and its date ("2 h ago"). That line is read from
+the end of Claude Code's session file, on your PC: it is never sent or written
+to the log.
+
+**End-of-task summary**: when an agent is done in a git repository, the
+notification says what changed ("3 files changed, +120 −14", and the most
+touched files), with **Open in VS Code** (if VS Code is installed) and
+**Terminal here**. Ondine runs `git status` and `git diff --numstat` read-only,
+for 3 seconds at most; without git or outside a repository, the notification
+stays as before.
+
 **Connect an agent in 3 steps:**
 
 1. In the AI agents tab, open **Connect Claude Code, Codex or Gemini**, choose
@@ -309,13 +329,16 @@ Optionally, the island can also be added as an **MCP server**: the agent can
 then send you a message, its progress, start the timer or ask you a
 multiple-choice question. The **Focus** button (25 min, 1 h, 2 h or until
 stopped) holds their notifications and gives you a summary at the end. The
-island never runs anything, never decides for you, and reads neither what you
-type nor the AI's replies.
+island runs nothing the agents send it (it only runs git, read-only, for the
+summary), never decides for you, and doesn't read what you type: only the last
+line of a session is shown next to "Resume".
 
 - **Projects for agents**: up to 8 folders, one button each (in the tab and the launcher)
 - **Open agents in**: a console window (default) or Windows Terminal
 - **Offer Claude Code / Codex / Gemini CLI** (on)
+- **Show the session's last line next to "Resume"** (on)
 - **Notify when Claude waits for my answer or permission** (on), **when Claude is done** (on)
+- **Show what changed when an agent is done** (on): the git summary above
 - **Accept MCP tools** (on)
 - **Allow / Deny from the island** (**off** by default): when Claude Code or Codex asks permission to use a tool, the island shows the command with "Allow" (to confirm) and "Deny". After turning it on, reinstall the hooks (step 3 above). Without an answer within the chosen delay (1 min by default), the question goes back to the terminal.
 - **The mascot thinks while Claude works** (on)
