@@ -7,6 +7,12 @@
 let ctx: AudioContext | null = null;
 let enabled = true;
 let volume = 0.5;
+/** Mode 8 bits (surprise, src/eggs/) : toutes les notes en onde carrée, plus douces. */
+let retro = false;
+
+export function setRetroSound(on: boolean) {
+  retro = on;
+}
 
 export function setSoundPrefs(on: boolean, vol: number) {
   enabled = on;
@@ -23,10 +29,10 @@ function blip(from: number, to: number, duration: number, strength: number, dela
     const t0 = ctx.currentTime + delay;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = type;
+    osc.type = retro ? "square" : type;
     osc.frequency.setValueAtTime(from, t0);
     osc.frequency.exponentialRampToValueAtTime(to, t0 + duration);
-    const peak = 0.12 * strength * volume;
+    const peak = 0.12 * strength * volume * (retro ? 0.45 : 1);
     gain.gain.setValueAtTime(0.0001, t0);
     gain.gain.exponentialRampToValueAtTime(peak, t0 + 0.008);
     gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
@@ -57,4 +63,31 @@ export const sounds = {
     blip(300, 520, 0.08, 0.6, 0, "triangle");
     blip(520, 380, 0.12, 0.4, 0.07, "triangle");
   },
+
+  // ── Les surprises (src/eggs/) ──
+
+  /** Une goutte qui se sépare en deux, ou se recolle : un « plop ». */
+  plop: () => {
+    blip(260, 900, 0.07, 0.7);
+    blip(900, 600, 0.06, 0.4, 0.05);
+  },
+  /** Le mode 8 bits s'allume : un petit arpège de console. */
+  jingle: () => {
+    [523, 659, 784, 1047].forEach((f, i) => blip(f, f, 0.09, 0.5, i * 0.085, "square"));
+  },
+  /** Le mode 8 bits s'éteint : l'arpège redescend. */
+  jingleDown: () => {
+    [784, 659, 523].forEach((f, i) => blip(f, f, 0.08, 0.4, i * 0.08, "square"));
+  },
+  /** La pluie de code commence : un glissando descendant, numérique. */
+  glitch: () => {
+    blip(1800, 200, 0.35, 0.5, 0, "sawtooth");
+    blip(220, 110, 0.25, 0.4, 0.3, "square");
+  },
+  /** Une goutte qui passe au ralenti : un souffle grave. */
+  whoosh: () => blip(180, 90, 0.9, 0.35, 0, "triangle"),
+  /** Une bouchée (le goûter d'Ondine) : « nom ». */
+  chomp: () => blip(420, 260, 0.06, 0.45, 0, "triangle"),
+  /** Une gerbe de feu d'artifice : un « pof » assourdi. */
+  pop: () => blip(140, 60, 0.18, 0.5, 0, "triangle"),
 };

@@ -121,7 +121,8 @@ export type SpriteEffect =
   | "sway"
   | "sigh"
   | "stretch"
-  | "flinch";
+  | "flinch"
+  | "dodge";
 
 export interface AnimationSpec {
   name: string;

@@ -63,6 +63,10 @@ export interface Settings {
     /** Ondine vient pendre au bord de l'écran quand on ne fait rien. */
     peek: boolean;
     peekEveryMins: number;
+    /** Les surprises cachées (src/eggs/) : toutes, le calendrier seulement, aucune. */
+    surprises: "all" | "seasonal" | "none";
+    /** Le carnet des trésors : les ids des surprises déjà trouvées. */
+    treasures: string[];
   };
   privacy: {
     excludedFolders: string[];
@@ -132,7 +136,7 @@ export function defaultSettings(): Settings {
       alwaysMini: false,
       motion: "classic",
     },
-    mascot: { enabled: true, id: "goutte", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5 },
+    mascot: { enabled: true, id: "goutte", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5, surprises: "all", treasures: [] },
     privacy: { excludedFolders: [] },
     modules: {},
     profiles: { list: [], active: "", auto: false, base: {} },

@@ -77,7 +77,8 @@
       "remote.connect",
       "agents.launch",
       "notes.open",
-      "capture.pick"
+      "capture.pick",
+      "easter.word"
     ],
     "listens": [
       "launcher.open",

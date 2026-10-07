@@ -1060,7 +1060,51 @@
 "Identifiants": "Credentials",
 "Sauvegarde": "Backup",
 "Maison": "Home",
-"Mobile": "Mobile"
+"Mobile": "Mobile",
+"Pluie de code": "Code rain",
+"Demandez-lui de se réveiller, dans le Lanceur.": "Ask her to wake up, in the Launcher.",
+"Ondine 8 bits": "8-bit Ondine",
+"Un vieux code de console, île ouverte.": "An old console code, with the island open.",
+"Deux gouttes": "Two drops",
+"Cliquez sur Ondine. Encore. Et encore.": "Click Ondine. Again. And again.",
+"Le tournis": "Dizzy spell",
+"Tournez autour d'elle avec la souris.": "Circle around her with the mouse.",
+"Le tonneau": "Barrel roll",
+"Une figure d'avion, dans le Lanceur.": "A plane stunt, in the Launcher.",
+"La réponse": "The answer",
+"Demandez la réponse au Lanceur.": "Ask the Launcher for the answer.",
+"Bonne année": "Happy New Year",
+"Le premier jour de l'année.": "The first day of the year.",
+"Saint-Valentin": "Valentine's Day",
+"Un jour de cœur, en février.": "A day of hearts, in February.",
+"Poisson d'avril": "April Fools'",
+"Regardez bien son dos, au printemps.": "Look closely at her back, in spring.",
+"Fête de la musique": "Music Day",
+"Un jour de juin, avec de la musique.": "A June day, with music playing.",
+"14 Juillet": "Bastille Day",
+"Un jour de fête, en été.": "A holiday, in summer.",
+"Halloween": "Halloween",
+"Fin octobre, quelqu'un se déguise.": "Late October, someone dresses up.",
+"En décembre, ouvrez l'île.": "In December, open the island.",
+"Jour de pluie": "Rainy day",
+"Quand il pleut dehors (Météo allumée).": "When it rains outside (Weather on).",
+"Canicule": "Heatwave",
+"Quand il fait très chaud (Météo allumée).": "When it is very hot (Weather on).",
+"Surprises": "Surprises",
+"Surprises cachées": "Hidden surprises",
+"Toutes": "All",
+"Le calendrier seulement": "The calendar only",
+"Aucune": "None",
+"Ondine cache quelques surprises : des codes secrets, des gestes, et des jours de fête. Jamais pendant une présentation ou un plein écran ; avec « réduire les animations » ou en économie d'énergie, elle réagit sans les grands effets.": "Ondine hides a few surprises: secret codes, gestures and holidays. Never during a presentation or full screen; with \"reduce motion\" or in power saving, she reacts without the big effects.",
+"Carnet des trésors": "Treasure book",
+"Pas encore trouvé": "Not found yet",
+"???": "???",
+"42": "42",
+"Il fallait bien que quelqu'un réponde.": "Someone had to answer.",
+"Le goûter": "Snack time",
+"Laissez la mini-île tranquille un bon moment.": "Leave the mini island alone for a good while.",
+"Le goûter d'Ondine": "Ondine's snack",
+"De temps en temps, quand la mini-île est tranquille, Ondine la traverse en mangeant son contenu, puis tout revient. « Essayer » le lance à la prochaine mini-île.": "Now and then, when the mini island is quiet, Ondine crosses it eating its content, then everything comes back. \"Try\" starts it the next time the mini island shows."
 },
 "patterns": [
 [
@@ -2034,6 +2078,14 @@
 [
 "^(.+?)\\ attend\\ votre\\ permission$",
 "$1 is waiting for your permission"
+],
+[
+"^(\\d+)\\ /\\ (\\d+)\\ trésors\\ trouvés$",
+"$1 / $2 treasures found"
+],
+[
+"^Trésor\\ trouvé\\ \\((\\d+)\\ /\\ (\\d+)\\)\\ :\\ à\\ retrouver\\ dans\\ Réglages\\ →\\ Mascotte\\.$",
+"Treasure found ($1 / $2): see Settings → Mascot."
 ]
 ]
 }
