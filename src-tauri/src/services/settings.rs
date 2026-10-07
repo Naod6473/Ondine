@@ -58,6 +58,11 @@ pub struct General {
     /// En français : "vous" (vouvoyer, par défaut) ou "tu" (tutoyer). L'interface
     /// le fait seule (src/core/i18n.ts) ; voir `tutoie` pour les textes du Rust.
     pub address: String,
+    /// La dernière version d'Ondine lancée ("1.0.1"). Au démarrage, si elle
+    /// diffère de la version de l'appli, l'île montre une fois « Quoi de neuf »
+    /// (src/core/whats-new.ts). Vide = jamais notée (premier lancement, ou
+    /// version d'avant ce réglage).
+    pub last_seen_version: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -96,6 +101,11 @@ pub struct IslandPrefs {
     /// Le style des animations : "classic" (sobre) ou "studio" (façon vidéo de
     /// présentation : flou → net, chiffres qui roulent, boutons en gélatine).
     pub motion: String,
+    /// Une petite bulle d'Ondine explique le geste principal d'un onglet, la
+    /// première fois qu'on l'ouvre (src/island/tips.ts).
+    pub tips: bool,
+    /// Les onglets (ids de modules) dont l'astuce a déjà été vue.
+    pub tips_seen: Vec<String>,
 }
 
 fn default_motion() -> String {
@@ -152,7 +162,7 @@ impl Default for Settings {
 
 impl Default for General {
     fn default() -> Self {
-        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into(), welcomed: false, demo: false, auto_update: true, autostart: true, perf_mode: "balanced".into(), eco_on_battery: true, address: "vous".into() }
+        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into(), welcomed: false, demo: false, auto_update: true, autostart: true, perf_mode: "balanced".into(), eco_on_battery: true, address: "vous".into(), last_seen_version: String::new() }
     }
 }
 
@@ -174,6 +184,8 @@ impl Default for IslandPrefs {
             icon_pack: "color".into(),
             always_mini: true,
             motion: default_motion(),
+            tips: true,
+            tips_seen: Vec::new(),
         }
     }
 }
@@ -244,6 +256,12 @@ impl Settings {
         let mut seen = std::collections::HashSet::new();
         m.treasures.retain(|t| t.len() <= 32 && !t.is_empty() && t.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-') && seen.insert(t.clone()));
         m.treasures.truncate(64);
+        clean_ids(&mut self.island.tips_seen, 64);
+        // Une version, c'est court : « 1.0.1 », « 1.1.0-beta.2 ».
+        let v = &mut self.general.last_seen_version;
+        if v.len() > 40 || !v.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '+')) {
+            v.clear();
+        }
         crate::services::profiles::sanitize(&mut self.profiles);
     }
 
@@ -251,6 +269,14 @@ impl Settings {
     pub fn module_enabled(&self, id: &str) -> bool {
         self.modules.get(id).map(|m| m.enabled).unwrap_or(true)
     }
+}
+
+/// Une liste d'ids courts ([a-z0-9-], 32 caractères au plus), sans doublon ni
+/// vide, `max` au plus : un réglage-liste ne grossit jamais sans fin.
+fn clean_ids(list: &mut Vec<String>, max: usize) {
+    let mut seen = std::collections::HashSet::new();
+    list.retain(|t| t.len() <= 32 && !t.is_empty() && t.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-') && seen.insert(t.clone()));
+    list.truncate(max);
 }
 
 /// Vrai quand on tutoie l'utilisateur : réglage « Tutoiement » ET interface en
@@ -418,6 +444,22 @@ mod tests {
         assert!(tutoie(&s.general, "fr"));
         assert!(!tutoie(&s.general, "en"));
         assert!(!tutoie(&General::default(), "fr"));
+    }
+
+    #[test]
+    fn tips_and_last_seen_version_are_checked() {
+        let s = parse(r#"{ "version": 2 }"#).unwrap();
+        assert!(s.island.tips);
+        assert!(s.island.tips_seen.is_empty());
+        assert_eq!(s.general.last_seen_version, "");
+        let s = parse(r#"{ "version": 2, "island": { "tips": false, "tipsSeen": ["shelf", "shelf", "Pas Bon", "", "notes"] }, "general": { "lastSeenVersion": "1.0.1" } }"#).unwrap();
+        assert!(!s.island.tips);
+        assert_eq!(s.island.tips_seen, ["shelf", "notes"]);
+        assert_eq!(s.general.last_seen_version, "1.0.1");
+        let s = parse(r#"{ "version": 2, "general": { "lastSeenVersion": "1.0.1<script>" } }"#).unwrap();
+        assert_eq!(s.general.last_seen_version, "");
+        let s = parse(r#"{ "version": 2, "general": { "lastSeenVersion": "1.1.0-beta.2" } }"#).unwrap();
+        assert_eq!(s.general.last_seen_version, "1.1.0-beta.2");
     }
 
     #[test]
