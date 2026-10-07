@@ -67,7 +67,7 @@ pub fn format_mac(mac: [u8; 6]) -> String {
 /// Le paquet magique : 6 × FF, puis 16 × l'adresse MAC.
 pub fn magic_packet(mac: [u8; 6]) -> [u8; 102] {
     let mut packet = [0xFF; 102];
-    for copy in packet[6..].chunks_exact_mut(6) {
+    for copy in packet[6..].as_chunks_mut::<6>().0 {
         copy.copy_from_slice(&mac);
     }
     packet

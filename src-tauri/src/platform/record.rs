@@ -793,7 +793,7 @@ mod win {
                 let len = ow as usize * oh as usize * 4;
                 let bgra = std::slice::from_raw_parts(self.bits, len);
                 let mut rgb = Vec::with_capacity(ow as usize * oh as usize * 3);
-                for px in bgra.chunks_exact(4) {
+                for px in bgra.as_chunks::<4>().0 {
                     rgb.extend_from_slice(&[px[2], px[1], px[0]]);
                 }
                 Ok(rgb)

@@ -172,7 +172,7 @@ impl<W: Write> GifWriter<W> {
         let mut rgba = Vec::with_capacity(patch.w as usize * patch.h as usize * 4);
         for y in patch.y..patch.y + patch.h {
             let start = y as usize * row + patch.x as usize * 3;
-            for px in rgb[start..start + patch.w as usize * 3].chunks_exact(3) {
+            for px in rgb[start..start + patch.w as usize * 3].as_chunks::<3>().0 {
                 rgba.extend_from_slice(&[px[0], px[1], px[2], 0xFF]);
             }
         }
