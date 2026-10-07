@@ -5,7 +5,11 @@
 //     pont liquide (filtre « goo » : flou + seuil de transparence), elles se
 //     regardent, puis se recollent ;
 //   - le poisson d'avril : un petit poisson en papier collé dans son dos, qui
-//     tombe quand on clique sur elle.
+//     tombe quand on clique sur elle ;
+//   - les accessoires des réactions au PC (context.ts) : lunettes de soleil,
+//     bonnet de nuit, tasse de café, mains sur les oreilles, baguette de cheffe
+//     d'orchestre. Dessinés en code avec des dégradés et un reflet, pour aller
+//     avec la goutte gomme ; ils suivent la place de la tête dans les poses.
 //
 // On ne touche pas aux moteurs de dessin : un canvas posé par-dessus la place
 // de la mascotte recopie à chaque image le canvas de la mascotte
@@ -34,6 +38,11 @@ const easeInOut = (k: number) => {
 
 let gooId = 0;
 
+export type Accessory = "glasses" | "nightcap" | "coffee" | "ears" | "baton";
+
+/** Une position dans la case 256 × 256 des poses → fraction de la place de la mascotte. */
+const k = (c: number) => 0.08 + (c / 256) * 0.84;
+
 export class MascotFx {
   private canvas = document.createElement("canvas");
   private ctx = this.canvas.getContext("2d")!;
@@ -48,6 +57,8 @@ export class MascotFx {
   private splitDone: (() => void) | null = null;
   private fish = false;
   private fishFall = 0;
+  private accessory: Accessory | null = null;
+  private accessorySince = 0;
 
   constructor(private readonly slot: HTMLElement) {
     this.canvas.className = "mascot-fx";
@@ -113,6 +124,14 @@ export class MascotFx {
     return this.splitStart !== 0;
   }
 
+  /** Un accessoire (null : aucun). Il arrive en fondu, avec un petit rebond. */
+  setAccessory(a: Accessory | null) {
+    if (a === this.accessory) return;
+    this.accessory = a;
+    this.accessorySince = performance.now();
+    this.update();
+  }
+
   /** Le poisson d'avril dans le dos. */
   setFish(on: boolean) {
     this.fish = on;
@@ -143,7 +162,7 @@ export class MascotFx {
   // ── La boucle ──────────────────────────────────────────────────────────────
 
   private active(): boolean {
-    return this.pixel || this.splitStart !== 0 || this.fish;
+    return this.pixel || this.splitStart !== 0 || this.fish || this.accessory !== null;
   }
 
   private update() {
@@ -206,6 +225,213 @@ export class MascotFx {
       ctx.drawImage(body, x0, y0, u, u);
     }
     if (this.fish) this.drawFish(ctx, x0, y0, u, now);
+    if (this.accessory && !this.splitStart) this.drawAccessory(ctx, this.accessory, x0, y0, u, now);
+  }
+
+  // ── Les accessoires ────────────────────────────────────────────────────────
+
+  private drawAccessory(ctx: CanvasRenderingContext2D, a: Accessory, x0: number, y0: number, u: number, now: number) {
+    const t = now / 1000;
+    const appear = Math.min(1, (now - this.accessorySince) / 450);
+    // Arrivée : fondu et petit rebond (ressort).
+    const pop = 1 + Math.sin(appear * Math.PI) * 0.12 * (1 - appear);
+    const X = (f: number) => x0 + f * u;
+    const Y = (f: number) => y0 + f * u;
+    ctx.save();
+    ctx.globalAlpha = appear;
+    ctx.imageSmoothingEnabled = true;
+    const gloss = (x: number, y: number, rx: number, ry: number, rot = -0.5) => {
+      ctx.save();
+      ctx.globalAlpha *= 0.55;
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    };
+    switch (a) {
+      case "glasses": {
+        // Lunettes de soleil : deux verres arrondis, très foncés, avec un reflet.
+        const ey = Y(k(141));
+        ctx.translate(X(0.5), ey);
+        ctx.scale(pop, pop);
+        const lens = (cx: number) => {
+          const w = u * 0.2;
+          const h = u * 0.14;
+          const g = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+          g.addColorStop(0, "#30394d");
+          g.addColorStop(1, "#06080d");
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.roundRect(cx - w / 2, -h / 2, w, h, [h * 0.25, h * 0.25, h * 0.55, h * 0.55]);
+          ctx.fill();
+          ctx.lineWidth = Math.max(1, u * 0.018);
+          ctx.strokeStyle = "#0b0e16";
+          ctx.stroke();
+          gloss(cx - w * 0.18, -h * 0.15, w * 0.16, h * 0.12);
+        };
+        lens(-u * 0.15);
+        lens(u * 0.15);
+        ctx.strokeStyle = "#0b0e16";
+        ctx.lineWidth = Math.max(1, u * 0.025);
+        ctx.beginPath();
+        ctx.moveTo(-u * 0.05, -u * 0.03);
+        ctx.quadraticCurveTo(0, -u * 0.06, u * 0.05, -u * 0.03);
+        ctx.stroke();
+        break;
+      }
+      case "nightcap": {
+        // Bonnet de nuit bleu qui retombe sur le côté, pompon blanc qui se balance.
+        const sway = Math.sin(t * 1.6) * 0.03;
+        const baseY = Y(k(70));
+        ctx.translate(X(0.5), baseY);
+        ctx.scale(pop, pop);
+        const g = ctx.createLinearGradient(-u * 0.2, -u * 0.3, u * 0.3, 0);
+        g.addColorStop(0, "#7aa2ff");
+        g.addColorStop(1, "#3156d6");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(-u * 0.22, 0);
+        ctx.quadraticCurveTo(-u * 0.12, -u * 0.3, u * 0.12, -u * 0.26);
+        ctx.quadraticCurveTo(u * (0.36 + sway), -u * 0.22, u * (0.42 + sway), u * 0.02);
+        ctx.quadraticCurveTo(u * 0.22, -u * 0.08, u * 0.22, 0);
+        ctx.closePath();
+        ctx.fill();
+        gloss(-u * 0.04, -u * 0.18, u * 0.08, u * 0.03, -0.2);
+        // Le revers en fourrure.
+        const fur = ctx.createLinearGradient(0, -u * 0.04, 0, u * 0.05);
+        fur.addColorStop(0, "#ffffff");
+        fur.addColorStop(1, "#d9e4f5");
+        ctx.fillStyle = fur;
+        ctx.beginPath();
+        ctx.roundRect(-u * 0.25, -u * 0.035, u * 0.5, u * 0.08, u * 0.04);
+        ctx.fill();
+        // Le pompon.
+        const px = u * (0.43 + sway);
+        const py = u * 0.05;
+        const pg = ctx.createRadialGradient(px - u * 0.02, py - u * 0.02, u * 0.01, px, py, u * 0.065);
+        pg.addColorStop(0, "#ffffff");
+        pg.addColorStop(1, "#cfdcf2");
+        ctx.fillStyle = pg;
+        ctx.beginPath();
+        ctx.arc(px, py, u * 0.065, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+      case "coffee": {
+        // Une tasse posée à côté d'elle, et la vapeur qui monte.
+        ctx.translate(X(0.95), Y(0.9));
+        ctx.scale(pop, pop);
+        const w = u * 0.22;
+        const h = u * 0.2;
+        ctx.lineWidth = Math.max(1.2, u * 0.03);
+        ctx.strokeStyle = "#e9dccb";
+        ctx.beginPath();
+        ctx.arc(w * 0.5, -h * 0.55, h * 0.24, -Math.PI / 2, Math.PI / 2);
+        ctx.stroke();
+        const g = ctx.createLinearGradient(-w / 2, 0, w / 2, 0);
+        g.addColorStop(0, "#fffaf2");
+        g.addColorStop(1, "#e3d3bd");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.roundRect(-w / 2, -h, w, h, [u * 0.02, u * 0.02, u * 0.06, u * 0.06]);
+        ctx.fill();
+        ctx.fillStyle = "#6b4226";
+        ctx.beginPath();
+        ctx.ellipse(0, -h, w / 2 - u * 0.012, u * 0.025, 0, 0, Math.PI * 2);
+        ctx.fill();
+        gloss(-w * 0.25, -h * 0.55, w * 0.06, h * 0.25, 0);
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+        ctx.lineWidth = Math.max(1, u * 0.018);
+        ctx.lineCap = "round";
+        for (let i = 0; i < 2; i++) {
+          const phase = (t * 0.6 + i * 0.5) % 1;
+          ctx.globalAlpha = appear * (1 - phase) * 0.9;
+          const sx = (i ? 1 : -1) * w * 0.15;
+          ctx.beginPath();
+          ctx.moveTo(sx, -h - u * 0.03 - phase * u * 0.18);
+          ctx.bezierCurveTo(sx + u * 0.04, -h - u * 0.08 - phase * u * 0.18, sx - u * 0.04, -h - u * 0.13 - phase * u * 0.18, sx, -h - u * 0.18 - phase * u * 0.18);
+          ctx.stroke();
+        }
+        break;
+      }
+      case "ears": {
+        // Deux petites mains gomme plaquées sur les côtés de la tête, qui tremblent un peu.
+        const shake = Math.sin(t * 30) * u * 0.006;
+        for (const side of [-1, 1]) {
+          const hx = X(0.5 + side * 0.33) + shake;
+          const hy = Y(k(120));
+          const r = u * 0.085 * pop;
+          const g = ctx.createRadialGradient(hx - r * 0.3, hy - r * 0.4, r * 0.1, hx, hy, r);
+          g.addColorStop(0, "#d4f1ff");
+          g.addColorStop(0.6, "#8fd3ff");
+          g.addColorStop(1, "#5ab0ea");
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.ellipse(hx, hy, r * 0.85, r, side * 0.3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "rgba(45, 95, 142, 0.6)";
+          ctx.lineWidth = Math.max(1, u * 0.012);
+          ctx.stroke();
+          gloss(hx - r * 0.25, hy - r * 0.4, r * 0.25, r * 0.15);
+          // Les ondes du son, de l'autre côté de la main.
+          ctx.strokeStyle = "rgba(255, 207, 74, 0.85)";
+          for (let i = 0; i < 2; i++) {
+            const phase = (t * 2 + i * 0.5) % 1;
+            ctx.save();
+            ctx.globalAlpha = appear * (1 - phase);
+            ctx.beginPath();
+            ctx.arc(hx, hy, r * (1.3 + phase * 0.9), side > 0 ? -0.6 : Math.PI - 0.6, side > 0 ? 0.6 : Math.PI + 0.6);
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
+        break;
+      }
+      case "baton": {
+        // Cheffe d'orchestre : une baguette qui bat la mesure, et des notes qui montent.
+        const angle = -0.9 + Math.sin(t * 5) * 0.55;
+        const hx = X(0.82);
+        const hy = Y(k(170));
+        ctx.save();
+        ctx.translate(hx, hy);
+        ctx.rotate(angle);
+        ctx.scale(pop, pop);
+        ctx.strokeStyle = "#3a2410";
+        ctx.lineWidth = Math.max(1.2, u * 0.03);
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(u * 0.08, 0);
+        ctx.stroke();
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = Math.max(1, u * 0.016);
+        ctx.beginPath();
+        ctx.moveTo(u * 0.08, 0);
+        ctx.lineTo(u * 0.36, 0);
+        ctx.stroke();
+        ctx.restore();
+        const r = u * 0.07;
+        const g = ctx.createRadialGradient(hx - r * 0.3, hy - r * 0.4, r * 0.1, hx, hy, r);
+        g.addColorStop(0, "#d4f1ff");
+        g.addColorStop(1, "#6fbff0");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(hx, hy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = `700 ${u * 0.2}px system-ui, sans-serif`;
+        ctx.textAlign = "center";
+        const colors = ["#ffcf4a", "#ff8fb3", "#7be0a8"];
+        for (let i = 0; i < 3; i++) {
+          const phase = (t * 0.5 + i / 3) % 1;
+          ctx.globalAlpha = appear * Math.sin(phase * Math.PI);
+          ctx.fillStyle = colors[i];
+          ctx.fillText(i % 2 ? "♫" : "♪", X(0.15 + i * 0.12) + Math.sin(t * 2 + i) * u * 0.04, Y(0.25 - phase * 0.35));
+        }
+        break;
+      }
+    }
+    ctx.restore();
   }
 
   /**

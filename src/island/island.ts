@@ -148,7 +148,7 @@ export class Island {
     onPerfChange(() => setStudio(settingsStore.current.island.motion === "studio" && perfMode() !== "eco"));
     // Dans un navigateur (npm run dev) : window.ondinePeek() la fait venir tout de suite.
     // Et window.ondineBus.emit("controls.media-use", { mic: ["Zoom"], cam: [] }) simule un message.
-    if (!IS_TAURI) Object.assign(window, { ondinePeek: () => this.hanger.show(), ondineBus: this.bus });
+    if (!IS_TAURI) Object.assign(window, { ondinePeek: () => this.hanger.show(), ondineBus: this.bus, ondineEggs: this.eggs });
 
     this.notifications.defaultDurationMs = settingsStore.current.island.notificationSecs * 1000;
     let wasAlert = false;

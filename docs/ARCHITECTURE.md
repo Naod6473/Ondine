@@ -435,6 +435,16 @@ déclencheurs aux effets ; le réglage `mascot.surprises` (`all`, `seasonal`,
 | Musique + mini-île | elle danse tant que ça joue (`mascot.dance`) |
 | Calendrier (`calendar.ts`), à l'ouverture, une fois par jour | 1/1 et 14/7 feux d'artifice, 14/2 cœurs, 1/4 poisson en papier dans le dos (tombe au clic), 21/6 trésor de la danse, 31/10 fantôme, décembre neige qui s'entasse ; Météo : pluie (éclaboussures), canicule (`fondue`) |
 
+- **Réactions au PC** (`context.ts`, permises sauf avec « Surprises : aucune ») :
+  3 agents IA au travail → baguette de cheffe d'orchestre ; un agent qui finit
+  après plus d'une heure → victoire ; 2 h – 6 h → bonnet de nuit et, une fois
+  par nuit, « Il serait temps de dormir, non ? » ; PC allumé depuis plus de 7
+  jours → toile d'araignée (`.egg-web`) ; 100e capture → flash ; vendredi dès
+  17 h → lunettes de soleil ; lundi 8 h 30 – 10 h 30 → café ; volume à 100 % →
+  mains sur les oreilles ; batterie ≤ 2 % débranchée → panique, puis
+  soulagement au branchement ; même texte copié 5 fois → « C'est bon, je l'ai ! ».
+  Les données viennent des modules (`Bridge.moduleInvoke`), seulement s'ils sont
+  activés. Les accessoires sont dessinés en code par `MascotFx`.
 - **Calques** : `FxLayer` pose un canvas sur toute l'île le temps d'un effet ;
   `MascotFx` pose un canvas plus grand que la mascotte et recopie à chaque image
   `canvas.mascot-canvas` (n'importe quel moteur), transformé. Rien ne tourne

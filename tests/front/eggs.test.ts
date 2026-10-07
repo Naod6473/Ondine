@@ -4,6 +4,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { dayKey, isHot, isRainy, seasonOf } from "../../src/eggs/calendar";
+import { clockAccessory } from "../../src/eggs/context";
 import { found, TREASURES } from "../../src/eggs/treasures";
 import { KeySequence, KONAMI, magicWord, normalizeWord, SpinCounter } from "../../src/eggs/words";
 
@@ -126,5 +127,23 @@ describe("carnet des trésors", () => {
       found(["split", "inconnu", "code-rain"]).map((t) => t.id),
       ["code-rain", "split"],
     );
+  });
+});
+
+describe("accessoires de l'heure", () => {
+  // 2026-10-09 est un vendredi, 2026-10-05 un lundi.
+  test("vendredi soir : lunettes de soleil", () => {
+    assert.equal(clockAccessory(new Date(2026, 9, 9, 17, 0)), "glasses");
+    assert.equal(clockAccessory(new Date(2026, 9, 9, 16, 59)), null);
+  });
+  test("la nuit : bonnet", () => {
+    assert.equal(clockAccessory(new Date(2026, 9, 7, 2, 0)), "nightcap");
+    assert.equal(clockAccessory(new Date(2026, 9, 7, 5, 59)), "nightcap");
+    assert.equal(clockAccessory(new Date(2026, 9, 7, 6, 0)), null);
+  });
+  test("lundi matin : café", () => {
+    assert.equal(clockAccessory(new Date(2026, 9, 5, 9, 0)), "coffee");
+    assert.equal(clockAccessory(new Date(2026, 9, 5, 10, 30)), null);
+    assert.equal(clockAccessory(new Date(2026, 9, 6, 9, 0)), null);
   });
 });

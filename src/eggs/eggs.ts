@@ -17,6 +17,8 @@
 //     la Fête de la musique), 14 juillet, 31 octobre (fantôme), décembre (neige) ; et avec la
 //     Météo : jour de pluie, canicule.
 //
+// Et les réactions au PC (agents IA, nuit, volume, batterie…) : voir context.ts.
+//
 // Règles : réglage « Surprises » (toutes / le calendrier seulement / aucune),
 // rien pendant une présentation, et avec « réduire les animations » ou en
 // économie d'énergie, Ondine réagit sans les grands effets. Chaque surprise
@@ -31,6 +33,7 @@ import { setRetroSound, sounds } from "../island/sounds";
 import { reducedMotion } from "../island/tab-pill";
 import type { MascotManifest } from "../mascot/types";
 import { dayKey, isHot, isRainy, seasonOf, type WeatherLike } from "./calendar";
+import { PcReactions } from "./context";
 import { FxLayer } from "./fx-layer";
 import { MascotFx } from "./mascot-fx";
 import { TREASURES, treasure } from "./treasures";
@@ -88,6 +91,7 @@ export class EasterEggs {
   /** Dernière fois que la souris était sur l'île. */
   private lastHover = 0;
   private offs: (() => void)[] = [];
+  private reactions: PcReactions;
 
   constructor(
     private readonly hooks: EggHooks,
@@ -119,9 +123,29 @@ export class EasterEggs {
     window.addEventListener("keydown", keys);
     this.offs.push(() => window.removeEventListener("keydown", keys));
     this.applyDay();
+    // Les réactions au PC (context.ts) : permises sauf avec « Surprises : aucune ».
+    this.reactions = new PcReactions({
+      bus,
+      notifications,
+      fx: this.fx,
+      mfx: this.mfx,
+      shell: hooks.shell,
+      state: () => hooks.state(),
+      hasMascot: () => !!hooks.manifest(),
+      allowed: () => this.allowed("seasonal"),
+      visuals: () => this.visuals(),
+      play: (a, e) => this.play(a, e),
+      emote: (e) => this.emote(e),
+      discover: (id) => this.discover(id),
+      recall,
+      remember,
+    });
+    // Le réglage change (Surprises : aucune…) : l'accessoire suit.
+    this.offs.push(settingsStore.onChange(() => this.reactions.refresh()));
   }
 
   destroy() {
+    this.reactions.destroy();
     for (const off of this.offs) off();
     this.fx.clear();
     this.mfx.destroy();

@@ -7,7 +7,7 @@
 
 import { drawHeart } from "../mascot/renderers/overlays";
 
-export type FxKind = "code-rain" | "fireworks" | "hearts" | "snow" | "splash";
+export type FxKind = "code-rain" | "fireworks" | "hearts" | "snow" | "splash" | "flash";
 
 export interface FxOptions {
   durationMs?: number;
@@ -20,7 +20,7 @@ export interface FxOptions {
 }
 
 const TAU = Math.PI * 2;
-const DEFAULT_MS: Record<FxKind, number> = { "code-rain": 6500, fireworks: 5000, hearts: 4000, snow: 7000, splash: 1600 };
+const DEFAULT_MS: Record<FxKind, number> = { "code-rain": 6500, fireworks: 5000, hearts: 4000, snow: 7000, splash: 1600, flash: 900 };
 
 /** Les symboles de la pluie de code : chiffres, accolades, et les lettres d'Ondine. */
 const GLYPHS = "0123456789{}[]<>/=+*ONDIE~";
@@ -141,7 +141,19 @@ const SCENES: Record<FxKind, SceneFactory> = {
   hearts,
   snow,
   splash,
+  flash,
 };
+
+// ── Flash de photographe ──────────────────────────────────────────────────────
+
+function flash(): Scene {
+  return (ctx, W, H, _t, k) => {
+    // Un éclair blanc très court, puis il s'estompe.
+    const a = k < 0.08 ? k / 0.08 : Math.pow(1 - (k - 0.08) / 0.92, 2);
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.85 * a})`;
+    ctx.fillRect(0, 0, W, H);
+  };
+}
 
 // ── Pluie de code ──────────────────────────────────────────────────────────────
 

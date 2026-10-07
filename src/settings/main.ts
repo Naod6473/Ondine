@@ -885,7 +885,7 @@ function mascot(main: HTMLElement) {
             s.mascot.surprises ?? "all",
             [
               ["all", "Toutes"],
-              ["seasonal", "Le calendrier seulement"],
+              ["seasonal", "Sans les codes secrets"],
               ["none", "Aucune"],
             ],
             (v) => save((d) => (d.mascot.surprises = v as Settings["mascot"]["surprises"]), true),
@@ -897,7 +897,7 @@ function mascot(main: HTMLElement) {
           "De temps en temps, quand la mini-île est tranquille, Ondine la traverse en mangeant son contenu, puis tout revient. « Essayer » le lance à la prochaine mini-île.",
         ),
       ],
-      "Ondine cache quelques surprises : des codes secrets, des gestes, et des jours de fête. Jamais pendant une présentation ou un plein écran ; avec « réduire les animations » ou en économie d'énergie, elle réagit sans les grands effets.",
+      "Ondine cache quelques surprises : des codes secrets et des gestes, des jours de fête, et des réactions à ce qui se passe sur le PC (agents IA, nuit, volume…). Jamais pendant une présentation ou un plein écran ; avec « réduire les animations » ou en économie d'énergie, elle réagit sans les grands effets.",
     ),
     treasureBook(s.mascot.treasures ?? []),
   );

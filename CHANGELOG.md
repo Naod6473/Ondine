@@ -8,6 +8,11 @@
   réglages. Désactivables. · Hidden surprises: code rain, 8-bit Ondine
   (Konami code), the drop that splits in two, the mini-island snack, holidays
   and a treasure book in settings. Can be turned off.
+- Ondine réagit au PC : baguette quand trois agents IA travaillent, bonnet de
+  nuit, lunettes de soleil le vendredi soir, café le lundi matin, mains sur les
+  oreilles à 100 % de volume… · Ondine reacts to the PC: a baton when three AI
+  agents work, a nightcap, Friday sunglasses, Monday coffee, hands over her
+  ears at full volume…
 - Ondine danse quand de la musique joue et que l'île est réduite. · Ondine
   dances while music plays on the mini island.
 

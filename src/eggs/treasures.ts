@@ -8,7 +8,7 @@ export interface Treasure {
   id: string;
   name: string;
   hint: string;
-  /** Une surprise du calendrier (réglage « Surprises : le calendrier seulement »). */
+  /** Une surprise du calendrier ou une réaction au PC (gardées avec « Surprises : sans les codes secrets »). */
   seasonal?: boolean;
 }
 
@@ -29,6 +29,16 @@ export const TREASURES: Treasure[] = [
   { id: "snow", name: "Neige", hint: "En décembre, ouvrez l'île.", seasonal: true },
   { id: "rain", name: "Jour de pluie", hint: "Quand il pleut dehors (Météo allumée).", seasonal: true },
   { id: "heat", name: "Canicule", hint: "Quand il fait très chaud (Météo allumée).", seasonal: true },
+  { id: "conductor", name: "Cheffe d'orchestre", hint: "Lancez trois agents IA en même temps.", seasonal: true },
+  { id: "marathon", name: "Le marathon", hint: "Un agent IA qui travaille plus d'une heure.", seasonal: true },
+  { id: "pyjama", name: "Pyjama", hint: "Ouvrez l'île au milieu de la nuit.", seasonal: true },
+  { id: "cobweb", name: "Toile d'araignée", hint: "Oubliez de redémarrer le PC pendant une semaine.", seasonal: true },
+  { id: "photographer", name: "Photographe", hint: "Prenez beaucoup, beaucoup de captures.", seasonal: true },
+  { id: "friday", name: "Vendredi soir", hint: "En fin de semaine, en fin de journée.", seasonal: true },
+  { id: "coffee", name: "Café du lundi", hint: "Un début de semaine, le matin.", seasonal: true },
+  { id: "loud", name: "Trop fort !", hint: "Montez le son à fond.", seasonal: true },
+  { id: "battery", name: "Ouf, branché", hint: "Une batterie presque vide, puis le chargeur.", seasonal: true },
+  { id: "copycat", name: "Copié, copié", hint: "Copiez cinq fois la même chose.", seasonal: true },
 ];
 
 export function treasure(id: string): Treasure | undefined {
