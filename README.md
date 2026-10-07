@@ -46,11 +46,14 @@ La vidéo de présentation est sur le site : [ondine.pissits.com](https://ondine
 2. Lancez-le. L'installateur propose le français ou l'anglais ; Ondine reprendra
    cette langue au premier lancement. Il s'installe pour votre compte seulement :
    pas besoin d'être administrateur.
-3. Tant que l'installateur n'est pas signé, Windows peut afficher
-   **« Windows a protégé votre ordinateur »** (SmartScreen) : cliquez sur
-   **Informations complémentaires**, puis sur **Exécuter quand même**.
-   L'installateur est construit par GitHub Actions à partir de ce dépôt
-   ([release.yml](.github/workflows/release.yml)).
+3. L'installateur n'est pas signé avec un certificat de code (ces certificats
+   sont payants, et Ondine est un projet gratuit). Windows affiche donc
+   probablement **« Windows a protégé votre ordinateur »** (SmartScreen) :
+   cliquez sur **Informations complémentaires**, puis sur **Exécuter quand
+   même**. Ce message signifie seulement que Windows ne connaît pas
+   l'éditeur, pas qu'un problème a été détecté.
+   L'installateur est construit par GitHub Actions à partir du code public de
+   ce dépôt ([release.yml](.github/workflows/release.yml)).
 
 Au premier démarrage, Ondine vous dit bonjour en haut de l'écran et explique
 comment l'ouvrir. Elle se lance ensuite avec Windows (réglage
@@ -457,18 +460,14 @@ tout seul**, selon les jours et les heures, ou le nom du Wi-Fi.
 - Rien n'est supprimé définitivement : tout passe par la Corbeille, avec une annulation.
 - Vous avez trouvé une faille ? Signalez-la en privé : [SECURITY.md](SECURITY.md).
 
-### Code signing policy
+### Signature
 
-Free code signing provided by [SignPath.io](https://about.signpath.io), certificate
-by [SignPath Foundation](https://signpath.org). Team roles and details:
-[CODE_SIGNING.md](CODE_SIGNING.md). Privacy: [PRIVACY.md](PRIVACY.md).
-
-(En français : la signature du code est offerte par SignPath.io, avec un
-certificat de la SignPath Foundation. Seuls l'installateur et le programme
-construits par GitHub Actions à partir de ce dépôt sont signés ; chaque
-signature est approuvée à la main. Détails : [CODE_SIGNING.md](CODE_SIGNING.md).
-La demande à SignPath est en cours : les versions actuelles ne sont pas
-encore signées Authenticode ; les mises à jour, elles, sont déjà signées avec minisign.)
+L'installateur et `Ondine.exe` ne sont pas signés Authenticode (d'où
+l'avertissement SmartScreen à l'installation). Ils sont construits uniquement par
+GitHub Actions à partir de ce dépôt. Les mises à jour automatiques, elles, sont
+signées (minisign) : Ondine refuse toute mise à jour dont la signature ne
+correspond pas à la clé intégrée à l'application. Détails :
+[CODE_SIGNING.md](CODE_SIGNING.md).
 
 ---
 
