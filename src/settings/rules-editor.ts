@@ -18,7 +18,7 @@ import {
   allowedActions,
   EMPTY_CONDITIONS,
   prettyKeys,
-  summary,
+  summaryParts,
   TEMPLATES,
   type Action,
   type Listing,
@@ -198,7 +198,7 @@ function list(main: HTMLElement) {
             "Supprimer",
           ),
         ),
-        el("p", { class: "muted rule-summary" }, summary(r, listing.topics)),
+        el("p", { class: "muted rule-summary" }, ...summaryParts(r, listing.topics)),
         error ? el("div", { class: "note error" }, error) : null,
       ),
     );

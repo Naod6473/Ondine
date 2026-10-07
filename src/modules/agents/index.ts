@@ -590,9 +590,11 @@ export const agents: IslandModule = {
           el("li", {}, "Ouvrez ", el("code", {}, fileOf(tool)), ". ", TOOLS[tool].steps),
           el("li", {}, "Chaque hook lance : ", exe),
         );
-        mcpSteps.textContent =
-          "En plus (facultatif) : branchez l'île comme serveur MCP. L'agent pourra alors vous envoyer un message, sa progression, lancer le minuteur, ou vous poser une question à choix, à laquelle vous répondez d'un clic. " +
-          MCP_STEPS[tool];
+        // Deux textes : chacun a sa traduction (i18n.ts traduit texte par texte).
+        mcpSteps.replaceChildren(
+          "En plus (facultatif) : branchez l'île comme serveur MCP. L'agent pourra alors vous envoyer un message, sa progression, lancer le minuteur, ou vous poser une question à choix, à laquelle vous répondez d'un clic. ",
+          MCP_STEPS[tool],
+        );
         const permOn = api.settings().permissions === true;
         permText.textContent =
           tool === "gemini"

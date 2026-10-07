@@ -18,6 +18,7 @@
 
 import manifest from "./manifest.json";
 import { Bridge } from "../../core/bridge";
+import { currentLang } from "../../core/i18n";
 import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
@@ -69,13 +70,21 @@ const LINK_LABELS: Record<LinkKind, string> = {
   web: "Ouvrir le lien du rendez-vous",
 };
 
-/** « 2 calendriers · 245 événements lus (le plus récent : 12/03/2026) · 0 à venir » */
-function sourcesLine(calendars: number, read: number | undefined, latest: string | null | undefined, upcoming: number): string {
+/**
+ * « 2 calendriers · 245 événements lus (le plus récent : 12/03/2026) · 0 à venir »,
+ * en morceaux : chacun se traduit à part (voir dotted).
+ */
+function sourcesLine(calendars: number, read: number | undefined, latest: string | null | undefined, upcoming: number): string[] {
   const parts: string[] = [];
   if (calendars) parts.push(calendars > 1 ? `${calendars} calendriers` : "1 calendrier");
   if (read !== undefined) parts.push(`${read} événement${read > 1 ? "s" : ""} lu${read > 1 ? "s" : ""}${latest ? ` (le plus récent : ${latest})` : ""}`);
   parts.push(`${upcoming} à venir`);
-  return parts.join(" · ");
+  return parts;
+}
+
+/** Des morceaux séparés par « · », chacun dans son propre texte (traduit à part, i18n.ts). */
+function dotted(parts: (string | null | undefined)[]): string[] {
+  return parts.filter((p): p is string => !!p).flatMap((p, i) => (i ? [" · ", p] : [p]));
 }
 
 let listing: Listing = { events: [], errors: [], calendars: [] };
@@ -114,12 +123,12 @@ function dayStart(ms: number): number {
   return d.getTime();
 }
 
-/** « Aujourd'hui », « Demain », sinon « mercredi 8 octobre ». */
+/** « Aujourd'hui », « Demain », sinon « mercredi 8 octobre » (« Thursday, October 8 » en anglais). */
 function dayLabel(ms: number): string {
   const days = Math.round((dayStart(ms) - dayStart(Date.now())) / 86_400_000);
   if (days <= 0) return "Aujourd'hui";
   if (days === 1) return "Demain";
-  const text = new Date(ms).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  const text = new Date(ms).toLocaleDateString(currentLang() === "en" ? "en-US" : "fr-FR", { weekday: "long", day: "numeric", month: "long" });
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
@@ -145,7 +154,9 @@ function relative(m: Meeting, now = Date.now()): string {
     const rest = min % 60;
     return rest ? `dans ${h} h ${String(rest).padStart(2, "0")}` : `dans ${h} h`;
   }
-  return m.allDay ? dayLabel(m.start).toLowerCase() : `${dayLabel(m.start).toLowerCase()} à ${hhmm(m.start)}`;
+  // En anglais, les jours gardent leur majuscule (« Thursday, October 8 at 9:30 »).
+  const day = currentLang() === "en" ? dayLabel(m.start) : dayLabel(m.start).toLowerCase();
+  return m.allDay ? day : `${day} à ${hhmm(m.start)}`;
 }
 
 /** Ouvre le lien d'un rendez-vous (le Rust le retrouve et vérifie qu'il est http(s)). */
@@ -388,7 +399,7 @@ export const agenda: IslandModule = {
                 { class: `agenda-next${ongoing(next) ? " live" : ""}` },
                 el("span", { class: "agenda-when" }, relative(next)),
                 el("b", { class: "agenda-title" }, dot(next), next.title),
-                el("span", { class: "muted" }, [dayLabel(next.start), timeRange(next), next.location].filter(Boolean).join(" · ")),
+                el("span", { class: "muted" }, ...dotted([dayLabel(next.start), timeRange(next), next.location])),
                 next.link ? el("span", { class: "agenda-join" }, next.link === "web" ? "🔗 " : "🎥 ", LINK_LABELS[next.link]) : null,
               ),
               api,
@@ -429,7 +440,7 @@ export const agenda: IslandModule = {
           el(
             "div",
             { class: "btn-row agenda-foot" },
-            el("span", { class: "muted" }, sourcesLine(calendars.length, read, latest, events.length)),
+            el("span", { class: "muted" }, ...dotted(sourcesLine(calendars.length, read, latest, events.length))),
             el("button", { class: "btn small", title: "Relire tous les calendriers", onclick: api.handler(() => refresh(api, "reload", { force: true })) }, "🔄 Relire"),
           ),
         );

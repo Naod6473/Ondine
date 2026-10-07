@@ -83,6 +83,11 @@ describe("i18n-en.json bien formé", () => {
       for (const m of rep.matchAll(/\$(\d+)/g)) {
         if (Number(m[1]) > groups) bad.push(`${rx} : « $${m[1]} » mais seulement ${groups} groupe(s)`);
       }
+      // « Disk $1: $1 GB free of $1 GB » : chaque morceau repris une seule fois.
+      const used = [...rep.matchAll(/\$(\d+)/g)].map((m) => m[1]);
+      for (const n of new Set(used)) {
+        if (used.filter((x) => x === n).length > 1) bad.push(`${rx} : « $${n} » plusieurs fois dans ${JSON.stringify(rep)}`);
+      }
     }
     assert.deepEqual(bad, []);
   });

@@ -14,7 +14,7 @@ import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
 import { reducedMotion } from "../../island/tab-pill";
-import { summary, type Listing } from "./shared";
+import { summaryParts, type Listing } from "./shared";
 
 let listing: Listing = { rules: [], paused: false, history: [], errors: {}, topics: [] };
 const redraws = new Set<() => void>();
@@ -109,7 +109,7 @@ export const rules: IslandModule = {
                 "button",
                 { class: "rule-main", title: "Modifier", onclick: api.handler(() => edit(api, r.id)) },
                 el("b", {}, r.name),
-                el("span", { class: "muted" }, summary(r, topics)),
+                el("span", { class: "muted" }, ...summaryParts(r, topics)),
                 error ? el("span", { class: "rule-error" }, `⚠️ ${error}`) : null,
               ),
             ),

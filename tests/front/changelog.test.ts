@@ -5,7 +5,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { changelogSection, parseChangelog, shorten, splitBilingual, whatsNewAction, whatsNewLines } from "../../src/core/changelog";
+import { changelogSection, frenchSpaces, parseChangelog, shorten, splitBilingual, whatsNewAction, whatsNewLines } from "../../src/core/changelog";
 
 const SAMPLE = [
   "# Changements · Changelog",
@@ -66,7 +66,7 @@ describe("lecture du CHANGELOG", () => {
   test("chaque puce : la moitié de la langue choisie", () => {
     assert.deepEqual(whatsNewLines(SAMPLE, "1.2.0", "fr"), [
       "Première puce.",
-      "Une puce sur deux lignes, avec « des guillemets » et la suite en retrait.",
+      "Une puce sur deux lignes, avec «\u00a0des guillemets\u00a0» et la suite en retrait.",
       "Bilan de la semaine (Pomodoros · tâches).",
     ]);
     assert.deepEqual(whatsNewLines(SAMPLE, "1.2.0", "en"), ["First bullet.", "A bullet over two lines, continued.", "Weekly summary."]);
@@ -92,6 +92,11 @@ describe("lecture du CHANGELOG", () => {
     const s = shorten("un deux trois quatre cinq six sept", 20);
     assert.ok(s.length <= 20, s);
     assert.equal(s, "un deux trois…");
+  });
+
+  test("en français, les guillemets et les deux-points ne se séparent pas de leur mot", () => {
+    assert.equal(frenchSpaces("« Reprendre » : la session ; vraiment ?"), "«\u00a0Reprendre\u00a0»\u00a0: la session\u00a0; vraiment\u00a0?");
+    assert.equal(frenchSpaces("Déjà insécable :\u00a0rien à changer"), "Déjà insécable\u00a0:\u00a0rien à changer");
   });
 
   test("le vrai CHANGELOG.md : chaque version a des puces, en deux langues", () => {
