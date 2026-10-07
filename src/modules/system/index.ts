@@ -10,6 +10,7 @@ import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
 import { pacedInterval } from "../../core/perf";
+import { worldClocks } from "./world-clocks";
 
 interface Disk {
   mount: string;
@@ -195,8 +196,10 @@ export const system: IslandModule = {
         },
         "🎫 Préparer un ticket",
       );
+      // Horloges du monde (réglage), entre les jauges et le détail : world-clocks.ts.
+      const clocks = worldClocks(api);
       root.append(
-        el("div", { class: "sys" }, el("div", { class: "sys-top" }, cpu.node, mem.node, disk.node, el("div", { class: "sys-side" }, facts, el("div", { class: "btn-row" }, copy, ticketBtn))), details),
+        el("div", { class: "sys" }, el("div", { class: "sys-top" }, cpu.node, mem.node, disk.node, el("div", { class: "sys-side" }, facts, el("div", { class: "btn-row" }, copy, ticketBtn))), clocks.node, details),
       );
 
       let alive = true;
@@ -267,6 +270,7 @@ export const system: IslandModule = {
       return () => {
         alive = false;
         stopTimer();
+        clocks.stop();
       };
     },
   },

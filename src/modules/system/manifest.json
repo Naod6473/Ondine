@@ -40,6 +40,15 @@
         "type": "boolean",
         "label": "L'humeur d'Ondine suit le PC (processeur à fond, batterie faible, heure tardive)",
         "default": true
+      },
+      {
+        "key": "worldClocks",
+        "type": "string",
+        "label": "Horloges du monde",
+        "help": "4 villes au plus, séparées par des virgules (ex. : Montréal, Tokyo). Elles s'affichent dans l'onglet Système. Les heures sont calculées sur le PC.",
+        "default": "",
+        "maxLength": 200,
+        "check": "cities"
       }
     ]
   },
