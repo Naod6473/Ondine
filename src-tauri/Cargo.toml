@@ -19,7 +19,9 @@ tauri = { version = "2", features = ["tray-icon"] }
 # Une seule île à la fois : relancer l'appli ouvre l'île existante.
 tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# preserve_order : en réécrivant le settings.json d'un agent (hooks installés
+# automatiquement), ses clés gardent leur ordre au lieu d'être triées.
+serde_json = { version = "1", features = ["preserve_order"] }
 # Boîte de dialogue « choisir un dossier » (plugin officiel de Tauri).
 tauri-plugin-dialog = "2"
 # Corbeille de Windows : envoyer et restaurer (jamais de suppression définitive).
@@ -54,6 +56,9 @@ tauri-plugin-updater = { version = "2", default-features = false, features = ["n
 # QR code d'une copie (Presse-papiers), calculé sur le PC. Sans ses options
 # d'image : seulement la grille, qu'on dessine nous-mêmes (aucune dépendance).
 qrcode = { version = "0.14", default-features = false }
+# Lire le config.toml de Codex (installer les hooks d'Ondine). Déjà compilé
+# pour Tauri (tauri-utils) : aucun code en plus.
+toml = "1"
 
 [target.'cfg(windows)'.dependencies]
 # Gestionnaire d'identifiants Windows. Version 3 volontairement : la 4 a changé d'API.

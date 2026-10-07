@@ -126,7 +126,10 @@
     "arm",
     "copy_mcp",
     "quiet_start",
-    "quiet_stop"
+    "quiet_stop",
+    "hook_status",
+    "hook_install",
+    "hook_remove"
   ],
   "events": {
     "emits": [
