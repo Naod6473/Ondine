@@ -24,7 +24,11 @@
 //     presse-papiers au bout de 30 s si rien d'autre n'a été copié entre-temps.
 //     Il n'est jamais enregistré ni écrit dans le journal ;
 //   - montrer une copie en QR code (calculé sur le PC, clipboard_qr.rs), pour
-//     l'ouvrir sur un téléphone ; « Copier l'image » le met dans le presse-papiers.
+//     l'ouvrir sur un téléphone ; « Copier l'image » le met dans le presse-papiers ;
+//   - décoder une copie (JWT, Base64, %xx, JSON, horodatage) : c'est le front
+//     qui reconnaît et décode (src/modules/clipboard/decode.ts) ; il demande
+//     ici le texte entier d'une longue copie (commande "full") et fait copier
+//     le résultat ("copy" avec `text`). Rien de décodé n'est écrit dans le journal.
 //
 // Le manifeste est le même fichier que celui du front (src/modules/clipboard/manifest.json).
 
@@ -144,11 +148,21 @@ impl RustModule for Clipboard {
             }
             "delete" => self.delete(ctx, arg_id(&args, "id")?),
             "clear" => self.clear(ctx),
+            // { id } ou { snippet } : copie ce texte ; { text } : copie ce texte-là
+            // (le résultat d'un décodage, affiché dans l'onglet).
             "copy" => {
-                let text = self.text_of(&args)?;
+                let text = match args.get("text").and_then(Value::as_str) {
+                    Some(t) if t.chars().count() > MAX_CHARS => return Err(format!("texte trop long (au plus {MAX_CHARS} caractères)")),
+                    Some("") => return Err("rien à copier".into()),
+                    Some(t) => t.to_string(),
+                    None => self.text_of(&args)?,
+                };
                 files::copy_text(&text)?;
                 Ok(Value::Null)
             }
+            // { id } → { text } : le texte entier d'une copie (la liste n'envoie que
+            // le début). Pour le décodeur de l'onglet ; jamais journalisé.
+            "full" => Ok(json!({ "text": self.text_of(&args)? })),
             "paste" => {
                 let text = self.text_of(&args)?;
                 files::copy_text(&text)?;
@@ -647,10 +661,13 @@ fn list_json(s: &Store, query: &str) -> Value {
     let items: Vec<Value> = clips
         .iter()
         .map(|c| {
+            let chars = c.text.chars().count();
             json!({
                 "id": c.id,
                 "preview": preview(&c.text),
-                "chars": c.text.chars().count(),
+                "chars": chars,
+                // L'aperçu n'est que le début du texte (il finit par « … »).
+                "truncated": chars > PREVIEW_CHARS,
                 "pinned": c.pinned,
                 "at": c.at,
             })

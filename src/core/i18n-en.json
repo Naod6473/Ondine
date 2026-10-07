@@ -537,7 +537,7 @@
 "Dossier des captures": "Captures folder",
 "Vide : le dossier Images\\Ondine.": "Empty: the Pictures\\Ondine folder.",
 "Presse-papiers": "Clipboard",
-"Garde l'historique de vos copies de texte (recherche, épinglage), colle sans mise en forme, range vos textes fréquents en snippets, retire les traqueurs des liens copiés (utm_source, fbclid…) change la casse d'un texte en un clic, et génère des mots de passe (copiés en secret, effacés au bout de 30 s, jamais enregistrés). Les copies que Windows signale comme sensibles (mots de passe) sont ignorées. L'historique reste en mémoire et disparaît à la fermeture de l'île ; seuls les éléments épinglés et les snippets sont enregistrés, sur votre ordinateur.": "Keeps the history of your text copies (search, pinning), pastes without formatting, stores your frequent texts as snippets, strips trackers from copied links (utm_source, fbclid…), changes a text's case in one click, and generates passwords (copied secretly, erased after 30 s, never saved). Copies that Windows flags as sensitive (passwords) are ignored. The history stays in memory and disappears when the island closes; only pinned items and snippets are saved, on your computer.",
+"Garde l'historique de vos copies de texte (recherche, épinglage), colle sans mise en forme, range vos textes fréquents en snippets, retire les traqueurs des liens copiés (utm_source, fbclid…) change la casse d'un texte en un clic, décode un jeton JWT, du Base64, une adresse encodée (%20), un horodatage Unix ou met en forme du JSON, et génère des mots de passe (copiés en secret, effacés au bout de 30 s, jamais enregistrés). Les copies que Windows signale comme sensibles (mots de passe) sont ignorées. L'historique reste en mémoire et disparaît à la fermeture de l'île ; seuls les éléments épinglés et les snippets sont enregistrés, sur votre ordinateur.": "Keeps the history of your text copies (search, pinning), pastes without formatting, stores your frequent texts as snippets, strips trackers from copied links (utm_source, fbclid…), changes a text's case in one click, decodes a JWT, Base64, an encoded address (%20), a Unix timestamp or formats JSON, and generates passwords (copied secretly, erased after 30 s, never saved). Copies that Windows flags as sensitive (passwords) are ignored. The history stays in memory and disappears when the island closes; only pinned items and snippets are saved, on your computer.",
 "Nombre de copies gardées": "Number of copies kept",
 "Les éléments épinglés ne comptent pas.": "Pinned items don't count.",
 "Nettoyer les liens copiés (retirer utm_source, fbclid, gclid…)": "Clean copied links (remove utm_source, fbclid, gclid…)",
@@ -1158,7 +1158,49 @@
 "Surprises cachées et carnet des trésors": "Hidden surprises and treasure book",
 "Masqués par défaut, pour garder la surprise.": "Hidden by default, to keep the surprise.",
 "Il serait temps de dormir, non ?": "Isn't it time to sleep?",
-"C'est bon, je l'ai !": "Got it, I've got it!"
+"C'est bon, je l'ai !": "Got it, I've got it!",
+"Décoder": "Decode",
+"Mettre en forme": "Format",
+"Lire la date": "Read the date",
+"Décoder ce jeton JWT : en-tête, contenu et dates (la signature n'est pas vérifiée)": "Decode this JWT: header, payload and dates (the signature is not verified)",
+"Décoder ce texte en Base64": "Decode this Base64 text",
+"Décoder les caractères %xx de ce texte": "Decode the %xx characters of this text",
+"Mettre en forme ce JSON (une valeur par ligne, avec des retraits)": "Format this JSON (one value per line, indented)",
+"Lire la date de cet horodatage Unix": "Read the date of this Unix timestamp",
+"Signature non vérifiée : ce décodage ne prouve pas que le jeton est authentique ni qu'il n'a pas été modifié.": "Signature not verified: decoding does not prove that the token is genuine or that it has not been altered.",
+"Ce texte n'est pas un jeton JWT (trois parties séparées par des points).": "This text is not a JWT (three parts separated by dots).",
+"L'en-tête du jeton ne se décode pas.": "The token header cannot be decoded.",
+"Le contenu du jeton ne se décode pas.": "The token payload cannot be decoded.",
+"Ce texte n'est pas du Base64 (il contient des espaces).": "This text is not Base64 (it contains spaces).",
+"Ce texte n'est pas du Base64 valide.": "This text is not valid Base64.",
+"Ce Base64 ne contient pas de texte lisible (peut-être une image ou un fichier).": "This Base64 does not contain readable text (maybe an image or a file).",
+"Ce texte contient des %xx invalides.": "This text contains invalid %xx sequences.",
+"Ce texte n'est pas du JSON valide.": "This text is not valid JSON.",
+"Ce nombre n'est pas une date plausible (entre 2000 et 2050).": "This number is not a plausible date (between 2000 and 2050).",
+"Ce texte ne se décode pas.": "This text cannot be decoded.",
+"Algorithme": "Algorithm",
+"aucune signature": "no signature",
+"Émis le (iat)": "Issued at (iat)",
+"Valable à partir du (nbf)": "Valid from (nbf)",
+"Expire le (exp)": "Expires (exp)",
+"expiré": "expired",
+"encore valide": "still valid",
+"pas encore valide": "not valid yet",
+"Jeton JWT": "JWT",
+"En-tête": "Header",
+"Contenu": "Payload",
+"Texte (JSON mis en forme)": "Text (formatted JSON)",
+"Texte": "Text",
+"Base64 décodé": "Decoded Base64",
+"Texte décodé": "Decoded text",
+"Paramètres": "Parameters",
+"Adresse décodée": "Decoded URL",
+"JSON mis en forme": "Formatted JSON",
+"Horodatage Unix (millisecondes)": "Unix timestamp (milliseconds)",
+"Horodatage Unix (secondes)": "Unix timestamp (seconds)",
+"Heure locale": "Local time",
+"Décodé sur votre PC : rien n'est envoyé ni enregistré.": "Decoded on your PC: nothing is sent or saved.",
+"Copier ce texte": "Copy this text"
 },
 "patterns": [
 [
@@ -2148,6 +2190,30 @@
 [
 "^Trésor\\ trouvé\\ \\((\\d+)\\ /\\ (\\d+)\\)\\ :\\ à\\ retrouver\\ dans\\ Réglages\\ →\\ Mascotte\\.$",
 "Treasure found ($1 / $2): see Settings → Mascot."
+],
+[
+"^il y a (\\d+) s$",
+"$1 s ago"
+],
+[
+"^dans (\\d+) s$",
+"in $1 s"
+],
+[
+"^il y a (\\d+) j$",
+"$1 d ago"
+],
+[
+"^dans (\\d+) j$",
+"in $1 d"
+],
+[
+"^il y a (\\d+) ans$",
+"$1 years ago"
+],
+[
+"^dans (\\d+) ans$",
+"in $1 years"
 ]
 ]
 }
