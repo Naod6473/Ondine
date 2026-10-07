@@ -195,6 +195,7 @@ sur les **réseaux privés** : acceptez, sinon le téléphone ne trouvera pas le
 
 - **Dossiers favoris** : chacun devient une cible quand vous glissez des fichiers sur l'île ; **Lâcher sur un favori** copie (par défaut) ou déplace.
 - **Cibles « Corbeille », « Compresser », « Images » et « Renommer »** (oui)
+- **Cible « Empreinte » (SHA-256)** (oui) : glissez un fichier dessus pour calculer son SHA-256 (un ISO de plusieurs Go marche, avec **Arrêter**). Si le presse-papiers contient une empreinte (MD5, SHA-1, SHA-256 ou SHA-512, seule ou dans une liste `sha256sum` / `certutil`), le même algorithme est calculé et l'île dit **Identique ✓** (en vert) ou **Différente ✗** (en rouge). Le résultat s'affiche en entier, avec **Copier** ; 5 fichiers au plus à la fois.
 - **Poser sur l'étagère chaque nouveau fichier téléchargé** (oui) : le dossier Téléchargements est regardé toutes les 3 secondes.
 
 ### Presse-papiers
@@ -208,6 +209,14 @@ passe** (copiés en secret, effacés du presse-papiers au bout de 30 s, jamais
 enregistrés). Les copies que Windows signale comme sensibles (gestionnaires de
 mots de passe) sont ignorées. L'historique reste en mémoire et disparaît à la
 fermeture ; seuls les éléments épinglés et les snippets sont enregistrés.
+
+Un bouton apparaît sur une copie qu'il sait lire : **Décoder** pour un jeton
+**JWT** (en-tête et contenu en JSON lisible, dates `iat` / `nbf` / `exp` en
+clair ; la signature n'est **pas** vérifiée), du **Base64** qui donne du texte
+ou une adresse encodée (`%20`) ; **Mettre en forme** pour du JSON compact ;
+**Lire la date** pour un horodatage Unix (10 ou 13 chiffres). Le résultat
+s'affiche dans l'onglet, avec **Copier** ; tout se fait sur votre PC, rien
+n'est écrit dans le journal.
 
 - **Nombre de copies gardées** : 50 (de 10 à 500 ; les épinglées ne comptent pas)
 - **Nettoyer les liens copiés** (oui) : retire `utm_source`, `fbclid`, `gclid`… ; la notification propose de remettre l'original.
@@ -223,9 +232,18 @@ Les mêmes actions marchent sur une image déjà copiée. La **pipette** fige
 l'écran sous une loupe et copie la couleur d'un point ; les dernières couleurs
 restent à portée de clic.
 
+**Enregistrer un GIF** : tracez une zone de l'écran (un simple clic prend tout
+l'écran, Échap annule) ; elle est filmée à 10 images par seconde, avec un cadre
+rouge autour, jusqu'à **Arrêter** ou la durée maximale. Le GIF animé va dans le
+dossier des captures et sur l'étagère (**Montrer dans l'Explorateur**,
+**Annuler**). Une zone de plus de 960 pixels est réduite ; l'île n'apparaît pas
+sur le GIF (Windows 10 version 2004 ou plus). Pas de vidéo MP4.
+
 - **Copier le texte lu dans le presse-papiers** (oui)
 - **Dossier des captures** : `Images\Ondine` par défaut
 - **Format de la couleur copiée (pipette)** : HEX (`#3A7BD5`), RGB ou HSL
+- **Durée maximale d'un GIF** : 10 secondes (de 2 à 30)
+- **Montrer la souris dans les GIF** (oui)
 
 ### Minuteur
 

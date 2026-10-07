@@ -29,6 +29,8 @@ mod remote_wol;
 mod shelf;
 // « Vers le téléphone » de l'Étagère : un petit serveur web le temps d'un envoi.
 mod shelf_phone;
+// Étagère → cible « Empreinte » : SHA-256 (ou l'algorithme d'une empreinte copiée).
+mod shelf_hash;
 mod shelf_tools;
 mod system;
 mod terminal;

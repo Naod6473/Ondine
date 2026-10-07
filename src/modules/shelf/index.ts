@@ -19,6 +19,7 @@ import type { DropTarget, IslandModule, ModuleApi, ModuleManifest } from "../../
 import { el } from "../../island/dom";
 import { setLabel } from "../../island/icon";
 import { phonePanel, phoneShown, setupPhone, startPhone } from "./phone";
+import { hashTarget, listenHash } from "./hash";
 
 interface ShelfItem {
   path: string;
@@ -239,6 +240,7 @@ function dropTargets(api: ModuleApi): DropTarget[] {
     targets.push({ id: "shelf-images", label: "Images…", icon: "🖼️", onDrop: open("images") });
     targets.push({ id: "shelf-rename", label: "Renommer…", icon: "✏️", onDrop: open("rename") });
   }
+  if (s.showHash !== false) targets.push(hashTarget(api));
   if (s.showCompress) targets.push({ id: "shelf-zip", label: "Compresser", icon: "🗜️", onDrop: (paths) => actions.compress(api, paths) });
   if (s.showTrash) targets.push({ id: "shelf-trash", label: "Corbeille", icon: "🗑️", onDrop: (paths) => actions.trash(api, paths) });
   return targets;
@@ -362,6 +364,8 @@ export const shelf: IslandModule = {
 
   setup(api) {
     api.on("shelf.changed", (msg) => setItems((msg.payload as { items: ShelfItem[] }).items));
+    // La cible « Empreinte » : progression et résultat du calcul (hash.ts).
+    listenHash(api);
     // Un fichier vient d'arriver dans Téléchargements : il est sur l'étagère.
     api.on("shelf.downloaded", (msg) => {
       const name = (msg.payload as { name?: string } | null)?.name ?? "";

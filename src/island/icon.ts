@@ -159,6 +159,11 @@ const LINE_ONLY: Record<string, string> = {
   // Accès distants (réveil) et Étagère (vers le téléphone).
   "⏰": "alarm",
   "📱": "device-mobile",
+  // Étagère (empreinte) et Capture (GIF animé).
+  "#⃣": "hash",
+  "❌": "x-circle",
+  "🎞": "film-strip",
+  "🔴": "record",
 };
 
 /** Les images connues. Une clé « logo: » absente retombe sur FALLBACK. */

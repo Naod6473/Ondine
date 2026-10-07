@@ -944,7 +944,7 @@ export class Island {
       // Plusieurs boutons (une question à choix) : ils passent sur leur propre ligne.
       {
         // « lines » : un texte sur plusieurs lignes (« Quoi de neuf ») : l'alerte grandit (island.css).
-        class: `notif ${big ? "big" : ""} ${(n.actions?.length ?? 0) > 1 ? "many" : ""} ${n.body?.includes("\n") ? "lines" : ""} prio-${n.priority}`,
+        class: `notif ${big ? "big" : ""} ${(n.actions?.length ?? 0) > 1 ? "many" : ""} ${n.body?.includes("\n") ? "lines" : ""} prio-${n.priority} ${n.tone ? `tone-${n.tone}` : ""} ${n.wide ? "wide" : ""}`,
         // Combien attendent derrière (design Studio : l'icône s'empile, voir island.css).
         "data-more": String(Math.min(this.notifications.waiting(), 3)),
       },

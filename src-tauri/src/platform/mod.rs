@@ -34,6 +34,8 @@ pub mod reboot;
 pub mod theme;
 // L'éclairage nocturne de Windows (Contrôles). Contient sa propre version Linux.
 pub mod nightlight;
+// Capture → GIF animé : choisir une zone de l'écran, la copier dix fois par seconde. Contient sa propre version Linux.
+pub mod record;
 
 #[cfg(windows)]
 mod drop_target;

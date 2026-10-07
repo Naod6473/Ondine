@@ -10,8 +10,15 @@
 // Win32, voir src-tauri/src/platform/picker.rs) ; un clic copie la couleur
 // (HEX, RGB ou HSL selon le réglage) et l'ajoute à l'historique (8 couleurs).
 // La couleur arrive par "capture.color" ; l'historique se demande avec "colors".
+//
+// « Enregistrer un GIF » : le Rust ouvre une sélection de zone (fenêtre Win32,
+// voir src-tauri/src/platform/record.rs), copie la zone dix fois par seconde,
+// puis écrit le GIF. Chaque étape arrive par "capture.gif" { state } :
+// "recording" (une notification avec « Arrêter »), "encoding", puis "done"
+// (« Montrer dans l'Explorateur »), "cancelled" (Échap : rien à dire) ou "error".
 
 import manifest from "./manifest.json";
+import { t } from "../../core/i18n";
 import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
@@ -53,6 +60,101 @@ interface ColorDone {
 
 /** Les dernières couleurs prises à la pipette, la plus récente en premier. */
 let colors: PickedColor[] = [];
+
+/** Ce que le Rust publie sur "capture.gif", à chaque étape. */
+interface GifEvent {
+  state: "recording" | "encoding" | "done" | "cancelled" | "error";
+  /** recording : la durée maximale ; done : la durée enregistrée. */
+  seconds?: number;
+  name?: string;
+  bytes?: number;
+  error?: string;
+}
+
+/** Où en est le GIF : rien, choix de la zone, enregistrement, écriture. */
+let gifState: "idle" | "selecting" | "recording" | "encoding" = "idle";
+const GIF_KEY = "capture-gif";
+
+/** « 820 Ko », « 2,4 Mo ». */
+function fileSize(bytes: number): string {
+  const kb = Math.max(1, Math.round(bytes / 1024));
+  return kb < 1024 ? `${kb} Ko` : `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} Mo`;
+}
+
+/** Ouvre la sélection de zone ; la suite arrive par "capture.gif". */
+async function startGif(api: ModuleApi) {
+  api.closeIsland(); // l'île ne doit pas être sur la photo du bureau
+  gifState = "selecting";
+  for (const r of redraws) r();
+  try {
+    // L'aide affichée en haut de l'écran pendant le choix (dessinée par Windows : on la traduit ici).
+    await api.invoke("gif_start", { hint: t("Glissez pour choisir la zone du GIF · Clic : tout l'écran · Échap : annuler") });
+  } catch (err) {
+    gifState = "idle";
+    for (const r of redraws) r();
+    api.notify({ title: "GIF impossible", body: errorText(err), icon: "⚠️", priority: "normal", key: GIF_KEY });
+  }
+}
+
+async function stopGif(api: ModuleApi) {
+  try {
+    await api.invoke("gif_stop");
+  } catch {
+    // (Déjà fini : rien à arrêter.)
+  }
+}
+
+/** Montre chaque étape du GIF dans une notification. */
+function onGif(api: ModuleApi, e: GifEvent) {
+  switch (e.state) {
+    case "recording":
+      gifState = "recording";
+      api.notify({
+        title: `Enregistrement du GIF (${e.seconds ?? 10} s au plus)`,
+        icon: "🔴",
+        priority: "low",
+        key: GIF_KEY,
+        sticky: true,
+        actions: [{ label: "Arrêter", run: () => stopGif(api) }],
+      });
+      break;
+    case "encoding":
+      gifState = "encoding";
+      api.notify({ title: "Création du GIF…", icon: "⏳", priority: "low", key: GIF_KEY, sticky: true });
+      break;
+    case "done":
+      gifState = "idle";
+      api.notify({
+        title: `GIF enregistré (${Math.max(1, Math.round(e.seconds ?? 0))} s, ${fileSize(e.bytes ?? 0)})`,
+        body: e.name,
+        icon: "🎞️",
+        priority: "normal",
+        key: GIF_KEY,
+        durationMs: 12_000,
+        actions: [
+          {
+            label: "Montrer dans l'Explorateur",
+            run: async () => {
+              try {
+                await api.invoke("reveal");
+              } catch (err) {
+                api.notify({ title: "Explorateur", body: errorText(err), icon: "⚠️", priority: "low", key: GIF_KEY });
+              }
+            },
+          },
+        ],
+      });
+      break;
+    case "cancelled":
+      gifState = "idle"; // Échap pendant le choix de la zone : rien à dire
+      break;
+    case "error":
+      gifState = "idle";
+      api.notify({ title: "GIF impossible", body: e.error, icon: "⚠️", priority: "normal", key: GIF_KEY });
+      break;
+  }
+  for (const r of redraws) r();
+}
 
 async function loadColors(api: ModuleApi) {
   try {
@@ -154,6 +256,7 @@ export const capture: IslandModule = {
 
   setup(api) {
     api.on("capture.done", (msg) => report(api, msg.payload as Done));
+    api.on("capture.gif", (msg) => onGif(api, msg.payload as GifEvent));
     api.on("capture.color", (msg) => {
       const done = msg.payload as ColorDone;
       if (done.ok) {
@@ -226,6 +329,27 @@ export const capture: IslandModule = {
         ),
       );
 
+      // Le GIF animé : un bouton qui devient « Arrêter » pendant l'enregistrement.
+      const gifSlot = el("span", { class: "capture-gif" });
+      const drawGif = () => {
+        const busy = gifState === "selecting" || gifState === "encoding";
+        gifSlot.replaceChildren(
+          gifState === "recording"
+            ? button("⏹️ Arrêter le GIF", "Arrêter l'enregistrement et créer le GIF", () => stopGif(api))
+            : el(
+                "button",
+                {
+                  class: "btn small",
+                  title: "Choisissez une zone de l'écran, puis enregistrez-la en GIF animé (durée maximale dans les réglages du module)",
+                  disabled: busy,
+                  onclick: api.handler(() => startGif(api)),
+                },
+                busy ? "⏳ GIF en cours…" : "🎞️ Enregistrer un GIF",
+              ),
+        );
+      };
+      actions.append(el("div", { class: "btn-row" }, el("span", { class: "muted capture-label" }, "GIF animé :"), gifSlot));
+
       const result = el("div", { class: "capture-result" });
       const draw = () => {
         result.replaceChildren();
@@ -251,13 +375,16 @@ export const capture: IslandModule = {
       root.append(actions, result);
       draw();
       drawColors();
+      drawGif();
       redraws.add(draw);
       redraws.add(drawColors);
+      redraws.add(drawGif);
       void loadLast(api);
       void loadColors(api);
       return () => {
         redraws.delete(draw);
         redraws.delete(drawColors);
+        redraws.delete(drawGif);
       };
     },
   },

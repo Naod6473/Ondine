@@ -334,6 +334,9 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `app.whats-new` | réglages (« Voir les nouveautés ») | l'île montre « Quoi de neuf dans Ondine X.Y.Z » pour la version installée |
 | `controls.usb-added` `{root, letter, label, removable}` | Contrôles (Rust, fil de fond, réglage `usbNotify`) | notification 🔌 « Clé USB branchée » avec « Ouvrir » et « Éjecter » |
 | `controls.usb-ejected` `{root, letter, label, removable, ok, veto?, blocker?, error?, code?}` | Contrôles (Rust, fil d'éjection) | notification ✅ « Vous pouvez retirer la clé E: en toute sécurité. », ou ⚠️ avec qui bloque ; la bande USB de l'onglet se met à jour |
+| `shelf.hash-progress` `{job, percent}` | Étagère (Rust, cible « Empreinte ») | la notification « Empreinte SHA-256 : 45 % » (une fois par seconde, au-delà de 64 Mo) |
+| `shelf.hashed` `{job, algo, compared, cancelled, results: [{name, hex, matches} ou {name, error}]}` | Étagère (Rust) | notification « Identique ✓ » / « Différente ✗ » ou l'empreinte, avec « Copier » (`hash_copy {job}`) ; le texte copié n'est jamais dans le message |
+| `capture.gif` `{state: recording / encoding / done / cancelled / error, …}` | Capture (Rust) | notification avec « Arrêter », puis « Création du GIF… », puis « GIF enregistré » (« Montrer dans l'Explorateur ») ; le bouton de l'onglet suit l'état |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -549,6 +552,18 @@ Front : `src/modules/shelf/index.ts`. Rust : `src-tauri/src/modules/shelf.rs`.
   « Arrêter » ; `phone_status` le retrouve si l'île redémarre. Le journal ne
   contient ni l'adresse ni le jeton. Pare-feu : Windows demande la première
   fois d'autoriser Ondine (réseaux privés).
+- **Empreinte** (cible de dépôt, réglage `showHash` ; `src/modules/shelf/hash.ts`,
+  `src-tauri/src/modules/shelf_hash.rs`) : `hash {paths}` calcule dans un thread
+  (fichiers seulement, 5 au plus, un calcul à la fois), en lisant par blocs de
+  1 Mo ; crates RustCrypto `sha2`, `sha1`, `md-5` (testées sur des vecteurs
+  connus). Si le presse-papiers (lu par le Rust, jamais s'il est marqué
+  sensible) contient une empreinte hexadécimale (32/40/64/128 chiffres → MD5,
+  SHA-1, SHA-256, SHA-512 ; aussi dans une liste sha256sum ou certutil), le
+  même algorithme est calculé et comparé ; sinon SHA-256. Résultat par
+  `shelf.hashed`, progression par `shelf.hash-progress`, `hash_cancel` pour
+  « Arrêter », `hash_copy {job}` recopie le résultat (une ligne `empreinte  nom`
+  par fichier). La notification utilise `tone` (titre vert / rouge) et `wide`
+  (île plus grande pour l'empreinte entière) de `api.notify`.
 
 ## Module Musique (phase 3)
 
@@ -608,6 +623,16 @@ et l'accès à Windows dans `src-tauri/src/platform/windows.rs` (« Presse-papie
   l'île, data URL) ou en pixels (« Copier l'image », ~512 px, via arboard).
   Niveau de correction M, 1 000 caractères au plus (au-delà, le code serait
   trop serré pour un téléphone) : message clair sinon. Aucun service en ligne.
+- **Décoder** (`src/modules/clipboard/decode.ts`, TypeScript pur, testé dans
+  `tests/front/clipboard-decode.test.ts` avec beaucoup de faux positifs) :
+  `detect` reconnaît sur l'aperçu un horodatage Unix (10 ou 13 chiffres, entre
+  2000 et 2050), un JWT (`alg` dans l'en-tête), du JSON, du texte en `%xx`, ou du
+  Base64 strict (standard ou URL) qui donne du texte UTF-8 lisible ; la ligne
+  montre alors « Décoder », « Mettre en forme » ou « Lire la date ». Au clic, le
+  front demande le texte entier (`full {id}`), `decode` le met en forme (JSON
+  réindenté sans perdre les grands nombres, dates locale / UTC / ISO) et
+  l'onglet l'affiche (`data-no-i18n`), avec « Copier » (`copy {text}`). Rien
+  n'est journalisé ; les erreurs ne citent jamais le texte.
 - **Confidentialité** : aucun texte copié dans le journal ni sur le bus ; rien ne
   sort de l'ordinateur.
 
@@ -663,6 +688,24 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   (sans doublon) dans `%APPDATA%\Ondine\colors.json`, pastilles cliquables
   dans l'onglet (`colors`, `copy_color {hex}` : seule une couleur `#RRGGBB`
   est acceptée).
+- **GIF animé** (`gif_start {hint}`, `gif_stop`) : l'outil de capture de Windows
+  ne dit pas où est la zone choisie, donc `platform/record.rs` ouvre sa propre
+  sélection, sur le modèle de la pipette (photo du bureau assombrie, zone tracée
+  claire avec sa taille ; clic seul ou Entrée = tout l'écran ; Échap, clic droit,
+  perte du focus = annuler ; l'aide est traduite par le front). Puis, dans le
+  même fil : `Grabber` copie la zone 10 fois par seconde (`BitBlt`, ou
+  `StretchBlt` en `HALFTONE` si elle dépasse 960 px ; sans `CAPTUREBLT`, qui
+  ferait clignoter la souris), dessine la souris (`GetCursorInfo`,
+  `DrawIconEx`) ; `Outline` pose un cadre rouge à l'extérieur de la zone
+  (fenêtres traversantes) ; l'île est retirée des captures
+  (`SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)`, sur le fil principal).
+  Un deuxième fil écrit le GIF (`modules/capture/gif.rs`, crate `gif`, testé) :
+  seul le rectangle qui a changé est écrit (`DisposalMethod::Keep`), une palette
+  par image (NeuQuant), délais tirés de l'heure réelle des images (une image
+  sautée si l'écriture prend du retard ne décale pas le rythme). Fichier
+  `Capture … .gif` dans le dossier des captures, `shelf.add`, « Annuler »
+  (Corbeille) ; un GIF raté part à la Corbeille. Étapes publiées sur
+  `capture.gif`. Réglages `gifSeconds` (10 s, de 2 à 30) et `gifCursor`.
 - **Ordre des onglets** : réglage `island.tabOrder` (liste d'ids ; vide = ordre
   d'origine ; un module absent se met à la fin). On le change en glissant un
   onglet dans l'île (`src/island/tab-drag.ts` : l'onglet suit la souris, les
