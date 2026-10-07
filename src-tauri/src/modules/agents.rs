@@ -31,6 +31,7 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use tauri::AppHandle;
 
+use super::agents_hooks as hooks;
 use super::{ModuleContext, RustModule};
 use crate::services::bus::BusMessage;
 use crate::cli::MAX_MESSAGE;
@@ -322,6 +323,53 @@ impl RustModule for Agents {
                 let tool = args.get("tool").and_then(Value::as_str).unwrap_or("claude-code");
                 files::copy_text(&mcp_config(tool, &exe_path())?)?;
                 Ok(Value::Null)
+            }
+            // L'état des hooks d'Ondine dans le fichier de chaque outil (rien n'est écrit).
+            "hook_status" => {
+                let exe = exe_path();
+                let mut tools = serde_json::Map::new();
+                for tool in ["claude-code", "codex", "gemini"] {
+                    let (file, format) = config_file(tool)?;
+                    let status = match hooks::read(&file) {
+                        Ok(text) => hooks::status(format, text.as_deref(), &exe),
+                        Err(_) => hooks::Status { state: "unreadable", permission: false, other_permission: false },
+                    };
+                    tools.insert(
+                        tool.into(),
+                        json!({ "file": file.display().to_string(), "state": status.state, "permission": status.permission, "otherPermission": status.other_permission }),
+                    );
+                }
+                Ok(json!({ "exe": exe, "tools": tools }))
+            }
+            // { tool } : écrit les hooks d'Ondine dans le fichier de l'outil (fusion, copie .bak).
+            "hook_install" => {
+                ctx.require("files")?;
+                let tool = args.get("tool").and_then(Value::as_str).unwrap_or("");
+                let (file, format) = config_file(tool)?;
+                let exe = exe_path();
+                if exe.is_empty() {
+                    return Err("chemin d'Ondine introuvable".into());
+                }
+                // Le hook « Autoriser depuis l'île » : seulement si le réglage est actif.
+                let permission = tool != "gemini" && ctx.settings().get("permissions").and_then(Value::as_bool) == Some(true);
+                let existing = hooks::read(&file)?;
+                let merged = hooks::install_text(format, existing.as_deref(), &our_hooks(tool, &exe, permission)?).map_err(|e| format!("{} : {e}", file.display()))?;
+                let backup = if merged.changed { hooks::write_with_backup(&file, &merged.text, &platform::local_time().file_stamp())? } else { None };
+                // Claude Code : un autre programme répond aussi aux demandes de permission ?
+                let other = permission && tool == "claude-code" && hooks::status(format, Some(&merged.text), &exe).other_permission;
+                ctx.log_info(format!("hooks d'Ondine installés pour {tool} ({} ancien(s) retiré(s))", merged.removed));
+                Ok(json!({ "file": file.display().to_string(), "backup": backup.map(|b| b.display().to_string()), "removed": merged.removed, "changed": merged.changed, "permission": permission, "otherPermission": other }))
+            }
+            // { tool } : retire seulement les entrées d'Ondine du fichier de l'outil.
+            "hook_remove" => {
+                ctx.require("files")?;
+                let tool = args.get("tool").and_then(Value::as_str).unwrap_or("");
+                let (file, format) = config_file(tool)?;
+                let existing = hooks::read(&file)?;
+                let merged = hooks::remove_text(format, existing.as_deref()).map_err(|e| format!("{} : {e}", file.display()))?;
+                let backup = if merged.changed { hooks::write_with_backup(&file, &merged.text, &platform::local_time().file_stamp())? } else { None };
+                ctx.log_info(format!("hooks d'Ondine retirés pour {tool} ({})", merged.removed));
+                Ok(json!({ "file": file.display().to_string(), "backup": backup.map(|b| b.display().to_string()), "removed": merged.removed }))
             }
             // Les projets du réglage (ceux qui existent encore) et les agents
             // proposés, pour les boutons.
@@ -1118,13 +1166,60 @@ fn claude_config(exe: &str) -> String {
 /// chemin entre guillemets doubles. En TOML, la chaîne est écrite avec ses
 /// « \ » et « " » échappés.
 fn codex_config(exe: &str) -> String {
+    format!("# Ondine : Codex prévient l'île (à coller dans %USERPROFILE%\\.codex\\config.toml)\n{}", codex_blocks(exe))
+}
+
+/// Les sections TOML des hooks de Codex (sans commentaire).
+fn codex_blocks(exe: &str) -> String {
     let command = format!("\"{exe}\" notify --source codex");
     let toml = format!("\"{}\"", command.replace('\\', "\\\\").replace('"', "\\\""));
-    let mut out = String::from("# Ondine : Codex prévient l'île (à coller dans %USERPROFILE%\\.codex\\config.toml)\n");
+    let mut out = String::new();
     for event in ["UserPromptSubmit", "PermissionRequest", "Stop", "SessionEnd"] {
         out.push_str(&format!("\n[[hooks.{event}]]\n[[hooks.{event}.hooks]]\ntype = \"command\"\ncommand = {toml}\n"));
     }
     out
+}
+
+// ── Installer les hooks soi-même (agents_hooks.rs) ───────────────────────────
+
+/// Le fichier de configuration de l'outil, et son format. Claude Code et
+/// Codex acceptent un autre dossier (CLAUDE_CONFIG_DIR, CODEX_HOME) : on le suit.
+fn config_file(tool: &str) -> Result<(PathBuf, hooks::Format), String> {
+    let dir = |var: &str, default: &str| {
+        std::env::var_os(var).map(PathBuf::from).filter(|p| p.is_absolute()).unwrap_or_else(|| platform::home_dir().join(default))
+    };
+    match tool {
+        "claude-code" => Ok((dir("CLAUDE_CONFIG_DIR", ".claude").join("settings.json"), hooks::Format::Json)),
+        "codex" => Ok((dir("CODEX_HOME", ".codex").join("config.toml"), hooks::Format::Toml)),
+        "gemini" => Ok((platform::home_dir().join(".gemini").join("settings.json"), hooks::Format::Json)),
+        other => Err(format!("outil inconnu : {other}")),
+    }
+}
+
+/// Les entrées d'Ondine à écrire (les mêmes que « Copier la configuration »),
+/// avec le hook « Autoriser depuis l'île » si `permission`.
+/// JSON `{"hooks": …}` pour Claude Code et Gemini ; sections TOML pour Codex.
+fn our_hooks(tool: &str, exe: &str, permission: bool) -> Result<String, String> {
+    match tool {
+        "codex" => {
+            let mut text = format!("# Ondine : hooks ajoutés par Ondine (onglet Agents IA)\n{}", codex_blocks(exe));
+            if permission {
+                let perm = permission_config("codex", exe)?;
+                // Sans sa ligne de commentaire : seulement la section.
+                text.push('\n');
+                text.push_str(perm.split_once("\n\n").map(|(_, rest)| rest).unwrap_or(&perm));
+            }
+            Ok(text)
+        }
+        _ => {
+            let mut ours: Value = serde_json::from_str(&hook_config(tool, exe)?).map_err(|e| e.to_string())?;
+            if permission {
+                let perm: Value = serde_json::from_str(&permission_config(tool, exe)?).map_err(|e| e.to_string())?;
+                ours["hooks"]["PermissionRequest"] = perm["hooks"]["PermissionRequest"].clone();
+            }
+            Ok(ours.to_string())
+        }
+    }
 }
 
 /// Gemini CLI (settings.json). Ses hooks sont lancés par PowerShell : `&` pour
@@ -1337,6 +1432,25 @@ mod tests {
         let g: Value = serde_json::from_str(&gemini_config(r"C:\Users\O'Neil\ondine.exe")).unwrap();
         assert_eq!(g["hooks"]["AfterAgent"][0]["hooks"][0]["command"], r"$input | & 'C:\Users\O''Neil\ondine.exe' notify --source gemini");
         assert!(hook_config("chatgpt-web", exe).is_err());
+    }
+
+    #[test]
+    fn auto_install_writes_the_copied_config() {
+        let exe = r"C:\Program Files\Ondine\ondine.exe";
+        for (tool, format) in [("claude-code", hooks::Format::Json), ("codex", hooks::Format::Toml), ("gemini", hooks::Format::Json)] {
+            for permission in [false, true] {
+                let ours = our_hooks(tool, exe, permission && tool != "gemini").unwrap();
+                let merged = hooks::install_text(format, None, &ours).unwrap_or_else(|e| panic!("{tool} : {e}"));
+                let status = hooks::status(format, Some(&merged.text), exe);
+                assert_eq!(status.state, "installed", "{tool}");
+                assert_eq!(status.permission, permission && tool != "gemini", "{tool}");
+                // Retirer vide le fichier de toute trace d'Ondine.
+                let removed = hooks::remove_text(format, Some(&merged.text)).unwrap();
+                assert_eq!(hooks::status(format, Some(&removed.text), exe).state, "absent", "{tool}");
+            }
+        }
+        assert!(config_file("chatgpt").is_err());
+        assert!(config_file("codex").unwrap().0.ends_with("config.toml"));
     }
 
     #[test]

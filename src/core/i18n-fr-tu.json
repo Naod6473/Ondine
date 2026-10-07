@@ -110,7 +110,13 @@
 "Page ouverte dans votre navigateur : relisez tout avant d'envoyer.": "Page ouverte dans ton navigateur : relis tout avant d'envoyer.",
 "Ouvre GitHub avec la version, Windows et les 40 dernières lignes du journal (chemins personnels masqués). Vous relisez et complétez tout avant d'envoyer : rien ne part sans vous.": "Ouvre GitHub avec la version, Windows et les 40 dernières lignes du journal (chemins personnels masqués). Tu relis et complètes tout avant d'envoyer : rien ne part sans toi.",
 "L'étagère est vide. Glissez des fichiers sur l'île et lâchez-les sur la cible « Étagère » pour les garder sous la main.": "L'étagère est vide. Glisse des fichiers sur l'île et lâche-les sur la cible « Étagère » pour les garder sous la main.",
-"L'île montre de fausses données (musique, agenda, notes, presse-papiers…) au lieu des vôtres. Aucune action n'est faite pour de vrai.": "L'île montre de fausses données (musique, agenda, notes, presse-papiers…) au lieu des tiennes. Aucune action n'est faite pour de vrai."
+"L'île montre de fausses données (musique, agenda, notes, presse-papiers…) au lieu des vôtres. Aucune action n'est faite pour de vrai.": "L'île montre de fausses données (musique, agenda, notes, presse-papiers…) au lieu des tiennes. Aucune action n'est faite pour de vrai.",
+"Relancez Claude Code pour les activer.": "Relance Claude Code pour les activer.",
+"Relancez Codex, puis tapez /hooks pour les approuver (Codex le demande une fois).": "Relance Codex, puis tape /hooks pour les approuver (Codex le demande une fois).",
+"Relancez Gemini CLI pour les activer.": "Relance Gemini CLI pour les activer.",
+"✅ Installé, sans « Autoriser depuis l'île » : réinstallez pour l'ajouter": "✅ Installé, sans « Autoriser depuis l'île » : réinstalle pour l'ajouter",
+"⚠️ Ancien chemin : ces hooks lancent un autre ondine.exe, que l'île refuse. Réinstallez-les.": "⚠️ Ancien chemin : ces hooks lancent un autre ondine.exe, que l'île refuse. Réinstalle-les.",
+"⚠️ Fichier illisible (JSON ou TOML invalide) : Ondine n'y touche pas. Corrigez-le ou utilisez la copie.": "⚠️ Fichier illisible (JSON ou TOML invalide) : Ondine n'y touche pas. Corrige-le ou utilise la copie."
 },
 "patterns": [
 [
@@ -200,6 +206,10 @@
 [
 "^(.*) vous attend(ent)?(.*)$",
 "$1 t'attend$2$3"
+],
+[
+"^Collez\\-la\\ dans\\ (.+)\\.$",
+"Colle-la dans $1."
 ]
 ]
 }

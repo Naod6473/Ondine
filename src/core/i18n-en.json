@@ -1060,7 +1060,31 @@
 "Identifiants": "Credentials",
 "Sauvegarde": "Backup",
 "Maison": "Home",
-"Mobile": "Mobile"
+"Mobile": "Mobile",
+"Relancez Claude Code pour les activer.": "Restart Claude Code to enable them.",
+"Relancez Codex, puis tapez /hooks pour les approuver (Codex le demande une fois).": "Restart Codex, then type /hooks to approve them (Codex asks once).",
+"Relancez Gemini CLI pour les activer.": "Restart Gemini CLI to enable them.",
+"Ajoute les hooks d'Ondine au fichier de configuration, sans toucher au reste": "Adds Ondine's hooks to the configuration file, leaving the rest untouched",
+"Hooks déjà installés": "Hooks already installed",
+"Rien à changer.": "Nothing to change.",
+"Hooks installés": "Hooks installed",
+"Deux réponses aux permissions": "Two answers to permissions",
+"Un autre programme a aussi un hook PermissionRequest dans Claude Code : il peut répondre avant l'île, ou l'inverse. Ondine ne l'a pas retiré.": "Another program also has a PermissionRequest hook in Claude Code: it may answer before the island, or the other way round. Ondine did not remove it.",
+"Installation impossible": "Installation failed",
+"⚡ Installer automatiquement": "⚡ Install automatically",
+"Retire seulement les hooks d'Ondine de ce fichier": "Removes only Ondine's hooks from this file",
+"Aucun hook d'Ondine dans ce fichier": "No Ondine hook in this file",
+"Hooks d'Ondine retirés": "Ondine hooks removed",
+"Les autres réglages et hooks du fichier sont gardés.": "The file's other settings and hooks are kept.",
+"Retrait impossible": "Removal failed",
+"✅ Installé, sans « Autoriser depuis l'île » : réinstallez pour l'ajouter": "✅ Installed, without \"Allow from the island\": reinstall to add it",
+"✅ Installé": "✅ Installed",
+"⚠️ Ancien chemin : ces hooks lancent un autre ondine.exe, que l'île refuse. Réinstallez-les.": "⚠️ Old path: these hooks run another ondine.exe, which the island refuses. Reinstall them.",
+"Non installé": "Not installed",
+"⚠️ Fichier illisible (JSON ou TOML invalide) : Ondine n'y touche pas. Corrigez-le ou utilisez la copie.": "⚠️ Unreadable file (invalid JSON or TOML): Ondine leaves it alone. Fix it or use the copy.",
+"Fichier :": "File:",
+"⚠️ Un autre programme répond aussi aux demandes de permission (PermissionRequest) : deux réponses concurrentes.": "⚠️ Another program also answers permission requests (PermissionRequest): two competing answers.",
+"Ou à la main": "Or by hand"
 },
 "patterns": [
 [
@@ -2034,6 +2058,14 @@
 [
 "^(.+?)\\ attend\\ votre\\ permission$",
 "$1 is waiting for your permission"
+],
+[
+"^Copie\\ de\\ l'ancien\\ fichier\\ :\\ (.+)$",
+"Copy of the previous file: $1"
+],
+[
+"^Collez\\-la\\ dans\\ (.+)\\.$",
+"Paste it into $1."
 ]
 ]
 }

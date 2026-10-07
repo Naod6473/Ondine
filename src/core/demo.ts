@@ -315,6 +315,15 @@ const RULE_EMPTY = { extensions: [], nameContains: "", minKb: null, maxKb: null 
 /** L'historique de la pipette (module Capture) : une petite palette inventée. */
 const DEMO_COLORS = ["#3A7BD5", "#00D2FF", "#F7B733", "#FC4A1A", "#6A3093", "#2ECC71", "#1F2937", "#F5F5F4"];
 
+/** Les hooks des agents (onglet Agents IA) : Claude branché, Codex sur un ancien chemin. */
+const DEMO_HOOKS: Record<string, string> = { "claude-code": "installed", codex: "stale", gemini: "absent" };
+function demoHooks() {
+  const file = { "claude-code": ".claude\\settings.json", codex: ".codex\\config.toml", gemini: ".gemini\\settings.json" } as Record<string, string>;
+  return Object.fromEntries(
+    Object.entries(DEMO_HOOKS).map(([t, state]) => [t, { file: `${HOME}\\${file[t]}`, state, permission: false, otherPermission: false }]),
+  );
+}
+
 // ── Les réponses aux modules ─────────────────────────────────────────────────
 
 /** Ce que le Rust aurait répondu. Les actions ne font rien (ou changent les fausses données). */
@@ -493,6 +502,15 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     case "agents.answer":
       bus.inject("agents.ask.closed", { id: Number(args.id), expired: false }, "agents");
       return null;
+    // Installer les hooks : rien n'est écrit, seul le faux état change.
+    case "agents.hook_status":
+      return { exe: "C:\\Program Files\\Ondine\\ondine.exe", tools: demoHooks() };
+    case "agents.hook_install":
+    case "agents.hook_remove": {
+      const t = String(args.tool);
+      if (t in DEMO_HOOKS) DEMO_HOOKS[t] = command === "hook_install" ? "installed" : "absent";
+      return command === "hook_install" ? { backup: null, changed: true, removed: 0, otherPermission: false } : { backup: null, removed: 1 };
+    }
     case "askclaude.status":
       return { hasKey: true };
     case "askclaude.prepare":

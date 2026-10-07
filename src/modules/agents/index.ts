@@ -302,17 +302,125 @@ export const agents: IslandModule = {
       let tool: Tool = "claude-code";
       const exe = el("code", { class: "agents-exe" });
       const steps = el("ol", {});
+
+      // ── Installer automatiquement : Ondine écrit lui-même ses hooks dans le
+      // fichier de l'outil (fusion : le reste du fichier est gardé, copie .bak).
+      interface HookState {
+        file: string;
+        state: "installed" | "stale" | "absent" | "unreadable";
+        permission: boolean;
+        otherPermission: boolean;
+      }
+      let hookStates: Partial<Record<Tool, HookState>> = {};
+      /** La copie de sécurité faite au dernier enregistrement, par outil. */
+      const backups: Partial<Record<Tool, string>> = {};
+      const hookState = el("div", { class: "agents-hook-state" });
+      /** Le chemin complet du fichier (sinon la forme %USERPROFILE%). */
+      const fileOf = (t: Tool) => hookStates[t]?.file || TOOLS[t].file;
+      const loadHookStates = async () => {
+        try {
+          const r = await api.invoke<{ tools: Partial<Record<Tool, HookState>> }>("hook_status");
+          hookStates = r?.tools ?? {};
+        } catch {
+          hookStates = {};
+        }
+        // Des hooks vers un ancien ondine.exe : on ouvre la marche à suivre.
+        if (Object.values(hookStates).some((s) => s?.state === "stale")) guide.open = true;
+        drawGuide();
+      };
+      const RESTART: Record<Tool, string> = {
+        "claude-code": "Relancez Claude Code pour les activer.",
+        codex: "Relancez Codex, puis tapez /hooks pour les approuver (Codex le demande une fois).",
+        gemini: "Relancez Gemini CLI pour les activer.",
+      };
+      const install = el(
+        "button",
+        {
+          class: "btn small primary",
+          title: "Ajoute les hooks d'Ondine au fichier de configuration, sans toucher au reste",
+          onclick: api.handler(async () => {
+            const t = tool;
+            try {
+              const r = await api.invoke<{ backup: string | null; changed: boolean; otherPermission: boolean } | null>("hook_install", { tool: t });
+              if (r?.backup) backups[t] = r.backup;
+              api.notify(
+                r && !r.changed
+                  ? { title: "Hooks déjà installés", body: "Rien à changer.", icon: "✔️", priority: "low", key: "agents-hooks" }
+                  : { title: "Hooks installés", body: RESTART[t], icon: "✅", priority: "normal", key: "agents-hooks" },
+              );
+              // Claude Code : un autre programme répond aussi aux demandes de permission.
+              if (r?.otherPermission)
+                api.notify({
+                  title: "Deux réponses aux permissions",
+                  body: "Un autre programme a aussi un hook PermissionRequest dans Claude Code : il peut répondre avant l'île, ou l'inverse. Ondine ne l'a pas retiré.",
+                  icon: "⚠️",
+                  priority: "normal",
+                  key: "agents-hooks-perm",
+                });
+            } catch (err) {
+              api.notify({ title: "Installation impossible", body: errorText(err), icon: "⚠️", priority: "normal", key: "agents-hooks" });
+            }
+            await loadHookStates();
+          }),
+        },
+        "⚡ Installer automatiquement",
+      );
+      const uninstall = el(
+        "button",
+        {
+          class: "btn small",
+          title: "Retire seulement les hooks d'Ondine de ce fichier",
+          onclick: api.handler(async () => {
+            const t = tool;
+            try {
+              const r = await api.invoke<{ backup: string | null; removed: number } | null>("hook_remove", { tool: t });
+              if (r?.backup) backups[t] = r.backup;
+              api.notify(
+                r && !r.removed
+                  ? { title: "Aucun hook d'Ondine dans ce fichier", icon: "ℹ️", priority: "low", key: "agents-hooks" }
+                  : { title: "Hooks d'Ondine retirés", body: "Les autres réglages et hooks du fichier sont gardés.", icon: "🧹", priority: "low", key: "agents-hooks" },
+              );
+            } catch (err) {
+              api.notify({ title: "Retrait impossible", body: errorText(err), icon: "⚠️", priority: "normal", key: "agents-hooks" });
+            }
+            await loadHookStates();
+          }),
+        },
+        "Retirer",
+      );
+      const drawHookState = () => {
+        const s = hookStates[tool];
+        if (!s) return hookState.replaceChildren();
+        const permOn = api.settings().permissions === true && tool !== "gemini";
+        const label = {
+          installed: permOn && !s.permission ? "✅ Installé, sans « Autoriser depuis l'île » : réinstallez pour l'ajouter" : "✅ Installé",
+          stale: "⚠️ Ancien chemin : ces hooks lancent un autre ondine.exe, que l'île refuse. Réinstallez-les.",
+          absent: "Non installé",
+          unreadable: "⚠️ Fichier illisible (JSON ou TOML invalide) : Ondine n'y touche pas. Corrigez-le ou utilisez la copie.",
+        }[s.state];
+        const backup = backups[tool];
+        hookState.replaceChildren(
+          el("div", { class: `agents-hook-badge ${s.state}` }, label),
+          el("div", { class: "muted" }, "Fichier : ", el("code", {}, s.file)),
+          ...(s.otherPermission && s.permission
+            ? [el("div", { class: "muted" }, "⚠️ Un autre programme répond aussi aux demandes de permission (PermissionRequest) : deux réponses concurrentes.")]
+            : []),
+          ...(backup ? [el("div", { class: "muted" }, `Copie de l'ancien fichier : ${backup}`)] : []),
+        );
+        uninstall.hidden = s.state !== "installed" && s.state !== "stale";
+        install.disabled = s.state === "unreadable";
+      };
       const toolButtons = (Object.keys(TOOLS) as Tool[]).map((t) =>
         el("button", { class: "net-chip", "data-tool": t, onclick: api.handler(() => ((tool = t), drawGuide())) }, TOOLS[t].name),
       );
       const copy = el(
         "button",
         {
-          class: "btn small primary",
+          class: "btn small",
           onclick: api.handler(async () => {
             try {
               await api.invoke("copy_config", { tool });
-              api.notify({ title: "Configuration copiée", body: `Collez-la dans ${TOOLS[tool].file}.`, icon: "📋", priority: "low", key: "agents-copied" });
+              api.notify({ title: "Configuration copiée", body: `Collez-la dans ${fileOf(tool)}.`, icon: "📋", priority: "low", key: "agents-copied" });
             } catch (err) {
               api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "agents-error" });
             }
@@ -351,7 +459,7 @@ export const agents: IslandModule = {
           onclick: api.handler(async () => {
             try {
               await api.invoke("copy_config", { tool, permission: true });
-              api.notify({ title: "Hook d'autorisation copié", body: `Collez-le dans ${TOOLS[tool].file}, puis activez le réglage « Autoriser / Refuser depuis l'île ».`, icon: "📋", priority: "low", key: "agents-copied" });
+              api.notify({ title: "Hook d'autorisation copié", body: `Collez-le dans ${fileOf(tool)}, puis activez le réglage « Autoriser / Refuser depuis l'île ».`, icon: "📋", priority: "low", key: "agents-copied" });
             } catch (err) {
               api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "agents-error" });
             }
@@ -362,9 +470,10 @@ export const agents: IslandModule = {
       const test = el("button", { class: "btn small", title: "Fait comme si Claude venait de finir", onclick: api.handler(() => api.invoke("test")) }, "Essayer");
       const drawGuide = () => {
         toolButtons.forEach((b) => b.classList.toggle("active", b.dataset.tool === tool));
+        drawHookState();
         steps.replaceChildren(
           el("li", {}, "Copiez la configuration."),
-          el("li", {}, "Ouvrez ", el("code", {}, TOOLS[tool].file), ". ", TOOLS[tool].steps),
+          el("li", {}, "Ouvrez ", el("code", {}, fileOf(tool)), ". ", TOOLS[tool].steps),
           el("li", {}, "Chaque hook lance : ", exe),
         );
         mcpSteps.textContent =
@@ -380,14 +489,18 @@ export const agents: IslandModule = {
       guide.append(
         el("summary", {}, "Brancher Claude Code, Codex ou Gemini"),
         el("div", { class: "net-chips agents-tools" }, ...toolButtons),
+        hookState,
+        el("div", { class: "btn-row" }, install, uninstall, test),
+        el("div", { class: "muted agents-subtitle" }, "Ou à la main"),
         steps,
-        el("div", { class: "btn-row" }, copy, test),
+        el("div", { class: "btn-row" }, copy),
         mcpSteps,
         el("div", { class: "btn-row" }, copyMcp),
         permText,
         el("div", { class: "btn-row" }, copyPerm),
       );
       drawGuide();
+      void loadHookStates();
 
       // Le mode concentration : les notifications des agents attendent, résumé à la fin.
       const QUIET_CHOICES: [number, string][] = [[25, "25 min"], [60, "1 h"], [120, "2 h"], [0, "Jusqu'à l'arrêt"]];
