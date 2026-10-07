@@ -164,13 +164,21 @@ function notes() {
   };
 }
 
+/** Un jeton JWT inventé (bouton « Décoder » du Presse-papiers) : émis il y a 1 h, valable 8 h. */
+function demoJwt(): string {
+  const part = (o: object) => btoa(JSON.stringify(o)).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const iat = Math.floor(Date.now() / 1000 / 60) * 60 - 3600;
+  return `${part({ alg: "HS256", typ: "JWT" })}.${part({ sub: "demo", name: "Camille", role: "support", iat, exp: iat + 8 * 3600 })}.q3vN8kH2pL0sT5wY7zB1cD4fG6jM9nR2tV5xA8eC0Eo`;
+}
+
 function clipboard(query: string) {
+  const jwt = demoJwt();
   const items = [
     { id: 1, preview: "https://ondine.pissits.com", chars: 26, at: Date.now() - 2 * MIN },
+    { id: 5, preview: jwt, chars: jwt.length, at: Date.now() - 5 * MIN },
     { id: 2, preview: "git commit -m \"Ondine 1.0\"", chars: 26, at: Date.now() - 9 * MIN },
     { id: 3, preview: "Rendez-vous jeudi à 14 h devant la gare", chars: 39, at: Date.now() - 40 * MIN },
     { id: 4, preview: "#4FB8FF", chars: 7, at: Date.now() - 2 * 3600_000 },
-    { id: 5, preview: "ipconfig /flushdns", chars: 18, at: Date.now() - 5 * 3600_000 },
   ]
     .map((i) => ({ ...i, pinned: state.pinnedClips.has(i.id) }))
     .filter((i) => !query || i.preview.toLowerCase().includes(query.toLowerCase()));
@@ -532,6 +540,9 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return agentsHistory();
     case "agents.projects":
       return { tools: ["claude", "codex", "gemini"], projects: [{ path: `${HOME}\\Projets\\site-ondine`, name: "site-ondine" }] };
+    // « Reprendre » : la dernière phrase de la dernière session du projet.
+    case "agents.last_sessions":
+      return [{ index: 0, found: true, who: "assistant", text: "Le site est à jour.", at: Date.now() - 2 * 3600_000 }];
     case "agents.hook_config":
       return { exe: "C:\\Program Files\\Ondine\\ondine.exe" };
     case "agents.answer":

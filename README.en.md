@@ -28,6 +28,7 @@ The intro video is on the website: [ondine.pissits.com](https://ondine.pissits.c
 
 ## Contents
 
+- [What's new](#whats-new)
 - [Install](#install)
 - [Getting started](#getting-started)
 - [The tabs](#the-tabs): [Music](#music) · [Controls](#controls) · [Shelf](#shelf) · [Clipboard](#clipboard) · [Capture](#capture) · [Timer](#timer) · [Notes](#notes) · [Calendar](#calendar) · [Terminal](#terminal) · [System](#system) · [Remote access](#remote-access) · [Network](#network) · [AI agents](#ai-agents) · [Ask Claude](#ask-claude) · [Launcher](#launcher) · [Rules](#rules)
@@ -36,6 +37,43 @@ The intro video is on the website: [ondine.pissits.com](https://ondine.pissits.c
 - [Privacy and security](#privacy-and-security)
 - [Build from source](#build-from-source)
 - [License and credits](#license-and-credits)
+
+---
+
+## What's new
+
+Coming in the next version (the full list is in the
+[CHANGELOG](CHANGELOG.md)). Click a picture to read the details.
+
+<table>
+<tr>
+<td width="50%" valign="top"><a href="#launcher"><img src="docs/captures/en/lanceur-calcul.webp" width="380" alt="Launcher: 192.168.1.0/26 gives the number of hosts, the mask, the network and the first address"></a><br><b><a href="#launcher">Calculations in the Launcher</a></b>: math, percentages, units, bytes, IPv4 subnets and the time in another city; Enter copies the result.</td>
+<td width="50%" valign="top"><a href="#clipboard"><img src="docs/captures/en/presse-papiers-decoder.webp" width="380" alt="Clipboard: a decoded JWT, with its algorithm and its issue and expiry dates"></a><br><b><a href="#clipboard">Decode a copy</a></b>: a JWT, Base64, an encoded address, compact JSON or a Unix timestamp, read in plain text on your PC.</td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="#shelf"><img src="docs/captures/en/etagere-telephone.webp" width="380" alt="Shelf: the “To the phone” QR code for Présentation.pptx, expiring in 4:59"></a><br><b><a href="#shelf">To the phone</a></b>: a file from the shelf goes to your phone through a QR code, on the same Wi-Fi, without going over the Internet.</td>
+<td width="50%" valign="top"><a href="#controls"><img src="docs/captures/en/onglet-controls.webp" width="380" alt="Controls tab: the Dark and Night light toggles on, and a KINGSTON USB drive with Eject"></a><br><b><a href="#controls">Dark, Night light and USB drives</a></b>: Windows dark mode and night light in one click, and "Eject" for each plugged-in USB drive.</td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="#system"><img src="docs/captures/en/systeme-horloges.webp" width="380" alt="System tab: the clocks of Montreal (−6 h) and Tokyo (+7 h)"></a><br><b><a href="#system">World clocks</a></b>: up to 4 cities in the System tab, with the time difference (and "tomorrow" when the day changes).</td>
+<td width="50%" valign="top"><a href="#capture"><img src="docs/captures/en/onglet-capture.webp" width="380" alt="Capture tab: the new Animated GIF row, with Record a GIF"></a><br><b><a href="#capture">Animated GIF</a></b>: an area of the screen recorded as an animated GIF, saved with your screenshots and put on the shelf.</td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="#ai-agents"><img src="docs/captures/en/agent-bilan.webp" width="347" alt="Alert: Claude is done, 3 files changed, +120 −14, with Go there, Open in VS Code and Terminal here"></a><br><b><a href="#ai-agents">When an agent is done</a></b>: the changed files and "Open in VS Code"; in the tab, "Resume" reopens the last session.</td>
+<td width="50%" valign="top"><a href="#calendar"><img src="docs/captures/en/agenda-rejoindre.webp" width="293" alt="Alert: Meeting in 2 min, Revue du site, Google Meet, with Join"></a><br><b><a href="#calendar">Join the meeting</a></b>: two minutes before a video call, one click opens it, pauses the music and warns you if your mic is muted.</td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="#updates"><img src="docs/captures/en/quoi-de-neuf.webp" width="358" alt="Alert: What's new in Ondine 1.0.1, three changes, with See all and OK"></a><br><b><a href="#updates">What's new</a></b>: after an update, the island shows the version's main changes once.</td>
+<td width="50%" valign="top"><a href="#the-tabs"><img src="docs/captures/en/astuce-onglet.webp" width="380" alt="Empty Shelf tab, with the tip bubble: Drag a file onto the island to put it here"></a><br><b><a href="#the-tabs">A tip for each tab</a></b>: the first time a tab opens, a bubble explains its main gesture in one sentence.</td>
+</tr>
+</table>
+
+Also:
+
+- **SHA-256 hash**: drop a file on the "Hash" target; if you copied a hash, Ondine tells you whether it matches ([Shelf](#shelf)).
+- **Wake a remote PC** (Wake-on-LAN), from the tab or the Launcher ([Remote access](#remote-access)).
+- **Pending restart**: the System tab shows it, with a gentle reminder ([System](#system)).
+- **Weekly summary**: completed Pomodoros, focus time and checked tasks ([No tab](#no-tab-breaks-weather-and-weekly-summary)).
 
 ---
 
@@ -74,6 +112,8 @@ X.Y.Z"** once: the version's three main changes (taken from the
 [CHANGELOG](CHANGELOG.md), built into the app), and **See all**, which opens the
 version's page on GitHub. To see it again: Settings → General → About → **See
 what's new**.
+
+<p align="center"><img src="docs/captures/en/quoi-de-neuf.webp" width="656" alt="Alert: What's new in Ondine 1.0.1, three changes, with See all and OK"></p>
 
 ### Uninstall
 
@@ -146,7 +186,7 @@ bar. Ondine only reads what Windows already exposes.
 
 ### Controls
 
-<img src="docs/captures/en/onglet-controls.webp" width="696" alt="Controls tab: Wi-Fi, Bluetooth, airplane mode, volume, microphone, brightness">
+<img src="docs/captures/en/onglet-controls.webp" width="696" alt="Controls tab: Wi-Fi, Bluetooth, airplane mode, mic, Dark, Night light, volume, brightness, and a USB drive with Eject">
 
 Speaker and microphone volume, screen brightness, Wi-Fi, Bluetooth and airplane
 mode, without opening Windows settings. The audio output is picked under the
@@ -187,6 +227,8 @@ address (a random 128-bit token), then closes after one complete download, after
 5 minutes, or on "Stop". The first time, Windows may ask you to allow Ondine on
 **private networks**: accept, otherwise the phone won't find the PC.
 
+<img src="docs/captures/en/etagere-telephone.webp" width="696" alt="Shelf: the “To the phone” QR code for Présentation.pptx, its address on the local network, Stop and the time left">
+
 - **Favorite folders**: each becomes a target when you drag files onto the island; **Dropping on a favorite** copies (default) or moves.
 - **"Recycle Bin", "Compress", "Images" and "Rename" targets** (on)
 - **"Hash" target (SHA-256)** (on): drop a file on it to compute its SHA-256 (a multi-GB ISO works, with **Stop**). If the clipboard contains a hash (MD5, SHA-1, SHA-256 or SHA-512, alone or in a `sha256sum` / `certutil` list), the same algorithm is computed and the island says **Identical ✓** (green) or **Different ✗** (red). The full result is shown, with **Copy**; 5 files at most at a time.
@@ -210,12 +252,14 @@ address (`%20`); **Format** for compact JSON; **Read the date** for a Unix
 timestamp (10 or 13 digits). The result is shown in the tab, with **Copy**;
 everything happens on your PC and nothing is written to the log.
 
+<img src="docs/captures/en/presse-papiers-decoder.webp" width="696" alt="Clipboard: a decoded JWT, with the signature warning, the algorithm, the issue date and the expiry date (still valid)">
+
 - **Number of copies kept**: 50 (10 to 500; pinned items don't count)
 - **Clean copied links** (on): removes `utm_source`, `fbclid`, `gclid`…; the notification offers to restore the original.
 
 ### Capture
 
-<img src="docs/captures/en/onglet-capture.webp" width="696" alt="Capture tab: text, annotate, PNG, shelf, color picker and recent colors">
+<img src="docs/captures/en/onglet-capture.webp" width="696" alt="Capture tab: text, annotate, PNG, shelf, color picker and recent colors, Record a GIF">
 
 Capture an area of the screen with the Windows tool, then: **Text** (the text
 in the image is read by Windows OCR, on your PC, offline), **Annotate** (arrow,
@@ -283,6 +327,8 @@ is muted (with the Controls tab on), a second alert says so, with **Unmute the
 mic**. Only one offer per event; it replaces the reminder if both come at the
 same time.
 
+<p align="center"><img src="docs/captures/en/agenda-rejoindre.webp" width="536" alt="Alert: Meeting in 2 min, Revue du site, 17:15 – 18:00, Google Meet, with Join"></p>
+
 - **Show events for the next**: 60 days (7 to 365)
 - **Reminder before an event**: 10 min (0 = never)
 - **Offer to join the meeting**: 2 min before (0 = never, up to 30)
@@ -319,6 +365,8 @@ restarts the PC itself.
 - **World clocks** (empty): up to 4 cities separated by commas, for example `Montreal, Tokyo`. The tab shows the time in each, "tomorrow" or "yesterday" when the day differs, and the difference with here ("+6 h"). About 200 major cities (French or English names, accents optional) and `UTC`; an unknown city is flagged under the field. Times are computed on the PC.
 - **Remind me of a pending restart** (on): a gentle notification, at most once a day, after a day of waiting, never during a call (mic in use) or a presentation.
 
+<img src="docs/captures/en/systeme-horloges.webp" width="696" alt="System tab, further down: the clocks of Montreal (08:02, −6 h) and Tokyo (21:02, +7 h), then the disks and the network">
+
 ### Remote access
 
 <img src="docs/captures/en/onglet-remote.webp" width="696" alt="Remote access tab: SSH and RDP favorites with their status">
@@ -353,7 +401,7 @@ servers, and tells you when something drops.
 
 ### AI agents
 
-<img src="docs/captures/en/onglet-agents.webp" width="696" alt="AI agents tab: launch Claude Code, Codex or Gemini CLI, running sessions, latest messages">
+<img src="docs/captures/en/onglet-agents.webp" width="696" alt="AI agents tab: launch Claude Code, Codex or Gemini CLI, Resume the project's last session, running sessions">
 
 Launch **Claude Code**, **Codex** or **Gemini CLI** in one of your projects with
 one click. A board shows running sessions; "Go there" brings the right window
@@ -375,6 +423,8 @@ touched files), with **Open in VS Code** (if VS Code is installed) and
 **Terminal here**. Ondine runs `git status` and `git diff --numstat` read-only,
 for 3 seconds at most; without git or outside a repository, the notification
 stays as before.
+
+<p align="center"><img src="docs/captures/en/agent-bilan.webp" width="636" alt="Alert: Claude is done, 3 files changed, +120 −14 (index.html, style.css, README.md), with Go there, Open in VS Code and Terminal here"></p>
 
 **Connect an agent in 3 steps:**
 
@@ -441,6 +491,8 @@ tasks, clipboard, shelf and screenshots. ↑ ↓ to choose, Enter to open.
 
 It also **calculates**: when the search is a calculation, the answer comes first
 and **Enter copies it** (small "Copied" notification).
+
+<img src="docs/captures/en/lanceur-calcul.webp" width="696" alt="Launcher: 192.168.1.0/26 gives 62 hosts, the mask 255.255.255.192, the network and the first address">
 
 - Math: `2 + 3 * 4`, `(1.5 + 2) ^ 2`, `1,200 / 3`, `18% of 240`, `240 + 18%`, `15%` (= 0.15), `sqrt 2`. Numbers follow the interface language (in French: decimal comma, spaces between thousands).
 - Units: `1 GB in MiB`, `100 Mbit/s in MB/s`, `90 min in h`, `20 °C in °F`, `10 km -> mi`, `5 lb in kg`. Bytes: KB, MB, GB, TB are powers of 1000, KiB, MiB, GiB, TiB powers of 1024 (B = byte, b = bit).

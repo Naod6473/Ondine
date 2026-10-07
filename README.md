@@ -28,6 +28,7 @@ La vidéo de présentation est sur le site : [ondine.pissits.com](https://ondine
 
 ## Sommaire
 
+- [Nouveautés](#nouveautés)
 - [Installer](#installer)
 - [Premiers pas](#premiers-pas)
 - [Les onglets](#les-onglets) : [Musique](#musique) · [Contrôles](#contrôles) · [Étagère](#étagère) · [Presse-papiers](#presse-papiers) · [Capture](#capture) · [Minuteur](#minuteur) · [Notes](#notes) · [Agenda](#agenda) · [Terminal](#terminal) · [Système](#système) · [Accès distants](#accès-distants) · [Réseau](#réseau) · [Agents IA](#agents-ia) · [Demander à Claude](#demander-à-claude) · [Lanceur](#lanceur) · [Règles](#règles)
@@ -36,6 +37,43 @@ La vidéo de présentation est sur le site : [ondine.pissits.com](https://ondine
 - [Vie privée et sécurité](#vie-privée-et-sécurité)
 - [Construire depuis les sources](#construire-depuis-les-sources)
 - [Licence et crédits](#licence-et-crédits)
+
+---
+
+## Nouveautés
+
+Ce qui arrive dans la prochaine version (la liste complète est dans le
+[CHANGELOG](CHANGELOG.md)). Cliquez sur une image pour lire le détail.
+
+<table>
+<tr>
+<td width="50%" valign="top"><a href="#lanceur"><img src="docs/captures/fr/lanceur-calcul.webp" width="380" alt="Lanceur : 192.168.1.0/26 donne le nombre d'hôtes, le masque, le réseau et la première adresse"></a><br><b><a href="#lanceur">Calculs dans le Lanceur</a></b> : opérations, pourcentages, unités, octets, sous-réseaux IPv4 et heure dans une autre ville ; Entrée copie le résultat.</td>
+<td width="50%" valign="top"><a href="#presse-papiers"><img src="docs/captures/fr/presse-papiers-decoder.webp" width="380" alt="Presse-papiers : un jeton JWT décodé, avec son algorithme et ses dates d'émission et d'expiration"></a><br><b><a href="#presse-papiers">Décoder une copie</a></b> : un jeton JWT, du Base64, une adresse encodée, du JSON compact ou une date Unix, lus en clair sur votre PC.</td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="#étagère"><img src="docs/captures/fr/etagere-telephone.webp" width="380" alt="Étagère : le QR code « Vers le téléphone » pour Présentation.pptx, qui expire dans 4:59"></a><br><b><a href="#étagère">Vers le téléphone</a></b> : un fichier de l'étagère part sur le téléphone par un QR code, sur le même Wi-Fi, sans passer par Internet.</td>
+<td width="50%" valign="top"><a href="#contrôles"><img src="docs/captures/fr/onglet-controls.webp" width="380" alt="Onglet Contrôles : les pastilles Sombre et Veilleuse allumées, et une clé USB KINGSTON avec Éjecter"></a><br><b><a href="#contrôles">Sombre, Veilleuse et clés USB</a></b> : le mode sombre et l'éclairage nocturne de Windows en un clic, et «&nbsp;Éjecter&nbsp;» pour chaque clé USB branchée.</td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="#système"><img src="docs/captures/fr/systeme-horloges.webp" width="380" alt="Onglet Système : les horloges de Montréal (−6 h) et de Tokyo (+7 h)"></a><br><b><a href="#système">Horloges du monde</a></b> : jusqu'à 4 villes dans l'onglet Système, avec l'écart d'heure (et «&nbsp;demain&nbsp;» si le jour change).</td>
+<td width="50%" valign="top"><a href="#capture"><img src="docs/captures/fr/onglet-capture.webp" width="380" alt="Onglet Capture : la nouvelle ligne GIF animé, avec Enregistrer un GIF"></a><br><b><a href="#capture">GIF animé</a></b> : une zone de l'écran filmée en GIF animé, rangée avec vos captures et posée sur l'étagère.</td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="#agents-ia"><img src="docs/captures/fr/agent-bilan.webp" width="347" alt="Alerte : Claude a fini, 3 fichiers modifiés, +120 −14, avec Y aller, Ouvrir dans VS Code et Terminal ici"></a><br><b><a href="#agents-ia">Quand un agent a fini</a></b> : les fichiers modifiés et «&nbsp;Ouvrir dans VS Code&nbsp;» ; dans l'onglet, «&nbsp;Reprendre&nbsp;» rouvre la dernière session.</td>
+<td width="50%" valign="top"><a href="#agenda"><img src="docs/captures/fr/agenda-rejoindre.webp" width="293" alt="Alerte : Réunion dans 2 min, Revue du site, Google Meet, avec Rejoindre"></a><br><b><a href="#agenda">Rejoindre la réunion</a></b> : deux minutes avant une visio, un clic l'ouvre, met la musique en pause et prévient si le micro est coupé.</td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="#mises-à-jour"><img src="docs/captures/fr/quoi-de-neuf.webp" width="358" alt="Alerte : Quoi de neuf dans Ondine 1.0.1, trois nouveautés, avec Tout voir et OK"></a><br><b><a href="#mises-à-jour">Quoi de neuf</a></b> : après une mise à jour, l'île montre une fois les principales nouveautés de la version.</td>
+<td width="50%" valign="top"><a href="#les-onglets"><img src="docs/captures/fr/astuce-onglet.webp" width="380" alt="Onglet Étagère vide, avec la bulle d'astuce : Glissez un fichier sur l'île pour le poser ici"></a><br><b><a href="#les-onglets">Une astuce par onglet</a></b> : la première fois qu'un onglet s'ouvre, une bulle explique son geste principal en une phrase.</td>
+</tr>
+</table>
+
+Et aussi :
+
+- **Empreinte SHA-256** : glissez un fichier sur la cible « Empreinte » ; si vous avez copié une empreinte, Ondine dit si elle est identique ([Étagère](#étagère)).
+- **Réveiller un PC** à distance (Wake-on-LAN), depuis l'onglet ou le Lanceur ([Accès distants](#accès-distants)).
+- **Redémarrage en attente** : l'onglet Système le signale, avec un rappel doux ([Système](#système)).
+- **Bilan de la semaine** : Pomodoros terminés, temps de concentration et tâches cochées ([Sans onglet](#sans-onglet--pauses-météo-et-bilan-de-la-semaine)).
 
 ---
 
@@ -77,6 +115,8 @@ neuf dans Ondine X.Y.Z »** : les trois principales nouveautés de la version
 (tirées du [CHANGELOG](CHANGELOG.md), intégré à l'appli), et **Tout voir**, qui
 ouvre la page de la version sur GitHub. Pour la revoir : Réglages → Général →
 À propos → **Voir les nouveautés**.
+
+<p align="center"><img src="docs/captures/fr/quoi-de-neuf.webp" width="656" alt="Alerte : Quoi de neuf dans Ondine 1.0.1, trois nouveautés, avec Tout voir et OK"></p>
 
 ### Désinstaller
 
@@ -150,7 +190,7 @@ expose déjà.
 
 ### Contrôles
 
-<img src="docs/captures/fr/onglet-controls.webp" width="696" alt="Onglet Contrôles : Wi-Fi, Bluetooth, mode avion, volume, micro, luminosité">
+<img src="docs/captures/fr/onglet-controls.webp" width="696" alt="Onglet Contrôles : Wi-Fi, Bluetooth, mode avion, micro, Sombre, Veilleuse, volume, luminosité, et une clé USB avec Éjecter">
 
 Le volume des haut-parleurs et du micro, la luminosité des écrans, le Wi-Fi,
 le Bluetooth et le mode avion, sans ouvrir Windows. La sortie audio se choisit
@@ -193,6 +233,8 @@ Internet), qui sert ce seul fichier à une adresse secrète (un jeton au hasard 
 ou sur « Arrêter ». La première fois, Windows peut demander d'autoriser Ondine
 sur les **réseaux privés** : acceptez, sinon le téléphone ne trouvera pas le PC.
 
+<img src="docs/captures/fr/etagere-telephone.webp" width="696" alt="Étagère : le QR code « Vers le téléphone » pour Présentation.pptx, son adresse sur le réseau local, Arrêter et le temps restant">
+
 - **Dossiers favoris** : chacun devient une cible quand vous glissez des fichiers sur l'île ; **Lâcher sur un favori** copie (par défaut) ou déplace.
 - **Cibles « Corbeille », « Compresser », « Images » et « Renommer »** (oui)
 - **Cible « Empreinte » (SHA-256)** (oui) : glissez un fichier dessus pour calculer son SHA-256 (un ISO de plusieurs Go marche, avec **Arrêter**). Si le presse-papiers contient une empreinte (MD5, SHA-1, SHA-256 ou SHA-512, seule ou dans une liste `sha256sum` / `certutil`), le même algorithme est calculé et l'île dit **Identique ✓** (en vert) ou **Différente ✗** (en rouge). Le résultat s'affiche en entier, avec **Copier** ; 5 fichiers au plus à la fois.
@@ -218,12 +260,14 @@ ou une adresse encodée (`%20`) ; **Mettre en forme** pour du JSON compact ;
 s'affiche dans l'onglet, avec **Copier** ; tout se fait sur votre PC, rien
 n'est écrit dans le journal.
 
+<img src="docs/captures/fr/presse-papiers-decoder.webp" width="696" alt="Presse-papiers : un jeton JWT décodé, avec l'avertissement sur la signature, l'algorithme, la date d'émission et la date d'expiration (encore valide)">
+
 - **Nombre de copies gardées** : 50 (de 10 à 500 ; les épinglées ne comptent pas)
 - **Nettoyer les liens copiés** (oui) : retire `utm_source`, `fbclid`, `gclid`… ; la notification propose de remettre l'original.
 
 ### Capture
 
-<img src="docs/captures/fr/onglet-capture.webp" width="696" alt="Onglet Capture : texte, annoter, PNG, étagère, pipette et couleurs récentes">
+<img src="docs/captures/fr/onglet-capture.webp" width="696" alt="Onglet Capture : texte, annoter, PNG, étagère, pipette et couleurs récentes, Enregistrer un GIF">
 
 Capturez une zone de l'écran avec l'outil de Windows, puis :
 **Texte** (le texte de l'image est lu par l'OCR de Windows, sur votre PC, hors
@@ -294,6 +338,8 @@ met en pause, et si votre micro est coupé (onglet Contrôles activé),
 une deuxième alerte le dit, avec **Rétablir le micro**. Une seule proposition
 par rendez-vous ; elle remplace le rappel s'il tombe au même moment.
 
+<p align="center"><img src="docs/captures/fr/agenda-rejoindre.webp" width="536" alt="Alerte : Réunion dans 2 min, Revue du site, 17:15 – 18:00, Google Meet, avec Rejoindre"></p>
+
 - **Afficher les rendez-vous des prochains** : 60 jours (7 à 365)
 - **Rappel avant un rendez-vous** : 10 min (0 = jamais)
 - **Proposer de rejoindre la réunion** : 2 min avant (0 = jamais, jusqu'à 30)
@@ -331,6 +377,8 @@ le support le mentionne aussi. Ondine ne redémarre jamais le PC elle-même.
 - **Horloges du monde** (vide) : jusqu'à 4 villes séparées par des virgules, par exemple `Montréal, Tokyo`. L'onglet montre l'heure de chacune, « demain » ou « hier » si le jour diffère, et l'écart avec ici (« +6 h »). Environ 200 grandes villes connues (noms français ou anglais, sans accents si vous voulez) et `UTC` ; une ville inconnue est signalée sous le champ. Les heures sont calculées sur le PC.
 - **Rappeler un redémarrage en attente** (oui) : une notification douce, au plus une fois par jour, après un jour d'attente, jamais pendant un appel (micro utilisé) ni une présentation.
 
+<img src="docs/captures/fr/systeme-horloges.webp" width="696" alt="Onglet Système, plus bas : les horloges de Montréal (08:02, −6 h) et de Tokyo (21:02, +7 h), puis les disques et le réseau">
+
 ### Accès distants
 
 <img src="docs/captures/fr/onglet-remote.webp" width="696" alt="Onglet Accès distants : favoris SSH et RDP avec leur état">
@@ -366,7 +414,7 @@ serveurs, et prévient quand ça coupe.
 
 ### Agents IA
 
-<img src="docs/captures/fr/onglet-agents.webp" width="696" alt="Onglet Agents IA : lancer Claude Code, Codex ou Gemini CLI, sessions en cours, derniers messages">
+<img src="docs/captures/fr/onglet-agents.webp" width="696" alt="Onglet Agents IA : lancer Claude Code, Codex ou Gemini CLI, Reprendre la dernière session du projet, sessions en cours">
 
 Lance **Claude Code**, **Codex** ou **Gemini CLI** dans un de vos projets en un
 clic. Un tableau montre les sessions en cours ; « Y aller » ramène devant la
@@ -388,6 +436,8 @@ fichiers les plus touchés), avec **Ouvrir dans VS Code** (si VS Code est
 installé) et **Terminal ici**. Ondine lance `git status` et `git diff --numstat`
 en lecture seule, 3 secondes au plus ; sans git ou hors d'un dépôt, la
 notification reste comme avant.
+
+<p align="center"><img src="docs/captures/fr/agent-bilan.webp" width="636" alt="Alerte : Claude a fini, 3 fichiers modifiés, +120 −14 (index.html, style.css, README.md), avec Y aller, Ouvrir dans VS Code et Terminal ici"></p>
 
 **Brancher un agent, en 3 étapes :**
 
@@ -455,6 +505,8 @@ minuteur). Il cherche aussi **dans l'île** : notes et tâches, presse-papiers,
 
 Il **calcule** aussi : quand la recherche est un calcul, la réponse vient en
 premier et **Entrée la copie** (petite notification « Copié »).
+
+<img src="docs/captures/fr/lanceur-calcul.webp" width="696" alt="Lanceur : 192.168.1.0/26 donne 62 hôtes, le masque 255.255.255.192, le réseau et la première adresse">
 
 - Calculs : `2 + 3 × 4`, `(1,5 + 2) ^ 2`, `1 200 / 3`, `18 % de 240`, `240 + 18 %`, `15 %` (= 0,15), `racine de 2`. Nombres à la française (virgule, espaces de milliers).
 - Unités : `1 Go en Mio`, `100 Mbit/s en Mo/s`, `90 min en h`, `20 °C en °F`, `10 km -> mi`, `5 lb en kg`. Octets : Ko, Mo, Go, To en puissances de 1000, Kio, Mio, Gio, Tio en 1024 (KB, MiB… aussi ; B = octet, b = bit).
