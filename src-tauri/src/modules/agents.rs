@@ -15,11 +15,22 @@
 // d'ailleurs n'est ajouté à la ligne de commande.
 //
 // Sécurité : ce qui arrive par le canal est du TEXTE À AFFICHER, rien de plus.
-// On n'exécute rien, on ne suit aucun chemin, on n'ouvre rien. Les textes sont
-// tronqués, le dossier du projet est réduit à son nom. Le texte que tu tapes
-// dans Claude (« prompt ») n'est jamais lu. Le journal ne note que le type
-// d'événement, jamais son contenu. L'historique reste en mémoire (perdu à la
-// fermeture de l'île).
+// On n'exécute rien de ce qu'il contient, on n'ouvre rien. Les textes sont
+// tronqués, le dossier du projet est réduit à son nom pour l'affichage. Le
+// texte que tu tapes dans Claude (« prompt ») n'est jamais lu. Le journal ne
+// note que le type d'événement, jamais son contenu. L'historique reste en
+// mémoire (perdu à la fermeture de l'île).
+//
+// Une seule exception, mesurée : le bilan de fin de tâche (agents_git.rs).
+// Quand un agent a fini, le dossier de sa session (validé par `check_path`,
+// dans un dépôt git) sert à lancer git.exe, par son chemin complet, en
+// lecture seule et 3 s au plus, pour montrer « 3 fichiers modifiés, +120 −14 ».
+// Les boutons « Ouvrir dans VS Code » et « Terminal ici » n'agissent que sur
+// ton clic.
+//
+// « Reprendre » (agents_resume.rs) relance Claude Code avec `--continue`
+// (Codex : `resume --last`) et montre la dernière phrase de la session, lue à
+// la fin du fichier de session de Claude Code, sur ton PC : jamais journalisée.
 
 use crate::sync::LockExt;
 use std::collections::{HashMap, VecDeque};
@@ -31,11 +42,14 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use tauri::AppHandle;
 
+use super::agents_git as git;
 use super::agents_hooks as hooks;
+use super::agents_resume as resume;
 use super::{ModuleContext, RustModule};
 use crate::services::bus::BusMessage;
 use crate::cli::MAX_MESSAGE;
 use crate::platform;
+use crate::platform::devtools;
 use crate::services::{files, log};
 
 const ID: &str = "agents";
@@ -64,6 +78,23 @@ struct Event {
     project: String,
     /// La session (« outil:numéro ») : sert au bouton « Y aller ».
     session: String,
+    /// « A fini » : ce qui a changé dans le dossier de la session (dépôt git).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    changes: Option<Report>,
+}
+
+/// Le bilan d'une fin de tâche, tel que le front le reçoit.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+struct Report {
+    /// files, added, removed, names (agents_git.rs).
+    #[serde(flatten)]
+    changes: git::Changes,
+    /// Le dossier de la session (chemin complet, validé) : pour les boutons.
+    dir: String,
+    /// VS Code est-il installé ? (bouton « Ouvrir dans VS Code »)
+    vscode: bool,
+    /// Le module Terminal est-il actif ? (bouton « Terminal ici »)
+    terminal: bool,
 }
 
 /// Une session d'agent, pour le tableau « En cours ».
@@ -174,6 +205,7 @@ impl RustModule for Agents {
                     body: "Les hooks et le serveur MCP ne peuvent pas joindre l'île. Redémarrez l'île ; si ça continue, un autre programme occupe peut-être le canal.".into(),
                     project: String::new(),
                     session: String::new(),
+                    changes: None,
                 };
                 publish_info(&a, &s, event);
             }
@@ -383,20 +415,54 @@ impl RustModule for Agents {
                 );
                 Ok(json!({ "tools": tools, "projects": list.iter().map(|p| json!({ "path": p.display().to_string(), "name": folder_name(p) })).collect::<Vec<_>>() }))
             }
-            // { tool, path? | index? } : ouvre cet agent dans ce dossier.
+            // { tool, path? | index?, resume? } : ouvre cet agent dans ce dossier
+            // (resume : en reprenant sa dernière session).
             "launch" => {
                 let tool = Tool::parse(args.get("tool").and_then(Value::as_str).unwrap_or("claude"))?;
+                let resume = args.get("resume") == Some(&Value::Bool(true));
                 let dir = match (args.get("path").and_then(Value::as_str), args.get("index").and_then(Value::as_u64)) {
                     (Some(path), _) => folder_of(ctx.check_path(path)?),
                     (None, Some(i)) => projects(ctx).into_iter().nth(i as usize).ok_or("projet introuvable")?,
                     (None, None) => projects(ctx).into_iter().next().unwrap_or_else(platform::home_dir),
                 };
-                launch(ctx, tool, &dir)?;
+                launch(ctx, tool, &dir, resume)?;
                 Ok(json!({ "dir": dir.display().to_string() }))
             }
-            // « Essayer » : comme si Claude venait de finir.
+            // La dernière session de Claude Code de chaque projet du réglage
+            // (pour « Reprendre ») : [{ index, found, text?, who?, at? }].
+            // La phrase n'est lue que si le réglage « resumePreview » le veut.
+            "last_sessions" => {
+                let preview = ctx.settings().get("resumePreview").and_then(Value::as_bool).unwrap_or(true);
+                let root = claude_dir().join("projects");
+                let list: Vec<Value> = projects(ctx)
+                    .iter()
+                    .enumerate()
+                    .map(|(i, p)| match resume::last_session(&root, p, preview) {
+                        Some(s) => json!({ "index": i, "found": true, "text": s.text, "who": s.who, "at": s.at }),
+                        None => json!({ "index": i, "found": false }),
+                    })
+                    .collect();
+                Ok(Value::Array(list))
+            }
+            // { path } : ouvre VS Code dans ce dossier (bouton du bilan de fin de tâche).
+            "open_vscode" => {
+                let raw = args.get("path").and_then(Value::as_str).ok_or("dossier manquant")?;
+                let dir = ctx.check_path(raw)?;
+                if !dir.is_dir() {
+                    return Err("ce n'est pas un dossier".into());
+                }
+                let code = devtools::find_vscode().ok_or("VS Code n'est pas installé sur ce PC")?;
+                // VS Code doit pouvoir passer devant l'île.
+                platform::forget_previous_foreground();
+                devtools::open_in_vscode(&code, &dir)?;
+                ctx.log_info(format!("ouvre VS Code dans {}", dir.display()));
+                Ok(Value::Null)
+            }
+            // « Essayer » : comme si Claude venait de finir, dans le premier
+            // projet du réglage (pour voir son bilan), sinon un dossier fictif.
             "test" => {
-                let msg = json!({ "v": 1, "source": "claude-code", "hook": { "hook_event_name": "Stop", "session_id": "essai", "cwd": "C:\\Projets\\Island" } });
+                let cwd = projects(ctx).into_iter().next().map(|p| p.display().to_string()).unwrap_or_else(|| "C:\\Projets\\Island".into());
+                let msg = json!({ "v": 1, "source": "claude-code", "hook": { "hook_event_name": "Stop", "session_id": "essai", "cwd": cwd } });
                 receive(ctx.app, &self.state, msg.to_string().as_bytes());
                 Ok(Value::Null)
             }
@@ -440,6 +506,16 @@ impl Tool {
             Self::Gemini => "gemini",
         }
     }
+
+    /// Les paramètres pour reprendre la dernière session dans le dossier :
+    /// `claude --continue`, `codex resume --last`. Des mots fixes, rien d'autre.
+    fn resume_args(self) -> Result<&'static [&'static str], String> {
+        match self {
+            Self::Claude => Ok(&["--continue"]),
+            Self::Codex => Ok(&["resume", "--last"]),
+            Self::Gemini => Err("Gemini CLI : la reprise d'une session n'est pas proposée ici".into()),
+        }
+    }
 }
 
 /// Les agents proposés (réglages « Proposer … »), dans l'ordre.
@@ -453,8 +529,9 @@ fn tools(ctx: &ModuleContext) -> Vec<&'static str> {
         .collect()
 }
 
-fn launch(ctx: &ModuleContext, tool: Tool, dir: &Path) -> Result<(), String> {
+fn launch(ctx: &ModuleContext, tool: Tool, dir: &Path, resume: bool) -> Result<(), String> {
     ctx.require("files")?;
+    let extra: &[&str] = if resume { tool.resume_args()? } else { &[] };
     let in_wt = ctx.settings().get("claudeIn").and_then(Value::as_str) == Some("wt");
     // Le chemin complet du programme, trouvé dans le PATH (jamais dans le
     // projet). Jamais le mot seul : la console ouverte cherche les programmes
@@ -464,20 +541,22 @@ fn launch(ctx: &ModuleContext, tool: Tool, dir: &Path) -> Result<(), String> {
     let word = platform::find_program(tool.word())
         .map(|p| p.display().to_string())
         .ok_or_else(|| format!("{} n'est pas installé sur ce PC", tool.word()))?;
-    let (program, args) = agent_command(&word, dir, in_wt);
+    let (program, args) = agent_command(&word, extra, dir, in_wt);
     // La console doit pouvoir passer devant l'île.
     platform::forget_previous_foreground();
     platform::spawn_console(program, &args, dir)?;
-    ctx.log_info(format!("ouvre {} dans {}", tool.word(), dir.display()));
+    ctx.log_info(format!("ouvre {}{} dans {}", tool.word(), if resume { " (reprise)" } else { "" }, dir.display()));
     Ok(())
 }
 
-/// « cmd /k <chemin complet de claude> » (ou codex, gemini) : la fenêtre
-/// reste ouverte quand l'agent se termine.
-fn agent_command(word: &str, dir: &Path, in_wt: bool) -> (&'static str, Vec<String>) {
+/// « cmd /k <chemin complet de claude> » (ou codex, gemini), suivi des mots
+/// fixes `extra` (« --continue ») : la fenêtre reste ouverte quand l'agent se
+/// termine.
+fn agent_command(word: &str, extra: &[&str], dir: &Path, in_wt: bool) -> (&'static str, Vec<String>) {
     // Dans Windows Terminal, « cmd.exe » est cherché par Windows Terminal, qui
     // démarre dans le dossier du projet : on lui donne le chemin complet.
-    let cmd = [system_cmd(std::env::var("SystemRoot").ok()), "/k".into(), word.into()];
+    let mut cmd = vec![system_cmd(std::env::var("SystemRoot").ok()), "/k".into(), word.into()];
+    cmd.extend(extra.iter().map(|a| a.to_string()));
     // Windows Terminal lit « ; » comme un séparateur de commandes : un dossier
     // qui en contient s'ouvre dans une console classique.
     if in_wt && !dir.display().to_string().contains(';') {
@@ -596,7 +675,7 @@ fn mcp_request(app: &AppHandle, state: &Shared, msg: &Value, reply: std::fs::Fil
             if title.is_empty() {
                 return;
             }
-            let event = Event { at: now_ms(), source, kind: "info", title, body: text("message", MAX_TEXT), project: String::new(), session: String::new() };
+            let event = Event { at: now_ms(), source, kind: "info", title, body: text("message", MAX_TEXT), project: String::new(), session: String::new(), changes: None };
             publish_info(app, state, event);
         }
         "progress" => {
@@ -612,7 +691,7 @@ fn mcp_request(app: &AppHandle, state: &Shared, msg: &Value, reply: std::fs::Fil
             let Some(minutes) = req["minutes"].as_u64().filter(|m| (1..=180).contains(m)) else { return };
             super::with_context(app, ID, |ctx| ctx.emit("timer.start", json!({ "minutes": minutes })));
             let title = format!("{who} a lancé un minuteur de {minutes} min");
-            publish_info(app, state, Event { at: now_ms(), source, kind: "info", title, body: String::new(), project: String::new(), session: String::new() });
+            publish_info(app, state, Event { at: now_ms(), source, kind: "info", title, body: String::new(), project: String::new(), session: String::new(), changes: None });
         }
         "ask" => {
             let question = text("question", MAX_TEXT);
@@ -1015,12 +1094,57 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
             "info" => true,
             _ => false,
         };
-        if wanted {
+        // A fini, dans un dossier connu : d'abord le bilan (git, 3 s au plus,
+        // dans un fil à part), puis la notification.
+        let cwd = msg["hook"]["cwd"].as_str().unwrap_or("");
+        if wanted && event.kind == "done" && on("showChanges") && !cwd.is_empty() {
+            report_then_show(ctx.app, state, event.clone(), cwd.to_string());
+        } else if wanted {
             show_or_hold(ctx, state, &event);
         }
         // Le tableau des sessions a peut-être changé.
         ctx.emit("agents.changed", Value::Null);
     });
+}
+
+// ── Le bilan de fin de tâche (agents_git.rs) ─────────────────────────────────
+
+/// Calcule le bilan dans un fil à part (git peut prendre jusqu'à 3 s), puis
+/// montre la notification « a fini », avec le bilan s'il y en a un, sinon
+/// comme avant.
+fn report_then_show(app: &AppHandle, state: &Shared, mut event: Event, cwd: String) {
+    let (app, state) = (app.clone(), state.clone());
+    std::thread::spawn(move || {
+        let found = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| report(&app, &cwd))).ok().flatten();
+        if let Some(r) = found {
+            event.changes = Some(r);
+            // L'historique de l'onglet garde aussi le bilan.
+            let mut st = state.locked();
+            if let Some(h) = st.history.iter_mut().find(|h| h.kind == "done" && h.at == event.at && h.session == event.session) {
+                h.changes = event.changes.clone();
+            }
+        }
+        super::with_context(&app, ID, |ctx| {
+            show_or_hold(ctx, &state, &event);
+            ctx.emit("agents.changed", Value::Null);
+        });
+    });
+}
+
+/// Le bilan du dossier `cwd` (None : dossier refusé ou absent, pas un dépôt
+/// git, git introuvable ou trop long, ou rien de changé). Le dossier vient du
+/// hook : il est validé comme tout chemin (`check_path` : absolu, existant,
+/// hors des dossiers exclus).
+fn report(app: &AppHandle, cwd: &str) -> Option<Report> {
+    let dir = super::with_context(app, ID, |ctx| ctx.check_path(cwd).ok()).flatten().filter(|p| p.is_dir())?;
+    let root = git::repo_root(&dir, &platform::home_dir())?;
+    // git.exe par son chemin complet, trouvé dans le PATH (jamais dans le projet).
+    let git_exe = platform::find_program("git").filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("exe")))?;
+    let changes = git::changes(&git_exe, &dir, &root)?;
+    if changes.files == 0 {
+        return None;
+    }
+    Some(Report { changes, dir: dir.display().to_string(), vscode: devtools::find_vscode().is_some(), terminal: super::is_active(app, "terminal") })
 }
 
 /// Le message reçu → un événement à afficher (None : rien à faire).
@@ -1050,6 +1174,7 @@ fn understand(msg: &Value, at: u64) -> Option<Event> {
         body: text(&msg["message"]),
         project: project_name(hook["cwd"].as_str().unwrap_or("")),
         session: format!("{source}:{}", clean(session, 80)),
+        changes: None,
     };
     let who = who(&source);
     let done = |ev: &mut Event| {
@@ -1185,15 +1310,23 @@ fn codex_blocks(exe: &str) -> String {
 /// Le fichier de configuration de l'outil, et son format. Claude Code et
 /// Codex acceptent un autre dossier (CLAUDE_CONFIG_DIR, CODEX_HOME) : on le suit.
 fn config_file(tool: &str) -> Result<(PathBuf, hooks::Format), String> {
-    let dir = |var: &str, default: &str| {
-        std::env::var_os(var).map(PathBuf::from).filter(|p| p.is_absolute()).unwrap_or_else(|| platform::home_dir().join(default))
-    };
     match tool {
-        "claude-code" => Ok((dir("CLAUDE_CONFIG_DIR", ".claude").join("settings.json"), hooks::Format::Json)),
-        "codex" => Ok((dir("CODEX_HOME", ".codex").join("config.toml"), hooks::Format::Toml)),
+        "claude-code" => Ok((claude_dir().join("settings.json"), hooks::Format::Json)),
+        "codex" => Ok((tool_dir("CODEX_HOME", ".codex").join("config.toml"), hooks::Format::Toml)),
         "gemini" => Ok((platform::home_dir().join(".gemini").join("settings.json"), hooks::Format::Json)),
         other => Err(format!("outil inconnu : {other}")),
     }
+}
+
+/// Le dossier d'un outil : la variable d'environnement (chemin absolu), sinon
+/// `default` dans le dossier utilisateur.
+fn tool_dir(var: &str, default: &str) -> PathBuf {
+    std::env::var_os(var).map(PathBuf::from).filter(|p| p.is_absolute()).unwrap_or_else(|| platform::home_dir().join(default))
+}
+
+/// Le dossier de Claude Code (%USERPROFILE%\.claude, ou CLAUDE_CONFIG_DIR).
+fn claude_dir() -> PathBuf {
+    tool_dir("CLAUDE_CONFIG_DIR", ".claude")
 }
 
 /// Les entrées d'Ondine à écrire (les mêmes que « Copier la configuration »),
@@ -1319,7 +1452,7 @@ mod tests {
 
     #[test]
     fn quiet_summary() {
-        let ev = |source: &str, kind: &'static str| Event { at: 0, source: source.into(), kind, title: String::new(), body: String::new(), project: String::new(), session: String::new() };
+        let ev = |source: &str, kind: &'static str| Event { at: 0, source: source.into(), kind, title: String::new(), body: String::new(), project: String::new(), session: String::new(), changes: None };
         let held = vec![ev("claude-code", "done"), ev("codex", "done"), ev("claude-code", "done"), ev("mcp", "info")];
         assert_eq!(summary(&held, &["Codex"], 1).unwrap(), "Claude a fini 2 tâches · Codex a fini une tâche · Codex vous attend · 1 question en attente · 1 message");
         assert_eq!(summary(&[], &["Claude", "Claude"], 0).unwrap(), "Claude vous attend (2 sessions)");
@@ -1396,16 +1529,45 @@ mod tests {
     #[test]
     fn agent_command_lines() {
         let dir = Path::new(r"C:\Projets\Mon appli");
-        assert_eq!(agent_command("claude", dir, false), ("cmd.exe", vec!["/k".to_string(), "claude".to_string()]));
+        assert_eq!(agent_command("claude", &[], dir, false), ("cmd.exe", vec!["/k".to_string(), "claude".to_string()]));
         assert_eq!(system_cmd(Some(r"C:\WINDOWS".into())), r"C:\WINDOWS\System32\cmd.exe");
         assert_eq!(system_cmd(Some(r"C:\Windows\".into())), r"C:\Windows\System32\cmd.exe");
         assert_eq!(system_cmd(Some("Windows".into())), "cmd.exe");
         assert_eq!(system_cmd(None), "cmd.exe");
-        let (p, a) = agent_command(r"C:\npm\codex.cmd", dir, true);
+        let (p, a) = agent_command(r"C:\npm\codex.cmd", &[], dir, true);
         assert_eq!((p, a[1].as_str(), a[4].as_str()), ("wt.exe", r"C:\Projets\Mon appli", r"C:\npm\codex.cmd"));
         assert!(a[2].ends_with("cmd.exe"));
-        assert_eq!(agent_command("gemini", Path::new(r"C:\a;b"), true).0, "cmd.exe");
+        assert_eq!(agent_command("gemini", &[], Path::new(r"C:\a;b"), true).0, "cmd.exe");
         assert!(Tool::parse("calc").is_err());
+    }
+
+    #[test]
+    fn resume_adds_only_fixed_words() {
+        let dir = Path::new(r"C:\Projets\Mon appli");
+        let claude = Tool::Claude.resume_args().unwrap();
+        assert_eq!(agent_command(r"C:\npm\claude.cmd", claude, dir, false).1, ["/k", r"C:\npm\claude.cmd", "--continue"]);
+        let codex = Tool::Codex.resume_args().unwrap();
+        let (p, a) = agent_command(r"C:\npm\codex.cmd", codex, dir, true);
+        assert_eq!((p, &a[4..]), ("wt.exe", &[r"C:\npm\codex.cmd".to_string(), "resume".into(), "--last".into()][..]));
+        // Gemini CLI : pas de reprise proposée.
+        assert!(Tool::Gemini.resume_args().is_err());
+    }
+
+    #[test]
+    fn a_report_reaches_the_front_flat() {
+        let report = Report {
+            changes: git::Changes { files: 3, added: 120, removed: 14, names: vec!["a.rs".into(), "b.ts".into(), "c.md".into()] },
+            dir: r"C:\Projets\Island".into(),
+            vscode: true,
+            terminal: false,
+        };
+        let e = Event { at: 1, source: "claude-code".into(), kind: "done", title: "Claude a fini".into(), body: String::new(), project: "Island".into(), session: "claude-code:s".into(), changes: Some(report) };
+        let v = serde_json::to_value(&e).unwrap();
+        assert_eq!((v["changes"]["files"].as_u64(), v["changes"]["added"].as_u64(), v["changes"]["removed"].as_u64()), (Some(3), Some(120), Some(14)));
+        assert_eq!((v["changes"]["names"][2].as_str(), v["changes"]["dir"].as_str(), v["changes"]["vscode"].as_bool()), (Some("c.md"), Some(r"C:\Projets\Island"), Some(true)));
+        // Sans bilan : pas de champ « changes » du tout.
+        let plain = Event { changes: None, ..e };
+        assert!(serde_json::to_value(&plain).unwrap().get("changes").is_none());
     }
 
     #[test]

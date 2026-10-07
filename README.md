@@ -229,8 +229,15 @@ rendez-vous ouvre son lien (Teams, Meet, Zoom…). Lecture seule ; les adresses
 sont rangées dans le Gestionnaire d'identifiants de Windows, jamais dans les
 réglages.
 
+Deux minutes avant une réunion en ligne (Teams, Meet, Zoom, Webex), une alerte
+« Réunion dans 2 min » propose **Rejoindre** : le lien s'ouvre, la musique se
+met en pause, et si votre micro est coupé (onglet Contrôles activé),
+une deuxième alerte le dit, avec **Rétablir le micro**. Une seule proposition
+par rendez-vous ; elle remplace le rappel s'il tombe au même moment.
+
 - **Afficher les rendez-vous des prochains** : 60 jours (7 à 365)
 - **Rappel avant un rendez-vous** : 10 min (0 = jamais)
+- **Proposer de rejoindre la réunion** : 2 min avant (0 = jamais, jusqu'à 30)
 - **Afficher le prochain rendez-vous dans la pilule** (oui) quand il commence dans moins de 30 min
 - **Récap du soir** : les rendez-vous du lendemain à 18 h (0 = jamais)
 
@@ -296,6 +303,19 @@ commande `ondine.exe notify` et un canal local réservé à votre compte Windows
 rien ne passe par Internet, et l'île n'accepte que les messages de sa propre
 copie d'`ondine.exe`.
 
+**Reprendre** : à côté de chaque projet, ce bouton rouvre Claude Code là où
+vous l'aviez laissé (`claude --continue` ; pour Codex : `codex resume --last`),
+avec, en petit, la dernière phrase échangée et sa date (« il y a 2 h »). Cette
+phrase est lue à la fin du fichier de session de Claude Code, sur votre PC :
+elle n'est ni envoyée ni écrite dans le journal.
+
+**Bilan de fin de tâche** : quand un agent a fini dans un dépôt git, la
+notification dit ce qui a changé (« 3 fichiers modifiés, +120 −14 », et les
+fichiers les plus touchés), avec **Ouvrir dans VS Code** (si VS Code est
+installé) et **Terminal ici**. Ondine lance `git status` et `git diff --numstat`
+en lecture seule, 3 secondes au plus ; sans git ou hors d'un dépôt, la
+notification reste comme avant.
+
 **Brancher un agent, en 3 étapes :**
 
 1. Dans l'onglet Agents IA, ouvrez **Brancher Claude Code, Codex ou Gemini**,
@@ -319,13 +339,17 @@ En option, l'île peut aussi être branchée comme **serveur MCP** : l'agent peu
 alors vous envoyer un message, sa progression, lancer le minuteur ou vous poser
 une question à choix. Le bouton **Concentration** (25 min, 1 h, 2 h ou jusqu'à
 l'arrêt) met leurs notifications en attente et fait un résumé à la fin.
-L'île n'exécute jamais rien, ne décide jamais à votre place, et ne lit ni ce que
-vous tapez ni les réponses de l'IA.
+L'île n'exécute rien de ce que les agents lui envoient (elle lance seulement
+git, en lecture seule, pour le bilan), ne décide jamais à votre place, et ne lit
+pas ce que vous tapez : seule la dernière phrase d'une session est montrée à
+côté de « Reprendre ».
 
 - **Projets pour les agents** : jusqu'à 8 dossiers, un bouton chacun (dans l'onglet et le lanceur)
 - **Ouvrir les agents dans** : une fenêtre de console (par défaut) ou Windows Terminal
 - **Proposer Claude Code / Codex / Gemini CLI** (oui)
+- **Afficher la dernière phrase de la session à côté de « Reprendre »** (oui)
 - **Prévenir quand Claude attend ma réponse ou ma permission** (oui), **quand Claude a fini** (oui)
+- **Montrer ce qui a changé quand un agent a fini** (oui) : le bilan git ci-dessus
 - **Accepter les outils MCP** (oui)
 - **Autoriser / Refuser depuis l'île** (**non** par défaut) : quand Claude Code ou Codex demande la permission d'utiliser un outil, l'île montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Après l'avoir activé, réinstallez les hooks (étape 3 ci-dessus). Sans réponse dans le délai choisi (1 min par défaut), la question repasse au terminal.
 - **La mascotte réfléchit pendant que Claude travaille** (oui)

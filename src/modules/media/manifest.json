@@ -17,6 +17,6 @@
   "commands": ["state", "artwork", "toggle", "next", "previous", "seek"],
   "events": {
     "emits": ["media.changed"],
-    "listens": ["media.changed"]
+    "listens": ["media.changed", "media.pause"]
   }
 }

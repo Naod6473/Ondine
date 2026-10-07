@@ -32,6 +32,10 @@ mod clipboard_qr;
 mod weather;
 // Installer les hooks d'Ondine dans la configuration de Claude Code, Codex, Gemini.
 mod agents_hooks;
+// Le bilan de fin de tâche d'un agent (ce qui a changé dans le dépôt git).
+mod agents_git;
+// « Reprendre » : la dernière session de Claude Code d'un projet.
+mod agents_resume;
 
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};

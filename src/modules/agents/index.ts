@@ -6,14 +6,30 @@
 // (ramène la fenêtre de l'agent devant), les boutons pour lancer un agent
 // dans un projet, le tableau « En cours », les derniers messages, et la marche
 // à suivre pour brancher chaque outil.
+//
+// « A fini » peut arriver avec un bilan (dépôt git du dossier de la session) :
+// « 3 fichiers modifiés, +120 −14 », avec « Ouvrir dans VS Code » et
+// « Terminal ici ». Chaque projet a aussi « Reprendre » (la dernière session
+// de Claude Code ou de Codex), avec la dernière phrase échangée en petit.
 
 import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
+import type { NotificationAction } from "../../core/notifications";
 import { Bridge } from "../../core/bridge";
 import { el } from "../../island/dom";
 import { pacedInterval } from "../../core/perf";
 import { agentIcon, icon } from "../../island/icon";
+import { changesLine, namesLine, since, type ChangeSummary } from "./texts";
+
+/** Le bilan d'une fin de tâche, avec ce qu'il faut pour ses boutons. */
+interface Changes extends ChangeSummary {
+  /** Le dossier de la session (chemin complet, validé par le Rust). */
+  dir: string;
+  /** VS Code est installé ; le module Terminal est actif. */
+  vscode: boolean;
+  terminal: boolean;
+}
 
 interface AgentEvent {
   at: number;
@@ -23,6 +39,18 @@ interface AgentEvent {
   body: string;
   project: string;
   session: string;
+  /** « A fini » dans un dépôt git où des fichiers ont changé. */
+  changes?: Changes;
+}
+
+/** La dernière session de Claude Code d'un projet (commande "last_sessions"). */
+interface LastSession {
+  index: number;
+  found: boolean;
+  /** La dernière phrase (absente si le réglage la cache, ou si rien n'est trouvé). */
+  text?: string | null;
+  who?: "user" | "assistant" | null;
+  at?: number;
 }
 
 /** Une question posée par un agent (outil MCP « ondine_ask »), ou une demande
@@ -79,6 +107,33 @@ async function goTo(api: ModuleApi, session: string) {
   } catch (err) {
     api.notify({ title: "Fenêtre introuvable", body: errorText(err), icon: "🔎", priority: "low", key: "agents-focus" });
   }
+}
+
+/** Ouvre VS Code dans le dossier de la session (bouton du bilan). */
+async function openVsCode(api: ModuleApi, dir: string) {
+  try {
+    await api.invoke("open_vscode", { path: dir });
+  } catch (err) {
+    api.notify({ title: "VS Code", body: errorText(err), icon: "⚠️", priority: "low", key: "agents-error" });
+  }
+}
+
+/** « A fini », avec son bilan : l'île s'ouvre pour montrer les fichiers et les boutons. */
+function showReport(api: ModuleApi, e: AgentEvent, c: Changes) {
+  const actions: NotificationAction[] = [];
+  if (e.session) actions.push({ label: "↗ Y aller", run: () => goTo(api, e.session) });
+  if (c.vscode) actions.push({ label: "Ouvrir dans VS Code", run: () => openVsCode(api, c.dir) });
+  // Le module Terminal ouvre son terminal habituel dans ce dossier (qu'il valide lui-même).
+  if (c.terminal) actions.push({ label: "Terminal ici", run: () => api.emit("terminal.open", { path: c.dir }) });
+  api.notify({
+    title: `${e.title} · ${changesLine(c)}`,
+    body: [namesLine(c), e.project ? `Projet ${e.project}` : ""].filter(Boolean).join(" · "),
+    icon: sourceIcon(e.source) ?? ICON.done,
+    priority: "high",
+    durationMs: 15_000,
+    key: `agents-${e.session}`,
+    actions,
+  });
 }
 
 /** Envoie ton choix à l'agent qui attend (`confirmed` : pour « Autoriser »). */
@@ -153,6 +208,7 @@ export const agents: IslandModule = {
     api.on("agents.event", (msg) => {
       const e = msg.payload as AgentEvent | null;
       if (!e?.title) return;
+      if (e.kind === "done" && e.changes?.files) return showReport(api, e, e.changes);
       const where = e.project ? `Projet ${e.project}` : "";
       api.notify({
         title: e.title,
@@ -233,8 +289,9 @@ export const agents: IslandModule = {
       const status = el("p", { class: "muted agents-status" });
       const guide = el("details", { class: "agents-guide" });
       const launch = el("div", { class: "agents-launch" });
+      const projectRows = el("ul", { class: "agents-projects" });
       root.append(
-        el("div", { class: "agents" }, launch, asks, status, quiet, board, el("div", { class: "muted agents-subtitle" }, "Derniers messages"), list, guide),
+        el("div", { class: "agents" }, launch, projectRows, asks, status, quiet, board, el("div", { class: "muted agents-subtitle" }, "Derniers messages"), list, guide),
       );
 
       // ── Lancer un agent ────────────────────────────────────────────────────
@@ -251,32 +308,88 @@ export const agents: IslandModule = {
         const path = await Bridge.pickFolder(`Ouvrir ${LAUNCH_NAMES[chosenTool]} dans…`);
         if (path) await start({ path })();
       });
-      const drawLaunch = (tools: LaunchTool[], projects: { path: string; name: string }[]) => {
+      // Les agents proposés, les projets du réglage, et la dernière session de
+      // Claude Code de chacun (pour « Reprendre »).
+      let tools: LaunchTool[] = [];
+      let projects: { path: string; name: string }[] = [];
+      let lastSessions: LastSession[] = [];
+      let lastFetch = 0;
+      /** La dernière phrase échangée, en petit : « Vous : … · il y a 2 h ». */
+      const lastLine = (last: LastSession) =>
+        el(
+          "small",
+          { class: "muted agents-last" },
+          last.text ? el("span", {}, last.who === "user" ? "Vous :" : "Claude :") : null,
+          last.text ? " " : null,
+          // Ce texte vient de la session : jamais traduit, jamais retouché.
+          last.text ? el("span", { "data-no-i18n": true }, last.text) : null,
+          last.text && last.at ? " · " : null,
+          last.at ? el("span", {}, since(last.at)) : null,
+        );
+      const drawLaunch = () => {
         if (!tools.includes(chosenTool)) chosenTool = tools[0] ?? "claude";
-        if (!tools.length) return launch.replaceChildren();
+        if (!tools.length) {
+          projectRows.replaceChildren();
+          return launch.replaceChildren();
+        }
         // Un agent proposé seulement : pas besoin de choisir.
         const chips =
           tools.length > 1
             ? tools.map((t) =>
-                el(
-                  "button",
-                  { class: `net-chip${t === chosenTool ? " active" : ""}`, onclick: api.handler(() => ((chosenTool = t), drawLaunch(tools, projects))) },
-                  LAUNCH_NAMES[t],
-                ),
+                el("button", { class: `net-chip${t === chosenTool ? " active" : ""}`, onclick: api.handler(() => ((chosenTool = t), drawLaunch())) }, LAUNCH_NAMES[t]),
               )
             : [el("span", { class: "agents-launch-title" }, LAUNCH_NAMES[chosenTool])];
         launch.replaceChildren(
           el("span", { class: "agents-launch-title" }, "▶"),
           ...chips,
           el("span", { class: "agents-launch-sep" }),
-          ...(projects.length
-            ? projects.map((p, i) => el("button", { class: "btn small", title: `Ouvrir ${LAUNCH_NAMES[chosenTool]} dans ${p.path}`, onclick: start({ index: i }) }, `📁 ${p.name}`))
-            : [el("button", { class: "btn small primary", title: "Dans votre dossier utilisateur", onclick: start({}) }, "Lancer")]),
+          ...(projects.length ? [] : [el("button", { class: "btn small primary", title: "Dans votre dossier utilisateur", onclick: start({}) }, "Lancer")]),
           el("button", { class: "btn small", title: "Choisir le dossier du projet", onclick: pick }, "Autre dossier…"),
         );
+        // Une ligne par projet : une nouvelle session, ou « Reprendre » la
+        // dernière (Claude Code : s'il y en a une ; Codex : toujours ; Gemini CLI : non).
+        projectRows.replaceChildren(
+          ...projects.map((p, i) => {
+            const last = chosenTool === "claude" ? lastSessions.find((l) => l.index === i && l.found) : undefined;
+            const resumable = chosenTool === "codex" || !!last;
+            return el(
+              "li",
+              { class: "agents-project" },
+              el("button", { class: "btn small", title: `Ouvrir ${LAUNCH_NAMES[chosenTool]} dans ${p.path}`, onclick: start({ index: i }) }, `📁 ${p.name}`),
+              resumable
+                ? el(
+                    "button",
+                    {
+                      class: "btn small",
+                      title: chosenTool === "claude" ? "Continuer la dernière conversation (claude --continue)" : "Reprendre la dernière session (codex resume --last)",
+                      onclick: start({ index: i, resume: true }),
+                    },
+                    "↻ Reprendre",
+                  )
+                : null,
+              last ? lastLine(last) : null,
+            );
+          }),
+        );
+      };
+      /** Relit la dernière session de chaque projet (au plus toutes les 30 s). */
+      const loadLast = async () => {
+        if (!projects.length || Date.now() - lastFetch < 30_000) return;
+        lastFetch = Date.now();
+        try {
+          lastSessions = await api.invoke<LastSession[]>("last_sessions");
+        } catch {
+          lastSessions = [];
+        }
+        drawLaunch();
       };
       void api.invoke<{ tools: LaunchTool[]; projects: { path: string; name: string }[] }>("projects").then(
-        ({ tools, projects }) => drawLaunch(tools, projects),
+        (r) => {
+          tools = r.tools;
+          projects = r.projects;
+          drawLaunch();
+          void loadLast();
+        },
         () => {},
       );
 
@@ -562,6 +675,8 @@ export const agents: IslandModule = {
       };
 
       const draw = async () => {
+        // Une session vient peut-être de finir : sa dernière phrase a changé.
+        void loadLast();
         let data: { events: AgentEvent[]; working: number; sessions: Session[]; asks: Ask[]; quiet: { until: number | null; held: number } | null };
         try {
           data = await api.invoke("history");
@@ -612,7 +727,7 @@ export const agents: IslandModule = {
                   el(
                     "span",
                     { class: "launch-text" },
-                    el("b", {}, e.title),
+                    el("b", {}, e.changes?.files ? `${e.title} · ${changesLine(e.changes)}` : e.title),
                     el("small", { class: "muted" }, [e.project, e.body, ago(e.at)].filter(Boolean).join(" · ")),
                   ),
                 ),

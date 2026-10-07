@@ -32,7 +32,8 @@
     ],
     "listens": [
       "controls.mic-muted",
-      "controls.mic-error"
+      "controls.mic-error",
+      "controls.mic-set"
     ]
   },
   "settings": {

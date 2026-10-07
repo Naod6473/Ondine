@@ -2,7 +2,7 @@
   "id": "agents",
   "name": "Agents IA",
   "icon": "🤖",
-  "description": "Lance Claude Code, Codex ou Gemini CLI dans un de vos projets en un clic. Un tableau montre les sessions en cours ; « Y aller » ramène devant la bonne fenêtre. Claude Code, Codex et Gemini CLI préviennent l'île : « attend votre permission », « a fini ». Ils passent par la commande « ondine.exe notify » et un canal local réservé à votre compte Windows : rien ne passe par Internet. Branchée comme serveur MCP, l'île laisse aussi l'agent vous envoyer un message, une progression, lancer le minuteur ou vous poser une question à choix. Le mode concentration met leurs notifications en attente et vous fait un résumé à la fin. Si vous l'activez (désactivé par défaut), vous pouvez aussi autoriser ou refuser une action de Claude Code ou Codex depuis l'île, après confirmation. L'île n'exécute jamais rien, ne décide jamais à votre place, et ne lit ni ce que vous tapez ni les réponses de l'IA.",
+  "description": "Lance Claude Code, Codex ou Gemini CLI dans un de vos projets en un clic, ou reprend la dernière session. Un tableau montre les sessions en cours ; « Y aller » ramène devant la bonne fenêtre. Claude Code, Codex et Gemini CLI préviennent l'île : « attend votre permission », « a fini », avec ce qui a changé dans le projet (git). Ils passent par la commande « ondine.exe notify » et un canal local réservé à votre compte Windows : rien ne passe par Internet. Branchée comme serveur MCP, l'île laisse aussi l'agent vous envoyer un message, une progression, lancer le minuteur ou vous poser une question à choix. Le mode concentration met leurs notifications en attente et vous fait un résumé à la fin. Si vous l'activez (désactivé par défaut), vous pouvez aussi autoriser ou refuser une action de Claude Code ou Codex depuis l'île, après confirmation. L'île n'exécute rien de ce que les agents lui envoient (elle lance seulement git, en lecture seule, pour le bilan) et ne décide jamais à votre place. Elle ne lit pas ce que vous tapez : seule la dernière phrase d'une session de Claude Code s'affiche à côté de « Reprendre », sans quitter votre PC.",
   "version": "0.1.0",
   "permissions": [
     "clipboard",
@@ -54,6 +54,13 @@
         "default": true
       },
       {
+        "key": "resumePreview",
+        "type": "boolean",
+        "label": "Afficher la dernière phrase de la session à côté de « Reprendre »",
+        "help": "Lue à la fin de l'historique de Claude Code, sur votre PC. Elle n'est ni envoyée ni écrite dans le journal.",
+        "default": true
+      },
+      {
         "key": "notifyWaiting",
         "type": "boolean",
         "label": "Prévenir quand Claude attend ma réponse ou ma permission",
@@ -63,6 +70,13 @@
         "key": "notifyDone",
         "type": "boolean",
         "label": "Prévenir quand Claude a fini",
+        "default": true
+      },
+      {
+        "key": "showChanges",
+        "type": "boolean",
+        "label": "Montrer ce qui a changé quand un agent a fini",
+        "help": "Si le dossier de la session est un dépôt git : « 3 fichiers modifiés, +120 −14 », avec « Ouvrir dans VS Code » et « Terminal ici ». Ondine lance git en lecture seule, 3 secondes au plus.",
         "default": true
       },
       {
@@ -129,7 +143,9 @@
     "quiet_stop",
     "hook_status",
     "hook_install",
-    "hook_remove"
+    "hook_remove",
+    "last_sessions",
+    "open_vscode"
   ],
   "events": {
     "emits": [
@@ -143,7 +159,8 @@
       "agents.ask.closed",
       "agents.progress",
       "timer.start",
-      "agents.quiet"
+      "agents.quiet",
+      "terminal.open"
     ],
     "listens": [
       "agents.event",
