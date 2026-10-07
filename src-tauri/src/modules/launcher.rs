@@ -8,7 +8,9 @@
 //   - « Recherche dans l'île » : les notes et tâches, l'historique du
 //     presse-papiers, l'étagère et les captures. Chaque module cherche dans ses
 //     propres données (sa commande "search", appelée ici par `modules::invoke`,
-//     qui vérifie qu'il est activé) et renvoie 5 résultats au plus.
+//     qui vérifie qu'il est activé) et renvoie 5 résultats au plus ;
+//   - les calculs et les GUID (trouvés par le front, src/modules/launcher/calc.ts) :
+//     ici, seulement la copie du résultat (commande "copy", permission clipboard).
 //
 // Sécurité : le front ne donne jamais de chemin, seulement le numéro d'une
 // entrée que le Rust a trouvée lui-même. Un fichier récent est revalidé au
@@ -41,6 +43,8 @@ const MAX_RECENT: usize = 40;
 const DEFAULT_HOTKEY: &str = "Alt+Space";
 /// Les modules où cherche « Recherche dans l'île », dans l'ordre des sections.
 const SOURCES: [&str; 4] = ["notes", "clipboard", "shelf", "capture"];
+/// Un résultat de calcul copié fait au plus ça (le résumé d'un sous-réseau : ~200 octets).
+const MAX_COPY: usize = 4000;
 /// Les raccourcis qu'on propose dans les réglages. Toute autre valeur est refusée.
 const HOTKEYS: &[&str] = &["Alt+Space", "Ctrl+Space", "Ctrl+Alt+Space", "Ctrl+Shift+Space", "Super+Shift+Space"];
 
@@ -206,6 +210,17 @@ impl RustModule for Launcher {
                 // Le journal ne dit que d'où vient le résultat.
                 log::info(format!("lanceur : résultat de l'île ouvert ({source})"));
                 Ok(result)
+            }
+            // { text } : copie le résultat d'un calcul (ou un GUID neuf) que le
+            // front a trouvé. Le texte n'est jamais noté dans le journal.
+            "copy" => {
+                ctx.require("clipboard")?;
+                let text = args.get("text").and_then(Value::as_str).unwrap_or("");
+                if text.is_empty() || text.len() > MAX_COPY {
+                    return Err("rien à copier".into());
+                }
+                files::copy_text(text)?;
+                Ok(Value::Null)
             }
             // Avant une action de l'île qui ouvre une fenêtre (terminal…) :
             // l'île ne rendra pas le focus à la fenêtre d'avant.
@@ -449,6 +464,15 @@ mod tests {
         assert!(is_executable(Path::new("script.ps1")));
         assert!(!is_executable(Path::new("rapport.pdf")));
         assert!(!is_executable(Path::new("sans-extension")));
+    }
+
+    #[test]
+    fn copy_is_declared_with_its_permission() {
+        // Sans "clipboard" dans le manifeste, `ctx.require` refuserait la copie d'un calcul.
+        let m: Value = serde_json::from_str(Launcher::default().manifest_json()).unwrap();
+        let has = |key: &str, v: &str| m[key].as_array().unwrap().iter().any(|x| x == v);
+        assert!(has("commands", "copy"));
+        assert!(has("permissions", "clipboard"));
     }
 
     #[test]

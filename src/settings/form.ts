@@ -6,9 +6,10 @@
 // oui/non, − + pour un nombre, segmenté ou liste pour un choix, champ texte,
 // ou liste de dossiers / fichiers / calendriers sur toute la largeur.
 
-import type { CalendarEntry, SettingField } from "../core/module-types";
+import type { CalendarEntry, FieldCheck, SettingField } from "../core/module-types";
 import { coerce } from "../core/settings-store";
 import { calendarsInput } from "./calendars-input";
+import { fieldWarnings } from "./field-checks";
 import { Bridge, IS_TAURI } from "../core/bridge";
 import { el } from "../island/dom";
 import { choice, row, stepper, toggle, wideRow } from "./controls";
@@ -40,7 +41,9 @@ export function settingsRows(fields: SettingField[], values: Record<string, unkn
         txt.value = String(current ?? "");
         txt.addEventListener("change", () => onChange(field.key, coerce(field, txt.value)));
         // Un texte long prend toute la largeur ; un court reste à droite.
-        return (field.maxLength ?? 500) > 80 ? wideRow(field.label, txt, field.help) : row(field.label, txt, field.help);
+        const line = (field.maxLength ?? 500) > 80 ? wideRow(field.label, txt, field.help) : row(field.label, txt, field.help);
+        if (field.check) checkedText(line, txt, field.check);
+        return line;
       }
       case "folders":
       case "files": {
@@ -52,6 +55,24 @@ export function settingsRows(fields: SettingField[], values: Record<string, unkn
         return wideRow(field.label, calendarsInput(field.max ?? 10, coerce(field, current) as CalendarEntry[], (v) => onChange(field.key, v)), field.help);
     }
   });
+}
+
+/**
+ * Un champ texte vérifié (`check` du manifeste, voir field-checks.ts) : les
+ * avertissements s'écrivent sous le champ, à chaque frappe (la valeur est
+ * enregistrée quand même).
+ */
+function checkedText(line: HTMLElement, txt: HTMLInputElement, check: FieldCheck) {
+  const box = el("div", { class: "row-help error-text", "aria-live": "polite" });
+  const update = () => {
+    const lines = fieldWarnings(check, txt.value);
+    box.replaceChildren(...lines.map((w) => el("div", {}, w)));
+    box.hidden = !lines.length;
+  };
+  txt.addEventListener("input", update);
+  // Sous le champ (ligne pleine largeur), sinon sous le libellé.
+  (line.querySelector(".row-wide") ?? line.querySelector(".row-text") ?? line).append(box);
+  update();
 }
 
 /**

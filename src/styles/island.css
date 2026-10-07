@@ -1833,6 +1833,41 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Horloges du monde (réglage du module) : une rangée de 4 au plus. */
+.sys-clocks {
+  display: flex;
+  gap: 8px;
+}
+.sys-clocks[hidden] {
+  display: none;
+}
+.sys-clock {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.sys-clock span,
+.sys-clock small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sys-clock span {
+  font-size: 11px;
+}
+.sys-clock b {
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.sys-clock small {
+  font-size: 11px;
+}
 
 /* Accès distants (Outils IT) */
 .remote {

@@ -257,6 +257,7 @@ le support** copie un résumé à coller dans un ticket. Tout est lu sur le PC.
 
 - **Prévenir quand un disque a moins de** 10 % de place libre ; **quand la batterie descend à** 20 % ; **quand la batterie est chargée** (oui)
 - **L'humeur d'Ondine suit le PC** (oui) : elle transpire quand le processeur est à fond, fatigue quand la batterie est faible ou qu'il est tard.
+- **Horloges du monde** (vide) : jusqu'à 4 villes séparées par des virgules, par exemple `Montréal, Tokyo`. L'onglet montre l'heure de chacune, « demain » ou « hier » si le jour diffère, et l'écart avec ici (« +6 h »). Environ 200 grandes villes connues (noms français ou anglais, sans accents si vous voulez) et `UTC` ; une ville inconnue est signalée sous le champ. Les heures sont calculées sur le PC.
 
 ### Accès distants
 
@@ -354,6 +355,17 @@ Windows (Services, Gestionnaire de périphériques…), fichiers récents, serve
 favoris, projets des agents et actions de l'île (« 10 min » lance un
 minuteur). Il cherche aussi **dans l'île** : notes et tâches, presse-papiers,
 étagère et captures. ↑ ↓ pour choisir, Entrée pour ouvrir.
+
+Il **calcule** aussi : quand la recherche est un calcul, la réponse vient en
+premier et **Entrée la copie** (petite notification « Copié »).
+
+- Calculs : `2 + 3 × 4`, `(1,5 + 2) ^ 2`, `1 200 / 3`, `18 % de 240`, `240 + 18 %`, `15 %` (= 0,15), `racine de 2`. Nombres à la française (virgule, espaces de milliers).
+- Unités : `1 Go en Mio`, `100 Mbit/s en Mo/s`, `90 min en h`, `20 °C en °F`, `10 km -> mi`, `5 lb en kg`. Octets : Ko, Mo, Go, To en puissances de 1000, Kio, Mio, Gio, Tio en 1024 (KB, MiB… aussi ; B = octet, b = bit).
+- Temps de transfert : `1 Go à 100 Mbit/s` → 1 min 20 s.
+- Bases : `0x1F`, `0b1010`, `255 en hex`, `0xFF en décimal`, `42 en binaire`.
+- Sous-réseau IPv4 : `192.168.1.0/26` ou `192.168.1.10 255.255.255.0` → réseau, masque, première et dernière adresse, broadcast, nombre d'hôtes (Entrée sur la première ligne copie le résumé, sur une autre ligne cette valeur seule).
+- Heures du monde : `15 h Montréal`, `15h30 à Tokyo` → « 15 h 00 à Montréal = 21 h 00 ici » ; `heure à Tokyo` → l'heure là-bas. Environ 200 villes connues, calculé sur le PC.
+- `guid` : un GUID neuf (en minuscules, ou au format Windows `{…}` en majuscules).
 
 - **Raccourci** : Alt+Espace (ou Ctrl+Espace, Ctrl+Alt+Espace, Ctrl+Maj+Espace, Win+Maj+Espace, aucun)
 - **Proposer les fichiers ouverts récemment** (oui) ; **Chercher aussi dans l'île** (oui, 5 résultats au plus par source). Les dossiers exclus ne sont jamais montrés.
