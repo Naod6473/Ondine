@@ -447,11 +447,12 @@ export const controls: IslandModule = {
   manifest: manifest as ModuleManifest,
 
   setup(api) {
-    // Le raccourci micro (Rust) : une petite notification confirme, le badge
-    // d'Ondine (island.ts) reste tant que le micro est coupé.
+    // Le raccourci micro, ou un autre module (« Rétablir le micro » de
+    // l'Agenda) : une petite notification confirme, le badge d'Ondine
+    // (island.ts) reste tant que le micro est coupé.
     const offMuted = api.on("controls.mic-muted", (msg) => {
       const p = (msg.payload ?? {}) as { muted?: boolean; source?: string };
-      if (p.source !== "hotkey") return;
+      if (p.source !== "hotkey" && p.source !== "request") return;
       api.notify({ title: p.muted ? "Micro coupé" : "Micro rétabli", icon: p.muted ? "🔇" : "🎙️", priority: "low", key: "controls-mic", durationMs: 1800 });
     });
     const offError = api.on("controls.mic-error", (msg) => {

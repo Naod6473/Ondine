@@ -13,6 +13,9 @@
 //   - si le micro est coupé → "controls.mic-muted", pour le badge d'Ondine ;
 //   - le raccourci « couper le micro » choisi dans les réglages (micHotkey).
 //
+// Un autre module peut demander de couper ou rétablir le micro par le bus
+// ("controls.mic-set" {muted}) : l'Agenda le fait avec « Rétablir le micro ».
+//
 // « Premier plan » : garde la fenêtre où tu travaillais (celle d'avant l'île)
 // au-dessus des autres, comme une vidéo en incrustation. Un second appui la relâche.
 
@@ -24,6 +27,7 @@ use serde_json::{json, Value};
 use tauri::AppHandle;
 
 use super::{ModuleContext, RustModule};
+use crate::services::bus::BusMessage;
 use crate::platform::audio::{self, Device};
 use crate::platform::media_use::{self, MediaUse};
 use crate::services::{bus, log};
@@ -149,6 +153,23 @@ impl RustModule for Controls {
             }
             _ => Err(format!("commande non gérée : {command}")),
         }
+    }
+
+    /// "controls.mic-set" `{muted}` : un autre module coupe ou rétablit le
+    /// micro (l'Agenda : « Rétablir le micro » en rejoignant une réunion).
+    /// Ensuite "controls.mic-muted" (source "request") : le badge d'Ondine se
+    /// met à jour et une petite notification confirme.
+    fn on_event(&self, ctx: &ModuleContext, msg: &BusMessage) {
+        if msg.topic != "controls.mic-set" {
+            return;
+        }
+        let Some(muted) = msg.payload.get("muted").and_then(Value::as_bool) else { return };
+        // Dans un fil à part : le message peut arriver par le fil de l'interface.
+        let app = ctx.app.clone();
+        std::thread::spawn(move || match audio::set_muted(Device::Microphone, muted) {
+            Ok(()) => bus::emit(&app, ID, "controls.mic-muted", json!({ "muted": muted, "source": "request" })),
+            Err(e) => bus::emit(&app, ID, "controls.mic-error", json!({ "message": e })),
+        });
     }
 }
 
