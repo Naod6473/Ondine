@@ -153,6 +153,14 @@ them to the Recycle Bin, or drag them out of the island to Explorer or the
 desktop (Ctrl: copy, Shift: move). Every file action can be undone for a few
 seconds.
 
+**📱 To the phone** (on a file of the shelf): the island shows a QR code; point
+the phone's camera at it and the phone's browser downloads the file. The phone
+must be on **the same Wi-Fi** as the PC: Ondine opens a tiny server on the local
+network only (never on the Internet), which serves that one file at a secret
+address (a random 128-bit token), then closes after one complete download, after
+5 minutes, or on "Stop". The first time, Windows may ask you to allow Ondine on
+**private networks**: accept, otherwise the phone won't find the PC.
+
 - **Favorite folders**: each becomes a target when you drag files onto the island; **Dropping on a favorite** copies (default) or moves.
 - **"Recycle Bin", "Compress", "Images" and "Rename" targets** (on)
 - **Put each newly downloaded file on the shelf** (on): the Downloads folder is checked every 3 seconds.
@@ -258,6 +266,14 @@ Your Remote Desktop (RDP) and SSH servers as favorites, opened in one click from
 the island or the launcher. Saved on your PC (`%APPDATA%\Ondine\remote.json`),
 **without any password**. "Test" only checks that the server answers.
 
+**⏰ Wake up (Wake-on-LAN)**: give a favorite its MAC address (optional;
+`AA:BB:CC:DD:EE:FF`, `AA-BB-…` or `AABBCCDDEEFF`; with the server on, `arp -a`
+shows it). The ⏰ button sends the "magic packet" on the local network (on every
+network card), then tests the server every 5 s for up to 2 min: the island says
+"NAS is awake" as soon as it answers, or that it still isn't responding. The
+launcher also offers "Wake up NAS". Wake-on-LAN must be enabled on the machine
+to wake (BIOS and network card), on the same local network.
+
 - **Open SSH in**: a console window (default) or Windows Terminal
 - **Remote Desktop in full screen** (off); **Test the servers when the tab opens** (on)
 
@@ -341,7 +357,8 @@ only displayed: nothing is executed.
 <img src="docs/captures/en/lanceur-recherche.webp" width="696" alt="Launcher: searching “no” finds Notes, the color picker, Claude Code and a recent file">
 
 **Alt+Space** opens a search: Start menu apps, Windows tools (Services, Device
-Manager…), recent files, favorite servers, agent projects and island actions
+Manager…), recent files, favorite servers (and "Wake up …" for those with a MAC
+address), agent projects and island actions
 ("10 min" starts a timer). It also searches **inside the island**: notes and
 tasks, clipboard, shelf and screenshots. ↑ ↓ to choose, Enter to open.
 
@@ -461,6 +478,8 @@ hours, or by Wi-Fi network name.
   full list: [PRIVACY.md](PRIVACY.md#english).
 - Ask Claude sends the text you chose to Anthropic's API, with **your** key,
   only after showing you what will be sent.
+- "To the phone" (Shelf) and "Wake up" (Remote access) stay on the local
+  network, only when you click: nothing goes over the Internet.
 - Keys and secret links are stored in the Windows Credential Manager, never in
   plain text in a file or in the log.
 - Nothing is ever deleted for good: the Recycle Bin, with undo.
