@@ -25,6 +25,8 @@
 - « Quoi de neuf » après une mise à jour et une astuce à la première ouverture
   de chaque onglet. · "What's new" after an update and a tip the first time
   each tab opens.
+- L'île ouverte grandit pour montrer un QR code en entier. · The open island
+  grows to show a whole QR code.
 
 ## 1.0.1 · 2026-10-07
 

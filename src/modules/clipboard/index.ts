@@ -363,7 +363,8 @@ export const clipboard: IslandModule = {
         body.append(
           el(
             "div",
-            { class: "clip-qr-view" },
+            // L'île grandit pour montrer le QR code en entier (src/island/fit.ts).
+            { class: "clip-qr-view", "data-island-fit": true },
             box,
             el("p", { class: "muted clip-qr-text" }, item.preview),
             el("div", { class: "btn-row" }, copyBtn, el("button", { class: "btn small", onclick: api.handler(closeQr) }, "‹ Retour")),

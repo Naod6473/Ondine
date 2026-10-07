@@ -43,6 +43,16 @@ c'est voulu (le réglage qui retient la version vue est nouveau).
 - **Éjection** : Ondine ne nomme un programme que si le refus de Windows est
   sans ambiguïté ; sinon, le message générique.
 
+## Ajouté après vos premiers tests : l'île grandit pour un QR code
+
+1. Presse-papiers → bouton ▦ d'une copie. **Attendu** : l'île s'agrandit vers
+   le bas avec son ressort, et tout se voit sans défiler : le QR code, le
+   texte, « Copier l'image », « ‹ Retour » et la phrase d'explication.
+2. « ‹ Retour » : l'île reprend sa taille habituelle, en douceur.
+3. Même chose avec « Vers le téléphone » (Étagère) si le panneau dépasse.
+4. L'île en haut, à gauche puis à droite de l'écran : jamais de QR code coupé
+   par le bord de la fenêtre.
+
 ---
 
 # Partie 1 : Lanceur : calculs, GUID, horloges du monde

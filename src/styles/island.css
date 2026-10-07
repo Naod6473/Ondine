@@ -78,7 +78,9 @@ body {
 }
 .island[data-state="expanded"] {
   width: 640px;
-  height: 270px;
+  /* Plus haute si un contenu doit se voir en entier (un QR code) : --fit-h,
+     posée par island.ts (fit.ts). Le ressort de l'île anime le changement. */
+  height: max(270px, var(--fit-h, 0px));
   padding: 12px 14px 14px 12px;
   --r: 26px;
   align-items: start;
@@ -869,6 +871,10 @@ body {
   background: #fff;
   border-radius: 8px;
   image-rendering: pixelated;
+}
+/* Les paragraphes sans marge : l'île grandit juste assez pour tout montrer. */
+.clip-qr-view p {
+  margin: 0;
 }
 .clip-qr-text {
   max-width: 100%;

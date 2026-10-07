@@ -10,7 +10,9 @@
 //     quand on y glisse un fichier ;
 //   - « panneau » (720 × 320, ou 720 × 380 sur un côté) le reste du temps : assez
 //     grand pour la plus grande vue. Seule la forme de l'île prend la souris, le
-//     reste laisse passer les clics.
+//     reste laisse passer les clics. Quand l'île ouverte grandit pour montrer un
+//     contenu en entier (un QR code, src/island/fit.ts), le panneau passe à
+//     720 × 530 le temps qu'il faut (`island_set_tall`).
 //
 // On déplace l'île en l'attrapant par son bord extérieur (island.ts appelle
 // `drag_start`) : la fenêtre suit la souris, puis au lâcher elle s'aimante au
@@ -45,6 +47,11 @@ pub const STRIP_H: f64 = 6.0;
 /// Sur un côté de l'écran, le panneau est plus haut : l'île compacte y est une
 /// pilule verticale (42 × 340).
 pub const SIDE_PANEL_H: f64 = 380.0;
+/// Le panneau « haut » : l'île ouverte grandit jusqu'à 480 px pour un contenu à
+/// montrer en entier (FIT_MAX_H dans src/island/fit.ts), plus la place de
+/// l'étirement à la souris (gestures.ts). Seulement le temps qu'il faut : tant
+/// qu'un bouton est enfoncé au-dessus du panneau, tout le panneau prend la souris.
+pub const TALL_PANEL_H: f64 = 530.0;
 
 /// Près d'un coin (moins de ce nombre de px logiques), l'île s'y aimante ; près
 /// du centre (moins de 6 % de la longueur du bord), au centre.
@@ -74,12 +81,14 @@ impl Placement {
         self.edge == "left" || self.edge == "right"
     }
 
-    /// Taille logique de la fenêtre (bande ou panneau) pour ce bord.
-    fn window_size(&self, collapsed: bool) -> (f64, f64) {
+    /// Taille logique de la fenêtre (bande ou panneau) pour ce bord. `tall` :
+    /// l'île ouverte a besoin de grandir (voir TALL_PANEL_H).
+    fn window_size(&self, collapsed: bool, tall: bool) -> (f64, f64) {
         match (self.side(), collapsed) {
             (false, true) => (STRIP_W, STRIP_H),
-            (false, false) => (PANEL_W, PANEL_H),
             (true, true) => (STRIP_H, STRIP_W),
+            (_, false) if tall => (PANEL_W, TALL_PANEL_H),
+            (false, false) => (PANEL_W, PANEL_H),
             (true, false) => (PANEL_W, SIDE_PANEL_H),
         }
     }
@@ -217,6 +226,8 @@ pub struct PollGate {
     /// Vrai quand l'île est visible (fenêtre « panneau »).
     active: AtomicBool,
     pub collapsed: AtomicBool,
+    /// L'île ouverte a demandé le panneau haut (`island_set_tall`).
+    pub tall: AtomicBool,
     rect: Mutex<IslandRect>,
     /// Dernier état envoyé à Windows, pour ne l'appeler que s'il change.
     ignoring: AtomicBool,
@@ -246,6 +257,7 @@ impl PollGate {
         Self {
             active: AtomicBool::new(false),
             collapsed: AtomicBool::new(true),
+            tall: AtomicBool::new(false),
             rect: Mutex::new(IslandRect::default()),
             ignoring: AtomicBool::new(false),
             flag_lock: Mutex::new(()),
@@ -341,11 +353,11 @@ pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
 }
 
 /// Où mettre la fenêtre (px physiques) : sa taille et son coin haut gauche.
-fn target_frame(m: &Monitor, place: &Placement, collapsed: bool) -> (u32, u32, i32, i32) {
+fn target_frame(m: &Monitor, place: &Placement, collapsed: bool, tall: bool) -> (u32, u32, i32, i32) {
     let scale = m.scale_factor();
     let mp = *m.position();
     let ms = *m.size();
-    let (lw, lh) = place.window_size(collapsed);
+    let (lw, lh) = place.window_size(collapsed, tall);
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
 
@@ -373,10 +385,11 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let Some(win) = window(app) else { return };
     let Some(m) = target_monitor(app, pref) else { return };
     let place = Placement::from_settings(app);
+    let tall = app.try_state::<crate::Shared>().is_some_and(|s| s.gate.tall.load(Ordering::Relaxed));
     if let Some(shared) = app.try_state::<crate::Shared>() {
-        *shared.gate.panel.locked() = place.window_size(false);
+        *shared.gate.panel.locked() = place.window_size(false, tall);
     }
-    let (pw, ph, x, y) = target_frame(&m, &place, collapsed);
+    let (pw, ph, x, y) = target_frame(&m, &place, collapsed, tall);
 
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_position(PhysicalPosition::new(x, y));
@@ -433,8 +446,9 @@ fn drag_end(app: &AppHandle, gate: &PollGate) {
     // La fenêtre glisse jusqu'à sa place (quelques images, en ralentissant),
     // puis prend la taille du panneau de ce bord.
     let collapsed = gate.collapsed.load(Ordering::Relaxed);
-    let (pw, ph, x, y) = target_frame(&m, &place, collapsed);
-    *gate.panel.locked() = place.window_size(false);
+    let tall = gate.tall.load(Ordering::Relaxed);
+    let (pw, ph, x, y) = target_frame(&m, &place, collapsed, tall);
+    *gate.panel.locked() = place.window_size(false, tall);
     let (x0, y0) = (origin.x as f64, origin.y as f64);
     const STEPS: u32 = 10;
     for i in 1..=STEPS {
@@ -677,7 +691,7 @@ pub fn apply_hotkey(app: &AppHandle, wanted: &str) {
 
 #[cfg(test)]
 mod tests {
-    use super::snap;
+    use super::{snap, Placement, PANEL_H, PANEL_W, SIDE_PANEL_H, STRIP_H, STRIP_W, TALL_PANEL_H};
     use super::{distance_outside, frame_is_fresh, on_shape, poll_interval, IslandRect};
     use crate::services::perf::Mode;
     use std::time::Duration;
@@ -761,5 +775,18 @@ mod tests {
         let p = snap(1400.0, 10.0, 1920.0, 1080.0);
         assert_eq!(p.align, "center");
         assert!((p.offset - 1400.0 / 1920.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn tall_panel_only_when_open() {
+        let top = Placement { edge: "top".into(), align: "center".into(), offset: 0.5 };
+        let side = Placement { edge: "left".into(), align: "center".into(), offset: 0.5 };
+        assert_eq!(top.window_size(false, false), (PANEL_W, PANEL_H));
+        assert_eq!(side.window_size(false, false), (PANEL_W, SIDE_PANEL_H));
+        assert_eq!(top.window_size(false, true), (PANEL_W, TALL_PANEL_H));
+        assert_eq!(side.window_size(false, true), (PANEL_W, TALL_PANEL_H));
+        // Île cachée : la bande de réveil, haute ou pas.
+        assert_eq!(top.window_size(true, true), (STRIP_W, STRIP_H));
+        assert_eq!(side.window_size(true, true), (STRIP_H, STRIP_W));
     }
 }

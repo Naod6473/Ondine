@@ -121,7 +121,8 @@ export function phonePanel(api: ModuleApi): HTMLElement | null {
   const url = el("code", { class: "phone-url", title: "L'adresse, si le téléphone ne lit pas le QR code" }, s.url);
   const panel = el(
     "div",
-    { class: "phone" },
+    // L'île grandit pour montrer le QR code en entier (src/island/fit.ts).
+    { class: "phone", "data-island-fit": true },
     el("div", { class: "clip-qr-box phone-qr" }, el("img", { class: "clip-qr-img", src: s.qr, alt: "QR code", draggable: "false" })),
     el(
       "div",

@@ -164,6 +164,11 @@ qu'après la fin de l'animation.
   révélés, chiffres qui roulent, listes qui glissent (FLIP), boutons gélatine,
   notification qui sort de la pilule, reflet sous la souris, anneaux et barres
   qui se dessinent. Les mêmes servent dans la fenêtre des Réglages.
+- **L'île qui s'adapte au contenu** (`src/island/fit.ts`) : un contenu à
+  montrer en entier (un QR code) porte l'attribut `data-island-fit` ; l'île
+  ouverte grandit alors juste assez (jusqu'à 480 px, variable CSS `--fit-h`),
+  avec le même ressort, puis reprend sa taille quand il s'en va. La fenêtre
+  passe d'abord au panneau haut (`island_set_tall`, 720 × 530).
 - **Changement d'onglet** (`switchTab`) : on ne redessine pas toute la vue. La
   pastille de l'onglet actif (`src/island/tab-pill.ts`) se déplace avec deux
   ressorts, un par bord : le bord qui mène est raide, celui qui suit est mou,

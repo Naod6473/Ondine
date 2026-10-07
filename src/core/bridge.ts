@@ -76,6 +76,8 @@ export const Bridge = {
 
   // Fenêtre de l'île
   islandSetCollapsed: (collapsed: boolean) => call<void>("island_set_collapsed", { collapsed }),
+  /** L'île ouverte va grandir (ou a fini de rétrécir) : la fenêtre prend le panneau haut (ou le rend). */
+  islandSetTall: (tall: boolean) => call<void>("island_set_tall", { tall }),
   islandSetRect: (x: number, y: number, width: number, height: number) =>
     call<void>("island_set_rect", { x, y, width, height }),
   islandSetFocus: (focused: boolean) => call<void>("island_set_focus", { focused }),
