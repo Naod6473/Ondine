@@ -29,7 +29,7 @@ pub fn notify(args: Vec<String>) {
     let mut message = build(&args, read_stdin());
     // Pour « Y aller » : les programmes au-dessus de nous (le terminal de
     // l'agent en fait partie) et notre console, si elle est visible.
-    message["pids"] = json!(platform::ancestor_pids(8));
+    message["pids"] = json!(platform::ancestor_pids(12));
     message["hwnd"] = json!(platform::own_console_window());
     let _ = platform::send_agents_pipe(message.to_string().as_bytes());
     if matches!(message["source"].as_str(), Some("codex") | Some("gemini")) {
@@ -151,7 +151,7 @@ fn permission_request(message: &Value) -> Result<Option<String>, String> {
         "detail": permission_detail(hook),
         "session": hook["session_id"],
         "cwd": hook["cwd"],
-        "pids": platform::ancestor_pids(8),
+        "pids": platform::ancestor_pids(12),
         "hwnd": platform::own_console_window(),
     });
     let reply = platform::request_agents_pipe(request.to_string().as_bytes())?;
@@ -248,7 +248,7 @@ pub fn mcp() {
         let Ok(msg) = serde_json::from_str::<Value>(&line) else { continue };
         if let Some(reply) = mcp_handle(&msg, &mut client, &|request| {
             let mut m = json!({ "v": 1, "source": "mcp", "client": client_label(&request.1), "request": request.0 });
-            m["pids"] = json!(platform::ancestor_pids(8));
+            m["pids"] = json!(platform::ancestor_pids(12));
             m["hwnd"] = json!(platform::own_console_window());
             m
         }) {

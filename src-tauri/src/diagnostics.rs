@@ -269,8 +269,9 @@ pub struct SelfUsage {
 /// La mesure précédente : sysinfo calcule le processeur entre deux lectures.
 static SAMPLER: Mutex<Option<(System, Instant)>> = Mutex::new(None);
 
-/// `root` et tous ses descendants, d'après la liste (pid, parent).
-pub fn process_tree(root: Pid, links: &[(Pid, Option<Pid>)]) -> HashSet<Pid> {
+/// `root` et ses descendants qui passent `keep`, d'après la liste (pid,
+/// parent). Un enfant écarté l'est avec toute sa descendance.
+pub fn process_tree(root: Pid, links: &[(Pid, Option<Pid>)], keep: impl Fn(Pid) -> bool) -> HashSet<Pid> {
     let mut children: HashMap<Pid, Vec<Pid>> = HashMap::new();
     for (pid, parent) in links {
         if let Some(parent) = parent {
@@ -283,7 +284,7 @@ pub fn process_tree(root: Pid, links: &[(Pid, Option<Pid>)]) -> HashSet<Pid> {
     let mut todo = vec![root];
     while let Some(p) = todo.pop() {
         for c in children.get(&p).map(Vec::as_slice).unwrap_or(&[]) {
-            if tree.insert(*c) {
+            if keep(*c) && tree.insert(*c) {
                 todo.push(*c);
             }
         }
@@ -308,7 +309,10 @@ pub fn self_usage(window: Window) -> Option<SelfUsage> {
     *last = Instant::now();
 
     let links: Vec<(Pid, Option<Pid>)> = sys.processes().iter().map(|(pid, p)| (*pid, p.parent())).collect();
-    let tree = process_tree(me, &links);
+    // Seulement les fenêtres d'Ondine (WebView2) : pas les programmes qu'elle
+    // a lancés (un agent ouvert depuis l'onglet Agents IA, une console…).
+    let webview = |pid: Pid| sys.process(pid).is_some_and(|p| p.name().eq_ignore_ascii_case("msedgewebview2.exe"));
+    let tree = process_tree(me, &links, webview);
     let mut memory = 0;
     let mut cpu = 0.0;
     for pid in &tree {
@@ -398,8 +402,10 @@ mod tests {
             (p(13), Some(p(11))),  // WebView2 (GPU)
             (p(20), Some(p(1))),   // un autre programme
             (p(21), Some(p(20))),
+            (p(30), Some(p(10))),  // un agent lancé depuis l'île
+            (p(31), Some(p(30))),
         ];
-        let tree = process_tree(p(10), &links);
+        let tree = process_tree(p(10), &links, |pid| pid != p(30));
         assert_eq!(tree, HashSet::from([p(10), p(11), p(12), p(13)]));
     }
 }

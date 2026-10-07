@@ -297,12 +297,12 @@ impl RustModule for Agents {
             // { session } : fait passer devant la fenêtre de cette session.
             "focus" => {
                 let id = args.get("session").and_then(Value::as_str).ok_or("session manquante")?;
-                let (hwnd, pids) = {
+                let (hwnd, pids, project) = {
                     let st = self.state.locked();
                     let s = st.sessions.get(id).ok_or("session inconnue (terminée ?)")?;
-                    (s.hwnd, s.pids.clone())
+                    (s.hwnd, s.pids.clone(), s.project.clone())
                 };
-                platform::focus_agent_window(hwnd, &pids)?;
+                platform::focus_agent_window(hwnd, &pids, &project)?;
                 Ok(Value::Null)
             }
             // La configuration à coller dans Claude Code (avec le chemin de CE programme).
@@ -608,7 +608,7 @@ fn permission_request(app: &AppHandle, state: &Shared, msg: &Value, mut reply: s
     let session = msg["session"].as_str().map(|id| format!("{source}:{}", clean(id, 80))).unwrap_or_default();
     // Pour « Y aller » : on note où est sa fenêtre (comme pour un hook).
     if !session.is_empty() {
-        let pids: Vec<u32> = msg["pids"].as_array().into_iter().flatten().filter_map(Value::as_u64).filter_map(|p| u32::try_from(p).ok()).take(8).collect();
+        let pids: Vec<u32> = msg["pids"].as_array().into_iter().flatten().filter_map(Value::as_u64).filter_map(|p| u32::try_from(p).ok()).take(12).collect();
         let hwnd = msg["hwnd"].as_i64().unwrap_or(0) as isize;
         let mut st = state.locked();
         if let Some(sess) = st.sessions.get_mut(&session) {
@@ -889,7 +889,7 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
     let Some(event) = understand(&msg, now_ms()) else { return };
     log::debug(format!("agents : {} ({})", event.kind, event.source));
     // Où est sa fenêtre ? (de simples numéros ; rien n'est lancé avec)
-    let pids: Vec<u32> = msg["pids"].as_array().into_iter().flatten().filter_map(Value::as_u64).filter_map(|p| u32::try_from(p).ok()).take(8).collect();
+    let pids: Vec<u32> = msg["pids"].as_array().into_iter().flatten().filter_map(Value::as_u64).filter_map(|p| u32::try_from(p).ok()).take(12).collect();
     let hwnd = msg["hwnd"].as_i64().unwrap_or(0) as isize;
 
     // Qui est au travail ? (la mascotte réfléchit tant qu'au moins une session travaille)
