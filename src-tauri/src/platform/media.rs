@@ -33,6 +33,8 @@ pub struct NowPlaying {
 }
 
 /// Les commandes qu'on peut envoyer au lecteur.
+// (Sous Linux, rien ne lit la position de Seek : pas d'avertissement pour ça.)
+#[cfg_attr(not(windows), allow(dead_code))]
 #[derive(Debug, Clone, Copy)]
 pub enum Control {
     TogglePlayPause,
