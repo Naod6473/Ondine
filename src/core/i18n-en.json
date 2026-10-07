@@ -1184,7 +1184,22 @@
 "Astuces à la première ouverture d'un onglet": "Tips the first time a tab opens",
 "La première fois que vous ouvrez un onglet, une petite bulle d'Ondine explique son geste principal.": "The first time you open a tab, a small bubble from Ondine explains its main gesture.",
 "Revoir les astuces": "Show the tips again",
-"Les astuces reviendront à la prochaine ouverture de chaque onglet.": "The tips will come back the next time each tab opens."
+"Les astuces reviendront à la prochaine ouverture de chaque onglet.": "The tips will come back the next time each tab opens.",
+"Bilan de la semaine": "Weekly summary",
+"Chaque semaine, au jour et à l'heure choisis (vendredi 17 h par défaut), Ondine résume dans une notification ce que vous avez fait : Pomodoros terminés, temps de concentration (séances de travail du Minuteur) et tâches cochées dans Notes. Seulement s'il s'est passé quelque chose. PC éteint à l'heure dite : le bilan arrive au démarrage suivant, dans les 2 jours. Les compteurs restent sur votre PC et ne contiennent que des nombres, jamais le texte de vos tâches.": "Every week, on the day and at the time you choose (Friday 5 p.m. by default), Ondine sums up in a notification what you've done: Pomodoros completed, focus time (Timer work sessions) and tasks checked off in Notes. Only if something happened. PC off at that time: the summary comes at the next startup, within 2 days. The counters stay on your PC and only hold numbers, never the text of your tasks.",
+"Chaque semaine, au jour et à l'heure choisis (vendredi 17 h par défaut), Ondine résume dans une notification ce que vous avez fait : Pomodoros terminés, temps de concentration (séances de travail du Minuteur) et tâches cochées dans Notes.": "Every week, on the day and at the time you choose (Friday 5 p.m. by default), Ondine sums up in a notification what you've done: Pomodoros completed, focus time (Timer work sessions) and tasks checked off in Notes.",
+"Jour du bilan": "Summary day",
+"Heure du bilan": "Summary time",
+"L'heure de votre PC. Ce qui est fait après compte pour la semaine suivante.": "Your PC's time. What you do afterwards counts for the next week.",
+"Le bilan de votre semaine": "Your week in review",
+"Votre semaine jusqu'ici": "Your week so far",
+"Rien de compté pour l'instant : lancez un Pomodoro ou cochez une tâche dans Notes.": "Nothing counted yet: start a Pomodoro or check off a task in Notes.",
+"1 Pomodoro terminé": "1 Pomodoro completed",
+"1 tâche cochée": "1 task checked off",
+"Aperçu": "Preview",
+"Voir le bilan maintenant": "See the summary now",
+"Ce qui est compté depuis le dernier bilan : la notification s'affiche dans l'île. Le vrai bilan arrivera quand même à l'heure dite.": "What's been counted since the last summary: the notification shows in the island. The real summary will still come at the set time.",
+"Activez d'abord le module.": "Turn the module on first."
 },
 "patterns": [
 [
@@ -2178,6 +2193,18 @@
 [
 "^Quoi\\ de\\ neuf\\ dans\\ Ondine\\ (.+)$",
 "What's new in Ondine $1"
+],
+[
+"^(\\d+)\\ Pomodoros\\ terminés$",
+"$1 Pomodoros completed"
+],
+[
+"^(\\d+)\\ tâches\\ cochées$",
+"$1 tasks checked off"
+],
+[
+"^(\\d+\\ (?:min|h(?:\\ \\d{2})?))\\ de\\ concentration$",
+"$1 of focus"
 ]
 ]
 }

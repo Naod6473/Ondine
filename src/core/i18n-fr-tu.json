@@ -149,7 +149,14 @@
 "Créez vos règles dans Réglages → Règles ; ici, vous les suivez et pouvez tout mettre en pause.": "Crée tes règles dans Réglages → Règles ; ici, tu les suis et peux tout mettre en pause.",
 "Cliquez sur la barre de progression pour avancer ou reculer dans le morceau.": "Clique sur la barre de progression pour avancer ou reculer dans le morceau.",
 "Glissez un pilier vers le haut ou le bas pour régler le son, le micro ou la luminosité.": "Glisse un pilier vers le haut ou le bas pour régler le son, le micro ou la luminosité.",
-"La première fois que vous ouvrez un onglet, une petite bulle d'Ondine explique son geste principal.": "La première fois que tu ouvres un onglet, une petite bulle d'Ondine explique son geste principal."
+"La première fois que vous ouvrez un onglet, une petite bulle d'Ondine explique son geste principal.": "La première fois que tu ouvres un onglet, une petite bulle d'Ondine explique son geste principal.",
+"Chaque semaine, au jour et à l'heure choisis (vendredi 17 h par défaut), Ondine résume dans une notification ce que vous avez fait : Pomodoros terminés, temps de concentration (séances de travail du Minuteur) et tâches cochées dans Notes. Seulement s'il s'est passé quelque chose. PC éteint à l'heure dite : le bilan arrive au démarrage suivant, dans les 2 jours. Les compteurs restent sur votre PC et ne contiennent que des nombres, jamais le texte de vos tâches.": "Chaque semaine, au jour et à l'heure choisis (vendredi 17 h par défaut), Ondine résume dans une notification ce que tu as fait : Pomodoros terminés, temps de concentration (séances de travail du Minuteur) et tâches cochées dans Notes. Seulement s'il s'est passé quelque chose. PC éteint à l'heure dite : le bilan arrive au démarrage suivant, dans les 2 jours. Les compteurs restent sur ton PC et ne contiennent que des nombres, jamais le texte de tes tâches.",
+"Chaque semaine, au jour et à l'heure choisis (vendredi 17 h par défaut), Ondine résume dans une notification ce que vous avez fait : Pomodoros terminés, temps de concentration (séances de travail du Minuteur) et tâches cochées dans Notes.": "Chaque semaine, au jour et à l'heure choisis (vendredi 17 h par défaut), Ondine résume dans une notification ce que tu as fait : Pomodoros terminés, temps de concentration (séances de travail du Minuteur) et tâches cochées dans Notes.",
+"L'heure de votre PC. Ce qui est fait après compte pour la semaine suivante.": "L'heure de ton PC. Ce qui est fait après compte pour la semaine suivante.",
+"Le bilan de votre semaine": "Le bilan de ta semaine",
+"Votre semaine jusqu'ici": "Ta semaine jusqu'ici",
+"Rien de compté pour l'instant : lancez un Pomodoro ou cochez une tâche dans Notes.": "Rien de compté pour l'instant : lance un Pomodoro ou coche une tâche dans Notes.",
+"Activez d'abord le module.": "Active d'abord le module."
 },
 "patterns": [
 [

@@ -535,6 +535,9 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     case "weather.current":
       // Une fausse météo : un bel après-midi à Lyon.
       return { place: "Lyon", temp: 21.4, min: 12.1, max: 23.6, wind: 9, code: 1, isDay: true, icon: "🌤️", label: "Plutôt dégagé", unit: "c", at: "15:00" };
+    case "weekly.peek":
+      // « Voir le bilan maintenant » : une belle semaine inventée (« due » reste null : pas de vrai bilan en démo).
+      return { pomodoros: 9, focusMinutes: 215, todos: 14, until: "" };
     default:
       // Toute autre action : on fait comme si c'était fait, sans rien toucher.
       return null;

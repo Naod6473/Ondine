@@ -890,7 +890,39 @@ function modulePage(main: HTMLElement, man: ModuleManifest, compact = false) {
       ),
     ),
   );
+  if (!compact && man.id === "weekly") main.append(weeklyGroup(man));
   if (!compact) main.append(el("p", { class: "version" }, `${man.name} · version ${man.version}`));
+}
+
+/**
+ * Bilan de la semaine : « Voir le bilan maintenant » montre dans l'île la
+ * semaine en cours (sujet « weekly.show », voir src/modules/weekly), sans
+ * rien changer au vrai bilan.
+ */
+function weeklyGroup(man: ModuleManifest): HTMLElement {
+  const status = el("span", { class: "muted", "aria-live": "polite" }, "");
+  const now = el(
+    "button",
+    {
+      class: "btn small",
+      onclick: () => {
+        if (!settingsStore.moduleEnabled(man.id)) {
+          status.textContent = "Activez d'abord le module.";
+          return;
+        }
+        status.textContent = "";
+        bus.emit("weekly.show", null, "settings");
+      },
+    },
+    "Voir le bilan maintenant",
+  );
+  return group("Aperçu", [
+    row(
+      "Voir le bilan maintenant",
+      el("div", { class: "chips" }, now, status),
+      "Ce qui est compté depuis le dernier bilan : la notification s'affiche dans l'île. Le vrai bilan arrivera quand même à l'heure dite.",
+    ),
+  ]);
 }
 
 function mascot(main: HTMLElement) {

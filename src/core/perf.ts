@@ -51,6 +51,8 @@ export const CADENCES = {
   presentationCheck: [2000, 4000, 8000],
   /** Pauses : une pause à proposer ? */
   pausesCheck: [30000, 30000, 60000],
+  /** Bilan de la semaine : est-ce l'heure du bilan ? */
+  weeklyCheck: [60000, 60000, 120000],
 } satisfies Record<string, readonly [number, number, number]>;
 
 export type Cadence = keyof typeof CADENCES;

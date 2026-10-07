@@ -1129,6 +1129,7 @@ Front (ms) :
 | Mascotte : ennui, sommeil | 2 000 | 2 000 | 4 000 | |
 | Ondine pend au bord ? / mode présentation | 15 000 / 2 000 | 15 000 / 4 000 | 30 000 / 8 000 | |
 | Pauses | 30 000 | 30 000 | 60 000 | |
+| Bilan de la semaine : l'heure du bilan ? | 60 000 | 60 000 | 120 000 | une première fois 20 s après le démarrage |
 | Dessins continus (mascotte, anneau du minuteur, chrono) | 60 im/s | 60 im/s | 30 im/s | `frameLoop` |
 
 En éco, en plus : les effets « Studio » (flou → net) sont remplacés par ceux de
