@@ -43,3 +43,15 @@ export function isHot(w: WeatherLike | null): boolean {
   const v = Number(m[1]);
   return m[2] === "F" ? v >= 95 : v >= 35;
 }
+
+/** Ce que le module Musique publie (« media.changed ») : le morceau en cours, ou null. */
+export interface MediaPayload {
+  playing?: { status?: string } | null;
+}
+
+/** La musique joue-t-elle ? null : on ne sait pas (le lecteur change de morceau). Pur : testé. */
+export function musicPlaying(p: MediaPayload | null): boolean | null {
+  const status = p?.playing?.status;
+  if (status === "changing") return null;
+  return status === "playing";
+}

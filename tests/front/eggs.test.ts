@@ -3,7 +3,7 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { dayKey, isHot, isRainy, seasonOf } from "../../src/eggs/calendar";
+import { dayKey, isHot, isRainy, musicPlaying, seasonOf } from "../../src/eggs/calendar";
 import { clockAccessory } from "../../src/eggs/context";
 import { found, TREASURES } from "../../src/eggs/treasures";
 import { KeySequence, KONAMI, magicWord, normalizeWord, SpinCounter } from "../../src/eggs/words";
@@ -145,5 +145,18 @@ describe("accessoires de l'heure", () => {
     assert.equal(clockAccessory(new Date(2026, 9, 5, 9, 0)), "coffee");
     assert.equal(clockAccessory(new Date(2026, 9, 5, 10, 30)), null);
     assert.equal(clockAccessory(new Date(2026, 9, 6, 9, 0)), null);
+  });
+});
+
+describe("danse : la musique joue-t-elle ?", () => {
+  test("le morceau en lecture fait danser, en pause ou arrêté non", () => {
+    assert.equal(musicPlaying({ playing: { status: "playing" } }), true);
+    assert.equal(musicPlaying({ playing: { status: "paused" } }), false);
+    assert.equal(musicPlaying({ playing: { status: "stopped" } }), false);
+    assert.equal(musicPlaying({ playing: null }), false);
+    assert.equal(musicPlaying(null), false);
+  });
+  test("entre deux morceaux, on ne sait pas (la danse continue)", () => {
+    assert.equal(musicPlaying({ playing: { status: "changing" } }), null);
   });
 });

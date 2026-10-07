@@ -178,6 +178,15 @@ let bus: Bus;
 let current = "general";
 let query = "";
 let preview: MascotRenderer | null = null;
+/** Réglages → Mascotte : les surprises et le carnet sont repliés (pour garder la surprise). */
+let eggsShown = false;
+
+function showEggs(on: boolean) {
+  eggsShown = on;
+  content.querySelector<HTMLElement>(".eggs-fold")?.toggleAttribute("hidden", !on);
+  const btn = content.querySelector<HTMLElement>(".eggs-toggle");
+  if (btn) btn.textContent = on ? "Masquer" : "Afficher";
+}
 let pill: NavPill | null = null;
 /** Quand on a enregistré nous-mêmes pour la dernière fois (voir `start`). */
 let lastOwnSave = 0;
@@ -408,6 +417,7 @@ function highlight(key: string) {
   requestAnimationFrame(() => {
     const target = [...content.querySelectorAll<HTMLElement>("[data-key]")].find((r) => r.dataset.key === key);
     if (!target) return;
+    if (target.closest(".eggs-fold")) showEggs(true); // trouvé par la recherche : on déplie
     target.scrollIntoView({ block: "center", behavior: reducedMotion() ? "auto" : "smooth" });
     target.classList.remove("flash");
     void target.offsetWidth; // relance l'animation si on recherche deux fois la même chose
@@ -884,30 +894,41 @@ function mascot(main: HTMLElement) {
       ],
       "Quand l'île est cachée et que vous ne touchez plus au PC depuis un moment, Ondine descend du bord de l'écran tête en bas, cligne des yeux, puis remonte. Un clic sur elle ouvre l'île. Jamais pendant une présentation ou un plein écran.",
     ),
-    group(
-      "Surprises",
-      [
-        row(
-          "Surprises cachées",
-          choice(
-            s.mascot.surprises ?? "all",
-            [
-              ["all", "Toutes"],
-              ["seasonal", "Sans les codes secrets"],
-              ["none", "Aucune"],
-            ],
-            (v) => save((d) => (d.mascot.surprises = v as Settings["mascot"]["surprises"]), true),
+    group("Surprises", [
+      row(
+        "Surprises cachées et carnet des trésors",
+        el("button", { class: "btn small eggs-toggle", onclick: () => showEggs(!eggsShown) }, eggsShown ? "Masquer" : "Afficher"),
+        "Masqués par défaut, pour garder la surprise.",
+      ),
+    ]),
+    el(
+      "div",
+      { class: "eggs-fold", hidden: !eggsShown },
+      group(
+        null,
+        [
+          row(
+            "Surprises cachées",
+            choice(
+              s.mascot.surprises ?? "all",
+              [
+                ["all", "Toutes"],
+                ["seasonal", "Sans les codes secrets"],
+                ["none", "Aucune"],
+              ],
+              (v) => save((d) => (d.mascot.surprises = v as Settings["mascot"]["surprises"]), true),
+            ),
           ),
-        ),
-        row(
-          "Le goûter d'Ondine",
-          el("button", { class: "btn small", onclick: () => bus.emit("easter.snack", null, "settings") }, "Essayer"),
-          "De temps en temps, quand la mini-île est tranquille, Ondine la traverse en mangeant son contenu, puis tout revient. « Essayer » le lance à la prochaine mini-île.",
-        ),
-      ],
-      "Ondine cache quelques surprises : des codes secrets et des gestes, des jours de fête, et des réactions à ce qui se passe sur le PC (agents IA, nuit, volume…). Jamais pendant une présentation ou un plein écran ; avec « réduire les animations » ou en économie d'énergie, elle réagit sans les grands effets.",
+          row(
+            "Le goûter d'Ondine",
+            el("button", { class: "btn small", onclick: () => bus.emit("easter.snack", null, "settings") }, "Essayer"),
+            "De temps en temps, quand la mini-île est tranquille, Ondine la traverse en mangeant son contenu, puis tout revient. « Essayer » le lance à la prochaine mini-île.",
+          ),
+        ],
+        "Ondine cache quelques surprises : des codes secrets et des gestes, des jours de fête, et des réactions à ce qui se passe sur le PC (agents IA, nuit, volume…). Jamais pendant une présentation ou un plein écran ; avec « réduire les animations » ou en économie d'énergie, les surprises automatiques restent discrètes.",
+      ),
+      treasureBook(s.mascot.treasures ?? []),
     ),
-    treasureBook(s.mascot.treasures ?? []),
   );
   if (!cur) return;
   if (cur.problems.length) main.append(el("p", { class: "banner error" }, "Problèmes dans le manifeste : ", cur.problems.join(" ; ")));

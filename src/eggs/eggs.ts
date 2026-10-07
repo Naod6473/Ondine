@@ -20,8 +20,10 @@
 // Et les réactions au PC (agents IA, nuit, volume, batterie…) : voir context.ts.
 //
 // Règles : réglage « Surprises » (toutes / le calendrier seulement / aucune),
-// rien pendant une présentation, et avec « réduire les animations » ou en
-// économie d'énergie, Ondine réagit sans les grands effets. Chaque surprise
+// rien pendant une présentation. Avec « réduire les animations » ou en
+// économie d'énergie, les surprises automatiques (fêtes, réactions, goûter)
+// restent discrètes ; celles qu'on demande exprès (mot magique, geste) jouent
+// en entier. Chaque surprise
 // découverte entre dans le carnet des trésors (réglage mascot.treasures).
 
 import type { Bus } from "../core/bus";
@@ -32,7 +34,7 @@ import type { IslandState } from "../island/island-state";
 import { setRetroSound, sounds } from "../island/sounds";
 import { reducedMotion } from "../island/tab-pill";
 import type { MascotManifest } from "../mascot/types";
-import { dayKey, isHot, isRainy, seasonOf, type WeatherLike } from "./calendar";
+import { dayKey, isHot, isRainy, musicPlaying, seasonOf, type MediaPayload, type WeatherLike } from "./calendar";
 import { PcReactions } from "./context";
 import { FxLayer } from "./fx-layer";
 import { MascotFx } from "./mascot-fx";
@@ -50,6 +52,11 @@ const SNACK_CHECK_MS = 30_000;
 const SNACK_CHANCE = 0.25;
 /** La souris doit avoir quitté la mini-île depuis au moins… */
 const SNACK_QUIET_MS = 8000;
+/** Une pause de moins que ça (changement de morceau, pub) n'arrête pas la danse. */
+const MUSIC_OFF_MS = 4000;
+
+const wait = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms));
+
 
 export interface EggHooks {
   shell: HTMLElement;
@@ -85,6 +92,8 @@ export class EasterEggs {
   private busy = false;
   private weather: WeatherLike | null = null;
   private music = false;
+  /** La musique s'arrête : on attend un peu avant d'arrêter la danse (entre deux morceaux). */
+  private musicOff = 0;
   private dancing = false;
   private lastSnack = Date.now();
   private snackWanted = false;
@@ -112,10 +121,7 @@ export class EasterEggs {
     });
     const timer = window.setInterval(() => this.maybeSnack(), SNACK_CHECK_MS);
     this.offs.push(() => window.clearInterval(timer));
-    on("media.changed", (p: { playing?: boolean } | null) => {
-      this.music = !!p?.playing;
-      this.syncDance();
-    });
+    on("media.changed", (p: MediaPayload | null) => this.mediaChanged(musicPlaying(p)));
     const keys = (e: KeyboardEvent) => {
       if (this.hooks.state() !== "expanded") return;
       if (this.konami.push(e.key) && this.allowed("secret") && this.hooks.manifest()) this.setRetro(!this.retro);
@@ -174,7 +180,11 @@ export class EasterEggs {
     return !document.body.classList.contains("presenting");
   }
 
-  /** Les grands effets (pluie, feux d'artifice…) : pas avec « réduire les animations » ni en économie d'énergie. */
+  /**
+   * Les grands effets des surprises automatiques (feux d'artifice, neige,
+   * goûter…) : pas avec « réduire les animations » ni en économie d'énergie.
+   * Un mot magique ou un geste, demandé exprès, joue toujours.
+   */
   private visuals(): boolean {
     return !reducedMotion() && perfMode() !== "eco";
   }
@@ -244,11 +254,6 @@ export class EasterEggs {
     this.discover("code-rain");
     sounds.glitch();
     this.play("pluie-glitch", "surprise");
-    if (!this.visuals()) {
-      window.setTimeout(() => this.emote("wink"), 1500);
-      this.busy = false;
-      return;
-    }
     const timers = [
       window.setTimeout(() => {
         sounds.whoosh();
@@ -256,7 +261,8 @@ export class EasterEggs {
       }, 2200),
       window.setTimeout(() => this.emote("wink"), 4600),
     ];
-    await this.fx.play("code-rain", { focus: this.focus() });
+    // Si la fenêtre ne dessine plus (île cachée), on ne reste pas bloqués.
+    await Promise.race([this.fx.play("code-rain", { focus: this.focus() }), wait(9000)]);
     timers.forEach((t) => window.clearTimeout(t));
     this.busy = false;
   }
@@ -278,11 +284,9 @@ export class EasterEggs {
   /** Le tonneau : l'île fait un tour complet sur elle-même ; Ondine a le tournis. */
   private barrelRoll() {
     this.discover("barrel-roll");
-    if (this.visuals()) {
-      this.hooks.shell.animate([{ rotate: "0deg" }, { rotate: "360deg" }], { duration: 1100, easing: "cubic-bezier(0.6, 0, 0.2, 1)" });
-      sounds.whoosh();
-    }
-    window.setTimeout(() => this.play("etourdie", "dizzy"), this.visuals() ? 1000 : 0);
+    this.hooks.shell.animate([{ rotate: "0deg" }, { rotate: "360deg" }], { duration: 1100, easing: "cubic-bezier(0.6, 0, 0.2, 1)" });
+    sounds.whoosh();
+    window.setTimeout(() => this.play("etourdie", "dizzy"), 1000);
   }
 
   /** La réponse : Ondine réfléchit longtemps, puis répond. */
@@ -313,10 +317,6 @@ export class EasterEggs {
     this.clicks = [];
     if (!this.allowed("secret") || !this.hooks.manifest() || this.mfx.splitting) return;
     this.discover("split");
-    if (!this.visuals()) {
-      this.emote("surprise");
-      return;
-    }
     this.play("surpris", "surprise");
     void this.mfx.split().then(() => this.emote("happy"));
   }
@@ -397,7 +397,7 @@ export class EasterEggs {
       window.setTimeout(() => this.emote("happy"), go + 100),
     ];
     try {
-      await walk.finished;
+      await Promise.race([walk.finished, wait(total + 2000)]);
     } catch {
       // annulée (l'île a changé d'état) : on remet tout en place quand même
     }
@@ -514,6 +514,22 @@ export class EasterEggs {
     this.emote("happy");
     if (this.visuals()) void this.fx.play("snow", { pile: { from, to } });
     return true;
+  }
+
+  private mediaChanged(playing: boolean | null) {
+    if (playing === null) return; // le lecteur change de morceau : on garde l'état
+    window.clearTimeout(this.musicOff);
+    this.musicOff = 0;
+    if (playing) {
+      this.music = true;
+      this.syncDance();
+    } else if (this.music) {
+      this.musicOff = window.setTimeout(() => {
+        this.musicOff = 0;
+        this.music = false;
+        this.syncDance();
+      }, MUSIC_OFF_MS);
+    }
   }
 
   /** De la musique et la mini-île : Ondine danse (et le 21 juin, c'est un trésor). */

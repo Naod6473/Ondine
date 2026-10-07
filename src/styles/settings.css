@@ -1257,3 +1257,12 @@ html:not([lang="fr"]) .fr-only {
 .treasure.found b::before {
   content: "✦ ";
 }
+
+/* Réglages → Mascotte : surprises et carnet, repliés par défaut. */
+.eggs-fold {
+  display: contents;
+}
+
+.eggs-fold[hidden] {
+  display: none;
+}

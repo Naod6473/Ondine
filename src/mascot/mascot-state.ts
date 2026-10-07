@@ -118,6 +118,13 @@ export class MascotController {
     const anim = this.animationFor(state);
     if (!anim) return false;
     if (!force && !this.allowed(anim)) return false;
+    // Pendant la danse, un état « de fond » (repos, ennui, inquiétude…) ne
+    // l'arrête pas : elle reprend la danse. Seuls le travail et la réflexion
+    // passent devant ; les réactions ponctuelles jouent, puis la danse revient.
+    if (this.dance && anim.loop && this.tasks === 0 && !this.thinking && state !== "sleep") {
+      if (this.current?.name !== "danse") this.playAnimation("danse");
+      return true;
+    }
     this.state = state;
     this.current = anim;
     this.renderer.setState(state);
