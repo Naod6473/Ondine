@@ -124,4 +124,8 @@ describe("quand montrer « Quoi de neuf »", () => {
     assert.equal(whatsNewAction("1.0.1", "1.0.2", true, true), "nothing");
     assert.equal(whatsNewAction("1.0.1", "dev", true, false), "nothing");
   });
+  test("mode démo sans version notée : on la retient, sans rien montrer", () => {
+    assert.equal(whatsNewAction("", "1.0.2", true, true), "remember");
+    assert.equal(whatsNewAction("", "1.0.2", false, true), "remember");
+  });
 });

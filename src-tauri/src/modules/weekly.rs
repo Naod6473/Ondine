@@ -286,13 +286,12 @@ impl RustModule for Weekly {
         }
         let schedule = Schedule::from_settings(&ctx.settings());
         let now = platform_now();
-        // Le bus arrive sur le thread de l'interface : l'écriture du fichier se fait à côté.
+        // Le compte se fait tout de suite, dans l'ordre des événements (une
+        // tâche cochée puis décochée aussitôt ne compte pas) ; seule l'écriture
+        // du fichier se fait à côté, le bus arrivant sur le thread de l'interface.
+        record(&mut self.data.locked(), now, schedule, event);
         let data = Arc::clone(&self.data);
-        std::thread::spawn(move || {
-            let mut d = data.locked();
-            record(&mut d, now, schedule, event);
-            store(&d);
-        });
+        std::thread::spawn(move || store(&data.locked()));
     }
 }
 

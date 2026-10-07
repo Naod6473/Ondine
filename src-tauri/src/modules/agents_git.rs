@@ -11,9 +11,12 @@
 //   git diff --numstat -z HEAD --          → les lignes ajoutées / retirées.
 // Les lignes des fichiers nouveaux (pas encore suivis par git) sont comptées
 // ici, pour les petits fichiers texte seulement. Rien n'est écrit dans le
-// dépôt (--no-optional-locks), aucun programme réglé dans le dépôt n'est lancé
-// par ces commandes (core.fsmonitor coupé, --no-ext-diff, --no-textconv), et
-// rien de ce qu'on lit ne va dans le journal.
+// dépôt (--no-optional-locks) et rien de ce qu'on lit ne va dans le journal.
+// Les programmes qu'un dépôt peut demander de lancer sont coupés quand git le
+// permet (core.fsmonitor, --no-ext-diff, --no-textconv). Restent les filtres
+// « clean » de .gitattributes : git ne les lance que s'ils sont définis dans la
+// configuration de git du PC ou du dépôt (jamais par un simple clonage), et
+// `git status` tapé dans un terminal les lancerait de la même façon.
 
 use std::collections::HashMap;
 use std::io::Read;

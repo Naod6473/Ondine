@@ -42,6 +42,12 @@ const KEY = "shelf-hash";
 
 /** Le calcul en cours (pour la notification de progression). */
 let running: HashStarted | null = null;
+/**
+ * Le dernier calcul déjà terminé. Un petit fichier peut finir (« shelf.hashed »)
+ * AVANT que la réponse de `hash` arrive ici : sans ce numéro, la progression
+ * s'afficherait par-dessus le résultat et ne partirait plus.
+ */
+let lastDone = 0;
 
 /** La cible de dépôt. */
 export function hashTarget(api: ModuleApi): DropTarget {
@@ -67,7 +73,10 @@ function showProgress(api: ModuleApi, r: HashStarted, percent?: number) {
 
 async function startHash(api: ModuleApi, paths: string[]) {
   try {
-    running = await api.invoke<HashStarted>("hash", { paths });
+    const started = await api.invoke<HashStarted>("hash", { paths });
+    // Déjà fini (petit fichier) : le résultat est affiché, rien à montrer de plus.
+    if (started.job <= lastDone) return;
+    running = started;
     showProgress(api, running);
   } catch (err) {
     api.notify({ title: "Empreinte impossible", body: errorText(err), icon: "⚠️", priority: "normal", key: KEY });
@@ -122,6 +131,7 @@ export function listenHash(api: ModuleApi): () => void {
   const offDone = api.on("shelf.hashed", (msg) => {
     const done = msg.payload as HashDone;
     running = null;
+    lastDone = Math.max(lastDone, done.job);
     if (done.cancelled) {
       api.notify({ title: "Empreinte arrêtée", icon: "⏹️", priority: "low", key: KEY });
       return;

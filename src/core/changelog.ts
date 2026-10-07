@@ -112,13 +112,18 @@ export function whatsNewLines(text: string, version: string, lang: string, max =
  * Au démarrage, que faire de « Quoi de neuf » ?
  *   - "show" : montrer la notification (et retenir la version) ;
  *   - "remember" : seulement retenir la version (premier lancement) ;
- *   - "nothing" : rien (même version, mode démo, version de développement).
+ *   - "nothing" : rien (même version, mode démo, version de développement) ;
+ *     en mode démo, une version jamais notée est seulement retenue.
  * `seen` = réglage general.lastSeenVersion ; `welcomed` = le mot de bienvenue a
  * déjà été montré, donc Ondine a déjà tourné : une version notée vide vient
  * alors d'une version d'avant ce réglage, et c'est bien une mise à jour.
  */
 export function whatsNewAction(seen: string, current: string, welcomed: boolean, demo: boolean): "show" | "remember" | "nothing" {
-  if (demo || !/^\d/.test(current) || seen === current) return "nothing";
+  if (!/^\d/.test(current) || seen === current) return "nothing";
+  // Mode démo : jamais de notification, mais une version jamais notée l'est
+  // quand même (sinon, une fois la démo coupée, un premier lancement passerait
+  // pour une mise à jour).
+  if (demo) return seen ? "nothing" : "remember";
   if (!seen && !welcomed) return "remember";
   return "show";
 }

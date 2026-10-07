@@ -73,7 +73,13 @@ fn arg_device(args: &Value) -> Result<Device, String> {
 
 /// Les clés et disques USB branchés.
 fn usb_drives() -> Vec<Ejectable> {
-    eject::ejectable_drives(&mut DRIVES.locked())
+    // On travaille sur une copie du cache : lire un lecteur peut prendre
+    // plusieurs secondes (disque lent à démarrer, clé abîmée), et l'onglet ou
+    // « Éjecter » ne doivent pas attendre le fil de fond pendant ce temps.
+    let mut cache = DRIVES.locked().clone();
+    let list = eject::ejectable_drives(&mut cache);
+    *DRIVES.locked() = cache;
+    list
 }
 
 /// { root } → le lecteur, s'il est bien une clé ou un disque USB branché.

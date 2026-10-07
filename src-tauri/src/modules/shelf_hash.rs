@@ -65,7 +65,18 @@ impl Algo {
         }
     }
 
-    /// 32 chiffres hexadécimaux = MD5, 40 = SHA-1, 64 = SHA-256, 128 = SHA-512.
+    /// Le nombre de chiffres hexadécimaux de l'empreinte : 32 = MD5, 40 = SHA-1,
+    /// 64 = SHA-256, 128 = SHA-512.
+    pub fn hex_len(self) -> usize {
+        match self {
+            Algo::Md5 => 32,
+            Algo::Sha1 => 40,
+            Algo::Sha256 => 64,
+            Algo::Sha512 => 128,
+        }
+    }
+
+    /// L'inverse : l'algorithme d'une empreinte de cette longueur.
     pub fn from_hex_len(len: usize) -> Option<Algo> {
         match len {
             32 => Some(Algo::Md5),
@@ -77,17 +88,19 @@ impl Algo {
     }
 }
 
-/// Les empreintes trouvées dans un texte copié : l'algorithme (d'après la
-/// première trouvée) et toutes celles de cette longueur, en minuscules.
+/// Les empreintes trouvées dans un texte copié : l'algorithme et toutes les
+/// empreintes de cette longueur, en minuscules.
 /// Marche avec une empreinte seule, « sha256:… », la sortie de sha256sum
 /// (« empreinte  fichier.iso », une par ligne) ou de certutil / openssl.
-/// None : aucune empreinte dans le texte.
+/// None : aucune empreinte dans le texte, ou un texte où elles ne sont qu'un
+/// détail (un message qui cite un numéro de commit git n'est pas une liste
+/// d'empreintes à vérifier).
 pub fn expected_from_text(text: &str) -> Option<(Algo, Vec<String>)> {
     if text.chars().count() > MAX_CLIPBOARD_CHARS {
         return None;
     }
-    let mut algo = None;
-    let mut found: Vec<String> = Vec::new();
+    // Par algorithme : les empreintes trouvées, dans l'ordre du texte.
+    let mut by_algo: Vec<(Algo, Vec<String>)> = Vec::new();
     // Un mot = une suite de lettres et de chiffres : « sha256:abc… » donne
     // « sha256 » et « abc… » ; une empreinte collée à d'autres lettres n'en est pas une.
     for word in text.split(|c: char| !c.is_ascii_alphanumeric()) {
@@ -95,15 +108,27 @@ pub fn expected_from_text(text: &str) -> Option<(Algo, Vec<String>)> {
             continue;
         }
         let Some(a) = Algo::from_hex_len(word.len()) else { continue };
-        if *algo.get_or_insert(a) != a {
-            continue;
-        }
+        let i = match by_algo.iter().position(|(b, _)| *b == a) {
+            Some(i) => i,
+            None => {
+                by_algo.push((a, Vec::new()));
+                by_algo.len() - 1
+            }
+        };
         let word = word.to_ascii_lowercase();
-        if !found.contains(&word) && found.len() < 10_000 {
-            found.push(word);
+        let list = &mut by_algo[i].1;
+        if !list.contains(&word) && list.len() < 10_000 {
+            list.push(word);
         }
     }
-    algo.map(|a| (a, found))
+    // Plusieurs longueurs (« commit <SHA-1 de git> … sha256: <empreinte> ») :
+    // la plus longue gagne, c'est elle qui sert à vérifier un fichier.
+    let (algo, found) = by_algo.into_iter().max_by_key(|(a, _)| a.hex_len())?;
+    // Les empreintes doivent faire au moins le quart du texte (espaces non
+    // comptés) : vrai pour une empreinte seule, sha256sum, certutil, openssl.
+    let hex: usize = found.iter().map(String::len).sum();
+    let visible = text.chars().filter(|c| !c.is_whitespace()).count();
+    (hex * 4 >= visible).then_some((algo, found))
 }
 
 /// L'empreinte de tout ce que donne `reader`, lu par blocs. `progress` reçoit
@@ -354,6 +379,11 @@ mod tests {
         assert_eq!(found(&format!("{sha}  ubuntu-24.04.iso")), Some((Algo::Sha256, 1)));
         assert_eq!(found(&format!("SHA256(ubuntu.iso)= {sha}")), Some((Algo::Sha256, 1)));
         assert_eq!(found(&format!("Hachage SHA256 de ubuntu.iso :\r\n{sha}\r\nCertUtil: -hashfile La commande s'est terminée correctement.")), Some((Algo::Sha256, 1)));
+        // certutil avec un long chemin : l'empreinte reste plus du quart du texte.
+        assert_eq!(
+            found(&format!("Hachage SHA256 de C:\\Users\\Utilisateur\\Downloads\\ubuntu-24.04.1-desktop-amd64.iso :\r\n{sha}\r\nCertUtil: -hashfile La commande s'est terminée correctement.")),
+            Some((Algo::Sha256, 1))
+        );
     }
 
     #[test]
@@ -364,9 +394,11 @@ mod tests {
         let (algo, list) = expected_from_text(&format!("{a} *vide.txt\n{b} *abc.txt\n{a} *autre.txt\n")).unwrap();
         assert_eq!(algo, Algo::Sha256);
         assert_eq!(list, vec![a.to_string(), b.to_string()]);
-        // Des longueurs mélangées : on garde celle de la première.
+        // Des longueurs mélangées : la plus longue gagne, même citée en second.
         let (algo, list) = expected_from_text(&format!("{a}\n900150983cd24fb0d6963f7d28e17f72")).unwrap();
         assert_eq!((algo, list.len()), (Algo::Sha256, 1));
+        let (algo, list) = expected_from_text(&format!("commit a9993e364706816aba3e25717850c26c9cd0d89d\nsha256: {b}")).unwrap();
+        assert_eq!((algo, list), (Algo::Sha256, vec![b.to_string()]));
     }
 
     #[test]
@@ -380,6 +412,11 @@ mod tests {
         assert_eq!(expected_from_text(&"a".repeat(63)), None);
         assert_eq!(expected_from_text(&"a".repeat(65)), None);
         assert_eq!(expected_from_text(&"a".repeat(MAX_CLIPBOARD_CHARS + 1)), None);
+        // Une empreinte noyée dans un long texte (un message qui cite un commit).
+        let prose = "Bonjour, la correction est dans le commit a9993e364706816aba3e25717850c26c9cd0d89d, \
+                     merci de vérifier sur votre poste avant la mise en production de vendredi soir. \
+                     Si quelque chose ne va pas, dites-le dans le fil de l'équipe.";
+        assert_eq!(expected_from_text(prose), None);
     }
 
     #[test]

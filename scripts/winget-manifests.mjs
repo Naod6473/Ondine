@@ -65,18 +65,31 @@ const TEXT = {
 function changelogSection(text, version) {
   const head = /^##\s+\[?v?(\d+\.\d+(?:\.\d+)?(?:-[0-9A-Za-z.-]+)?)\]?\s*(?:[·—–-]\s*(.*))?$/;
   let section = null;
+  // La puce en cours : elle continue seulement sur une ligne EN RETRAIT. Une
+  // ligne vide, un paragraphe hors puce ou un titre (« ### Corrections ») la
+  // ferment, exactement comme dans l'appli.
+  let open = false;
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trimEnd();
-    const h = head.exec(line);
-    if (h) {
-      if (section) break;
-      if (h[1] === version) section = { date: (h[2] ?? "").trim(), items: [] };
+    if (line.startsWith("#")) {
+      open = false;
+      if (/^##\s/.test(line)) {
+        if (section) break; // la section suivante : fini
+        const h = head.exec(line);
+        if (h && h[1] === version) section = { date: (h[2] ?? "").trim(), items: [] };
+      }
       continue;
     }
     if (!section) continue;
     const bullet = /^[-*]\s+(.*)$/.exec(line);
-    if (bullet) section.items.push(bullet[1].trim());
-    else if (line.trim() && section.items.length) section.items[section.items.length - 1] += ` ${line.trim()}`;
+    if (bullet) {
+      section.items.push(bullet[1].trim());
+      open = true;
+    } else if (open && /^\s+\S/.test(line)) {
+      section.items[section.items.length - 1] += ` ${line.trim()}`;
+    } else {
+      open = false;
+    }
   }
   return section;
 }

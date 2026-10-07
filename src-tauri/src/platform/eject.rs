@@ -480,16 +480,24 @@ mod imp {
         unsafe { EvtNext(results.0, &mut raw, 1_000, 0, &mut got) }.ok()?;
         // Chaque événement reçu est refermé à la fin (Drop), même ceux qu'on ne lit pas.
         let events: Vec<Evt> = raw.iter().take(got as usize).map(|&h| Evt(EVT_HANDLE(h))).collect();
-        let mut newest = None;
+        // Aucun événement ne nomme notre clé (son identifiant peut s'écrire
+        // autrement dans le journal) : on ne cite un programme que s'il n'y a
+        // qu'UN refus dans la fenêtre. Avec plusieurs (une autre clé, un
+        // téléphone…), mieux vaut ne rien dire que nommer le mauvais programme.
+        let mut others = Vec::new();
         for event in &events {
             let Some(xml) = render_xml(event) else { continue };
             let Some(program) = program_in_event(&xml) else { continue };
             if device_ids.iter().any(|id| event_mentions(&xml, id)) {
                 return Some(program);
             }
-            newest.get_or_insert(program);
+            others.push(program);
         }
-        newest
+        if others.len() == 1 {
+            others.pop()
+        } else {
+            None
+        }
     }
 
     /// Un événement en texte XML.

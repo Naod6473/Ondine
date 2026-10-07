@@ -26,7 +26,7 @@
 // remplit pas la mémoire).
 
 use std::fs::File;
-use std::io::{ErrorKind, Read, Write};
+use std::io::{Read, Write};
 use std::net::{Ipv4Addr, Shutdown, TcpListener, TcpStream};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
@@ -52,7 +52,8 @@ const READ_TIMEOUT: Duration = Duration::from_secs(10);
 /// Un envoi bloqué plus d'une minute (téléphone parti, ou qui attend qu'on
 /// confirme le téléchargement) est abandonné.
 const WRITE_TIMEOUT: Duration = Duration::from_secs(60);
-/// Après le dernier morceau : on attend au plus 15 s que le téléphone dise « reçu ».
+/// Après le dernier morceau : on attend au plus 15 s que le téléphone dise
+/// « reçu » (sinon, l'envoi ne compte pas comme réussi).
 const CLOSE_TIMEOUT: Duration = Duration::from_secs(15);
 /// Une demande (sans le fichier) ne dépasse jamais 8 Ko.
 const MAX_HEAD: usize = 8 * 1024;
@@ -406,12 +407,13 @@ fn closed_cleanly(stream: &mut TcpStream) -> bool {
         match stream.read(&mut buf) {
             Ok(0) => return true,
             Ok(_) => continue, // le téléphone a encore écrit quelque chose : on l'ignore
-            // Pas de nouvelles au bout de 15 s : tout lui a été remis, on considère que c'est reçu.
-            Err(e) if matches!(e.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut) => return true,
+            // Pas de nouvelles au bout de 15 s (téléphone en veille, Wi-Fi perdu) :
+            // rien ne prouve qu'il a tout reçu. Le lien reste ouvert jusqu'à la
+            // fin des 5 minutes, on peut réessayer.
             Err(_) => return false,
         }
     }
-    true
+    false
 }
 
 /// Une réponse sans contenu (404, 405, 400). Rien d'autre n'est révélé.

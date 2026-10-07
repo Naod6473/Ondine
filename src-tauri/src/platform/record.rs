@@ -181,7 +181,8 @@ mod win {
         hint_box: RECT,
         /// La taille d'un pixel « logique » sur l'écran de départ (1.5 à 150 %).
         scale: f64,
-        /// Le bas de l'écran de départ (pour placer l'étiquette de taille).
+        /// Le bas de l'écran de départ (étiquette de taille, si l'écran de la
+        /// zone est introuvable).
         screen_bottom: i32,
         /// Le point d'appui du bouton gauche (un tracé est en cours).
         anchor: Option<(i32, i32)>,
@@ -204,12 +205,20 @@ mod win {
             (self.px(130.0), self.px(26.0))
         }
 
+        /// Le bas de l'écran où se trouve le bas de la zone (en coordonnées
+        /// fenêtre) : avec plusieurs écrans, ce n'est pas forcément celui de
+        /// départ. Sinon, celui de l'écran de départ.
+        fn bottom_for(&self, sel: Area) -> i32 {
+            let (x, y) = (sel.x + sel.width as i32 / 2 + self.origin.0, sel.bottom() + self.origin.1);
+            monitor_at(x, y).map(|(m, _)| m.y + m.height as i32 - self.origin.1).unwrap_or(self.screen_bottom)
+        }
+
         /// Tout ce qui est dessiné autour d'une zone (cadre + étiquette), pour
         /// savoir quoi redessiner quand elle change.
         fn decorations(&self, sel: Area) -> RECT {
             let (lw, lh) = self.label_size();
             let gap = self.px(6.0);
-            let (lx, ly) = size_label_at(sel, (lw, lh), gap, self.screen_bottom);
+            let (lx, ly) = size_label_at(sel, (lw, lh), gap, self.bottom_for(sel));
             let r = win_rect(sel);
             RECT {
                 left: r.left.min(lx) - 3,
@@ -669,7 +678,7 @@ mod win {
                 FrameRect(dc, &shift(grow(r, 2)), black);
                 // Sa taille, en pixels.
                 let (lw, lh) = s.label_size();
-                let (lx, ly) = size_label_at(sel, (lw, lh), s.px(6.0), s.screen_bottom);
+                let (lx, ly) = size_label_at(sel, (lw, lh), s.px(6.0), s.bottom_for(sel));
                 let label = RECT { left: lx, top: ly, right: lx + lw, bottom: ly + lh };
                 FillRect(dc, &shift(label), dark);
                 let mut text: Vec<u16> = format!("{} × {}", sel.width, sel.height).encode_utf16().collect();
