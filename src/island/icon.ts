@@ -151,6 +151,8 @@ const LINE_ONLY: Record<string, string> = {
   "⛈": "cloud-lightning",
   "🌡": "thermometer",
   "🙂": "smiley",
+  "⏰": "alarm",
+  "📱": "device-mobile",
 };
 
 /** Les images connues. Une clé « logo: » absente retombe sur FALLBACK. */
