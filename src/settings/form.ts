@@ -37,12 +37,17 @@ export function settingsRows(fields: SettingField[], values: Record<string, unkn
           field.help,
         );
       case "string": {
-        const txt = el("input", { type: "text", class: "text", maxlength: field.maxLength ?? 500, "aria-label": field.label }) as HTMLInputElement;
+        // Plusieurs lignes (une grille, une liste) : une zone de texte, en pleine largeur.
+        const txt = (
+          field.multiline
+            ? el("textarea", { class: "text text-multi", maxlength: field.maxLength ?? 500, rows: 6, spellcheck: false, "aria-label": field.label })
+            : el("input", { type: "text", class: "text", maxlength: field.maxLength ?? 500, "aria-label": field.label })
+        ) as HTMLInputElement | HTMLTextAreaElement;
         txt.value = String(current ?? "");
         txt.addEventListener("change", () => onChange(field.key, coerce(field, txt.value)));
         // Un texte long prend toute la largeur ; un court reste à droite.
-        const line = (field.maxLength ?? 500) > 80 ? wideRow(field.label, txt, field.help) : row(field.label, txt, field.help);
-        if (field.check) checkedText(line, txt, field.check);
+        const line = field.multiline || (field.maxLength ?? 500) > 80 ? wideRow(field.label, txt, field.help) : row(field.label, txt, field.help);
+        if (field.check) checkedText(line, txt as HTMLInputElement, field.check);
         return line;
       }
       case "folders":

@@ -25,6 +25,21 @@
   moteur de l'appli (coucou, rire, danse au survol). · Website: a gallery of
   the fifteen gummy mascots, drawn live by the app's engine (wave, laugh,
   dance on hover).
+- Compteur de jetons : une courbe des 30 derniers jours (une barre par jour,
+  par outil), un coût estimé « ≈ 12,40 $ » d'après une grille de prix
+  modifiable (indicative) dans Réglages → Agents IA, une alerte de budget par
+  jour (la mascotte s'inquiète) et un export CSV dans Téléchargements. · Token
+  counter: a 30-day chart (one bar per day, per tool), an estimated cost
+  "≈ 12,40 $" from an editable (indicative) price grid in Settings → AI
+  Agents, a daily budget alert (the mascot worries) and a CSV export to
+  Downloads.
+- L'historique des agents (« a fini », « vous attend », projet, durée, bilan
+  git ; jamais les messages) est gardé 7 jours sur le PC et retrouvé au
+  démarrage ; le Bilan de la semaine gagne une carte « Agents IA » : tâches
+  finies, attente, jetons et coût, projets. · The agents' history ("done",
+  "waiting", project, duration, git summary; never the messages) is kept for 7
+  days on the PC and restored at startup; the weekly summary gets an "AI
+  agents" card: tasks finished, waiting time, tokens and cost, projects.
 - Onglet Agents IA : un compteur de jetons (entrée, sortie, cache) par jour,
   par modèle et par projet, lu dans les journaux de Claude Code et de Codex
   sur ce PC. · AI Agents tab: a token counter (input, output, cache) per day,

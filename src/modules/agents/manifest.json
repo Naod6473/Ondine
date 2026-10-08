@@ -133,6 +133,25 @@
         "label": "Compter les jetons des agents",
         "help": "Lu dans les journaux de Claude Code et de Codex sur ce PC, seulement quand l'onglet Agents IA est ouvert : jetons par jour, par modèle et par projet (le nom du dossier). Rien n'est envoyé.",
         "default": true
+      },
+      {
+        "key": "prices",
+        "type": "string",
+        "multiline": true,
+        "maxLength": 4000,
+        "label": "Grille de prix des modèles ($ par million de jetons)",
+        "help": "Pour le coût estimé (« ≈ 12,40 $ »). Une ligne par modèle : « début du nom ; entrée ; sortie ; cache lu ; cache écrit », en dollars par million de jetons. Grille par défaut INDICATIVE : des ordres de grandeur publics, à vérifier sur les sites des éditeurs. Cache lu et cache écrit absents : 10 % et 125 % de l'entrée. La première ligne qui correspond au début du nom du modèle gagne.",
+        "default": "claude-opus ; 15 ; 75 ; 1,5 ; 18,75\nclaude-sonnet ; 3 ; 15 ; 0,3 ; 3,75\nclaude-haiku ; 1 ; 5 ; 0,1 ; 1,25\nclaude-3-5-haiku ; 0,8 ; 4 ; 0,08 ; 1\ngpt-5-codex ; 1,25 ; 10 ; 0,125 ; 0\ngpt-5 ; 1,25 ; 10 ; 0,125 ; 0"
+      },
+      {
+        "key": "dailyBudget",
+        "type": "number",
+        "label": "Budget par jour ($, 0 = pas d'alerte)",
+        "help": "Quand le coût estimé des jetons du jour dépasse ce montant, l'île vous prévient (une fois par jour) et la mascotte s'inquiète. Vérifié quand l'onglet est ouvert et, sinon, toutes les 15 minutes.",
+        "default": 0,
+        "min": 0,
+        "max": 10000,
+        "step": 1
       }
     ]
   },
@@ -157,7 +176,9 @@
     "hook_remove",
     "last_sessions",
     "open_vscode",
-    "usage"
+    "usage",
+    "usage_csv",
+    "weekly"
   ],
   "events": {
     "emits": [
@@ -172,7 +193,9 @@
       "agents.progress",
       "timer.start",
       "agents.quiet",
-      "terminal.open"
+      "terminal.open",
+      "mascot.emote",
+      "shelf.add"
     ],
     "listens": [
       "agents.event",

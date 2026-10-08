@@ -1306,6 +1306,57 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   changé (date, taille) ; 3000 fichiers, 1 Go et 8 s au plus par passage,
   sinon `partial`. Gemini CLI n'écrit pas de compte de jetons : pas compté.
   Rien ne sort du PC ; le journal note seulement le volume lu.
+- Compteur de jetons, suite (`src/modules/agents/usage-view.ts` : la section
+  « Utilisation des agents » ; `src/modules/agents/cost.ts` : la logique pure,
+  testée dans `tests/front/agents.test.ts`) :
+  - la courbe des 30 jours : un SVG maison (320 × 56, une barre par jour,
+    empilée par outil, couleurs Claude `#4a9ad8` / Codex `#c47a30` validées
+    sur les fonds de l'île et pour le daltonisme, légende nommée), la date, le
+    total et le coût du jour au survol dans la légende ; l'arrivée des barres
+    est animée sauf avec « réduire les animations » ;
+  - le coût estimé : réglage `prices` (texte multiligne, type `string` +
+    `multiline` dans `form.ts` : une zone de texte), une ligne par modèle
+    « début du nom ; entrée ; sortie ; cache lu ; cache écrit » en $ par
+    million de jetons, virgule ou point ; la première ligne qui correspond au
+    début du nom gagne ; cache lu / écrit absents = 10 % / 125 % de l'entrée.
+    Grille par défaut INDICATIVE (Opus 15/75, Sonnet 3/15, Haiku 1/5,
+    GPT-5 1,25/10, à vérifier chez les éditeurs). Affiché « ≈ 12,40 $ »
+    (symbole après le nombre) sur le total, par modèle (« prix ? » si aucune
+    ligne ne correspond) et par projet (au prix du modèle le plus utilisé par
+    cet outil : les projets n'ont pas de modèle) ;
+  - l'alerte de budget : réglage `dailyBudget` ($ par jour, 0 = désactivé).
+    Quand le coût estimé du jour dépasse, une notification `high` (une seule
+    par jour : le jour est noté dans `localStorage` de l'île,
+    `agents.budget-alerted`) et `mascot.emote {emotion: "worried"}`. Vérifié
+    à chaque relecture du compteur (onglet ouvert) et, depuis `setup()`, par
+    `usage {days: 1}` toutes les 15 min (cadence `agentsBudget`) tant que le
+    budget est > 0 ;
+  - l'export CSV : le front construit le texte (`usageCsv` : bloc par jour,
+    outil et modèle avec entrée, sortie, cache lu, cache écrit, réponses,
+    coût estimé ; ligne vide ; bloc par projet ; séparateur « ; », virgule
+    décimale, CRLF) et la commande `usage_csv {text}` (permission `files`,
+    4 Mo au plus) l'écrit tel quel dans Téléchargements sous
+    `jetons-agents-AAAA-MM-JJ.csv` (« (2) » si le nom est pris), UTF-8 avec
+    BOM, puis `shelf.add` si l'Étagère est active, sinon l'Explorateur sur le
+    fichier. Mode démo : courbe de 30 jours, coûts, « export » fictif.
+- Historique gardé 7 jours (`modules/agents_history.rs`, fichier
+  `%APPDATA%\Ondine\agents-history.json` : `{v, entries: [{at, kind, tool,
+  project, durationMs, title, changes?}]}`) : chaque « a fini » et « vous
+  attend » y est noté (le genre, l'outil, le NOM du dossier, la date, la
+  durée — de la tâche depuis « au travail », ou de l'attente jusqu'au départ
+  de l'agent —, le titre écrit par Ondine et le bilan git), jamais le contenu
+  d'un message ni un chemin. Écrit via un fichier temporaire renommé, au plus
+  une fois par seconde (`save_soon`), hors du thread de l'interface ; relu au
+  démarrage (les « Derniers messages » de l'onglet, sans message, « il y a
+  2 j ») ; purgé des entrées de plus de 7 jours au démarrage et chaque minute ;
+  2000 entrées au plus ; un fichier abîmé est mis de côté. En mémoire,
+  `MAX_HISTORY` (30) reste la limite de l'onglet.
+- `weekly {offsetMinutes?}` (appelée par `weekly.rs`, pas par le front) :
+  `{done, waitMinutes, projects, days, prices}` — tâches finies, minutes
+  d'attente et projets (les plus actifs d'abord) des 7 derniers jours
+  d'après l'historique, les jetons des 7 jours (`days`, comme `usage`) et le
+  texte du réglage `prices` ; `null` si aucun agent dans la semaine. Le front
+  du bilan calcule total et coût avec `cost.ts`.
 - Bilan de fin de tâche (`modules/agents_git.rs`, réglage `showChanges`,
   activé) : à « a fini », le dossier du hook (`cwd`) passe par `check_path`.
   S'il est dans un dépôt git (un parent avec `.git`, jamais le dossier
@@ -1445,6 +1496,14 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   `t()`, `summary.ts`). `weekly.show` (bouton des réglages) montre `peek`, la
   semaine en cours. Mode démo : `due` reste vide, `peek` répond une fausse
   semaine.
+- Carte « Agents IA » : `due` et `peek` ajoutent `agents` à leur réponse
+  (`with_agents` : `modules::invoke(app, "agents", "weekly", {})` ; `null` si
+  le module est désactivé ou sans agent dans la semaine). Le front
+  (`agentsParts`, `summary.ts` ; coût via `src/modules/agents/cost.ts`)
+  ajoute « Agents IA : 23 tâches finies, 2 h 10 d'attente de votre part,
+  3,1 M de jetons (≈ 12 $), projets : site-ondine, Island ». Le bilan
+  programmé ne sort toujours que si la semaine classique a quelque chose ;
+  `peek` le montre aussi avec seulement des agents.
 
 ## Quoi de neuf (`src/core/whats-new.ts`, `src/core/changelog.ts`)
 

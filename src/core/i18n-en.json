@@ -1461,7 +1461,23 @@
 "Berlingot": "Berlingot",
 "Ciel": "Sky",
 "De nouvelles mascottes en gomme. Cliquez sur l'une d'elles, puis « Adopter » : l'île change tout de suite.": "New gummy mascots. Click one, then \"Adopt\": the island changes right away.",
-"Les nouvelles mascottes, animées, avec le bouton « Adopter »": "The new mascots, animated, with the \"Adopt\" button"
+"Les nouvelles mascottes, animées, avec le bouton « Adopter »": "The new mascots, animated, with the \"Adopt\" button",
+"Budget du jour dépassé": "Daily budget exceeded",
+"Export CSV enregistré": "CSV export saved",
+"Export impossible": "Export failed",
+"Dans vos Téléchargements.": "In your Downloads.",
+"Coût estimé d'après la grille de prix des réglages (indicative)": "Estimated cost from the price grid in the settings (indicative)",
+"prix ?": "price?",
+"Aucune ligne de la grille de prix ne correspond à ce modèle": "No line of the price grid matches this model",
+"Lu dans les journaux de Claude Code et Codex sur ce PC. Rien n'est envoyé. Coûts indicatifs.": "Read from the Claude Code and Codex logs on this PC. Nothing is sent. Costs are indicative.",
+"Un fichier CSV (30 jours, par jour et par projet) dans vos Téléchargements": "A CSV file (30 days, per day and per project) in your Downloads",
+"Exporter en CSV": "Export to CSV",
+"Jetons par jour, 30 jours": "Tokens per day, 30 days",
+"Grille de prix des modèles ($ par million de jetons)": "Model price grid ($ per million tokens)",
+"Pour le coût estimé (« ≈ 12,40 $ »). Une ligne par modèle : « début du nom ; entrée ; sortie ; cache lu ; cache écrit », en dollars par million de jetons. Grille par défaut INDICATIVE : des ordres de grandeur publics, à vérifier sur les sites des éditeurs. Cache lu et cache écrit absents : 10 % et 125 % de l'entrée. La première ligne qui correspond au début du nom du modèle gagne.": "For the estimated cost (“≈ 12,40 $”). One line per model: “start of the name ; input ; output ; cache read ; cache written”, in dollars per million tokens. The default grid is INDICATIVE: public orders of magnitude, to check on the vendors' sites. Cache read and cache written missing: 10% and 125% of the input. The first line matching the start of the model name wins.",
+"Budget par jour ($, 0 = pas d'alerte)": "Daily budget ($, 0 = no alert)",
+"Quand le coût estimé des jetons du jour dépasse ce montant, l'île vous prévient (une fois par jour) et la mascotte s'inquiète. Vérifié quand l'onglet est ouvert et, sinon, toutes les 15 minutes.": "When the estimated cost of the day's tokens exceeds this amount, the island warns you (once a day) and the mascot worries. Checked while the tab is open and, otherwise, every 15 minutes.",
+"1 tâche finie": "1 task finished"
 },
 "patterns": [
 [
@@ -2727,6 +2743,66 @@
 [
 "^([\\d\\s]+)\\ réponses?$",
 "$1 responses"
+],
+[
+"^Les agents ont consommé (.+?) aujourd'hui, pour un budget de (.+?)\\.$",
+"The agents used $1 today, for a budget of $2."
+],
+[
+"^(.+?) · Téléchargements( · déposé sur l'étagère)?$",
+"$1 · Downloads$2"
+],
+[
+"^ · déposé sur l'étagère$",
+" · placed on the shelf"
+],
+[
+"^Aujourd'hui : (.+?) sur un budget de (.+?)( · dépassé)?$",
+"Today: $1 of a budget of $2$3"
+],
+[
+"^ · dépassé$",
+" · exceeded"
+],
+[
+"^30 jours : (.+?) jetons$",
+"30 days: $1 tokens"
+],
+[
+"^(.+?) : (.+?) jetons · (.+)$",
+"$1: $2 tokens · $3"
+],
+[
+"^(.+?) : rien$",
+"$1: nothing"
+],
+[
+"^≈ (.+?) \\$$",
+"≈ $1 USD"
+],
+[
+"^< 0,01 \\$$",
+"< 0.01 USD"
+],
+[
+"^(\\d+) tâches finies$",
+"$1 tasks finished"
+],
+[
+"^(.+?) d'attente de votre part$",
+"$1 waiting on you"
+],
+[
+"^(.+?) de jetons \\((.+?)\\)$",
+"$1 tokens ($2)"
+],
+[
+"^(.+?) de jetons$",
+"$1 tokens"
+],
+[
+"^projets : (.+)$",
+"projects: $1"
 ]
 ]
 }

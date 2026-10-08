@@ -9,7 +9,9 @@
 //   - "timer.work-session" {seconds, completed} : une séance de travail
 //     Pomodoro s'arrête (finie, en pause, passée ou remise à zéro) ;
 //   - "notes.todo-toggled" {done} : une tâche cochée (ou décochée).
-// Ni le texte des tâches, ni les heures ne sont notés.
+// Ni le texte des tâches, ni les heures ne sont notés. Au moment du bilan, le
+// module Agents IA ajoute sa carte (commande `weekly` : tâches finies,
+// attente, jetons, projets des 7 derniers jours).
 //
 // Une « semaine » va d'un bilan au suivant : du vendredi 17 h au vendredi 17 h
 // d'après (réglages « day » et « time », heure du PC). Le front demande
@@ -265,14 +267,14 @@ impl RustModule for Weekly {
                 if due.is_some() {
                     ctx.log_info("bilan de la semaine à montrer");
                 }
-                Ok(due.map_or(Value::Null, |w| w.tally.to_json(&w.until)))
+                Ok(due.map_or(Value::Null, |w| with_agents(ctx, w.tally.to_json(&w.until))))
             }
             // La semaine en cours, sans rien consommer (bouton « Voir le bilan maintenant »).
             "peek" => {
                 if roll(&mut d, now, schedule) {
                     store(&d);
                 }
-                Ok(d.current.tally.to_json(&d.current.until))
+                Ok(with_agents(ctx, d.current.tally.to_json(&d.current.until)))
             }
             other => Err(format!("commande inconnue : {other}")),
         }
@@ -293,6 +295,19 @@ impl RustModule for Weekly {
         let data = Arc::clone(&self.data);
         std::thread::spawn(move || store(&data.locked()));
     }
+}
+
+/// Ajoute la carte « Agents IA » au bilan : la commande `weekly` du module
+/// Agents IA (tâches finies, attente, projets, jetons et grille de prix des 7
+/// derniers jours ; null si aucun agent, ou module désactivé). Le front en
+/// fait le texte et le coût.
+fn with_agents(ctx: &ModuleContext, mut tally: Value) -> Value {
+    let agents = super::invoke(ctx.app, "agents", "weekly", json!({})).unwrap_or_else(|e| {
+        log::debug(format!("bilan de la semaine : pas de carte Agents IA ({e})"));
+        Value::Null
+    });
+    tally["agents"] = agents;
+    tally
 }
 
 /// L'heure du PC (heure locale, sans fuseau : les bilans suivent l'horloge de Windows).
