@@ -15,6 +15,16 @@
   showing only the essentials of each page, and a Full mode; the switch sits
   under the search box, with "N more settings · Show all" at the bottom of a
   reduced page. Search still finds everything ("advanced setting").
+- « Quoi de neuf » après une mise à jour : un panneau avec les nouvelles
+  mascottes en gomme animées en direct, « Adopter » pour en changer tout de
+  suite, et les nouveautés dessous ; rouvrable depuis Réglages → Général et le
+  mode démo. · "What's new" after an update: a panel with the new gummy
+  mascots animated live, "Adopt" to switch right away, and the release notes
+  below; reopenable from Settings → General and demo mode.
+- Site : une galerie des quinze mascottes en gomme, dessinées en direct par le
+  moteur de l'appli (coucou, rire, danse au survol). · Website: a gallery of
+  the fifteen gummy mascots, drawn live by the app's engine (wave, laugh,
+  dance on hover).
 - Onglet Agents IA : un compteur de jetons (entrée, sortie, cache) par jour,
   par modèle et par projet, lu dans les journaux de Claude Code et de Codex
   sur ce PC. · AI Agents tab: a token counter (input, output, cache) per day,

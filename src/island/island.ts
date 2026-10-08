@@ -1115,17 +1115,29 @@ export class Island {
       );
     }
     actions.append(el("button", { class: "icon-btn", title: "Fermer", onclick: () => this.notifications.dismiss(n.id) }, "×"));
+    // Un contenu dessiné par le demandeur (« Quoi de neuf » et ses mascottes
+    // animées) : dans l'alerte seulement, défait avec la carte (unmountView).
+    const custom = big && n.content;
+    let body: HTMLElement | null = n.body ? el("div", { class: "notif-body" }, n.body) : null;
+    if (custom) {
+      body = el("div", { class: "notif-custom" });
+      try {
+        this.unmountView = n.content!(body);
+      } catch (err) {
+        log.warn(`contenu de notification en erreur : ${String(err)}`);
+      }
+    }
     return el(
       "div",
       // Plusieurs boutons (une question à choix) : ils passent sur leur propre ligne.
       {
         // « lines » : un texte sur plusieurs lignes (« Quoi de neuf ») : l'alerte grandit (island.css).
-        class: `notif ${big ? "big" : ""} ${(n.actions?.length ?? 0) > 1 ? "many" : ""} ${n.body?.includes("\n") ? "lines" : ""} prio-${n.priority} ${n.tone ? `tone-${n.tone}` : ""} ${n.wide ? "wide" : ""}`,
+        class: `notif ${big ? "big" : ""} ${(n.actions?.length ?? 0) > 1 ? "many" : ""} ${!custom && n.body?.includes("\n") ? "lines" : ""} ${custom ? "custom" : ""} prio-${n.priority} ${n.tone ? `tone-${n.tone}` : ""} ${n.wide ? "wide" : ""}`,
         // Combien attendent derrière (design Studio : l'icône s'empile, voir island.css).
         "data-more": String(Math.min(this.notifications.waiting(), 3)),
       },
       el("span", { class: "notif-icon" }, icon(n.icon ?? "•")),
-      el("div", { class: "notif-text" }, el("div", { class: "notif-title" }, n.title), n.body ? el("div", { class: "notif-body" }, n.body) : null),
+      el("div", { class: "notif-text" }, el("div", { class: "notif-title" }, n.title), body),
       actions,
     );
   }

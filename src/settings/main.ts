@@ -692,6 +692,7 @@ function demoGroup(): HTMLElement {
                 scene("claude-permission", "Demande d'autorisation"),
                 scene("download", "Fichier téléchargé"),
                 scene("next-track", "Morceau suivant"),
+                scene("whats-new", "Quoi de neuf"),
               ),
               "La notification arrive dans l'île : lancez l'enregistrement avant de cliquer.",
             ),
