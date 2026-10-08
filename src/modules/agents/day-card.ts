@@ -4,7 +4,8 @@
 // (1200 × 675, dessinée deux fois plus fine pour rester nette) : la date, les
 // tâches finies par les agents, le temps où ils vous ont attendu, les jetons du
 // jour (et leur coût, si vous le voulez), la série de jours d'affilée, le
-// rythme de la journée heure par heure, et votre mascotte qui pose à droite.
+// rythme de la journée heure par heure, votre mascotte qui pose à droite et,
+// en petit dessous, le QR code du site pour télécharger Ondine (site-qr.ts).
 // Les chiffres : commande « day_card » (src-tauri/src/modules/agents.rs) ; ce
 // que la carte dit : day-card-logic.ts.
 //
@@ -27,6 +28,7 @@ import { createRenderer, type MascotRenderer } from "../../mascot/renderer";
 import { focusText } from "../weekly/summary";
 import { costText } from "./cost";
 import { dayFigures, emptyDay, tiles, type DayCardData, type DayFigures } from "./day-card-logic";
+import { SITE_QR } from "./site-qr";
 import { tokensShort } from "./texts";
 
 /** La carte, en points (le PNG fait le double). */
@@ -36,6 +38,8 @@ const SCALE = 2;
 /** La place de la mascotte sur la carte (en points), et la taille de sa boîte à l'écran. */
 const MASCOT = { x: 850, y: 210, size: 300 };
 const MASCOT_BOX = 600;
+/** Le QR code du site, centré sous la mascotte (en points). */
+const QR = { cx: MASCOT.x + MASCOT.size / 2, y: 488, size: 112 };
 const FONT = `"Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif`;
 
 type Theme = "night" | "day";
@@ -117,7 +121,8 @@ function drawCard(canvas: HTMLCanvasElement, day: string, f: DayFigures, o: Opti
   glow(140, 620, 460, p.glowB);
 
   const left = 64;
-  const colW = o.mascot ? 740 : W - 2 * left;
+  // La colonne de droite reste à la mascotte et au QR code, mascotte cochée ou non.
+  const colW = 740;
   ctx.textBaseline = "alphabetic";
 
   // La date, le titre.
@@ -190,6 +195,31 @@ function drawCard(canvas: HTMLCanvasElement, day: string, f: DayFigures, o: Opti
   ctx.fillStyle = p.faint;
   ctx.font = `500 18px ${FONT}`;
   ctx.fillText(t("Fait avec Ondine · ondine.pissits.com"), left, H - 34);
+
+  drawQr(ctx, p.faint);
+}
+
+/** Le QR code du site, en petit sous la mascotte : carrés noirs sur une plaque blanche (lisible sur les deux thèmes). */
+function drawQr(ctx: CanvasRenderingContext2D, caption: string) {
+  const n = SITE_QR.length;
+  const margin = 2;
+  const cell = QR.size / (n + 2 * margin);
+  const x0 = QR.cx - QR.size / 2;
+  roundRect(ctx, x0, QR.y, QR.size, QR.size, 12);
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
+  ctx.fillStyle = "#141a33";
+  SITE_QR.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      // Un rien plus large que la case : pas de fines lignes claires entre deux carrés.
+      if (row[x] === "1") ctx.fillRect(x0 + (x + margin) * cell, QR.y + (y + margin) * cell, cell + 0.3, cell + 0.3);
+    }
+  });
+  ctx.fillStyle = caption;
+  ctx.font = `600 16px ${FONT}`;
+  ctx.textAlign = "center";
+  ctx.fillText(t("Télécharger Ondine"), QR.cx, QR.y + QR.size + 24);
+  ctx.textAlign = "left";
 }
 
 /** La carte entière (avec la mascotte du moment), en PNG base64. */

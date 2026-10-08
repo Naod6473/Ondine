@@ -4,6 +4,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { dayFigures, emptyDay, previousDay, streakDays, tiles, type DayCardData } from "../../src/modules/agents/day-card-logic";
+import { SITE_QR, SITE_URL } from "../../src/modules/agents/site-qr";
 
 const row = (day: string, output: number) => ({ day, tool: "claude-code", model: "claude-opus-5-5", input: 0, output, cacheRead: 0, cacheWrite: 0, messages: 1 });
 
@@ -82,5 +83,17 @@ describe("les tuiles", () => {
   test("au singulier, sans les tuiles vides ni une série d'un jour", () => {
     const f = dayFigures(data({ done: 1, activeDays: ["2026-10-08"] }));
     assert.deepEqual(tiles(f, { cost: true }, fmt), [{ value: "1", label: "tâche finie" }]);
+  });
+});
+
+describe("le QR code du site", () => {
+  test("25 × 25 carrés, avec les trois repères aux coins", () => {
+    assert.equal(SITE_URL, "https://ondine.pissits.com");
+    assert.equal(SITE_QR.length, 25);
+    assert.ok(SITE_QR.every((r) => /^[01]{25}$/.test(r)));
+    const finder = ["1111111", "1000001", "1011101", "1011101", "1011101", "1000001", "1111111"];
+    for (const [x0, y0] of [[0, 0], [18, 0], [0, 18]]) {
+      assert.deepEqual(finder.map((_, i) => SITE_QR[y0 + i].slice(x0, x0 + 7)), finder);
+    }
   });
 });
