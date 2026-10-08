@@ -1,6 +1,6 @@
 # Changements · Changelog
 
-## Pas encore publié · Unreleased
+## 1.2.0 · 2026-10-08
 
 - La mascotte réagit à plus de choses : des étoiles plein les yeux quand un
   fichier arrive sur l'étagère, les bras levés à la fin du minuteur, un clin
@@ -112,10 +112,9 @@
   par modèle et par projet, lu dans les journaux de Claude Code et de Codex
   sur ce PC. · AI Agents tab: a token counter (input, output, cache) per day,
   per model and per project, read from the local Claude Code and Codex logs.
-- Correctif : la goutte gomme et la goutte classique dansent enfin quand la
-  musique joue en mini-île (elles n'avaient pas d'animation « danse »). · Fix:
-  the gummy and classic drops now dance when music plays in the mini island
-  (they had no "danse" animation).
+- Correctif : la goutte gomme danse enfin quand la musique joue en mini-île
+  (elle n'avait pas d'animation « danse »). · Fix: the gummy drop now dances
+  when music plays in the mini island (it had no "danse" animation).
 - Douze nouvelles mascottes en gomme : Guimauve, Dragée, Berlingot, étoile,
   soleil, lune, nuage, cœur, fleur, champignon, fantôme et flamme, plus Ciel
   (soleil le jour, lune la nuit) et Météo. · Twelve new gummy mascots, plus Sky
