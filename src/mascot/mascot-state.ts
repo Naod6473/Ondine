@@ -30,12 +30,26 @@
 //   réveillée deux fois en moins de 5 min → pout (elle boude)
 //   deux clics rapides → laugh            une tâche de plus de 10 min finie → moved
 //   weather.updated → la mascotte « Météo » change de forme (renderer.setWeather)
+//   Les réactions aux modules (courtes, pas pendant une tâche ni le sommeil,
+//   au plus une toutes les 4 s, et jamais avec le réglage « Calme ») :
+//   shelf.downloaded → starstruck (un fichier arrive sur l'étagère)
+//   timer.done → cheer (la fin du minuteur, bras levés ; le task.finished qui suit ne la coupe pas)
+//   clipboard.link-cleaned → wink        capture.done {ok} → proud
+//   controls.usb-ejected → wave (au revoir la clé)   system.disk-low → worried
+//   Ce qu'elle porte tant que ça dure (renderer.setExtras, famille gomme ; les
+//   « poses » montrent le « ? ») :
+//   agents.quiet {on} → les moufles sur les oreilles (concentration)
+//   weather.updated (pluie) → un parapluie au-dessus d'elle
+//   agents.ask → la pancarte « ? » jusqu'à agents.ask.closed (même en « Calme » :
+//     un clic sur elle ouvre alors l'onglet Agents IA, voir island.ts)
+//   Réglage « Calme » (mascot.calm) : voir calmMode() et docs/ARCHITECTURE.md.
 
 import type { Bus } from "../core/bus";
 import { settingsStore } from "../core/settings-store";
 import { pacedInterval } from "../core/perf";
+import { isRainy, type WeatherLike } from "../eggs/calendar";
 import type { MascotRenderer } from "./renderer";
-import { MASCOT_STATES, type AnimationSpec, type MascotManifest, type MascotState, type Mood } from "./types";
+import { MASCOT_STATES, NO_EXTRAS, type AnimationSpec, type MascotExtras, type MascotManifest, type MascotState, type Mood } from "./types";
 
 /**
  * Comment Ondine réagit à une notification : d'abord selon le module qui
@@ -55,6 +69,20 @@ const REACTIONS_BY_ICON: Record<string, MascotState> = {
 /** L'humeur suit-elle le PC ? (réglage du module Système, activé par défaut) */
 function moodFollowsPc(): boolean {
   return settingsStore.current.modules?.system?.values?.ondineMood !== false;
+}
+
+/**
+ * Réglage « Calme : moins de gestes spontanés » (mascot.calm). Coupé : l'ennui
+ * (elle passe du repos au sommeil, sans bâiller), la bouderie au réveil, les
+ * réactions aux notifications et aux modules, les moufles sur les oreilles et
+ * le parapluie, les émotions qui suivent le PC (processeur, batterie ; l'humeur
+ * de fond reste), et ailleurs la danse, le goûter (src/eggs/eggs.ts) et les
+ * visites au bord de l'écran (island.ts). Gardé : réveil, sommeil, travail,
+ * réflexion, succès, erreur, question et pancarte « ? », alerte, repas (dépôt
+ * de fichiers), les réponses aux clics et au survol.
+ */
+export function calmMode(): boolean {
+  return settingsStore.current.mascot.calm === true;
 }
 
 /** Tard le soir ou la nuit : Ondine a les paupières lourdes. */
@@ -89,6 +117,16 @@ export class MascotController {
   private tasksSince = 0;
   /** Les derniers réveils (pour bouder quand on la réveille trop souvent). */
   private wakes: number[] = [];
+  /** Les questions d'agents ouvertes (ids de agents.ask), pour la pancarte « ? ». */
+  private asks = new Set<number>();
+  /** La concentration des agents est en cours (agents.quiet). */
+  private quiet = false;
+  /** La Météo annonce la pluie. */
+  private rainy = false;
+  /** Ce qu'elle porte en ce moment (renderer.setExtras), pour ne pousser que les changements. */
+  private extras: MascotExtras = NO_EXTRAS;
+  /** Quand le minuteur a sonné (son task.finished arrive juste après : la fête est déjà là). */
+  private timerDone = 0;
   private stopInactivity: () => void;
   private offs: (() => void)[] = [];
 
@@ -102,7 +140,14 @@ export class MascotController {
     this.wire();
     // Toutes les 2 s (4 s en économie d'énergie : src/core/perf.ts).
     this.stopInactivity = pacedInterval(() => this.checkInactivity(), "mascotIdle");
+    // Le réglage « Calme » change : les moufles et le parapluie suivent.
+    this.offs.push(settingsStore.onChange(() => this.pushExtras()));
     this.request("idle", true);
+  }
+
+  /** Une question d'agent attend une réponse (la pancarte « ? » est levée). */
+  get askOpen(): boolean {
+    return this.asks.size > 0;
   }
 
   destroy() {
@@ -117,8 +162,8 @@ export class MascotController {
     if (this.state === "sleep" || this.state === "yawn") {
       const now = Date.now();
       this.wakes = [...this.wakes.filter((w) => now - w < 5 * 60_000), now];
-      // Réveillée deux fois en peu de temps : elle boude un peu en se réveillant.
-      if (this.wakes.length >= 2 && this.has("pout")) {
+      // Réveillée deux fois en peu de temps : elle boude un peu en se réveillant (pas en « Calme »).
+      if (this.wakes.length >= 2 && this.has("pout") && !calmMode()) {
         this.wakes = [];
         this.request("pout", true);
       } else this.request("wake");
@@ -232,8 +277,21 @@ export class MascotController {
     if (this.moodUntil && Date.now() > this.moodUntil) this.moodUntil = 0;
     if (!this.moodUntil) this.renderer.setMood(this.baseMood());
     if (this.tasks > 0 || this.thinking || this.dance) return;
-    if (idleMs > this.timings.sleepAfterMs && this.state !== "sleep" && this.state !== "yawn") this.requestOr("yawn", "sleep");
-    else if (idleMs > this.timings.boredAfterMs && this.state === "idle") this.request("bored");
+    const calm = calmMode();
+    if (idleMs > this.timings.sleepAfterMs && this.state !== "sleep" && this.state !== "yawn") {
+      // En « Calme », elle s'endort sans bâiller.
+      if (calm) this.request("sleep");
+      else this.requestOr("yawn", "sleep");
+    } else if (idleMs > this.timings.boredAfterMs && this.state === "idle" && !calm) this.request("bored");
+  }
+
+  /** Pousse au moteur ce qu'elle porte, si ça a changé. */
+  private pushExtras() {
+    const calm = calmMode();
+    const next: MascotExtras = { ears: this.quiet && !calm, sign: this.asks.size > 0, umbrella: this.rainy && !calm };
+    if (next.ears === this.extras.ears && next.sign === this.extras.sign && next.umbrella === this.extras.umbrella) return;
+    this.extras = next;
+    this.renderer.setExtras?.(next);
   }
 
   private wire() {
@@ -250,6 +308,8 @@ export class MascotController {
     on("task.finished", () => {
       this.tasks = Math.max(0, this.tasks - 1);
       this.setMood("happy", 30_000);
+      // Le minuteur vient de sonner : elle a déjà les bras levés.
+      if (Date.now() - this.timerDone < 1500) return;
       // Une longue tâche enfin finie : elle est émue.
       if (this.tasks === 0 && Date.now() - this.tasksSince > 10 * 60_000 && this.has("moved")) this.request("moved");
       else this.requestOr("success", "celebrate");
@@ -266,8 +326,21 @@ export class MascotController {
       this.thinking = false;
       this.request(this.baseState());
     });
-    // Un agent pose une question ou attend ta permission : la goutte s'interroge.
-    on("agents.ask", () => this.requestOr("question", "alert"));
+    // Un agent pose une question ou attend ta permission : la goutte s'interroge,
+    // et tient la pancarte « ? » tant que la question est ouverte.
+    on("agents.ask", (p: { id?: number } | null) => {
+      if (typeof p?.id === "number") {
+        this.asks.add(p.id);
+        // Une rafale de questions sans réponse ne grossit pas sans fin : les plus vieilles s'oublient.
+        if (this.asks.size > 50) this.asks.delete(this.asks.values().next().value as number);
+        this.pushExtras();
+      }
+      this.requestOr("question", "alert");
+    });
+    on("agents.ask.closed", (p: { id?: number } | null) => {
+      if (typeof p?.id === "number") this.asks.delete(p.id);
+      this.pushExtras();
+    });
     on("agents.event", (e: { kind?: string } | null) => e?.kind === "waiting" && this.has("question") && this.request("question"));
     // N'importe quel module peut montrer une émotion : bus.emit("mascot.emote", { emotion: "sad" }).
     on("mascot.emote", (p: { emotion?: string } | null) => {
@@ -279,24 +352,42 @@ export class MascotController {
       this.request("eating");
     });
     on("notify.alert", () => this.request("alert"));
-    on("notify.shown", (n: { moduleId?: string; icon?: string } | null) => this.react(n?.moduleId ?? "", n?.icon ?? ""));
-    // Le mode concentration commence : Ondine se calme.
-    on("agents.quiet", (q: { on?: boolean } | null) => q?.on && this.has("calm") && this.request("calm"));
+    on("notify.shown", (n: { moduleId?: string; icon?: string } | null) => this.reactTo(REACTIONS_BY_MODULE[n?.moduleId ?? ""] ?? REACTIONS_BY_ICON[n?.icon ?? ""]));
+    // Le mode concentration commence : Ondine se calme, et se bouche les oreilles tant que ça dure.
+    on("agents.quiet", (q: { on?: boolean } | null) => {
+      this.quiet = !!q?.on;
+      this.pushExtras();
+      if (this.quiet && this.has("calm")) this.request("calm");
+    });
+    // Les réactions aux modules (voir l'en-tête).
+    on("shelf.downloaded", () => this.reactTo("starstruck", "happy"));
+    on("timer.done", () => {
+      if (!this.reactTo("cheer", "celebrate")) return;
+      this.timerDone = Date.now();
+    });
+    on("clipboard.link-cleaned", () => this.reactTo("wink"));
+    on("capture.done", (p: { ok?: boolean } | null) => p?.ok && this.reactTo("proud", "happy"));
+    on("controls.usb-ejected", () => this.reactTo("wave", "happy"));
+    on("system.disk-low", () => this.reactTo("worried"));
     on("notify.alert-end", () => this.state === "alert" && this.request(this.baseState(), true));
     on("mascot.hover-long", () => this.request("love"));
     on("mascot.clicked", () => this.onClick());
     // L'humeur suit le PC.
     on("system.cpu-busy", (p: { on?: boolean } | null) => {
       this.cpuBusy = !!p?.on;
-      if (this.cpuBusy && moodFollowsPc() && this.state !== "sleep") this.requestOr("worried", "annoyed");
+      if (this.cpuBusy && moodFollowsPc() && !calmMode() && this.state !== "sleep") this.requestOr("worried", "annoyed");
     });
     on("system.battery-low", () => {
       if (!moodFollowsPc()) return;
       this.setMood("tired", 10 * 60_000);
-      this.requestOr("sad", "bored");
+      if (!calmMode()) this.requestOr("sad", "bored");
     });
-    on("system.battery-full", () => moodFollowsPc() && this.request("happy"));
-    on("weather.updated", (w: { icon?: string } | null) => this.renderer.setWeather?.(w?.icon ?? null));
+    on("system.battery-full", () => moodFollowsPc() && !calmMode() && this.request("happy"));
+    on("weather.updated", (w: WeatherLike | null) => {
+      this.renderer.setWeather?.(w?.icon ?? null);
+      this.rainy = isRainy(w);
+      this.pushExtras();
+    });
     on("mascot.play", (p: { animation?: string }) => p?.animation && this.playAnimation(p.animation));
     on("mascot.dance", (p: { on?: boolean } | null) => {
       const want = !!p?.on && this.manifest.animations.some((a) => a.name === "danse");
@@ -307,15 +398,22 @@ export class MascotController {
     });
   }
 
-  /** Une petite réaction à une notification (si la mascotte a l'émotion, et pas trop souvent). */
-  private react(moduleId: string, icon: string) {
-    const want = REACTIONS_BY_MODULE[moduleId] ?? REACTIONS_BY_ICON[icon];
-    if (!want || !this.has(want)) return;
+  /**
+   * Une petite réaction à une notification ou à un module : `want` si la
+   * mascotte a l'émotion, sinon `instead` (les anciennes mascottes) ; pas
+   * trop souvent, pas pendant une tâche ni le sommeil, jamais en « Calme ».
+   * Renvoie vrai si elle a joué.
+   */
+  private reactTo(want: MascotState | undefined, instead?: MascotState): boolean {
+    const state = want && this.has(want) ? want : instead && this.has(instead) ? instead : undefined;
+    if (!state || calmMode()) return false;
     // Pendant une tâche ou une réflexion de Claude, on ne coupe pas pour si peu.
-    if (this.tasks > 0 || this.thinking || this.state === "sleep") return;
+    if (this.tasks > 0 || this.thinking || this.state === "sleep") return false;
     const now = Date.now();
-    if (now - this.lastReaction < REACTION_GAP_MS) return;
-    if (this.request(want)) this.lastReaction = now;
+    if (now - this.lastReaction < REACTION_GAP_MS) return false;
+    if (!this.request(state)) return false;
+    this.lastReaction = now;
+    return true;
   }
 
   /** Clics répétés : 3 en moins de 2 s → annoyed, 6 → dizzy. Un seul → happy. */

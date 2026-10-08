@@ -208,6 +208,13 @@ qu'une fois les ressorts posés (au plus tard après 1,5 s).
     tire, `amount` px), `release` (on lâche), `shake` (allers-retours
     rapides pendant qu'on tire, `ShakeDetector`) ; `x`, `y` en px depuis le
     centre de la mascotte.
+  - *Le saut de l'île* (`hop` dans island.ts) : une alerte qui arrive fait
+    décoller l'île du bord (7 px, propriété `translate`, 420 ms) ; une
+    notification normale en mini-île, moitié moins. Rien avec « Réduire les
+    animations », en économie d'énergie ni en Classique sans animations. En
+    mini-île, la bulle du titre du module Musique ondule tant que ça joue
+    (classe `playing` sur `.media-compact`, `@keyframes media-bob`), avec les
+    mêmes exceptions (`body[data-perf="eco"]`).
 - **Arrivée du contenu** quand l'état change : les onglets puis les morceaux de
   la vue passent de flous à nets l'un après l'autre (`src/island/motion.ts`).
 - **Deux intensités** (Réglages → Apparence → Animations) : « Classique » joue
@@ -343,6 +350,8 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `agents.ask`, `agents.event` « waiting » | Agents IA | question (la goutte violette et son « ? ») |
 | `mascot.state` | mascotte | |
 | `mascot.dance` `{on}` | surprises (src/eggs/) | elle danse en boucle (musique + mini-île) ; les autres réactions passent puis la danse reprend |
+| `shelf.downloaded`, `timer.done`, `clipboard.link-cleaned`, `capture.done`, `controls.usb-ejected`, `system.disk-low` | modules | une courte réaction de la mascotte (voir « La famille gomme ») |
+| `agents.ask` / `agents.ask.closed` | Agents IA | la pancarte « ? » tant qu'une question est ouverte |
 | `easter.word` `{word}` | Lanceur (mot magique + Entrée) | une surprise : `code-rain`, `retro`, `barrel-roll`, `answer` |
 | `easter.snack` | réglages (bouton « Essayer ») | Ondine mange la mini-île au prochain passage en mini |
 | `undo.offered` / `undo.done` / `undo.expired` | service d'annulation | bouton « Annuler » |
@@ -552,10 +561,47 @@ moteur `gum` ; le catalogue fabrique les cousines à partir de `GUM_FAMILY`
   météo) et les teintes (`TINTS`, plus l'arc-en-ciel).
 
 Réglages (Réglages → Mascotte → Style, seulement pour une mascotte gomme) :
-`mascot.color` (`auto` = la couleur de la forme), `mascot.hands` (`always`,
+`mascot.color` (`auto` = la couleur de la forme, une teinte de `TINTS`,
+`rainbow`, ou `custom` = la couleur libre), `mascot.customColor` (`#rrggbb`,
+défaut `#4da3ff` ; la roue teinte / saturation de `src/settings/color-wheel.ts`,
+avec une glissière de luminosité et la valeur à taper ; `paletteFromHex` dérive
+les quatre couleurs de la gomme : reflet plus clair, bas plus foncé avec la
+teinte qui glisse, contour), `mascot.hands` (`always`,
 `gestures`, `never`), `mascot.wearHead` (cap, straw, tophat, beanie, crown,
 bow), `mascot.wearEyes` (round, sun, heart), `mascot.wearNeck` (pearls,
-bowtie, scarf). Nouveaux déclencheurs : avant de dormir elle bâille (`yawn`),
+bowtie, scarf).
+
+Ce qu'elle porte en plus (`MascotRenderer.setExtras`, poussé par
+mascot-state.ts tant que ça dure) : les moufles sur les oreilles (pose `ears`,
+pendant la concentration `agents.quiet`), la pancarte « ? » (pose `sign`, un
+accessoire tenu par la moufle droite, d'`agents.ask` à `agents.ask.closed` ;
+elle passe devant les poses des animations en boucle, danse comprise, et
+s'affiche même sans mains ; un clic sur la mascotte ouvre alors l'onglet
+Agents IA, en fermant l'alerte affichée s'il y en a une), le parapluie
+(`weather.updated` qui annonce la pluie). Le moteur `poses` montre le « ? »
+des effets pour la pancarte ; les autres moteurs ignorent `setExtras`.
+
+Réactions aux modules (mascot-state.ts, courtes, pas pendant une tâche ni le
+sommeil, au plus une toutes les 4 s) : `shelf.downloaded` → starstruck,
+`timer.done` → cheer (le `task.finished` du minuteur qui suit ne la coupe pas),
+`clipboard.link-cleaned` → wink, `capture.done {ok}` → proud,
+`controls.usb-ejected` → wave, `system.disk-low` → worried.
+
+Réglages → Mascotte → Apparence → Taille (`mascot.size` : `small`, `normal`,
+`large`) : la place de la mascotte dans l'île ouverte (`data-mascot-size` sur
+`.island`, island.css : 48 / 64 / 88 px ouverte, 56 / 72 / 92 px en alerte et
+dépôt) et l'aperçu des réglages ; la mini-île garde ses 32 px.
+
+Réglages → Mascotte → Humeur → « Calme : moins de gestes spontanés »
+(`mascot.calm`, `calmMode()` dans mascot-state.ts). Coupé : l'ennui (elle passe
+du repos au sommeil sans bâiller), la bouderie au réveil, les réactions aux
+notifications et aux modules, les moufles sur les oreilles et le parapluie,
+les émotions qui suivent le PC (processeur, batterie ; l'humeur de fond
+reste), la danse et le goûter (src/eggs/eggs.ts), les visites au bord de
+l'écran (island.ts). Gardé : réveil, sommeil, travail, réflexion, succès,
+erreur, question et pancarte « ? », alerte, repas (dépôt de fichiers), les
+réponses aux clics et au survol. Les surprises gardent leur propre réglage
+(`mascot.surprises`). Nouveaux déclencheurs : avant de dormir elle bâille (`yawn`),
 réveillée deux fois en 5 min elle boude (`pout`), deux clics rapides → `laugh`,
 une tâche de plus de 10 min finie → `moved`, nouvelle version ou trésor trouvé →
 `starstruck` ; le travail d'un agent joue `concentree` (au clavier) et la

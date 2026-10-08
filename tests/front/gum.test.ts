@@ -6,8 +6,8 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { N, SHAPES, SHAPE_IDS, signedArea, mixPts, halfWidthAt } from "../../src/mascot/renderers/gum-shapes";
-import { FACE_BASE, palette, TINT_NAMES } from "../../src/mascot/renderers/gum-draw";
-import { faceOf, JellyRim, skyShape, weatherLook, ANIMS } from "../../src/mascot/renderers/gum-anims";
+import { FACE_BASE, hslToHex, isHexColor, palette, paletteFromHex, rgbToHsl, TINT_NAMES } from "../../src/mascot/renderers/gum-draw";
+import { faceOf, HANDS, JellyRim, skyShape, weatherLook, ANIMS, type HandPose } from "../../src/mascot/renderers/gum-anims";
 import { GUM_FAMILY, cousinManifest } from "../../src/mascot/gum-family";
 import { validateManifest } from "../../src/mascot/manifest-check";
 import { MASCOT_STATES, type MascotManifest } from "../../src/mascot/types";
@@ -115,6 +115,59 @@ describe("couleurs", () => {
       assert.equal(p.length, 4);
       for (const c of p) for (const v of c) assert.ok(v >= 0 && v <= 255.5, `${t} : ${v}`);
     }
+  });
+
+  const lum = (c: number[]) => 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+
+  test("la palette d'une couleur libre : clair, milieu, profond, contour, du plus clair au plus foncé", () => {
+    for (const hex of ["#4da3ff", "#ff6b78", "#1fae5c", "#202020", "#fafafa", "#808080"]) {
+      const p = paletteFromHex(hex);
+      assert.equal(p.length, 4);
+      for (const c of p) for (const v of c) assert.ok(v >= 0 && v <= 255.5, `${hex} : ${v}`);
+      assert.ok(lum(p[0]) > lum(p[1]), `${hex} : le reflet n'est pas plus clair que le milieu`);
+      assert.ok(lum(p[1]) > lum(p[2]), `${hex} : le bas n'est pas plus foncé que le milieu`);
+      assert.ok(lum(p[2]) > lum(p[3]), `${hex} : le contour n'est pas le plus foncé`);
+    }
+  });
+
+  test("la couleur libre garde sa teinte, et « custom » passe par palette()", () => {
+    const [h] = rgbToHsl(paletteFromHex("#4da3ff")[1]);
+    assert.ok(Math.abs(h - 211) < 3, `teinte ${h}`);
+    assert.deepEqual(palette("custom", 0, "#4da3ff"), paletteFromHex("#4da3ff"));
+    assert.ok(JSON.stringify(palette("custom", 0, "#4da3ff")) !== JSON.stringify(palette("custom", 0, "#ff6b78")));
+  });
+
+  test("une couleur invalide donne le bleu", () => {
+    assert.deepEqual(paletteFromHex("rouge"), palette("blue"));
+    assert.deepEqual(paletteFromHex("#12"), palette("blue"));
+    assert.ok(isHexColor("#4DA3FF"));
+    assert.ok(!isHexColor("#4da3f"));
+    assert.ok(!isHexColor(42));
+  });
+
+  test("hex → TSL → hex : aller-retour", () => {
+    for (const hex of ["#4da3ff", "#ff6b78", "#1fae5c", "#7b4dea"]) {
+      const [h, s, l] = rgbToHsl([parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)]);
+      assert.equal(hslToHex(h, s, l), hex);
+    }
+    assert.equal(hslToHex(0, 0, 100), "#ffffff");
+    assert.equal(hslToHex(0, 0, 0), "#000000");
+  });
+});
+
+describe("mains", () => {
+  test("toutes les poses, dont les oreilles bouchées et la pancarte, donnent des nombres", () => {
+    for (const pose of Object.keys(HANDS) as HandPose[]) {
+      for (const id of SHAPE_IDS) {
+        const [a, b] = HANDS[pose](1.3, 0.4, SHAPES[id]);
+        for (const H of [a, b]) for (const v of Object.values(H)) assert.ok(Number.isFinite(v), `${pose} / ${id}`);
+      }
+    }
+    const [l, r] = HANDS.ears(0, 0, SHAPES.goutte);
+    assert.ok(l.x! < 0 && r.x! > 0, "les moufles sur les oreilles, de chaque côté de la tête");
+    assert.ok(Math.abs(l.y! - SHAPES.goutte.eyeY) < 0.1, "à hauteur des yeux");
+    const [, sign] = HANDS.sign(0, 0, SHAPES.goutte);
+    assert.ok(sign.x! > 0 && sign.y! < 0.55, "la pancarte est tenue à droite, levée");
   });
 });
 

@@ -32,7 +32,7 @@ export const ISLAND_ESSENTIALS: Record<string, string[] | typeof WHOLE_PAGE> = {
   // La liste des modules (ordre des onglets, sans onglet) est marquée dans le
   // DOM (data-essential) : ses clés sont les noms des modules.
   tabs: [],
-  mascot: ["Afficher la mascotte", "Mascotte", "Couleur"],
+  mascot: ["Afficher la mascotte", "Mascotte", "Couleur", "Roue de couleur"],
   rules: WHOLE_PAGE,
   profiles: ["Profil actif"],
   privacy: WHOLE_PAGE,

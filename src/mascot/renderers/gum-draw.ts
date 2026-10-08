@@ -48,31 +48,81 @@ export const TINTS = {
   ghost: ["#ffffff", "#f1ecff", "#c9bff0", "#8a7cc4"],
 } satisfies Record<string, [string, string, string, string]>;
 
-export type GumTint = keyof typeof TINTS | "rainbow";
+/** Une teinte nommée, l'arc-en-ciel (calculé), ou « custom » : la couleur libre du réglage `mascot.customColor`. */
+export type GumTint = keyof typeof TINTS | "rainbow" | "custom";
 export type Rgb = [number, number, number];
 export type Palette = [Rgb, Rgb, Rgb, Rgb];
 
-export const TINT_NAMES = [...Object.keys(TINTS), "rainbow"] as GumTint[];
+export const TINT_NAMES = [...Object.keys(TINTS), "rainbow", "custom"] as GumTint[];
+
+/** La couleur libre par défaut (la même que le Rust : settings.rs). */
+export const DEFAULT_CUSTOM = "#4da3ff";
 
 const toRgb = (h: string): Rgb => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 export const css = (c: Rgb, a = 1) => `rgba(${c[0] | 0}, ${c[1] | 0}, ${c[2] | 0}, ${a})`;
 
-/** Une teinte en couleurs RVB. L'arc-en-ciel change de couleur avec le temps `t` (s). */
-export function palette(tint: GumTint, t = 0): Palette {
+/** « #rrggbb » exactement (minuscules ou majuscules). */
+export function isHexColor(s: unknown): s is string {
+  return typeof s === "string" && /^#[0-9a-fA-F]{6}$/.test(s);
+}
+
+/**
+ * Une teinte en couleurs RVB. L'arc-en-ciel change de couleur avec le temps
+ * `t` (s) ; « custom » dérive sa palette de `custom` (#rrggbb, voir paletteFromHex).
+ */
+export function palette(tint: GumTint, t = 0, custom = DEFAULT_CUSTOM): Palette {
   if (tint === "rainbow") {
     const h = (t * 24) % 360;
     return [hsl(h, 100, 92), hsl(h, 95, 68), hsl(h + 18, 85, 50), hsl(h + 24, 75, 32)];
   }
+  if (tint === "custom") return paletteFromHex(custom);
   return (TINTS[tint] ?? TINTS.blue).map(toRgb) as Palette;
 }
 
+/**
+ * La palette gomme d'une couleur libre : la couleur choisie est le milieu du
+ * bonbon ; le reflet est plus clair et moins saturé, le bas plus foncé (la
+ * teinte glisse un peu, comme pour les teintes nommées), le contour plus
+ * foncé encore. Une couleur invalide donne le bleu.
+ */
+export function paletteFromHex(hex: string): Palette {
+  if (!isHexColor(hex)) return TINTS.blue.map(toRgb) as Palette;
+  const [h, s, l] = rgbToHsl(toRgb(hex));
+  // Une couleur très sombre ou très claire reste lisible : le milieu est ramené dans une plage de gomme.
+  const mid = Math.min(78, Math.max(42, l));
+  const sat = Math.max(35, s);
+  return [hsl(h, Math.min(100, sat * 0.8 + 20), Math.min(96, mid + 28)), hsl(h, sat, mid), hsl(h + 12, Math.min(100, sat * 0.95), mid - 20), hsl(h + 18, Math.min(100, sat * 0.85), Math.max(10, mid - 36))];
+}
+
 function hsl(h: number, s: number, l: number): Rgb {
+  h = ((h % 360) + 360) % 360;
   s /= 100;
   l /= 100;
   const k = (n: number) => (n + h / 30) % 12;
   const a = s * Math.min(l, 1 - l);
   const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
   return [f(0) * 255, f(8) * 255, f(4) * 255];
+}
+
+/** RVB (0-255) → teinte (0-360), saturation et luminosité (0-100). */
+export function rgbToHsl([r, g, b]: Rgb): [number, number, number] {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d < 1e-6) return [0, 0, l * 100];
+  const s = d / (1 - Math.abs(2 * l - 1));
+  let h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  h *= 60;
+  return [h, s * 100, l * 100];
+}
+
+/** Teinte (0-360), saturation et luminosité (0-100) → « #rrggbb ». */
+export function hslToHex(h: number, s: number, l: number): string {
+  return "#" + hsl(h, s, l).map((v) => Math.round(Math.min(255, Math.max(0, v))).toString(16).padStart(2, "0")).join("");
 }
 
 // ── Le visage, en réglages chiffrés ─────────────────────────────────────────
@@ -203,10 +253,13 @@ export interface GumScene {
   tip: number;
   hands: [Hand, Hand] | null;
   handsAlpha: number;
-  handItem: "heart" | null;
+  /** Ce que les mains tiennent : un cœur (pose « heart »), la pancarte « ? » (pose « sign », une question d'agent ouverte). */
+  handItem: "heart" | "sign" | null;
   /** La main gauche passe devant le corps (bras croisés). */
   leftFront: boolean;
   wear: Wear;
+  /** Un parapluie au-dessus d'elle (la Météo annonce la pluie), 0 à 1 (il apparaît en fondu). */
+  umbrella: number;
   extra: Overlay;
   weather: WeatherFx;
   t: number;
@@ -353,11 +406,14 @@ export function drawGum(ctx: CanvasRenderingContext2D, w: number, h: number, sc:
   wearNeck(ctx, sc, R, fx);
   wearEyes(ctx, sc, R, fx, fy);
   wearHead(ctx, sc, R);
+  if (sc.umbrella > 0.02) drawUmbrella(ctx, sc, R);
   ctx.restore(); // fin de l'étirement
 
   // Les mains devant le corps.
   if (sc.hands && sc.handsAlpha > 0.02) {
     drawMitt(ctx, sc.hands[0], sx, sy, R, -1, c, sc.handsAlpha);
+    // La pancarte est derrière la moufle droite, qui tient son manche.
+    if (sc.handItem === "sign") drawSign(ctx, sc.hands[1], sx, sy, R, sc.handsAlpha, t);
     if (!sc.leftFront) drawMitt(ctx, sc.hands[1], sx, sy, R, 1, c, sc.handsAlpha);
     if (sc.handItem === "heart") {
       const a = sc.hands[0];
@@ -910,6 +966,110 @@ function drawMitt(ctx: CanvasRenderingContext2D, H: Hand, sx: number, sy: number
   ctx.beginPath();
   ctx.ellipse(-W * 0.38, -Hh * 0.38, W * 0.2, Hh * 0.12, -0.5, 0, TAU);
   ctx.fill();
+  ctx.restore();
+}
+
+/**
+ * La pancarte « ? » : un petit manche et une planche en bois clair, tenus par
+ * la moufle droite (un agent IA attend une réponse ; un clic sur la mascotte
+ * ouvre l'onglet Agents IA). Le point d'interrogation se balance un peu.
+ */
+function drawSign(ctx: CanvasRenderingContext2D, H: Hand, sx: number, sy: number, R: number, alpha: number, t: number) {
+  ctx.save();
+  ctx.translate(H.x * R * sx, H.y * R * sy);
+  ctx.rotate(H.r * 0.5 + Math.sin(t * 1.8) * 0.04);
+  ctx.globalAlpha = alpha;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  // le manche, depuis la moufle vers le haut
+  ctx.strokeStyle = "#8a5a2b";
+  ctx.lineWidth = R * 0.07;
+  ctx.beginPath();
+  ctx.moveTo(0, R * 0.05);
+  ctx.lineTo(0, -R * 0.5);
+  ctx.stroke();
+  // la planche
+  const w = R * 0.62;
+  const h = R * 0.5;
+  const y = -R * 0.5 - h / 2;
+  ctx.fillStyle = "#fff6dc";
+  ctx.strokeStyle = "#8a5a2b";
+  ctx.lineWidth = R * 0.045;
+  ctx.beginPath();
+  ctx.roundRect(-w / 2, y - h / 2, w, h, R * 0.08);
+  ctx.fill();
+  ctx.stroke();
+  // le « ? »
+  ctx.fillStyle = INK;
+  ctx.font = `900 ${R * 0.42}px system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("?", 0, y + R * 0.02);
+  gloss(ctx, -w * 0.28, y - h * 0.28, R * 0.09, R * 0.035);
+  ctx.restore();
+}
+
+/** Un parapluie au-dessus de la tête (la Météo annonce la pluie), avec trois gouttes qui rebondissent dessus. */
+function drawUmbrella(ctx: CanvasRenderingContext2D, sc: GumScene, R: number) {
+  const top = topAt(sc.pts, sc.shape.faceX * 0.6);
+  const k = sc.umbrella;
+  ctx.save();
+  ctx.globalAlpha = k;
+  ctx.translate(top.x * R + R * 0.18, top.y * R - R * (0.22 + 0.25 * k) + Math.sin(sc.t * 1.6) * R * 0.02);
+  ctx.rotate(-0.18 + sc.tip * 0.4);
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  // le manche, qui descend vers son épaule
+  ctx.strokeStyle = "#4a3a6a";
+  ctx.lineWidth = R * 0.05;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(0, R * 0.55);
+  ctx.quadraticCurveTo(0, R * 0.72, R * 0.12, R * 0.7);
+  ctx.stroke();
+  // la toile : un dôme festonné, rouge à pois
+  const w = R * 0.95;
+  const h = R * 0.42;
+  ctx.fillStyle = "#ff6b78";
+  ctx.strokeStyle = "#9c1530";
+  ctx.lineWidth = R * 0.04;
+  ctx.beginPath();
+  ctx.moveTo(-w, 0);
+  ctx.bezierCurveTo(-w, -h * 1.3, w, -h * 1.3, w, 0);
+  for (let i = 3; i >= -3; i--) {
+    const x0 = (i / 3) * w;
+    const x1 = ((i - 1) / 3) * w;
+    ctx.quadraticCurveTo((x0 + x1) / 2, R * 0.1, x1, 0);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+  for (const [px, py, r] of [[-0.5, -0.25, 0.05], [0.1, -0.4, 0.06], [0.55, -0.2, 0.045], [-0.15, -0.12, 0.035]] as const) {
+    ctx.beginPath();
+    ctx.arc(px * w, py * R, r * R, 0, TAU);
+    ctx.fill();
+  }
+  // la pointe
+  ctx.strokeStyle = "#4a3a6a";
+  ctx.lineWidth = R * 0.05;
+  ctx.beginPath();
+  ctx.moveTo(0, -h * 0.95);
+  ctx.lineTo(0, -h * 1.15);
+  ctx.stroke();
+  // trois gouttes qui tombent dessus et glissent sur les côtés
+  ctx.strokeStyle = "rgba(140, 200, 255, 0.9)";
+  ctx.lineWidth = R * 0.045;
+  for (let i = 0; i < 3; i++) {
+    const ph = (sc.t * 1.3 + i / 3) % 1;
+    const x = (-0.6 + i * 0.6) * w;
+    const y = -h * 1.5 - R * 0.6 + ph * R * 0.6;
+    ctx.globalAlpha = k * (1 - ph * ph);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x - R * 0.02, y + R * 0.12);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 

@@ -149,6 +149,12 @@ pub struct MascotPrefs {
     pub wear_head: String,
     pub wear_eyes: String,
     pub wear_neck: String,
+    /// Famille gomme : la couleur libre (#rrggbb) quand `color` vaut "custom" (la roue des réglages).
+    pub custom_color: String,
+    /// La taille de la mascotte dans l'île ouverte : "small", "normal" ou "large" (la mini-île garde la sienne).
+    pub size: String,
+    /// Calme : moins de gestes spontanés (ennui, goûter, visites au bord, danse, réactions aux modules).
+    pub calm: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -212,7 +218,7 @@ impl Default for IslandPrefs {
 
 impl Default for MascotPrefs {
     fn default() -> Self {
-        Self { enabled: true, id: "goutte-gomme".into(), bored_after_secs: 60.0, sleep_after_secs: 180.0, peek: true, peek_every_mins: 5.0, surprises: "all".into(), treasures: Vec::new(), color: "auto".into(), hands: "always".into(), wear_head: "none".into(), wear_eyes: "none".into(), wear_neck: "none".into() }
+        Self { enabled: true, id: "goutte-gomme".into(), bored_after_secs: 60.0, sleep_after_secs: 180.0, peek: true, peek_every_mins: 5.0, surprises: "all".into(), treasures: Vec::new(), color: "auto".into(), hands: "always".into(), wear_head: "none".into(), wear_eyes: "none".into(), wear_neck: "none".into(), custom_color: "#4da3ff".into(), size: "normal".into(), calm: false }
     }
 }
 
@@ -268,8 +274,7 @@ impl Settings {
         }
         i.offset = if i.offset.is_finite() { i.offset.clamp(0.0, 1.0) } else { 0.5 };
         i.sound_volume = if i.sound_volume.is_finite() { i.sound_volume.clamp(0.0, 1.0) } else { 0.5 };
-        let hex = i.color.len() == 7 && i.color.starts_with('#') && i.color[1..].chars().all(|c| c.is_ascii_hexdigit());
-        if !hex {
+        if !is_hex_color(&i.color) {
             i.color = "#0c0d12".into();
         }
         i.hotkey = i.hotkey.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '+').take(40).collect();
@@ -282,6 +287,12 @@ impl Settings {
         m.peek_every_mins = if m.peek_every_mins.is_finite() { m.peek_every_mins.clamp(1.0, 120.0) } else { 5.0 };
         if !matches!(m.surprises.as_str(), "all" | "seasonal" | "none") {
             m.surprises = "all".into();
+        }
+        if !is_hex_color(&m.custom_color) {
+            m.custom_color = "#4da3ff".into();
+        }
+        if !matches!(m.size.as_str(), "small" | "normal" | "large") {
+            m.size = "normal".into();
         }
         // Des ids courts ([a-z0-9-]), sans doublon : le carnet ne grossit jamais sans fin.
         let mut seen = std::collections::HashSet::new();
@@ -300,6 +311,11 @@ impl Settings {
     pub fn module_enabled(&self, id: &str) -> bool {
         self.modules.get(id).map(|m| m.enabled).unwrap_or(true)
     }
+}
+
+/// Une couleur « #rrggbb » (sept caractères, hexadécimaux).
+fn is_hex_color(s: &str) -> bool {
+    s.len() == 7 && s.starts_with('#') && s[1..].chars().all(|c| c.is_ascii_hexdigit())
 }
 
 /// Une liste d'ids courts ([a-z0-9-], 32 caractères au plus), sans doublon ni

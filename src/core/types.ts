@@ -86,6 +86,12 @@ export interface Settings {
     wearHead: string;
     wearEyes: string;
     wearNeck: string;
+    /** Famille gomme : la couleur libre (#rrggbb) quand `color` vaut "custom" (roue des réglages). */
+    customColor: string;
+    /** La taille de la mascotte dans l'île ouverte et l'aperçu ("small", "normal", "large") ; la mini-île garde la sienne. */
+    size: "small" | "normal" | "large";
+    /** Calme : moins de gestes spontanés (pas d'ennui, de goûter, de visites, de danse ni de réactions aux modules). */
+    calm: boolean;
   };
   privacy: {
     excludedFolders: string[];
@@ -158,7 +164,7 @@ export function defaultSettings(): Settings {
       tips: true,
       tipsSeen: [],
     },
-    mascot: { enabled: true, id: "goutte-gomme", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5, surprises: "all", treasures: [], color: "auto", hands: "always", wearHead: "none", wearEyes: "none", wearNeck: "none" },
+    mascot: { enabled: true, id: "goutte-gomme", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5, surprises: "all", treasures: [], color: "auto", hands: "always", wearHead: "none", wearEyes: "none", wearNeck: "none", customColor: "#4da3ff", size: "normal", calm: false },
     privacy: { excludedFolders: [] },
     modules: {},
     profiles: { list: [], active: "", auto: false, base: {} },

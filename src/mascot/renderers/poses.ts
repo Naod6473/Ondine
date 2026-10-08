@@ -20,7 +20,7 @@
 
 import { frameLoop } from "../../core/perf";
 import type { MascotRenderer } from "../renderer";
-import type { AnimationSpec, MascotManifest, MascotState, Mood, PoseEye, PoseSpec } from "../types";
+import type { AnimationSpec, MascotExtras, MascotManifest, MascotState, Mood, PoseEye, PoseSpec } from "../types";
 import { EFFECTS, STILL, type Motion } from "./effects";
 import { drawOverlay } from "./overlays";
 
@@ -111,6 +111,8 @@ export class PosesRenderer implements MascotRenderer {
   private doubleBlink = false;
   /** L'humeur de fond (voir setMood). */
   private mood: Mood = "neutral";
+  /** Une question d'agent ouverte : le « ? » reste au-dessus d'elle (setExtras). */
+  private sign = false;
 
   // Petites variantes au repos (un clin d'œil, un air calme…).
   private variant: { pose: string; until: number } | null = null;
@@ -176,6 +178,11 @@ export class PosesRenderer implements MascotRenderer {
   }
 
   setState(_state: MascotState) {}
+
+  /** Ce moteur ne dessine pas de moufles : la pancarte est le « ? » des effets (overlays.ts). */
+  setExtras(extras: MascotExtras) {
+    this.sign = extras.sign;
+  }
 
   setMood(mood: Mood) {
     // Les émotions sont des poses à part entière ; l'humeur ajoute seulement
@@ -313,7 +320,8 @@ export class PosesRenderer implements MascotRenderer {
 
     if (this.mood === "grumpy") this.drawSweat(ctx, baseX, baseY, size, t);
 
-    const overlay = src.overlay ?? "none";
+    let overlay = src.overlay ?? "none";
+    if (this.sign && overlay === "none") overlay = "question";
     if (overlay !== "none") drawOverlay(ctx, overlay, w / 2, baseY - size * 0.5, size * 0.42, this.reduced ? 0.5 : t);
   }
 

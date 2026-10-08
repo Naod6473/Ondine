@@ -24,6 +24,7 @@ import { jellyButtons, setStudio, staggerIn, watchContent } from "../island/moti
 import { reducedMotion } from "../island/tab-pill";
 import { THEMES, themeFor } from "../island/themes";
 import { mascotCatalog } from "../mascot/catalog";
+import { colorWheel } from "./color-wheel";
 import { found, TREASURES } from "../eggs/treasures";
 import { createRenderer, type MascotRenderer } from "../mascot/renderer";
 import { ALL_MODULES } from "../modules";
@@ -99,7 +100,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "💧",
     label: "Mascotte",
     sub: "Qui vit dans l'île, et quand elle s'ennuie ou s'endort.",
-    keywords: ["Afficher la mascotte", "Mascotte", "S'ennuie après", "S'endort après", "Ondine vient pendre au bord", "Visites", "Tester les animations"],
+    keywords: ["Afficher la mascotte", "Mascotte", "Taille", "Calme", "Couleur", "Personnalisée", "S'ennuie après", "S'endort après", "Ondine vient pendre au bord", "Visites", "Tester les animations"],
     render: mascot,
   },
   {
@@ -993,11 +994,29 @@ function mascot(main: HTMLElement) {
         ),
         "Déposez vos mascottes dans le dossier mascots/ du projet, puis relancez l'appli.",
       ),
+      row(
+        "Taille",
+        choice(
+          s.mascot.size ?? "normal",
+          [
+            ["small", "Petite"],
+            ["normal", "Normale"],
+            ["large", "Grande"],
+          ],
+          (v) => save((d) => (d.mascot.size = v as Settings["mascot"]["size"]), true),
+        ),
+        "Dans l'île ouverte et dans l'aperçu ci-dessous ; la mini-île garde sa taille.",
+      ),
     ]),
     ...(cur?.manifest.renderer === "gum" ? [gumStyleGroup()] : []),
     group("Humeur", [
       row("S'ennuie après", stepper(s.mascot.boredAfterSecs, 10, 3600, (v) => save((d) => (d.mascot.boredAfterSecs = v)), 10, "s")),
       row("S'endort après", stepper(s.mascot.sleepAfterSecs, 20, 7200, (v) => save((d) => (d.mascot.sleepAfterSecs = v)), 10, "s")),
+      row(
+        "Calme : moins de gestes spontanés",
+        toggle(s.mascot.calm ?? false, (v) => save((d) => (d.mascot.calm = v)), "Calme : moins de gestes spontanés"),
+        "Plus d'ennui, de goûter, de visites au bord de l'écran, de danse ni de réactions aux modules. Elle réagit toujours aux agents IA (attente, question), aux erreurs, aux réussites, aux alertes, et elle dort.",
+      ),
     ]),
     group(
       "Visites au bord de l'écran",
@@ -1048,7 +1067,7 @@ function mascot(main: HTMLElement) {
   if (cur.problems.length) main.append(el("p", { class: "banner error" }, "Problèmes dans le manifeste : ", cur.problems.join(" ; ")));
 
   // Aperçu : un renderer à part ; chaque bouton joue aussi l'animation sur l'île.
-  const stage = el("div", { class: "mascot-stage" });
+  const stage = el("div", { class: "mascot-stage", "data-size": s.mascot.size ?? "normal" });
   const buttons = el("div", { class: "anim-grid" });
   main.append(el("section", { class: "group", "data-key": "Tester les animations" }, el("h3", { class: "group-title" }, "Tester les animations"), el("div", { class: "group-body stage-body" }, stage, buttons)));
   preview = createRenderer(cur.manifest, cur.assets);
@@ -1097,6 +1116,7 @@ const GUM_COLORS: [string, string][] = [
   ["cloud", "Nuage"],
   ["licorice", "Réglisse"],
   ["rainbow", "Arc-en-ciel"],
+  ["custom", "Personnalisée"],
 ];
 
 /** Couleur, mains et accessoires des mascottes de la famille gomme. */
@@ -1105,7 +1125,19 @@ function gumStyleGroup(): HTMLElement {
   return group(
     "Style",
     [
-      row("Couleur", choice(m.color ?? "auto", GUM_COLORS, (v) => save((d) => (d.mascot.color = v)))),
+      row("Couleur", choice(m.color ?? "auto", GUM_COLORS, (v) => save((d) => (d.mascot.color = v), true))),
+      // « Personnalisée » : la roue teinte / saturation (color-wheel.ts) ; l'aperçu et l'île suivent le glisser.
+      m.color === "custom"
+        ? row(
+            "Roue de couleur",
+            colorWheel(
+              m.customColor ?? "#4da3ff",
+              (hex) => save((d) => (d.mascot.customColor = hex)),
+              (hex) => save((d) => (d.mascot.customColor = hex)),
+            ),
+            "La teinte tourne autour du disque, la saturation va du centre au bord. Au clavier : flèches gauche et droite pour la teinte, haut et bas pour la saturation.",
+          )
+        : null,
       row(
         "Mains",
         choice(

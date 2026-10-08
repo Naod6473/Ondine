@@ -9,17 +9,18 @@ import { frameLoop } from "../../core/perf";
 import { settingsStore } from "../../core/settings-store";
 import { reducedMotion } from "../../island/tab-pill";
 import type { MascotManifest } from "../types";
-import { TINT_NAMES, type EyeWear, type GumTint, type HeadWear, type NeckWear } from "./gum-draw";
+import { DEFAULT_CUSTOM, isHexColor, TINT_NAMES, type EyeWear, type GumTint, type HeadWear, type NeckWear } from "./gum-draw";
 import { GumEngine, type GumEnv, type GumPrefs } from "./gum-engine";
 
 export type { GumEnv, GumPrefs } from "./gum-engine";
 
 /** Les réglages de la mascotte qui touchent au dessin, lus dans settingsStore. */
 function prefs(): GumPrefs {
-  const m = settingsStore.current.mascot as Partial<{ color: string; hands: string; wearHead: string; wearEyes: string; wearNeck: string }>;
+  const m = settingsStore.current.mascot as Partial<{ color: string; customColor: string; hands: string; wearHead: string; wearEyes: string; wearNeck: string }>;
   const color = m.color ?? "auto";
   return {
     color: (TINT_NAMES as string[]).includes(color) ? (color as GumTint) : "auto",
+    customColor: isHexColor(m.customColor) ? m.customColor : DEFAULT_CUSTOM,
     hands: (m.hands ?? "always") as GumPrefs["hands"],
     wear: { head: (m.wearHead ?? "none") as HeadWear, eyes: (m.wearEyes ?? "none") as EyeWear, neck: (m.wearNeck ?? "none") as NeckWear },
   };
