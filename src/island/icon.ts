@@ -168,9 +168,10 @@ const LINE_ONLY: Record<string, string> = {
 
 /** Les images connues. Une clé « logo: » absente retombe sur FALLBACK. */
 const IMAGES: Record<string, string> = {};
-// Les agents : des icônes maison (un C, un G, un « codex », livre de code),
-// pas les logos d'Anthropic, de Google ni d'OpenAI.
-const AGENTS = ["claude", "gemini", "codex"];
+// Les agents : des icônes maison (un C, un G, un « codex », livre de code,
+// et des pictogrammes au trait pour les autres outils), jamais les logos
+// des marques. Les outils sans image en couleur prennent leur icône au trait.
+const AGENTS = ["claude", "gemini", "codex", "copilot", "cursor", "qwen", "goose", "opencode", "kiro", "hermes", "aider", "amp", "other"];
 for (const name of AGENTS) if (byName(name)) IMAGES[`logo:${name}`] = byName(name);
 for (const [emoji, name] of Object.entries(BY_EMOJI)) {
   const url = byName(name);
@@ -228,6 +229,8 @@ function draw(name: string, p: IconPack): Node {
     img.draggable = false;
     return img;
   }
+  // Un agent sans image en couleur (les outils en plus) : son icône au trait.
+  if (name.startsWith("logo:") && LINE[name]) return lineSpan(LINE[name]);
   // Un nom d'image inconnu ne doit jamais s'afficher en texte brut.
   // Un emoji sans image : du texte, dans un <span> pour qu'un changement de
   // pack puisse le retrouver (il a peut-être une icône au trait).
@@ -343,5 +346,6 @@ export function agentIcon(tool: string): string {
   if (t.includes("claude")) return "logo:claude";
   if (t.includes("gemini")) return "logo:gemini";
   if (t.includes("codex")) return "logo:codex";
+  for (const name of AGENTS) if (t === name || t.startsWith(`${name}-`)) return `logo:${name}`;
   return "🤖";
 }

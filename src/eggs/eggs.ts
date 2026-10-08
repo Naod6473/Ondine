@@ -123,6 +123,13 @@ export class EasterEggs {
     const timer = window.setInterval(() => this.maybeSnack(), SNACK_CHECK_MS);
     this.offs.push(() => window.clearInterval(timer));
     on("media.changed", (p: MediaPayload | null) => this.mediaChanged(musicPlaying(p)));
+    // Une série de contributions GitHub atteint un palier (7, 30, 100 jours,
+    // module Agents IA) : des étoiles plein les yeux et un trésor dans le carnet.
+    on("agents.github-streak", (p: { stage?: number } | null) => {
+      if (!p?.stage || !this.allowed("seasonal")) return;
+      this.emote("starstruck");
+      this.discover(`github-${p.stage}`);
+    });
     // Le module Musique ne publie qu'aux changements : une musique lancée avant
     // l'île, il faut la demander (au démarrage, puis à chaque mini-île).
     void this.askMusic();
@@ -150,8 +157,13 @@ export class EasterEggs {
       recall,
       remember,
     });
-    // Le réglage change (Surprises : aucune…) : l'accessoire suit.
-    this.offs.push(settingsStore.onChange(() => this.reactions.refresh()));
+    // Le réglage change (Surprises : aucune, Calme…) : l'accessoire et la danse suivent.
+    this.offs.push(
+      settingsStore.onChange(() => {
+        this.reactions.refresh();
+        this.syncDance();
+      }),
+    );
   }
 
   destroy() {
@@ -357,6 +369,7 @@ export class EasterEggs {
       !this.mfx.splitting &&
       Date.now() - this.lastHover > SNACK_QUIET_MS &&
       this.allowed("secret") &&
+      !settingsStore.current.mascot.calm &&
       !!this.hooks.manifest() &&
       this.visuals();
     if (!ready || !content) return;
@@ -550,7 +563,8 @@ export class EasterEggs {
 
   /** De la musique et la mini-île : Ondine danse (et le 21 juin, c'est un trésor). */
   private syncDance() {
-    const want = this.music && this.hooks.state() === "compact" && !this.busy && !!this.hooks.manifest();
+    // Pas de danse en « Calme » (mascot.calm).
+    const want = this.music && this.hooks.state() === "compact" && !this.busy && !!this.hooks.manifest() && !settingsStore.current.mascot.calm;
     if (want === this.dancing) return;
     this.dancing = want;
     this.bus.emit("mascot.dance", { on: want }, "eggs");

@@ -8,9 +8,14 @@
 // à suivre pour brancher chaque outil.
 //
 // « A fini » peut arriver avec un bilan (dépôt git du dossier de la session) :
-// « 3 fichiers modifiés, +120 −14 », avec « Ouvrir dans VS Code » et
-// « Terminal ici ». Chaque projet a aussi « Reprendre » (la dernière session
-// de Claude Code ou de Codex), avec la dernière phrase échangée en petit.
+// « 3 fichiers modifiés, +120 −14 », avec « Ouvrir dans VS Code »,
+// « Terminal ici » et « Fichiers… » (la liste, report-view.ts), et avec la
+// dernière phrase de l'agent (« Copier »). Chaque projet a aussi « Reprendre »
+// (la dernière session), avec la dernière phrase échangée en petit.
+//
+// Les outils en plus (Copilot CLI, Cursor, Qwen Code, Goose, OpenCode, Kiro,
+// Hermes, Aider, Amp, « Autre outil ») sont décrits dans tools.ts ; les
+// coucous de la mascotte pendant une attente dans wait-watch.ts.
 
 import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
@@ -21,7 +26,12 @@ import { Bridge } from "../../core/bridge";
 import { el } from "../../island/dom";
 import { pacedInterval } from "../../core/perf";
 import { agentIcon, icon } from "../../island/icon";
-import { byModel, changesLine, modelLabel, namesLine, periodFrom, since, sumTokens, tokensShort, totalTokens, type ChangeSummary, type UsagePeriod, type UsageReport } from "./texts";
+import { mountGithub } from "./github-view";
+import { changesLine, namesLine, since, type ChangeSummary } from "./texts";
+import { usageSection, watchBudget } from "./usage-view";
+import { HOOK_TOOLS, LAUNCH, launchName, sourceName, summaryLine } from "./tools";
+import { mountFilesPanel, requestFiles } from "./report-view";
+import { startWaitWatch } from "./wait-watch";
 
 /** Le bilan d'une fin de tâche, avec ce qu'il faut pour ses boutons. */
 interface Changes extends ChangeSummary {
@@ -42,6 +52,8 @@ interface AgentEvent {
   session: string;
   /** « A fini » dans un dépôt git où des fichiers ont changé. */
   changes?: Changes;
+  /** « A fini » : la dernière phrase de l'agent (transcription vérifiée), 200 caractères au plus. */
+  summary?: string;
 }
 
 /** La dernière session de Claude Code d'un projet (commande "last_sessions"). */
@@ -54,11 +66,12 @@ interface LastSession {
   at?: number;
 }
 
-/** Une question posée par un agent (outil MCP « ondine_ask »), ou une demande
- *  de permission (« ondine.exe permission » : Autoriser / Refuser / Au terminal). */
+/** Une question posée par un agent (outil MCP « ondine_ask »), une demande
+ *  de permission (« ondine.exe permission » : Autoriser / Refuser / Au terminal),
+ *  une capture d'écran ou une ouverture demandées (ondine_capture, ondine_open). */
 interface Ask {
   id: number;
-  kind: "question" | "permission";
+  kind: "question" | "permission" | "capture" | "open";
   who: string;
   question: string;
   /** Permission : ce que l'outil va faire (la commande, le fichier). */
@@ -77,9 +90,8 @@ interface Session {
   since: number;
 }
 
-/** Les agents qu'on sait lancer (réglages « Proposer … »). */
-type LaunchTool = "claude" | "codex" | "gemini";
-const LAUNCH_NAMES: Record<LaunchTool, string> = { claude: "Claude Code", codex: "Codex", gemini: "Gemini CLI" };
+/** Les agents qu'on sait lancer (réglages « Proposer … », liste dans tools.ts ; le Rust décide). */
+type LaunchTool = string;
 /** Le nom affiché d'une source de hooks. */
 const SOURCE_NAMES: Record<string, string> = { "claude-code": "Claude", codex: "Codex", gemini: "Gemini" };
 /** L'agent choisi pour « Lancer » (gardé tant que l'île est ouverte). */
@@ -119,16 +131,30 @@ async function openVsCode(api: ModuleApi, dir: string) {
   }
 }
 
+/** Copie la dernière phrase de l'agent (bouton « Copier » de « a fini »). */
+async function copySummary(api: ModuleApi, text: string) {
+  try {
+    await api.invoke("copy_text", { text });
+    api.notify({ title: "Phrase copiée", icon: "📋", priority: "low", durationMs: 2000, key: "agents-copied" });
+  } catch (err) {
+    api.notify({ title: "Copie impossible", body: errorText(err), icon: "⚠️", priority: "low", key: "agents-error" });
+  }
+}
+
 /** « A fini », avec son bilan : l'île s'ouvre pour montrer les fichiers et les boutons. */
 function showReport(api: ModuleApi, e: AgentEvent, c: Changes) {
   const actions: NotificationAction[] = [];
   if (e.session) actions.push({ label: "↗ Y aller", run: () => goTo(api, e.session) });
+  // Le bilan cliquable : la liste des fichiers dans l'onglet, avec « Ouvrir » et « Diff ».
+  actions.push({ label: "Fichiers…", run: () => requestFiles(api, { dir: c.dir, title: `${e.title} · ${changesLine(c)}`, vscode: c.vscode }) });
   if (c.vscode) actions.push({ label: "Ouvrir dans VS Code", run: () => openVsCode(api, c.dir) });
   // Le module Terminal ouvre son terminal habituel dans ce dossier (qu'il valide lui-même).
   if (c.terminal) actions.push({ label: "Terminal ici", run: () => api.emit("terminal.open", { path: c.dir }) });
+  if (e.summary) actions.push({ label: "Copier", run: () => copySummary(api, e.summary!) });
   api.notify({
     title: `${e.title} · ${changesLine(c)}`,
-    body: [namesLine(c), e.project ? `Projet ${e.project}` : ""].filter(Boolean).join(" · "),
+    // La dernière phrase de l'agent si on l'a, sinon les fichiers ; puis le projet.
+    body: [e.summary ? summaryLine(e.summary) : namesLine(c), e.project ? `Projet ${e.project}` : ""].filter(Boolean).join(" · "),
     icon: sourceIcon(e.source) ?? ICON.done,
     priority: "high",
     durationMs: 15_000,
@@ -211,16 +237,20 @@ export const agents: IslandModule = {
       if (!e?.title) return;
       if (e.kind === "done" && e.changes?.files) return showReport(api, e, e.changes);
       const where = e.project ? `Projet ${e.project}` : "";
+      const actions: NotificationAction[] = [];
+      if (e.session) actions.push({ label: "↗ Y aller", run: () => goTo(api, e.session) });
+      // « A fini » avec la dernière phrase de l'agent : « Copier ».
+      if (e.kind === "done" && e.summary) actions.push({ label: "Copier", run: () => copySummary(api, e.summary!) });
       api.notify({
         title: e.title,
-        // Attente : le message de Claude (« … to use Bash ») ; sinon, le projet.
-        body: e.kind === "waiting" ? [e.body, where].filter(Boolean).join(" · ") : e.body || where,
+        // Attente : le message de Claude (« … to use Bash ») ; a fini : sa dernière phrase ; sinon, le projet.
+        body: e.kind === "waiting" ? [e.body, where].filter(Boolean).join(" · ") : e.kind === "done" && e.summary ? [summaryLine(e.summary), where].filter(Boolean).join(" · ") : e.body || where,
         // Le logo de l'agent (Claude, Gemini…) ; sinon l'état (✋ ✅ 💬).
         icon: sourceIcon(e.source) ?? ICON[e.kind] ?? "🤖",
         // Claude attend : l'île s'ouvre pour te le dire ; le reste reste discret.
         priority: e.kind === "waiting" ? "high" : "normal",
         key: `agents-${e.session}`,
-        actions: e.session ? [{ label: "↗ Y aller", run: () => goTo(api, e.session) }] : undefined,
+        actions: actions.length ? actions : undefined,
       });
     });
     // Un agent te pose une question (MCP) : elle reste affichée jusqu'à ton clic.
@@ -228,10 +258,12 @@ export const agents: IslandModule = {
       const q = msg.payload as Ask | null;
       if (!q?.question) return;
       if (q.kind === "permission") return showPermission(api, q);
+      // Capture d'écran ou ouverture demandées : la question est le titre.
+      const request = q.kind === "capture" || q.kind === "open";
       api.notify({
-        title: `${q.who} vous demande`,
-        body: q.question,
-        icon: "❓",
+        title: request ? q.question : `${q.who} vous demande`,
+        body: request ? q.detail || undefined : q.question,
+        icon: q.kind === "capture" ? "✂️" : q.kind === "open" ? "🔗" : "❓",
         priority: "high",
         sticky: true,
         key: `agents-ask-${q.id}`,
@@ -279,6 +311,10 @@ export const agents: IslandModule = {
       });
     });
     api.on("agents.changed", () => redraws.forEach((r) => r()));
+    // En mini-île, la mascotte fait coucou toutes les deux minutes tant qu'un agent attend.
+    startWaitWatch(api);
+    // L'alerte de budget (réglage `dailyBudget`) : une relecture légère toutes les 15 min (usage-view.ts).
+    return watchBudget(api);
   },
 
   views: {
@@ -286,16 +322,24 @@ export const agents: IslandModule = {
       const asks = el("ul", { class: "agents-asks" });
       const quiet = el("div", { class: "agents-quiet" });
       const board = el("ul", { class: "agents-board" });
-      // Le compteur de jetons (journaux locaux de Claude Code et Codex).
-      const usageBox = el("section", { class: "agents-usage" });
+      // Le compteur de jetons (journaux locaux de Claude Code et Codex) : usage-view.ts.
+      const usage = usageSection(api);
+      const usageBox = usage.box;
+      // Le calendrier de contributions GitHub (github-view.ts), sous le compteur.
+      const githubBox = el("section", { class: "agents-usage agents-github" });
       const list = el("ul", { class: "agents-list" });
       const status = el("p", { class: "muted agents-status" });
       const guide = el("details", { class: "agents-guide" });
       const launch = el("div", { class: "agents-launch" });
       const projectRows = el("ul", { class: "agents-projects" });
+      // La liste des fichiers d'un bilan (report-view.ts), vide le reste du temps.
+      const filesBox = el("section", { class: "agents-files-box" });
       root.append(
-        el("div", { class: "agents" }, launch, projectRows, asks, status, quiet, board, usageBox, el("div", { class: "muted agents-subtitle" }, "Derniers messages"), list, guide),
+        el("div", { class: "agents" }, launch, projectRows, asks, filesBox, status, quiet, board, usageBox, githubBox, el("div", { class: "muted agents-subtitle" }, "Derniers messages"), list, guide),
       );
+      const stopFiles = mountFilesPanel(api, filesBox);
+      /** Le nom de l'agent choisi (« Autre outil » : le mot du réglage). */
+      const chosenName = () => launchName(chosenTool, String(api.settings().otherTool ?? ""));
 
       // ── Lancer un agent ────────────────────────────────────────────────────
       const start = (args: Record<string, unknown>) =>
@@ -304,11 +348,11 @@ export const agents: IslandModule = {
             await api.invoke("launch", { tool: chosenTool, ...args });
             api.closeIsland();
           } catch (err) {
-            api.notify({ title: LAUNCH_NAMES[chosenTool], body: errorText(err), icon: "⚠️", priority: "low", key: "agents-error" });
+            api.notify({ title: chosenName(), body: errorText(err), icon: "⚠️", priority: "low", key: "agents-error" });
           }
         });
       const pick = api.handler(async () => {
-        const path = await Bridge.pickFolder(`Ouvrir ${LAUNCH_NAMES[chosenTool]} dans…`);
+        const path = await Bridge.pickFolder(`Ouvrir ${chosenName()} dans…`);
         if (path) await start({ path })();
       });
       // Les agents proposés, les projets du réglage, et la dernière session de
@@ -339,9 +383,9 @@ export const agents: IslandModule = {
         const chips =
           tools.length > 1
             ? tools.map((t) =>
-                el("button", { class: `net-chip${t === chosenTool ? " active" : ""}`, onclick: api.handler(() => ((chosenTool = t), drawLaunch())) }, LAUNCH_NAMES[t]),
+                el("button", { class: `net-chip${t === chosenTool ? " active" : ""}`, onclick: api.handler(() => ((chosenTool = t), drawLaunch())) }, launchName(t, String(api.settings().otherTool ?? ""))),
               )
-            : [el("span", { class: "agents-launch-title" }, LAUNCH_NAMES[chosenTool])];
+            : [el("span", { class: "agents-launch-title" }, chosenName())];
         launch.replaceChildren(
           el("span", { class: "agents-launch-title" }, "▶"),
           ...chips,
@@ -350,21 +394,23 @@ export const agents: IslandModule = {
           el("button", { class: "btn small", title: "Choisir le dossier du projet", onclick: pick }, "Autre dossier…"),
         );
         // Une ligne par projet : une nouvelle session, ou « Reprendre » la
-        // dernière (Claude Code : s'il y en a une ; Codex : toujours ; Gemini CLI : non).
+        // dernière (Claude Code : s'il y en a une ; les autres : si l'outil le
+        // propose, voir tools.ts ; Gemini CLI, Aider, Amp : non).
         projectRows.replaceChildren(
           ...projects.map((p, i) => {
             const last = chosenTool === "claude" ? lastSessions.find((l) => l.index === i && l.found) : undefined;
-            const resumable = chosenTool === "codex" || !!last;
+            const info = LAUNCH[chosenTool];
+            const resumable = chosenTool === "claude" ? !!last : !!info?.resume;
             return el(
               "li",
               { class: "agents-project" },
-              el("button", { class: "btn small", title: `Ouvrir ${LAUNCH_NAMES[chosenTool]} dans ${p.path}`, onclick: start({ index: i }) }, `📁 ${p.name}`),
+              el("button", { class: "btn small", title: `Ouvrir ${chosenName()} dans ${p.path}`, onclick: start({ index: i }) }, `📁 ${p.name}`),
               resumable
                 ? el(
                     "button",
                     {
                       class: "btn small",
-                      title: chosenTool === "claude" ? "Continuer la dernière conversation (claude --continue)" : "Reprendre la dernière session (codex resume --last)",
+                      title: info?.resumeTitle ?? "Reprendre la dernière session",
                       onclick: start({ index: i, resume: true }),
                     },
                     "↻ Reprendre",
@@ -396,25 +442,9 @@ export const agents: IslandModule = {
         () => {},
       );
 
-      // ── Brancher un outil : Claude Code, Codex ou Gemini CLI ───────────────
-      type Tool = "claude-code" | "codex" | "gemini";
-      const TOOLS: Record<Tool, { name: string; file: string; steps: string }> = {
-        "claude-code": {
-          name: "Claude Code",
-          file: "%USERPROFILE%\\.claude\\settings.json",
-          steps: "Collez le bloc « hooks » (fusionnez-le s'il en existe déjà un), puis relancez Claude Code.",
-        },
-        codex: {
-          name: "Codex",
-          file: "%USERPROFILE%\\.codex\\config.toml",
-          steps: "Collez les lignes à la fin du fichier, relancez Codex, puis tapez /hooks pour les approuver (Codex le demande une fois).",
-        },
-        gemini: {
-          name: "Gemini CLI",
-          file: "%USERPROFILE%\\.gemini\\settings.json",
-          steps: "Collez le bloc « hooks » (version 0.26 ou plus récente), puis relancez Gemini CLI.",
-        },
-      };
+      // ── Brancher un outil : Claude Code, Codex, Gemini CLI, Copilot CLI, Cursor, Qwen Code, Goose (tools.ts)
+      type Tool = string;
+      const TOOLS = HOOK_TOOLS;
       let tool: Tool = "claude-code";
       const exe = el("code", { class: "agents-exe" });
       const steps = el("ol", {});
@@ -444,11 +474,7 @@ export const agents: IslandModule = {
         if (Object.values(hookStates).some((s) => s?.state === "stale")) guide.open = true;
         drawGuide();
       };
-      const RESTART: Record<Tool, string> = {
-        "claude-code": "Relancez Claude Code pour les activer.",
-        codex: "Relancez Codex, puis tapez /hooks pour les approuver (Codex le demande une fois).",
-        gemini: "Relancez Gemini CLI pour les activer.",
-      };
+      const RESTART = (t: Tool) => TOOLS[t].restart;
       const install = el(
         "button",
         {
@@ -462,7 +488,7 @@ export const agents: IslandModule = {
               api.notify(
                 r && !r.changed
                   ? { title: "Hooks déjà installés", body: "Rien à changer.", icon: "✔️", priority: "low", key: "agents-hooks" }
-                  : { title: "Hooks installés", body: RESTART[t], icon: "✅", priority: "normal", key: "agents-hooks" },
+                  : { title: "Hooks installés", body: RESTART(t), icon: "✅", priority: "normal", key: "agents-hooks" },
               );
               // Claude Code : un autre programme répond aussi aux demandes de permission.
               if (r?.otherPermission)
@@ -507,7 +533,7 @@ export const agents: IslandModule = {
       const drawHookState = () => {
         const s = hookStates[tool];
         if (!s) return hookState.replaceChildren();
-        const permOn = api.settings().permissions === true && tool !== "gemini";
+        const permOn = api.settings().permissions === true && (tool === "claude-code" || tool === "codex");
         const label = {
           installed: permOn && !s.permission ? "✅ Installé, sans « Autoriser depuis l'île » : réinstallez pour l'ajouter" : "✅ Installé",
           stale: "⚠️ Ancien chemin : ces hooks lancent un autre ondine.exe, que l'île refuse. Réinstallez-les.",
@@ -545,7 +571,7 @@ export const agents: IslandModule = {
         "📋 Copier la configuration",
       );
       // Brancher l'île comme serveur MCP : l'agent peut alors l'appeler de lui-même.
-      const MCP_STEPS: Record<Tool, string> = {
+      const MCP_STEPS: Record<string, string> = {
         "claude-code": "Collez la commande dans un terminal (une seule fois), puis relancez Claude Code.",
         codex: "Collez les lignes à la fin de %USERPROFILE%\\.codex\\config.toml, puis relancez Codex.",
         gemini: "Fusionnez le bloc « mcpServers » dans %USERPROFILE%\\.gemini\\settings.json, puis relancez Gemini CLI.",
@@ -558,7 +584,7 @@ export const agents: IslandModule = {
           onclick: api.handler(async () => {
             try {
               await api.invoke("copy_mcp", { tool });
-              api.notify({ title: "Configuration MCP copiée", body: MCP_STEPS[tool], icon: "📋", priority: "low", key: "agents-copied" });
+              api.notify({ title: "Configuration MCP copiée", body: MCP_STEPS[tool] ?? "", icon: "📋", priority: "low", key: "agents-copied" });
             } catch (err) {
               api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "agents-error" });
             }
@@ -592,18 +618,38 @@ export const agents: IslandModule = {
           el("li", {}, "Ouvrez ", el("code", {}, fileOf(tool)), ". ", TOOLS[tool].steps),
           el("li", {}, "Chaque hook lance : ", exe),
         );
-        mcpSteps.textContent =
-          "En plus (facultatif) : branchez l'île comme serveur MCP. L'agent pourra alors vous envoyer un message, sa progression, lancer le minuteur, ou vous poser une question à choix, à laquelle vous répondez d'un clic. " +
-          MCP_STEPS[tool];
+        const withMcp = TOOLS[tool].mcp;
+        mcpSteps.textContent = withMcp
+          ? "En plus (facultatif) : branchez l'île comme serveur MCP. L'agent pourra alors vous envoyer un message, sa progression, lancer le minuteur, vous poser une question à choix, ajouter une note, déposer un fichier sur l'étagère, vous demander une capture d'écran ou l'ouverture d'un lien (toujours après votre clic). " +
+            (MCP_STEPS[tool] ?? "")
+          : `Serveur MCP : la configuration n'est pas proposée pour ${TOOLS[tool].name} (elle n'a pas été vérifiée). Seuls les hooks sont installés.`;
+        copyMcp.hidden = !withMcp;
         const permOn = api.settings().permissions === true;
         permText.textContent =
           tool === "gemini"
             ? "Autoriser / Refuser depuis l'île : Gemini CLI ne le permet pas (un hook peut refuser, pas autoriser). Répondez dans son terminal."
-            : `Autoriser / Refuser depuis l'île (${permOn ? "activé" : "désactivé dans les réglages"}) : quand ${TOOLS[tool].name} demande une permission, l'île montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Sans réponse à temps, la question passe au terminal. Collez ce hook en plus, de la même façon.`;
-        copyPerm.hidden = tool === "gemini";
+            : !withMcp
+              ? "Autoriser / Refuser depuis l'île : seulement pour Claude Code et Codex. Répondez dans le terminal de cet outil."
+              : `Autoriser / Refuser depuis l'île (${permOn ? "activé" : "désactivé dans les réglages"}) : quand ${TOOLS[tool].name} demande une permission, l'île montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Sans réponse à temps, la question passe au terminal. Collez ce hook en plus, de la même façon.`;
+        copyPerm.hidden = !withMcp || tool === "gemini";
       };
+      // « Brancher un autre outil » : la commande à mettre en fin de tâche (le
+      // chemin vient du Rust : « hook_config » donne aussi cette ligne).
+      const otherLine = el("code", { class: "agents-exe", "data-no-i18n": true });
+      const otherGuide = el(
+        "div",
+        { class: "agents-other" },
+        el("div", { class: "muted agents-subtitle" }, "Brancher un autre outil"),
+        el(
+          "p",
+          { class: "muted" },
+          "Un outil qui sait lancer une commande en fin de tâche prévient l'île avec « --event done » (ou « waiting » quand il attend votre réponse, « working » quand il repart). Donnez-lui cette ligne, telle quelle : ",
+        ),
+        otherLine,
+        el("p", { class: "muted" }, "Pour le lancer d'ici, écrivez son mot de commande dans le réglage « Autre outil ». Rien n'est exécuté à sa demande : l'île affiche seulement « L'outil a fini »."),
+      );
       guide.append(
-        el("summary", {}, "Brancher Claude Code, Codex ou Gemini"),
+        el("summary", {}, "Brancher un outil (Claude Code, Codex, Gemini, Copilot, Cursor…)"),
         el(
           "ol",
           { class: "muted agents-quick" },
@@ -621,6 +667,7 @@ export const agents: IslandModule = {
         el("div", { class: "btn-row" }, copyMcp),
         permText,
         el("div", { class: "btn-row" }, copyPerm),
+        otherGuide,
       );
       drawGuide();
       void loadHookStates();
@@ -671,96 +718,18 @@ export const agents: IslandModule = {
         return el(
           "li",
           { class: `agents-ask ${q.kind}` },
-          el("div", {}, el("b", {}, isPerm ? `🔐 ${q.question}` : `❓ ${q.who} vous demande`), el("small", { class: "muted" }, ` · ${left}`)),
-          isPerm ? (q.detail ? el("code", { class: "agents-ask-detail" }, q.detail) : null) : el("div", { class: "agents-ask-q" }, q.question),
+          el("div", {}, el("b", {}, isPerm ? `🔐 ${q.question}` : q.kind === "capture" ? `✂️ ${q.question}` : q.kind === "open" ? `🔗 ${q.question}` : `❓ ${q.who} vous demande`), el("small", { class: "muted" }, ` · ${left}`)),
+          q.kind !== "question" ? (q.detail ? el("code", { class: "agents-ask-detail" }, q.detail) : null) : el("div", { class: "agents-ask-q" }, q.question),
           buttons,
         );
       };
 
-      // ── Utilisation : les jetons des agents, lus dans leurs journaux sur ce PC ──
-      let period: UsagePeriod = "week";
-      let usage: UsageReport | null = null;
-      let usageError = "";
-      let usageFetch = 0;
-      const usageOn = () => api.settings().usage !== false;
-      const drawUsage = () => {
-        if (!usageOn()) return usageBox.replaceChildren();
-        const chip = (p: UsagePeriod, label: string) =>
-          el(
-            "button",
-            {
-              class: `net-chip${p === period ? " on" : ""}`,
-              onclick: api.handler(() => {
-                period = p;
-                drawUsage();
-              }),
-            },
-            label,
-          );
-        const head = el(
-          "div",
-          { class: "agents-usage-head" },
-          el("b", {}, "Utilisation des agents"),
-          el(
-            "div",
-            { class: "net-chips" },
-            chip("today", "Aujourd'hui"),
-            chip("week", "7 jours"),
-            chip("month", "30 jours"),
-            el("button", { class: "net-chip", title: "Relire les journaux", onclick: api.handler(() => loadUsage(true)) }, "↻"),
-          ),
-        );
-        if (!usage) return usageBox.replaceChildren(head, el("p", { class: "muted" }, usageError ? t(usageError) : "Lecture des journaux…"));
-        const from = periodFrom(period);
-        const rows = usage.days.filter((d) => d.day >= from);
-        if (!rows.length) {
-          return usageBox.replaceChildren(head, el("p", { class: "muted" }, usage.files ? "Rien sur cette période." : "Aucun journal de Claude Code ni de Codex sur ce PC."));
-        }
-        const sum = sumTokens(rows);
-        const figure = (label: string, n: number) => el("span", { class: "agents-usage-figure" }, el("span", {}, label), " ", el("b", {}, tokensShort(n)));
-        const figures = el(
-          "p",
-          { class: "agents-usage-figures" },
-          figure("Entrée", sum.input),
-          figure("Sortie", sum.output),
-          figure("Cache lu", sum.cacheRead),
-          figure("Cache écrit", sum.cacheWrite),
-          el("span", { class: "muted" }, `${sum.messages.toLocaleString("fr-FR")} réponse${sum.messages > 1 ? "s" : ""}`),
-        );
-        const models = el(
-          "ul",
-          { class: "agents-usage-list" },
-          ...byModel(rows).map((m) => el("li", {}, el("span", {}, `${SOURCE_NAMES[m.tool] ?? m.tool} · ${modelLabel(m.model)}`), el("b", {}, tokensShort(m.total)))),
-        );
-        const projects = usage.projects.length
-          ? el("p", { class: "muted" }, el("span", {}, "Projets (30 jours)"), " : ", usage.projects.map((p) => `${p.name} ${tokensShort(totalTokens(p))}`).join(" · "))
-          : null;
-        const note = el("p", { class: "muted" }, usage.partial ? "Journaux trop nombreux : compte partiel (les plus récents d'abord)." : "Lu dans les journaux de Claude Code et Codex sur ce PC. Rien n'est envoyé.");
-        usageBox.replaceChildren(head, figures, models, ...(projects ? [projects] : []), note);
-      };
-      /** Relit les journaux (au plus toutes les 60 s, sauf « ↻ »). */
-      const loadUsage = async (force = false) => {
-        if (!usageOn() || (!force && Date.now() - usageFetch < 60_000)) return;
-        usageFetch = Date.now();
-        try {
-          usage = await api.invoke<UsageReport>("usage", { offsetMinutes: new Date().getTimezoneOffset(), days: 30 });
-          usageError = "";
-        } catch (e) {
-          usage = null;
-          usageError = errorText(e);
-        }
-        drawUsage();
-      };
-      drawUsage();
-      const stopUsageSettings = api.onSettingsChange(() => {
-        drawUsage();
-        void loadUsage();
-      });
+      const stopGithub = mountGithub(githubBox, api);
 
       const draw = async () => {
         // Une session vient peut-être de finir : sa dernière phrase a changé.
         void loadLast();
-        void loadUsage();
+        void usage.load();
         let data: { events: AgentEvent[]; working: number; sessions: Session[]; asks: Ask[]; quiet: { until: number | null; held: number } | null };
         try {
           data = await api.invoke("history");
@@ -793,7 +762,7 @@ export const agents: IslandModule = {
                 { class: `agents-session ${x.state}`, title: "Revenir à sa fenêtre", onclick: api.handler(() => goTo(api, x.id)) },
                 el("i", { class: "agents-dot" }),
                 el("span", { class: "agents-logo" }, icon(sourceIcon(x.source) ?? "🤖")),
-                el("b", {}, SOURCE_NAMES[x.source] ?? x.source),
+                el("b", {}, SOURCE_NAMES[x.source] ?? sourceName(x.source)),
                 el("span", {}, x.project || "—"),
                 el("small", { class: "muted" }, what),
                 el("span", { class: "agents-go" }, "↗"),
@@ -813,7 +782,8 @@ export const agents: IslandModule = {
                     { class: "launch-text" },
                     el("b", {}, e.changes?.files ? `${e.title} · ${changesLine(e.changes)}` : e.title),
                     // « il y a 6 min » traduit à part : la ligne entière (projet, message) ne l'est pas.
-                    el("small", { class: "muted" }, [e.project, e.body, t(ago(e.at))].filter(Boolean).join(" · ")),
+                    // Relu de l'historique (plus d'un jour) : « il y a 2 j » plutôt qu'une heure.
+                    el("small", { class: "muted" }, [e.project, e.body, t(Date.now() - e.at > 86_400_000 ? since(e.at) : ago(e.at))].filter(Boolean).join(" · ")),
                   ),
                 ),
               )
@@ -822,9 +792,15 @@ export const agents: IslandModule = {
         if (!data.events.length) guide.open = true;
       };
 
-      void api.invoke<{ exe: string }>("hook_config").then(
-        (c) => (exe.textContent = `${c.exe} notify`),
-        () => (exe.textContent = "ondine.exe notify"),
+      void api.invoke<{ exe: string; other?: string }>("hook_config").then(
+        (c) => {
+          exe.textContent = `${c.exe} notify`;
+          otherLine.textContent = c.other ?? `"${c.exe}" notify --source other --event done`;
+        },
+        () => {
+          exe.textContent = "ondine.exe notify";
+          otherLine.textContent = "ondine.exe notify --source other --event done";
+        },
       );
       redraws.add(draw);
       void draw();
@@ -832,7 +808,9 @@ export const agents: IslandModule = {
       return () => {
         redraws.delete(draw);
         stopTimer();
-        stopUsageSettings();
+        usage.stop();
+        stopGithub();
+        stopFiles();
       };
     },
   },

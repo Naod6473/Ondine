@@ -11,12 +11,14 @@
     "fields": [
       {
         "key": "copyText",
+        "essential": true,
         "type": "boolean",
         "label": "Copier le texte lu dans le presse-papiers",
         "default": true
       },
       {
         "key": "folder",
+        "essential": true,
         "type": "folders",
         "label": "Dossier des captures",
         "help": "Vide : le dossier Images\\Ondine.",
@@ -56,6 +58,6 @@
   "commands": ["snip", "ocr_clipboard", "save_clipboard", "shelf_clipboard", "annotate_clipboard", "annotate_image", "annotate_export", "last", "copy_last", "reveal", "search", "open", "pick_color", "colors", "copy_color", "gif_start", "gif_stop"],
   "events": {
     "emits": ["capture.done", "shelf.add", "capture.color", "capture.gif"],
-    "listens": ["capture.done", "capture.color", "capture.pick", "capture.gif"]
+    "listens": ["capture.done", "capture.color", "capture.pick", "capture.gif", "capture.request"]
   }
 }

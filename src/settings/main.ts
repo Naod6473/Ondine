@@ -24,6 +24,7 @@ import { jellyButtons, setStudio, staggerIn, watchContent } from "../island/moti
 import { reducedMotion } from "../island/tab-pill";
 import { THEMES, themeFor } from "../island/themes";
 import { mascotCatalog } from "../mascot/catalog";
+import { colorWheel } from "./color-wheel";
 import { found, TREASURES } from "../eggs/treasures";
 import { createRenderer, type MascotRenderer } from "../mascot/renderer";
 import { ALL_MODULES } from "../modules";
@@ -36,6 +37,8 @@ import { profilesPage } from "./profiles-page";
 import { aboutGroup } from "./about";
 import { perfGroup } from "./perf-group";
 import { startPerf } from "../core/perf";
+import { applyMode, hiddenByMode, modeSwitch } from "./mode";
+import { isHidden, modeOf, moduleEssentialKeys, pageEssentials, WHOLE_PAGE, type SettingsMode } from "./visibility";
 
 const PERMISSION_LABELS: Record<string, string> = {
   files: "Fichiers",
@@ -56,6 +59,11 @@ interface Page {
   /** Mots trouvés par la recherche (les libellés de la page). */
   keywords: string[];
   render: (main: HTMLElement) => void;
+  /**
+   * Mode Simple : les clés (`data-key`) des lignes essentielles, ou WHOLE_PAGE.
+   * Absent : d'après l'id de la page (visibility.ts, ISLAND_ESSENTIALS).
+   */
+  essentials?: string[] | typeof WHOLE_PAGE;
 }
 
 const ISLAND_PAGES: Page[] = [
@@ -92,7 +100,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "💧",
     label: "Mascotte",
     sub: "Qui vit dans l'île, et quand elle s'ennuie ou s'endort.",
-    keywords: ["Afficher la mascotte", "Mascotte", "S'ennuie après", "S'endort après", "Ondine vient pendre au bord", "Visites", "Tester les animations"],
+    keywords: ["Afficher la mascotte", "Mascotte", "Taille", "Calme", "Couleur", "Personnalisée", "S'ennuie après", "S'endort après", "Ondine vient pendre au bord", "Visites", "Tester les animations"],
     render: mascot,
   },
   {
@@ -161,6 +169,7 @@ function modulePages(): Page[] {
     sub: firstSentence(m.manifest.description),
     keywords: [m.manifest.description, ...(m.manifest.settings?.fields ?? []).map((f) => f.label)],
     render: (main: HTMLElement) => modulePage(main, m.manifest),
+    essentials: moduleEssentialKeys(m.manifest.id, m.manifest.settings?.fields ?? []),
   }));
 }
 
@@ -262,6 +271,33 @@ function save(change: (s: Settings) => void, redraw = false) {
   });
 }
 
+// ── Mode Simple / Complet (visibility.ts, mode.ts) ────────────────────────────
+
+/** Le mode courant (Simple par défaut, même pour un réglage absent). */
+function settingsMode(): SettingsMode {
+  return modeOf(settingsStore.current.general.settingsMode);
+}
+
+/** Change de mode : enregistré, la page se redessine, l'interrupteur suit. */
+function setMode(mode: SettingsMode) {
+  if (mode === settingsMode()) return;
+  // Redessinée tout de suite (sans attendre l'enregistrement) : un lien profond
+  // vers une ligne cachée peut ainsi la trouver juste après.
+  save((d) => (d.general.settingsMode = mode));
+  showPage(false);
+  nav.querySelector(".mode-switch")?.replaceWith(modeSwitch(mode, setMode));
+}
+
+/** Les clés essentielles d'une page (module : d'après son manifeste ; île : visibility.ts). */
+function essentialsOf(p: Page): string[] | typeof WHOLE_PAGE {
+  return p.essentials ?? pageEssentials(p.id);
+}
+
+/** Un résultat de recherche est-il caché par le mode Simple sur sa page ? */
+function advancedHit(p: Page, key: string | undefined): boolean {
+  return !!key && isHidden(settingsMode(), key, essentialsOf(p));
+}
+
 // ── Navigation ────────────────────────────────────────────────────────────────
 
 function go(id: string, focusKey?: string) {
@@ -334,6 +370,7 @@ function drawNav() {
       el("span", {}, "Réglages", appVersion ? el("small", { class: "brand-version" }, appVersion) : null),
     ),
     search,
+    modeSwitch(settingsMode(), setMode),
     list,
   );
   // La pastille se place une fois la liste affichée (il faut ses positions).
@@ -386,6 +423,7 @@ function showPage(animate: boolean, direction = 1) {
     const p = allPages().find((x) => x.id === current) ?? ISLAND_PAGES[0];
     page.append(header(p.icon, p.label, p.sub));
     p.render(page);
+    applyMode(page, essentialsOf(p), settingsMode(), () => setMode("full"));
   }
   const old = content.firstElementChild as HTMLElement | null;
   const y = content.scrollTop;
@@ -417,6 +455,11 @@ function highlight(key: string) {
   requestAnimationFrame(() => {
     const target = [...content.querySelectorAll<HTMLElement>("[data-key]")].find((r) => r.dataset.key === key);
     if (!target) return;
+    // Caché par le mode Simple (recherche, lien profond) : on passe en Complet, puis on y va.
+    if (settingsMode() === "simple" && hiddenByMode(target)) {
+      setMode("full");
+      return highlight(key);
+    }
     if (target.closest(".eggs-fold")) showEggs(true); // trouvé par la recherche : on déplie
     target.scrollIntoView({ block: "center", behavior: reducedMotion() ? "auto" : "smooth" });
     target.classList.remove("flash");
@@ -457,6 +500,7 @@ function results(page: HTMLElement, q: string) {
           { class: "row result", onclick: () => go(h.page.id, h.key) },
           el("span", { class: "result-icon" }, iconNode(h.page.icon)),
           el("div", { class: "row-text" }, el("div", { class: "row-label" }, h.label), el("div", { class: "row-help" }, h.key ? h.page.label : h.page.group)),
+          advancedHit(h.page, h.key) ? chip("réglage avancé") : null,
           el("span", { class: "chevron" }, "›"),
         ),
       ),
@@ -649,6 +693,7 @@ function demoGroup(): HTMLElement {
                 scene("claude-permission", "Demande d'autorisation"),
                 scene("download", "Fichier téléchargé"),
                 scene("next-track", "Morceau suivant"),
+                scene("whats-new", "Quoi de neuf"),
               ),
               "La notification arrive dans l'île : lancez l'enregistrement avant de cliquer.",
             ),
@@ -808,7 +853,7 @@ function tabs(main: HTMLElement) {
   main.append(
     el(
       "section",
-      { class: "group" },
+      { class: "group", "data-essential": "" },
       el("h3", { class: "group-title" }, "Ordre des onglets"),
       list,
       el("p", { class: "group-note" }, "Glissez une ligne, ou utilisez ↑ ↓. Vous pouvez aussi faire glisser les onglets directement dans l'île."),
@@ -816,7 +861,9 @@ function tabs(main: HTMLElement) {
     el("div", { class: "actions" }, el("button", { class: "btn", onclick: () => save((d) => (d.island.tabOrder = []), true) }, "Ordre d'origine")),
   );
   if (without.length) {
-    main.append(group("Sans onglet", without.map((man) => row(`${man.icon}  ${man.name}`, enableToggle(man), undefined, man.name))));
+    const sans = group("Sans onglet", without.map((man) => row(`${man.icon}  ${man.name}`, enableToggle(man), undefined, man.name)));
+    sans.dataset.essential = ""; // mode Simple : la liste des modules reste entière
+    main.append(sans);
   }
   main.append(tipsGroup());
 }
@@ -947,11 +994,29 @@ function mascot(main: HTMLElement) {
         ),
         "Déposez vos mascottes dans le dossier mascots/ du projet, puis relancez l'appli.",
       ),
+      row(
+        "Taille",
+        choice(
+          s.mascot.size ?? "normal",
+          [
+            ["small", "Petite"],
+            ["normal", "Normale"],
+            ["large", "Grande"],
+          ],
+          (v) => save((d) => (d.mascot.size = v as Settings["mascot"]["size"]), true),
+        ),
+        "Dans l'île ouverte et dans l'aperçu ci-dessous ; la mini-île garde sa taille.",
+      ),
     ]),
     ...(cur?.manifest.renderer === "gum" ? [gumStyleGroup()] : []),
     group("Humeur", [
       row("S'ennuie après", stepper(s.mascot.boredAfterSecs, 10, 3600, (v) => save((d) => (d.mascot.boredAfterSecs = v)), 10, "s")),
       row("S'endort après", stepper(s.mascot.sleepAfterSecs, 20, 7200, (v) => save((d) => (d.mascot.sleepAfterSecs = v)), 10, "s")),
+      row(
+        "Calme : moins de gestes spontanés",
+        toggle(s.mascot.calm ?? false, (v) => save((d) => (d.mascot.calm = v)), "Calme : moins de gestes spontanés"),
+        "Plus d'ennui, de goûter, de visites au bord de l'écran, de danse ni de réactions aux modules. Elle réagit toujours aux agents IA (attente, question), aux erreurs, aux réussites, aux alertes, et elle dort.",
+      ),
     ]),
     group(
       "Visites au bord de l'écran",
@@ -971,7 +1036,7 @@ function mascot(main: HTMLElement) {
     ]),
     el(
       "div",
-      { class: "eggs-fold", hidden: !eggsShown },
+      { class: "eggs-fold", hidden: !eggsShown, "data-follows": "Surprises cachées et carnet des trésors" },
       group(
         null,
         [
@@ -1002,7 +1067,7 @@ function mascot(main: HTMLElement) {
   if (cur.problems.length) main.append(el("p", { class: "banner error" }, "Problèmes dans le manifeste : ", cur.problems.join(" ; ")));
 
   // Aperçu : un renderer à part ; chaque bouton joue aussi l'animation sur l'île.
-  const stage = el("div", { class: "mascot-stage" });
+  const stage = el("div", { class: "mascot-stage", "data-size": s.mascot.size ?? "normal" });
   const buttons = el("div", { class: "anim-grid" });
   main.append(el("section", { class: "group", "data-key": "Tester les animations" }, el("h3", { class: "group-title" }, "Tester les animations"), el("div", { class: "group-body stage-body" }, stage, buttons)));
   preview = createRenderer(cur.manifest, cur.assets);
@@ -1051,6 +1116,7 @@ const GUM_COLORS: [string, string][] = [
   ["cloud", "Nuage"],
   ["licorice", "Réglisse"],
   ["rainbow", "Arc-en-ciel"],
+  ["custom", "Personnalisée"],
 ];
 
 /** Couleur, mains et accessoires des mascottes de la famille gomme. */
@@ -1059,7 +1125,19 @@ function gumStyleGroup(): HTMLElement {
   return group(
     "Style",
     [
-      row("Couleur", choice(m.color ?? "auto", GUM_COLORS, (v) => save((d) => (d.mascot.color = v)))),
+      row("Couleur", choice(m.color ?? "auto", GUM_COLORS, (v) => save((d) => (d.mascot.color = v), true))),
+      // « Personnalisée » : la roue teinte / saturation (color-wheel.ts) ; l'aperçu et l'île suivent le glisser.
+      m.color === "custom"
+        ? row(
+            "Roue de couleur",
+            colorWheel(
+              m.customColor ?? "#4da3ff",
+              (hex) => save((d) => (d.mascot.customColor = hex)),
+              (hex) => save((d) => (d.mascot.customColor = hex)),
+            ),
+            "La teinte tourne autour du disque, la saturation va du centre au bord. Au clavier : flèches gauche et droite pour la teinte, haut et bas pour la saturation.",
+          )
+        : null,
       row(
         "Mains",
         choice(

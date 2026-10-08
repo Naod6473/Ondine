@@ -89,6 +89,18 @@ section .lead{color:var(--ink-soft);margin:0 0 28px;max-width:60ch}
 .chip strong{display:block;font-weight:600}
 .chip span{font-size:14px;color:var(--ink-soft)}
 
+/* Mascottes : la famille gomme dessinée en direct (media/ondine-gomme.js, construit par npm run build:site) ; sans JavaScript, l'image fixe de chacune. */
+.gums{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-bottom:84px}
+.gum{margin:0;border-radius:22px;padding:10px 8px 12px;text-align:center;cursor:pointer;transition:transform .5s var(--ease)}
+.gum:hover{transform:translateY(-4px)}
+.gum-stage{position:relative;aspect-ratio:1}
+.gum-stage img,.gum-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.gum.live .gum-stage img{opacity:0}
+.gum figcaption{font-size:14px;color:var(--ink-soft);margin-top:4px}
+.gum small{display:block;font-size:12px;color:var(--ink-soft);opacity:.7}
+@media (max-width:860px){.gums{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:480px){.gums{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}
+
 /* Agents */
 .agents{border-radius:28px;padding:clamp(24px,5vw,48px);display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:32px;align-items:center;margin-bottom:84px}
 .names{display:grid;gap:12px}
@@ -116,6 +128,7 @@ h1,h2,.brand,.names div{transition:letter-spacing .3s}
     <a class="brand" href="#top"><img src="media/ondine-icone.png" alt="">Ondine</a>
     <div class="links">
       <a class="hide-s" href="#fonctions">Fonctions</a>
+      <a class="hide-s" href="#mascottes">Mascottes</a>
       <a class="hide-s" href="#agents">Agents IA</a>
       <a href="https://github.com/Naod6473/Ondine">GitHub</a>
     </div>
@@ -164,6 +177,28 @@ h1,h2,.brand,.names div{transition:letter-spacing .3s}
     </div>
   </section>
 
+  <section id="mascottes">
+    <h2>Quinze mascottes en gomme.</h2>
+    <p class="lead">Choisis celle qui vivra dans ton île. Elles sont dessinées en direct, exactement comme dans l'appli : passe la souris dessus, elles te font coucou.</p>
+    <div class="gums" id="gums">
+      <figure class="gum glass" data-shape="goutte" title="Clique sur Goutte gomme"><div class="gum-stage"><img src="media/mascottes/goutte-gomme.png" alt="Goutte gomme, une mascotte en gomme" width="256" height="256" loading="lazy"><canvas aria-hidden="true"></canvas></div><figcaption>Goutte gomme</figcaption></figure>
+      <figure class="gum glass" data-shape="guimauve" title="Clique sur Guimauve"><div class="gum-stage"><img src="media/mascottes/gomme-guimauve.png" alt="Guimauve, une mascotte en gomme" width="256" height="256" loading="lazy"><canvas aria-hidden="true"></canvas></div><figcaption>Guimauve</figcaption></figure>
+      <figure class="gum glass" data-shape="dragee" title="Clique sur Dragée"><div class="gum-stage"><img src="media/mascottes/gomme-dragee.png" alt="Dragée, une mascotte en gomme" width="256" height="256" loading="lazy"><canvas aria-hidden="true"></canvas></div><figcaption>Dragée</figcaption></figure>
+      <figure class="gum glass" data-shape="berlingot" title="Clique sur Berlingot"><div class="gum-stage"><img src="media/mascottes/gomme-berlingot.png" alt="Berlingot, une mascotte en gomme" width="256" height="256" loading="lazy"><canvas aria-hidden="true"></canvas></div><figcaption>Berlingot</figcaption></figure>
+      <figure class="gum glass" data-shape="etoile" title="Clique sur Étoile"><div class="gum-stage"><img src="media/mascottes/gomme-etoile.png" alt="Étoile, une mascotte en gomme" width="256" height="256" loading="lazy"><canvas aria-hidden="true"></canvas></div><figcaption>Étoile</figcaption></figure>
+      <figure class="gum glass" data-shape="soleil" title="Clique sur Soleil"><div class="gum-stage"><img src="media/mascottes/gomme-soleil.png" alt="Soleil, une mascotte en gomme" width="256" height="256" loading="lazy"><canvas aria-hidden="true"></canvas></div><figcaption>Soleil</figcaption></figure>
+      <figure class="gum glass" data-shape="lune" title="Clique sur Lune"><div class="gum-stage"><img src="media/mascottes/gomme-lune.png" alt="Lune, une mascotte en gomme" width="256" height="256" loading="lazy"><canvas aria-hidden="true"></canvas></div><figcaption>Lune</figcaption></figure>
+      <figure class="gum glass" data-shape="nuage" title="Clique sur Nuage"><div class="gum-stage"><img src="media/mascottes/gomme-nuage.png" alt="Nuage, une mascotte en gomme" width="256" height="256" loading="lazy"><canvas aria-hidden="true"></canvas></div><figcaption>Nuage</figcaption></figure>
+      <figure class="gum glass" data-shape="coeur" title="Clique sur Cœur"><div class="gum-stage"><img src="media/mascottes/gomme-coeur.png" alt="Cœur, une mascotte en gomme" width="256" height="256" loading="lazy"><canvas aria-hidden="true"></canvas></div><figcaption>Cœur</figcaption></figure>
+      <figure class="gum glass" data-shape="fleur" title="Clique sur Fleur"><div class="gum-stage"><img src="media/mascottes/gomme-fleur.png" alt="Fleur, une mascotte en gomme" width="256" height="256" loading="lazy"><canvas aria-hidden="true"></canvas></div><figcaption>Fleur</figcaption></figure>
+      <figure class="gum glass" data-shape="champignon" title="Clique sur Champignon"><div class="gum-stage"><img src="media/mascottes/gomme-champignon.png" alt="Champignon, une mascotte en gomme" width="256" height="256" loading="lazy"><canvas aria-hidden="true"></canvas></div><figcaption>Champignon</figcaption></figure>
+      <figure class="gum glass" data-shape="fantome" title="Clique sur Fantôme"><div class="gum-stage"><img src="media/mascottes/gomme-fantome.png" alt="Fantôme, une mascotte en gomme" width="256" height="256" loading="lazy"><canvas aria-hidden="true"></canvas></div><figcaption>Fantôme</figcaption></figure>
+      <figure class="gum glass" data-shape="flamme" title="Clique sur Flamme"><div class="gum-stage"><img src="media/mascottes/gomme-flamme.png" alt="Flamme, une mascotte en gomme" width="256" height="256" loading="lazy"><canvas aria-hidden="true"></canvas></div><figcaption>Flamme</figcaption></figure>
+      <figure class="gum glass" data-shape="ciel" title="Clique sur Ciel"><div class="gum-stage"><img src="media/mascottes/gomme-ciel.png" alt="Ciel, une mascotte en gomme" width="256" height="256" loading="lazy"><canvas aria-hidden="true"></canvas></div><figcaption>Ciel<small>soleil le jour, lune la nuit</small></figcaption></figure>
+      <figure class="gum glass" data-shape="meteo" title="Clique sur Météo"><div class="gum-stage"><img src="media/mascottes/gomme-meteo.png" alt="Météo, une mascotte en gomme" width="256" height="256" loading="lazy"><canvas aria-hidden="true"></canvas></div><figcaption>Météo<small>suit le temps qu'il fait</small></figcaption></figure>
+    </div>
+  </section>
+
   <section class="agents glass" id="agents">
     <div>
       <h2>Tes agents IA te font signe.</h2>
@@ -185,6 +220,24 @@ function blink(){eyes.forEach(e=>e.classList.add('blink'));setTimeout(()=>eyes.f
 setTimeout(blink,1800);
 drop.addEventListener('click',()=>{drop.classList.remove('jelly');void drop.offsetWidth;drop.classList.add('jelly');blink()});
 
+</script>
+<script src="media/ondine-gomme.js" defer></script>
+<script>
+// La galerie : chaque canvas reçoit une mascotte en gomme (le vrai moteur de l'appli),
+// au repos en boucle légère (30 images/s au plus, en pause hors de l'écran). Au survol
+// ou au toucher : coucou, rire, danse, à tour de rôle. Sans le script, l'image fixe reste.
+addEventListener('DOMContentLoaded',()=>{
+  const G=window.OndineGomme;if(!G)return;
+  const io=new IntersectionObserver(es=>es.forEach(e=>e.target._gum&&e.target._gum.pause(!e.isIntersecting)),{rootMargin:'120px'});
+  document.querySelectorAll('.gum').forEach((fig,i)=>{
+    const canvas=fig.querySelector('canvas');
+    const m=G.mount(canvas,{shape:fig.dataset.shape,maxFps:30});
+    canvas._gum=m;fig.classList.add('live');io.observe(canvas);
+    let k=i%G.GESTURES.length,busy=false;
+    const wave=()=>{if(busy)return;busy=true;m.play(G.GESTURES[k++%G.GESTURES.length]);setTimeout(()=>{m.play('idle');busy=false},2500)};
+    fig.addEventListener('pointerenter',wave);fig.addEventListener('click',wave);
+  });
+});
 </script>
 </body>
 </html>

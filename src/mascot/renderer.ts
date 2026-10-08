@@ -2,7 +2,7 @@
 // mascotte. Aujourd'hui : un dessin en Canvas 2D. Demain : planches de sprites,
 // Lottie ou Rive, en ajoutant un renderer ici, sans toucher au reste.
 
-import type { AnimationSpec, MascotManifest, MascotState, Mood } from "./types";
+import type { AnimationSpec, MascotExtras, MascotManifest, MascotState, Mood } from "./types";
 import { PlaceholderCanvasRenderer } from "./renderers/canvas-placeholder";
 import { GumRenderer } from "./renderers/gum";
 import { PosesRenderer } from "./renderers/poses";
@@ -27,12 +27,20 @@ export interface MascotRenderer {
   react?(kind: MascotReaction, data: { x?: number; y?: number; amount?: number }): void;
   /** Facultatif : la météo du moment (icône du module Météo), pour la mascotte « Météo ». */
   setWeather?(icon: string | null): void;
+  /**
+   * Facultatif : ce qu'elle porte en plus, tant que ça dure (mascot-state.ts) :
+   * les moufles sur les oreilles (concentration), la pancarte « ? » (une
+   * question d'agent ouverte), le parapluie (la Météo annonce la pluie).
+   */
+  setExtras?(extras: MascotExtras): void;
   /** Appelé à la fin d'une animation non bouclée. */
   onAnimationEnd(cb: (name: string) => void): void;
   destroy(): void;
 }
 
 export type MascotReaction = "poke" | "stretch" | "release" | "shake";
+
+export { NO_EXTRAS, type MascotExtras } from "./types";
 
 type RendererFactory = (manifest: MascotManifest, assets: Record<string, string>) => MascotRenderer;
 

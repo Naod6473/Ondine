@@ -14,9 +14,8 @@ travaux, dont les licences sont respectées :
 
 ## Images
 
-- Les icônes en couleur des modules (`src/assets/icons/`) et les poses de la
-  mascotte (`mascots/goutte/`) ont été créées pour Ondine, avec l'aide d'un
-  générateur d'images.
+- Les icônes en couleur des modules (`src/assets/icons/`) ont été créées pour
+  Ondine, avec l'aide d'un générateur d'images.
 - Les icônes des agents (Claude, Gemini, Codex) sont des icônes maison, pas les
   logos de ces marques. Claude, Gemini et Codex sont des marques de leurs
   propriétaires (Anthropic, Google, OpenAI) ; Ondine n'est affiliée à aucun d'eux.

@@ -14,13 +14,25 @@ export type Permission = "files" | "clipboard" | "network" | "claude-api" | "cre
 
 export type ViewKind = "compact" | "expanded" | "drop";
 
+/**
+ * Commun à tous les champs. `essential` : le champ compte parmi l'essentiel
+ * du module, montré même en mode Simple de la fenêtre de réglages (1 à 3 par
+ * module ; voir src/settings/visibility.ts). Les autres n'apparaissent qu'en
+ * mode Complet.
+ */
+interface FieldCommon {
+  essential?: boolean;
+}
+
 /** Un champ de réglage : l'écran de réglages est généré à partir de cette liste. */
-export type SettingField =
+export type SettingField = FieldCommon &
+  (
   /**
    * Un texte. `check` : une vérification nommée (src/settings/field-checks.ts)
    * qui écrit un avertissement sous le champ, sans refuser la valeur.
+   * `multiline` : une zone de texte sur plusieurs lignes (une grille, une liste).
    */
-  | { key: string; type: "string"; label: string; help?: string; default: string; maxLength?: number; check?: FieldCheck }
+  | { key: string; type: "string"; label: string; help?: string; default: string; maxLength?: number; check?: FieldCheck; multiline?: boolean }
   | { key: string; type: "number"; label: string; help?: string; default: number; min?: number; max?: number; step?: number }
   | { key: string; type: "boolean"; label: string; help?: string; default: boolean }
   | { key: string; type: "select"; label: string; help?: string; default: string; options: { value: string; label: string }[] }
@@ -33,10 +45,21 @@ export type SettingField =
    * chacun avec un nom et une couleur. L'adresse d'un lien n'est PAS dans les
    * réglages : elle va dans le Gestionnaire d'identifiants (« agenda-ical-url-<id> »).
    */
-  | { key: string; type: "calendars"; label: string; help?: string; default: CalendarEntry[]; max?: number };
+  | { key: string; type: "calendars"; label: string; help?: string; default: CalendarEntry[]; max?: number }
+  /**
+   * Un secret (jeton, clé) : il ne va PAS dans les réglages mais dans le
+   * Gestionnaire d'identifiants Windows, sous la clé `credential` (une clé
+   * connue de services/credentials.rs). Le front sait seulement s'il existe ;
+   * le Rust du module le lit avec `ctx.credential(clé)` (permission "credentials").
+   */
+  | { key: string; type: "secret"; label: string; help?: string; credential: string; placeholder?: string }
+  );
 
-/** Les vérifications de champ texte connues : "cities" = noms de villes (horloges du monde). */
-export type FieldCheck = "cities";
+/**
+ * Les vérifications de champ texte connues : "cities" = noms de villes
+ * (horloges du monde), "githubLogin" = un identifiant GitHub (Agents IA).
+ */
+export type FieldCheck = "cities" | "githubLogin";
 
 /** Un calendrier du module Agenda, tel que rangé dans les réglages. */
 export interface CalendarEntry {

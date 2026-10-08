@@ -13,6 +13,7 @@
 // Toutes les données d'ici sont inventées.
 
 import { Bridge } from "./bridge";
+import { levelFor } from "../modules/agents/github-logic";
 import type { Bus, BusMessage } from "./bus";
 import { settingsStore } from "./settings-store";
 
@@ -21,7 +22,7 @@ export function demoOn(): boolean {
 }
 
 /** Les scènes que la fenêtre de réglages peut demander (sujet « demo.scene »). */
-export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track"] as const;
+export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new"] as const;
 export type DemoScene = (typeof DEMO_SCENES)[number];
 
 /**
@@ -312,6 +313,9 @@ function agentsHistory() {
     events: [
       { at: now - 6 * MIN, source: "claude-code", kind: "done", title: "Claude a fini", body: "Les captures sont prêtes", project: "site-ondine", session: "s1" },
       { at: now - 18 * MIN, source: "gemini", kind: "done", title: "Gemini a fini", body: "Tests au vert", project: "api-meteo", session: "s2" },
+      // Relus de l'historique des 7 jours (agents-history.json) : sans message, avec le bilan git.
+      { at: now - 26 * 60 * MIN, source: "claude-code", kind: "done", title: "Claude a fini", body: "", project: "Island", session: "", changes: { files: 3, added: 120, removed: 14, names: ["main.rs", "index.ts", "README.md"], dir: "", vscode: false, terminal: false } },
+      { at: now - 50 * 60 * MIN, source: "codex", kind: "waiting", title: "Codex attend votre permission", body: "", project: "site-ondine", session: "" },
     ],
     working: 1,
     sessions: [
@@ -331,15 +335,17 @@ const DEMO_USB = { root: "E:\\", letter: "E:", label: "KINGSTON", removable: tru
 /** L'historique de la pipette (module Capture) : une petite palette inventée. */
 const DEMO_COLORS = ["#3A7BD5", "#00D2FF", "#F7B733", "#FC4A1A", "#6A3093", "#2ECC71", "#1F2937", "#F5F5F4"];
 
-/** Le compteur de jetons (onglet Agents IA) : sept jours inventés, Claude Code surtout, un peu de Codex. */
+/** Le compteur de jetons (onglet Agents IA) : trente jours inventés, Claude Code surtout, un peu de Codex. */
 function agentsUsage() {
   const pad = (n: number) => String(n).padStart(2, "0");
   const days = [];
-  for (let back = 6; back >= 0; back--) {
+  // Trente jours pour la courbe : des journées plus ou moins chargées, les week-ends au repos.
+  for (let back = 29; back >= 0; back--) {
     const d = new Date();
     d.setDate(d.getDate() - back);
+    if (d.getDay() === 0 || d.getDay() === 6) continue;
     const day = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    const k = 1 + ((back * 7) % 5); // des journées plus ou moins chargées
+    const k = 1 + ((back * 7) % 5);
     days.push({ day, tool: "claude-code", model: "claude-opus-5-5", input: 1_800 * k, output: 9_500 * k, cacheRead: 410_000 * k, cacheWrite: 38_000 * k, messages: 24 * k });
     if (back % 3 === 0) days.push({ day, tool: "codex", model: "gpt-5-codex", input: 22_000, output: 6_000, cacheRead: 90_000, cacheWrite: 0, messages: 9 });
   }
@@ -356,10 +362,65 @@ function agentsUsage() {
   };
 }
 
+/** La semaine des agents (carte « Agents IA » du bilan) : 23 tâches, un peu d'attente, deux projets. */
+function agentsWeek() {
+  const usage = agentsUsage();
+  return {
+    done: 23,
+    waitMinutes: 130,
+    projects: ["site-ondine", "Island"],
+    // Les 7 derniers jours seulement, comme le Rust.
+    days: usage.days.slice(-7),
+    prices: "claude-opus ; 15 ; 75 ; 1,5 ; 18,75\ngpt-5-codex ; 1,25 ; 10 ; 0,125 ; 0",
+  };
+}
+/**
+ * Le calendrier de contributions GitHub : une année inventée mais plausible
+ * (des semaines chargées, des week-ends calmes, une série en cours), tirée au
+ * sort de façon fixe pour que la grille soit la même à chaque ouverture.
+ */
+function githubCalendar(fromCache: boolean) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  // Le dimanche d'il y a 52 semaines, comme le Rust.
+  const start = new Date(today);
+  start.setDate(start.getDate() - start.getDay() - 52 * 7);
+  let seed = 1234;
+  const rand = () => ((seed = (seed * 48271) % 2147483647) % 1000) / 1000;
+  const days: { date: string; count: number; level: number }[] = [];
+  const counts: number[] = [];
+  for (const d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) {
+    const weekend = d.getDay() === 0 || d.getDay() === 6;
+    const age = (today.getTime() - d.getTime()) / 86_400_000;
+    const r = rand();
+    let count = weekend ? (r < 0.8 ? 0 : 1 + Math.floor(r * 3)) : r < 0.55 ? 0 : 1 + Math.floor(r * 5);
+    // Une période de vacances en août, et une série de 12 jours qui court jusqu'à hier.
+    if (d.getMonth() === 7 && d.getDate() > 8 && d.getDate() < 24) count = 0;
+    if (age < 12 && age >= 1) count = Math.max(count, 1 + Math.floor(r * 4));
+    if (age < 1) count = 0;
+    counts.push(count);
+    days.push({ date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, count, level: 0 });
+  }
+  const max = Math.max(1, ...counts);
+  for (const d of days) d.level = levelFor(d.count, max);
+  const total = counts.reduce((a, b) => a + b, 0);
+  return { login: "simon-demo", total, streak: 11, today: 0, days, fetchedAt: Date.now() - 4 * MIN, private: false, fromCache };
+}
+let githubAsked = false;
+
 /** Les hooks des agents (onglet Agents IA) : Claude branché, Codex sur un ancien chemin. */
-const DEMO_HOOKS: Record<string, string> = { "claude-code": "installed", codex: "stale", gemini: "absent" };
+const DEMO_HOOKS: Record<string, string> = { "claude-code": "installed", codex: "stale", gemini: "absent", copilot: "absent", cursor: "installed", qwen: "absent", goose: "absent" };
 function demoHooks() {
-  const file = { "claude-code": ".claude\\settings.json", codex: ".codex\\config.toml", gemini: ".gemini\\settings.json" } as Record<string, string>;
+  const file = {
+    "claude-code": ".claude\\settings.json",
+    codex: ".codex\\config.toml",
+    gemini: ".gemini\\settings.json",
+    copilot: ".copilot\\hooks\\ondine.json",
+    cursor: ".cursor\\hooks.json",
+    qwen: ".qwen\\settings.json",
+    goose: ".agents\\plugins\\ondine\\hooks\\hooks.json",
+  } as Record<string, string>;
   return Object.fromEntries(
     Object.entries(DEMO_HOOKS).map(([t, state]) => [t, { file: `${HOME}\\${file[t]}`, state, permission: false, otherPermission: false }]),
   );
@@ -564,15 +625,40 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     case "agents.history":
       return agentsHistory();
     case "agents.projects":
-      return { tools: ["claude", "codex", "gemini"], projects: [{ path: `${HOME}\\Projets\\site-ondine`, name: "site-ondine" }] };
+      return { tools: ["claude", "codex", "gemini", "copilot", "cursor", "qwen", "goose", "opencode", "kiro", "hermes", "aider", "amp"], projects: [{ path: `${HOME}\\Projets\\site-ondine`, name: "site-ondine" }] };
     // « Reprendre » : la dernière phrase de la dernière session du projet.
     case "agents.last_sessions":
       return [{ index: 0, found: true, who: "assistant", text: "Le site est à jour.", at: Date.now() - 2 * 3600_000 }];
     case "agents.hook_config":
-      return { exe: "C:\\Program Files\\Ondine\\ondine.exe" };
+      return { exe: "C:\\Program Files\\Ondine\\ondine.exe", other: '"C:\\Program Files\\Ondine\\ondine.exe" notify --source other --event done' };
+    // Le bilan cliquable : la liste des fichiers d'un dépôt inventé.
+    case "agents.report_files":
+      return {
+        root: `${HOME}\\Projets\\site-ondine`,
+        files: [
+          { path: "src/pages/index.astro", added: 84, removed: 9, untracked: false, exists: true },
+          { path: "src/styles/site.css", added: 30, removed: 5, untracked: false, exists: true },
+          { path: "docs/notes-lancement.md", added: 6, removed: 0, untracked: true, exists: true },
+        ],
+      };
+    case "agents.open_vscode_file":
+    case "agents.copy_text":
+      return null;
     // Le compteur de jetons : une semaine d'usage inventée, Claude Code et Codex.
     case "agents.usage":
       return agentsUsage();
+    // L'export CSV : rien n'est écrit, on fait comme si le fichier était sur l'étagère.
+    case "agents.usage_csv":
+      return { name: `jetons-agents-${agentsUsage().days.at(-1)?.day}.csv`, shelf: true };
+    // La semaine des agents pour le Bilan de la semaine (carte « Agents IA »).
+    case "agents.weekly":
+      return agentsWeek();
+    // Le calendrier GitHub : la première lecture vient « de GitHub », les suivantes de la mémoire.
+    case "agents.github_calendar": {
+      const cal = githubCalendar(githubAsked);
+      githubAsked = true;
+      return cal;
+    }
     case "agents.answer":
       bus.inject("agents.ask.closed", { id: Number(args.id), expired: false }, "agents");
       return null;
@@ -611,7 +697,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return { place: "Lyon", temp: 21.4, min: 12.1, max: 23.6, wind: 9, code: 1, isDay: true, icon: "🌤️", label: "Plutôt dégagé", unit: "c", at: "15:00" };
     case "weekly.peek":
       // « Voir le bilan maintenant » : une belle semaine inventée (« due » reste null : pas de vrai bilan en démo).
-      return { pomodoros: 9, focusMinutes: 215, todos: 14, until: "" };
+      return { pomodoros: 9, focusMinutes: 215, todos: 14, until: "", agents: agentsWeek() };
     default:
       // Toute autre action : on fait comme si c'était fait, sans rien toucher.
       return null;
@@ -663,6 +749,10 @@ function playScene(bus: Bus, scene: string) {
       setPosition(0);
       state.playing = true;
       bus.inject("media.changed", mediaState(), "demo");
+      break;
+    case "whats-new":
+      // Le panneau « Quoi de neuf » de la version installée (core/whats-new.ts).
+      bus.inject("app.whats-new", null, "demo");
       break;
   }
 }

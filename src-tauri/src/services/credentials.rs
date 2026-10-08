@@ -8,7 +8,11 @@
 
 /// Toutes les clés que l'île accepte de stocker. Les autres sont refusées
 /// (sauf celles des agendas en ligne, voir `calendar_key`).
-pub const KNOWN_KEYS: &[&str] = &["anthropic-api-key", ICAL_URL];
+pub const KNOWN_KEYS: &[&str] = &["anthropic-api-key", ICAL_URL, GITHUB_TOKEN];
+
+/// Le jeton GitHub (lecture seule, read:user) du calendrier de contributions
+/// de l'onglet Agents IA (modules/agents_github.rs). Facultatif.
+pub const GITHUB_TOKEN: &str = "github-token";
 
 /// L'adresse secrète iCal d'un agenda en ligne (Google Agenda…) : c'est un
 /// mot de passe déguisé (qui l'a peut lire tout l'agenda), donc rangée ici.

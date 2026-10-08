@@ -219,8 +219,12 @@ export class Island {
       this.fsm.hold(!!n && !alert);
       this.render();
       // Une alerte arrive (ou en remplace une autre) : l'île encaisse le choc,
-      // un creux puis une onde (jelly.ts), après render() qui a lu sa nouvelle taille.
-      if (alert && isNew) this.jelly.shock();
+      // un creux puis une onde (jelly.ts), après render() qui a lu sa nouvelle taille,
+      // et fait un petit saut (une notification normale en mini-île, un plus petit).
+      if (alert && isNew) {
+        this.jelly.shock();
+        this.hop(1);
+      } else if (n && isNew && this.fsm.state === "compact") this.hop(0.5);
     };
 
     this.registry.onChange = () => this.render(true);
@@ -266,6 +270,8 @@ export class Island {
     this.reorderTabs();
     this.drawPrivacy();
     this.notifications.defaultDurationMs = s.island.notificationSecs * 1000;
+    // Réglages → Mascotte → Taille : la place de la mascotte dans l'île ouverte (island.css).
+    this.shell.dataset.mascotSize = s.mascot.size ?? "normal";
     const wanted = s.mascot.enabled ? s.mascot.id : "";
     if (wanted !== this.mascotId) {
       this.mascot?.destroy();
@@ -437,6 +443,13 @@ export class Island {
     this.mascotSlot.addEventListener("click", (e) => {
       e.stopPropagation();
       if (this.wasGesture()) return;
+      // Elle tient la pancarte « ? » (un agent attend une réponse) : le clic
+      // ouvre l'onglet Agents IA (une alerte affichée est fermée d'abord).
+      if (this.mascot?.askOpen && this.fsm.state !== "expanded") {
+        if (this.fsm.state === "alert") this.notifications.dismissCurrent();
+        this.registry.onOpenRequest("agents");
+        return;
+      }
       this.bus.emit("mascot.clicked");
     });
 
@@ -554,6 +567,30 @@ export class Island {
   }
 
   /** Le bord de l'écran où se trouve l'île (posé sur <body> par applySettings). */
+  /**
+   * Un petit saut de l'île (une alerte qui arrive, une notification en
+   * mini-île) : elle décolle du bord puis se repose, avec un rebond. `amount`
+   * module la hauteur (1 = une alerte). Pas avec « Réduire les animations »
+   * ni en économie d'énergie ; la propriété `translate` ne gêne pas les
+   * transformations de la gelée (jelly.ts).
+   */
+  private hop(amount: number) {
+    if (reducedMotion() || perfMode() === "eco" || !motionOn()) return;
+    const edge = this.edge();
+    const px = Math.round(7 * amount);
+    const away = edge === "top" ? `0 ${px}px` : edge === "left" ? `${px}px 0` : `${-px}px 0`;
+    const back = edge === "top" ? `0 ${-Math.round(px * 0.35)}px` : edge === "left" ? `${-Math.round(px * 0.35)}px 0` : `${Math.round(px * 0.35)}px 0`;
+    this.shell.animate(
+      [
+        { translate: "0 0", offset: 0 },
+        { translate: away, offset: 0.3, easing: "cubic-bezier(0.2, 0.8, 0.3, 1)" },
+        { translate: back, offset: 0.7, easing: "ease-in-out" },
+        { translate: "0 0", offset: 1 },
+      ],
+      { duration: 420, easing: "ease-out" },
+    );
+  }
+
   private edge(): Edge {
     const e = document.body.dataset.edge;
     return e === "left" || e === "right" ? e : "top";
@@ -588,7 +625,8 @@ export class Island {
    */
   private async maybePeek() {
     const s = settingsStore.current;
-    if (!s.mascot.enabled || !s.mascot.peek || this.fsm.state !== "hidden" || this.hanger.showing) return;
+    // Pas de visite en « Calme » (mascot.calm).
+    if (!s.mascot.enabled || !s.mascot.peek || s.mascot.calm || this.fsm.state !== "hidden" || this.hanger.showing) return;
     if (Date.now() - this.lastPeek < (s.mascot.peekEveryMins ?? 5) * 60_000) return;
     const desk = await Bridge.deskState();
     if (!desk || desk.busy || desk.idleMs < PEEK_IDLE_MS) return;
@@ -1115,17 +1153,29 @@ export class Island {
       );
     }
     actions.append(el("button", { class: "icon-btn", title: "Fermer", onclick: () => this.notifications.dismiss(n.id) }, "×"));
+    // Un contenu dessiné par le demandeur (« Quoi de neuf » et ses mascottes
+    // animées) : dans l'alerte seulement, défait avec la carte (unmountView).
+    const custom = big && n.content;
+    let body: HTMLElement | null = n.body ? el("div", { class: "notif-body" }, n.body) : null;
+    if (custom) {
+      body = el("div", { class: "notif-custom" });
+      try {
+        this.unmountView = n.content!(body);
+      } catch (err) {
+        log.warn(`contenu de notification en erreur : ${String(err)}`);
+      }
+    }
     return el(
       "div",
       // Plusieurs boutons (une question à choix) : ils passent sur leur propre ligne.
       {
         // « lines » : un texte sur plusieurs lignes (« Quoi de neuf ») : l'alerte grandit (island.css).
-        class: `notif ${big ? "big" : ""} ${(n.actions?.length ?? 0) > 1 ? "many" : ""} ${n.body?.includes("\n") ? "lines" : ""} prio-${n.priority} ${n.tone ? `tone-${n.tone}` : ""} ${n.wide ? "wide" : ""}`,
+        class: `notif ${big ? "big" : ""} ${(n.actions?.length ?? 0) > 1 ? "many" : ""} ${!custom && n.body?.includes("\n") ? "lines" : ""} ${custom ? "custom" : ""} prio-${n.priority} ${n.tone ? `tone-${n.tone}` : ""} ${n.wide ? "wide" : ""}`,
         // Combien attendent derrière (design Studio : l'icône s'empile, voir island.css).
         "data-more": String(Math.min(this.notifications.waiting(), 3)),
       },
       el("span", { class: "notif-icon" }, icon(n.icon ?? "•")),
-      el("div", { class: "notif-text" }, el("div", { class: "notif-title" }, n.title), n.body ? el("div", { class: "notif-body" }, n.body) : null),
+      el("div", { class: "notif-text" }, el("div", { class: "notif-title" }, n.title), body),
       actions,
     );
   }

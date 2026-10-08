@@ -166,3 +166,17 @@ export interface MascotManifest {
   /** Moteur "poses" : nom de la pose → image et yeux. */
   poses?: Record<string, PoseSpec>;
 }
+
+/**
+ * Ce que la mascotte porte en plus de son animation, tant que ça dure
+ * (`MascotRenderer.setExtras`, poussé par mascot-state.ts) : les moufles sur
+ * les oreilles (concentration), la pancarte « ? » (une question d'agent
+ * ouverte), le parapluie (la Météo annonce la pluie).
+ */
+export interface MascotExtras {
+  ears: boolean;
+  sign: boolean;
+  umbrella: boolean;
+}
+
+export const NO_EXTRAS: MascotExtras = { ears: false, sign: false, umbrella: false };

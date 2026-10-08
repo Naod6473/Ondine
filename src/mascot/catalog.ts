@@ -49,10 +49,10 @@ export function mascotCatalog(): CatalogEntry[] {
   return entries;
 }
 
-/** La mascotte demandée, sinon la goutte (mascotte par défaut), sinon la goutte gomme (dessinée en code). */
+/** La mascotte demandée, sinon la goutte gomme (mascotte par défaut, dessinée en code). */
 export function findMascot(id: string): CatalogEntry | null {
   const all = mascotCatalog();
   const valid = (e: CatalogEntry) => e.problems.length === 0;
   const byId = (wanted: string) => all.find((e) => e.manifest.id === wanted && valid(e));
-  return byId(id) ?? byId("goutte-gomme") ?? byId("goutte") ?? null;
+  return byId(id) ?? byId("goutte-gomme") ?? null;
 }

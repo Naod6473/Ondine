@@ -39,6 +39,10 @@ export const TREASURES: Treasure[] = [
   { id: "loud", name: "Trop fort !", hint: "Montez le son à fond.", seasonal: true },
   { id: "battery", name: "Ouf, branché", hint: "Une batterie presque vide, puis le chargeur.", seasonal: true },
   { id: "copycat", name: "Copié, copié", hint: "Copiez cinq fois la même chose.", seasonal: true },
+  // Les séries de contributions GitHub (onglet Agents IA, identifiant GitHub renseigné).
+  { id: "github-7", name: "Série GitHub : une semaine", hint: "Sept jours de contributions GitHub d'affilée.", seasonal: true },
+  { id: "github-30", name: "Série GitHub : un mois", hint: "Trente jours de contributions GitHub d'affilée.", seasonal: true },
+  { id: "github-100", name: "Série GitHub : cent jours", hint: "Cent jours de contributions GitHub d'affilée.", seasonal: true },
 ];
 
 export function treasure(id: string): Treasure | undefined {

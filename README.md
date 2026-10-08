@@ -42,38 +42,38 @@ La vidéo de présentation est sur le site : [ondine.pissits.com](https://ondine
 
 ## Nouveautés
 
-Les nouveautés de la version 1.1.0 (la liste complète est dans le
+Les nouveautés de la version 1.2.0 (la liste complète est dans le
 [CHANGELOG](CHANGELOG.md)). Cliquez sur une image pour lire le détail.
 
 <table>
 <tr>
-<td width="50%" valign="top"><a href="#lanceur"><img src="docs/captures/fr/lanceur-calcul.webp" width="380" alt="Lanceur : 192.168.1.0/26 donne le nombre d'hôtes, le masque, le réseau et la première adresse"></a><br><b><a href="#lanceur">Calculs dans le Lanceur</a></b> : opérations, pourcentages, unités, octets, sous-réseaux IPv4 et heure dans une autre ville ; Entrée copie le résultat.</td>
-<td width="50%" valign="top"><a href="#presse-papiers"><img src="docs/captures/fr/presse-papiers-decoder.webp" width="380" alt="Presse-papiers : un jeton JWT décodé, avec son algorithme et ses dates d'émission et d'expiration"></a><br><b><a href="#presse-papiers">Décoder une copie</a></b> : un jeton JWT, du Base64, une adresse encodée, du JSON compact ou une date Unix, lus en clair sur votre PC.</td>
+<td width="50%" valign="top"><a href="#mascotte"><img src="docs/captures/fr/quoi-de-neuf.webp" width="391" alt="Quoi de neuf dans Ondine 1.2.0 : les mascottes Guimauve, Dragée et Berlingot animées, avec Adopter, Tout voir et Plus tard"></a><br><b><a href="#mascotte">Quinze mascottes en gomme</a></b> : douze nouvelles cousines de la goutte, plus Ciel et Météo ; «&nbsp;Quoi de neuf&nbsp;» les montre en direct, et «&nbsp;Adopter&nbsp;» en change tout de suite.</td>
+<td width="50%" valign="top"><a href="#agents-ia"><img src="docs/captures/fr/onglet-agents.webp" width="380" alt="Onglet Agents IA : les puces Claude Code, Codex, Gemini CLI, GitHub Copilot CLI, Cursor CLI, Qwen Code, Goose, OpenCode, Kiro CLI, Hermes, Aider, Amp et Autre dossier"></a><br><b><a href="#agents-ia">Douze outils IA</a></b> : GitHub Copilot CLI, Cursor CLI, Qwen Code, Goose, OpenCode, Kiro CLI, Hermes, Aider et Amp rejoignent Claude Code, Codex et Gemini CLI ; «&nbsp;Autre outil&nbsp;» lance le vôtre.</td>
 </tr>
 <tr>
-<td width="50%" valign="top"><a href="#étagère"><img src="docs/captures/fr/etagere-telephone.webp" width="380" alt="Étagère : le QR code « Vers le téléphone » pour Présentation.pptx, qui expire dans 4:59"></a><br><b><a href="#étagère">Vers le téléphone</a></b> : un fichier de l'étagère part sur le téléphone par un QR code, sur le même Wi-Fi, sans passer par Internet.</td>
-<td width="50%" valign="top"><a href="#contrôles"><img src="docs/captures/fr/onglet-controls.webp" width="380" alt="Onglet Contrôles : les pastilles Sombre et Veilleuse allumées, et une clé USB KINGSTON avec Éjecter"></a><br><b><a href="#contrôles">Sombre, Veilleuse et clés USB</a></b> : le mode sombre et l'éclairage nocturne de Windows en un clic, et «&nbsp;Éjecter&nbsp;» pour chaque clé USB branchée.</td>
+<td width="50%" valign="top"><a href="#agents-ia"><img src="docs/captures/fr/agents-jetons.webp" width="380" alt="Utilisation des agents : la courbe des 30 jours (Claude et Codex), 31,7 M de jetons, entrée, sortie, cache, ≈ 29,23 $, par modèle et par projet"></a><br><b><a href="#agents-ia">Jetons et coût</a></b> : la courbe des 30 derniers jours, un coût estimé d'après une grille de prix modifiable, une alerte de budget et un export CSV.</td>
+<td width="50%" valign="top"><a href="#agents-ia"><img src="docs/captures/fr/agents-github.webp" width="380" alt="Contributions GitHub de simon-demo : 554 contributions cette année, série de 11 jours, la grille de l'année"></a><br><b><a href="#agents-ia">Calendrier GitHub</a></b> : la grille de l'année dans l'onglet Agents IA, avec la série en cours ; la mascotte fête les séries de 7, 30 et 100 jours.</td>
 </tr>
 <tr>
-<td width="50%" valign="top"><a href="#système"><img src="docs/captures/fr/systeme-horloges.webp" width="380" alt="Onglet Système : les horloges de Montréal (−6 h) et de Tokyo (+7 h)"></a><br><b><a href="#système">Horloges du monde</a></b> : jusqu'à 4 villes dans l'onglet Système, avec l'écart d'heure (et «&nbsp;demain&nbsp;» si le jour change).</td>
-<td width="50%" valign="top"><a href="#capture"><img src="docs/captures/fr/onglet-capture.webp" width="380" alt="Onglet Capture : la nouvelle ligne GIF animé, avec Enregistrer un GIF"></a><br><b><a href="#capture">GIF animé</a></b> : une zone de l'écran filmée en GIF animé, rangée avec vos captures et posée sur l'étagère.</td>
+<td width="50%" valign="top"><a href="#agents-ia"><img src="docs/captures/fr/agent-bilan.webp" width="347" alt="Alerte : Claude a fini, 3 fichiers modifiés, +120 −14, la dernière phrase de Claude, avec Y aller, Fichiers…, Ouvrir dans VS Code et Copier"></a><br><b><a href="#agents-ia">Quand un agent a fini</a></b> : sa dernière phrase avec «&nbsp;Copier&nbsp;», et «&nbsp;Fichiers…&nbsp;» pour la liste des fichiers modifiés.</td>
+<td width="50%" valign="top"><a href="#agents-ia"><img src="docs/captures/fr/agent-fichiers.webp" width="380" alt="Onglet Agents IA : la liste des fichiers modifiés (index.astro +84 −9, site.css +30 −5, notes-lancement.md nouveau), avec Ouvrir et Diff"></a><br><b><a href="#agents-ia">Le bilan git cliquable</a></b> : chaque fichier modifié avec «&nbsp;Ouvrir&nbsp;» (VS Code) et «&nbsp;Diff&nbsp;» (la comparaison avec la version validée).</td>
 </tr>
 <tr>
-<td width="50%" valign="top"><a href="#agents-ia"><img src="docs/captures/fr/agent-bilan.webp" width="347" alt="Alerte : Claude a fini, 3 fichiers modifiés, +120 −14, avec Y aller, Ouvrir dans VS Code et Terminal ici"></a><br><b><a href="#agents-ia">Quand un agent a fini</a></b> : les fichiers modifiés et «&nbsp;Ouvrir dans VS Code&nbsp;» ; dans l'onglet, «&nbsp;Reprendre&nbsp;» rouvre la dernière session.</td>
-<td width="50%" valign="top"><a href="#agenda"><img src="docs/captures/fr/agenda-rejoindre.webp" width="293" alt="Alerte : Réunion dans 2 min, Revue du site, Google Meet, avec Rejoindre"></a><br><b><a href="#agenda">Rejoindre la réunion</a></b> : deux minutes avant une visio, un clic l'ouvre, met la musique en pause et prévient si le micro est coupé.</td>
+<td width="50%" valign="top"><a href="#réglages"><img src="docs/captures/fr/reglages-simple.webp" width="380" alt="Réglages en mode Simple, page Général : cinq réglages, puis « 18 réglages de plus en mode Complet · Tout afficher »"></a><br><b><a href="#réglages">Réglages Simple ou Complet</a></b> : par défaut, chaque page ne montre que l'essentiel ; «&nbsp;Tout afficher&nbsp;» ou l'interrupteur passe en Complet. La recherche trouve toujours tout.</td>
+<td width="50%" valign="top"><a href="#mascotte"><img src="docs/captures/fr/reglages-mascotte.webp" width="380" alt="Réglages, page Mascotte : Couleur « Personnalisée » et la roue teinte / saturation, avec la luminosité et la valeur #4da3ff"></a><br><b><a href="#mascotte">Roue de couleur</a></b> : une couleur «&nbsp;Personnalisée&nbsp;» pour les mascottes en gomme, choisie sur une roue teinte / saturation ; l'aperçu et l'île suivent.</td>
 </tr>
 <tr>
-<td width="50%" valign="top"><a href="#mises-à-jour"><img src="docs/captures/fr/quoi-de-neuf.webp" width="358" alt="Alerte : Quoi de neuf dans Ondine 1.0.1, trois nouveautés, avec Tout voir et OK"></a><br><b><a href="#mises-à-jour">Quoi de neuf</a></b> : après une mise à jour, l'île montre une fois les principales nouveautés de la version.</td>
-<td width="50%" valign="top"><a href="#les-onglets"><img src="docs/captures/fr/astuce-onglet.webp" width="380" alt="Onglet Étagère vide, avec la bulle d'astuce : Glissez un fichier sur l'île pour le poser ici"></a><br><b><a href="#les-onglets">Une astuce par onglet</a></b> : la première fois qu'un onglet s'ouvre, une bulle explique son geste principal en une phrase.</td>
+<td width="50%" valign="top"><a href="#mascotte"><img src="docs/captures/fr/agent-question.webp" width="347" alt="Alerte : Claude vous demande « Quel format pour l'export ? », avec CSV, JSON, Les deux ; la mascotte tient une pancarte « ? »"></a><br><b><a href="#mascotte">La mascotte réagit</a></b> : une pancarte «&nbsp;?&nbsp;» tant qu'un agent attend une réponse, des étoiles dans les yeux pour un fichier reçu, les bras levés à la fin du minuteur, un parapluie quand il pleut…</td>
+<td width="50%" valign="top"><a href="#sans-onglet--pauses-météo-et-bilan-de-la-semaine"><img src="docs/captures/fr/bilan-semaine.webp" width="347" alt="Alerte : Votre semaine jusqu'ici, 9 Pomodoros, 3 h 35 de concentration, 14 tâches, puis Agents IA : 23 tâches finies, 2 h 10 d'attente, 5,4 M de jetons (≈ 23,03 $), projets site-ondine, Island"></a><br><b><a href="#sans-onglet--pauses-météo-et-bilan-de-la-semaine">Les agents dans le bilan</a></b> : tâches finies, temps d'attente, jetons et coût, projets de la semaine, d'après un historique gardé 7 jours sur le PC.</td>
 </tr>
 </table>
 
 Et aussi :
 
-- **Empreinte SHA-256** : glissez un fichier sur la cible « Empreinte » ; si vous avez copié une empreinte, Ondine dit si elle est identique ([Étagère](#étagère)).
-- **Réveiller un PC** à distance (Wake-on-LAN), depuis l'onglet ou le Lanceur ([Accès distants](#accès-distants)).
-- **Redémarrage en attente** : l'onglet Système le signale, avec un rappel doux ([Système](#système)).
-- **Bilan de la semaine** : Pomodoros terminés, temps de concentration et tâches cochées ([Sans onglet](#sans-onglet--pauses-météo-et-bilan-de-la-semaine)).
+- **Mascotte** : réglages **Taille** (Petite, Normale, Grande) et **Calme** (moins de gestes spontanés) ; des mains, des accessoires et douze expressions de plus pour les mascottes en gomme ; les deux anciennes gouttes en images sont retirées ([Mascotte](#mascotte)).
+- **L'île en gelée** : elle se creuse sous un clic, gonfle au survol et encaisse le choc d'une alerte ; réglage **Élasticité de l'île** (Doux, Normal, Gelée) dans [Apparence](#apparence). **Mini-île animée** : le titre de musique ondule au rythme, une alerte fait sauter l'île.
+- **Agents IA** : un rappel quand un agent attend depuis 10 puis 30 minutes ; quatre outils MCP de plus (note, étagère, capture, ouvrir un lien) ; l'historique des 7 derniers jours retrouvé au démarrage ([Agents IA](#agents-ia)).
+- **Site** : la galerie des quinze mascottes, dessinées par le moteur de l'appli ([ondine.pissits.com](https://ondine.pissits.com)).
 
 ---
 
@@ -111,12 +111,15 @@ automatiques**). Les mises à jour sont vérifiées par une signature (clé de
 mise à jour de Tauri) avant d'être installées.
 
 Au premier démarrage après une mise à jour, l'île montre une fois **« Quoi de
-neuf dans Ondine X.Y.Z »** : les trois principales nouveautés de la version
-(tirées du [CHANGELOG](CHANGELOG.md), intégré à l'appli), et **Tout voir**, qui
-ouvre la page de la version sur GitHub. Pour la revoir : Réglages → Général →
-À propos → **Voir les nouveautés**.
+neuf dans Ondine X.Y.Z »** : les principales nouveautés de la version (tirées
+du [CHANGELOG](CHANGELOG.md), intégré à l'appli), et **Tout voir**, qui ouvre
+la page de la version sur GitHub. Quand la version apporte de nouvelles
+mascottes, le panneau les montre en direct, trois à la fois : cliquez sur l'une
+d'elles, puis sur **Adopter**, et l'île change de mascotte tout de suite. Pour
+le revoir : Réglages → Général → À propos → **Voir les nouveautés** (ou la
+scène « Quoi de neuf » du mode démo).
 
-<p align="center"><img src="docs/captures/fr/quoi-de-neuf.webp" width="656" alt="Alerte : Quoi de neuf dans Ondine 1.0.1, trois nouveautés, avec Tout voir et OK"></p>
+<p align="center"><img src="docs/captures/fr/quoi-de-neuf.webp" width="716" alt="Quoi de neuf dans Ondine 1.2.0 : Guimauve, Dragée et Berlingot animées, Adopter, les nouveautés, Tout voir et Plus tard"></p>
 
 ### Désinstaller
 
@@ -147,7 +150,8 @@ ou depuis le Gestionnaire d'identifiants de Windows.
 
 La pilule montre ce qui compte en ce moment : le morceau qui joue, le temps du
 minuteur, le prochain rendez-vous, la météo, ou une notification (un agent IA
-qui a fini, un fichier téléchargé…).
+qui a fini, un fichier téléchargé…). La bulle du titre de musique ondule au
+rythme, et une alerte qui arrive fait faire un petit saut à l'île.
 
 <p align="center"><img src="docs/captures/fr/notification-agent.webp" width="396" alt="Notification dans la pilule : Claude a fini, avec un bouton Y aller"></p>
 
@@ -414,68 +418,135 @@ serveurs, et prévient quand ça coupe.
 
 ### Agents IA
 
-<img src="docs/captures/fr/onglet-agents.webp" width="696" alt="Onglet Agents IA : lancer Claude Code, Codex ou Gemini CLI, Reprendre la dernière session du projet, sessions en cours">
+<img src="docs/captures/fr/onglet-agents.webp" width="696" alt="Onglet Agents IA : les puces Claude Code, Codex, Gemini CLI, GitHub Copilot CLI, Cursor CLI, Qwen Code, Goose, OpenCode, Kiro CLI, Hermes, Aider et Amp, Autre dossier, Reprendre la dernière session du projet, les sessions en cours">
 
-Lance **Claude Code**, **Codex** ou **Gemini CLI** dans un de vos projets en un
-clic. Un tableau montre les sessions en cours ; « Y aller » ramène devant la
-bonne fenêtre, y compris dans Windows Terminal. Une fois branchés, les agents
+Lance **Claude Code**, **Codex**, **Gemini CLI**, **GitHub Copilot CLI**,
+**Cursor CLI**, **Qwen Code**, **Goose**, **OpenCode**, **Kiro CLI**,
+**Hermes**, **Aider** ou **Amp** dans un de vos projets en un clic ; **Autre
+outil** lance le mot de commande de votre choix (réglage « Autre outil », par
+exemple `mon-agent` : cherché dans le PATH, jamais un chemin ni une option). Un
+tableau montre les sessions en cours ; « Y aller » ramène devant la bonne
+fenêtre, y compris dans Windows Terminal. Une fois branchés, les agents
 préviennent l'île : « attend votre permission », « a fini ». Ils passent par la
 commande `ondine.exe notify` et un canal local réservé à votre compte Windows :
 rien ne passe par Internet, et l'île n'accepte que les messages de sa propre
 copie d'`ondine.exe`.
 
-**Reprendre** : à côté de chaque projet, ce bouton rouvre Claude Code là où
-vous l'aviez laissé (`claude --continue` ; pour Codex : `codex resume --last`),
-avec, en petit, la dernière phrase échangée et sa date (« il y a 2 h »). Cette
-phrase est lue à la fin du fichier de session de Claude Code, sur votre PC :
-elle n'est ni envoyée ni écrite dans le journal.
+**Reprendre** : à côté de chaque projet, ce bouton rouvre l'outil là où vous
+l'aviez laissé (`claude --continue`, `codex resume --last`,
+`copilot --continue`, `agent --continue` pour Cursor, `qwen --continue`,
+`goose session --resume`, `opencode --continue`, `kiro-cli chat --resume`,
+`hermes --continue` ; pas de reprise pour Gemini CLI, Aider ni Amp), avec, en
+petit, la dernière phrase échangée dans Claude Code et sa date (« il y a 2 h »).
+Cette phrase est lue à la fin du fichier de session de Claude Code, sur votre
+PC : elle n'est ni envoyée ni écrite dans le journal.
 
-**Bilan de fin de tâche** : quand un agent a fini dans un dépôt git, la
-notification dit ce qui a changé (« 3 fichiers modifiés, +120 −14 », et les
-fichiers les plus touchés), avec **Ouvrir dans VS Code** (si VS Code est
-installé) et **Terminal ici**. Ondine lance `git status` et `git diff --numstat`
-en lecture seule, 3 secondes au plus ; sans git ou hors d'un dépôt, la
-notification reste comme avant.
+**Quand un agent a fini** : la notification montre la dernière phrase de
+Claude (lue dans sa transcription, sur votre PC, 200 caractères au plus), avec
+**Copier**. Dans un dépôt git, elle dit aussi ce qui a changé (« 3 fichiers
+modifiés, +120 −14 »), avec **Fichiers…**, **Ouvrir dans VS Code** (si VS Code
+est installé) et **Terminal ici**. Ondine lance `git status` et
+`git diff --numstat` en lecture seule, 3 secondes au plus ; sans git ou hors
+d'un dépôt, la notification reste simple.
 
-<p align="center"><img src="docs/captures/fr/agent-bilan.webp" width="636" alt="Alerte : Claude a fini, 3 fichiers modifiés, +120 −14 (index.html, style.css, README.md), avec Y aller, Ouvrir dans VS Code et Terminal ici"></p>
+<p align="center"><img src="docs/captures/fr/agent-bilan.webp" width="636" alt="Alerte : Claude a fini · 3 fichiers modifiés, +120 −14, la dernière phrase de Claude et le projet, avec Y aller, Fichiers…, Ouvrir dans VS Code et Copier"></p>
+
+**Fichiers…** ouvre l'onglet sur la liste des fichiers modifiés (les 20 plus
+changés), chacun avec **Ouvrir** (VS Code sur le fichier) et **Diff** (la
+comparaison avec la version validée, dans VS Code ; pas pour un fichier
+nouveau). Seulement sur votre clic.
+
+<img src="docs/captures/fr/agent-fichiers.webp" width="696" alt="Onglet Agents IA : Claude a fini · 3 fichiers modifiés, la liste index.astro +84 −9, site.css +30 −5, notes-lancement.md nouveau, avec Ouvrir et Diff">
+
+**Quand un agent attend** votre réponse depuis 10 minutes, puis 30, un rappel
+le dit (« Claude attend toujours votre réponse · depuis 10 min », avec
+« Y aller »), et c'est tout. Tant que l'île est en pilule, la mascotte fait
+coucou toutes les deux minutes. Rien pendant la concentration.
 
 **Brancher un agent, en 3 étapes :**
 
-1. Dans l'onglet Agents IA, ouvrez **Brancher Claude Code, Codex ou Gemini**,
-   choisissez l'outil, puis cliquez sur **⚡ Installer automatiquement**. Ondine
-   ajoute ses hooks dans le fichier de l'outil (`%USERPROFILE%\.claude\settings.json`
-   pour Claude Code, `%USERPROFILE%\.codex\config.toml` pour Codex,
-   `%USERPROFILE%\.gemini\settings.json` pour Gemini CLI) en gardant tout le
-   reste, y compris les hooks d'autres programmes. Une copie `.bak` est faite
-   avant chaque écriture, et **Retirer** enlève seulement ce qu'Ondine a ajouté.
+1. Dans l'onglet Agents IA, ouvrez **Brancher un outil**, choisissez l'outil,
+   puis cliquez sur **⚡ Installer automatiquement**. Ondine ajoute ses hooks
+   dans le fichier de l'outil (`%USERPROFILE%\.claude\settings.json` pour
+   Claude Code, `.codex\config.toml` pour Codex, `.gemini\settings.json` pour
+   Gemini CLI, `.copilot\hooks\ondine.json` pour GitHub Copilot CLI,
+   `.cursor\hooks.json` pour Cursor CLI, `.qwen\settings.json` pour Qwen Code,
+   un plugin `.agents\plugins\ondine\` pour Goose) en gardant tout le reste, y
+   compris les hooks d'autres programmes. Une copie `.bak` est faite avant
+   chaque écriture, et **Retirer** enlève seulement ce qu'Ondine a ajouté.
+   OpenCode, Kiro CLI, Hermes, Aider et Amp se lancent sans hooks ; pour eux
+   et pour « Autre outil », **Brancher un autre outil** montre la ligne à
+   mettre en fin de tâche (`"…\ondine.exe" notify --source other --event done`).
 2. Relancez l'agent, puis cliquez sur **Essayer** : une notification doit apparaître.
-3. Pour **autoriser ou refuser depuis l'île** : activez le réglage
-   « Autoriser / Refuser depuis l'île » (Réglages → Agents IA), puis cliquez à
-   nouveau sur **Installer automatiquement**. L'agent ne demande rien en mode
-   automatique (« auto mode » de Claude Code) : laissez-le en mode normal.
+3. Pour **autoriser ou refuser depuis l'île** (Claude Code et Codex) : activez
+   le réglage « Autoriser / Refuser depuis l'île » (Réglages → Agents IA), puis
+   cliquez à nouveau sur **Installer automatiquement**. L'agent ne demande rien
+   en mode automatique (« auto mode » de Claude Code) : laissez-le en mode normal.
 
 Si l'état affiche **Ancien chemin** (par exemple après une mise à jour ou un
 déplacement d'Ondine), cliquez simplement à nouveau sur **Installer
 automatiquement**. La copie à la main reste possible, sous **Ou à la main**.
 
-En option, l'île peut aussi être branchée comme **serveur MCP** : l'agent peut
-alors vous envoyer un message, sa progression, lancer le minuteur ou vous poser
-une question à choix. Le bouton **Concentration** (25 min, 1 h, 2 h ou jusqu'à
-l'arrêt) met leurs notifications en attente et fait un résumé à la fin.
-L'île n'exécute rien de ce que les agents lui envoient (elle lance seulement
-git, en lecture seule, pour le bilan), ne décide jamais à votre place, et ne lit
-pas ce que vous tapez : seule la dernière phrase d'une session est montrée à
-côté de « Reprendre ».
+En option, l'île peut aussi être branchée comme **serveur MCP** (Claude Code,
+Codex, Gemini CLI) : l'agent peut alors vous envoyer un message, sa
+progression, lancer le minuteur, vous poser une question à choix, ajouter une
+note, déposer un fichier sur l'étagère, demander une capture d'écran ou
+proposer d'ouvrir un lien ou un fichier (toujours après votre clic,
+« Capturer » ou « Ouvrir » ; jamais un programme). Tant qu'une question attend
+votre réponse, la mascotte tient une pancarte « ? » : un clic sur elle ouvre
+l'onglet. Le bouton **Concentration** (25 min, 1 h, 2 h ou jusqu'à l'arrêt)
+met leurs notifications en attente et fait un résumé à la fin. L'île n'exécute
+rien de ce que les agents lui envoient (elle lance seulement git, en lecture
+seule, pour le bilan), ne décide jamais à votre place, et ne lit pas ce que
+vous tapez.
+
+<p align="center"><img src="docs/captures/fr/agent-question.webp" width="636" alt="Alerte : Claude vous demande « Quel format pour l'export ? », avec CSV, JSON et Les deux ; la mascotte tient une pancarte « ? »"></p>
+
+**Utilisation des agents** (plus bas dans l'onglet) : le compteur de jetons,
+lu dans les journaux de Claude Code et de Codex sur ce PC (Gemini CLI n'en
+écrit pas) quand l'onglet est ouvert : entrée, sortie, cache lu, cache écrit
+et réponses pour aujourd'hui, 7 jours ou 30 jours, par modèle et par projet
+(le nom du dossier seulement). Une courbe des 30 derniers jours (une barre
+par jour, par outil ; le survol donne la date, le total et le coût du jour),
+et un **coût estimé** (« ≈ 12,40 $ ») d'après la grille de prix des réglages.
+**Exporter en CSV** écrit `jetons-agents-AAAA-MM-JJ.csv` dans Téléchargements
+(et le pose sur l'étagère). Rien ne sort du PC.
+
+<img src="docs/captures/fr/agents-jetons.webp" width="696" alt="Utilisation des agents : Aujourd'hui, 7 jours, 30 jours, la courbe des 30 jours (Claude et Codex), 31,7 M de jetons, entrée, sortie, cache lu, cache écrit, 363 réponses, ≈ 29,23 $, par modèle et par projet">
+
+**Contributions GitHub** : donnez votre identifiant GitHub (Réglages →
+Agents IA) et l'onglet montre votre calendrier de contributions (« 336
+contributions cette année · série de 12 jours », la grille de l'année dans la
+couleur de l'île, allumée en vague à la première ouverture). C'est la seule
+fonction de l'onglet qui parle à Internet : au plus une demande toutes les
+30 minutes à github.com, où ne part que l'identifiant ; jamais pendant une
+présentation ni la concentration. Pour compter aussi les contributions
+privées, un **jeton** personnel en lecture seule (droit `read:user`), gardé
+dans le Gestionnaire d'identifiants de Windows. Une copie du calendrier
+(`%APPDATA%\Ondine\github-calendar.json`) sert à l'affichage immédiat au
+démarrage. La mascotte fête les séries de 7, 30 et 100 jours.
+
+<img src="docs/captures/fr/agents-github.webp" width="696" alt="Contributions GitHub de simon-demo : 554 contributions cette année · série de 11 jours, la grille de l'année, Mis à jour à 17:42, puis Derniers messages">
+
+L'historique des agents (« a fini », « vous attend », avec l'outil, le nom
+du projet, la durée et le bilan git ; jamais les messages ni les chemins) est
+gardé 7 jours dans `%APPDATA%\Ondine\agents-history.json` et retrouvé au
+démarrage sous « Derniers messages » ; il nourrit la carte Agents IA du
+[bilan de la semaine](#sans-onglet--pauses-météo-et-bilan-de-la-semaine).
 
 - **Projets pour les agents** : jusqu'à 8 dossiers, un bouton chacun (dans l'onglet et le lanceur)
 - **Ouvrir les agents dans** : une fenêtre de console (par défaut) ou Windows Terminal
-- **Proposer Claude Code / Codex / Gemini CLI** (oui)
+- **Proposer Claude Code / Codex / Gemini CLI / GitHub Copilot CLI / Cursor CLI / Qwen Code / Goose / OpenCode / Kiro CLI / Hermes / Aider / Amp** (oui) ; **Autre outil : le mot de commande** (vide)
 - **Afficher la dernière phrase de la session à côté de « Reprendre »** (oui)
 - **Prévenir quand Claude attend ma réponse ou ma permission** (oui), **quand Claude a fini** (oui)
+- **Montrer la dernière phrase de Claude quand il a fini** (oui), avec « Copier »
 - **Montrer ce qui a changé quand un agent a fini** (oui) : le bilan git ci-dessus
+- **Rappeler qu'un agent attend toujours ma réponse** (oui) : après 10 puis 30 minutes
 - **Accepter les outils MCP** (oui)
 - **Autoriser / Refuser depuis l'île** (**non** par défaut) : quand Claude Code ou Codex demande la permission d'utiliser un outil, l'île montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Après l'avoir activé, réinstallez les hooks (étape 3 ci-dessus). Sans réponse dans le délai choisi (1 min par défaut), la question repasse au terminal.
 - **La mascotte réfléchit pendant que Claude travaille** (oui)
+- **Compter les jetons des agents** (oui) ; **Grille de prix des modèles** ($ par million de jetons) : une ligne par modèle, « début du nom ; entrée ; sortie ; cache lu ; cache écrit » (la grille par défaut est indicative : vérifiez chez les éditeurs) ; **Budget par jour** ($, 0 = pas d'alerte) : au-delà, une notification (une fois par jour) et la mascotte s'inquiète
+- **Identifiant GitHub** (vide = rien n'est demandé) ; **Jeton GitHub** (facultatif)
 
 ### Demander à Claude
 
@@ -565,7 +636,14 @@ et ne contiennent que des nombres, jamais le texte de vos tâches. Réglages :
 maintenant** montre la semaine en cours. Pour ne plus le recevoir, désactivez
 le module (Réglages → Onglets → Sans onglet).
 
-<p align="center"><img src="docs/captures/fr/bilan-semaine.webp" width="636" alt="Alerte : Votre semaine jusqu'ici, 9 Pomodoros terminés, 3 h 35 de concentration, 14 tâches cochées"></p>
+Si des agents IA ont travaillé dans la semaine, une carte **Agents IA**
+s'ajoute : tâches finies, temps d'attente de votre part, jetons et coût estimé,
+projets les plus actifs (d'après l'historique de 7 jours de l'onglet
+[Agents IA](#agents-ia)). Le bilan programmé ne sort toujours que si la semaine
+classique a quelque chose ; « Voir le bilan maintenant » le montre aussi avec
+seulement des agents.
+
+<p align="center"><img src="docs/captures/fr/bilan-semaine.webp" width="636" alt="Alerte : Votre semaine jusqu'ici, 9 Pomodoros terminés · 3 h 35 de concentration · 14 tâches cochées · Agents IA : 23 tâches finies, 2 h 10 d'attente de votre part, 5,4 M de jetons (≈ 23,03 $), projets : site-ondine, Island"></p>
 
 ---
 
@@ -576,11 +654,21 @@ près de l'horloge. Une recherche en haut à gauche trouve n'importe quel
 réglage. Chaque module a sa page (interrupteur, permissions, description
 complète, réglages).
 
-<img src="docs/captures/fr/reglages-general.webp" width="700" alt="Réglages, page Général">
+Sous la recherche, l'interrupteur **Simple / Complet** : en **Simple** (par
+défaut), chaque page ne montre que l'essentiel, et une ligne « N réglages de
+plus en mode Complet · Tout afficher » termine la page ; en **Complet**, tout
+est là, à la même place. La recherche trouve toujours tout : un résultat caché
+en Simple porte l'étiquette « réglage avancé », et y aller passe en Complet.
+Les listes ci-dessous donnent tous les réglages (mode Complet).
+
+<img src="docs/captures/fr/reglages-simple.webp" width="700" alt="Réglages en mode Simple, page Général : Langue, S'adresser à moi, Lancer avec Windows, Bord de l'écran, Mises à jour automatiques, puis « 18 réglages de plus en mode Complet · Tout afficher »">
+
+<img src="docs/captures/fr/reglages-general.webp" width="700" alt="Réglages en mode Complet, page Général">
 
 ### Général
 
 - **Langue** : Automatique (la langue choisie à l'installation, sinon celle de Windows), Français ou English
+- **S'adresser à moi** : Vouvoiement ou Tutoiement (les aides et les messages ; les boutons ne changent pas)
 - **Lancer avec Windows** (oui)
 - **Sur quel écran ?** : l'écran principal ou celui où se trouve la souris
 - **Toujours en mini** (non) : l'île reste en pilule au lieu de disparaître
@@ -601,6 +689,7 @@ complète, réglages).
 - **Thème** : Nuit (par défaut), Océan, Prune, Forêt, Braise, Graphite, Verre, Studio, ou une **couleur personnalisée** (trop claire, l'île l'assombrit juste assez pour rester lisible)
 - **Style des icônes** : **Couleur** (les icônes dessinées pour Ondine) ou **Épurées** (au trait, qui prennent la couleur du texte ; Phosphor)
 - **Style des animations** : **Classique** (sobre) ou **Studio** (les éléments arrivent flous puis nets, les chiffres roulent, les boutons rebondissent)
+- **Élasticité de l'île** : **Doux** (elle se pose sans rebondir), **Normal** (un petit rebond, par défaut) ou **Gelée** (elle tremblote, se creuse sous vos clics et s'étire comme de la guimauve). L'île change de forme avec des ressorts qui gardent leur élan, gonfle au survol et encaisse le choc d'une alerte.
 - **Sons de clic** (oui) et leur volume ; les sons sont fabriqués sur place, sans fichier
 
 Les animations respectent « Réduire les animations » de Windows.
@@ -618,12 +707,33 @@ onglets directement dans l'île.
 
 ### Mascotte
 
-Afficher ou non la mascotte, et laquelle : **Goutte** (par défaut), **Goutte
-classique** ou **Goutte gomme** (on peut ajouter les siennes dans le dossier
-`mascots/`, voir [mascots/README.md](mascots/README.md)). Elle **s'ennuie**,
-puis **s'endort** si rien ne se passe ; elle peut venir **pendre au bord de
-l'écran** (au plus une visite toutes les N minutes, jamais pendant une
-présentation). Un aperçu permet d'essayer toutes ses animations.
+<img src="docs/captures/fr/reglages-mascotte.webp" width="700" alt="Réglages, page Mascotte : Afficher la mascotte, Mascotte « Goutte gomme », Couleur « Personnalisée » et la roue teinte / saturation">
+
+Afficher ou non la mascotte, et laquelle : la **Goutte gomme** (par défaut) ou
+l'une de ses quatorze cousines (Guimauve, Dragée, Berlingot, étoile, soleil,
+lune, nuage, cœur, fleur, champignon, fantôme, flamme, **Ciel** — soleil le
+jour, lune la nuit — et **Météo**, qui suit le temps qu'il fait ; on peut
+ajouter les siennes dans le dossier `mascots/`, voir
+[mascots/README.md](mascots/README.md)). Les deux anciennes gouttes en images
+(« Goutte » et « Goutte classique ») n'existent plus : un réglage qui les
+nommait encore retombe sur la goutte gomme. Un aperçu permet d'essayer toutes
+ses animations.
+
+Elle réagit à ce qui se passe : des étoiles plein les yeux quand un fichier
+arrive sur l'étagère, les bras levés à la fin du minuteur, un clin d'œil quand
+le presse-papiers nettoie un lien, fière d'une capture, un coucou à la clé USB
+éjectée, inquiète quand le disque est presque plein ou que le budget des
+agents est dépassé ; les moufles sur les oreilles pendant la concentration, un
+parapluie quand la Météo annonce la pluie, et une pancarte « ? » tant qu'un
+agent attend votre réponse (un clic sur elle ouvre l'onglet Agents IA). Elle
+**s'ennuie**, puis **s'endort** si rien ne se passe ; elle peut venir
+**pendre au bord de l'écran** (au plus une visite toutes les N minutes, jamais
+pendant une présentation).
+
+- **Taille** : Petite, Normale (par défaut) ou Grande, dans l'île ouverte et l'aperçu ; la mini-île garde sa taille.
+- **Style** (mascottes en gomme) : **Couleur** (celle de la forme, une teinte, Arc-en-ciel, ou **Personnalisée** : une roue teinte / saturation, une glissière de luminosité et la valeur à taper ; l'aperçu et l'île suivent le glisser), **Mains** (toujours, seulement pour les gestes, jamais), chapeau, lunettes et collier.
+- **Humeur** : **S'ennuie après** et **S'endort après** ; **Calme : moins de gestes spontanés** (non) : plus d'ennui, de goûter, de visites au bord de l'écran, de danse ni de réactions aux modules ; elle réagit toujours aux agents IA (attente, question), aux erreurs, aux réussites, aux alertes, et elle dort.
+- **Visites au bord de l'écran** : **Ondine vient pendre au bord** (oui), **au plus une visite toutes les** N min, **Faire venir Ondine** pour essayer.
 
 ### Profils
 
@@ -653,6 +763,10 @@ tout seul**, selon les jours et les heures, ou le nom du Wi-Fi.
   clé, seulement après vous avoir montré ce qui part.
 - « Vers le téléphone » (Étagère) et « Réveiller » (Accès distants) restent sur
   le réseau local, seulement quand vous cliquez : rien ne part sur Internet.
+- Le calendrier GitHub (Agents IA) ne part chercher que si vous donnez votre
+  identifiant : au plus toutes les 30 minutes, github.com reçoit l'identifiant
+  seul (ou, avec un jeton `read:user`, api.github.com). Les journaux des agents
+  et le compteur de jetons sont lus sur place, jamais envoyés.
 - Les clés et liens secrets sont rangés dans le Gestionnaire d'identifiants de
   Windows, jamais en clair dans un fichier ni dans le journal.
 - Rien n'est supprimé définitivement : tout passe par la Corbeille, avec une annulation.
@@ -723,5 +837,6 @@ Ondine est sous licence **MIT** : voir [LICENSE](LICENSE).
 - Musique de la vidéo de présentation : *Lovely Swindler*, Amarià (CC BY 3.0).
 - Tout ce qui vient d'ailleurs, avec les licences : [THIRD-PARTY.md](THIRD-PARTY.md).
 
-Claude, Gemini et Codex sont des marques de leurs propriétaires (Anthropic,
-Google, OpenAI) ; Ondine n'est affiliée à aucun d'eux.
+Claude, Gemini, Codex, GitHub Copilot, Cursor, Qwen, Goose, OpenCode, Kiro,
+Hermes, Aider et Amp sont des marques de leurs propriétaires ; Ondine n'est
+affiliée à aucun d'eux.

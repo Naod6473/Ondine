@@ -1,15 +1,120 @@
 # Changements · Changelog
 
-## Pas encore publié · Unreleased
+## 1.2.0 · 2026-10-08
 
+- La mascotte réagit à plus de choses : des étoiles plein les yeux quand un
+  fichier arrive sur l'étagère, les bras levés à la fin du minuteur, un clin
+  d'œil quand le presse-papiers nettoie un lien, fière d'une capture, un
+  coucou à la clé USB éjectée, inquiète quand le disque est presque plein ;
+  les moufles sur les oreilles pendant la concentration et un parapluie quand
+  la Météo annonce la pluie. · The mascot reacts to more: starry eyes when a
+  file lands on the shelf, arms up when the timer ends, a wink when the
+  clipboard cleans a link, proud of a capture, a wave to the ejected USB
+  stick, worried when the disk is nearly full; mittens on the ears during
+  focus and an umbrella when the Weather announces rain.
+- Mascottes en gomme : une couleur « Personnalisée », choisie sur une roue
+  teinte / saturation dans les réglages, avec l'aperçu qui suit. · Gummy
+  mascots: a "Custom" color, picked on a hue / saturation wheel in the
+  settings, with the preview following along.
+- Mini-île animée : la bulle du titre de musique ondule au rythme, et une
+  alerte qui arrive fait faire un petit saut à l'île. · Animated mini island:
+  the music title bubble bobs to the beat, and an incoming alert makes the
+  island hop.
+- Réglage « Taille » de la mascotte (Petite, Normale, Grande) pour l'île
+  ouverte et l'aperçu. · "Size" setting for the mascot (Small, Normal, Large)
+  in the open island and the preview.
+- Réglage « Calme : moins de gestes spontanés » : plus d'ennui, de goûter, de
+  visites au bord, de danse ni de réactions aux modules ; les états utiles
+  restent. · "Calm: fewer spontaneous gestures" setting: no more boredom,
+  snack, edge visits, dancing or module reactions; the useful states stay.
+- Quand un agent pose une question, la mascotte tient une pancarte « ? »
+  jusqu'à la réponse ; un clic sur elle ouvre l'onglet Agents IA. · When an
+  agent asks a question, the mascot holds a "?" sign until it is answered; a
+  click on her opens the AI Agents tab.
+- Les deux premières gouttes en images (« Goutte » et « Goutte classique »)
+  sont retirées : la goutte gomme et ses cousines restent, et un réglage qui
+  nommait encore une ancienne goutte retombe sur la goutte gomme. · The two
+  original image-based drops ("Goutte" and "Goutte classique") are gone: the
+  gummy drop and its cousins remain, and a setting that still named an old
+  drop falls back to the gummy drop.
+- Réglages : un mode Simple (par défaut) qui ne montre que l'essentiel de
+  chaque page, et un mode Complet ; l'interrupteur est sous la recherche, et
+  « N réglages de plus · Tout afficher » en bas d'une page réduite. La recherche
+  trouve toujours tout (« réglage avancé »). · Settings: a Simple mode (default)
+  showing only the essentials of each page, and a Full mode; the switch sits
+  under the search box, with "N more settings · Show all" at the bottom of a
+  reduced page. Search still finds everything ("advanced setting").
+- « Quoi de neuf » après une mise à jour : un panneau avec les nouvelles
+  mascottes en gomme animées en direct, « Adopter » pour en changer tout de
+  suite, et les nouveautés dessous ; rouvrable depuis Réglages → Général et le
+  mode démo. · "What's new" after an update: a panel with the new gummy
+  mascots animated live, "Adopt" to switch right away, and the release notes
+  below; reopenable from Settings → General and demo mode.
+- Site : une galerie des quinze mascottes en gomme, dessinées en direct par le
+  moteur de l'appli (coucou, rire, danse au survol). · Website: a gallery of
+  the fifteen gummy mascots, drawn live by the app's engine (wave, laugh,
+  dance on hover).
+- Compteur de jetons : une courbe des 30 derniers jours (une barre par jour,
+  par outil), un coût estimé « ≈ 12,40 $ » d'après une grille de prix
+  modifiable (indicative) dans Réglages → Agents IA, une alerte de budget par
+  jour (la mascotte s'inquiète) et un export CSV dans Téléchargements. · Token
+  counter: a 30-day chart (one bar per day, per tool), an estimated cost
+  "≈ 12,40 $" from an editable (indicative) price grid in Settings → AI
+  Agents, a daily budget alert (the mascot worries) and a CSV export to
+  Downloads.
+- L'historique des agents (« a fini », « vous attend », projet, durée, bilan
+  git ; jamais les messages) est gardé 7 jours sur le PC et retrouvé au
+  démarrage ; le Bilan de la semaine gagne une carte « Agents IA » : tâches
+  finies, attente, jetons et coût, projets. · The agents' history ("done",
+  "waiting", project, duration, git summary; never the messages) is kept for 7
+  days on the PC and restored at startup; the weekly summary gets an "AI
+  agents" card: tasks finished, waiting time, tokens and cost, projects.
+- Onglet Agents IA : le calendrier de contributions GitHub (« 336
+  contributions cette année · série de 12 jours », la grille 53 × 7 dans la
+  couleur de l'île, allumée en vague), avec un identifiant GitHub dans les
+  réglages et, pour les contributions privées, un jeton gardé dans le coffre
+  Windows. La mascotte fête les séries de 7, 30 et 100 jours (trois trésors).
+  · AI Agents tab: the GitHub contribution calendar ("336 contributions this
+  year · 12-day streak", the 53 × 7 grid in the island's colour, lit up in a
+  wave), with a GitHub username in the settings and, for private
+  contributions, a token kept in the Windows vault. The mascot celebrates 7,
+  30 and 100-day streaks (three treasures).
+- Agents IA : GitHub Copilot CLI, Cursor CLI, Qwen Code et Goose se lancent,
+  se reprennent et préviennent l'île (hooks installés automatiquement) ;
+  OpenCode, Kiro CLI, Hermes, Aider et Amp se lancent (et se reprennent quand
+  ils le proposent) ; « Autre outil » lance le mot de commande de votre choix
+  et le guide montre comment il prévient l'île. · AI Agents: GitHub Copilot
+  CLI, Cursor CLI, Qwen Code and Goose can be launched, resumed and notify
+  the island (hooks installed automatically); OpenCode, Kiro CLI, Hermes,
+  Aider and Amp can be launched (and resumed when they support it); "Other
+  tool" launches the command word of your choice and the guide shows how it
+  notifies the island.
+- Agents IA : « Claude a fini » montre la dernière phrase de Claude (lue
+  dans sa transcription, sur votre PC), avec « Copier ». · AI Agents: "Claude
+  is done" shows Claude's last sentence (read from its transcript, on your
+  PC), with "Copy".
+- Agents IA : le bilan git est cliquable (« Fichiers… ») : la liste des
+  fichiers modifiés, avec « Ouvrir » (VS Code sur le fichier) et « Diff »
+  (comparaison avec la version validée). · AI Agents: the git summary is
+  clickable ("Files…"): the list of changed files, with "Open" (VS Code on the
+  file) and "Diff" (comparison with the committed version).
+- Agents IA : quand un agent vous attend depuis 10 puis 30 minutes, un
+  rappel ; en mini-île, la mascotte fait coucou toutes les deux minutes. · AI
+  Agents: when an agent has been waiting for you for 10 then 30 minutes, a
+  reminder; in the mini island, the mascot waves every two minutes.
+- Agents IA : quatre outils MCP de plus pour l'agent : ajouter une note,
+  déposer un fichier sur l'étagère, demander une capture d'écran, proposer
+  d'ouvrir un lien ou un fichier (toujours après votre clic). · AI Agents:
+  four more MCP tools for the agent: add a note, drop a file on the shelf,
+  ask for a screenshot, offer to open a link or a file (always after your
+  click).
 - Onglet Agents IA : un compteur de jetons (entrée, sortie, cache) par jour,
   par modèle et par projet, lu dans les journaux de Claude Code et de Codex
   sur ce PC. · AI Agents tab: a token counter (input, output, cache) per day,
   per model and per project, read from the local Claude Code and Codex logs.
-- Correctif : la goutte gomme et la goutte classique dansent enfin quand la
-  musique joue en mini-île (elles n'avaient pas d'animation « danse »). · Fix:
-  the gummy and classic drops now dance when music plays in the mini island
-  (they had no "danse" animation).
+- Correctif : la goutte gomme danse enfin quand la musique joue en mini-île
+  (elle n'avait pas d'animation « danse »). · Fix: the gummy drop now dances
+  when music plays in the mini island (it had no "danse" animation).
 - Douze nouvelles mascottes en gomme : Guimauve, Dragée, Berlingot, étoile,
   soleil, lune, nuage, cœur, fleur, champignon, fantôme et flamme, plus Ciel
   (soleil le jour, lune la nuit) et Météo. · Twelve new gummy mascots, plus Sky

@@ -9,8 +9,8 @@
   "settings": {
     "version": 1,
     "fields": [
-      { "key": "announceTracks", "type": "boolean", "label": "Montrer l'île quand un nouveau morceau commence", "default": true },
-      { "key": "showCompact", "type": "boolean", "label": "Afficher le morceau dans la pilule de l'île", "default": true },
+      { "key": "announceTracks", "essential": true, "type": "boolean", "label": "Montrer l'île quand un nouveau morceau commence", "default": true },
+      { "key": "showCompact", "essential": true, "type": "boolean", "label": "Afficher le morceau dans la pilule de l'île", "default": true },
       { "key": "compactControls", "type": "boolean", "label": "Boutons précédent / lecture / suivant dans la pilule", "help": "Un clic sur un bouton ne déplie pas l'île.", "default": true }
     ]
   },

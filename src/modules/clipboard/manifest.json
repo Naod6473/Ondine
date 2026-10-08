@@ -13,6 +13,7 @@
     "fields": [
       {
         "key": "maxItems",
+        "essential": true,
         "type": "number",
         "label": "Nombre de copies gardées",
         "help": "Les éléments épinglés ne comptent pas.",
@@ -23,6 +24,7 @@
       },
       {
         "key": "cleanLinks",
+        "essential": true,
         "type": "boolean",
         "label": "Nettoyer les liens copiés (retirer utm_source, fbclid, gclid…)",
         "help": "Le lien propre remplace le lien copié ; la notification propose de remettre l'original.",

@@ -387,9 +387,61 @@ pub fn scan(cache: &mut Cache, claude_projects: &Path, codex_sessions: &Path, si
     })
 }
 
+// ── L'export CSV ─────────────────────────────────────────────────────────────
+
+/// Au plus ce volume pour un export (le front construit le texte).
+const MAX_CSV_BYTES: usize = 4 * 1024 * 1024;
+
+/// Le nom du fichier : « jetons-agents-AAAA-MM-JJ.csv ».
+pub fn csv_name(day: &str) -> String {
+    format!("jetons-agents-{day}.csv")
+}
+
+/// Écrit le CSV (construit par le front, src/modules/agents/cost.ts) dans
+/// `dir`, en UTF-8 avec BOM (Excel en français le lit alors tel quel), sous
+/// un nom libre (« … (2).csv » si le fichier du jour existe déjà). Rend le
+/// chemin écrit. Le texte n'est jamais interprété : écrit tel quel.
+pub fn write_csv(dir: &Path, day: &str, text: &str) -> Result<PathBuf, String> {
+    if text.len() > MAX_CSV_BYTES {
+        return Err("export trop volumineux".into());
+    }
+    std::fs::create_dir_all(dir).map_err(|e| format!("dossier Téléchargements : {e}"))?;
+    let name = csv_name(day);
+    let mut path = dir.join(&name);
+    let mut i = 2;
+    while path.exists() {
+        path = dir.join(format!("jetons-agents-{day} ({i}).csv"));
+        i += 1;
+    }
+    let mut bytes = Vec::with_capacity(text.len() + 3);
+    bytes.extend_from_slice(b"\xEF\xBB\xBF");
+    bytes.extend_from_slice(text.as_bytes());
+    std::fs::write(&path, bytes).map_err(|e| format!("écriture impossible : {e}"))?;
+    Ok(path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn csv_is_written_with_a_bom_under_a_free_name() {
+        let dir = std::env::temp_dir().join(format!("ondine-csv-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let text = "Jour;Outil;Modèle\r\n2026-10-08;claude-code;Opus 5.5\r\n";
+        let first = write_csv(&dir, "2026-10-08", text).unwrap();
+        assert_eq!(first.file_name().unwrap().to_string_lossy(), "jetons-agents-2026-10-08.csv");
+        let bytes = std::fs::read(&first).unwrap();
+        assert_eq!(&bytes[..3], b"\xEF\xBB\xBF");
+        assert_eq!(std::str::from_utf8(&bytes[3..]).unwrap(), text);
+        // Le fichier du jour existe : « (2) ».
+        let second = write_csv(&dir, "2026-10-08", text).unwrap();
+        assert_eq!(second.file_name().unwrap().to_string_lossy(), "jetons-agents-2026-10-08 (2).csv");
+        // Trop gros : refusé.
+        let huge = "x".repeat(MAX_CSV_BYTES + 1);
+        assert!(write_csv(&dir, "2026-10-08", &huge).is_err());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     fn claude(id: &str, ts: &str, input: u64, output: u64) -> String {
         json!({

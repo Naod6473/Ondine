@@ -4,6 +4,10 @@
 //   Claude Code : %USERPROFILE%\.claude\settings.json  (JSON)
 //   Codex       : %USERPROFILE%\.codex\config.toml     (TOML)
 //   Gemini CLI  : %USERPROFILE%\.gemini\settings.json  (JSON)
+//   Copilot CLI : %USERPROFILE%\.copilot\hooks\ondine.json (JSON, entrées « à plat » : exec + args)
+//   Cursor      : %USERPROFILE%\.cursor\hooks.json     (JSON, entrées « à plat » : command)
+//   Qwen Code   : %USERPROFILE%\.qwen\settings.json    (JSON, forme Claude Code)
+//   Goose       : %USERPROFILE%\.agents\plugins\ondine\hooks\hooks.json (JSON, forme Claude Code)
 //
 // Règles, pour ne jamais abîmer le fichier de l'utilisateur :
 //   - on lit le fichier existant et on garde TOUT le reste (autres réglages,
@@ -109,11 +113,25 @@ fn is_ondine_exe(path: &str) -> bool {
     path.trim().rsplit(['\\', '/']).next().is_some_and(|name| name.eq_ignore_ascii_case("ondine.exe"))
 }
 
-/// Une entrée de hook (`{ "type": "command", "command": … }`) qui lance
-/// Ondine : le chemin de son ondine.exe. Sinon None.
+/// Une entrée de hook (`{ "type": "command", "command": … }`, ou
+/// `{ "exec": …, "args": […] }` chez Copilot CLI) qui lance Ondine : le chemin
+/// de son ondine.exe. Sinon None.
 fn ondine_program(hook: &Value) -> Option<String> {
-    let program = program_of(hook.get("command")?.as_str()?);
+    let program = match hook.get("exec").and_then(Value::as_str) {
+        Some(exec) => exec.trim().to_string(),
+        None => program_of(hook.get("command")?.as_str()?),
+    };
     is_ondine_exe(&program).then_some(program)
+}
+
+/// Les entrées d'un groupe : sa liste `hooks` (Claude Code, Gemini, Qwen,
+/// Goose, Codex relu), ou le groupe lui-même quand il est « à plat » (Copilot
+/// CLI, Cursor : `{ "command": … }` directement dans la liste de l'événement).
+fn entries_of(group: &Value) -> Vec<&Value> {
+    match group.get("hooks").and_then(Value::as_array) {
+        Some(list) => list.iter().collect(),
+        None => vec![group],
+    }
 }
 
 /// C'est le hook « Autoriser depuis l'île » (« ondine.exe permission ») ?
@@ -126,6 +144,8 @@ fn is_permission_hook(hook: &Value) -> bool {
 // ── Sur la forme commune (JSON, ou TOML relu en JSON) ────────────────────────
 //
 // { "hooks": { "Stop": [ { "matcher"?: …, "hooks": [ {…}, {…} ] } ], … } }
+// ou, « à plat » (Copilot CLI, Cursor) :
+// { "version": 1, "hooks": { "stop": [ { "command": … }, {…} ] } }
 
 /// Retire les entrées d'Ondine ; un groupe (ou un événement, ou « hooks »)
 /// vidé par ce retrait disparaît aussi. Rend le nombre d'entrées retirées.
@@ -135,7 +155,12 @@ fn strip(root: &mut Value) -> usize {
     for groups in hooks.values_mut() {
         let Some(groups) = groups.as_array_mut() else { continue };
         groups.retain_mut(|group| {
-            let Some(list) = group.get_mut("hooks").and_then(Value::as_array_mut) else { return true };
+            let Some(list) = group.get_mut("hooks").and_then(Value::as_array_mut) else {
+                // Une entrée à plat : elle part si c'est de l'Ondine.
+                let mine = ondine_program(group).is_some();
+                removed += usize::from(mine);
+                return !mine;
+            };
             let before = list.len();
             list.retain(|h| ondine_program(h).is_none());
             removed += before - list.len();
@@ -160,7 +185,7 @@ fn ondine_part(root: &Value) -> Value {
             .as_array()
             .into_iter()
             .flatten()
-            .filter(|g| g.get("hooks").and_then(Value::as_array).is_some_and(|l| l.iter().any(|h| ondine_program(h).is_some())))
+            .filter(|g| entries_of(g).iter().any(|h| ondine_program(h).is_some()))
             .cloned()
             .collect();
         if !mine.is_empty() {
@@ -178,7 +203,7 @@ fn status_of(root: &Value, exe: &str) -> Status {
     let mut other_permission = false;
     for (event, groups) in root.get("hooks").and_then(Value::as_object).into_iter().flatten() {
         for group in groups.as_array().into_iter().flatten() {
-            for hook in group.get("hooks").and_then(Value::as_array).into_iter().flatten() {
+            for hook in entries_of(group) {
                 match ondine_program(hook) {
                     Some(program) => {
                         found = true;
@@ -237,7 +262,13 @@ pub fn install_text(format: Format, existing: Option<&str>, ours: &str) -> Resul
             let mut root = old.clone();
             let removed = strip(&mut root);
             let ours: Value = serde_json::from_str(ours).map_err(|e| e.to_string())?;
-            let hooks = root.as_object_mut().ok_or("format inattendu")?.entry("hooks").or_insert_with(|| Value::Object(Map::new()));
+            // Les autres clés de `ours` (« version » chez Copilot CLI et Cursor) :
+            // ajoutées si le fichier ne les a pas, jamais remplacées.
+            let obj = root.as_object_mut().ok_or("format inattendu")?;
+            for (k, v) in ours.as_object().into_iter().flatten().filter(|(k, _)| *k != "hooks") {
+                obj.entry(k.clone()).or_insert_with(|| v.clone());
+            }
+            let hooks = obj.entry("hooks").or_insert_with(|| Value::Object(Map::new()));
             let hooks = hooks.as_object_mut().ok_or("« hooks » n'a pas la forme attendue")?;
             for (event, groups) in ours["hooks"].as_object().into_iter().flatten() {
                 let list = hooks.entry(event.clone()).or_insert_with(|| Value::Array(vec![]));
@@ -474,6 +505,38 @@ mod tests {
             assert_eq!(status(Format::Json, Some(&m.text), EXE).state, "installed");
         }
         assert_eq!(status(Format::Json, None, EXE).state, "absent");
+    }
+
+    /// Les entrées « à plat » de Copilot CLI (exec + args) et de Cursor (command).
+    #[test]
+    fn flat_entries_are_recognized() {
+        let copilot = json!({ "version": 1, "hooks": { "agentStop": [{ "type": "command", "exec": EXE, "args": ["notify", "--source", "copilot"] }] } }).to_string();
+        let existing = json!({ "version": 1, "hooks": { "agentStop": [{ "type": "command", "bash": "echo fin" }], "sessionStart": [{ "type": "command", "exec": DEBUG, "args": ["notify"] }] } }).to_string();
+        let m = install_text(Format::Json, Some(&existing), &copilot).unwrap();
+        assert_eq!(m.removed, 1, "{}", m.text);
+        let v: Value = serde_json::from_str(&m.text).unwrap();
+        assert_eq!(v["hooks"]["agentStop"][0]["bash"], "echo fin");
+        assert_eq!(v["hooks"]["agentStop"][1]["exec"], EXE);
+        assert!(v["hooks"].get("sessionStart").is_none());
+        assert_eq!(status(Format::Json, Some(&m.text), EXE).state, "installed");
+        let r = remove_text(Format::Json, Some(&m.text)).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&r.text).unwrap()["hooks"]["agentStop"].as_array().unwrap().len(), 1);
+        let cursor = json!({ "hooks": { "stop": [{ "command": "\"C:\\Program Files\\Ondine\\ondine.exe\" notify --source cursor" }] } }).to_string();
+        assert_eq!(status(Format::Json, Some(&cursor), EXE).state, "installed");
+        assert_eq!(status(Format::Json, Some(&cursor), DEBUG).state, "stale");
+    }
+
+    #[test]
+    fn version_key_is_added_but_never_replaced() {
+        let ours = json!({ "version": 1, "hooks": { "stop": [{ "command": format!("\"{EXE}\" notify --source cursor") }] } }).to_string();
+        let m = install_text(Format::Json, None, &ours).unwrap();
+        let v: Value = serde_json::from_str(&m.text).unwrap();
+        assert_eq!(v["version"], 1);
+        assert_eq!(status(Format::Json, Some(&m.text), EXE).state, "installed");
+        let m = install_text(Format::Json, Some("{\"version\": 2, \"hooks\": {}}"), &ours).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&m.text).unwrap()["version"], 2);
+        let r = remove_text(Format::Json, Some(&m.text)).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&r.text).unwrap(), json!({ "version": 2 }));
     }
 
     #[test]

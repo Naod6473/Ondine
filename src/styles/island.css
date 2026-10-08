@@ -125,6 +125,25 @@ body {
   width: 72px;
   height: 72px;
 }
+/* Réglages → Mascotte → Taille (mascot.size) : l'île ouverte seulement, la mini-île garde ses 32 px. */
+.island[data-mascot-size="small"][data-state="expanded"] .mascot-slot {
+  width: 48px;
+  height: 48px;
+}
+.island[data-mascot-size="small"][data-state="drop"] .mascot-slot,
+.island[data-mascot-size="small"][data-state="alert"] .mascot-slot {
+  width: 56px;
+  height: 56px;
+}
+.island[data-mascot-size="large"][data-state="expanded"] .mascot-slot {
+  width: 88px;
+  height: 88px;
+}
+.island[data-mascot-size="large"][data-state="drop"] .mascot-slot,
+.island[data-mascot-size="large"][data-state="alert"] .mascot-slot {
+  width: 92px;
+  height: 92px;
+}
 .island.no-mascot .mascot-slot {
   display: none;
 }
@@ -377,6 +396,96 @@ body {
 .island[data-state="alert"]:has(.notif.lines) {
   width: 600px;
   height: 196px;
+}
+/* Un contenu dessiné par le demandeur (« Quoi de neuf » : le carrousel des
+   nouvelles mascottes, src/island/whats-new-panel.ts) : le texte en haut, les
+   boutons dessous, et l'alerte prend presque toute la fenêtre (720 × 320). */
+.notif.custom {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+.notif.custom .notif-text {
+  flex-basis: calc(100% - 40px);
+}
+.notif.custom .notif-actions {
+  flex-basis: 100%;
+  justify-content: flex-end;
+}
+.island[data-state="alert"]:has(.notif.custom) {
+  width: 660px;
+  height: 268px;
+}
+.wn-panel {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+.wn-carousel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.wn-cards {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+.wn-card {
+  width: 112px;
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  padding: 4px 6px 5px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease;
+}
+.wn-card:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.wn-card.sel {
+  border-color: var(--accent);
+  background: rgba(124, 196, 255, 0.14);
+}
+.wn-card.adopted .wn-name::after {
+  content: " ✓";
+  color: var(--accent);
+}
+.wn-canvas {
+  width: 80px;
+  height: 80px;
+}
+.wn-name {
+  font-size: 12px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wn-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.wn-lines {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .notif.prio-critical .notif-title {
   color: #ff8a8a;
@@ -740,6 +849,23 @@ body {
   border-radius: 1px;
   background: var(--accent);
 }
+/* En mini-île, la bulle du titre ondule au rythme tant que ça joue (classe
+   « playing », posée par le module quand les animations ne sont pas réduites). */
+.media-compact.playing .marquee {
+  animation: media-bob 1s ease-in-out infinite;
+}
+@keyframes media-bob {
+  0%,
+  100% {
+    translate: 0 0.6px;
+  }
+  50% {
+    translate: 0 -1.2px;
+  }
+}
+body[data-perf="eco"] .media-compact.playing .marquee {
+  animation: none;
+}
 .media-eq.on i {
   animation: media-eq 900ms ease-in-out infinite alternate;
 }
@@ -749,9 +875,10 @@ body {
 .media-eq.on i:nth-child(3) {
   animation-delay: -600ms;
 }
-/* Animations réduites : l'égaliseur reste immobile. */
+/* Animations réduites : l'égaliseur et le titre restent immobiles. */
 @media (prefers-reduced-motion: reduce) {
-  .media-eq.on i {
+  .media-eq.on i,
+  .media-compact.playing .marquee {
     animation: none;
   }
 }
@@ -2440,6 +2567,214 @@ body {
   margin-left: 6px;
   font-variant-numeric: tabular-nums;
 }
+.agents-usage-list li > b + span {
+  margin-left: 6px;
+}
+.agents-usage-cost {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.agents-usage-budget.over {
+  color: #ffb17a;
+}
+/* La courbe des 30 jours : une barre par jour, empilée par outil */
+.agents-chart-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 4px;
+}
+.agents-chart {
+  display: block;
+  width: 100%;
+  height: 56px;
+}
+.agents-chart-base {
+  stroke: currentColor;
+  stroke-opacity: 0.18;
+  stroke-width: 1;
+}
+.agents-chart .bar {
+  transform-origin: 50% 100%;
+  transform-box: fill-box;
+  animation: agents-bar-grow 360ms ease-out both;
+}
+.agents-chart-day:hover .bar {
+  filter: brightness(1.2);
+}
+@keyframes agents-bar-grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agents-chart .bar {
+    animation: none;
+  }
+}
+.agents-chart-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.agents-chart-legend {
+  display: flex;
+  gap: 10px;
+  color: var(--muted);
+}
+.agents-chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.agents-chart-swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+/* Le calendrier de contributions GitHub (agents/github-view.ts) : 53 colonnes
+   de 7 cases, cinq niveaux tirés de la couleur d'accent (pas le vert GitHub). */
+.agents-github {
+  /* 53 colonnes doivent tenir dans l'onglet (≈ 540 px, étiquettes comprises). */
+  --gh-cell: 8px;
+  --gh-gap: 1.5px;
+  --gh-0: color-mix(in srgb, var(--island-fg) 10%, transparent);
+  --gh-1: color-mix(in srgb, var(--accent) 32%, transparent);
+  --gh-2: color-mix(in srgb, var(--accent) 56%, transparent);
+  --gh-3: color-mix(in srgb, var(--accent) 80%, transparent);
+  --gh-4: var(--accent);
+}
+.agents-github .gh-headline {
+  font-size: 13px;
+}
+.gh-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  gap: 2px 4px;
+  max-width: 100%;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.gh-months {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: repeat(53, var(--gh-cell));
+  column-gap: var(--gh-gap);
+  font-size: 10px;
+  line-height: 12px;
+  color: var(--island-muted, #9aa0b4);
+  white-space: nowrap;
+}
+.gh-rows {
+  grid-column: 1;
+  grid-row: 2;
+  display: grid;
+  grid-template-rows: repeat(7, var(--gh-cell));
+  row-gap: var(--gh-gap);
+  font-size: 9px;
+  line-height: var(--gh-cell);
+  color: var(--island-muted, #9aa0b4);
+  text-align: right;
+  padding-right: 2px;
+}
+.gh-cells {
+  grid-column: 2;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: repeat(53, var(--gh-cell));
+  grid-template-rows: repeat(7, var(--gh-cell));
+  grid-auto-flow: column;
+  gap: var(--gh-gap);
+}
+.gh-cell {
+  display: block;
+  width: var(--gh-cell);
+  height: var(--gh-cell);
+  border-radius: 2px;
+  background: var(--gh-0);
+}
+.gh-future {
+  background: transparent;
+}
+.gh-l1 {
+  background: var(--gh-1);
+}
+.gh-l2 {
+  background: var(--gh-2);
+}
+.gh-l3 {
+  background: var(--gh-3);
+}
+.gh-l4 {
+  background: var(--gh-4);
+}
+.gh-cell:not(.gh-future):hover {
+  outline: 1px solid var(--island-fg);
+  outline-offset: 0;
+}
+/* La vague : chaque colonne s'allume un peu après la précédente (délai posé par la vue). */
+.gh-wave {
+  animation: gh-light 260ms ease-out both;
+}
+@keyframes gh-light {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+/* La case du jour : un contour, et elle pulse tant qu'elle est à zéro. */
+.gh-today {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.gh-today.gh-zero {
+  animation: gh-pulse 2.2s ease-in-out infinite;
+}
+/* Pendant la vague, la case du jour s'allume avec sa colonne, puis pulse. */
+.gh-today.gh-zero.gh-wave {
+  animation:
+    gh-light 260ms ease-out both,
+    gh-pulse 2.2s ease-in-out infinite;
+}
+@keyframes gh-pulse {
+  0%,
+  100% {
+    background: var(--gh-0);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+  50% {
+    background: var(--gh-1);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 85%, transparent);
+  }
+}
+/* Mode éco et « réduire les animations » : tout est fixe. */
+body[data-perf="eco"] .gh-wave,
+body[data-perf="eco"] .gh-today.gh-zero {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gh-wave,
+  .gh-today.gh-zero {
+    animation: none;
+  }
+}
+.gh-foot {
+  font-size: 11px;
+}
+.gh-note {
+  align-self: center;
+}
 .agents-session {
   display: flex;
   align-items: center;
@@ -3912,4 +4247,55 @@ body.retro .island .btn {
   .tip-bubble {
     animation: none;
   }
+}
+
+/* Agents IA : le bilan cliquable (la liste des fichiers changés). */
+.agents-files-box:empty {
+  display: none;
+}
+.agents-files-box {
+  margin: 6px 0;
+  padding: 8px 10px;
+  border-radius: 11px;
+  background: rgba(124, 196, 255, 0.1);
+  border: 1px solid rgba(124, 196, 255, 0.3);
+}
+.agents-files-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.agents-files {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.agents-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.agents-file code {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agents-file.gone code {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+.agents-other {
+  margin-top: 10px;
+}
+.agents-ask.capture,
+.agents-ask.open {
+  background: rgba(124, 196, 255, 0.1);
+  border-color: rgba(124, 196, 255, 0.3);
 }

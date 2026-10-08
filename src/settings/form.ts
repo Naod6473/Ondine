@@ -12,7 +12,8 @@ import { calendarsInput } from "./calendars-input";
 import { fieldWarnings } from "./field-checks";
 import { Bridge, IS_TAURI } from "../core/bridge";
 import { el } from "../island/dom";
-import { choice, row, stepper, toggle, wideRow } from "./controls";
+import { errorText } from "../core/log";
+import { chip, choice, row, stepper, toggle, wideRow } from "./controls";
 
 /** Les lignes d'un module (à mettre dans un `group`). */
 export function settingsRows(fields: SettingField[], values: Record<string, unknown>, onChange: (key: string, value: unknown) => void): HTMLElement[] {
@@ -37,12 +38,17 @@ export function settingsRows(fields: SettingField[], values: Record<string, unkn
           field.help,
         );
       case "string": {
-        const txt = el("input", { type: "text", class: "text", maxlength: field.maxLength ?? 500, "aria-label": field.label }) as HTMLInputElement;
+        // Plusieurs lignes (une grille, une liste) : une zone de texte, en pleine largeur.
+        const txt = (
+          field.multiline
+            ? el("textarea", { class: "text text-multi", maxlength: field.maxLength ?? 500, rows: 6, spellcheck: false, "aria-label": field.label })
+            : el("input", { type: "text", class: "text", maxlength: field.maxLength ?? 500, "aria-label": field.label })
+        ) as HTMLInputElement | HTMLTextAreaElement;
         txt.value = String(current ?? "");
         txt.addEventListener("change", () => onChange(field.key, coerce(field, txt.value)));
         // Un texte long prend toute la largeur ; un court reste à droite.
-        const line = (field.maxLength ?? 500) > 80 ? wideRow(field.label, txt, field.help) : row(field.label, txt, field.help);
-        if (field.check) checkedText(line, txt, field.check);
+        const line = field.multiline || (field.maxLength ?? 500) > 80 ? wideRow(field.label, txt, field.help) : row(field.label, txt, field.help);
+        if (field.check) checkedText(line, txt as HTMLInputElement, field.check);
         return line;
       }
       case "folders":
@@ -53,6 +59,8 @@ export function settingsRows(fields: SettingField[], values: Record<string, unkn
       }
       case "calendars":
         return wideRow(field.label, calendarsInput(field.max ?? 10, coerce(field, current) as CalendarEntry[], (v) => onChange(field.key, v)), field.help);
+      case "secret":
+        return wideRow(field.label, secretInput(field.credential, field.label, field.placeholder ?? "", onChange.bind(null, field.key)), field.help);
     }
   });
 }
@@ -118,4 +126,47 @@ function pathsInput(kind: "folders" | "files", extensions: string[], max: number
   };
   draw();
   return box;
+}
+
+/**
+ * Un secret (jeton…) rangé dans le Gestionnaire d'identifiants sous `key`,
+ * comme la page Identifiants : un état (« Enregistré » / « Aucun »), un champ
+ * masqué, « Enregistrer » et « Supprimer ». La valeur ne passe jamais par les
+ * réglages ; `onChange` est seulement prévenu (avec null) pour que l'onglet se
+ * redessine.
+ */
+function secretInput(key: string, label: string, placeholder: string, onChange: (value: unknown) => void): HTMLElement {
+  const status = chip("…");
+  const input = el("input", { type: "password", class: "text grow", placeholder, autocomplete: "off", "aria-label": label }) as HTMLInputElement;
+  const msg = el("div", { class: "row-help" });
+  const refresh = async () => {
+    const present = IS_TAURI && (await Bridge.credentialExists(key));
+    status.textContent = present ? "✓ Enregistré" : "Aucun";
+    status.className = `chip ${present ? "ok" : ""}`;
+  };
+  const act = async (fn: () => Promise<unknown>, done: string) => {
+    try {
+      await fn();
+      input.value = "";
+      msg.textContent = done;
+      onChange(null);
+    } catch (err) {
+      msg.textContent = errorText(err);
+    }
+    void refresh();
+  };
+  void refresh();
+  return el(
+    "div",
+    { class: "secret" },
+    el(
+      "div",
+      { class: "inline" },
+      status,
+      input,
+      el("button", { class: "btn primary", disabled: !IS_TAURI, onclick: () => void act(() => Bridge.credentialSet(key, input.value), "Enregistré.") }, "Enregistrer"),
+      el("button", { class: "btn", disabled: !IS_TAURI, onclick: () => void act(() => Bridge.credentialDelete(key), "Supprimé.") }, "Supprimer"),
+    ),
+    msg,
+  );
 }

@@ -126,6 +126,35 @@ pub fn open_in_vscode(_program: &Path, _dir: &Path) -> Result<(), String> {
     Err("disponible seulement sous Windows".into())
 }
 
+/// Ouvre VS Code sur le dossier `dir` et y montre le fichier `file` :
+/// `code <dossier> -g <fichier>` (chemins absolus validés, chaque chemin un
+/// paramètre). Avec `against` : `code --diff <ancien> <fichier>` à la place,
+/// pour comparer la version validée (écrite dans un fichier temporaire) au
+/// fichier actuel.
+#[cfg(windows)]
+pub fn open_file_in_vscode(program: &Path, dir: &Path, file: &Path, against: Option<&Path>) -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let mut cmd = Command::new(program);
+    match against {
+        Some(old) => cmd.arg("--diff").arg(old).arg(file),
+        None => cmd.arg(dir).arg("-g").arg(file),
+    };
+    if let Some(home) = program.parent() {
+        cmd.current_dir(home);
+    }
+    let is_script = program.extension().is_some_and(|e| e.eq_ignore_ascii_case("cmd") || e.eq_ignore_ascii_case("bat"));
+    if is_script {
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd.spawn().map(|_| ()).map_err(|e| format!("VS Code ne s'ouvre pas : {e}"))
+}
+
+#[cfg(not(windows))]
+pub fn open_file_in_vscode(_program: &Path, _dir: &Path, _file: &Path, _against: Option<&Path>) -> Result<(), String> {
+    Err("disponible seulement sous Windows".into())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

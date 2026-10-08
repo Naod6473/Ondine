@@ -26,9 +26,7 @@ ondine/
 ├─ scripts/winget-manifests.mjs  refait les manifestes winget d'une version (télécharge l'installateur, SHA-256)
 ├─ packaging/winget/          manifestes winget prêts (Naod6473.Ondine), pas encore proposés à Microsoft ; README = comment les soumettre
 ├─ mascots/                   UNE MASCOTTE = UN DOSSIER (manifest.json + fichiers)
-│  ├─ goutte-gomme/           la goutte gomme, dessinée en code (gum.ts)
-│  ├─ goutte-classique/       la première goutte, mêmes poses et animations que goutte/
-│  └─ goutte/                 la goutte : une image par émotion, animations, fondus (par défaut)
+│  └─ goutte-gomme/           la goutte gomme, dessinée en code (gum.ts), par défaut ; ses cousines viennent de gum-family.ts
 ├─ src/                       ── FRONT (TypeScript) ──
 │  ├─ main.ts                 démarrage de la fenêtre de l'île
 │  ├─ core/                   le socle partagé par tout le front
@@ -41,6 +39,7 @@ ondine/
 │  │  ├─ types.ts             forme des réglages (miroir du Rust)
 │  │  ├─ world-cities.ts · world-time.ts   villes et fuseaux, heure ailleurs (horloges, Lanceur)
 │  │  ├─ whats-new.ts         « Quoi de neuf » après une mise à jour (changelog.ts lit CHANGELOG.md)
+│  │  ├─ whats-new-mascots.ts les mascottes nouvelles de chaque version (carrousel de l'île)
 │  │  └─ log.ts               journal côté front (écrit dans le fichier du Rust)
 │  ├─ island/
 │  │  ├─ island-state.ts      machine à états de l'île (sans DOM)
@@ -209,6 +208,13 @@ qu'une fois les ressorts posés (au plus tard après 1,5 s).
     tire, `amount` px), `release` (on lâche), `shake` (allers-retours
     rapides pendant qu'on tire, `ShakeDetector`) ; `x`, `y` en px depuis le
     centre de la mascotte.
+  - *Le saut de l'île* (`hop` dans island.ts) : une alerte qui arrive fait
+    décoller l'île du bord (7 px, propriété `translate`, 420 ms) ; une
+    notification normale en mini-île, moitié moins. Rien avec « Réduire les
+    animations », en économie d'énergie ni en Classique sans animations. En
+    mini-île, la bulle du titre du module Musique ondule tant que ça joue
+    (classe `playing` sur `.media-compact`, `@keyframes media-bob`), avec les
+    mêmes exceptions (`body[data-perf="eco"]`).
 - **Arrivée du contenu** quand l'état change : les onglets puis les morceaux de
   la vue passent de flous à nets l'un après l'autre (`src/island/motion.ts`).
 - **Deux intensités** (Réglages → Apparence → Animations) : « Classique » joue
@@ -256,7 +262,8 @@ Lu à la fois par le front (import) et par le Rust (`include_str!`).
   "permissions": [],                  // files, clipboard, network, claude-api, credentials
   "settings": { "version": 1, "fields": [
     { "key": "name", "type": "string", "label": "Ton prénom", "default": "Simon" }
-  ]},                                 // types : string, number, boolean, select, folders, files
+  ]},                                 // types : string, number, boolean, select, folders, files,
+                                      // calendars, secret (jamais dans les réglages : coffre Windows)
   "views": ["compact", "expanded", "drop"],
   "commands": ["greet"],              // commandes Rust exposées
   "events": { "emits": ["hello.greeted"], "listens": ["hello.ping"] }
@@ -276,6 +283,8 @@ Ce qui est vérifié, et où :
   ramenée à quelque chose de valide (bornes, options) avant usage. Un champ
   `string` peut ajouter `"check": "cities"` (vérifications nommées de
   `src/settings/field-checks.ts`) : un avertissement s'affiche sous le champ.
+  Un champ `"essential": true` (1 à 3 par module) reste visible en mode Simple
+  de la fenêtre de réglages (voir « Fenêtre de réglages : mode Simple / Complet »).
 
 ### Les deux moitiés d'un module
 
@@ -341,6 +350,8 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `agents.ask`, `agents.event` « waiting » | Agents IA | question (la goutte violette et son « ? ») |
 | `mascot.state` | mascotte | |
 | `mascot.dance` `{on}` | surprises (src/eggs/) | elle danse en boucle (musique + mini-île) ; les autres réactions passent puis la danse reprend |
+| `shelf.downloaded`, `timer.done`, `clipboard.link-cleaned`, `capture.done`, `controls.usb-ejected`, `system.disk-low` | modules | une courte réaction de la mascotte (voir « La famille gomme ») |
+| `agents.ask` / `agents.ask.closed` | Agents IA | la pancarte « ? » tant qu'une question est ouverte |
 | `easter.word` `{word}` | Lanceur (mot magique + Entrée) | une surprise : `code-rain`, `retro`, `barrel-roll`, `answer` |
 | `easter.snack` | réglages (bouton « Essayer ») | Ondine mange la mini-île au prochain passage en mini |
 | `undo.offered` / `undo.done` / `undo.expired` | service d'annulation | bouton « Annuler » |
@@ -381,6 +392,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `agents.progress` `{source, who, title, step, total}` | Agents IA (Rust, outil MCP) | notification « 3/7 » remplacée à chaque étape |
 | `agents.quiet` `{on, summary?}` | Agents IA (Rust) | début / fin de la concentration ; à la fin, la notification du résumé |
 | `claude.thinking` / `claude.done` | Agents IA (Rust) | la mascotte réfléchit tant qu'une session de Claude Code travaille |
+| `agents.github-streak` `{days, stage}` | Agents IA (front) | série GitHub de 7, 30 ou 100 jours : la mascotte fête (`starstruck`) et un trésor entre au carnet (eggs.ts) |
 | `capture.pick` | Lanceur (front) | Capture ouvre la pipette |
 | `capture.color` `{ok, hex, text, error?}` | Capture (Rust) | notification « #3A7BD5 copié » ; l'onglet redemande l'historique (`colors`) |
 | `agenda.join` `{key, minutes}` | Agenda (Rust) | alerte « Réunion dans 2 min : … » avec « Rejoindre » (une fois par réunion en ligne) |
@@ -404,7 +416,8 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
   `%APPDATA%\Ondine\exports\`, import depuis Réglages → Sauvegarde (refusé s'il
   vient d'une version plus récente).
 - **Identifiants** (`credentials.rs`) : Gestionnaire d'identifiants Windows
-  (crate `keyring` 3). Liste fermée de clés (`anthropic-api-key`). Le front peut
+  (crate `keyring` 3). Liste fermée de clés (`anthropic-api-key`,
+  `github-token`, les liens iCal des agendas). Le front peut
   demander si une clé existe, en enregistrer ou en supprimer une, **jamais** la
   relire. Seul un module Rust avec la permission `credentials` peut la lire.
 - **Journal** (`log.rs`) : `%LOCALAPPDATA%\Ondine\logs\ondine.log`, niveaux
@@ -488,7 +501,9 @@ bus ──▶ MascotController (mascot-state.ts) ──▶ MascotRenderer (rende
   « de près ». En attendant une vraie planche par état, `effect` (breathe, bounce,
   jump, shake, wobble…) anime le corps par du code et `overlay` (zzz, confetti,
   hearts…) dessine un effet autour.
-- **Moteur `poses`** (`mascots/goutte/`, `src/mascot/renderers/poses.ts`) : une
+- **Moteur `poses`** (`src/mascot/renderers/poses.ts` ; les deux gouttes en images qui
+  l'utilisaient, `goutte/` et `goutte-classique/`, ont été retirées en 1.2.0, le moteur
+  reste pour une mascotte faite d'images) : une
   image 256 × 256 par émotion, toutes cadrées pareil (même ligne de base). Le
   manifeste a une table `poses` : `"joie": { "file": "joie.png", "eyes": [...],
   "blink": "closed" }`. `eyes` = les yeux blancs (centre et rayons) où le code
@@ -528,7 +543,12 @@ moteur `gum` ; le catalogue fabrique les cousines à partir de `GUM_FAMILY`
   ouverture de la bouche, joues gonflées…), les poses des mains, et la gelée du
   contour (`JellyRim` : chaque point est tenu par un ressort et relié à ses
   voisins, une pichenette lance une onde qui s'éteint).
-- `gum.ts` : le moteur. Rien n'y saute : le visage glisse vers sa cible, les
+- `gum-engine.ts` : le moteur, sans rien de l'appli : ce qu'il lui faut
+  (réglages de couleur et d'accessoires, boucle de dessin, « Réduire les
+  animations ») lui est passé dans un `GumEnv`. `gum.ts` le branche sur l'appli
+  (`GumRenderer` : settingsStore, `frameLoop` de core/perf.ts, Windows) ;
+  `src/mascot/gum-standalone.ts` sur une page web (le site, ci-dessous).
+  Rien n'y saute : le visage glisse vers sa cible, les
   yeux spéciaux (cœurs, étoiles, spirales) apparaissent en fondu, l'étirement et
   l'inclinaison suivent un ressort, elle se tasse avant un saut (on regarde
   l'animation 0,1 s plus loin), s'allonge en l'air et s'écrase en retombant, le
@@ -541,14 +561,68 @@ moteur `gum` ; le catalogue fabrique les cousines à partir de `GUM_FAMILY`
   météo) et les teintes (`TINTS`, plus l'arc-en-ciel).
 
 Réglages (Réglages → Mascotte → Style, seulement pour une mascotte gomme) :
-`mascot.color` (`auto` = la couleur de la forme), `mascot.hands` (`always`,
+`mascot.color` (`auto` = la couleur de la forme, une teinte de `TINTS`,
+`rainbow`, ou `custom` = la couleur libre), `mascot.customColor` (`#rrggbb`,
+défaut `#4da3ff` ; la roue teinte / saturation de `src/settings/color-wheel.ts`,
+avec une glissière de luminosité et la valeur à taper ; `paletteFromHex` dérive
+les quatre couleurs de la gomme : reflet plus clair, bas plus foncé avec la
+teinte qui glisse, contour), `mascot.hands` (`always`,
 `gestures`, `never`), `mascot.wearHead` (cap, straw, tophat, beanie, crown,
 bow), `mascot.wearEyes` (round, sun, heart), `mascot.wearNeck` (pearls,
-bowtie, scarf). Nouveaux déclencheurs : avant de dormir elle bâille (`yawn`),
+bowtie, scarf).
+
+Ce qu'elle porte en plus (`MascotRenderer.setExtras`, poussé par
+mascot-state.ts tant que ça dure) : les moufles sur les oreilles (pose `ears`,
+pendant la concentration `agents.quiet`), la pancarte « ? » (pose `sign`, un
+accessoire tenu par la moufle droite, d'`agents.ask` à `agents.ask.closed` ;
+elle passe devant les poses des animations en boucle, danse comprise, et
+s'affiche même sans mains ; un clic sur la mascotte ouvre alors l'onglet
+Agents IA, en fermant l'alerte affichée s'il y en a une), le parapluie
+(`weather.updated` qui annonce la pluie). Le moteur `poses` montre le « ? »
+des effets pour la pancarte ; les autres moteurs ignorent `setExtras`.
+
+Réactions aux modules (mascot-state.ts, courtes, pas pendant une tâche ni le
+sommeil, au plus une toutes les 4 s) : `shelf.downloaded` → starstruck,
+`timer.done` → cheer (le `task.finished` du minuteur qui suit ne la coupe pas),
+`clipboard.link-cleaned` → wink, `capture.done {ok}` → proud,
+`controls.usb-ejected` → wave, `system.disk-low` → worried.
+
+Réglages → Mascotte → Apparence → Taille (`mascot.size` : `small`, `normal`,
+`large`) : la place de la mascotte dans l'île ouverte (`data-mascot-size` sur
+`.island`, island.css : 48 / 64 / 88 px ouverte, 56 / 72 / 92 px en alerte et
+dépôt) et l'aperçu des réglages ; la mini-île garde ses 32 px.
+
+Réglages → Mascotte → Humeur → « Calme : moins de gestes spontanés »
+(`mascot.calm`, `calmMode()` dans mascot-state.ts). Coupé : l'ennui (elle passe
+du repos au sommeil sans bâiller), la bouderie au réveil, les réactions aux
+notifications et aux modules, les moufles sur les oreilles et le parapluie,
+les émotions qui suivent le PC (processeur, batterie ; l'humeur de fond
+reste), la danse et le goûter (src/eggs/eggs.ts), les visites au bord de
+l'écran (island.ts). Gardé : réveil, sommeil, travail, réflexion, succès,
+erreur, question et pancarte « ? », alerte, repas (dépôt de fichiers), les
+réponses aux clics et au survol. Les surprises gardent leur propre réglage
+(`mascot.surprises`). Nouveaux déclencheurs : avant de dormir elle bâille (`yawn`),
 réveillée deux fois en 5 min elle boude (`pout`), deux clics rapides → `laugh`,
 une tâche de plus de 10 min finie → `moved`, nouvelle version ou trésor trouvé →
 `starstruck` ; le travail d'un agent joue `concentree` (au clavier) et la
 réflexion `pensive` (main au menton).
+
+#### Le site vitrine (`site/`, `src/mascot/gum-standalone.ts`, `vite.site.config.ts`)
+
+La section « Les mascottes » de `site/index.html` dessine les quinze mascottes
+en gomme en direct, avec le vrai moteur : `npm run build:site` construit
+`src/mascot/gum-standalone.ts` en un seul fichier IIFE sans sourcemap,
+`site/media/ondine-gomme.js`, qui est **committé** (GitHub Pages sert `site/`
+tel quel). L'API : `OndineGomme.mount(canvas, { shape, anim, color, hands,
+reducedMotion, maxFps })` → `{ play(name), pause(on), destroy() }`, plus
+`OndineGomme.MASCOTS` (id, nom, forme) et `OndineGomme.GESTURES` (coucou, rire,
+danse). Le script n'entraîne ni réglages, ni Tauri, ni core/perf.ts ni l'île
+(test `tests/front/whats-new.test.ts`, qui suit les imports). Sur le site :
+repos en boucle à 30 images/s au plus, en pause hors de l'écran
+(IntersectionObserver), un geste à tour de rôle au survol ou au toucher ; sans
+JavaScript, l'image fixe `site/media/mascottes/<id>.png` (256 px, fond
+transparent, générée avec Playwright depuis le script construit) reste
+affichée. Le site est en français et tutoie.
 
 ## Les surprises (`src/eggs/`)
 
@@ -587,9 +661,9 @@ déclencheurs aux effets ; le réglage `mascot.surprises` (`all`, `seasonal`,
 - **Carnet des trésors** (`treasures.ts`) : chaque surprise trouvée est ajoutée
   à `mascot.treasures` (vérifié par le Rust) et annoncée une fois ; la page
   Mascotte des réglages montre le carnet (noms trouvés, indices pour les autres).
-- Les animations propres à la goutte (`pluie-glitch`, `esquive`, `danse`,
-  `fondue`) sont dans son manifeste ; une mascotte qui ne les a pas montre une
-  émotion à la place.
+- Les animations propres à une surprise (`pluie-glitch`, `esquive`, `fondue`)
+  sont lues dans le manifeste de la mascotte ; une mascotte qui ne les a pas
+  (la famille gomme) montre une émotion à la place.
 
 ## Module Étagère (phase 2)
 
@@ -1281,6 +1355,57 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   changé (date, taille) ; 3000 fichiers, 1 Go et 8 s au plus par passage,
   sinon `partial`. Gemini CLI n'écrit pas de compte de jetons : pas compté.
   Rien ne sort du PC ; le journal note seulement le volume lu.
+- Compteur de jetons, suite (`src/modules/agents/usage-view.ts` : la section
+  « Utilisation des agents » ; `src/modules/agents/cost.ts` : la logique pure,
+  testée dans `tests/front/agents.test.ts`) :
+  - la courbe des 30 jours : un SVG maison (320 × 56, une barre par jour,
+    empilée par outil, couleurs Claude `#4a9ad8` / Codex `#c47a30` validées
+    sur les fonds de l'île et pour le daltonisme, légende nommée), la date, le
+    total et le coût du jour au survol dans la légende ; l'arrivée des barres
+    est animée sauf avec « réduire les animations » ;
+  - le coût estimé : réglage `prices` (texte multiligne, type `string` +
+    `multiline` dans `form.ts` : une zone de texte), une ligne par modèle
+    « début du nom ; entrée ; sortie ; cache lu ; cache écrit » en $ par
+    million de jetons, virgule ou point ; la première ligne qui correspond au
+    début du nom gagne ; cache lu / écrit absents = 10 % / 125 % de l'entrée.
+    Grille par défaut INDICATIVE (Opus 15/75, Sonnet 3/15, Haiku 1/5,
+    GPT-5 1,25/10, à vérifier chez les éditeurs). Affiché « ≈ 12,40 $ »
+    (symbole après le nombre) sur le total, par modèle (« prix ? » si aucune
+    ligne ne correspond) et par projet (au prix du modèle le plus utilisé par
+    cet outil : les projets n'ont pas de modèle) ;
+  - l'alerte de budget : réglage `dailyBudget` ($ par jour, 0 = désactivé).
+    Quand le coût estimé du jour dépasse, une notification `high` (une seule
+    par jour : le jour est noté dans `localStorage` de l'île,
+    `agents.budget-alerted`) et `mascot.emote {emotion: "worried"}`. Vérifié
+    à chaque relecture du compteur (onglet ouvert) et, depuis `setup()`, par
+    `usage {days: 1}` toutes les 15 min (cadence `agentsBudget`) tant que le
+    budget est > 0 ;
+  - l'export CSV : le front construit le texte (`usageCsv` : bloc par jour,
+    outil et modèle avec entrée, sortie, cache lu, cache écrit, réponses,
+    coût estimé ; ligne vide ; bloc par projet ; séparateur « ; », virgule
+    décimale, CRLF) et la commande `usage_csv {text}` (permission `files`,
+    4 Mo au plus) l'écrit tel quel dans Téléchargements sous
+    `jetons-agents-AAAA-MM-JJ.csv` (« (2) » si le nom est pris), UTF-8 avec
+    BOM, puis `shelf.add` si l'Étagère est active, sinon l'Explorateur sur le
+    fichier. Mode démo : courbe de 30 jours, coûts, « export » fictif.
+- Historique gardé 7 jours (`modules/agents_history.rs`, fichier
+  `%APPDATA%\Ondine\agents-history.json` : `{v, entries: [{at, kind, tool,
+  project, durationMs, title, changes?}]}`) : chaque « a fini » et « vous
+  attend » y est noté (le genre, l'outil, le NOM du dossier, la date, la
+  durée — de la tâche depuis « au travail », ou de l'attente jusqu'au départ
+  de l'agent —, le titre écrit par Ondine et le bilan git), jamais le contenu
+  d'un message ni un chemin. Écrit via un fichier temporaire renommé, au plus
+  une fois par seconde (`save_soon`), hors du thread de l'interface ; relu au
+  démarrage (les « Derniers messages » de l'onglet, sans message, « il y a
+  2 j ») ; purgé des entrées de plus de 7 jours au démarrage et chaque minute ;
+  2000 entrées au plus ; un fichier abîmé est mis de côté. En mémoire,
+  `MAX_HISTORY` (30) reste la limite de l'onglet.
+- `weekly {offsetMinutes?}` (appelée par `weekly.rs`, pas par le front) :
+  `{done, waitMinutes, projects, days, prices}` — tâches finies, minutes
+  d'attente et projets (les plus actifs d'abord) des 7 derniers jours
+  d'après l'historique, les jetons des 7 jours (`days`, comme `usage`) et le
+  texte du réglage `prices` ; `null` si aucun agent dans la semaine. Le front
+  du bilan calcule total et coût avec `cost.ts`.
 - Bilan de fin de tâche (`modules/agents_git.rs`, réglage `showChanges`,
   activé) : à « a fini », le dossier du hook (`cwd`) passe par `check_path`.
   S'il est dans un dépôt git (un parent avec `.git`, jamais le dossier
@@ -1320,7 +1445,9 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   - `ondine_timer {minutes 1–180}` → `timer.start` ;
   - `ondine_ask {question, options 2–4, timeout_minutes 1–25}` →
     `agents.ask`, une alerte qui reste affichée avec un bouton par choix (et
-    dans l'onglet). Le clic (`answer {id, choice}`) renvoie `{"answer": "…"}`
+    dans l'onglet) ;
+  - `ondine_note`, `ondine_shelf`, `ondine_capture`, `ondine_open` : voir plus
+    bas (« Les outils MCP en plus »). Le clic (`answer {id, choice}`) renvoie `{"answer": "…"}`
     à l'agent ; sans clic avant le délai : `{"answer": null, "reason": …}`.
     5 questions en attente au plus. Délai plafonné à 25 min parce que Claude
     Code coupe un outil stdio muet après 30 min.
@@ -1350,6 +1477,112 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
     `PeekNamedPipe` le voit et l'alerte devient « Réglé ailleurs » ; même
     chose pour `ondine_ask` ;
   - Gemini CLI : impossible (un hook peut refuser, pas autoriser).
+- Les autres outils (`modules/agents_tools.rs`, front `agents/tools.ts`) :
+  même liste des deux côtés, un identifiant par outil (réglage « Proposer … »,
+  source des hooks, bouton). Lancement + reprise + hooks installés
+  automatiquement (même mécanisme que ci-dessus, `HOOK_TOOLS` dans agents.rs,
+  `hook_status` / `hook_install` / `hook_remove`) pour ceux dont la
+  documentation officielle décrit le format des hooks :
+  - GitHub Copilot CLI (`copilot`) : `%USERPROFILE%\.copilot\hooks\ondine.json`
+    (ou `COPILOT_HOME\hooks\`), `{version: 1, hooks: {événement: [{type:
+    "command", exec, args, timeoutSec}]}}` — `exec` + `args` : lancé sans
+    shell, le JSON sur l'entrée standard ; `userPromptSubmitted` → au travail,
+    `agentStop` → a fini, `notification` → attend (`notification_type`),
+    `sessionEnd` ; `permissionRequest` n'est pas branché (ce hook attend une
+    décision). Reprise `copilot --continue`.
+  - Cursor CLI (`agent`) : `%USERPROFILE%\.cursor\hooks.json`, `{version: 1,
+    hooks: {stop: [{command}]}}`, commande `"chemin" notify --source cursor`
+    (forme cmd.exe), le JSON sur l'entrée standard (`hook_event_name`,
+    `conversation_id`, `workspace_roots[0]` comme dossier) ; `beforeSubmitPrompt`,
+    `stop`, `sessionEnd`. Reprise `agent --continue`. Que ces hooks se
+    déclenchent aussi dans l'agent en ligne de commande vient du forum de
+    Cursor, pas de la page officielle (voir « À tester »).
+  - Qwen Code (`qwen`) : `%USERPROFILE%\.qwen\settings.json`, même forme que
+    Claude Code (`hooks.Stop[].hooks[]`), commande PowerShell `$input | &
+    'chemin' notify --source qwen` avec `shell: "powershell"` ;
+    `UserPromptSubmit`, `Stop`, `Notification` (`permission_prompt`,
+    `idle_prompt`), `SessionEnd`. Reprise `qwen --continue`.
+  - Goose (`goose`) : un plugin à nous,
+    `%USERPROFILE%\.agents\plugins\ondine\hooks\hooks.json` (+ `plugin.json`
+    écrit à l'installation s'il manque), forme Claude Code, commande `'chemin'
+    notify --source goose` (Goose lance avec `sh -c`) ; `UserPromptSubmit`,
+    `Stop`, `SessionEnd` (le JSON reçu a `event`, `session_id`,
+    `working_dir`). Reprise `goose session --resume`.
+  - Lancement seulement (pas de hooks shell, ou un format non vérifié) :
+    OpenCode (`opencode`, reprise `--continue` ; ses « plugins » sont du
+    JavaScript), Kiro CLI (`kiro-cli`, reprise `chat --resume` ; ses hooks
+    sont par projet dans `.kiro\hooks\`, pas dans un fichier utilisateur),
+    Hermes (`hermes`, reprise `--continue` ; hooks shell dans `config.yaml`,
+    format non vérifié), Aider (`aider`), Amp (`amp` ; pas de reprise de la
+    dernière session documentée, seulement par identifiant).
+  - Les événements des autres outils sont ramenés aux nôtres
+    (`agents_tools::canonical_event` : `agentStop`, `stop` → Stop…), le numéro
+    de session lu dans `session_id`, `conversation_id` ou `sessionId`, le
+    dossier dans `cwd`, `working_dir` ou `workspace_roots[0]`. Le serveur MCP
+    et le hook d'autorisation ne sont pas proposés pour ces outils (formats
+    non vérifiés).
+  - « Autre outil » : réglage `otherTool` (le mot de commande : lettres,
+    chiffres, tirets, points, soulignés, 32 caractères au plus, ni option ni
+    chemin ; `agents_tools::valid_word`), lancé comme les autres (chemin
+    complet trouvé dans le PATH). `launch {tool: "other"}`. Le guide de
+    l'onglet montre la ligne `"chemin\ondine.exe" notify --source other
+    --event done` (`hook_config` → `other`) : `cli.rs` comprend `--event done |
+    waiting | working | ended` sans JSON, et `understand` en fait « L'outil a
+    fini » / « L'outil attend votre réponse ».
+  - Les icônes des outils (`src/assets/icons-line/<outil>.svg`, `icon.ts`
+    `agentIcon`) sont des pictogrammes au trait maison ; sans image en
+    couleur, le pack couleur montre aussi le trait.
+- Le résumé de l'agent dans « a fini » (réglage `doneSummary`, activé) : le
+  hook `Stop` de Claude Code donne `transcript_path`. Le chemin n'est accepté
+  que s'il est absolu, finit en `.jsonl` et se trouve (canonisé) sous
+  `…\.claude\projects` (`agents_resume::transcript_path`) ; on y lit la
+  dernière phrase (`last_message_cut`, 200 caractères), seulement si elle
+  vient de l'assistant. Elle va dans `Event.summary` → le corps de la
+  notification, avec « Copier » (`copy_text {text}`, presse-papiers). Les
+  autres outils donnent parfois un chemin de transcription (Copilot
+  `transcriptPath`, Cursor `transcript_path`) mais pas sous le dossier de
+  Claude Code ni dans un format connu : ignoré. Jamais dans le journal.
+- Bilan git cliquable : « Fichiers… » sur la notification du bilan ouvre
+  l'île sur l'onglet et un panneau (`agents/report-view.ts`) demande
+  `report_files {path}` → `{root, files: [{path, added, removed, untracked,
+  exists}]}` (`agents_git::file_list` : les mêmes `git status` / `git diff
+  --numstat`, 20 fichiers au plus, les plus changés d'abord). Chaque fichier
+  a « Ouvrir » (`open_vscode_file {dir, file}` : `code <racine> -g <fichier>`
+  par le chemin complet de VS Code, le chemin relatif vérifié par
+  `safe_relative` — pas de `..`, pas absolu — puis joint à la racine et
+  validé par `check_path`) et « Diff » (`{…, diff: true}` : `git show
+  HEAD:<fichier>` en lecture seule dans `%TEMP%\ondine-diff\<date>\HEAD ·
+  <nom>`, puis `code --diff <copie> <fichier>` ; pas pour un fichier nouveau).
+  Seulement sur votre clic.
+- Rappels d'attente (`modules/agents_wait.rs`, réglage `remindWaiting`,
+  activé) : le fil d'entretien (5 s) regarde chaque session « waiting » ;
+  à 10 min puis 30 min d'attente, un `agents.event` de type `info` (« Claude
+  attend toujours votre réponse · depuis 10 min · site-ondine », avec « Y
+  aller »), et c'est tout (`Session.reminded`). Rien pendant la
+  concentration. En plus, côté front (`agents/wait-watch.ts`) : tant qu'une
+  session attend et que l'île est en mini-île (`island.state` → `compact`),
+  `mascot.emote {emotion: "wave"}` toutes les deux minutes.
+- Les outils MCP en plus (`modules/agents_mcp_extra.rs`, déclarés dans
+  `cli.rs`, même réglage `mcp` et même limite de débit) ; chaque demande
+  porte le dossier courant de l'agent (`cwd`) :
+  - `ondine_note {text}` (2000 caractères au plus) → bus `notes.add {text}`,
+    que le module Notes écoute (nouvelle note en tête, mêmes limites que
+    `note_save`) ; l'agent reçoit « Note ajoutée » ;
+  - `ondine_shelf {path}` : `check_path`, un fichier existant, sous le dossier
+    de la session (`cwd`) ou le dossier utilisateur (`under_allowed`) → bus
+    `shelf.add {paths}` (le mécanisme de Capture) ;
+  - `ondine_capture {reason?}` : une question de type `capture` (« Claude
+    demande une capture d'écran », « Capturer » / « Refuser », 60 s) ; au
+    clic, `capture.request {then: "save"}` que le front de Capture écoute
+    (même outil de capture de Windows), puis `capture.done` revient au Rust
+    d'Agents IA (`State.capture`), qui rend le chemin du PNG à l'agent (150 s
+    au plus, une seule capture en attente) ; sans clic : refus ;
+  - `ondine_open {target}` : une adresse http(s) (`web_url` : schéma, pas
+    d'espace ni de contrôle, 2000 caractères) ou un fichier existant sous la
+    session ou le dossier utilisateur ; question de type `open` (« Ouvrir » /
+    « Refuser », 60 s) ; au clic, le lien part à `shell_open`, le fichier à
+    `launcher::open_checked` (un programme est seulement montré dans
+    l'Explorateur, jamais lancé).
 - Mode concentration (`quiet_start {minutes: 25 | 60 | 120 | 0}`, 0 = jusqu'à
   `quiet_stop`) : les notifications des agents sont gardées (`held`, 100 au
   plus) au lieu d'être montrées, pas de fête de la mascotte, les questions
@@ -1357,6 +1590,40 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   permission passent tout de suite au terminal. À la fin : `agents.quiet
   {on: false, summary}`, une seule notification (« Claude a fini 2 tâches ·
   Codex t'attend · 1 question en attente »). En mémoire seulement.
+- Calendrier de contributions GitHub (`modules/agents_github.rs`, vue
+  `src/modules/agents/github-view.ts`, logique pure `github-logic.ts`,
+  commande `github_calendar` → `{login, total, streak, today, days: [{date,
+  count, level}], fetchedAt, private, fromCache}`) : la grille 53 × 7 du
+  profil, sous le compteur de jetons. Réglages `githubLogin` (texte, lettres,
+  chiffres et tirets, 39 au plus, vérifié des deux côtés ; vide = rien n'est
+  demandé) et `githubToken` (champ `secret` : la valeur va dans le
+  Gestionnaire d'identifiants sous la clé « github-token », permission
+  `credentials`, jamais dans les réglages). C'est la SEULE fonction de
+  l'onglet qui parle à Internet : sans jeton, la page HTML
+  `https://github.com/users/<login>/contributions` (les contributions
+  publiques ; parseur tolérant par recherche de balises `<td data-date
+  data-level>` et `<tool-tip for>`, testé sur un extrait figé) ; avec un jeton
+  (lecture seule, read:user), GraphQL `api.github.com/graphql`
+  (`contributionsCollection.contributionCalendar`, les privées comprises).
+  Limites : au plus une demande toutes les 30 minutes par identifiant (en
+  mémoire ; 2 minutes après une erreur), 10 s, 2 Mo, HTTPS seulement, jamais
+  pendant une présentation (`presentation_busy`) ni le mode concentration (le
+  calendrier déjà lu est montré). Copie sur disque `github-calendar.json`
+  (dossier de données) pour l'affichage immédiat au démarrage. Le journal ne
+  note que « calendrier GitHub : lu, N jours ». Le Rust complète les jours
+  manquants (du dimanche d'il y a 52 semaines à aujourd'hui) et calcule la
+  série (jours d'affilée, jusqu'à hier si rien encore aujourd'hui). Front :
+  « 336 contributions cette année · série de 12 jours », mois en haut, Lun /
+  Mer / Ven à gauche, cinq niveaux tirés de `--accent` ; au premier affichage
+  de la session, les colonnes s'allument de gauche à droite (1,2 s) ; la case
+  du jour pulse tant qu'elle est à zéro ; survol « 3 contributions le 8
+  octobre » ; « ↻ » redemande (ou dit « Déjà à jour » si les 30 minutes ne
+  sont pas passées). Rien ne bouge avec « réduire les animations » ni en mode
+  éco. Séries : à 7, 30 et 100 jours, une fois par palier et par série (clé
+  localStorage « premier jour:palier »), la vue publie `agents.github-streak
+  {days, stage}` ; `src/eggs/eggs.ts` fait `starstruck` et range le trésor
+  `github-<palier>` dans le carnet. Mode démo : une année inventée
+  (`simon-demo`).
 
 ## Profils (`src-tauri/src/services/profiles.rs`, `src/settings/profiles-page.ts`)
 
@@ -1420,6 +1687,14 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   `t()`, `summary.ts`). `weekly.show` (bouton des réglages) montre `peek`, la
   semaine en cours. Mode démo : `due` reste vide, `peek` répond une fausse
   semaine.
+- Carte « Agents IA » : `due` et `peek` ajoutent `agents` à leur réponse
+  (`with_agents` : `modules::invoke(app, "agents", "weekly", {})` ; `null` si
+  le module est désactivé ou sans agent dans la semaine). Le front
+  (`agentsParts`, `summary.ts` ; coût via `src/modules/agents/cost.ts`)
+  ajoute « Agents IA : 23 tâches finies, 2 h 10 d'attente de votre part,
+  3,1 M de jetons (≈ 12 $), projets : site-ondine, Island ». Le bilan
+  programmé ne sort toujours que si la semaine classique a quelque chose ;
+  `peek` le montre aussi avec seulement des agents.
 
 ## Quoi de neuf (`src/core/whats-new.ts`, `src/core/changelog.ts`)
 
@@ -1434,6 +1709,23 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   plusieurs lignes) ; chaque puce est « français · English » : on garde la
   moitié de la langue de l'interface (coupure au premier « · » qui suit une
   fin de phrase). Trois puces au plus, 120 caractères chacune.
+- Quand la version apporte de nouvelles mascottes (`whats-new-mascots.ts` :
+  `NEW_MASCOTS`, version → ids ; pour 1.2.0, toute la famille gomme sauf la
+  goutte gomme ; une version sans entrée garde le texte seul), la notification
+  porte un contenu (`content` de `NotificationRequest`, monté dans l'alerte
+  seulement et défait avec la carte) : le panneau
+  `src/island/whats-new-panel.ts`. Un carrousel des vraies mascottes en gomme
+  (moteur `gum`, un canvas chacune), trois à la fois (une seule en économie
+  d'énergie), flèches, nom dessous ; à tour de rôle l'une fait coucou, rit ou
+  danse (rien avec « Réduire les animations ») ; un clic choisit une carte,
+  « Adopter » écrit `mascot.id` (et `mascot.enabled`) : l'île change de
+  mascotte tout de suite, et elle fait coucou. Les puces du CHANGELOG sont
+  sous le carrousel. « Plus tard » ou × ferment ; les moteurs sont détruits.
+  Classe CSS `custom` sur la carte (île 660 × 268).
+- Rouvrable : Réglages → Général → À propos → « Voir les nouveautés », et en
+  mode démo la scène « Quoi de neuf » (Réglages → Captures d'écran). Le
+  message `app.whats-new` peut porter `{ version }` (dans un navigateur :
+  `window.ondineBus.inject("app.whats-new", { version: "1.2.0" })`).
 - Notification `high` et `sticky` (l'île s'ouvre en alerte, plus grande quand
   le texte a plusieurs lignes : classe `lines`), avec « Tout voir » →
   commande `release_page_open` (Rust, `update.rs`) : ouvre
@@ -1568,3 +1860,33 @@ En éco, en plus : les effets « Studio » (flou → net) sont remplacés par ce
   de 2 fois par seconde.
 
 Pour comparer : Réglages → Général → À propos → « Ressources utilisées ».
+
+## Fenêtre de réglages : mode Simple / Complet (`src/settings/visibility.ts`, `src/settings/mode.ts`)
+
+- Réglage `general.settingsMode` : `"simple"` (défaut, aussi pour un fichier
+  d'avant ce réglage) ou `"full"`. Rust : champ `settings_mode`, `Default`,
+  `sanitize` (autre valeur → "simple"). Interrupteur « Simple / Complet » dans
+  la barre latérale, sous la recherche.
+- En Simple, chaque page ne montre que l'essentiel ; les autres lignes sont
+  cachées **à leur place** (rien ne bouge d'un mode à l'autre), un bloc dont
+  toutes les lignes sont cachées disparaît, et une ligne « N réglages de plus en
+  mode Complet · Tout afficher » termine la page (le bouton passe en Complet).
+- L'essentiel : pour un module, les champs `"essential": true` du manifeste
+  (plus `MODULE_ESSENTIALS` dans visibility.ts pour un manifeste qu'on ne
+  pouvait pas toucher : Bilan de la semaine) ; l'en-tête de la page (Activé,
+  Permissions, À propos) reste. Pour les pages de l'île, `ISLAND_ESSENTIALS`
+  (clé = le `data-key` de la ligne, c'est-à-dire son libellé) : Général (Langue,
+  S'adresser à moi, Lancer avec Windows, Bord de l'écran, Mises à jour
+  automatiques), Apparence (Thème, Style des icônes), Onglets (la liste des
+  modules, marquée `data-essential` dans le DOM), Mascotte (Afficher la
+  mascotte, Mascotte, Couleur), Profils (Profil actif). Règles et les trois
+  pages Sécurité restent entières (`WHOLE_PAGE`) : courtes, ou pas une liste
+  de réglages.
+- `mode.ts` (`applyMode`) travaille sur la page déjà dessinée : `.row[data-key]`
+  et `section.group[data-key]` ; un conteneur `data-essential` garde tout ce
+  qu'il contient ; `data-follows="<clé>"` suit la ligne de cette clé (le pli des
+  surprises). La recherche trouve tout : un résultat caché en Simple porte
+  l'étiquette « réglage avancé », et y aller (comme un lien profond vers une
+  ligne cachée) passe en Complet avant de faire briller la ligne.
+- Tests : `tests/front/visibility.test.ts` (champs visibles selon le mode,
+  compte « N de plus », 1 à 3 champs essentiels par module, défauts).
