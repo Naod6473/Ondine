@@ -1266,6 +1266,21 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   `assistant` (pas les résultats d'outils, les sous-agents, les commandes
   `<command-…>`), sur une ligne, coupé à 120 caractères. Réglage
   `resumePreview` (activé) ; jamais journalisé.
+- Compteur de jetons (`modules/agents_usage.rs`, commande
+  `usage {offsetMinutes, days}` → `{days: [{day, tool, model, input, output,
+  cacheRead, cacheWrite, messages}], projects: [{name, tool, …}], tools,
+  files, partial}`, réglage `usage`, activé) : quand l'onglet est ouvert
+  (puis au plus toutes les 60 s, ou « ↻ »), lit les journaux de Claude Code
+  (`~/.claude/projects/**/*.jsonl`, sous-agents compris : les lignes
+  `assistant` avec `message.usage`, une réponse comptée une fois par
+  `message.id` + `requestId`) et de Codex
+  (`~/.codex/sessions/AAAA/MM/JJ/rollout-*.jsonl` : la différence entre deux
+  `token_count`), modifiés depuis le début de la période. Regroupé par jour
+  local (`offsetMinutes` : celui de JavaScript), outil et modèle, et par
+  projet (le nom du dossier seulement). Un fichier n'est relu que s'il a
+  changé (date, taille) ; 3000 fichiers, 1 Go et 8 s au plus par passage,
+  sinon `partial`. Gemini CLI n'écrit pas de compte de jetons : pas compté.
+  Rien ne sort du PC ; le journal note seulement le volume lu.
 - Bilan de fin de tâche (`modules/agents_git.rs`, réglage `showChanges`,
   activé) : à « a fini », le dossier du hook (`cwd`) passe par `check_path`.
   S'il est dans un dépôt git (un parent avec `.git`, jamais le dossier

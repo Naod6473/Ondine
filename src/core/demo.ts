@@ -331,6 +331,31 @@ const DEMO_USB = { root: "E:\\", letter: "E:", label: "KINGSTON", removable: tru
 /** L'historique de la pipette (module Capture) : une petite palette inventée. */
 const DEMO_COLORS = ["#3A7BD5", "#00D2FF", "#F7B733", "#FC4A1A", "#6A3093", "#2ECC71", "#1F2937", "#F5F5F4"];
 
+/** Le compteur de jetons (onglet Agents IA) : sept jours inventés, Claude Code surtout, un peu de Codex. */
+function agentsUsage() {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const days = [];
+  for (let back = 6; back >= 0; back--) {
+    const d = new Date();
+    d.setDate(d.getDate() - back);
+    const day = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const k = 1 + ((back * 7) % 5); // des journées plus ou moins chargées
+    days.push({ day, tool: "claude-code", model: "claude-opus-5-5", input: 1_800 * k, output: 9_500 * k, cacheRead: 410_000 * k, cacheWrite: 38_000 * k, messages: 24 * k });
+    if (back % 3 === 0) days.push({ day, tool: "codex", model: "gpt-5-codex", input: 22_000, output: 6_000, cacheRead: 90_000, cacheWrite: 0, messages: 9 });
+  }
+  return {
+    days,
+    projects: [
+      { name: "site-ondine", tool: "claude-code", input: 30_000, output: 150_000, cacheRead: 6_400_000, cacheWrite: 600_000, messages: 380 },
+      { name: "Island", tool: "claude-code", input: 8_000, output: 40_000, cacheRead: 1_900_000, cacheWrite: 170_000, messages: 110 },
+      { name: "site-ondine", tool: "codex", input: 66_000, output: 18_000, cacheRead: 270_000, cacheWrite: 0, messages: 27 },
+    ],
+    tools: ["claude-code", "codex"],
+    files: 14,
+    partial: false,
+  };
+}
+
 /** Les hooks des agents (onglet Agents IA) : Claude branché, Codex sur un ancien chemin. */
 const DEMO_HOOKS: Record<string, string> = { "claude-code": "installed", codex: "stale", gemini: "absent" };
 function demoHooks() {
@@ -545,6 +570,9 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return [{ index: 0, found: true, who: "assistant", text: "Le site est à jour.", at: Date.now() - 2 * 3600_000 }];
     case "agents.hook_config":
       return { exe: "C:\\Program Files\\Ondine\\ondine.exe" };
+    // Le compteur de jetons : une semaine d'usage inventée, Claude Code et Codex.
+    case "agents.usage":
+      return agentsUsage();
     case "agents.answer":
       bus.inject("agents.ask.closed", { id: Number(args.id), expired: false }, "agents");
       return null;

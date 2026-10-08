@@ -45,6 +45,7 @@ use tauri::AppHandle;
 use super::agents_git as git;
 use super::agents_hooks as hooks;
 use super::agents_resume as resume;
+use super::agents_usage as usage;
 use super::{ModuleContext, RustModule};
 use crate::services::bus::BusMessage;
 use crate::cli::MAX_MESSAGE;
@@ -173,6 +174,8 @@ type Shared = Arc<Mutex<State>>;
 #[derive(Default)]
 pub struct Agents {
     state: Shared,
+    /// Les journaux déjà lus pour le compteur de jetons (agents_usage.rs).
+    usage: Mutex<usage::Cache>,
 }
 
 impl RustModule for Agents {
@@ -443,6 +446,24 @@ impl RustModule for Agents {
                     })
                     .collect();
                 Ok(Value::Array(list))
+            }
+            // { offsetMinutes, days } : les jetons des agents (agents_usage.rs), lus
+            // dans leurs journaux sur ce PC depuis le début du jour local d'il y a
+            // `days` − 1 jours. Réglage « usage ».
+            "usage" => {
+                if ctx.settings().get("usage").and_then(Value::as_bool) == Some(false) {
+                    return Err("compteur désactivé dans les réglages".into());
+                }
+                let offset = args.get("offsetMinutes").and_then(Value::as_i64).unwrap_or(0).clamp(-900, 900) as i32;
+                let days = args.get("days").and_then(Value::as_u64).unwrap_or(30).clamp(1, 90);
+                let since = usage::start_of_day(now_ms().saturating_sub((days - 1) * 86_400_000), offset);
+                let mut cache = self.usage.locked();
+                let report = usage::scan(&mut cache, &claude_dir().join("projects"), &codex_dir().join("sessions"), since, offset);
+                let read = report["readBytes"].as_u64().unwrap_or(0);
+                if read > 0 {
+                    ctx.log_info(format!("compteur de jetons : {} fichiers, {} Ko lus en {} ms", report["files"], read / 1024, report["elapsedMs"]));
+                }
+                Ok(report)
             }
             // { path } : ouvre VS Code dans ce dossier (bouton du bilan de fin de tâche).
             "open_vscode" => {
@@ -1327,6 +1348,11 @@ fn tool_dir(var: &str, default: &str) -> PathBuf {
 /// Le dossier de Claude Code (%USERPROFILE%\.claude, ou CLAUDE_CONFIG_DIR).
 fn claude_dir() -> PathBuf {
     tool_dir("CLAUDE_CONFIG_DIR", ".claude")
+}
+
+/// Le dossier de Codex (%USERPROFILE%\.codex, ou CODEX_HOME).
+fn codex_dir() -> PathBuf {
+    tool_dir("CODEX_HOME", ".codex")
 }
 
 /// Les entrées d'Ondine à écrire (les mêmes que « Copier la configuration »),

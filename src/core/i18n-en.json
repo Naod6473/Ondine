@@ -1425,7 +1425,26 @@
 "image trop grande pour un GIF": "image too large for a GIF",
 "image de la mauvaise taille": "image of the wrong size",
 "Historique": "History",
-"a fini à l'instant": "finished just now"
+"a fini à l'instant": "finished just now",
+"Utilisation des agents": "Agent usage",
+"Aujourd'hui": "Today",
+"7 jours": "7 days",
+"30 jours": "30 days",
+"Relire les journaux": "Re-read the logs",
+"Lecture des journaux…": "Reading the logs…",
+"Rien sur cette période.": "Nothing in this period.",
+"Aucun journal de Claude Code ni de Codex sur ce PC.": "No Claude Code or Codex logs on this PC.",
+"Entrée": "Input",
+"Sortie": "Output",
+"Cache lu": "Cache read",
+"Cache écrit": "Cache written",
+"Projets (30 jours)": "Projects (30 days)",
+"Journaux trop nombreux : compte partiel (les plus récents d'abord).": "Too many logs: partial count (most recent first).",
+"Lu dans les journaux de Claude Code et Codex sur ce PC. Rien n'est envoyé.": "Read from the Claude Code and Codex logs on this PC. Nothing is sent.",
+"Compter les jetons des agents": "Count the agents' tokens",
+"Lu dans les journaux de Claude Code et de Codex sur ce PC, seulement quand l'onglet Agents IA est ouvert : jetons par jour, par modèle et par projet (le nom du dossier). Rien n'est envoyé.": "Read from the Claude Code and Codex logs on this PC, only while the AI Agents tab is open: tokens per day, per model and per project (the folder name). Nothing is sent.",
+"Un compteur de jetons, lu dans les journaux locaux de Claude Code et de Codex, montre ce que les agents ont consommé par jour, par modèle et par projet.": "A token counter, read from the local Claude Code and Codex logs, shows what the agents used per day, per model and per project.",
+"compteur désactivé dans les réglages": "counter turned off in the settings"
 },
 "patterns": [
 [
@@ -2683,6 +2702,10 @@
 [
 "^(.+?) a fini$",
 "$1 is done"
+],
+[
+"^([\\d\\s]+)\\ réponses?$",
+"$1 responses"
 ]
 ]
 }
