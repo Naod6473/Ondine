@@ -1533,7 +1533,9 @@
 "patterns": [
 [
 "^(\\d+)\\ réglages?\\ de\\ plus\\ en\\ mode\\ Complet$",
-"$1 more settings in Full mode",
+"$1 more settings in Full mode"
+],
+[
 "^1 contribution cette année$",
 "1 contribution this year"
 ],

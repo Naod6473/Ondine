@@ -2597,6 +2597,7 @@ body {
   width: 8px;
   height: 8px;
   border-radius: 2px;
+}
 /* Le calendrier de contributions GitHub (agents/github-view.ts) : 53 colonnes
    de 7 cases, cinq niveaux tirés de la couleur d'accent (pas le vert GitHub). */
 .agents-github {
