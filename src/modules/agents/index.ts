@@ -21,6 +21,7 @@ import { Bridge } from "../../core/bridge";
 import { el } from "../../island/dom";
 import { pacedInterval } from "../../core/perf";
 import { agentIcon, icon } from "../../island/icon";
+import { mountGithub } from "./github-view";
 import { changesLine, namesLine, since, type ChangeSummary } from "./texts";
 import { usageSection, watchBudget } from "./usage-view";
 
@@ -292,13 +293,15 @@ export const agents: IslandModule = {
       // Le compteur de jetons (journaux locaux de Claude Code et Codex) : usage-view.ts.
       const usage = usageSection(api);
       const usageBox = usage.box;
+      // Le calendrier de contributions GitHub (github-view.ts), sous le compteur.
+      const githubBox = el("section", { class: "agents-usage agents-github" });
       const list = el("ul", { class: "agents-list" });
       const status = el("p", { class: "muted agents-status" });
       const guide = el("details", { class: "agents-guide" });
       const launch = el("div", { class: "agents-launch" });
       const projectRows = el("ul", { class: "agents-projects" });
       root.append(
-        el("div", { class: "agents" }, launch, projectRows, asks, status, quiet, board, usageBox, el("div", { class: "muted agents-subtitle" }, "Derniers messages"), list, guide),
+        el("div", { class: "agents" }, launch, projectRows, asks, status, quiet, board, usageBox, githubBox, el("div", { class: "muted agents-subtitle" }, "Derniers messages"), list, guide),
       );
 
       // ── Lancer un agent ────────────────────────────────────────────────────
@@ -681,6 +684,8 @@ export const agents: IslandModule = {
         );
       };
 
+      const stopGithub = mountGithub(githubBox, api);
+
       const draw = async () => {
         // Une session vient peut-être de finir : sa dernière phrase a changé.
         void loadLast();
@@ -758,6 +763,7 @@ export const agents: IslandModule = {
         redraws.delete(draw);
         stopTimer();
         usage.stop();
+        stopGithub();
       };
     },
   },

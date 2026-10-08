@@ -13,6 +13,7 @@
 // Toutes les données d'ici sont inventées.
 
 import { Bridge } from "./bridge";
+import { levelFor } from "../modules/agents/github-logic";
 import type { Bus, BusMessage } from "./bus";
 import { settingsStore } from "./settings-store";
 
@@ -373,6 +374,40 @@ function agentsWeek() {
     prices: "claude-opus ; 15 ; 75 ; 1,5 ; 18,75\ngpt-5-codex ; 1,25 ; 10 ; 0,125 ; 0",
   };
 }
+/**
+ * Le calendrier de contributions GitHub : une année inventée mais plausible
+ * (des semaines chargées, des week-ends calmes, une série en cours), tirée au
+ * sort de façon fixe pour que la grille soit la même à chaque ouverture.
+ */
+function githubCalendar(fromCache: boolean) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  // Le dimanche d'il y a 52 semaines, comme le Rust.
+  const start = new Date(today);
+  start.setDate(start.getDate() - start.getDay() - 52 * 7);
+  let seed = 1234;
+  const rand = () => ((seed = (seed * 48271) % 2147483647) % 1000) / 1000;
+  const days: { date: string; count: number; level: number }[] = [];
+  const counts: number[] = [];
+  for (const d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) {
+    const weekend = d.getDay() === 0 || d.getDay() === 6;
+    const age = (today.getTime() - d.getTime()) / 86_400_000;
+    const r = rand();
+    let count = weekend ? (r < 0.8 ? 0 : 1 + Math.floor(r * 3)) : r < 0.55 ? 0 : 1 + Math.floor(r * 5);
+    // Une période de vacances en août, et une série de 12 jours qui court jusqu'à hier.
+    if (d.getMonth() === 7 && d.getDate() > 8 && d.getDate() < 24) count = 0;
+    if (age < 12 && age >= 1) count = Math.max(count, 1 + Math.floor(r * 4));
+    if (age < 1) count = 0;
+    counts.push(count);
+    days.push({ date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, count, level: 0 });
+  }
+  const max = Math.max(1, ...counts);
+  for (const d of days) d.level = levelFor(d.count, max);
+  const total = counts.reduce((a, b) => a + b, 0);
+  return { login: "simon-demo", total, streak: 11, today: 0, days, fetchedAt: Date.now() - 4 * MIN, private: false, fromCache };
+}
+let githubAsked = false;
 
 /** Les hooks des agents (onglet Agents IA) : Claude branché, Codex sur un ancien chemin. */
 const DEMO_HOOKS: Record<string, string> = { "claude-code": "installed", codex: "stale", gemini: "absent" };
@@ -597,6 +632,12 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     // La semaine des agents pour le Bilan de la semaine (carte « Agents IA »).
     case "agents.weekly":
       return agentsWeek();
+    // Le calendrier GitHub : la première lecture vient « de GitHub », les suivantes de la mémoire.
+    case "agents.github_calendar": {
+      const cal = githubCalendar(githubAsked);
+      githubAsked = true;
+      return cal;
+    }
     case "agents.answer":
       bus.inject("agents.ask.closed", { id: Number(args.id), expired: false }, "agents");
       return null;

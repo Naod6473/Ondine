@@ -255,7 +255,8 @@ Lu à la fois par le front (import) et par le Rust (`include_str!`).
   "permissions": [],                  // files, clipboard, network, claude-api, credentials
   "settings": { "version": 1, "fields": [
     { "key": "name", "type": "string", "label": "Ton prénom", "default": "Simon" }
-  ]},                                 // types : string, number, boolean, select, folders, files
+  ]},                                 // types : string, number, boolean, select, folders, files,
+                                      // calendars, secret (jamais dans les réglages : coffre Windows)
   "views": ["compact", "expanded", "drop"],
   "commands": ["greet"],              // commandes Rust exposées
   "events": { "emits": ["hello.greeted"], "listens": ["hello.ping"] }
@@ -382,6 +383,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `agents.progress` `{source, who, title, step, total}` | Agents IA (Rust, outil MCP) | notification « 3/7 » remplacée à chaque étape |
 | `agents.quiet` `{on, summary?}` | Agents IA (Rust) | début / fin de la concentration ; à la fin, la notification du résumé |
 | `claude.thinking` / `claude.done` | Agents IA (Rust) | la mascotte réfléchit tant qu'une session de Claude Code travaille |
+| `agents.github-streak` `{days, stage}` | Agents IA (front) | série GitHub de 7, 30 ou 100 jours : la mascotte fête (`starstruck`) et un trésor entre au carnet (eggs.ts) |
 | `capture.pick` | Lanceur (front) | Capture ouvre la pipette |
 | `capture.color` `{ok, hex, text, error?}` | Capture (Rust) | notification « #3A7BD5 copié » ; l'onglet redemande l'historique (`colors`) |
 | `agenda.join` `{key, minutes}` | Agenda (Rust) | alerte « Réunion dans 2 min : … » avec « Rejoindre » (une fois par réunion en ligne) |
@@ -405,7 +407,8 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
   `%APPDATA%\Ondine\exports\`, import depuis Réglages → Sauvegarde (refusé s'il
   vient d'une version plus récente).
 - **Identifiants** (`credentials.rs`) : Gestionnaire d'identifiants Windows
-  (crate `keyring` 3). Liste fermée de clés (`anthropic-api-key`). Le front peut
+  (crate `keyring` 3). Liste fermée de clés (`anthropic-api-key`,
+  `github-token`, les liens iCal des agendas). Le front peut
   demander si une clé existe, en enregistrer ou en supprimer une, **jamais** la
   relire. Seul un module Rust avec la permission `credentials` peut la lire.
 - **Journal** (`log.rs`) : `%LOCALAPPDATA%\Ondine\logs\ondine.log`, niveaux
@@ -1433,6 +1436,40 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   permission passent tout de suite au terminal. À la fin : `agents.quiet
   {on: false, summary}`, une seule notification (« Claude a fini 2 tâches ·
   Codex t'attend · 1 question en attente »). En mémoire seulement.
+- Calendrier de contributions GitHub (`modules/agents_github.rs`, vue
+  `src/modules/agents/github-view.ts`, logique pure `github-logic.ts`,
+  commande `github_calendar` → `{login, total, streak, today, days: [{date,
+  count, level}], fetchedAt, private, fromCache}`) : la grille 53 × 7 du
+  profil, sous le compteur de jetons. Réglages `githubLogin` (texte, lettres,
+  chiffres et tirets, 39 au plus, vérifié des deux côtés ; vide = rien n'est
+  demandé) et `githubToken` (champ `secret` : la valeur va dans le
+  Gestionnaire d'identifiants sous la clé « github-token », permission
+  `credentials`, jamais dans les réglages). C'est la SEULE fonction de
+  l'onglet qui parle à Internet : sans jeton, la page HTML
+  `https://github.com/users/<login>/contributions` (les contributions
+  publiques ; parseur tolérant par recherche de balises `<td data-date
+  data-level>` et `<tool-tip for>`, testé sur un extrait figé) ; avec un jeton
+  (lecture seule, read:user), GraphQL `api.github.com/graphql`
+  (`contributionsCollection.contributionCalendar`, les privées comprises).
+  Limites : au plus une demande toutes les 30 minutes par identifiant (en
+  mémoire ; 2 minutes après une erreur), 10 s, 2 Mo, HTTPS seulement, jamais
+  pendant une présentation (`presentation_busy`) ni le mode concentration (le
+  calendrier déjà lu est montré). Copie sur disque `github-calendar.json`
+  (dossier de données) pour l'affichage immédiat au démarrage. Le journal ne
+  note que « calendrier GitHub : lu, N jours ». Le Rust complète les jours
+  manquants (du dimanche d'il y a 52 semaines à aujourd'hui) et calcule la
+  série (jours d'affilée, jusqu'à hier si rien encore aujourd'hui). Front :
+  « 336 contributions cette année · série de 12 jours », mois en haut, Lun /
+  Mer / Ven à gauche, cinq niveaux tirés de `--accent` ; au premier affichage
+  de la session, les colonnes s'allument de gauche à droite (1,2 s) ; la case
+  du jour pulse tant qu'elle est à zéro ; survol « 3 contributions le 8
+  octobre » ; « ↻ » redemande (ou dit « Déjà à jour » si les 30 minutes ne
+  sont pas passées). Rien ne bouge avec « réduire les animations » ni en mode
+  éco. Séries : à 7, 30 et 100 jours, une fois par palier et par série (clé
+  localStorage « premier jour:palier »), la vue publie `agents.github-streak
+  {days, stage}` ; `src/eggs/eggs.ts` fait `starstruck` et range le trésor
+  `github-<palier>` dans le carnet. Mode démo : une année inventée
+  (`simon-demo`).
 
 ## Profils (`src-tauri/src/services/profiles.rs`, `src/settings/profiles-page.ts`)
 

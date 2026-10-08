@@ -123,6 +123,13 @@ export class EasterEggs {
     const timer = window.setInterval(() => this.maybeSnack(), SNACK_CHECK_MS);
     this.offs.push(() => window.clearInterval(timer));
     on("media.changed", (p: MediaPayload | null) => this.mediaChanged(musicPlaying(p)));
+    // Une série de contributions GitHub atteint un palier (7, 30, 100 jours,
+    // module Agents IA) : des étoiles plein les yeux et un trésor dans le carnet.
+    on("agents.github-streak", (p: { stage?: number } | null) => {
+      if (!p?.stage || !this.allowed("seasonal")) return;
+      this.emote("starstruck");
+      this.discover(`github-${p.stage}`);
+    });
     // Le module Musique ne publie qu'aux changements : une musique lancée avant
     // l'île, il faut la demander (au démarrage, puis à chaque mini-île).
     void this.askMusic();

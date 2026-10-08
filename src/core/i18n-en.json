@@ -1449,6 +1449,57 @@
 "Lu dans les journaux de Claude Code et Codex sur ce PC. Rien n'est envoyé.": "Read from the Claude Code and Codex logs on this PC. Nothing is sent.",
 "Compter les jetons des agents": "Count the agents' tokens",
 "Lu dans les journaux de Claude Code et de Codex sur ce PC, seulement quand l'onglet Agents IA est ouvert : jetons par jour, par modèle et par projet (le nom du dossier). Rien n'est envoyé.": "Read from the Claude Code and Codex logs on this PC, only while the AI Agents tab is open: tokens per day, per model and per project (the folder name). Nothing is sent.",
+"Identifiant GitHub": "GitHub username",
+"Ondine demande à github.com votre calendrier de contributions, au plus toutes les 30 minutes. Sans jeton : les contributions publiques (les mêmes que sur votre profil). Avec un jeton (lecture seule, read:user), les privées aussi. C'est la seule fonction de cet onglet qui utilise Internet ; rien n'est envoyé d'autre que votre identifiant. Vide : rien n'est demandé.": "Ondine asks github.com for your contribution calendar, at most every 30 minutes. Without a token: public contributions (the same as on your profile). With a token (read-only, read:user), private ones too. It is the only feature of this tab that uses the Internet; nothing is sent but your username. Empty: nothing is requested.",
+"Jeton GitHub (facultatif)": "GitHub token (optional)",
+"Un jeton personnel en lecture seule (droit read:user), gardé dans le Gestionnaire d'identifiants Windows : l'île sait seulement s'il existe, elle ne peut jamais le réafficher.": "A personal read-only token (read:user scope), kept in the Windows Credential Manager: the island only knows whether it exists, it can never show it again.",
+"Coller le jeton ici": "Paste the token here",
+"✓ Enregistré": "✓ Saved",
+"Enregistré.": "Saved.",
+"Supprimé.": "Deleted.",
+"39 caractères au plus.": "39 characters at most.",
+"Lettres, chiffres et tirets seulement (pas d'espace, pas d'adresse : juste l'identifiant).": "Letters, digits and hyphens only (no space, no URL: just the username).",
+"Un identifiant GitHub ne commence pas par un tiret.": "A GitHub username does not start with a hyphen.",
+"Contributions GitHub": "GitHub contributions",
+"avec les privées": "with private ones",
+"Redemander à GitHub": "Ask GitHub again",
+"Lecture du calendrier…": "Reading the calendar…",
+"Déjà à jour": "Already up to date",
+"Relu": "Refreshed",
+"pas de série en cours": "no current streak",
+"Lun": "Mon",
+"Mer": "Wed",
+"Ven": "Fri",
+"janv.": "Jan",
+"févr.": "Feb",
+"mars": "Mar",
+"avr.": "Apr",
+"mai": "May",
+"juin": "Jun",
+"juil.": "Jul",
+"août": "Aug",
+"sept.": "Sep",
+"oct.": "Oct",
+"nov.": "Nov",
+"déc.": "Dec",
+"Série GitHub : une semaine": "GitHub streak: one week",
+"Sept jours de contributions GitHub d'affilée.": "Seven days of GitHub contributions in a row.",
+"Série GitHub : un mois": "GitHub streak: one month",
+"Trente jours de contributions GitHub d'affilée.": "Thirty days of GitHub contributions in a row.",
+"Série GitHub : cent jours": "GitHub streak: a hundred days",
+"Cent jours de contributions GitHub d'affilée.": "A hundred days of GitHub contributions in a row.",
+"aucun identifiant GitHub dans les réglages": "no GitHub username in the settings",
+"identifiant inconnu sur GitHub": "unknown username on GitHub",
+"github.com injoignable (pas de connexion Internet ?)": "github.com unreachable (no Internet connection?)",
+"pas de demande pendant une présentation ou la concentration": "no request during a presentation or focus mode",
+"GitHub n'a pas répondu ; nouvel essai dans deux minutes": "GitHub did not answer; trying again in two minutes",
+"jeton refusé par GitHub": "token refused by GitHub",
+"GitHub demande d'attendre (trop de demandes)": "GitHub asks to wait (too many requests)",
+"page du calendrier illisible (GitHub l'a peut-être changée)": "calendar page unreadable (GitHub may have changed it)",
+"réponse GraphQL illisible": "unreadable GraphQL response",
+"GitHub a refusé la demande (jeton sans le droit read:user ?)": "GitHub refused the request (token without the read:user scope?)",
+"identifiant GitHub refusé : lettres, chiffres et tirets, 39 caractères au plus": "GitHub username refused: letters, digits and hyphens, 39 characters at most",
+"réponse illisible ou trop grosse": "unreadable or oversized response",
 "Un compteur de jetons, lu dans les journaux locaux de Claude Code et de Codex, montre ce que les agents ont consommé par jour, par modèle et par projet.": "A token counter, read from the local Claude Code and Codex logs, shows what the agents used per day, per model and per project.",
 "compteur désactivé dans les réglages": "counter turned off in the settings",
 "Quoi de neuf": "What's new",
@@ -1482,7 +1533,41 @@
 "patterns": [
 [
 "^(\\d+)\\ réglages?\\ de\\ plus\\ en\\ mode\\ Complet$",
-"$1 more settings in Full mode"
+"$1 more settings in Full mode",
+"^1 contribution cette année$",
+"1 contribution this year"
+],
+[
+"^([\\d\\s ]+) contributions cette année$",
+"$1 contributions this year"
+],
+[
+"^Aucune contribution le (.+)$",
+"No contributions on $1"
+],
+[
+"^1 contribution le (.+)$",
+"1 contribution on $1"
+],
+[
+"^([\\d\\s ]+) contributions le (.+)$",
+"$1 contributions on $2"
+],
+[
+"^série de 1 jour$",
+"1-day streak"
+],
+[
+"^série de ([\\d\\s ]+) jours$",
+"$1-day streak"
+],
+[
+"^Mis à jour à (\\d\\d:\\d\\d)$",
+"Updated at $1"
+],
+[
+"^GitHub a répondu (\\d+)$",
+"GitHub answered $1"
 ],
 [
 "^Autoriser\\ /\\ Refuser\\ depuis\\ l'île\\ \\((.+?)\\)\\ :\\ quand\\ (.+?)\\ demande\\ une\\ permission,\\ l'île\\ montre\\ la\\ commande\\ avec\\ «\\ Autoriser\\ »\\ \\(à\\ confirmer\\)\\ et\\ «\\ Refuser\\ »\\.\\ Sans\\ réponse\\ à\\ temps,\\ la\\ question\\ passe\\ au\\ terminal\\.\\ Collez\\ ce\\ hook\\ en\\ plus,\\ de\\ la\\ même\\ façon\\.$",

@@ -3,11 +3,12 @@
   "name": "Agents IA",
   "tip": "Branchez Claude Code, Codex ou Gemini une fois : ils vous préviendront ici quand ils ont fini ou vous attendent.",
   "icon": "🤖",
-  "description": "Lance Claude Code, Codex ou Gemini CLI dans un de vos projets en un clic, ou reprend la dernière session. Un tableau montre les sessions en cours ; « Y aller » ramène devant la bonne fenêtre. Claude Code, Codex et Gemini CLI préviennent l'île : « attend votre permission », « a fini », avec ce qui a changé dans le projet (git). Ils passent par la commande « ondine.exe notify » et un canal local réservé à votre compte Windows : rien ne passe par Internet. Branchée comme serveur MCP, l'île laisse aussi l'agent vous envoyer un message, une progression, lancer le minuteur ou vous poser une question à choix. Le mode concentration met leurs notifications en attente et vous fait un résumé à la fin. Si vous l'activez (désactivé par défaut), vous pouvez aussi autoriser ou refuser une action de Claude Code ou Codex depuis l'île, après confirmation. L'île n'exécute rien de ce que les agents lui envoient (elle lance seulement git, en lecture seule, pour le bilan) et ne décide jamais à votre place. Elle ne lit pas ce que vous tapez : seule la dernière phrase d'une session de Claude Code s'affiche à côté de « Reprendre », sans quitter votre PC. Un compteur de jetons, lu dans les journaux locaux de Claude Code et de Codex, montre ce que les agents ont consommé par jour, par modèle et par projet.",
+  "description": "Lance Claude Code, Codex ou Gemini CLI dans un de vos projets en un clic, ou reprend la dernière session. Un tableau montre les sessions en cours ; « Y aller » ramène devant la bonne fenêtre. Claude Code, Codex et Gemini CLI préviennent l'île : « attend votre permission », « a fini », avec ce qui a changé dans le projet (git). Ils passent par la commande « ondine.exe notify » et un canal local réservé à votre compte Windows : rien ne passe par Internet. Branchée comme serveur MCP, l'île laisse aussi l'agent vous envoyer un message, une progression, lancer le minuteur ou vous poser une question à choix. Le mode concentration met leurs notifications en attente et vous fait un résumé à la fin. Si vous l'activez (désactivé par défaut), vous pouvez aussi autoriser ou refuser une action de Claude Code ou Codex depuis l'île, après confirmation. L'île n'exécute rien de ce que les agents lui envoient (elle lance seulement git, en lecture seule, pour le bilan) et ne décide jamais à votre place. Elle ne lit pas ce que vous tapez : seule la dernière phrase d'une session de Claude Code s'affiche à côté de « Reprendre », sans quitter votre PC. Un compteur de jetons, lu dans les journaux locaux de Claude Code et de Codex, montre ce que les agents ont consommé par jour, par modèle et par projet. Si vous indiquez votre identifiant GitHub, l'onglet montre aussi votre calendrier de contributions (la grille de l'année, animée) : c'est la seule fonction de l'onglet qui utilise Internet, au plus toutes les 30 minutes, et rien d'autre que l'identifiant n'est envoyé.",
   "version": "0.1.0",
   "permissions": [
     "clipboard",
-    "files"
+    "files",
+    "credentials"
   ],
   "settings": {
     "version": 1,
@@ -152,6 +153,23 @@
         "min": 0,
         "max": 10000,
         "step": 1
+      },
+      {
+        "key": "githubLogin",
+        "type": "string",
+        "label": "Identifiant GitHub",
+        "help": "Ondine demande à github.com votre calendrier de contributions, au plus toutes les 30 minutes. Sans jeton : les contributions publiques (les mêmes que sur votre profil). Avec un jeton (lecture seule, read:user), les privées aussi. C'est la seule fonction de cet onglet qui utilise Internet ; rien n'est envoyé d'autre que votre identifiant. Vide : rien n'est demandé.",
+        "default": "",
+        "maxLength": 39,
+        "check": "githubLogin"
+      },
+      {
+        "key": "githubToken",
+        "type": "secret",
+        "label": "Jeton GitHub (facultatif)",
+        "help": "Un jeton personnel en lecture seule (droit read:user), gardé dans le Gestionnaire d'identifiants Windows : l'île sait seulement s'il existe, elle ne peut jamais le réafficher.",
+        "credential": "github-token",
+        "placeholder": "Coller le jeton ici"
       }
     ]
   },
@@ -178,7 +196,8 @@
     "open_vscode",
     "usage",
     "usage_csv",
-    "weekly"
+    "weekly",
+    "github_calendar"
   ],
   "events": {
     "emits": [
@@ -195,7 +214,8 @@
       "agents.quiet",
       "terminal.open",
       "mascot.emote",
-      "shelf.add"
+      "shelf.add",
+      "agents.github-streak"
     ],
     "listens": [
       "agents.event",
