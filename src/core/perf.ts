@@ -53,6 +53,8 @@ export const CADENCES = {
   pausesCheck: [30000, 30000, 60000],
   /** Bilan de la semaine : est-ce l'heure du bilan ? */
   weeklyCheck: [60000, 60000, 120000],
+  /** Agents IA : le budget du jour (coût estimé des jetons) est-il dépassé ? */
+  agentsBudget: [900000, 900000, 1800000],
 } satisfies Record<string, readonly [number, number, number]>;
 
 export type Cadence = keyof typeof CADENCES;

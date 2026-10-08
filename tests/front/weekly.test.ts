@@ -65,3 +65,27 @@ describe("traductions", () => {
     ]);
   });
 });
+
+// ── La carte « Agents IA » (src/modules/weekly/summary.ts, agentsParts) ──
+
+import { agentsParts } from "../../src/modules/weekly/summary";
+
+describe("la carte Agents IA", () => {
+  const week = { done: 23, waitMinutes: 130, projects: ["site-ondine", "Island"], days: [], prices: "" };
+  test("tâches, attente, jetons avec le coût, projets", () => {
+    assert.deepEqual(agentsParts(week, "3,1 M", "≈ 12 $"), ["23 tâches finies", "2 h 10 d'attente de votre part", "3,1 M de jetons (≈ 12 $)", "projets : site-ondine, Island"]);
+  });
+  test("au singulier, sans coût, sans projet", () => {
+    assert.deepEqual(agentsParts({ ...week, done: 1, waitMinutes: 0, projects: [] }, "900", ""), ["1 tâche finie", "900 de jetons"]);
+  });
+  test("rien sans agent", () => {
+    assert.deepEqual(agentsParts(null, "", ""), []);
+    assert.deepEqual(agentsParts({ ...week, done: 0, waitMinutes: 0, projects: ["x"] }, "", ""), []);
+  });
+  test("tout est traduit", () => {
+    const DICT = JSON.parse(readFileSync("src/core/i18n-en.json", "utf8")) as { exact: Record<string, string>; patterns: [string, string][] };
+    const english = (fr: string) => DICT.exact[fr] ?? DICT.patterns.find(([rx]) => new RegExp(rx).test(fr))?.[1];
+    for (const p of agentsParts(week, "3,1 M", "≈ 12 $")) assert.ok(english(p), p);
+    assert.ok(english("1 tâche finie"));
+  });
+});

@@ -5,7 +5,9 @@
 // notifications. Les compteurs sont tenus par le Rust
 // (src-tauri/src/modules/weekly.rs), qui les reçoit du bus :
 //   - "timer.work-session" {seconds, completed} (Minuteur, séances Pomodoro) ;
-//   - "notes.todo-toggled" {done} (Notes, une tâche cochée ou décochée).
+//   - "notes.todo-toggled" {done} (Notes, une tâche cochée ou décochée) ;
+//   - et, à la demande, le module Agents IA (sa commande « weekly » : tâches
+//     finies, attente, jetons, projets de la semaine), pour une carte « Agents IA ».
 // Ici, on demande seulement au Rust, toutes les minutes (et une première fois
 // peu après le démarrage, pour un bilan manqué PC éteint), s'il y a un bilan à
 // montrer : il le rend une seule fois, et seulement s'il s'est passé quelque chose.
@@ -17,7 +19,9 @@ import manifest from "./manifest.json";
 import { t } from "../../core/i18n";
 import { pacedInterval } from "../../core/perf";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
-import { summaryParts, type WeekTally } from "./summary";
+import { agentsParts, summaryParts, type WeekTally } from "./summary";
+import { costOfRows, costText, parsePrices } from "../agents/cost";
+import { sumTokens, tokensShort, totalTokens } from "../agents/texts";
 
 /** Le premier coup d'œil après le démarrage (le reste : "weeklyCheck" de src/core/perf.ts). */
 const FIRST_CHECK_MS = 20_000;
@@ -26,9 +30,16 @@ const SHOW_MS = 15_000;
 
 /** La notification du bilan. Chaque morceau est traduit avant d'être assemblé. */
 function notify(api: ModuleApi, title: string, w: WeekTally) {
+  const parts = summaryParts(w).map((p) => t(p));
+  // La carte « Agents IA » (logique pure du compteur : src/modules/agents/cost.ts).
+  const a = w.agents;
+  const total = a?.days?.length ? totalTokens(sumTokens(a.days)) : 0;
+  const cost = a?.days?.length ? costOfRows(a.days, parsePrices(a.prices ?? "")) : 0;
+  const agentsLine = agentsParts(a, total ? tokensShort(total) : "", cost ? costText(cost) : "").map((p) => t(p));
+  if (agentsLine.length) parts.push(`${t("Agents IA")} : ${agentsLine.join(", ")}`);
   api.notify({
     title,
-    body: summaryParts(w).map((p) => t(p)).join(" · "),
+    body: parts.join(" · "),
     icon: "🎉",
     // En alerte : une notification « normal » ne montre que son titre dans la
     // pilule, et le bilan, ce sont les chiffres.
@@ -46,7 +57,7 @@ export const weekly: IslandModule = {
     const check = async () => {
       try {
         const due = await api.invoke<WeekTally | null>("due");
-        if (!due || !summaryParts(due).length) return;
+        if (!due || (!summaryParts(due).length && !due.agents)) return;
         notify(api, "Le bilan de votre semaine", due);
         // Après l'alerte, qui met la goutte en « alerte » : elle fait la fête.
         api.emit("mascot.emote", { emotion: "celebrate" });
@@ -59,7 +70,7 @@ export const weekly: IslandModule = {
     const offShow = api.on("weekly.show", async () => {
       try {
         const now = await api.invoke<WeekTally | null>("peek");
-        if (now && summaryParts(now).length) {
+        if (now && (summaryParts(now).length || now.agents)) {
           notify(api, "Votre semaine jusqu'ici", now);
         } else {
           api.notify({

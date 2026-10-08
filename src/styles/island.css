@@ -2440,6 +2440,74 @@ body {
   margin-left: 6px;
   font-variant-numeric: tabular-nums;
 }
+.agents-usage-list li > b + span {
+  margin-left: 6px;
+}
+.agents-usage-cost {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.agents-usage-budget.over {
+  color: #ffb17a;
+}
+/* La courbe des 30 jours : une barre par jour, empilée par outil */
+.agents-chart-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 4px;
+}
+.agents-chart {
+  display: block;
+  width: 100%;
+  height: 56px;
+}
+.agents-chart-base {
+  stroke: currentColor;
+  stroke-opacity: 0.18;
+  stroke-width: 1;
+}
+.agents-chart .bar {
+  transform-origin: 50% 100%;
+  transform-box: fill-box;
+  animation: agents-bar-grow 360ms ease-out both;
+}
+.agents-chart-day:hover .bar {
+  filter: brightness(1.2);
+}
+@keyframes agents-bar-grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agents-chart .bar {
+    animation: none;
+  }
+}
+.agents-chart-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.agents-chart-legend {
+  display: flex;
+  gap: 10px;
+  color: var(--muted);
+}
+.agents-chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.agents-chart-swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
 .agents-session {
   display: flex;
   align-items: center;

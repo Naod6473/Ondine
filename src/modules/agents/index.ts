@@ -21,7 +21,8 @@ import { Bridge } from "../../core/bridge";
 import { el } from "../../island/dom";
 import { pacedInterval } from "../../core/perf";
 import { agentIcon, icon } from "../../island/icon";
-import { byModel, changesLine, modelLabel, namesLine, periodFrom, since, sumTokens, tokensShort, totalTokens, type ChangeSummary, type UsagePeriod, type UsageReport } from "./texts";
+import { changesLine, namesLine, since, type ChangeSummary } from "./texts";
+import { usageSection, watchBudget } from "./usage-view";
 
 /** Le bilan d'une fin de tâche, avec ce qu'il faut pour ses boutons. */
 interface Changes extends ChangeSummary {
@@ -279,6 +280,8 @@ export const agents: IslandModule = {
       });
     });
     api.on("agents.changed", () => redraws.forEach((r) => r()));
+    // L'alerte de budget (réglage `dailyBudget`) : une relecture légère toutes les 15 min (usage-view.ts).
+    return watchBudget(api);
   },
 
   views: {
@@ -286,8 +289,9 @@ export const agents: IslandModule = {
       const asks = el("ul", { class: "agents-asks" });
       const quiet = el("div", { class: "agents-quiet" });
       const board = el("ul", { class: "agents-board" });
-      // Le compteur de jetons (journaux locaux de Claude Code et Codex).
-      const usageBox = el("section", { class: "agents-usage" });
+      // Le compteur de jetons (journaux locaux de Claude Code et Codex) : usage-view.ts.
+      const usage = usageSection(api);
+      const usageBox = usage.box;
       const list = el("ul", { class: "agents-list" });
       const status = el("p", { class: "muted agents-status" });
       const guide = el("details", { class: "agents-guide" });
@@ -677,90 +681,10 @@ export const agents: IslandModule = {
         );
       };
 
-      // ── Utilisation : les jetons des agents, lus dans leurs journaux sur ce PC ──
-      let period: UsagePeriod = "week";
-      let usage: UsageReport | null = null;
-      let usageError = "";
-      let usageFetch = 0;
-      const usageOn = () => api.settings().usage !== false;
-      const drawUsage = () => {
-        if (!usageOn()) return usageBox.replaceChildren();
-        const chip = (p: UsagePeriod, label: string) =>
-          el(
-            "button",
-            {
-              class: `net-chip${p === period ? " on" : ""}`,
-              onclick: api.handler(() => {
-                period = p;
-                drawUsage();
-              }),
-            },
-            label,
-          );
-        const head = el(
-          "div",
-          { class: "agents-usage-head" },
-          el("b", {}, "Utilisation des agents"),
-          el(
-            "div",
-            { class: "net-chips" },
-            chip("today", "Aujourd'hui"),
-            chip("week", "7 jours"),
-            chip("month", "30 jours"),
-            el("button", { class: "net-chip", title: "Relire les journaux", onclick: api.handler(() => loadUsage(true)) }, "↻"),
-          ),
-        );
-        if (!usage) return usageBox.replaceChildren(head, el("p", { class: "muted" }, usageError ? t(usageError) : "Lecture des journaux…"));
-        const from = periodFrom(period);
-        const rows = usage.days.filter((d) => d.day >= from);
-        if (!rows.length) {
-          return usageBox.replaceChildren(head, el("p", { class: "muted" }, usage.files ? "Rien sur cette période." : "Aucun journal de Claude Code ni de Codex sur ce PC."));
-        }
-        const sum = sumTokens(rows);
-        const figure = (label: string, n: number) => el("span", { class: "agents-usage-figure" }, el("span", {}, label), " ", el("b", {}, tokensShort(n)));
-        const figures = el(
-          "p",
-          { class: "agents-usage-figures" },
-          figure("Entrée", sum.input),
-          figure("Sortie", sum.output),
-          figure("Cache lu", sum.cacheRead),
-          figure("Cache écrit", sum.cacheWrite),
-          el("span", { class: "muted" }, `${sum.messages.toLocaleString("fr-FR")} réponse${sum.messages > 1 ? "s" : ""}`),
-        );
-        const models = el(
-          "ul",
-          { class: "agents-usage-list" },
-          ...byModel(rows).map((m) => el("li", {}, el("span", {}, `${SOURCE_NAMES[m.tool] ?? m.tool} · ${modelLabel(m.model)}`), el("b", {}, tokensShort(m.total)))),
-        );
-        const projects = usage.projects.length
-          ? el("p", { class: "muted" }, el("span", {}, "Projets (30 jours)"), " : ", usage.projects.map((p) => `${p.name} ${tokensShort(totalTokens(p))}`).join(" · "))
-          : null;
-        const note = el("p", { class: "muted" }, usage.partial ? "Journaux trop nombreux : compte partiel (les plus récents d'abord)." : "Lu dans les journaux de Claude Code et Codex sur ce PC. Rien n'est envoyé.");
-        usageBox.replaceChildren(head, figures, models, ...(projects ? [projects] : []), note);
-      };
-      /** Relit les journaux (au plus toutes les 60 s, sauf « ↻ »). */
-      const loadUsage = async (force = false) => {
-        if (!usageOn() || (!force && Date.now() - usageFetch < 60_000)) return;
-        usageFetch = Date.now();
-        try {
-          usage = await api.invoke<UsageReport>("usage", { offsetMinutes: new Date().getTimezoneOffset(), days: 30 });
-          usageError = "";
-        } catch (e) {
-          usage = null;
-          usageError = errorText(e);
-        }
-        drawUsage();
-      };
-      drawUsage();
-      const stopUsageSettings = api.onSettingsChange(() => {
-        drawUsage();
-        void loadUsage();
-      });
-
       const draw = async () => {
         // Une session vient peut-être de finir : sa dernière phrase a changé.
         void loadLast();
-        void loadUsage();
+        void usage.load();
         let data: { events: AgentEvent[]; working: number; sessions: Session[]; asks: Ask[]; quiet: { until: number | null; held: number } | null };
         try {
           data = await api.invoke("history");
@@ -813,7 +737,8 @@ export const agents: IslandModule = {
                     { class: "launch-text" },
                     el("b", {}, e.changes?.files ? `${e.title} · ${changesLine(e.changes)}` : e.title),
                     // « il y a 6 min » traduit à part : la ligne entière (projet, message) ne l'est pas.
-                    el("small", { class: "muted" }, [e.project, e.body, t(ago(e.at))].filter(Boolean).join(" · ")),
+                    // Relu de l'historique (plus d'un jour) : « il y a 2 j » plutôt qu'une heure.
+                    el("small", { class: "muted" }, [e.project, e.body, t(Date.now() - e.at > 86_400_000 ? since(e.at) : ago(e.at))].filter(Boolean).join(" · ")),
                   ),
                 ),
               )
@@ -832,7 +757,7 @@ export const agents: IslandModule = {
       return () => {
         redraws.delete(draw);
         stopTimer();
-        stopUsageSettings();
+        usage.stop();
       };
     },
   },

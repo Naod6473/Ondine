@@ -174,7 +174,10 @@
 "Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur votre ordinateur, hors ligne : l'image n'est envoyée nulle part. La pipette copie la couleur d'un point de l'écran. « Enregistrer un GIF » filme une zone de l'écran en GIF animé (30 s au plus), posé sur l'étagère.": "Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur ton ordinateur, hors ligne : l'image n'est envoyée nulle part. La pipette copie la couleur d'un point de l'écran. « Enregistrer un GIF » filme une zone de l'écran en GIF animé (30 s au plus), posé sur l'étagère.",
 "Décodé sur votre PC : rien n'est envoyé ni enregistré.": "Décodé sur ton PC : rien n'est envoyé ni enregistré.",
 "Choisissez une zone de l'écran, puis enregistrez-la en GIF animé (durée maximale dans les réglages du module)": "Choisis une zone de l'écran, puis enregistre-la en GIF animé (durée maximale dans les réglages du module)",
-"Glissez pour choisir la zone du GIF · Clic : tout l'écran · Échap : annuler": "Glisse pour choisir la zone du GIF · Clic : tout l'écran · Échap : annuler"
+"Glissez pour choisir la zone du GIF · Clic : tout l'écran · Échap : annuler": "Glisse pour choisir la zone du GIF · Clic : tout l'écran · Échap : annuler",
+"Dans vos Téléchargements.": "Dans tes Téléchargements.",
+"Un fichier CSV (30 jours, par jour et par projet) dans vos Téléchargements": "Un fichier CSV (30 jours, par jour et par projet) dans tes Téléchargements",
+"Quand le coût estimé des jetons du jour dépasse ce montant, l'île vous prévient (une fois par jour) et la mascotte s'inquiète. Vérifié quand l'onglet est ouvert et, sinon, toutes les 15 minutes.": "Quand le coût estimé des jetons du jour dépasse ce montant, l'île te prévient (une fois par jour) et la mascotte s'inquiète. Vérifié quand l'onglet est ouvert et, sinon, toutes les 15 minutes."
 },
 "patterns": [
 [
@@ -292,6 +295,10 @@
 [
 "^(\\d+) fichiers au plus à la fois \\(vous en avez glissé (\\d+)\\)$",
 "$1 fichiers au plus à la fois (tu en as glissé $2)"
+],
+[
+"^(.+?) d'attente de votre part$",
+"$1 d'attente de ta part"
 ]
 ]
 }

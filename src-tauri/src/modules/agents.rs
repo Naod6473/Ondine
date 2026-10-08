@@ -43,6 +43,7 @@ use serde_json::{json, Value};
 use tauri::AppHandle;
 
 use super::agents_git as git;
+use super::agents_history as history;
 use super::agents_hooks as hooks;
 use super::agents_resume as resume;
 use super::agents_usage as usage;
@@ -133,6 +134,9 @@ struct State {
     /// l'arrêtes). Pendant ce temps, les notifications attendent dans `held`.
     quiet_until: Option<u64>,
     held: Vec<Event>,
+    /// L'historique gardé 7 jours sur le disque (agents_history.rs) : à part
+    /// dans son Arc, pour l'écriture différée.
+    log: Arc<Mutex<history::Store>>,
 }
 
 impl State {
@@ -184,6 +188,8 @@ impl RustModule for Agents {
     }
 
     fn start(&self, app: &AppHandle) {
+        // ── L'historique des 7 derniers jours, relu (agents_history.rs) ──
+        history_load(&self.state);
         // Le fil qui écoute le canal.
         let (a, s) = (app.clone(), self.state.clone());
         std::thread::spawn(move || {
@@ -228,6 +234,7 @@ impl RustModule for Agents {
             if !tick.is_multiple_of(12) {
                 continue;
             }
+            history_purge(&s);
             let emptied = {
                 let mut st = s.locked();
                 let before = st.working();
@@ -486,6 +493,56 @@ impl RustModule for Agents {
                 let msg = json!({ "v": 1, "source": "claude-code", "hook": { "hook_event_name": "Stop", "session_id": "essai", "cwd": cwd } });
                 receive(ctx.app, &self.state, msg.to_string().as_bytes());
                 Ok(Value::Null)
+            }
+            // ── Compteur de jetons, suite (export CSV, bilan de la semaine) ──
+            // { text } : écrit le CSV construit par le front (cost.ts) dans
+            // Téléchargements (« jetons-agents-AAAA-MM-JJ.csv », UTF-8 avec BOM),
+            // puis le dépose sur l'étagère si elle est active, sinon le montre
+            // dans l'Explorateur. Le texte est écrit tel quel, jamais interprété.
+            "usage_csv" => {
+                ctx.require("files")?;
+                let text = args.get("text").and_then(Value::as_str).ok_or("texte manquant")?;
+                let dir = platform::downloads_dir().ok_or("dossier Téléchargements introuvable")?;
+                let day = chrono::Local::now().format("%Y-%m-%d").to_string();
+                let path = usage::write_csv(&dir, &day, text)?;
+                let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+                ctx.log_info(format!("compteur de jetons : export {name} ({} Ko)", text.len() / 1024));
+                let shelf = super::is_active(ctx.app, "shelf");
+                if shelf {
+                    ctx.emit("shelf.add", json!({ "paths": [path.display().to_string()] }));
+                } else {
+                    files::reveal(&path)?;
+                }
+                Ok(json!({ "name": name, "shelf": shelf }))
+            }
+            // { offsetMinutes? } : la semaine des agents pour le Bilan de la semaine
+            // (appelé par weekly.rs) : tâches finies, attente, projets (historique
+            // sur le disque), jetons des 7 jours et grille de prix (le front calcule
+            // le coût). Null si aucun agent dans la semaine.
+            "weekly" => {
+                let offset = match args.get("offsetMinutes").and_then(Value::as_i64) {
+                    Some(o) => o.clamp(-900, 900) as i32,
+                    None => -(chrono::Local::now().offset().local_minus_utc() / 60),
+                };
+                let since = now_ms().saturating_sub(history::KEEP_MS);
+                let week = self.state.locked().log.locked().week(since);
+                let usage_on = ctx.settings().get("usage").and_then(Value::as_bool) != Some(false);
+                let days = if usage_on {
+                    let mut cache = self.usage.locked();
+                    let from = usage::start_of_day(now_ms().saturating_sub(6 * 86_400_000), offset);
+                    usage::scan(&mut cache, &claude_dir().join("projects"), &codex_dir().join("sessions"), from, offset)["days"].take()
+                } else {
+                    json!([])
+                };
+                let any_tokens = days.as_array().is_some_and(|d| !d.is_empty());
+                if week.is_empty() && !any_tokens {
+                    return Ok(Value::Null);
+                }
+                let prices = ctx.settings().get("prices").and_then(Value::as_str).unwrap_or("").to_string();
+                let mut v = serde_json::to_value(&week).map_err(|e| e.to_string())?;
+                v["days"] = days;
+                v["prices"] = json!(prices);
+                Ok(v)
             }
             other => Err(format!("commande inconnue : {other}")),
         }
@@ -1044,6 +1101,9 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
     let (started, finished, already_shown) = {
         let mut st = state.locked();
         let was_busy = st.working() > 0;
+        // ── L'historique sur le disque : l'état d'avant donne les durées ──
+        let previous = st.sessions.get(&event.session).map(|s| (s.state, s.since));
+        history_note(&mut st, &event, previous);
         if event.kind == "ended" {
             st.sessions.remove(&event.session);
         } else if event.kind != "info" {
@@ -1093,6 +1153,7 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
         }
         (!was_busy && busy, was_busy && !busy, shown)
     };
+    history_save(state);
 
     super::with_context(app, ID, |ctx| {
         let settings = ctx.settings();
@@ -1144,6 +1205,12 @@ fn report_then_show(app: &AppHandle, state: &Shared, mut event: Event, cwd: Stri
             if let Some(h) = st.history.iter_mut().find(|h| h.kind == "done" && h.at == event.at && h.session == event.session) {
                 h.changes = event.changes.clone();
             }
+            // … et l'historique sur le disque (sans le dossier).
+            if let Some(c) = event.changes.as_ref().map(|x| x.changes.clone()) {
+                st.log.locked().amend(&event.session, "done", |e| e.changes = Some(history::Changes { files: c.files, added: c.added, removed: c.removed, names: c.names }));
+            }
+            drop(st);
+            history_save(&state);
         }
         super::with_context(&app, ID, |ctx| {
             show_or_hold(ctx, &state, &event);
@@ -1439,6 +1506,107 @@ fn mcp_config(tool: &str, exe: &str) -> Result<String, String> {
 
 fn now_ms() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
+}
+
+// ── L'historique gardé 7 jours (agents_history.rs) ───────────────────────────
+
+fn history_file() -> PathBuf {
+    platform::config_dir().join("agents-history.json")
+}
+
+/// Au démarrage : relit le fichier, purge, et remplit « Derniers messages »
+/// avec ce qu'il contient (titre d'Ondine, projet, date, bilan ; jamais un
+/// message). Un fichier abîmé est mis de côté.
+fn history_load(state: &Shared) {
+    let path = history_file();
+    let store = match history::load(&path) {
+        Ok(s) => s,
+        Err(e) => {
+            let aside = platform::config_dir().join(format!("agents-history.broken-{}.json", platform::local_time().file_stamp()));
+            let _ = std::fs::rename(&path, &aside);
+            log::warn(format!("agents : historique illisible ({e}), mis de côté dans {}", aside.display()));
+            history::Store::default()
+        }
+    };
+    let mut st = state.locked();
+    let log_arc = st.log.clone();
+    {
+        let mut log_store = log_arc.locked();
+        *log_store = store;
+        log_store.purge(now_ms());
+        let kinds: [(&str, &'static str); 2] = [("done", "done"), ("waiting", "waiting")];
+        for e in log_store.entries.iter().take(MAX_HISTORY) {
+            let Some((_, kind)) = kinds.iter().find(|(k, _)| *k == e.kind) else { continue };
+            st.history.push_back(Event {
+                at: e.at,
+                source: e.tool.clone(),
+                kind,
+                title: e.title.clone(),
+                body: String::new(),
+                project: e.project.clone(),
+                session: String::new(),
+                changes: e.changes.as_ref().map(|c| Report {
+                    changes: git::Changes { files: c.files, added: c.added, removed: c.removed, names: c.names.clone() },
+                    dir: String::new(),
+                    vscode: false,
+                    terminal: false,
+                }),
+            });
+        }
+    }
+    st.history.truncate(MAX_HISTORY);
+    log::debug(format!("agents : {} entrées d'historique relues", st.history.len()));
+}
+
+/// Note un événement dans l'historique sur le disque. `previous` : l'état
+/// de la session avant lui, pour les durées (une tâche finie : depuis que
+/// l'agent travaillait ; une attente : jusqu'à ce qu'il reparte).
+fn history_note(st: &mut State, event: &Event, previous: Option<(&'static str, u64)>) {
+    let mut store = st.log.locked();
+    // L'attente se termine (l'agent repart, finit, ou s'arrête).
+    if let Some(("waiting", since)) = previous {
+        if event.kind != "waiting" {
+            let waited = event.at.saturating_sub(since);
+            store.amend(&event.session, "waiting", |e| e.duration_ms = e.duration_ms.max(waited));
+        }
+    }
+    if event.kind != "done" && event.kind != "waiting" {
+        return;
+    }
+    let duration_ms = match (event.kind, previous) {
+        ("done", Some(("working", since))) => event.at.saturating_sub(since),
+        _ => 0,
+    };
+    store.push(history::Entry {
+        at: event.at,
+        kind: event.kind.to_string(),
+        tool: event.source.clone(),
+        project: event.project.clone(),
+        duration_ms,
+        title: event.title.clone(),
+        changes: None,
+        session: event.session.clone(),
+    });
+}
+
+/// Écrit l'historique dans une seconde (au plus une écriture par seconde).
+fn history_save(state: &Shared) {
+    let store = state.locked().log.clone();
+    history::save_soon(store, history_file(), |e| log::warn(format!("agents : historique non enregistré : {e}")));
+}
+
+/// Chaque minute : oublie ce qui a plus de 7 jours (écrit si quelque chose part).
+fn history_purge(state: &Shared) {
+    let changed = {
+        let st = state.locked();
+        let mut store = st.log.locked();
+        let before = store.entries.len();
+        store.purge(now_ms());
+        store.entries.len() != before
+    };
+    if changed {
+        history_save(state);
+    }
 }
 
 #[cfg(test)]

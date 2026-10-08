@@ -1272,3 +1272,12 @@ html:not([lang="fr"]) .fr-only {
 .eggs-fold[hidden] {
   display: none;
 }
+
+/* Une zone de texte sur plusieurs lignes (grille de prix des agents) */
+.text-multi {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  min-height: 110px;
+  resize: vertical;
+  line-height: 1.5;
+}
