@@ -1445,7 +1445,9 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   - `ondine_timer {minutes 1–180}` → `timer.start` ;
   - `ondine_ask {question, options 2–4, timeout_minutes 1–25}` →
     `agents.ask`, une alerte qui reste affichée avec un bouton par choix (et
-    dans l'onglet). Le clic (`answer {id, choice}`) renvoie `{"answer": "…"}`
+    dans l'onglet) ;
+  - `ondine_note`, `ondine_shelf`, `ondine_capture`, `ondine_open` : voir plus
+    bas (« Les outils MCP en plus »). Le clic (`answer {id, choice}`) renvoie `{"answer": "…"}`
     à l'agent ; sans clic avant le délai : `{"answer": null, "reason": …}`.
     5 questions en attente au plus. Délai plafonné à 25 min parce que Claude
     Code coupe un outil stdio muet après 30 min.
@@ -1475,6 +1477,112 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
     `PeekNamedPipe` le voit et l'alerte devient « Réglé ailleurs » ; même
     chose pour `ondine_ask` ;
   - Gemini CLI : impossible (un hook peut refuser, pas autoriser).
+- Les autres outils (`modules/agents_tools.rs`, front `agents/tools.ts`) :
+  même liste des deux côtés, un identifiant par outil (réglage « Proposer … »,
+  source des hooks, bouton). Lancement + reprise + hooks installés
+  automatiquement (même mécanisme que ci-dessus, `HOOK_TOOLS` dans agents.rs,
+  `hook_status` / `hook_install` / `hook_remove`) pour ceux dont la
+  documentation officielle décrit le format des hooks :
+  - GitHub Copilot CLI (`copilot`) : `%USERPROFILE%\.copilot\hooks\ondine.json`
+    (ou `COPILOT_HOME\hooks\`), `{version: 1, hooks: {événement: [{type:
+    "command", exec, args, timeoutSec}]}}` — `exec` + `args` : lancé sans
+    shell, le JSON sur l'entrée standard ; `userPromptSubmitted` → au travail,
+    `agentStop` → a fini, `notification` → attend (`notification_type`),
+    `sessionEnd` ; `permissionRequest` n'est pas branché (ce hook attend une
+    décision). Reprise `copilot --continue`.
+  - Cursor CLI (`agent`) : `%USERPROFILE%\.cursor\hooks.json`, `{version: 1,
+    hooks: {stop: [{command}]}}`, commande `"chemin" notify --source cursor`
+    (forme cmd.exe), le JSON sur l'entrée standard (`hook_event_name`,
+    `conversation_id`, `workspace_roots[0]` comme dossier) ; `beforeSubmitPrompt`,
+    `stop`, `sessionEnd`. Reprise `agent --continue`. Que ces hooks se
+    déclenchent aussi dans l'agent en ligne de commande vient du forum de
+    Cursor, pas de la page officielle (voir « À tester »).
+  - Qwen Code (`qwen`) : `%USERPROFILE%\.qwen\settings.json`, même forme que
+    Claude Code (`hooks.Stop[].hooks[]`), commande PowerShell `$input | &
+    'chemin' notify --source qwen` avec `shell: "powershell"` ;
+    `UserPromptSubmit`, `Stop`, `Notification` (`permission_prompt`,
+    `idle_prompt`), `SessionEnd`. Reprise `qwen --continue`.
+  - Goose (`goose`) : un plugin à nous,
+    `%USERPROFILE%\.agents\plugins\ondine\hooks\hooks.json` (+ `plugin.json`
+    écrit à l'installation s'il manque), forme Claude Code, commande `'chemin'
+    notify --source goose` (Goose lance avec `sh -c`) ; `UserPromptSubmit`,
+    `Stop`, `SessionEnd` (le JSON reçu a `event`, `session_id`,
+    `working_dir`). Reprise `goose session --resume`.
+  - Lancement seulement (pas de hooks shell, ou un format non vérifié) :
+    OpenCode (`opencode`, reprise `--continue` ; ses « plugins » sont du
+    JavaScript), Kiro CLI (`kiro-cli`, reprise `chat --resume` ; ses hooks
+    sont par projet dans `.kiro\hooks\`, pas dans un fichier utilisateur),
+    Hermes (`hermes`, reprise `--continue` ; hooks shell dans `config.yaml`,
+    format non vérifié), Aider (`aider`), Amp (`amp` ; pas de reprise de la
+    dernière session documentée, seulement par identifiant).
+  - Les événements des autres outils sont ramenés aux nôtres
+    (`agents_tools::canonical_event` : `agentStop`, `stop` → Stop…), le numéro
+    de session lu dans `session_id`, `conversation_id` ou `sessionId`, le
+    dossier dans `cwd`, `working_dir` ou `workspace_roots[0]`. Le serveur MCP
+    et le hook d'autorisation ne sont pas proposés pour ces outils (formats
+    non vérifiés).
+  - « Autre outil » : réglage `otherTool` (le mot de commande : lettres,
+    chiffres, tirets, points, soulignés, 32 caractères au plus, ni option ni
+    chemin ; `agents_tools::valid_word`), lancé comme les autres (chemin
+    complet trouvé dans le PATH). `launch {tool: "other"}`. Le guide de
+    l'onglet montre la ligne `"chemin\ondine.exe" notify --source other
+    --event done` (`hook_config` → `other`) : `cli.rs` comprend `--event done |
+    waiting | working | ended` sans JSON, et `understand` en fait « L'outil a
+    fini » / « L'outil attend votre réponse ».
+  - Les icônes des outils (`src/assets/icons-line/<outil>.svg`, `icon.ts`
+    `agentIcon`) sont des pictogrammes au trait maison ; sans image en
+    couleur, le pack couleur montre aussi le trait.
+- Le résumé de l'agent dans « a fini » (réglage `doneSummary`, activé) : le
+  hook `Stop` de Claude Code donne `transcript_path`. Le chemin n'est accepté
+  que s'il est absolu, finit en `.jsonl` et se trouve (canonisé) sous
+  `…\.claude\projects` (`agents_resume::transcript_path`) ; on y lit la
+  dernière phrase (`last_message_cut`, 200 caractères), seulement si elle
+  vient de l'assistant. Elle va dans `Event.summary` → le corps de la
+  notification, avec « Copier » (`copy_text {text}`, presse-papiers). Les
+  autres outils donnent parfois un chemin de transcription (Copilot
+  `transcriptPath`, Cursor `transcript_path`) mais pas sous le dossier de
+  Claude Code ni dans un format connu : ignoré. Jamais dans le journal.
+- Bilan git cliquable : « Fichiers… » sur la notification du bilan ouvre
+  l'île sur l'onglet et un panneau (`agents/report-view.ts`) demande
+  `report_files {path}` → `{root, files: [{path, added, removed, untracked,
+  exists}]}` (`agents_git::file_list` : les mêmes `git status` / `git diff
+  --numstat`, 20 fichiers au plus, les plus changés d'abord). Chaque fichier
+  a « Ouvrir » (`open_vscode_file {dir, file}` : `code <racine> -g <fichier>`
+  par le chemin complet de VS Code, le chemin relatif vérifié par
+  `safe_relative` — pas de `..`, pas absolu — puis joint à la racine et
+  validé par `check_path`) et « Diff » (`{…, diff: true}` : `git show
+  HEAD:<fichier>` en lecture seule dans `%TEMP%\ondine-diff\<date>\HEAD ·
+  <nom>`, puis `code --diff <copie> <fichier>` ; pas pour un fichier nouveau).
+  Seulement sur votre clic.
+- Rappels d'attente (`modules/agents_wait.rs`, réglage `remindWaiting`,
+  activé) : le fil d'entretien (5 s) regarde chaque session « waiting » ;
+  à 10 min puis 30 min d'attente, un `agents.event` de type `info` (« Claude
+  attend toujours votre réponse · depuis 10 min · site-ondine », avec « Y
+  aller »), et c'est tout (`Session.reminded`). Rien pendant la
+  concentration. En plus, côté front (`agents/wait-watch.ts`) : tant qu'une
+  session attend et que l'île est en mini-île (`island.state` → `compact`),
+  `mascot.emote {emotion: "wave"}` toutes les deux minutes.
+- Les outils MCP en plus (`modules/agents_mcp_extra.rs`, déclarés dans
+  `cli.rs`, même réglage `mcp` et même limite de débit) ; chaque demande
+  porte le dossier courant de l'agent (`cwd`) :
+  - `ondine_note {text}` (2000 caractères au plus) → bus `notes.add {text}`,
+    que le module Notes écoute (nouvelle note en tête, mêmes limites que
+    `note_save`) ; l'agent reçoit « Note ajoutée » ;
+  - `ondine_shelf {path}` : `check_path`, un fichier existant, sous le dossier
+    de la session (`cwd`) ou le dossier utilisateur (`under_allowed`) → bus
+    `shelf.add {paths}` (le mécanisme de Capture) ;
+  - `ondine_capture {reason?}` : une question de type `capture` (« Claude
+    demande une capture d'écran », « Capturer » / « Refuser », 60 s) ; au
+    clic, `capture.request {then: "save"}` que le front de Capture écoute
+    (même outil de capture de Windows), puis `capture.done` revient au Rust
+    d'Agents IA (`State.capture`), qui rend le chemin du PNG à l'agent (150 s
+    au plus, une seule capture en attente) ; sans clic : refus ;
+  - `ondine_open {target}` : une adresse http(s) (`web_url` : schéma, pas
+    d'espace ni de contrôle, 2000 caractères) ou un fichier existant sous la
+    session ou le dossier utilisateur ; question de type `open` (« Ouvrir » /
+    « Refuser », 60 s) ; au clic, le lien part à `shell_open`, le fichier à
+    `launcher::open_checked` (un programme est seulement montré dans
+    l'Explorateur, jamais lancé).
 - Mode concentration (`quiet_start {minutes: 25 | 60 | 120 | 0}`, 0 = jusqu'à
   `quiet_stop`) : les notifications des agents sont gardées (`held`, 100 au
   plus) au lieu d'être montrées, pas de fête de la mascotte, les questions

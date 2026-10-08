@@ -255,6 +255,12 @@ export const capture: IslandModule = {
   manifest: manifest as ModuleManifest,
 
   setup(api) {
+    // Un autre module (Agents IA : un agent a demandé une capture, et vous
+    // avez cliqué « Capturer ») demande l'outil de capture.
+    api.on("capture.request", (msg) => {
+      const then = (msg.payload as { then?: Action } | null)?.then;
+      void snip(api, then === "save" || then === "shelf" ? then : "save");
+    });
     api.on("capture.done", (msg) => report(api, msg.payload as Done));
     api.on("capture.gif", (msg) => onGif(api, msg.payload as GifEvent));
     api.on("capture.color", (msg) => {

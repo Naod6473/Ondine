@@ -19,6 +19,7 @@ use tauri::AppHandle;
 
 use super::{ModuleContext, RustModule};
 use crate::platform;
+use crate::services::bus::BusMessage;
 use crate::services::undo::DEFAULT_WINDOW;
 use crate::services::{bus, log, search};
 
@@ -78,6 +79,28 @@ impl RustModule for Notes {
 
     fn start(&self, _app: &AppHandle) {
         *self.data.locked() = load();
+    }
+
+    /// "notes.add" `{text}` : un autre module (Agents IA, outil MCP
+    /// ondine_note) ajoute une note. Mêmes limites que « note_save ».
+    fn on_event(&self, ctx: &ModuleContext, msg: &BusMessage) {
+        if msg.topic != "notes.add" {
+            return;
+        }
+        let text = match arg_text(&msg.payload, MAX_NOTE_CHARS) {
+            Ok(t) => t,
+            Err(e) => return ctx.log_warn(format!("note refusée : {e}")),
+        };
+        {
+            let mut d = self.data.locked();
+            if d.notes.len() >= MAX_NOTES {
+                return ctx.log_warn(format!("note refusée : au plus {MAX_NOTES} notes"));
+            }
+            let id = d.new_id();
+            d.notes.insert(0, Note { id, text, updated: now_ms() });
+        }
+        ctx.log_info("note ajoutée par un autre module");
+        changed(ctx.app, &self.data);
     }
 
     fn invoke(&self, ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {

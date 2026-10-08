@@ -410,9 +410,17 @@ function githubCalendar(fromCache: boolean) {
 let githubAsked = false;
 
 /** Les hooks des agents (onglet Agents IA) : Claude branché, Codex sur un ancien chemin. */
-const DEMO_HOOKS: Record<string, string> = { "claude-code": "installed", codex: "stale", gemini: "absent" };
+const DEMO_HOOKS: Record<string, string> = { "claude-code": "installed", codex: "stale", gemini: "absent", copilot: "absent", cursor: "installed", qwen: "absent", goose: "absent" };
 function demoHooks() {
-  const file = { "claude-code": ".claude\\settings.json", codex: ".codex\\config.toml", gemini: ".gemini\\settings.json" } as Record<string, string>;
+  const file = {
+    "claude-code": ".claude\\settings.json",
+    codex: ".codex\\config.toml",
+    gemini: ".gemini\\settings.json",
+    copilot: ".copilot\\hooks\\ondine.json",
+    cursor: ".cursor\\hooks.json",
+    qwen: ".qwen\\settings.json",
+    goose: ".agents\\plugins\\ondine\\hooks\\hooks.json",
+  } as Record<string, string>;
   return Object.fromEntries(
     Object.entries(DEMO_HOOKS).map(([t, state]) => [t, { file: `${HOME}\\${file[t]}`, state, permission: false, otherPermission: false }]),
   );
@@ -617,12 +625,25 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     case "agents.history":
       return agentsHistory();
     case "agents.projects":
-      return { tools: ["claude", "codex", "gemini"], projects: [{ path: `${HOME}\\Projets\\site-ondine`, name: "site-ondine" }] };
+      return { tools: ["claude", "codex", "gemini", "copilot", "cursor", "qwen", "goose", "opencode", "kiro", "hermes", "aider", "amp"], projects: [{ path: `${HOME}\\Projets\\site-ondine`, name: "site-ondine" }] };
     // « Reprendre » : la dernière phrase de la dernière session du projet.
     case "agents.last_sessions":
       return [{ index: 0, found: true, who: "assistant", text: "Le site est à jour.", at: Date.now() - 2 * 3600_000 }];
     case "agents.hook_config":
-      return { exe: "C:\\Program Files\\Ondine\\ondine.exe" };
+      return { exe: "C:\\Program Files\\Ondine\\ondine.exe", other: '"C:\\Program Files\\Ondine\\ondine.exe" notify --source other --event done' };
+    // Le bilan cliquable : la liste des fichiers d'un dépôt inventé.
+    case "agents.report_files":
+      return {
+        root: `${HOME}\\Projets\\site-ondine`,
+        files: [
+          { path: "src/pages/index.astro", added: 84, removed: 9, untracked: false, exists: true },
+          { path: "src/styles/site.css", added: 30, removed: 5, untracked: false, exists: true },
+          { path: "docs/notes-lancement.md", added: 6, removed: 0, untracked: true, exists: true },
+        ],
+      };
+    case "agents.open_vscode_file":
+    case "agents.copy_text":
+      return null;
     // Le compteur de jetons : une semaine d'usage inventée, Claude Code et Codex.
     case "agents.usage":
       return agentsUsage();

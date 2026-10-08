@@ -217,3 +217,76 @@ describe("export CSV", () => {
     assert.equal(csvNumber(1234.56789), "1234,5679");
   });
 });
+
+// ── Les outils en plus (tools.ts), le bilan cliquable, les coucous ──────────
+
+import { HOOK_TOOLS, LAUNCH, fileCounts, launchName, sourceName, summaryLine } from "../../src/modules/agents/tools";
+import { waveDue, WAVE_EVERY_MS } from "../../src/modules/agents/wait-watch";
+
+describe("les outils en plus", () => {
+  test("noms de lancement et de source", () => {
+    assert.equal(launchName("copilot"), "GitHub Copilot CLI");
+    assert.equal(launchName("other"), "Autre outil");
+    assert.equal(launchName("other", " kiro-cli "), "kiro-cli");
+    assert.equal(launchName("inconnu"), "inconnu");
+    assert.equal(sourceName("copilot"), "Copilot");
+    assert.equal(sourceName("claude-code"), "Claude");
+    assert.equal(sourceName("masauvegarde"), "masauvegarde");
+  });
+
+  test("qui se reprend, qui se branche", () => {
+    assert.equal(LAUNCH.gemini.resume, false);
+    assert.equal(LAUNCH.aider.resume, false);
+    assert.equal(LAUNCH.goose.resume, true);
+    for (const id of ["claude-code", "codex", "gemini", "copilot", "cursor", "qwen", "goose"]) assert.ok(HOOK_TOOLS[id], id);
+    assert.equal(HOOK_TOOLS.copilot.mcp, false);
+    assert.equal(HOOK_TOOLS["claude-code"].mcp, true);
+    assert.ok(!("aider" in HOOK_TOOLS));
+    // Chaque libellé est traduit.
+    for (const info of Object.values(LAUNCH)) if (info.resumeTitle) assert.ok(english(info.resumeTitle), info.resumeTitle);
+    for (const g of Object.values(HOOK_TOOLS)) {
+      assert.ok(english(g.steps), g.steps);
+      assert.ok(english(g.restart), g.restart);
+    }
+  });
+
+  test("les notifications des nouveaux outils sont traduites", () => {
+    assert.equal(english("Copilot a fini"), "Copilot is done");
+    assert.equal(english("Claude attend toujours votre réponse"), "Claude is still waiting for your answer");
+    assert.equal(english("depuis 10 min · site-ondine"), "for 10 min · site-ondine");
+    assert.equal(english("Goose a ajouté une note"), "Goose added a note");
+    assert.equal(english("Claude demande une capture d'écran"), "Claude asks for a screenshot");
+    assert.equal(english("Claude demande d'ouvrir rapport.pdf"), "Claude asks to open rapport.pdf");
+  });
+});
+
+describe("le bilan cliquable", () => {
+  test("les comptes par fichier", () => {
+    assert.equal(fileCounts({ path: "a.rs", added: 12, removed: 3, untracked: false, exists: true }), "+12 −3");
+    assert.equal(fileCounts({ path: "b.rs", added: 40, removed: 0, untracked: true, exists: true }), "nouveau, +40");
+    assert.equal(fileCounts({ path: "c.rs", added: 0, removed: 7, untracked: false, exists: false }), "supprimé");
+    assert.equal(english("nouveau, +40"), "new, +40");
+    assert.equal(english("supprimé"), "deleted");
+  });
+
+  test("la dernière phrase, sur une ligne et coupée", () => {
+    assert.equal(summaryLine("  Les tests\n  passent.  "), "Les tests passent.");
+    const long = summaryLine("a".repeat(300));
+    assert.equal([...long].length, 200);
+    assert.ok(long.endsWith("…"));
+    assert.equal(summaryLine("é".repeat(200)), "é".repeat(200));
+  });
+});
+
+describe("les coucous de la mascotte", () => {
+  const base = { waiting: 1, islandState: "compact", quiet: false, enabled: true, lastWave: 0, now: WAVE_EVERY_MS };
+  test("toutes les deux minutes, en mini-île, tant qu'un agent attend", () => {
+    assert.equal(waveDue(base), true);
+    assert.equal(waveDue({ ...base, now: WAVE_EVERY_MS - 1 }), false);
+    assert.equal(waveDue({ ...base, waiting: 0 }), false);
+    assert.equal(waveDue({ ...base, islandState: "expanded" }), false);
+    assert.equal(waveDue({ ...base, islandState: "hidden" }), false);
+    assert.equal(waveDue({ ...base, quiet: true }), false);
+    assert.equal(waveDue({ ...base, enabled: false }), false);
+  });
+});
