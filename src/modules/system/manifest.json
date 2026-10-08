@@ -14,6 +14,7 @@
     "fields": [
       {
         "key": "diskAlertPct",
+        "essential": true,
         "type": "number",
         "label": "Prévenir quand un disque a moins de (% de place libre, 0 = jamais)",
         "default": 10,
@@ -23,6 +24,7 @@
       },
       {
         "key": "batteryLowPct",
+        "essential": true,
         "type": "number",
         "label": "Prévenir quand la batterie descend à (%, 0 = jamais)",
         "default": 20,
@@ -44,6 +46,7 @@
       },
       {
         "key": "worldClocks",
+        "essential": true,
         "type": "string",
         "label": "Horloges du monde",
         "help": "4 villes au plus, séparées par des virgules (ex. : Montréal, Tokyo). Elles s'affichent dans l'onglet Système. Les heures sont calculées sur le PC.",

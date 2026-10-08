@@ -14,6 +14,7 @@
     "fields": [
       {
         "key": "projects",
+        "essential": true,
         "type": "folders",
         "label": "Projets pour les agents",
         "help": "Un bouton par projet dans l'onglet et dans le lanceur. Vide = votre dossier utilisateur.",
@@ -63,12 +64,14 @@
       },
       {
         "key": "notifyWaiting",
+        "essential": true,
         "type": "boolean",
         "label": "Prévenir quand Claude attend ma réponse ou ma permission",
         "default": true
       },
       {
         "key": "notifyDone",
+        "essential": true,
         "type": "boolean",
         "label": "Prévenir quand Claude a fini",
         "default": true

@@ -26,9 +26,7 @@ ondine/
 ├─ scripts/winget-manifests.mjs  refait les manifestes winget d'une version (télécharge l'installateur, SHA-256)
 ├─ packaging/winget/          manifestes winget prêts (Naod6473.Ondine), pas encore proposés à Microsoft ; README = comment les soumettre
 ├─ mascots/                   UNE MASCOTTE = UN DOSSIER (manifest.json + fichiers)
-│  ├─ goutte-gomme/           la goutte gomme, dessinée en code (gum.ts)
-│  ├─ goutte-classique/       la première goutte, mêmes poses et animations que goutte/
-│  └─ goutte/                 la goutte : une image par émotion, animations, fondus (par défaut)
+│  └─ goutte-gomme/           la goutte gomme, dessinée en code (gum.ts), par défaut ; ses cousines viennent de gum-family.ts
 ├─ src/                       ── FRONT (TypeScript) ──
 │  ├─ main.ts                 démarrage de la fenêtre de l'île
 │  ├─ core/                   le socle partagé par tout le front
@@ -41,6 +39,7 @@ ondine/
 │  │  ├─ types.ts             forme des réglages (miroir du Rust)
 │  │  ├─ world-cities.ts · world-time.ts   villes et fuseaux, heure ailleurs (horloges, Lanceur)
 │  │  ├─ whats-new.ts         « Quoi de neuf » après une mise à jour (changelog.ts lit CHANGELOG.md)
+│  │  ├─ whats-new-mascots.ts les mascottes nouvelles de chaque version (carrousel de l'île)
 │  │  └─ log.ts               journal côté front (écrit dans le fichier du Rust)
 │  ├─ island/
 │  │  ├─ island-state.ts      machine à états de l'île (sans DOM)
@@ -283,6 +282,8 @@ Ce qui est vérifié, et où :
   ramenée à quelque chose de valide (bornes, options) avant usage. Un champ
   `string` peut ajouter `"check": "cities"` (vérifications nommées de
   `src/settings/field-checks.ts`) : un avertissement s'affiche sous le champ.
+  Un champ `"essential": true` (1 à 3 par module) reste visible en mode Simple
+  de la fenêtre de réglages (voir « Fenêtre de réglages : mode Simple / Complet »).
 
 ### Les deux moitiés d'un module
 
@@ -497,7 +498,9 @@ bus ──▶ MascotController (mascot-state.ts) ──▶ MascotRenderer (rende
   « de près ». En attendant une vraie planche par état, `effect` (breathe, bounce,
   jump, shake, wobble…) anime le corps par du code et `overlay` (zzz, confetti,
   hearts…) dessine un effet autour.
-- **Moteur `poses`** (`mascots/goutte/`, `src/mascot/renderers/poses.ts`) : une
+- **Moteur `poses`** (`src/mascot/renderers/poses.ts` ; les deux gouttes en images qui
+  l'utilisaient, `goutte/` et `goutte-classique/`, ont été retirées en 1.2.0, le moteur
+  reste pour une mascotte faite d'images) : une
   image 256 × 256 par émotion, toutes cadrées pareil (même ligne de base). Le
   manifeste a une table `poses` : `"joie": { "file": "joie.png", "eyes": [...],
   "blink": "closed" }`. `eyes` = les yeux blancs (centre et rayons) où le code
@@ -537,7 +540,12 @@ moteur `gum` ; le catalogue fabrique les cousines à partir de `GUM_FAMILY`
   ouverture de la bouche, joues gonflées…), les poses des mains, et la gelée du
   contour (`JellyRim` : chaque point est tenu par un ressort et relié à ses
   voisins, une pichenette lance une onde qui s'éteint).
-- `gum.ts` : le moteur. Rien n'y saute : le visage glisse vers sa cible, les
+- `gum-engine.ts` : le moteur, sans rien de l'appli : ce qu'il lui faut
+  (réglages de couleur et d'accessoires, boucle de dessin, « Réduire les
+  animations ») lui est passé dans un `GumEnv`. `gum.ts` le branche sur l'appli
+  (`GumRenderer` : settingsStore, `frameLoop` de core/perf.ts, Windows) ;
+  `src/mascot/gum-standalone.ts` sur une page web (le site, ci-dessous).
+  Rien n'y saute : le visage glisse vers sa cible, les
   yeux spéciaux (cœurs, étoiles, spirales) apparaissent en fondu, l'étirement et
   l'inclinaison suivent un ressort, elle se tasse avant un saut (on regarde
   l'animation 0,1 s plus loin), s'allonge en l'air et s'écrase en retombant, le
@@ -596,6 +604,23 @@ une tâche de plus de 10 min finie → `moved`, nouvelle version ou trésor trou
 `starstruck` ; le travail d'un agent joue `concentree` (au clavier) et la
 réflexion `pensive` (main au menton).
 
+#### Le site vitrine (`site/`, `src/mascot/gum-standalone.ts`, `vite.site.config.ts`)
+
+La section « Les mascottes » de `site/index.html` dessine les quinze mascottes
+en gomme en direct, avec le vrai moteur : `npm run build:site` construit
+`src/mascot/gum-standalone.ts` en un seul fichier IIFE sans sourcemap,
+`site/media/ondine-gomme.js`, qui est **committé** (GitHub Pages sert `site/`
+tel quel). L'API : `OndineGomme.mount(canvas, { shape, anim, color, hands,
+reducedMotion, maxFps })` → `{ play(name), pause(on), destroy() }`, plus
+`OndineGomme.MASCOTS` (id, nom, forme) et `OndineGomme.GESTURES` (coucou, rire,
+danse). Le script n'entraîne ni réglages, ni Tauri, ni core/perf.ts ni l'île
+(test `tests/front/whats-new.test.ts`, qui suit les imports). Sur le site :
+repos en boucle à 30 images/s au plus, en pause hors de l'écran
+(IntersectionObserver), un geste à tour de rôle au survol ou au toucher ; sans
+JavaScript, l'image fixe `site/media/mascottes/<id>.png` (256 px, fond
+transparent, générée avec Playwright depuis le script construit) reste
+affichée. Le site est en français et tutoie.
+
 ## Les surprises (`src/eggs/`)
 
 Des easter eggs, tous dans l'île, sans fichier ni réseau. `eggs.ts` relie les
@@ -633,9 +658,9 @@ déclencheurs aux effets ; le réglage `mascot.surprises` (`all`, `seasonal`,
 - **Carnet des trésors** (`treasures.ts`) : chaque surprise trouvée est ajoutée
   à `mascot.treasures` (vérifié par le Rust) et annoncée une fois ; la page
   Mascotte des réglages montre le carnet (noms trouvés, indices pour les autres).
-- Les animations propres à la goutte (`pluie-glitch`, `esquive`, `danse`,
-  `fondue`) sont dans son manifeste ; une mascotte qui ne les a pas montre une
-  émotion à la place.
+- Les animations propres à une surprise (`pluie-glitch`, `esquive`, `fondue`)
+  sont lues dans le manifeste de la mascotte ; une mascotte qui ne les a pas
+  (la famille gomme) montre une émotion à la place.
 
 ## Module Étagère (phase 2)
 
@@ -1480,6 +1505,23 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   plusieurs lignes) ; chaque puce est « français · English » : on garde la
   moitié de la langue de l'interface (coupure au premier « · » qui suit une
   fin de phrase). Trois puces au plus, 120 caractères chacune.
+- Quand la version apporte de nouvelles mascottes (`whats-new-mascots.ts` :
+  `NEW_MASCOTS`, version → ids ; pour 1.2.0, toute la famille gomme sauf la
+  goutte gomme ; une version sans entrée garde le texte seul), la notification
+  porte un contenu (`content` de `NotificationRequest`, monté dans l'alerte
+  seulement et défait avec la carte) : le panneau
+  `src/island/whats-new-panel.ts`. Un carrousel des vraies mascottes en gomme
+  (moteur `gum`, un canvas chacune), trois à la fois (une seule en économie
+  d'énergie), flèches, nom dessous ; à tour de rôle l'une fait coucou, rit ou
+  danse (rien avec « Réduire les animations ») ; un clic choisit une carte,
+  « Adopter » écrit `mascot.id` (et `mascot.enabled`) : l'île change de
+  mascotte tout de suite, et elle fait coucou. Les puces du CHANGELOG sont
+  sous le carrousel. « Plus tard » ou × ferment ; les moteurs sont détruits.
+  Classe CSS `custom` sur la carte (île 660 × 268).
+- Rouvrable : Réglages → Général → À propos → « Voir les nouveautés », et en
+  mode démo la scène « Quoi de neuf » (Réglages → Captures d'écran). Le
+  message `app.whats-new` peut porter `{ version }` (dans un navigateur :
+  `window.ondineBus.inject("app.whats-new", { version: "1.2.0" })`).
 - Notification `high` et `sticky` (l'île s'ouvre en alerte, plus grande quand
   le texte a plusieurs lignes : classe `lines`), avec « Tout voir » →
   commande `release_page_open` (Rust, `update.rs`) : ouvre
@@ -1614,3 +1656,33 @@ En éco, en plus : les effets « Studio » (flou → net) sont remplacés par ce
   de 2 fois par seconde.
 
 Pour comparer : Réglages → Général → À propos → « Ressources utilisées ».
+
+## Fenêtre de réglages : mode Simple / Complet (`src/settings/visibility.ts`, `src/settings/mode.ts`)
+
+- Réglage `general.settingsMode` : `"simple"` (défaut, aussi pour un fichier
+  d'avant ce réglage) ou `"full"`. Rust : champ `settings_mode`, `Default`,
+  `sanitize` (autre valeur → "simple"). Interrupteur « Simple / Complet » dans
+  la barre latérale, sous la recherche.
+- En Simple, chaque page ne montre que l'essentiel ; les autres lignes sont
+  cachées **à leur place** (rien ne bouge d'un mode à l'autre), un bloc dont
+  toutes les lignes sont cachées disparaît, et une ligne « N réglages de plus en
+  mode Complet · Tout afficher » termine la page (le bouton passe en Complet).
+- L'essentiel : pour un module, les champs `"essential": true` du manifeste
+  (plus `MODULE_ESSENTIALS` dans visibility.ts pour un manifeste qu'on ne
+  pouvait pas toucher : Bilan de la semaine) ; l'en-tête de la page (Activé,
+  Permissions, À propos) reste. Pour les pages de l'île, `ISLAND_ESSENTIALS`
+  (clé = le `data-key` de la ligne, c'est-à-dire son libellé) : Général (Langue,
+  S'adresser à moi, Lancer avec Windows, Bord de l'écran, Mises à jour
+  automatiques), Apparence (Thème, Style des icônes), Onglets (la liste des
+  modules, marquée `data-essential` dans le DOM), Mascotte (Afficher la
+  mascotte, Mascotte, Couleur), Profils (Profil actif). Règles et les trois
+  pages Sécurité restent entières (`WHOLE_PAGE`) : courtes, ou pas une liste
+  de réglages.
+- `mode.ts` (`applyMode`) travaille sur la page déjà dessinée : `.row[data-key]`
+  et `section.group[data-key]` ; un conteneur `data-essential` garde tout ce
+  qu'il contient ; `data-follows="<clé>"` suit la ligne de cette clé (le pli des
+  surprises). La recherche trouve tout : un résultat caché en Simple porte
+  l'étiquette « réglage avancé », et y aller (comme un lien profond vers une
+  ligne cachée) passe en Complet avant de faire briller la ligne.
+- Tests : `tests/front/visibility.test.ts` (champs visibles selon le mode,
+  compte « N de plus », 1 à 3 champs essentiels par module, défauts).

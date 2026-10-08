@@ -8,10 +8,11 @@
   "settings": {
     "version": 1,
     "fields": [
-      { "key": "on", "type": "boolean", "label": "Afficher la météo", "help": "Ondine demande la météo à Open-Meteo (open-meteo.com), au plus toutes les 30 minutes.", "default": false },
-      { "key": "city", "type": "string", "label": "Votre ville", "help": "Par exemple « Lyon », ou « Lyon, FR » pour préciser le pays.", "default": "", "maxLength": 80 },
+      { "key": "on", "essential": true, "type": "boolean", "label": "Afficher la météo", "help": "Ondine demande la météo à Open-Meteo (open-meteo.com), au plus toutes les 30 minutes.", "default": false },
+      { "key": "city", "essential": true, "type": "string", "label": "Votre ville", "help": "Par exemple « Lyon », ou « Lyon, FR » pour préciser le pays.", "default": "", "maxLength": 80 },
       {
         "key": "unit",
+        "essential": true,
         "type": "select",
         "label": "Unité",
         "default": "c",

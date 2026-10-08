@@ -28,6 +28,8 @@ export interface Settings {
     address?: "vous" | "tu";
     /** La dernière version lancée : « Quoi de neuf » une fois après une mise à jour (src/core/whats-new.ts). */
     lastSeenVersion?: string;
+    /** Fenêtre de réglages : "simple" (l'essentiel) ou "full" (tout), voir src/settings/visibility.ts. */
+    settingsMode?: "simple" | "full";
   };
   island: {
     /** Replier l'île quand la souris n'est plus dessus depuis ce nombre de secondes. */
@@ -141,7 +143,7 @@ export interface Profiles {
 export function defaultSettings(): Settings {
   return {
     version: 2,
-    general: { screen: "primary", logLevel: "info", language: "auto", welcomed: false, demo: false, autoUpdate: true, autostart: true, perfMode: "balanced", ecoOnBattery: true, address: "vous", lastSeenVersion: "" },
+    general: { screen: "primary", logLevel: "info", language: "auto", welcomed: false, demo: false, autoUpdate: true, autostart: true, perfMode: "balanced", ecoOnBattery: true, address: "vous", lastSeenVersion: "", settingsMode: "simple" },
     island: {
       collapseSecs: 1.5,
       notificationSecs: 6,

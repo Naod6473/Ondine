@@ -1,5 +1,11 @@
 {
 "exact": {
+"Simple": "Simple",
+"Complet": "Full",
+"Mode des réglages": "Settings mode",
+"Simple : l'essentiel de chaque page. Complet : tous les réglages.": "Simple: the essentials of each page. Full: every setting.",
+"Tout afficher": "Show all",
+"réglage avancé": "advanced setting",
 "Style": "Style",
 "Mains": "Hands",
 "Rien": "Nothing",
@@ -1456,9 +1462,24 @@
 "La teinte tourne autour du disque, la saturation va du centre au bord. Au clavier : flèches gauche et droite pour la teinte, haut et bas pour la saturation.": "Hue goes around the disc, saturation from the center to the edge. Keyboard: left and right arrows for the hue, up and down for the saturation.",
 "Teinte et saturation": "Hue and saturation",
 "Luminosité": "Lightness",
-"Couleur exacte": "Exact color"
+"Couleur exacte": "Exact color",
+"Quoi de neuf": "What's new",
+"Adopter": "Adopt",
+"Adoptée": "Adopted",
+"Suivant": "Next",
+"Goutte gomme": "Gummy drop",
+"Guimauve": "Marshmallow",
+"Dragée": "Sugared almond",
+"Berlingot": "Berlingot",
+"Ciel": "Sky",
+"De nouvelles mascottes en gomme. Cliquez sur l'une d'elles, puis « Adopter » : l'île change tout de suite.": "New gummy mascots. Click one, then \"Adopt\": the island changes right away.",
+"Les nouvelles mascottes, animées, avec le bouton « Adopter »": "The new mascots, animated, with the \"Adopt\" button"
 },
 "patterns": [
+[
+"^(\\d+)\\ réglages?\\ de\\ plus\\ en\\ mode\\ Complet$",
+"$1 more settings in Full mode"
+],
 [
 "^Autoriser\\ /\\ Refuser\\ depuis\\ l'île\\ \\((.+?)\\)\\ :\\ quand\\ (.+?)\\ demande\\ une\\ permission,\\ l'île\\ montre\\ la\\ commande\\ avec\\ «\\ Autoriser\\ »\\ \\(à\\ confirmer\\)\\ et\\ «\\ Refuser\\ »\\.\\ Sans\\ réponse\\ à\\ temps,\\ la\\ question\\ passe\\ au\\ terminal\\.\\ Collez\\ ce\\ hook\\ en\\ plus,\\ de\\ la\\ même\\ façon\\.$",
 "Allow / Deny from the island ($1): when $2 asks for a permission, the island shows the command with \"Allow\" (to confirm) and \"Deny\". If there's no reply in time, the question falls back to the terminal. Paste this hook in addition, the same way."

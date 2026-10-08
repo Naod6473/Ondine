@@ -11,6 +11,7 @@
     "fields": [
       {
         "key": "sshIn",
+        "essential": true,
         "type": "select",
         "label": "Ouvrir SSH dans",
         "default": "console",

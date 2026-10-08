@@ -11,6 +11,7 @@
     "fields": [
       {
         "key": "shell",
+        "essential": true,
         "type": "select",
         "label": "Terminal à ouvrir",
         "default": "powershell",
@@ -21,7 +22,7 @@
           { "value": "wt", "label": "Windows Terminal (s'il est installé)" }
         ]
       },
-      { "key": "folder", "type": "folders", "label": "Dossier de départ", "help": "Vide = votre dossier utilisateur (C:\\Users\\…).", "default": [], "max": 1 },
+      { "key": "folder", "essential": true, "type": "folders", "label": "Dossier de départ", "help": "Vide = votre dossier utilisateur (C:\\Users\\…).", "default": [], "max": 1 },
       { "key": "showDrop", "type": "boolean", "label": "Proposer « Terminal ici » quand on dépose un dossier sur l'île", "default": true }
     ]
   },

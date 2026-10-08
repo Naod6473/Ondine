@@ -19,8 +19,8 @@
 // « calque »), puis le calque est posé sur l'île avec les mouvements du corps.
 
 import { frameLoop } from "../../core/perf";
-import type { MascotExtras, MascotRenderer } from "../renderer";
-import type { AnimationSpec, MascotManifest, MascotState, Mood, PoseEye, PoseSpec } from "../types";
+import type { MascotRenderer } from "../renderer";
+import type { AnimationSpec, MascotExtras, MascotManifest, MascotState, Mood, PoseEye, PoseSpec } from "../types";
 import { EFFECTS, STILL, type Motion } from "./effects";
 import { drawOverlay } from "./overlays";
 

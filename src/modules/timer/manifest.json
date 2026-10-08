@@ -9,12 +9,12 @@
   "settings": {
     "version": 1,
     "fields": [
-      { "key": "workMin", "type": "number", "label": "Pomodoro : travail (minutes)", "default": 25, "min": 1, "max": 120, "step": 1 },
+      { "key": "workMin", "essential": true, "type": "number", "label": "Pomodoro : travail (minutes)", "default": 25, "min": 1, "max": 120, "step": 1 },
       { "key": "shortMin", "type": "number", "label": "Pomodoro : pause courte (minutes)", "default": 5, "min": 1, "max": 60, "step": 1 },
       { "key": "longMin", "type": "number", "label": "Pomodoro : pause longue (minutes)", "default": 15, "min": 1, "max": 60, "step": 1 },
       { "key": "longEvery", "type": "number", "label": "Pomodoro : pause longue toutes les … séances", "default": 4, "min": 2, "max": 10, "step": 1 },
       { "key": "autoNext", "type": "boolean", "label": "Pomodoro : enchaîner automatiquement travail et pauses", "default": true },
-      { "key": "sound", "type": "boolean", "label": "Jouer un son à la fin", "default": true },
+      { "key": "sound", "essential": true, "type": "boolean", "label": "Jouer un son à la fin", "default": true },
       { "key": "showCompact", "type": "boolean", "label": "Afficher le temps dans la pilule de l'île", "default": true },
       { "key": "focusQuiet", "type": "boolean", "label": "Mode concentration pendant le Pomodoro", "help": "Pendant une séance de travail, les notifications de l'île attendent (sauf les urgentes) ; elles arrivent à la pause, avec un résumé. Les bannières de Windows ne sont pas coupées : pour cela, lancez une séance « Focus » dans l'appli Horloge de Windows 11.", "default": true }
     ]

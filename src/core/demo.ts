@@ -21,7 +21,7 @@ export function demoOn(): boolean {
 }
 
 /** Les scènes que la fenêtre de réglages peut demander (sujet « demo.scene »). */
-export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track"] as const;
+export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new"] as const;
 export type DemoScene = (typeof DEMO_SCENES)[number];
 
 /**
@@ -663,6 +663,10 @@ function playScene(bus: Bus, scene: string) {
       setPosition(0);
       state.playing = true;
       bus.inject("media.changed", mediaState(), "demo");
+      break;
+    case "whats-new":
+      // Le panneau « Quoi de neuf » de la version installée (core/whats-new.ts).
+      bus.inject("app.whats-new", null, "demo");
       break;
   }
 }

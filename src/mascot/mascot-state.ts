@@ -48,8 +48,8 @@ import type { Bus } from "../core/bus";
 import { settingsStore } from "../core/settings-store";
 import { pacedInterval } from "../core/perf";
 import { isRainy, type WeatherLike } from "../eggs/calendar";
-import { NO_EXTRAS, type MascotExtras, type MascotRenderer } from "./renderer";
-import { MASCOT_STATES, type AnimationSpec, type MascotManifest, type MascotState, type Mood } from "./types";
+import type { MascotRenderer } from "./renderer";
+import { MASCOT_STATES, NO_EXTRAS, type AnimationSpec, type MascotExtras, type MascotManifest, type MascotState, type Mood } from "./types";
 
 /**
  * Comment Ondine réagit à une notification : d'abord selon le module qui

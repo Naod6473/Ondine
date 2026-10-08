@@ -31,6 +31,29 @@
   jusqu'à la réponse ; un clic sur elle ouvre l'onglet Agents IA. · When an
   agent asks a question, the mascot holds a "?" sign until it is answered; a
   click on her opens the AI Agents tab.
+- Les deux premières gouttes en images (« Goutte » et « Goutte classique »)
+  sont retirées : la goutte gomme et ses cousines restent, et un réglage qui
+  nommait encore une ancienne goutte retombe sur la goutte gomme. · The two
+  original image-based drops ("Goutte" and "Goutte classique") are gone: the
+  gummy drop and its cousins remain, and a setting that still named an old
+  drop falls back to the gummy drop.
+- Réglages : un mode Simple (par défaut) qui ne montre que l'essentiel de
+  chaque page, et un mode Complet ; l'interrupteur est sous la recherche, et
+  « N réglages de plus · Tout afficher » en bas d'une page réduite. La recherche
+  trouve toujours tout (« réglage avancé »). · Settings: a Simple mode (default)
+  showing only the essentials of each page, and a Full mode; the switch sits
+  under the search box, with "N more settings · Show all" at the bottom of a
+  reduced page. Search still finds everything ("advanced setting").
+- « Quoi de neuf » après une mise à jour : un panneau avec les nouvelles
+  mascottes en gomme animées en direct, « Adopter » pour en changer tout de
+  suite, et les nouveautés dessous ; rouvrable depuis Réglages → Général et le
+  mode démo. · "What's new" after an update: a panel with the new gummy
+  mascots animated live, "Adopt" to switch right away, and the release notes
+  below; reopenable from Settings → General and demo mode.
+- Site : une galerie des quinze mascottes en gomme, dessinées en direct par le
+  moteur de l'appli (coucou, rire, danse au survol). · Website: a gallery of
+  the fifteen gummy mascots, drawn live by the app's engine (wave, laugh,
+  dance on hover).
 - Onglet Agents IA : un compteur de jetons (entrée, sortie, cache) par jour,
   par modèle et par projet, lu dans les journaux de Claude Code et de Codex
   sur ce PC. · AI Agents tab: a token counter (input, output, cache) per day,

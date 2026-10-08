@@ -397,6 +397,96 @@ body {
   width: 600px;
   height: 196px;
 }
+/* Un contenu dessiné par le demandeur (« Quoi de neuf » : le carrousel des
+   nouvelles mascottes, src/island/whats-new-panel.ts) : le texte en haut, les
+   boutons dessous, et l'alerte prend presque toute la fenêtre (720 × 320). */
+.notif.custom {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+.notif.custom .notif-text {
+  flex-basis: calc(100% - 40px);
+}
+.notif.custom .notif-actions {
+  flex-basis: 100%;
+  justify-content: flex-end;
+}
+.island[data-state="alert"]:has(.notif.custom) {
+  width: 660px;
+  height: 268px;
+}
+.wn-panel {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+.wn-carousel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.wn-cards {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+.wn-card {
+  width: 112px;
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  padding: 4px 6px 5px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease;
+}
+.wn-card:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.wn-card.sel {
+  border-color: var(--accent);
+  background: rgba(124, 196, 255, 0.14);
+}
+.wn-card.adopted .wn-name::after {
+  content: " ✓";
+  color: var(--accent);
+}
+.wn-canvas {
+  width: 80px;
+  height: 80px;
+}
+.wn-name {
+  font-size: 12px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wn-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.wn-lines {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .notif.prio-critical .notif-title {
   color: #ff8a8a;
 }

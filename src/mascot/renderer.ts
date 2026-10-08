@@ -2,7 +2,7 @@
 // mascotte. Aujourd'hui : un dessin en Canvas 2D. Demain : planches de sprites,
 // Lottie ou Rive, en ajoutant un renderer ici, sans toucher au reste.
 
-import type { AnimationSpec, MascotManifest, MascotState, Mood } from "./types";
+import type { AnimationSpec, MascotExtras, MascotManifest, MascotState, Mood } from "./types";
 import { PlaceholderCanvasRenderer } from "./renderers/canvas-placeholder";
 import { GumRenderer } from "./renderers/gum";
 import { PosesRenderer } from "./renderers/poses";
@@ -40,14 +40,7 @@ export interface MascotRenderer {
 
 export type MascotReaction = "poke" | "stretch" | "release" | "shake";
 
-/** Ce que la mascotte porte en plus de son animation (voir `setExtras`). */
-export interface MascotExtras {
-  ears: boolean;
-  sign: boolean;
-  umbrella: boolean;
-}
-
-export const NO_EXTRAS: MascotExtras = { ears: false, sign: false, umbrella: false };
+export { NO_EXTRAS, type MascotExtras } from "./types";
 
 type RendererFactory = (manifest: MascotManifest, assets: Record<string, string>) => MascotRenderer;
 

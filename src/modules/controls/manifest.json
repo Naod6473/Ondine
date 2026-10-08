@@ -52,6 +52,7 @@
     "fields": [
       {
         "key": "micHotkey",
+        "essential": true,
         "type": "select",
         "label": "Raccourci pour couper / rétablir le micro",
         "help": "Marche partout, même en visio. Ondine porte un petit badge tant que le micro est coupé.",
@@ -87,6 +88,7 @@
       },
       {
         "key": "usbNotify",
+        "essential": true,
         "type": "boolean",
         "label": "Prévenir quand une clé USB est branchée",
         "help": "Avec deux boutons : « Ouvrir » et « Éjecter ». Les clés et disques USB branchés s'éjectent aussi depuis l'onglet.",

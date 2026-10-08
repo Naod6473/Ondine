@@ -63,6 +63,10 @@ pub struct General {
     /// (src/core/whats-new.ts). Vide = jamais notée (premier lancement, ou
     /// version d'avant ce réglage).
     pub last_seen_version: String,
+    /// La fenêtre de réglages : "simple" (seulement l'essentiel, par défaut,
+    /// aussi pour un fichier d'avant ce réglage) ou "full" (tout). Le front
+    /// décide de ce qui est essentiel (src/settings/visibility.ts).
+    pub settings_mode: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -183,7 +187,7 @@ impl Default for Settings {
 
 impl Default for General {
     fn default() -> Self {
-        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into(), welcomed: false, demo: false, auto_update: true, autostart: true, perf_mode: "balanced".into(), eco_on_battery: true, address: "vous".into(), last_seen_version: String::new() }
+        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into(), welcomed: false, demo: false, auto_update: true, autostart: true, perf_mode: "balanced".into(), eco_on_battery: true, address: "vous".into(), last_seen_version: String::new(), settings_mode: "simple".into() }
     }
 }
 
@@ -258,6 +262,9 @@ impl Settings {
         if !["vous", "tu"].contains(&self.general.address.as_str()) {
             self.general.address = "vous".into();
         }
+        if !["simple", "full"].contains(&self.general.settings_mode.as_str()) {
+            self.general.settings_mode = "simple".into();
+        }
         let i = &mut self.island;
         if !["top", "left", "right"].contains(&i.edge.as_str()) {
             i.edge = "top".into();
@@ -272,6 +279,11 @@ impl Settings {
         }
         i.hotkey = i.hotkey.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '+').take(40).collect();
         let m = &mut self.mascot;
+        // Les deux premières gouttes (en images) ont été retirées en 1.2.0 : un
+        // réglage qui les nomme encore retombe sur la goutte gomme.
+        if matches!(m.id.as_str(), "goutte" | "goutte-classique") {
+            m.id = "goutte-gomme".into();
+        }
         m.peek_every_mins = if m.peek_every_mins.is_finite() { m.peek_every_mins.clamp(1.0, 120.0) } else { 5.0 };
         if !matches!(m.surprises.as_str(), "all" | "seasonal" | "none") {
             m.surprises = "all".into();
@@ -495,6 +507,15 @@ mod tests {
         assert_eq!(s.general.last_seen_version, "");
         let s = parse(r#"{ "version": 2, "general": { "lastSeenVersion": "1.1.0-beta.2" } }"#).unwrap();
         assert_eq!(s.general.last_seen_version, "1.1.0-beta.2");
+    }
+
+    #[test]
+    fn settings_mode_defaults_to_simple_even_for_old_files() {
+        // Un fichier d'avant ce réglage : Simple, comme pour un nouvel utilisateur.
+        assert_eq!(parse(r#"{ "version": 2, "general": { "address": "vous" } }"#).unwrap().general.settings_mode, "simple");
+        assert_eq!(parse(r#"{ "version": 2, "general": { "settingsMode": "expert" } }"#).unwrap().general.settings_mode, "simple");
+        assert_eq!(parse(r#"{ "version": 2, "general": { "settingsMode": "full" } }"#).unwrap().general.settings_mode, "full");
+        assert_eq!(General::default().settings_mode, "simple");
     }
 
     #[test]
