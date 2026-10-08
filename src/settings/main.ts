@@ -703,6 +703,12 @@ function look(main: HTMLElement) {
         segmented(s.island.motion ?? "classic", [["classic", "Classique"], ["studio", "Studio"]], (v) => save((d) => (d.island.motion = v as "classic" | "studio"))),
         "Classique : sobre. Studio : façon vidéo de présentation, les éléments arrivent flous puis nets l'un après l'autre, les chiffres roulent, les boutons rebondissent comme de la gélatine.",
       ),
+      // L'île en gelée (src/island/jelly.ts, réglages dans spring.ts).
+      row(
+        "Élasticité de l'île",
+        segmented(s.island.elasticity ?? "normal", [["soft", "Doux"], ["normal", "Normal"], ["jelly", "Gelée"]], (v) => save((d) => (d.island.elasticity = v as Settings["island"]["elasticity"]))),
+        "Doux : l'île se pose sans rebondir. Normal : un petit rebond. Gelée : elle tremblote, se creuse sous vos clics et s'étire comme de la guimauve. Si Windows réduit les animations, rien ne bouge.",
+      ),
     ]),
     group("Sons", [
       row("Sons de clic", toggle(s.island.sounds, (v) => save((d) => (d.island.sounds = v)), "Sons de clic"), "De petits « plop » à l'ouverture, à la fermeture et sur les boutons. Fabriqués sur place, sans fichier."),
