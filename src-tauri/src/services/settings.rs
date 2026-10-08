@@ -63,6 +63,10 @@ pub struct General {
     /// (src/core/whats-new.ts). Vide = jamais notée (premier lancement, ou
     /// version d'avant ce réglage).
     pub last_seen_version: String,
+    /// La fenêtre de réglages : "simple" (seulement l'essentiel, par défaut,
+    /// aussi pour un fichier d'avant ce réglage) ou "full" (tout). Le front
+    /// décide de ce qui est essentiel (src/settings/visibility.ts).
+    pub settings_mode: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -177,7 +181,7 @@ impl Default for Settings {
 
 impl Default for General {
     fn default() -> Self {
-        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into(), welcomed: false, demo: false, auto_update: true, autostart: true, perf_mode: "balanced".into(), eco_on_battery: true, address: "vous".into(), last_seen_version: String::new() }
+        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into(), welcomed: false, demo: false, auto_update: true, autostart: true, perf_mode: "balanced".into(), eco_on_battery: true, address: "vous".into(), last_seen_version: String::new(), settings_mode: "simple".into() }
     }
 }
 
@@ -251,6 +255,9 @@ impl Settings {
         }
         if !["vous", "tu"].contains(&self.general.address.as_str()) {
             self.general.address = "vous".into();
+        }
+        if !["simple", "full"].contains(&self.general.settings_mode.as_str()) {
+            self.general.settings_mode = "simple".into();
         }
         let i = &mut self.island;
         if !["top", "left", "right"].contains(&i.edge.as_str()) {
@@ -479,6 +486,15 @@ mod tests {
         assert_eq!(s.general.last_seen_version, "");
         let s = parse(r#"{ "version": 2, "general": { "lastSeenVersion": "1.1.0-beta.2" } }"#).unwrap();
         assert_eq!(s.general.last_seen_version, "1.1.0-beta.2");
+    }
+
+    #[test]
+    fn settings_mode_defaults_to_simple_even_for_old_files() {
+        // Un fichier d'avant ce réglage : Simple, comme pour un nouvel utilisateur.
+        assert_eq!(parse(r#"{ "version": 2, "general": { "address": "vous" } }"#).unwrap().general.settings_mode, "simple");
+        assert_eq!(parse(r#"{ "version": 2, "general": { "settingsMode": "expert" } }"#).unwrap().general.settings_mode, "simple");
+        assert_eq!(parse(r#"{ "version": 2, "general": { "settingsMode": "full" } }"#).unwrap().general.settings_mode, "full");
+        assert_eq!(General::default().settings_mode, "simple");
     }
 
     #[test]

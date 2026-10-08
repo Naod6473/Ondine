@@ -36,6 +36,8 @@ import { profilesPage } from "./profiles-page";
 import { aboutGroup } from "./about";
 import { perfGroup } from "./perf-group";
 import { startPerf } from "../core/perf";
+import { applyMode, hiddenByMode, modeSwitch } from "./mode";
+import { isHidden, modeOf, moduleEssentialKeys, pageEssentials, WHOLE_PAGE, type SettingsMode } from "./visibility";
 
 const PERMISSION_LABELS: Record<string, string> = {
   files: "Fichiers",
@@ -56,6 +58,11 @@ interface Page {
   /** Mots trouvés par la recherche (les libellés de la page). */
   keywords: string[];
   render: (main: HTMLElement) => void;
+  /**
+   * Mode Simple : les clés (`data-key`) des lignes essentielles, ou WHOLE_PAGE.
+   * Absent : d'après l'id de la page (visibility.ts, ISLAND_ESSENTIALS).
+   */
+  essentials?: string[] | typeof WHOLE_PAGE;
 }
 
 const ISLAND_PAGES: Page[] = [
@@ -161,6 +168,7 @@ function modulePages(): Page[] {
     sub: firstSentence(m.manifest.description),
     keywords: [m.manifest.description, ...(m.manifest.settings?.fields ?? []).map((f) => f.label)],
     render: (main: HTMLElement) => modulePage(main, m.manifest),
+    essentials: moduleEssentialKeys(m.manifest.id, m.manifest.settings?.fields ?? []),
   }));
 }
 
@@ -262,6 +270,33 @@ function save(change: (s: Settings) => void, redraw = false) {
   });
 }
 
+// ── Mode Simple / Complet (visibility.ts, mode.ts) ────────────────────────────
+
+/** Le mode courant (Simple par défaut, même pour un réglage absent). */
+function settingsMode(): SettingsMode {
+  return modeOf(settingsStore.current.general.settingsMode);
+}
+
+/** Change de mode : enregistré, la page se redessine, l'interrupteur suit. */
+function setMode(mode: SettingsMode) {
+  if (mode === settingsMode()) return;
+  // Redessinée tout de suite (sans attendre l'enregistrement) : un lien profond
+  // vers une ligne cachée peut ainsi la trouver juste après.
+  save((d) => (d.general.settingsMode = mode));
+  showPage(false);
+  nav.querySelector(".mode-switch")?.replaceWith(modeSwitch(mode, setMode));
+}
+
+/** Les clés essentielles d'une page (module : d'après son manifeste ; île : visibility.ts). */
+function essentialsOf(p: Page): string[] | typeof WHOLE_PAGE {
+  return p.essentials ?? pageEssentials(p.id);
+}
+
+/** Un résultat de recherche est-il caché par le mode Simple sur sa page ? */
+function advancedHit(p: Page, key: string | undefined): boolean {
+  return !!key && isHidden(settingsMode(), key, essentialsOf(p));
+}
+
 // ── Navigation ────────────────────────────────────────────────────────────────
 
 function go(id: string, focusKey?: string) {
@@ -334,6 +369,7 @@ function drawNav() {
       el("span", {}, "Réglages", appVersion ? el("small", { class: "brand-version" }, appVersion) : null),
     ),
     search,
+    modeSwitch(settingsMode(), setMode),
     list,
   );
   // La pastille se place une fois la liste affichée (il faut ses positions).
@@ -386,6 +422,7 @@ function showPage(animate: boolean, direction = 1) {
     const p = allPages().find((x) => x.id === current) ?? ISLAND_PAGES[0];
     page.append(header(p.icon, p.label, p.sub));
     p.render(page);
+    applyMode(page, essentialsOf(p), settingsMode(), () => setMode("full"));
   }
   const old = content.firstElementChild as HTMLElement | null;
   const y = content.scrollTop;
@@ -417,6 +454,11 @@ function highlight(key: string) {
   requestAnimationFrame(() => {
     const target = [...content.querySelectorAll<HTMLElement>("[data-key]")].find((r) => r.dataset.key === key);
     if (!target) return;
+    // Caché par le mode Simple (recherche, lien profond) : on passe en Complet, puis on y va.
+    if (settingsMode() === "simple" && hiddenByMode(target)) {
+      setMode("full");
+      return highlight(key);
+    }
     if (target.closest(".eggs-fold")) showEggs(true); // trouvé par la recherche : on déplie
     target.scrollIntoView({ block: "center", behavior: reducedMotion() ? "auto" : "smooth" });
     target.classList.remove("flash");
@@ -457,6 +499,7 @@ function results(page: HTMLElement, q: string) {
           { class: "row result", onclick: () => go(h.page.id, h.key) },
           el("span", { class: "result-icon" }, iconNode(h.page.icon)),
           el("div", { class: "row-text" }, el("div", { class: "row-label" }, h.label), el("div", { class: "row-help" }, h.key ? h.page.label : h.page.group)),
+          advancedHit(h.page, h.key) ? chip("réglage avancé") : null,
           el("span", { class: "chevron" }, "›"),
         ),
       ),
@@ -808,7 +851,7 @@ function tabs(main: HTMLElement) {
   main.append(
     el(
       "section",
-      { class: "group" },
+      { class: "group", "data-essential": "" },
       el("h3", { class: "group-title" }, "Ordre des onglets"),
       list,
       el("p", { class: "group-note" }, "Glissez une ligne, ou utilisez ↑ ↓. Vous pouvez aussi faire glisser les onglets directement dans l'île."),
@@ -816,7 +859,9 @@ function tabs(main: HTMLElement) {
     el("div", { class: "actions" }, el("button", { class: "btn", onclick: () => save((d) => (d.island.tabOrder = []), true) }, "Ordre d'origine")),
   );
   if (without.length) {
-    main.append(group("Sans onglet", without.map((man) => row(`${man.icon}  ${man.name}`, enableToggle(man), undefined, man.name))));
+    const sans = group("Sans onglet", without.map((man) => row(`${man.icon}  ${man.name}`, enableToggle(man), undefined, man.name)));
+    sans.dataset.essential = ""; // mode Simple : la liste des modules reste entière
+    main.append(sans);
   }
   main.append(tipsGroup());
 }
@@ -971,7 +1016,7 @@ function mascot(main: HTMLElement) {
     ]),
     el(
       "div",
-      { class: "eggs-fold", hidden: !eggsShown },
+      { class: "eggs-fold", hidden: !eggsShown, "data-follows": "Surprises cachées et carnet des trésors" },
       group(
         null,
         [

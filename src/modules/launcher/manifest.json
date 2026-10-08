@@ -14,6 +14,7 @@
     "fields": [
       {
         "key": "hotkey",
+        "essential": true,
         "type": "select",
         "label": "Raccourci",
         "default": "Alt+Space",
@@ -46,6 +47,7 @@
       },
       {
         "key": "showRecent",
+        "essential": true,
         "type": "boolean",
         "label": "Proposer les fichiers ouverts récemment",
         "help": "Ceux des dossiers exclus (Confidentialité) ne sont jamais montrés.",

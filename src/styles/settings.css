@@ -1272,3 +1272,44 @@ html:not([lang="fr"]) .fr-only {
 .eggs-fold[hidden] {
   display: none;
 }
+
+/* ── Mode Simple / Complet (src/settings/mode.ts) ───────────────────────── */
+/* L'interrupteur, sous la recherche : les deux boutons se partagent la largeur. */
+.mode-switch {
+  margin: 0 0 10px;
+}
+.mode-switch .segmented {
+  display: flex;
+  width: 100%;
+}
+.mode-switch .segmented button {
+  flex: 1;
+  padding: 4px 6px;
+}
+/* Les lignes et les blocs cachés en mode Simple (display:flex battrait [hidden]). */
+.row[hidden],
+.group[hidden],
+[data-follows][hidden] {
+  display: none;
+}
+.group-body > .last-shown {
+  border-bottom: 0;
+}
+/* « N réglages de plus en mode Complet · Tout afficher », en bas de la page. */
+.mode-more {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 6px;
+  margin: 4px 0 18px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.mode-more .link-btn {
+  margin: 0;
+  font-size: 13px;
+}
+/* Résultat de recherche caché en mode Simple : une petite étiquette. */
+.row.result .chip {
+  flex: none;
+}

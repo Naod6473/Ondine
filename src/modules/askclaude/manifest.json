@@ -11,6 +11,7 @@
     "fields": [
       {
         "key": "model",
+        "essential": true,
         "type": "select",
         "label": "Modèle",
         "default": "claude-sonnet-5-5",
@@ -21,7 +22,7 @@
         ]
       },
       { "key": "maxTokens", "type": "number", "label": "Longueur maximale de la réponse (jetons)", "default": 1024, "min": 256, "max": 4096, "step": 256 },
-      { "key": "instruction", "type": "string", "label": "Consigne donnée à Claude", "help": "Vide = « Répondez en français, simplement et brièvement… ». Elle est montrée avant chaque envoi.", "default": "", "maxLength": 500 },
+      { "key": "instruction", "essential": true, "type": "string", "label": "Consigne donnée à Claude", "help": "Vide = « Répondez en français, simplement et brièvement… ». Elle est montrée avant chaque envoi.", "default": "", "maxLength": 500 },
       { "key": "showDrop", "type": "boolean", "label": "Proposer « Demander à Claude » quand on dépose un fichier sur l'île", "default": true }
     ]
   },

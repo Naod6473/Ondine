@@ -2,6 +2,13 @@
 
 ## Pas encore publié · Unreleased
 
+- Réglages : un mode Simple (par défaut) qui ne montre que l'essentiel de
+  chaque page, et un mode Complet ; l'interrupteur est sous la recherche, et
+  « N réglages de plus · Tout afficher » en bas d'une page réduite. La recherche
+  trouve toujours tout (« réglage avancé »). · Settings: a Simple mode (default)
+  showing only the essentials of each page, and a Full mode; the switch sits
+  under the search box, with "N more settings · Show all" at the bottom of a
+  reduced page. Search still finds everything ("advanced setting").
 - Onglet Agents IA : un compteur de jetons (entrée, sortie, cache) par jour,
   par modèle et par projet, lu dans les journaux de Claude Code et de Codex
   sur ce PC. · AI Agents tab: a token counter (input, output, cache) per day,

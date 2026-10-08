@@ -8,8 +8,8 @@
   "settings": {
     "version": 1,
     "fields": [
-      { "key": "everyMin", "type": "number", "label": "Une pause toutes les (minutes d'écran, 0 = jamais)", "default": 50, "min": 0, "max": 180, "step": 5 },
-      { "key": "quietInCalls", "type": "boolean", "label": "Ne rien dire pendant un appel (micro utilisé)", "default": true }
+      { "key": "everyMin", "essential": true, "type": "number", "label": "Une pause toutes les (minutes d'écran, 0 = jamais)", "default": 50, "min": 0, "max": 180, "step": 5 },
+      { "key": "quietInCalls", "essential": true, "type": "boolean", "label": "Ne rien dire pendant un appel (micro utilisé)", "default": true }
     ]
   },
   "views": [],
