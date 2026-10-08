@@ -1968,6 +1968,29 @@
       "transitionsTo": [
         "*"
       ]
+    },
+    {
+      "name": "danse",
+      "source": {
+        "poses": [
+          "danse-1",
+          "danse-2",
+          "danse-3",
+          "danse-4",
+          "danse-5",
+          "danse-6",
+          "danse-7",
+          "danse-8"
+        ],
+        "poseMs": 150,
+        "fadeMs": 60
+      },
+      "durationMs": 1200,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ]
     }
   ]
 }

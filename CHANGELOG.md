@@ -2,6 +2,11 @@
 
 ## Pas encore publié · Unreleased
 
+- Correctif : la goutte gomme et la goutte classique dansent enfin quand la
+  musique joue en mini-île (elles n'avaient pas d'animation « danse »). · Fix:
+  the gummy and classic drops now dance when music plays in the mini island
+  (they had no "danse" animation).
+
 - Douze nouvelles mascottes en gomme : Guimauve, Dragée, Berlingot, étoile,
   soleil, lune, nuage, cœur, fleur, champignon, fantôme et flamme, plus Ciel
   (soleil le jour, lune la nuit) et Météo. · Twelve new gummy mascots, plus Sky

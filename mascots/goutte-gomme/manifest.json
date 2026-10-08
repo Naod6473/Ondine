@@ -574,6 +574,18 @@
       "source": {
         "function": "bras-leves"
       }
+    },
+    {
+      "name": "danse",
+      "durationMs": 1000,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "danse"
+      }
     }
   ]
 }
