@@ -2,6 +2,16 @@
 
 ## Pas encore publié · Unreleased
 
+- Onglet Agents IA : le calendrier de contributions GitHub (« 336
+  contributions cette année · série de 12 jours », la grille 53 × 7 dans la
+  couleur de l'île, allumée en vague), avec un identifiant GitHub dans les
+  réglages et, pour les contributions privées, un jeton gardé dans le coffre
+  Windows. La mascotte fête les séries de 7, 30 et 100 jours (trois trésors).
+  · AI Agents tab: the GitHub contribution calendar ("336 contributions this
+  year · 12-day streak", the 53 × 7 grid in the island's colour, lit up in a
+  wave), with a GitHub username in the settings and, for private
+  contributions, a token kept in the Windows vault. The mascot celebrates 7,
+  30 and 100-day streaks (three treasures).
 - Onglet Agents IA : un compteur de jetons (entrée, sortie, cache) par jour,
   par modèle et par projet, lu dans les journaux de Claude Code et de Codex
   sur ce PC. · AI Agents tab: a token counter (input, output, cache) per day,

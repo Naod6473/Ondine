@@ -43,6 +43,7 @@ use serde_json::{json, Value};
 use tauri::AppHandle;
 
 use super::agents_git as git;
+use super::agents_github as github;
 use super::agents_hooks as hooks;
 use super::agents_resume as resume;
 use super::agents_usage as usage;
@@ -176,6 +177,8 @@ pub struct Agents {
     state: Shared,
     /// Les journaux déjà lus pour le compteur de jetons (agents_usage.rs).
     usage: Mutex<usage::Cache>,
+    /// Le calendrier de contributions GitHub déjà lu (agents_github.rs).
+    github: Mutex<github::Cache>,
 }
 
 impl RustModule for Agents {
@@ -486,6 +489,27 @@ impl RustModule for Agents {
                 let msg = json!({ "v": 1, "source": "claude-code", "hook": { "hook_event_name": "Stop", "session_id": "essai", "cwd": cwd } });
                 receive(ctx.app, &self.state, msg.to_string().as_bytes());
                 Ok(Value::Null)
+            }
+            // Le calendrier de contributions GitHub (agents_github.rs) : réglage
+            // `githubLogin`, jeton facultatif dans le coffre Windows. Au plus une
+            // demande toutes les 30 minutes ; aucune pendant une présentation ou
+            // la concentration. `fromCache` : rien n'a été demandé à GitHub.
+            "github_calendar" => {
+                let login = ctx.settings().get("githubLogin").and_then(Value::as_str).unwrap_or("").trim().to_string();
+                if login.is_empty() {
+                    return Err("aucun identifiant GitHub dans les réglages".into());
+                }
+                let token = ctx.credential(github::TOKEN_KEY).ok().flatten();
+                let busy = platform::presentation_busy() || self.state.locked().quiet();
+                let disk = platform::config_dir().join("github-calendar.json");
+                let mut cache = self.github.locked();
+                let (cal, from_cache) = github::read(&mut cache, github::Request { login: &login, token: token.as_deref(), busy, disk: &disk })?;
+                if !from_cache {
+                    ctx.log_info(format!("calendrier GitHub : lu, {} jours", cal.days.len()));
+                }
+                let mut out = serde_json::to_value(&cal).map_err(|e| e.to_string())?;
+                out["fromCache"] = json!(from_cache);
+                Ok(out)
             }
             other => Err(format!("commande inconnue : {other}")),
         }

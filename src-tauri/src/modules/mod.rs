@@ -45,6 +45,8 @@ mod agents_git;
 // « Reprendre » : la dernière session de Claude Code d'un projet.
 mod agents_resume;
 mod agents_usage;
+// Le calendrier de contributions GitHub de l'onglet Agents IA.
+mod agents_github;
 
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};

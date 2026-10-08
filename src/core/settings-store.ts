@@ -86,6 +86,9 @@ export function coerce(field: SettingField, value: unknown): unknown {
       const folders = value.filter((v): v is string => typeof v === "string" && v.length > 0 && v.length < 1000);
       return [...new Set(folders)].slice(0, field.max ?? 20);
     }
+    case "secret":
+      // Jamais dans les réglages : il vit dans le Gestionnaire d'identifiants.
+      return null;
     case "calendars": {
       // Mêmes règles que le Rust (services/ics_calendars.rs) : le reste est écarté.
       if (!Array.isArray(value)) return [...field.default];

@@ -2440,6 +2440,146 @@ body {
   margin-left: 6px;
   font-variant-numeric: tabular-nums;
 }
+/* Le calendrier de contributions GitHub (agents/github-view.ts) : 53 colonnes
+   de 7 cases, cinq niveaux tirés de la couleur d'accent (pas le vert GitHub). */
+.agents-github {
+  /* 53 colonnes doivent tenir dans l'onglet (≈ 540 px, étiquettes comprises). */
+  --gh-cell: 8px;
+  --gh-gap: 1.5px;
+  --gh-0: color-mix(in srgb, var(--island-fg) 10%, transparent);
+  --gh-1: color-mix(in srgb, var(--accent) 32%, transparent);
+  --gh-2: color-mix(in srgb, var(--accent) 56%, transparent);
+  --gh-3: color-mix(in srgb, var(--accent) 80%, transparent);
+  --gh-4: var(--accent);
+}
+.agents-github .gh-headline {
+  font-size: 13px;
+}
+.gh-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  gap: 2px 4px;
+  max-width: 100%;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.gh-months {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: repeat(53, var(--gh-cell));
+  column-gap: var(--gh-gap);
+  font-size: 10px;
+  line-height: 12px;
+  color: var(--island-muted, #9aa0b4);
+  white-space: nowrap;
+}
+.gh-rows {
+  grid-column: 1;
+  grid-row: 2;
+  display: grid;
+  grid-template-rows: repeat(7, var(--gh-cell));
+  row-gap: var(--gh-gap);
+  font-size: 9px;
+  line-height: var(--gh-cell);
+  color: var(--island-muted, #9aa0b4);
+  text-align: right;
+  padding-right: 2px;
+}
+.gh-cells {
+  grid-column: 2;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: repeat(53, var(--gh-cell));
+  grid-template-rows: repeat(7, var(--gh-cell));
+  grid-auto-flow: column;
+  gap: var(--gh-gap);
+}
+.gh-cell {
+  display: block;
+  width: var(--gh-cell);
+  height: var(--gh-cell);
+  border-radius: 2px;
+  background: var(--gh-0);
+}
+.gh-future {
+  background: transparent;
+}
+.gh-l1 {
+  background: var(--gh-1);
+}
+.gh-l2 {
+  background: var(--gh-2);
+}
+.gh-l3 {
+  background: var(--gh-3);
+}
+.gh-l4 {
+  background: var(--gh-4);
+}
+.gh-cell:not(.gh-future):hover {
+  outline: 1px solid var(--island-fg);
+  outline-offset: 0;
+}
+/* La vague : chaque colonne s'allume un peu après la précédente (délai posé par la vue). */
+.gh-wave {
+  animation: gh-light 260ms ease-out both;
+}
+@keyframes gh-light {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+/* La case du jour : un contour, et elle pulse tant qu'elle est à zéro. */
+.gh-today {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.gh-today.gh-zero {
+  animation: gh-pulse 2.2s ease-in-out infinite;
+}
+/* Pendant la vague, la case du jour s'allume avec sa colonne, puis pulse. */
+.gh-today.gh-zero.gh-wave {
+  animation:
+    gh-light 260ms ease-out both,
+    gh-pulse 2.2s ease-in-out infinite;
+}
+@keyframes gh-pulse {
+  0%,
+  100% {
+    background: var(--gh-0);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+  50% {
+    background: var(--gh-1);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 85%, transparent);
+  }
+}
+/* Mode éco et « réduire les animations » : tout est fixe. */
+body[data-perf="eco"] .gh-wave,
+body[data-perf="eco"] .gh-today.gh-zero {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gh-wave,
+  .gh-today.gh-zero {
+    animation: none;
+  }
+}
+.gh-foot {
+  font-size: 11px;
+}
+.gh-note {
+  align-self: center;
+}
 .agents-session {
   display: flex;
   align-items: center;
