@@ -130,9 +130,9 @@
 "Copiez la configuration.": "Copy the configuration.",
 "Ouvrez": "Open",
 "Chaque hook lance :": "Each hook runs:",
-"En plus (facultatif) : branchez l'île comme serveur MCP. L'agent pourra alors vous envoyer un message, sa progression, lancer le minuteur, ou vous poser une question à choix, à laquelle vous répondez d'un clic.": "Optional extra: hook the island up as an MCP server. The agent can then send you a message, its progress, start the timer, or ask you a multiple-choice question you answer with one click.",
+"En plus (facultatif) : branchez l'île comme serveur MCP. L'agent pourra alors vous envoyer un message, sa progression, lancer le minuteur, vous poser une question à choix, ajouter une note, déposer un fichier sur l'étagère, vous demander une capture d'écran ou l'ouverture d'un lien (toujours après votre clic).": "In addition (optional): connect the island as an MCP server. The agent can then send you a message, its progress, start the timer, ask you a multiple-choice question, add a note, drop a file on the shelf, ask you for a screenshot or to open a link (always after your click).",
 "Autoriser / Refuser depuis l'île : Gemini CLI ne le permet pas (un hook peut refuser, pas autoriser). Répondez dans son terminal.": "Allow / Deny from the island: Gemini CLI doesn't support it (a hook can deny, not allow). Answer in its terminal.",
-"Brancher Claude Code, Codex ou Gemini": "Connect Claude Code, Codex or Gemini",
+"Brancher un outil (Claude Code, Codex, Gemini, Copilot, Cursor…)": "Connect a tool (Claude Code, Codex, Gemini, Copilot, Cursor…)",
 "Jusqu'à l'arrêt": "Until stopped",
 "Arrêter": "Stop",
 "Les notifications des agents attendent ; un résumé à la fin": "Agent notifications wait; a summary at the end",
@@ -1444,7 +1444,61 @@
 "Compter les jetons des agents": "Count the agents' tokens",
 "Lu dans les journaux de Claude Code et de Codex sur ce PC, seulement quand l'onglet Agents IA est ouvert : jetons par jour, par modèle et par projet (le nom du dossier). Rien n'est envoyé.": "Read from the Claude Code and Codex logs on this PC, only while the AI Agents tab is open: tokens per day, per model and per project (the folder name). Nothing is sent.",
 "Un compteur de jetons, lu dans les journaux locaux de Claude Code et de Codex, montre ce que les agents ont consommé par jour, par modèle et par projet.": "A token counter, read from the local Claude Code and Codex logs, shows what the agents used per day, per model and per project.",
-"compteur désactivé dans les réglages": "counter turned off in the settings"
+"compteur désactivé dans les réglages": "counter turned off in the settings",
+"Phrase copiée": "Sentence copied",
+"Brancher un autre outil": "Connect another tool",
+"Un outil qui sait lancer une commande en fin de tâche prévient l'île avec « --event done » (ou « waiting » quand il attend votre réponse, « working » quand il repart). Donnez-lui cette ligne, telle quelle :": "A tool that can run a command when a task ends notifies the island with “--event done” (or “waiting” when it waits for your answer, “working” when it starts again). Give it this line, as is:",
+"Pour le lancer d'ici, écrivez son mot de commande dans le réglage « Autre outil ». Rien n'est exécuté à sa demande : l'île affiche seulement « L'outil a fini ».": "To launch it from here, write its command word in the “Other tool” setting. Nothing is run at its request: the island only shows “The tool is done”.",
+"Lecture du dépôt…": "Reading the repository…",
+"Plus rien de changé dans ce dépôt.": "Nothing changed in this repository any more.",
+"Les 20 fichiers les plus changés.": "The 20 most changed files.",
+"Fermer la liste": "Close the list",
+"Ouvrir ce fichier dans VS Code": "Open this file in VS Code",
+"Comparer avec la version validée (VS Code)": "Compare with the committed version (VS Code)",
+"Fichiers…": "Files…",
+"supprimé": "deleted",
+"Reprendre la dernière session": "Resume the last session",
+"Reprendre la dernière session (copilot --continue)": "Resume the last session (copilot --continue)",
+"Reprendre la dernière session (agent --continue)": "Resume the last session (agent --continue)",
+"Reprendre la dernière session (qwen --continue)": "Resume the last session (qwen --continue)",
+"Reprendre la dernière session (goose session --resume)": "Resume the last session (goose session --resume)",
+"Reprendre la dernière session (opencode --continue)": "Resume the last session (opencode --continue)",
+"Reprendre la dernière session (kiro-cli chat --resume)": "Resume the last session (kiro-cli chat --resume)",
+"Reprendre la dernière session (hermes --continue)": "Resume the last session (hermes --continue)",
+"Autre outil": "Other tool",
+"L'outil": "The tool",
+"Enregistrez le bloc tel quel dans ce fichier (Copilot CLI lit tous les .json de son dossier hooks), puis relancez Copilot CLI.": "Save the block as is in this file (Copilot CLI reads every .json in its hooks folder), then restart Copilot CLI.",
+"Relancez Copilot CLI pour les activer.": "Restart Copilot CLI to enable them.",
+"Collez le bloc « hooks » (fusionnez-le s'il en existe déjà un), puis relancez l'agent Cursor.": "Paste the “hooks” block (merge it if one already exists), then restart the Cursor agent.",
+"Relancez l'agent Cursor (commande « agent ») pour les activer.": "Restart the Cursor agent (“agent” command) to enable them.",
+"Collez le bloc « hooks » (fusionnez-le s'il en existe déjà un), puis relancez Qwen Code.": "Paste the “hooks” block (merge it if one already exists), then restart Qwen Code.",
+"Relancez Qwen Code pour les activer.": "Restart Qwen Code to enable them.",
+"Enregistrez le bloc dans ce fichier, avec un plugin.json à côté du dossier hooks (« Installer automatiquement » l'écrit pour vous), puis relancez Goose.": "Save the block in this file, with a plugin.json next to the hooks folder (“Install automatically” writes it for you), then restart Goose.",
+"Relancez Goose pour les activer.": "Restart Goose to enable them.",
+"Autoriser / Refuser depuis l'île : seulement pour Claude Code et Codex. Répondez dans le terminal de cet outil.": "Allow / Deny from the island: only for Claude Code and Codex. Answer in this tool's terminal.",
+"Proposer GitHub Copilot CLI": "Offer GitHub Copilot CLI",
+"Proposer Cursor CLI": "Offer Cursor CLI",
+"Proposer Qwen Code": "Offer Qwen Code",
+"Proposer Goose": "Offer Goose",
+"Proposer OpenCode": "Offer OpenCode",
+"Proposer Kiro CLI": "Offer Kiro CLI",
+"Proposer Hermes": "Offer Hermes",
+"Proposer Aider": "Offer Aider",
+"Proposer Amp": "Offer Amp",
+"Autre outil : le mot de commande": "Other tool: the command word",
+"Un outil en ligne de commande à lancer dans vos projets (lettres, chiffres, tirets, points et soulignés, 32 caractères au plus). Il est cherché dans le PATH, jamais tapé tel quel. Pour qu'il prévienne l'île, voir « Brancher un autre outil » dans l'onglet.": "A command-line tool to launch in your projects (letters, digits, dashes, dots and underscores, 32 characters at most). It is looked up in the PATH, never typed as is. To have it notify the island, see “Connect another tool” in the tab.",
+"Montrer la dernière phrase de Claude quand il a fini": "Show Claude's last sentence when he is done",
+"Lue à la fin de la transcription donnée par le hook de Claude Code (un fichier de son dossier, sur votre PC), 200 caractères au plus, avec un bouton « Copier ». Jamais écrite dans le journal.": "Read at the end of the transcript given by the Claude Code hook (a file in its folder, on your PC), 200 characters at most, with a “Copy” button. Never written to the log.",
+"Rappeler qu'un agent attend toujours ma réponse": "Remind me that an agent is still waiting for my answer",
+"Une nouvelle notification après 10 minutes d'attente, puis une autre après 30 minutes, et c'est tout. En mini-île, la mascotte fait coucou toutes les deux minutes. Rien pendant la concentration.": "A new notification after 10 minutes of waiting, then another after 30 minutes, and that's all. In the mini island, the mascot waves every two minutes. Nothing during focus.",
+"Capturer": "Capture",
+"Déposé sur l'étagère.": "Dropped on the shelf.",
+"Note ajoutée dans l'île.": "Note added in the island.",
+"Lien ouvert.": "Link opened.",
+"Fichier ouvert.": "File opened.",
+"Programme montré dans l'Explorateur, pas lancé.": "Program shown in Explorer, not run.",
+"La capture n'a pas été prise à temps.": "The screenshot was not taken in time.",
+"La capture a été annulée ou a échoué.": "The screenshot was cancelled or failed."
 },
 "patterns": [
 [
@@ -2706,6 +2760,38 @@
 [
 "^([\\d\\s]+)\\ réponses?$",
 "$1 responses"
+],
+[
+"^(.+?) attend toujours votre réponse$",
+"$1 is still waiting for your answer"
+],
+[
+"^depuis (\\d+) min · (.+)$",
+"for $1 min · $2"
+],
+[
+"^depuis (\\d+) min$",
+"for $1 min"
+],
+[
+"^(.+?) a ajouté une note$",
+"$1 added a note"
+],
+[
+"^(.+?) a déposé (.+?) sur l'étagère$",
+"$1 dropped $2 on the shelf"
+],
+[
+"^(.+?) demande une capture d'écran$",
+"$1 asks for a screenshot"
+],
+[
+"^(.+?) demande d'ouvrir (.+)$",
+"$1 asks to open $2"
+],
+[
+"^nouveau, \\+(\\d+)$",
+"new, +$1"
 ]
 ]
 }

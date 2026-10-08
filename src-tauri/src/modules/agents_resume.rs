@@ -118,6 +118,29 @@ pub fn last_session(projects: &Path, project: &Path, read_text: bool) -> Option<
 
 /// Le dernier message d'un fichier de session, en ne lisant que sa fin.
 pub fn last_message(file: &Path) -> Option<Message> {
+    last_message_cut(file, MAX_TEXT)
+}
+
+/// Le chemin de transcription reçu dans un hook de Claude Code
+/// (`transcript_path`), accepté seulement s'il est un fichier `.jsonl`
+/// existant sous `root` (…\.claude\projects). Tout autre chemin est ignoré :
+/// un hook ne fait jamais lire un fichier quelconque.
+pub fn transcript_path(raw: &str, root: &Path) -> Option<PathBuf> {
+    let path = Path::new(raw);
+    if !path.is_absolute() || !raw.to_ascii_lowercase().ends_with(".jsonl") {
+        return None;
+    }
+    let real = std::fs::canonicalize(path).ok()?;
+    let root = std::fs::canonicalize(root).ok()?;
+    if !real.starts_with(&root) || !real.is_file() {
+        return None;
+    }
+    Some(real)
+}
+
+/// Comme `last_message`, avec la longueur voulue (la notification « a fini »
+/// montre jusqu'à 200 caractères).
+pub fn last_message_cut(file: &Path, max: usize) -> Option<Message> {
     let mut f = std::fs::File::open(file).ok()?;
     let len = f.metadata().ok()?.len();
     for tail in TAILS {
@@ -130,7 +153,7 @@ pub fn last_message(file: &Path) -> Option<Message> {
             let first = bytes.iter().position(|b| *b == b'\n').map(|i| i + 1).unwrap_or(bytes.len());
             bytes.drain(..first);
         }
-        if let Some(m) = last_in(&String::from_utf8_lossy(&bytes)) {
+        if let Some(m) = last_in_cut(&String::from_utf8_lossy(&bytes), max) {
             return Some(m);
         }
         if start == 0 {
@@ -143,7 +166,13 @@ pub fn last_message(file: &Path) -> Option<Message> {
 /// Le dernier texte de vous ou de Claude dans des lignes JSONL (la plus
 /// récente en dernier). Les lignes abîmées et ce qui n'est pas une phrase
 /// (résultats d'outils, commandes internes, sous-agents) sont ignorés.
+#[cfg(test)]
 pub fn last_in(lines: &str) -> Option<Message> {
+    last_in_cut(lines, MAX_TEXT)
+}
+
+/// `last_in`, avec la longueur voulue.
+pub fn last_in_cut(lines: &str, max: usize) -> Option<Message> {
     lines.lines().rev().find_map(|line| {
         let v: Value = serde_json::from_str(line.trim()).ok()?;
         let who = match v["type"].as_str()? {
@@ -155,7 +184,7 @@ pub fn last_in(lines: &str) -> Option<Message> {
         if flag("isSidechain") || flag("isMeta") || flag("isCompactSummary") || flag("isVisibleInTranscriptOnly") {
             return None;
         }
-        let text = message_text(&v["message"]["content"])?;
+        let text = message_text(&v["message"]["content"], max)?;
         let at = v["timestamp"].as_str().and_then(|t| chrono::DateTime::parse_from_rfc3339(t).ok()).map(|d| d.timestamp_millis().max(0) as u64);
         Some(Message { who, text, at })
     })
@@ -164,7 +193,7 @@ pub fn last_in(lines: &str) -> Option<Message> {
 /// Le texte d'un message : une chaîne, ou les morceaux « text » d'une liste.
 /// None pour un résultat d'outil, un message interne (« <command-name>… »,
 /// « [Request interrupted by user] ») ou un texte vide.
-fn message_text(content: &Value) -> Option<String> {
+fn message_text(content: &Value, max: usize) -> Option<String> {
     let raw = match content {
         Value::String(s) => s.clone(),
         Value::Array(blocks) => {
@@ -179,7 +208,7 @@ fn message_text(content: &Value) -> Option<String> {
     if text.is_empty() || internal(&text) {
         return None;
     }
-    Some(cut(&text, MAX_TEXT))
+    Some(cut(&text, max))
 }
 
 /// Un message que Claude Code écrit lui-même : « <command-name>/clear… »,
@@ -213,6 +242,30 @@ fn cut(text: &str, max: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn transcript_path_must_be_a_jsonl_under_the_root() {
+        let base = std::env::temp_dir().join(format!("ondine-transcript-{}", std::process::id()));
+        let root = base.join("projects");
+        let dir = root.join("C--Projets-Island");
+        std::fs::create_dir_all(&dir).unwrap();
+        let ok = dir.join("s1.jsonl");
+        std::fs::write(&ok, "{}\n").unwrap();
+        let outside = base.join("ailleurs.jsonl");
+        std::fs::write(&outside, "{}\n").unwrap();
+        let txt = dir.join("notes.txt");
+        std::fs::write(&txt, "x").unwrap();
+        assert!(transcript_path(&ok.display().to_string(), &root).is_some());
+        assert_eq!(transcript_path(&outside.display().to_string(), &root), None);
+        assert_eq!(transcript_path(&txt.display().to_string(), &root), None);
+        assert_eq!(transcript_path(&dir.display().to_string(), &root), None); // un dossier
+        assert_eq!(transcript_path("relatif.jsonl", &root), None);
+        assert_eq!(transcript_path(&root.join("absent.jsonl").display().to_string(), &root), None);
+        // La dernière phrase, coupée à la longueur voulue.
+        std::fs::write(&ok, "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"Les tests passent, tout est en ordre.\"}]}}\n").unwrap();
+        assert_eq!(last_message_cut(&ok, 10).unwrap().text, "Les tests…");
+        let _ = std::fs::remove_dir_all(&base);
+    }
     use serde_json::json;
 
     #[test]

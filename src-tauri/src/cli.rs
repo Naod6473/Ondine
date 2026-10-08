@@ -2,6 +2,7 @@
 //
 //   ondine.exe notify --source claude-code      (le JSON du hook arrive sur l'entrée standard)
 //   ondine.exe notify --title "Sauvegarde" --message "Terminée"
+//   ondine.exe notify --source other --event done   (un autre outil, sans hook JSON)
 //
 // Le programme ne démarre pas l'île : il emballe ce qu'il a reçu dans un
 // petit JSON, l'envoie par le canal local de l'île (named pipe, réservé à
@@ -58,6 +59,8 @@ fn build(args: &[String], stdin: Option<String>) -> Value {
             "--source" => "source",
             "--title" => "title",
             "--message" => "message",
+            // « done », « waiting », « working », « ended » : l'événement, sans JSON.
+            "--event" => "event",
             // Un objet JSON en paramètre : le hook (ancien `notify` de Codex).
             other if other.starts_with('{') => {
                 if let Ok(v @ Value::Object(_)) = serde_json::from_str::<Value>(other) {
@@ -101,6 +104,12 @@ mod tests {
     fn codex_json_as_last_argument() {
         let m = build(&args(&["--source", "codex", r#"{"type":"agent-turn-complete","turn-id":"1"}"#]), None);
         assert_eq!(m["hook"]["type"], "agent-turn-complete");
+    }
+
+    #[test]
+    fn event_option_for_other_tools() {
+        let m = build(&args(&["--source", "other", "--event", "done"]), None);
+        assert_eq!((m["source"].as_str(), m["event"].as_str()), (Some("other"), Some("done")));
     }
 
     #[test]
@@ -226,11 +235,17 @@ mod permission_tests {
 //
 // Claude Code, Codex ou Gemini CLI lancent « ondine.exe mcp » et lui parlent
 // en JSON-RPC (le protocole MCP), une ligne par message, sur l'entrée et la
-// sortie standard. On propose quatre outils à l'agent :
+// sortie standard. On propose huit outils à l'agent :
 //   - ondine_notify   : afficher une notification ;
 //   - ondine_ask      : poser une question avec 2 à 4 boutons, et attendre ton choix ;
 //   - ondine_progress : montrer une progression (« étape 3/7 ») ;
-//   - ondine_timer    : lancer le minuteur de l'île.
+//   - ondine_timer    : lancer le minuteur de l'île ;
+//   - ondine_note     : ajouter une note (module Notes) ;
+//   - ondine_shelf    : déposer un fichier de la session sur l'étagère ;
+//   - ondine_capture  : demander une capture d'écran (prise après ton clic) ;
+//   - ondine_open     : demander d'ouvrir un lien ou un fichier (après ton clic).
+// Le dossier courant (`cwd`) accompagne chaque demande : l'île s'en sert pour
+// limiter ce qu'un agent peut déposer ou ouvrir à sa session.
 // Chaque appel est transmis à l'île par le même canal local que « notify ».
 // La sortie standard ne sert QU'AU protocole : aucun autre texte n'y est écrit.
 
@@ -248,6 +263,7 @@ pub fn mcp() {
         let Ok(msg) = serde_json::from_str::<Value>(&line) else { continue };
         if let Some(reply) = mcp_handle(&msg, &mut client, &|request| {
             let mut m = json!({ "v": 1, "source": "mcp", "client": client_label(&request.1), "request": request.0 });
+            m["cwd"] = json!(std::env::current_dir().map(|d| d.display().to_string()).unwrap_or_default());
             m["pids"] = json!(platform::ancestor_pids(12));
             m["hwnd"] = json!(platform::own_console_window());
             m
@@ -288,7 +304,7 @@ fn mcp_handle(msg: &Value, client: &mut String, wrap: &dyn Fn((Value, String)) -
                 "protocolVersion": version,
                 "capabilities": { "tools": {} },
                 "serverInfo": { "name": "ondine", "version": env!("CARGO_PKG_VERSION") },
-                "instructions": "Ondine (l'île) est une barre en haut de l'écran Windows de l'utilisateur. Utilise ondine_ask pour lui poser une question courte à choix, ondine_progress pour montrer l'avancement d'une longue tâche, ondine_notify pour un message bref.",
+                "instructions": "Ondine (l'île) est une barre en haut de l'écran Windows de l'utilisateur. Utilise ondine_ask pour lui poser une question courte à choix, ondine_progress pour montrer l'avancement d'une longue tâche, ondine_notify pour un message bref, ondine_note pour lui laisser une note, ondine_shelf pour mettre un fichier produit à portée de main, ondine_capture pour lui demander une capture d'écran, ondine_open pour lui proposer d'ouvrir un lien ou un fichier.",
             }))
         }
         "ping" => ok(json!({})),
@@ -340,6 +356,34 @@ fn mcp_tools() -> Value {
             "inputSchema": { "type": "object", "properties": {
                 "minutes": { "type": "integer", "minimum": 1, "maximum": 180 }
             }, "required": ["minutes"] }
+        },
+        {
+            "name": "ondine_note",
+            "description": "Ajoute une note dans le module Notes de l'île (2000 caractères au plus) : un rappel, un résumé, une liste de points à voir.",
+            "inputSchema": { "type": "object", "properties": {
+                "text": { "type": "string", "description": "Le texte de la note", "maxLength": 2000 }
+            }, "required": ["text"] }
+        },
+        {
+            "name": "ondine_shelf",
+            "description": "Dépose un fichier existant sur l'étagère de l'île (à portée de main de l'utilisateur). Seulement un fichier du dossier de travail courant ou du dossier utilisateur.",
+            "inputSchema": { "type": "object", "properties": {
+                "path": { "type": "string", "description": "Le chemin complet du fichier" }
+            }, "required": ["path"] }
+        },
+        {
+            "name": "ondine_capture",
+            "description": "Demande à l'utilisateur une capture d'écran : il choisit la zone après avoir cliqué « Capturer » dans l'île. Renvoie le chemin du fichier PNG enregistré, ou un refus (sans clic en 60 s).",
+            "inputSchema": { "type": "object", "properties": {
+                "reason": { "type": "string", "description": "Pourquoi (quelques mots, facultatif)" }
+            } }
+        },
+        {
+            "name": "ondine_open",
+            "description": "Propose à l'utilisateur d'ouvrir un lien http(s) ou un fichier existant (du dossier de travail ou du dossier utilisateur). Ouvert seulement s'il clique « Ouvrir » dans l'île ; un fichier n'est jamais exécuté.",
+            "inputSchema": { "type": "object", "properties": {
+                "target": { "type": "string", "description": "L'adresse http(s), ou le chemin complet du fichier" }
+            }, "required": ["target"] }
         }
     ])
 }
@@ -373,21 +417,48 @@ fn mcp_call(name: &str, args: &Value, client: &str, wrap: &dyn Fn((Value, String
             let minutes = args["minutes"].as_u64().filter(|m| (1..=180).contains(m)).ok_or("« minutes » doit être entre 1 et 180")?;
             json!({ "tool": "timer", "minutes": minutes })
         }
+        "ondine_note" => {
+            let note = text("text");
+            if note.is_empty() || note.chars().count() > 2000 {
+                return Err("« text » doit faire de 1 à 2000 caractères".into());
+            }
+            json!({ "tool": "note", "text": note })
+        }
+        "ondine_shelf" => {
+            if text("path").is_empty() {
+                return Err("« path » est obligatoire".into());
+            }
+            json!({ "tool": "shelf", "path": text("path") })
+        }
+        "ondine_capture" => json!({ "tool": "capture", "reason": text("reason") }),
+        "ondine_open" => {
+            if text("target").is_empty() {
+                return Err("« target » est obligatoire".into());
+            }
+            json!({ "tool": "open", "target": text("target") })
+        }
         other => return Err(format!("outil inconnu : {other}")),
     };
-    let is_ask = name == "ondine_ask";
     let message = wrap((request, client.to_string())).to_string();
-    if !is_ask {
+    if !waits_for_reply(name) {
         platform::send_agents_pipe(message.as_bytes())?;
         return Ok("Affiché dans l'île.".into());
     }
-    // La question : on attend la réponse de l'île (ton clic, ou le délai dépassé).
+    // On attend la réponse de l'île (ton clic, ou le délai dépassé ; pour la
+    // note et l'étagère, sa vérification).
     let reply = platform::request_agents_pipe(message.as_bytes())?;
     let reply: Value = serde_json::from_slice(&reply).map_err(|_| "l'île n'a pas répondu".to_string())?;
-    match reply["answer"].as_str() {
-        Some(answer) => Ok(format!("L'utilisateur a choisi : {answer}")),
-        None => Ok(reply["reason"].as_str().unwrap_or("Pas de réponse de l'utilisateur à temps.").to_string()),
+    match (name, reply["answer"].as_str()) {
+        ("ondine_ask", Some(answer)) => Ok(format!("L'utilisateur a choisi : {answer}")),
+        ("ondine_capture", Some(path)) => Ok(format!("Capture enregistrée : {path}")),
+        (_, Some(answer)) => Ok(answer.to_string()),
+        (_, None) => Ok(reply["reason"].as_str().unwrap_or("Pas de réponse de l'utilisateur à temps.").to_string()),
     }
+}
+
+/// Les outils dont la réponse vient de l'île (une ligne sur le canal).
+fn waits_for_reply(name: &str) -> bool {
+    matches!(name, "ondine_ask" | "ondine_note" | "ondine_shelf" | "ondine_capture" | "ondine_open")
 }
 
 #[cfg(test)]
@@ -407,7 +478,7 @@ mod mcp_tests {
         let r = call(json!({ "jsonrpc": "2.0", "id": 2, "method": "initialize", "params": { "protocolVersion": "2099-01-01" } })).unwrap();
         assert_eq!(r["result"]["protocolVersion"], "2025-06-18");
         let r = call(json!({ "jsonrpc": "2.0", "id": 3, "method": "tools/list" })).unwrap();
-        assert_eq!(r["result"]["tools"].as_array().unwrap().len(), 4);
+        assert_eq!(r["result"]["tools"].as_array().unwrap().len(), 8);
         assert!(call(json!({ "jsonrpc": "2.0", "method": "notifications/initialized" })).is_none());
         assert_eq!(call(json!({ "jsonrpc": "2.0", "id": 4, "method": "bizarre" })).unwrap()["error"]["code"], -32601);
     }
@@ -419,5 +490,10 @@ mod mcp_tests {
         let r = call(json!({ "jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": { "name": "ondine_timer", "arguments": { "minutes": 999 } } })).unwrap();
         assert_eq!(r["result"]["isError"], true);
         assert_eq!(client_label("gemini-cli-mcp-client"), "gemini");
+        let r = call(json!({ "jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": { "name": "ondine_note", "arguments": { "text": "x".repeat(2001) } } })).unwrap();
+        assert_eq!(r["result"]["isError"], true);
+        let r = call(json!({ "jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": { "name": "ondine_open", "arguments": {} } })).unwrap();
+        assert_eq!(r["result"]["isError"], true);
+        assert!(waits_for_reply("ondine_capture") && !waits_for_reply("ondine_timer"));
     }
 }

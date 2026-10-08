@@ -130,6 +130,82 @@
         "label": "Compter les jetons des agents",
         "help": "Lu dans les journaux de Claude Code et de Codex sur ce PC, seulement quand l'onglet Agents IA est ouvert : jetons par jour, par modèle et par projet (le nom du dossier). Rien n'est envoyé.",
         "default": true
+      },
+      {
+        "key": "launchCopilot",
+        "type": "boolean",
+        "label": "Proposer GitHub Copilot CLI",
+        "default": true
+      },
+      {
+        "key": "launchCursor",
+        "type": "boolean",
+        "label": "Proposer Cursor CLI",
+        "default": true
+      },
+      {
+        "key": "launchQwen",
+        "type": "boolean",
+        "label": "Proposer Qwen Code",
+        "default": true
+      },
+      {
+        "key": "launchGoose",
+        "type": "boolean",
+        "label": "Proposer Goose",
+        "default": true
+      },
+      {
+        "key": "launchOpencode",
+        "type": "boolean",
+        "label": "Proposer OpenCode",
+        "default": true
+      },
+      {
+        "key": "launchKiro",
+        "type": "boolean",
+        "label": "Proposer Kiro CLI",
+        "default": true
+      },
+      {
+        "key": "launchHermes",
+        "type": "boolean",
+        "label": "Proposer Hermes",
+        "default": true
+      },
+      {
+        "key": "launchAider",
+        "type": "boolean",
+        "label": "Proposer Aider",
+        "default": true
+      },
+      {
+        "key": "launchAmp",
+        "type": "boolean",
+        "label": "Proposer Amp",
+        "default": true
+      },
+      {
+        "key": "otherTool",
+        "type": "string",
+        "label": "Autre outil : le mot de commande",
+        "help": "Un outil en ligne de commande à lancer dans vos projets (lettres, chiffres, tirets, points et soulignés, 32 caractères au plus). Il est cherché dans le PATH, jamais tapé tel quel. Pour qu'il prévienne l'île, voir « Brancher un autre outil » dans l'onglet.",
+        "default": "",
+        "maxLength": 32
+      },
+      {
+        "key": "doneSummary",
+        "type": "boolean",
+        "label": "Montrer la dernière phrase de Claude quand il a fini",
+        "help": "Lue à la fin de la transcription donnée par le hook de Claude Code (un fichier de son dossier, sur votre PC), 200 caractères au plus, avec un bouton « Copier ». Jamais écrite dans le journal.",
+        "default": true
+      },
+      {
+        "key": "remindWaiting",
+        "type": "boolean",
+        "label": "Rappeler qu'un agent attend toujours ma réponse",
+        "help": "Une nouvelle notification après 10 minutes d'attente, puis une autre après 30 minutes, et c'est tout. En mini-île, la mascotte fait coucou toutes les deux minutes. Rien pendant la concentration.",
+        "default": true
       }
     ]
   },
@@ -154,7 +230,10 @@
     "hook_remove",
     "last_sessions",
     "open_vscode",
-    "usage"
+    "usage",
+    "report_files",
+    "open_vscode_file",
+    "copy_text"
   ],
   "events": {
     "emits": [
@@ -169,7 +248,11 @@
       "agents.progress",
       "timer.start",
       "agents.quiet",
-      "terminal.open"
+      "terminal.open",
+      "notes.add",
+      "shelf.add",
+      "capture.request",
+      "mascot.emote"
     ],
     "listens": [
       "agents.event",
@@ -178,7 +261,9 @@
       "agents.ask",
       "agents.ask.closed",
       "agents.progress",
-      "agents.quiet"
+      "agents.quiet",
+      "capture.done",
+      "island.state"
     ]
   }
 }

@@ -45,6 +45,12 @@ mod agents_git;
 // « Reprendre » : la dernière session de Claude Code d'un projet.
 mod agents_resume;
 mod agents_usage;
+// Les autres outils (Copilot CLI, Cursor, Qwen Code, Goose…), « Autre outil ».
+mod agents_tools;
+// Les outils MCP note / étagère / capture / ouvrir (vérifications).
+mod agents_mcp_extra;
+// Les rappels d'attente.
+mod agents_wait;
 
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};

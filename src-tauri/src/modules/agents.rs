@@ -31,6 +31,15 @@
 // « Reprendre » (agents_resume.rs) relance Claude Code avec `--continue`
 // (Codex : `resume --last`) et montre la dernière phrase de la session, lue à
 // la fin du fichier de session de Claude Code, sur ton PC : jamais journalisée.
+// À « a fini », cette même dernière phrase (200 caractères) est mise dans la
+// notification, si le hook donne un `transcript_path` vérifié (un .jsonl sous
+// le dossier de Claude Code), avec un bouton « Copier ».
+//
+// Les autres outils (agents_tools.rs : Copilot CLI, Cursor, Qwen Code, Goose
+// avec hooks ; OpenCode, Kiro, Hermes, Aider, Amp au lancement ; « Autre
+// outil » : un mot de commande du réglage), les rappels d'attente
+// (agents_wait.rs) et les outils MCP note / étagère / capture / ouvrir
+// (agents_mcp_extra.rs) sont décrits dans leurs fichiers.
 
 use crate::sync::LockExt;
 use std::collections::{HashMap, VecDeque};
@@ -44,8 +53,11 @@ use tauri::AppHandle;
 
 use super::agents_git as git;
 use super::agents_hooks as hooks;
+use super::agents_mcp_extra as extra;
 use super::agents_resume as resume;
+use super::agents_tools as tools_more;
 use super::agents_usage as usage;
+use super::agents_wait as wait;
 use super::{ModuleContext, RustModule};
 use crate::services::bus::BusMessage;
 use crate::cli::MAX_MESSAGE;
@@ -82,7 +94,14 @@ struct Event {
     /// « A fini » : ce qui a changé dans le dossier de la session (dépôt git).
     #[serde(skip_serializing_if = "Option::is_none")]
     changes: Option<Report>,
+    /// « A fini » : la dernière phrase de l'agent (transcription vérifiée de
+    /// Claude Code), 200 caractères au plus. Jamais journalisée.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    summary: Option<String>,
 }
+
+/// La longueur du résumé mis dans la notification « a fini ».
+const MAX_SUMMARY: usize = 200;
 
 /// Le bilan d'une fin de tâche, tel que le front le reçoit.
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -116,6 +135,9 @@ struct Session {
     pids: Vec<u32>,
     #[serde(skip)]
     hwnd: isize,
+    /// Rappels d'attente déjà envoyés pour cette attente (agents_wait.rs).
+    #[serde(skip)]
+    reminded: u8,
 }
 
 #[derive(Default)]
@@ -133,6 +155,15 @@ struct State {
     /// l'arrêtes). Pendant ce temps, les notifications attendent dans `held`.
     quiet_until: Option<u64>,
     held: Vec<Event>,
+    /// Une capture d'écran demandée par un agent (outil MCP ondine_capture),
+    /// acceptée d'un clic : on attend le module Capture.
+    capture: Option<PendingCapture>,
+}
+
+/// Une capture acceptée : le canal pour rendre son chemin à l'agent.
+struct PendingCapture {
+    reply: std::fs::File,
+    until: Instant,
 }
 
 impl State {
@@ -161,6 +192,8 @@ struct Ask {
     /// Quand l'écran « Vraiment autoriser ? » a été montré (commande "arm").
     /// « Autoriser » n'est accepté qu'après, voir `allow_is_confirmed`.
     armed: Option<Instant>,
+    /// « Ouvrir » (ondine_open) : l'adresse ou le fichier, déjà vérifié.
+    target: String,
 }
 
 impl State {
@@ -209,6 +242,7 @@ impl RustModule for Agents {
                     project: String::new(),
                     session: String::new(),
                     changes: None,
+                    summary: None,
                 };
                 publish_info(&a, &s, event);
             }
@@ -224,6 +258,18 @@ impl RustModule for Agents {
             if quiet_over {
                 quiet_stop(&a, &s);
             }
+            // Une capture acceptée mais jamais prise (outil fermé) : l'agent est prévenu.
+            let stale_capture = {
+                let mut st = s.locked();
+                match st.capture.as_ref() {
+                    Some(c) if Instant::now() >= c.until => st.capture.take(),
+                    _ => None,
+                }
+            };
+            if let Some(mut c) = stale_capture {
+                answer_line(&mut c.reply, None, Some("La capture n'a pas été prise à temps."));
+            }
+            wait_reminders(&a, &s);
             tick += 1;
             if !tick.is_multiple_of(12) {
                 continue;
@@ -247,7 +293,11 @@ impl RustModule for Agents {
     }
 
     /// "agents.launch" `{tool?, index?}` : le lanceur demande un agent.
+    /// "capture.done" : la capture demandée par un agent (ondine_capture) est prise.
     fn on_event(&self, ctx: &ModuleContext, msg: &BusMessage) {
+        if msg.topic == "capture.done" {
+            return capture_done(&self.state, &msg.payload);
+        }
         if msg.topic != "agents.launch" {
             return;
         }
@@ -312,7 +362,13 @@ impl RustModule for Agents {
                     st.asks.remove(&id).unwrap()
                 };
                 let answer = Some(ask.answers[choice].as_str()).filter(|a| !a.is_empty());
-                answer_line(&mut ask.reply, answer, None);
+                // Capture / Ouvrir (agents_mcp_extra.rs) : ton clic déclenche l'action,
+                // et l'agent n'a sa réponse qu'ensuite.
+                match (ask.kind, answer) {
+                    ("capture", Some("capture")) => start_capture(ctx, &self.state, ask),
+                    ("open", Some("open")) => open_target(ctx, &mut ask),
+                    _ => answer_line(&mut ask.reply, answer, None),
+                }
                 ctx.log_info("réponse envoyée à un agent");
                 ctx.emit("agents.ask.closed", json!({ "id": id, "expired": false }));
                 ctx.emit("agents.changed", Value::Null);
@@ -342,7 +398,7 @@ impl RustModule for Agents {
                 Ok(Value::Null)
             }
             // La configuration à coller dans Claude Code (avec le chemin de CE programme).
-            "hook_config" => Ok(json!({ "exe": exe_path() })),
+            "hook_config" => Ok(json!({ "exe": exe_path(), "other": tools_more::other_tool_line(&exe_path()) })),
             // { tool: "claude-code" | "codex" | "gemini" }
             // { tool, permission? } : la configuration des hooks (ou du hook « Autoriser / Refuser »).
             "copy_config" => {
@@ -363,7 +419,7 @@ impl RustModule for Agents {
             "hook_status" => {
                 let exe = exe_path();
                 let mut tools = serde_json::Map::new();
-                for tool in ["claude-code", "codex", "gemini"] {
+                for tool in HOOK_TOOLS {
                     let (file, format) = config_file(tool)?;
                     let status = match hooks::read(&file) {
                         Ok(text) => hooks::status(format, text.as_deref(), &exe),
@@ -386,10 +442,17 @@ impl RustModule for Agents {
                     return Err("chemin d'Ondine introuvable".into());
                 }
                 // Le hook « Autoriser depuis l'île » : seulement si le réglage est actif.
-                let permission = tool != "gemini" && ctx.settings().get("permissions").and_then(Value::as_bool) == Some(true);
+                let permission = matches!(tool, "claude-code" | "codex") && ctx.settings().get("permissions").and_then(Value::as_bool) == Some(true);
                 let existing = hooks::read(&file)?;
                 let merged = hooks::install_text(format, existing.as_deref(), &our_hooks(tool, &exe, permission)?).map_err(|e| format!("{} : {e}", file.display()))?;
                 let backup = if merged.changed { hooks::write_with_backup(&file, &merged.text, &platform::local_time().file_stamp())? } else { None };
+                // Goose : les hooks vivent dans un plugin, qui a aussi son plugin.json.
+                if tool == "goose" {
+                    let manifest = file.parent().and_then(Path::parent).ok_or("dossier du plugin introuvable")?.join("plugin.json");
+                    if !manifest.exists() {
+                        hooks::write_with_backup(&manifest, &tools_more::goose_plugin_json(), &platform::local_time().file_stamp())?;
+                    }
+                }
                 // Claude Code : un autre programme répond aussi aux demandes de permission ?
                 let other = permission && tool == "claude-code" && hooks::status(format, Some(&merged.text), &exe).other_permission;
                 ctx.log_info(format!("hooks d'Ondine installés pour {tool} ({} ancien(s) retiré(s))", merged.removed));
@@ -422,6 +485,9 @@ impl RustModule for Agents {
             // (resume : en reprenant sa dernière session).
             "launch" => {
                 let tool = Tool::parse(args.get("tool").and_then(Value::as_str).unwrap_or("claude"))?;
+                if tool == Tool::Other && other_word(ctx).is_none() {
+                    return Err("réglage « Autre outil » vide ou refusé (lettres, chiffres, tirets, points, soulignés, 32 caractères au plus)".into());
+                }
                 let resume = args.get("resume") == Some(&Value::Bool(true));
                 let dir = match (args.get("path").and_then(Value::as_str), args.get("index").and_then(Value::as_u64)) {
                     (Some(path), _) => folder_of(ctx.check_path(path)?),
@@ -487,9 +553,72 @@ impl RustModule for Agents {
                 receive(ctx.app, &self.state, msg.to_string().as_bytes());
                 Ok(Value::Null)
             }
+            // { path } → [{ path, added, removed, untracked, exists }] : la liste des
+            // fichiers changés du dépôt (clic sur le bilan), git en lecture seule.
+            "report_files" => {
+                let raw = args.get("path").and_then(Value::as_str).ok_or("dossier manquant")?;
+                let dir = ctx.check_path(raw)?;
+                if !dir.is_dir() {
+                    return Err("ce n'est pas un dossier".into());
+                }
+                let root = git::repo_root(&dir, &platform::home_dir()).ok_or("pas un dépôt git")?;
+                let git_exe = platform::find_program("git").filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("exe"))).ok_or("git introuvable")?;
+                let files = git::file_list(&git_exe, &dir, &root).ok_or("git n'a pas répondu à temps")?;
+                Ok(json!({ "root": root.display().to_string(), "files": files }))
+            }
+            // { dir, file, diff? } : ouvre VS Code sur ce fichier du dépôt (chemin
+            // relatif venu de « report_files »), ou le compare à la version validée.
+            "open_vscode_file" => {
+                let raw = args.get("dir").and_then(Value::as_str).ok_or("dossier manquant")?;
+                let rel = args.get("file").and_then(Value::as_str).ok_or("fichier manquant")?;
+                let dir = ctx.check_path(raw)?;
+                let root = git::repo_root(&dir, &platform::home_dir()).ok_or("pas un dépôt git")?;
+                if !git::safe_relative(rel) {
+                    return Err("chemin de fichier refusé".into());
+                }
+                let file = ctx.check_path(&root.join(rel).display().to_string())?;
+                if !file.is_file() || !file.starts_with(&root) {
+                    return Err("ce fichier n'existe plus".into());
+                }
+                let code = devtools::find_vscode().ok_or("VS Code n'est pas installé sur ce PC")?;
+                let against = if args.get("diff") == Some(&Value::Bool(true)) { Some(head_copy(&root, rel)?) } else { None };
+                platform::forget_previous_foreground();
+                devtools::open_file_in_vscode(&code, &root, &file, against.as_deref())?;
+                ctx.log_info(format!("ouvre VS Code sur un fichier de {}", folder_name(&root)));
+                Ok(Value::Null)
+            }
+            // { text } : le résumé de « a fini » dans le presse-papiers (bouton « Copier »).
+            "copy_text" => {
+                ctx.require("clipboard")?;
+                let text = args.get("text").and_then(Value::as_str).unwrap_or("").trim();
+                if text.is_empty() || text.chars().count() > 2000 {
+                    return Err("rien à copier".into());
+                }
+                files::copy_text(text)?;
+                Ok(Value::Null)
+            }
             other => Err(format!("commande inconnue : {other}")),
         }
     }
+}
+
+/// Les outils dont Ondine sait écrire les hooks (onglet « Brancher »).
+const HOOK_TOOLS: [&str; 7] = ["claude-code", "codex", "gemini", "copilot", "cursor", "qwen", "goose"];
+
+/// La version validée (HEAD) d'un fichier du dépôt, écrite dans un fichier
+/// temporaire d'Ondine pour `code --diff` : `git show HEAD:<chemin>` en
+/// lecture seule (4 Mo au plus). Le fichier porte le nom d'origine, dans
+/// %TEMP%\ondine-diff\<horodatage>\.
+fn head_copy(root: &Path, rel: &str) -> Result<PathBuf, String> {
+    let git_exe = platform::find_program("git").filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("exe"))).ok_or("git introuvable")?;
+    let spec = format!("HEAD:{rel}");
+    let bytes = git::run_git(&git_exe, root, &["show", &spec], git::TIMEOUT).ok_or("pas de version validée de ce fichier (nouveau ?)")?;
+    let name = Path::new(rel).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "fichier".into());
+    let dir = std::env::temp_dir().join("ondine-diff").join(platform::local_time().file_stamp());
+    std::fs::create_dir_all(&dir).map_err(|e| format!("dossier temporaire : {e}"))?;
+    let tmp = dir.join(format!("HEAD · {name}"));
+    std::fs::write(&tmp, bytes).map_err(|e| format!("fichier temporaire : {e}"))?;
+    Ok(tmp)
 }
 
 // ── Lancer un agent (Claude Code, Codex, Gemini CLI) ───────────────────────────────────────────────────────
@@ -502,11 +631,14 @@ fn projects(ctx: &ModuleContext) -> Vec<PathBuf> {
 }
 
 /// Les agents qu'on sait lancer. Seul ce mot est tapé dans la console.
+/// `Extra` : les outils de agents_tools.rs ; `Other` : le mot du réglage « Autre outil ».
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Tool {
     Claude,
     Codex,
     Gemini,
+    Extra(&'static tools_more::ToolInfo),
+    Other,
 }
 
 impl Tool {
@@ -515,16 +647,20 @@ impl Tool {
             "claude" => Ok(Self::Claude),
             "codex" => Ok(Self::Codex),
             "gemini" => Ok(Self::Gemini),
-            other => Err(format!("agent inconnu : {other}")),
+            "other" => Ok(Self::Other),
+            other => tools_more::find(other).map(Self::Extra).ok_or_else(|| format!("agent inconnu : {other}")),
         }
     }
 
     /// La commande tapée (claude.exe / claude.cmd, codex.cmd, gemini.cmd… : cmd trouve).
+    /// `Other` : vide ici, le mot vient du réglage (voir `launch`).
     fn word(self) -> &'static str {
         match self {
             Self::Claude => "claude",
             Self::Codex => "codex",
             Self::Gemini => "gemini",
+            Self::Extra(t) => t.word,
+            Self::Other => "",
         }
     }
 
@@ -535,38 +671,56 @@ impl Tool {
             Self::Claude => Ok(&["--continue"]),
             Self::Codex => Ok(&["resume", "--last"]),
             Self::Gemini => Err("Gemini CLI : la reprise d'une session n'est pas proposée ici".into()),
+            Self::Extra(t) => t.resume.ok_or_else(|| format!("{} : la reprise d'une session n'est pas proposée ici", t.name)),
+            Self::Other => Err("Autre outil : la reprise d'une session n'est pas proposée".into()),
         }
     }
 }
 
-/// Les agents proposés (réglages « Proposer … »), dans l'ordre.
+/// Le mot de commande du réglage « Autre outil », validé (agents_tools.rs).
+fn other_word(ctx: &ModuleContext) -> Option<String> {
+    ctx.settings().get("otherTool").and_then(Value::as_str).and_then(tools_more::valid_word)
+}
+
+/// Les agents proposés (réglages « Proposer … »), dans l'ordre ; « other »
+/// quand le réglage « Autre outil » a un mot acceptable.
 fn tools(ctx: &ModuleContext) -> Vec<&'static str> {
     let settings = ctx.settings();
     let on = |k: &str| settings.get(k).and_then(Value::as_bool).unwrap_or(true);
-    [("claude", "launchClaude"), ("codex", "launchCodex"), ("gemini", "launchGemini")]
+    let mut list: Vec<&'static str> = [("claude", "launchClaude"), ("codex", "launchCodex"), ("gemini", "launchGemini")]
         .into_iter()
         .filter(|(_, key)| on(key))
         .map(|(t, _)| t)
-        .collect()
+        .collect();
+    list.extend(tools_more::TOOLS.iter().filter(|t| on(t.setting)).map(|t| t.id));
+    if other_word(ctx).is_some() {
+        list.push("other");
+    }
+    list
 }
 
 fn launch(ctx: &ModuleContext, tool: Tool, dir: &Path, resume: bool) -> Result<(), String> {
     ctx.require("files")?;
     let extra: &[&str] = if resume { tool.resume_args()? } else { &[] };
     let in_wt = ctx.settings().get("claudeIn").and_then(Value::as_str) == Some("wt");
+    // Le mot tapé : celui de l'outil, ou celui du réglage « Autre outil » (validé).
+    let name = match tool {
+        Tool::Other => other_word(ctx).ok_or("réglage « Autre outil » vide ou refusé")?,
+        t => t.word().to_string(),
+    };
     // Le chemin complet du programme, trouvé dans le PATH (jamais dans le
     // projet). Jamais le mot seul : la console ouverte cherche les programmes
     // d'abord dans le dossier courant (comportement normal de cmd.exe, que
     // l'utilisateur garde dans sa console), et un « claude.cmd » piégé dans un
     // projet serait alors lancé à sa place.
-    let word = platform::find_program(tool.word())
+    let word = platform::find_program(&name)
         .map(|p| p.display().to_string())
-        .ok_or_else(|| format!("{} n'est pas installé sur ce PC", tool.word()))?;
+        .ok_or_else(|| format!("{name} n'est pas installé sur ce PC"))?;
     let (program, args) = agent_command(&word, extra, dir, in_wt);
     // La console doit pouvoir passer devant l'île.
     platform::forget_previous_foreground();
     platform::spawn_console(program, &args, dir)?;
-    ctx.log_info(format!("ouvre {}{} dans {}", tool.word(), if resume { " (reprise)" } else { "" }, dir.display()));
+    ctx.log_info(format!("ouvre {name}{} dans {}", if resume { " (reprise)" } else { "" }, dir.display()));
     Ok(())
 }
 
@@ -658,9 +812,14 @@ fn route(app: &AppHandle, state: &Shared, bytes: &[u8], reply: std::fs::File) {
 //   - ondine_notify   : un message (« Les tests passent ») ;
 //   - ondine_progress : « étape 3 sur 7 » ;
 //   - ondine_timer    : lance le minuteur de l'île ;
-//   - ondine_ask      : te pose une question à choix, et attend ton clic.
+//   - ondine_ask      : te pose une question à choix, et attend ton clic ;
+//   - ondine_note     : ajoute une note (module Notes) ;
+//   - ondine_shelf    : dépose un fichier de sa session sur l'étagère ;
+//   - ondine_capture  : demande une capture d'écran (prise après ton clic) ;
+//   - ondine_open     : demande d'ouvrir un lien ou un fichier (après ton clic).
 // Comme pour les hooks, ce sont des TEXTES À AFFICHER : rien n'est exécuté.
-// La réponse renvoyée à l'agent est seulement le texte du choix cliqué.
+// La réponse renvoyée à l'agent est seulement le texte du choix cliqué (ou,
+// pour la capture, le chemin du fichier enregistré). Détails : agents_mcp_extra.rs.
 
 /// Au plus ce nombre de questions en attente en même temps.
 const MAX_ASKS: usize = 5;
@@ -669,9 +828,9 @@ const MAX_OPTION: usize = 60;
 fn mcp_request(app: &AppHandle, state: &Shared, msg: &Value, reply: std::fs::File) {
     let req = &msg["request"];
     let tool = req["tool"].as_str().unwrap_or("");
-    // Refus poli (seule une question attend une réponse ; sinon on ferme).
+    // Refus poli (les outils qui attendent une réponse la reçoivent ; sinon on ferme).
     let refuse = |mut reply: std::fs::File, reason: &str| {
-        if tool == "ask" {
+        if matches!(tool, "ask" | "note" | "shelf" | "capture" | "open") {
             answer_line(&mut reply, None, Some(reason));
         }
     };
@@ -696,7 +855,7 @@ fn mcp_request(app: &AppHandle, state: &Shared, msg: &Value, reply: std::fs::Fil
             if title.is_empty() {
                 return;
             }
-            let event = Event { at: now_ms(), source, kind: "info", title, body: text("message", MAX_TEXT), project: String::new(), session: String::new(), changes: None };
+            let event = Event { at: now_ms(), source, kind: "info", title, body: text("message", MAX_TEXT), project: String::new(), session: String::new(), changes: None, summary: None };
             publish_info(app, state, event);
         }
         "progress" => {
@@ -712,7 +871,7 @@ fn mcp_request(app: &AppHandle, state: &Shared, msg: &Value, reply: std::fs::Fil
             let Some(minutes) = req["minutes"].as_u64().filter(|m| (1..=180).contains(m)) else { return };
             super::with_context(app, ID, |ctx| ctx.emit("timer.start", json!({ "minutes": minutes })));
             let title = format!("{who} a lancé un minuteur de {minutes} min");
-            publish_info(app, state, Event { at: now_ms(), source, kind: "info", title, body: String::new(), project: String::new(), session: String::new(), changes: None });
+            publish_info(app, state, Event { at: now_ms(), source, kind: "info", title, body: String::new(), project: String::new(), session: String::new(), changes: None, summary: None });
         }
         "ask" => {
             let question = text("question", MAX_TEXT);
@@ -721,13 +880,180 @@ fn mcp_request(app: &AppHandle, state: &Shared, msg: &Value, reply: std::fs::Fil
                 return refuse(reply, "Il faut une question et 2 à 4 options.");
             }
             let secs = req["timeoutSecs"].as_u64().unwrap_or(600).clamp(60, 1500);
-            let ask = Ask { reply, kind: "question", who, question, detail: String::new(), answers: options.clone(), options, session: String::new(), until: 0, armed: None };
+            let ask = Ask { reply, kind: "question", who, question, detail: String::new(), answers: options.clone(), options, session: String::new(), until: 0, armed: None, target: String::new() };
             if let Err(reply) = open_ask(app, state, ask, secs) {
                 refuse(reply, "Trop de questions en attente dans l'île.");
             }
         }
+        // Une note dans le module Notes (2000 caractères au plus) : on passe par le bus.
+        "note" => {
+            let Some(note) = extra::note_text(req["text"].as_str().unwrap_or("")) else {
+                return refuse(reply, "Il faut un texte de 1 à 2000 caractères.");
+            };
+            if !super::is_active(app, "notes") {
+                return refuse(reply, "Le module Notes est désactivé.");
+            }
+            super::with_context(app, ID, |ctx| ctx.emit("notes.add", json!({ "text": note })));
+            let title = format!("{who} a ajouté une note");
+            publish_info(app, state, Event { at: now_ms(), source, kind: "info", title, body: String::new(), project: String::new(), session: String::new(), changes: None, summary: None });
+            answer_line(&mut { reply }, Some("Note ajoutée dans l'île."), None);
+        }
+        // Un fichier de la session (ou du dossier utilisateur) sur l'étagère.
+        "shelf" => {
+            let raw = req["path"].as_str().unwrap_or("");
+            let checked = super::with_context(app, ID, |ctx| ctx.check_path(raw)).unwrap_or_else(|| Err("module inactif".into()));
+            let path = match checked {
+                Ok(p) if p.is_file() => p,
+                Ok(_) => return refuse(reply, "Seul un fichier peut être déposé sur l'étagère."),
+                Err(e) => return refuse(reply, &format!("Fichier refusé : {e}")),
+            };
+            let cwd = msg["cwd"].as_str().and_then(|c| std::fs::canonicalize(c).ok());
+            if !extra::under_allowed(&path, cwd.as_deref(), &platform::home_dir()) {
+                return refuse(reply, "Fichier refusé : il doit être dans le dossier de la session ou dans le dossier utilisateur.");
+            }
+            if !super::is_active(app, "shelf") {
+                return refuse(reply, "Le module Étagère est désactivé.");
+            }
+            super::with_context(app, ID, |ctx| ctx.emit("shelf.add", json!({ "paths": [path.display().to_string()] })));
+            let title = format!("{who} a déposé {} sur l'étagère", folder_name(&path));
+            publish_info(app, state, Event { at: now_ms(), source, kind: "info", title, body: String::new(), project: String::new(), session: String::new(), changes: None, summary: None });
+            answer_line(&mut { reply }, Some("Déposé sur l'étagère."), None);
+        }
+        // Une capture d'écran : seulement après ton clic (module Capture).
+        "capture" => {
+            if !super::is_active(app, "capture") {
+                return refuse(reply, "Le module Capture est désactivé.");
+            }
+            if state.locked().capture.is_some() {
+                return refuse(reply, "Une capture est déjà en cours.");
+            }
+            let why = text("reason", 120);
+            let question = format!("{who} demande une capture d'écran");
+            let ask = Ask { reply, kind: "capture", who, question, detail: why, options: vec!["Capturer".into(), "Refuser".into()], answers: vec!["capture".into(), String::new()], session: String::new(), until: 0, armed: None, target: String::new() };
+            if let Err(reply) = open_ask(app, state, ask, extra::CLICK_SECS) {
+                refuse(reply, "Trop de demandes en attente dans l'île.");
+            }
+        }
+        // Ouvrir un lien http(s) ou un fichier existant : seulement après ton clic.
+        "open" => {
+            let raw = req["target"].as_str().unwrap_or("").trim();
+            let (target, shown) = if extra::looks_like_url(raw) {
+                match extra::web_url(raw) {
+                    Some(url) => (url.clone(), url),
+                    None => return refuse(reply, "Adresse refusée : seuls les liens http(s) s'ouvrent."),
+                }
+            } else {
+                let checked = super::with_context(app, ID, |ctx| ctx.check_path(raw)).unwrap_or_else(|| Err("module inactif".into()));
+                match checked {
+                    Ok(p) if p.is_file() => {
+                        let cwd = msg["cwd"].as_str().and_then(|c| std::fs::canonicalize(c).ok());
+                        if !extra::under_allowed(&p, cwd.as_deref(), &platform::home_dir()) {
+                            return refuse(reply, "Fichier refusé : il doit être dans le dossier de la session ou dans le dossier utilisateur.");
+                        }
+                        (p.display().to_string(), folder_name(&p))
+                    }
+                    Ok(_) => return refuse(reply, "Seul un fichier existant peut être ouvert."),
+                    Err(e) => return refuse(reply, &format!("Fichier refusé : {e}")),
+                }
+            };
+            let question = format!("{who} demande d'ouvrir {}", clean(&shown, 120));
+            let ask = Ask { reply, kind: "open", who, question, detail: clean(&target, 500), options: vec!["Ouvrir".into(), "Refuser".into()], answers: vec!["open".into(), String::new()], session: String::new(), until: 0, armed: None, target };
+            if let Err(reply) = open_ask(app, state, ask, extra::CLICK_SECS) {
+                refuse(reply, "Trop de demandes en attente dans l'île.");
+            }
+        }
         _ => {}
     }
+}
+
+/// « Capturer » cliqué : le module Capture prend la main (bus
+/// « capture.request ») ; son « capture.done » rendra le chemin à l'agent.
+fn start_capture(ctx: &ModuleContext, state: &Shared, ask: Ask) {
+    let mut reply = ask.reply;
+    if !super::is_active(ctx.app, "capture") {
+        return answer_line(&mut reply, None, Some("Le module Capture est désactivé."));
+    }
+    {
+        let mut st = state.locked();
+        if st.capture.is_some() {
+            return answer_line(&mut reply, None, Some("Une capture est déjà en cours."));
+        }
+        st.capture = Some(PendingCapture { reply, until: Instant::now() + Duration::from_secs(extra::CAPTURE_SECS) });
+    }
+    ctx.emit("capture.request", json!({ "then": "save" }));
+}
+
+/// « capture.done » du module Capture : si un agent attend une capture, il
+/// reçoit le chemin du fichier enregistré (ou la raison de l'échec).
+fn capture_done(state: &Shared, payload: &Value) {
+    if payload["action"] != "save" {
+        return;
+    }
+    let Some(mut pending) = state.locked().capture.take() else { return };
+    match payload["result"]["path"].as_str() {
+        Some(path) if payload["ok"] == true => answer_line(&mut pending.reply, Some(path), None),
+        _ => answer_line(&mut pending.reply, None, Some("La capture a été annulée ou a échoué.")),
+    }
+}
+
+/// « Ouvrir » cliqué : le lien part au navigateur, le fichier au programme
+/// associé (jamais exécuté : un programme est seulement montré dans
+/// l'Explorateur, comme « Ouvrir » de l'étagère). Puis l'agent est prévenu.
+fn open_target(ctx: &ModuleContext, ask: &mut Ask) {
+    let result = if extra::looks_like_url(&ask.target) {
+        match extra::web_url(&ask.target) {
+            Some(url) => {
+                platform::forget_previous_foreground();
+                platform::shell_open(&url).map(|_| "Lien ouvert.".to_string())
+            }
+            None => Err("adresse refusée".into()),
+        }
+    } else {
+        ctx.check_path(&ask.target).and_then(|p| super::launcher::open_checked(&p)).map(|revealed| if revealed { "Programme montré dans l'Explorateur, pas lancé.".to_string() } else { "Fichier ouvert.".to_string() })
+    };
+    match result {
+        Ok(text) => answer_line(&mut ask.reply, Some(&text), None),
+        Err(e) => answer_line(&mut ask.reply, None, Some(&format!("Ouverture impossible : {e}"))),
+    }
+}
+
+/// Les rappels d'attente (agents_wait.rs) : toutes les 5 s, pour chaque
+/// session qui attend, un rappel à 10 puis 30 min. Rien pendant la
+/// concentration, rien si le réglage `remindWaiting` est coupé.
+fn wait_reminders(app: &AppHandle, state: &Shared) {
+    let due: Vec<(String, String, String, u64)> = {
+        let mut st = state.locked();
+        if st.quiet() {
+            return;
+        }
+        let now = now_ms();
+        let mut list = Vec::new();
+        for s in st.sessions.values_mut() {
+            if s.state != "waiting" {
+                s.reminded = 0;
+                continue;
+            }
+            let waited = now.saturating_sub(s.since);
+            if let Some(n) = wait::reminder_due(waited, s.reminded) {
+                s.reminded = n;
+                list.push((s.id.clone(), s.source.clone(), s.project.clone(), waited));
+            }
+        }
+        list
+    };
+    if due.is_empty() {
+        return;
+    }
+    super::with_context(app, ID, |ctx| {
+        if ctx.settings().get("remindWaiting").and_then(Value::as_bool) == Some(false) {
+            return;
+        }
+        for (session, source, project, waited) in due {
+            let (title, body) = wait::reminder_text(who(&source), &project, waited);
+            let event = Event { at: now_ms(), source, kind: "info", title, body, project, session, changes: None, summary: None };
+            ctx.emit("agents.event", serde_json::to_value(&event).unwrap_or(Value::Null));
+        }
+    });
 }
 
 // ── Autoriser / Refuser depuis l'île (« ondine.exe permission ») ─────────────
@@ -785,6 +1111,7 @@ fn permission_request(app: &AppHandle, state: &Shared, msg: &Value, mut reply: s
         session,
         until: 0,
         armed: None,
+        target: String::new(),
     };
     if let Err(mut reply) = open_ask(app, state, ask, secs) {
         pass(&mut reply);
@@ -1025,7 +1352,7 @@ fn who(source: &str) -> &'static str {
         "claude-code" => "Claude",
         "codex" => "Codex",
         "gemini" => "Gemini",
-        _ => "L'agent",
+        other => tools_more::who(other).unwrap_or("L'agent"),
     }
 }
 
@@ -1069,10 +1396,12 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
                 updated: None,
                 pids: vec![],
                 hwnd: 0,
+                reminded: 0,
             });
             if entry.state != state_name {
                 entry.state = state_name;
                 entry.since = event.at;
+                entry.reminded = 0; // une nouvelle attente : de nouveaux rappels
             }
             if !event.project.is_empty() {
                 entry.project = event.project.clone();
@@ -1115,9 +1444,15 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
             "info" => true,
             _ => false,
         };
+        // A fini : la dernière phrase de l'agent, si le hook donne une
+        // transcription de Claude Code vérifiée (et si le réglage le veut).
+        let mut event = event;
+        if event.kind == "done" && on("doneSummary") {
+            event.summary = done_summary(&msg["hook"]);
+        }
         // A fini, dans un dossier connu : d'abord le bilan (git, 3 s au plus,
         // dans un fil à part), puis la notification.
-        let cwd = msg["hook"]["cwd"].as_str().unwrap_or("");
+        let cwd = tools_more::hook_cwd(&msg["hook"]);
         if wanted && event.kind == "done" && on("showChanges") && !cwd.is_empty() {
             report_then_show(ctx.app, state, event.clone(), cwd.to_string());
         } else if wanted {
@@ -1126,6 +1461,18 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
         // Le tableau des sessions a peut-être changé.
         ctx.emit("agents.changed", Value::Null);
     });
+}
+
+/// La dernière phrase de l'assistant dans la transcription du hook
+/// (`transcript_path`, Claude Code), 200 caractères au plus. Le chemin est
+/// accepté seulement s'il est un `.jsonl` sous …\.claude\projects
+/// (agents_resume.rs) ; les autres outils ne donnent pas de transcription
+/// dont le format soit connu. Jamais journalisée.
+fn done_summary(hook: &Value) -> Option<String> {
+    let raw = hook["transcript_path"].as_str()?;
+    let file = resume::transcript_path(raw, &claude_dir().join("projects"))?;
+    let message = resume::last_message_cut(&file, MAX_SUMMARY)?;
+    (message.who == "assistant").then_some(message.text)
 }
 
 // ── Le bilan de fin de tâche (agents_git.rs) ─────────────────────────────────
@@ -1186,16 +1533,17 @@ fn understand(msg: &Value, at: u64) -> Option<Event> {
         if s.is_empty() { "outil".to_string() } else { s.to_lowercase() }
     };
     let hook = &msg["hook"];
-    let session = hook["session_id"].as_str().or(hook["thread-id"].as_str()).unwrap_or(&source);
+    let session = tools_more::hook_session(hook).unwrap_or(&source);
     let mut ev = Event {
         at,
         source: source.clone(),
         kind: "info",
         title: text(&msg["title"]),
         body: text(&msg["message"]),
-        project: project_name(hook["cwd"].as_str().unwrap_or("")),
+        project: project_name(tools_more::hook_cwd(hook)),
         session: format!("{source}:{}", clean(session, 80)),
         changes: None,
+        summary: None,
     };
     let who = who(&source);
     let done = |ev: &mut Event| {
@@ -1204,8 +1552,18 @@ fn understand(msg: &Value, at: u64) -> Option<Event> {
     };
 
     // L'ancien `notify` de Codex : pas de hook_event_name, mais un « type ».
-    let event = hook["hook_event_name"].as_str().or(match hook["type"].as_str() {
+    // Les autres outils ont leurs noms (agentStop, stop…) : ramenés aux nôtres.
+    // « --event done | waiting | working | ended » (un autre outil, sans
+    // hook) : le même événement, donné sur la ligne de commande.
+    let named = tools_more::event_name(hook).and_then(tools_more::canonical_event).or(match hook["type"].as_str() {
         Some("agent-turn-complete") => Some("Stop"),
+        _ => None,
+    });
+    let event = named.or(match msg["event"].as_str() {
+        Some("done") => Some("Stop"),
+        Some("waiting") => Some("Waiting"),
+        Some("working") => Some("UserPromptSubmit"),
+        Some("ended") => Some("SessionEnd"),
         _ => None,
     });
 
@@ -1222,6 +1580,11 @@ fn understand(msg: &Value, at: u64) -> Option<Event> {
                 ev.title = std::mem::take(&mut ev.body);
             }
         }
+        // « --event waiting » d'un autre outil : il attend une réponse.
+        Some("Waiting") => {
+            ev.kind = "waiting";
+            ev.title = format!("{who} attend votre réponse");
+        }
         // Au travail (le texte tapé n'est PAS lu).
         Some("UserPromptSubmit") | Some("BeforeAgent") => ev.kind = "working",
         // A fini (la réponse de l'IA n'est PAS lue).
@@ -1231,13 +1594,13 @@ fn understand(msg: &Value, at: u64) -> Option<Event> {
         Some("PermissionRequest") => {
             ev.kind = "waiting";
             ev.title = format!("{who} attend votre permission");
-            let tool = text(&hook["tool_name"]);
+            let tool = clean(tools_more::tool_name(hook), MAX_TEXT);
             ev.body = if tool.is_empty() { String::new() } else { format!("pour {tool}") };
         }
         Some("Notification") => {
             ev.kind = "waiting";
             let message = text(&hook["message"]);
-            let ntype = hook["notification_type"].as_str().unwrap_or("");
+            let ntype = tools_more::notification_type(hook);
             let lower = message.to_lowercase();
             ev.title = match ntype {
                 "permission_prompt" | "ToolPermission" => format!("{who} attend votre permission"),
@@ -1289,7 +1652,7 @@ fn hook_config(tool: &str, exe: &str) -> Result<String, String> {
         "claude-code" => Ok(claude_config(exe)),
         "codex" => Ok(codex_config(exe)),
         "gemini" => Ok(gemini_config(exe)),
-        other => Err(format!("outil inconnu : {other}")),
+        other => tools_more::hook_config(other, exe).ok_or_else(|| format!("outil inconnu : {other}")),
     }
 }
 
@@ -1335,6 +1698,12 @@ fn config_file(tool: &str) -> Result<(PathBuf, hooks::Format), String> {
         "claude-code" => Ok((claude_dir().join("settings.json"), hooks::Format::Json)),
         "codex" => Ok((tool_dir("CODEX_HOME", ".codex").join("config.toml"), hooks::Format::Toml)),
         "gemini" => Ok((platform::home_dir().join(".gemini").join("settings.json"), hooks::Format::Json)),
+        // Copilot CLI lit tous les .json de son dossier hooks (COPILOT_HOME sinon ~\.copilot).
+        "copilot" => Ok((tool_dir("COPILOT_HOME", ".copilot").join("hooks").join("ondine.json"), hooks::Format::Json)),
+        "cursor" => Ok((platform::home_dir().join(".cursor").join("hooks.json"), hooks::Format::Json)),
+        "qwen" => Ok((platform::home_dir().join(".qwen").join("settings.json"), hooks::Format::Json)),
+        // Goose : un plugin à nous (plugin.json à côté, écrit à l'installation).
+        "goose" => Ok((platform::home_dir().join(".agents").join("plugins").join("ondine").join("hooks").join("hooks.json"), hooks::Format::Json)),
         other => Err(format!("outil inconnu : {other}")),
     }
 }
@@ -1639,6 +2008,61 @@ mod tests {
         }
         assert!(config_file("chatgpt").is_err());
         assert!(config_file("codex").unwrap().0.ends_with("config.toml"));
+    }
+
+    #[test]
+    fn more_tools_are_understood() {
+        let from = |source: &str, v: Value| understand(&json!({ "source": source, "hook": v }), 0);
+        let e = from("copilot", json!({ "hook_event_name": "agentStop", "sessionId": "c1", "cwd": "C:\\p\\api", "transcriptPath": "x" })).unwrap();
+        assert_eq!((e.kind, e.title.as_str(), e.session.as_str(), e.project.as_str()), ("done", "Copilot a fini", "copilot:c1", "api"));
+        assert_eq!(from("copilot", json!({ "hook_event_name": "userPromptSubmitted", "prompt": "secret" })).unwrap().kind, "working");
+        let e = from("cursor", json!({ "hook_event_name": "stop", "conversation_id": "k1", "workspace_roots": ["C:\\p\\web"], "status": "completed" })).unwrap();
+        assert_eq!((e.title.as_str(), e.session.as_str(), e.project.as_str()), ("Cursor a fini", "cursor:k1", "web"));
+        assert_eq!(from("cursor", json!({ "hook_event_name": "sessionEnd", "conversation_id": "k1" })).unwrap().kind, "ended");
+        let e = from("goose", json!({ "event": "Stop", "session_id": "g1", "last_assistant_message": "secret" })).unwrap();
+        assert_eq!(e.title, "Goose a fini");
+        assert!(!e.body.contains("secret"));
+        let e = from("qwen", json!({ "hook_event_name": "Notification", "notification_type": "permission_prompt", "message": "Allow?" })).unwrap();
+        assert_eq!(e.title, "Qwen attend votre permission");
+        // Un autre outil, sans JSON : « --event done » / « waiting ».
+        let other = |ev: &str| understand(&json!({ "source": "other", "event": ev }), 0);
+        assert_eq!((other("done").unwrap().kind, other("done").unwrap().title.as_str()), ("done", "L'outil a fini"));
+        assert_eq!(other("waiting").unwrap().title, "L'outil attend votre réponse");
+        assert_eq!(other("working").unwrap().kind, "working");
+        assert!(other("bizarre").is_none());
+        // Un événement inconnu d'un nouvel outil : ignoré.
+        assert!(from("copilot", json!({ "hook_event_name": "preToolUse" })).is_none());
+    }
+
+    #[test]
+    fn more_tools_launch_and_install() {
+        assert!(matches!(Tool::parse("copilot"), Ok(Tool::Extra(t)) if t.word == "copilot"));
+        assert_eq!(Tool::parse("other"), Ok(Tool::Other));
+        assert!(Tool::Other.resume_args().is_err());
+        assert_eq!(Tool::parse("goose").unwrap().resume_args().unwrap(), ["session", "--resume"]);
+        assert!(Tool::parse("aider").unwrap().resume_args().is_err());
+        assert_eq!(who("cursor"), "Cursor");
+        assert_eq!(who("other"), "L'outil");
+        let exe = r"C:\Program Files\Ondine\ondine.exe";
+        for tool in ["copilot", "cursor", "qwen", "goose"] {
+            let (file, format) = config_file(tool).unwrap();
+            assert_eq!(format, hooks::Format::Json, "{tool}");
+            assert!(file.is_absolute());
+            let ours = our_hooks(tool, exe, false).unwrap();
+            let merged = hooks::install_text(format, None, &ours).unwrap_or_else(|e| panic!("{tool} : {e}"));
+            assert_eq!(hooks::status(format, Some(&merged.text), exe).state, "installed", "{tool}");
+            let removed = hooks::remove_text(format, Some(&merged.text)).unwrap();
+            assert_eq!(hooks::status(format, Some(&removed.text), exe).state, "absent", "{tool}");
+        }
+        assert!(config_file("aider").is_err());
+        assert!(HOOK_TOOLS.iter().all(|t| config_file(t).is_ok()));
+    }
+
+    #[test]
+    fn done_summary_needs_a_verified_transcript() {
+        assert_eq!(done_summary(&json!({})), None);
+        assert_eq!(done_summary(&json!({ "transcript_path": "C:\\Windows\\x.jsonl" })), None);
+        assert_eq!(done_summary(&json!({ "transcript_path": "pas-absolu.jsonl" })), None);
     }
 
     #[test]

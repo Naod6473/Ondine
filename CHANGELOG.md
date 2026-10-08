@@ -2,6 +2,35 @@
 
 ## Pas encore publié · Unreleased
 
+- Agents IA : GitHub Copilot CLI, Cursor CLI, Qwen Code et Goose se lancent,
+  se reprennent et préviennent l'île (hooks installés automatiquement) ;
+  OpenCode, Kiro CLI, Hermes, Aider et Amp se lancent (et se reprennent quand
+  ils le proposent) ; « Autre outil » lance le mot de commande de votre choix
+  et le guide montre comment il prévient l'île. · AI Agents: GitHub Copilot
+  CLI, Cursor CLI, Qwen Code and Goose can be launched, resumed and notify
+  the island (hooks installed automatically); OpenCode, Kiro CLI, Hermes,
+  Aider and Amp can be launched (and resumed when they support it); "Other
+  tool" launches the command word of your choice and the guide shows how it
+  notifies the island.
+- Agents IA : « Claude a fini » montre la dernière phrase de Claude (lue
+  dans sa transcription, sur votre PC), avec « Copier ». · AI Agents: "Claude
+  is done" shows Claude's last sentence (read from its transcript, on your
+  PC), with "Copy".
+- Agents IA : le bilan git est cliquable (« Fichiers… ») : la liste des
+  fichiers modifiés, avec « Ouvrir » (VS Code sur le fichier) et « Diff »
+  (comparaison avec la version validée). · AI Agents: the git summary is
+  clickable ("Files…"): the list of changed files, with "Open" (VS Code on the
+  file) and "Diff" (comparison with the committed version).
+- Agents IA : quand un agent vous attend depuis 10 puis 30 minutes, un
+  rappel ; en mini-île, la mascotte fait coucou toutes les deux minutes. · AI
+  Agents: when an agent has been waiting for you for 10 then 30 minutes, a
+  reminder; in the mini island, the mascot waves every two minutes.
+- Agents IA : quatre outils MCP de plus pour l'agent : ajouter une note,
+  déposer un fichier sur l'étagère, demander une capture d'écran, proposer
+  d'ouvrir un lien ou un fichier (toujours après votre clic). · AI Agents:
+  four more MCP tools for the agent: add a note, drop a file on the shelf,
+  ask for a screenshot, offer to open a link or a file (always after your
+  click).
 - Onglet Agents IA : un compteur de jetons (entrée, sortie, cache) par jour,
   par modèle et par projet, lu dans les journaux de Claude Code et de Codex
   sur ce PC. · AI Agents tab: a token counter (input, output, cache) per day,

@@ -14,7 +14,7 @@
 "Fusionnez le bloc « mcpServers » dans %USERPROFILE%\\.gemini\\settings.json, puis relancez Gemini CLI.": "Fusionne le bloc « mcpServers » dans %USERPROFILE%\\.gemini\\settings.json, puis relance Gemini CLI.",
 "Copiez la configuration.": "Copie la configuration.",
 "Ouvrez": "Ouvre",
-"En plus (facultatif) : branchez l'île comme serveur MCP. L'agent pourra alors vous envoyer un message, sa progression, lancer le minuteur, ou vous poser une question à choix, à laquelle vous répondez d'un clic.": "En plus (facultatif) : branche l'île comme serveur MCP. L'agent pourra alors t'envoyer un message, sa progression, lancer le minuteur, ou te poser une question à choix, à laquelle tu réponds d'un clic.",
+"En plus (facultatif) : branchez l'île comme serveur MCP. L'agent pourra alors vous envoyer un message, sa progression, lancer le minuteur, vous poser une question à choix, ajouter une note, déposer un fichier sur l'étagère, vous demander une capture d'écran ou l'ouverture d'un lien (toujours après votre clic).": "En plus (facultatif) : branche l'île comme serveur MCP. L'agent pourra alors t'envoyer un message, sa progression, lancer le minuteur, te poser une question à choix, ajouter une note, déposer un fichier sur l'étagère, te demander une capture d'écran ou l'ouverture d'un lien (toujours après ton clic).",
 "Autoriser / Refuser depuis l'île : Gemini CLI ne le permet pas (un hook peut refuser, pas autoriser). Répondez dans son terminal.": "Autoriser / Refuser depuis l'île : Gemini CLI ne le permet pas (un hook peut refuser, pas autoriser). Réponds dans son terminal.",
 "Rien reçu pour l'instant. Branchez Claude Code ci-dessous, puis cliquez sur « Essayer ».": "Rien reçu pour l'instant. Branche Claude Code ci-dessous, puis clique sur « Essayer ».",
 "Rien ne part avant votre confirmation.": "Rien ne part avant ta confirmation.",
@@ -174,7 +174,20 @@
 "Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur votre ordinateur, hors ligne : l'image n'est envoyée nulle part. La pipette copie la couleur d'un point de l'écran. « Enregistrer un GIF » filme une zone de l'écran en GIF animé (30 s au plus), posé sur l'étagère.": "Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur ton ordinateur, hors ligne : l'image n'est envoyée nulle part. La pipette copie la couleur d'un point de l'écran. « Enregistrer un GIF » filme une zone de l'écran en GIF animé (30 s au plus), posé sur l'étagère.",
 "Décodé sur votre PC : rien n'est envoyé ni enregistré.": "Décodé sur ton PC : rien n'est envoyé ni enregistré.",
 "Choisissez une zone de l'écran, puis enregistrez-la en GIF animé (durée maximale dans les réglages du module)": "Choisis une zone de l'écran, puis enregistre-la en GIF animé (durée maximale dans les réglages du module)",
-"Glissez pour choisir la zone du GIF · Clic : tout l'écran · Échap : annuler": "Glisse pour choisir la zone du GIF · Clic : tout l'écran · Échap : annuler"
+"Glissez pour choisir la zone du GIF · Clic : tout l'écran · Échap : annuler": "Glisse pour choisir la zone du GIF · Clic : tout l'écran · Échap : annuler",
+"Un outil qui sait lancer une commande en fin de tâche prévient l'île avec « --event done » (ou « waiting » quand il attend votre réponse, « working » quand il repart). Donnez-lui cette ligne, telle quelle :": "Un outil qui sait lancer une commande en fin de tâche prévient l'île avec « --event done » (ou « waiting » quand il attend ta réponse, « working » quand il repart). Donne-lui cette ligne, telle quelle :",
+"Pour le lancer d'ici, écrivez son mot de commande dans le réglage « Autre outil ». Rien n'est exécuté à sa demande : l'île affiche seulement « L'outil a fini ».": "Pour le lancer d'ici, écris son mot de commande dans le réglage « Autre outil ». Rien n'est exécuté à sa demande : l'île affiche seulement « L'outil a fini ».",
+"Enregistrez le bloc tel quel dans ce fichier (Copilot CLI lit tous les .json de son dossier hooks), puis relancez Copilot CLI.": "Enregistre le bloc tel quel dans ce fichier (Copilot CLI lit tous les .json de son dossier hooks), puis relance Copilot CLI.",
+"Relancez Copilot CLI pour les activer.": "Relance Copilot CLI pour les activer.",
+"Collez le bloc « hooks » (fusionnez-le s'il en existe déjà un), puis relancez l'agent Cursor.": "Colle le bloc « hooks » (fusionne-le s'il en existe déjà un), puis relance l'agent Cursor.",
+"Relancez l'agent Cursor (commande « agent ») pour les activer.": "Relance l'agent Cursor (commande « agent ») pour les activer.",
+"Collez le bloc « hooks » (fusionnez-le s'il en existe déjà un), puis relancez Qwen Code.": "Colle le bloc « hooks » (fusionne-le s'il en existe déjà un), puis relance Qwen Code.",
+"Relancez Qwen Code pour les activer.": "Relance Qwen Code pour les activer.",
+"Enregistrez le bloc dans ce fichier, avec un plugin.json à côté du dossier hooks (« Installer automatiquement » l'écrit pour vous), puis relancez Goose.": "Enregistre le bloc dans ce fichier, avec un plugin.json à côté du dossier hooks (« Installer automatiquement » l'écrit pour toi), puis relance Goose.",
+"Relancez Goose pour les activer.": "Relance Goose pour les activer.",
+"Autoriser / Refuser depuis l'île : seulement pour Claude Code et Codex. Répondez dans le terminal de cet outil.": "Autoriser / Refuser depuis l'île : seulement pour Claude Code et Codex. Réponds dans le terminal de cet outil.",
+"Un outil en ligne de commande à lancer dans vos projets (lettres, chiffres, tirets, points et soulignés, 32 caractères au plus). Il est cherché dans le PATH, jamais tapé tel quel. Pour qu'il prévienne l'île, voir « Brancher un autre outil » dans l'onglet.": "Un outil en ligne de commande à lancer dans tes projets (lettres, chiffres, tirets, points et soulignés, 32 caractères au plus). Il est cherché dans le PATH, jamais tapé tel quel. Pour qu'il prévienne l'île, voir « Brancher un autre outil » dans l'onglet.",
+"Lue à la fin de la transcription donnée par le hook de Claude Code (un fichier de son dossier, sur votre PC), 200 caractères au plus, avec un bouton « Copier ». Jamais écrite dans le journal.": "Lue à la fin de la transcription donnée par le hook de Claude Code (un fichier de son dossier, sur ton PC), 200 caractères au plus, avec un bouton « Copier ». Jamais écrite dans le journal."
 },
 "patterns": [
 [
@@ -292,6 +305,10 @@
 [
 "^(\\d+) fichiers au plus à la fois \\(vous en avez glissé (\\d+)\\)$",
 "$1 fichiers au plus à la fois (tu en as glissé $2)"
+],
+[
+"^(.+?) attend toujours votre réponse$",
+"$1 attend toujours ta réponse"
 ]
 ]
 }

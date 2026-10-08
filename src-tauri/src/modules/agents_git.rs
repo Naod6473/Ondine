@@ -29,6 +29,8 @@ use crate::platform::devtools;
 
 /// Le délai maximum pour tout le bilan (les deux commandes git et le comptage).
 pub const TIMEOUT: Duration = Duration::from_secs(3);
+/// La liste détaillée (clic sur le bilan) : au plus ce nombre de fichiers.
+pub const MAX_LIST: usize = 20;
 /// Combien de noms de fichiers on montre.
 const MAX_NAMES: usize = 3;
 /// Les lignes des fichiers nouveaux : au plus ce nombre de fichiers lus…
@@ -75,26 +77,104 @@ fn same_dir(a: &Path, b: &Path) -> bool {
     norm(a) == norm(b)
 }
 
+/// Un fichier changé, pour la liste détaillée (clic sur le bilan).
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct FileChange {
+    /// Le chemin depuis la racine du dépôt (avec des « / », comme git l'écrit).
+    pub path: String,
+    pub added: u64,
+    pub removed: u64,
+    /// Nouveau, pas encore suivi par git (pas de « diff » possible).
+    pub untracked: bool,
+    /// Le fichier existe encore (sinon : supprimé, rien à ouvrir).
+    pub exists: bool,
+}
+
+/// Lance git (chemin complet) dans `dir` avec les options communes : aucune
+/// écriture dans le dépôt, pas de « fsmonitor » (un programme que le dépôt
+/// pourrait demander de lancer), jamais d'invite.
+pub fn run_git(git: &Path, dir: &Path, args: &[&str], left: Duration) -> Option<Vec<u8>> {
+    let mut all = vec!["--no-pager", "--no-optional-locks", "-c", "core.fsmonitor=false"];
+    all.extend_from_slice(args);
+    devtools::run_with_timeout(git, &all, dir, &[("GIT_TERMINAL_PROMPT", "0"), ("GIT_OPTIONAL_LOCKS", "0")], left).ok()
+}
+
+/// Chemin → (lignes ajoutées, retirées), d'après `git diff --numstat`.
+type Numstat = HashMap<String, (u64, u64)>;
+
+/// Les deux sorties de git (status, puis numstat), dans le délai.
+fn status_and_numstat(git: &Path, dir: &Path, deadline: Instant) -> Option<(Vec<Entry>, Numstat)> {
+    let run = |args: &[&str]| -> Option<Vec<u8>> {
+        let left = deadline.checked_duration_since(Instant::now())?;
+        run_git(git, dir, args, left)
+    };
+    let entries = parse_status(&run(&["status", "--porcelain=v1", "-z", "-uall"])?);
+    if entries.is_empty() {
+        return Some((entries, HashMap::new()));
+    }
+    // Un dépôt sans aucun commit n'a pas de HEAD : les lignes ne sont alors pas comptées.
+    let numstat = run(&["diff", "--numstat", "-z", "--no-ext-diff", "--no-textconv", "--no-color", "HEAD", "--"]).map(|o| parse_numstat(&o)).unwrap_or_default();
+    Some((entries, numstat))
+}
+
 /// Le bilan du dépôt `root`, vu depuis `dir` (dossier de la session).
 /// None : git a échoué ou a été trop long.
 pub fn changes(git: &Path, dir: &Path, root: &Path) -> Option<Changes> {
     let deadline = Instant::now() + TIMEOUT;
-    let run = |args: &[&str]| -> Option<Vec<u8>> {
-        let left = deadline.checked_duration_since(Instant::now())?;
-        // Options communes : aucune écriture dans le dépôt, pas de « fsmonitor »
-        // (un programme que le dépôt pourrait demander de lancer).
-        let mut all = vec!["--no-pager", "--no-optional-locks", "-c", "core.fsmonitor=false"];
-        all.extend_from_slice(args);
-        devtools::run_with_timeout(git, &all, dir, &[("GIT_TERMINAL_PROMPT", "0"), ("GIT_OPTIONAL_LOCKS", "0")], left).ok()
-    };
-    let entries = parse_status(&run(&["status", "--porcelain=v1", "-z", "-uall"])?);
+    let (entries, numstat) = status_and_numstat(git, dir, deadline)?;
     if entries.is_empty() {
         return Some(Changes::default());
     }
-    // Un dépôt sans aucun commit n'a pas de HEAD : les lignes ne sont alors pas comptées.
-    let numstat = run(&["diff", "--numstat", "-z", "--no-ext-diff", "--no-textconv", "--no-color", "HEAD", "--"]).map(|o| parse_numstat(&o)).unwrap_or_default();
     let new_lines = |path: &str| if Instant::now() < deadline { count_lines(&root.join(path)) } else { 0 };
     Some(summarize(&entries, &numstat, new_lines))
+}
+
+/// La liste des fichiers changés (clic sur le bilan) : les plus changés
+/// d'abord, `MAX_LIST` au plus. None : git a échoué ou a été trop long.
+pub fn file_list(git: &Path, dir: &Path, root: &Path) -> Option<Vec<FileChange>> {
+    let deadline = Instant::now() + TIMEOUT;
+    let (entries, numstat) = status_and_numstat(git, dir, deadline)?;
+    let new_lines = |path: &str| if Instant::now() < deadline { count_lines(&root.join(path)) } else { 0 };
+    Some(list_files(&entries, &numstat, new_lines, |p| root.join(p).exists()))
+}
+
+/// La liste à partir des deux sorties (`exists` : le fichier est encore là).
+pub fn list_files(entries: &[Entry], numstat: &HashMap<String, (u64, u64)>, mut new_lines: impl FnMut(&str) -> u64, exists: impl Fn(&str) -> bool) -> Vec<FileChange> {
+    let mut rows: Vec<FileChange> = entries
+        .iter()
+        .filter(|e| !e.path.ends_with('/')) // un dossier nouveau : pas un fichier
+        .map(|e| {
+            let (added, removed) = if e.untracked { (new_lines(&e.path), 0) } else { numstat.get(&e.path).copied().unwrap_or((0, 0)) };
+            FileChange { path: clean_path(&e.path), added, removed, untracked: e.untracked, exists: exists(&e.path) }
+        })
+        .collect();
+    rows.sort_by(|x, y| (y.added + y.removed).cmp(&(x.added + x.removed)).then(x.path.cmp(&y.path)));
+    rows.truncate(MAX_LIST);
+    rows
+}
+
+/// Un chemin tel que git l'écrit, sans caractère de contrôle, 200 caractères au plus.
+fn clean_path(path: &str) -> String {
+    let clean: String = path.chars().map(|c| if c.is_control() { ' ' } else { c }).collect();
+    if clean.chars().count() <= 200 {
+        return clean;
+    }
+    let mut cut: String = clean.chars().take(199).collect();
+    cut.push('…');
+    cut
+}
+
+/// Un chemin relatif reçu du front (il vient de `file_list`) est-il sûr à
+/// joindre à la racine du dépôt ? Relatif, sans « .. », sans lecteur, sans
+/// caractère de contrôle, ni vide.
+pub fn safe_relative(path: &str) -> bool {
+    !path.is_empty()
+        && path.len() <= 1000
+        && !path.chars().any(|c| c.is_control())
+        && !Path::new(path).is_absolute()
+        && !path.starts_with(['/', '\\'])
+        && !path.contains(':')
+        && !path.split(['/', '\\']).any(|part| part == ".." || part.is_empty())
 }
 
 /// La sortie de `git status --porcelain=v1 -z` : une entrée par fichier,
@@ -243,6 +323,24 @@ mod tests {
         assert_eq!((c.files, c.added, c.removed), (4, 146, 11));
         assert_eq!(c.names, ["main.rs", "neuf.rs", "a.md"]);
         assert_eq!(summarize(&[], &HashMap::new(), |_| 0), Changes::default());
+    }
+
+    #[test]
+    fn file_list_is_sorted_and_bounded() {
+        let entries = parse_status(b" M src/main.rs\0 M README.md\0?? src/neuf.rs\0 D old.txt\0?? dossier/\0");
+        let numstat = parse_numstat(b"100\t10\tsrc/main.rs\x001\t1\tREADME.md\x000\t7\told.txt\x00");
+        let list = list_files(&entries, &numstat, |p| if p == "src/neuf.rs" { 40 } else { 0 }, |p| p != "old.txt");
+        let paths: Vec<&str> = list.iter().map(|f| f.path.as_str()).collect();
+        assert_eq!(paths, ["src/main.rs", "src/neuf.rs", "old.txt", "README.md"]);
+        assert_eq!((list[1].added, list[1].untracked), (40, true));
+        assert!(!list[2].exists);
+        // Plus de MAX_LIST fichiers : coupé.
+        let many: Vec<Entry> = (0..30).map(|i| Entry { path: format!("f{i:02}.txt"), untracked: false }).collect();
+        assert_eq!(list_files(&many, &HashMap::new(), |_| 0, |_| true).len(), MAX_LIST);
+        assert!(safe_relative("src/main.rs") && safe_relative("Mes docs/été.md"));
+        for bad in ["", "../x", "src/../../x", "/etc/passwd", "C:\\x", "\\\\srv\\share", "a//b", "a\u{0}b"] {
+            assert!(!safe_relative(bad), "{bad:?}");
+        }
     }
 
     #[test]
