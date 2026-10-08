@@ -52,7 +52,7 @@ ondine/
 │  │  ├─ mascot-state.ts      machine à états de la mascotte, reliée au bus
 │  │  ├─ catalog.ts           trouve et vérifie les mascottes de mascots/
 │  │  ├─ types.ts             états, humeurs, format du manifeste
-│  │  └─ renderers/            canvas-placeholder.ts, gum.ts, gum-draw.ts, poses.ts, spritesheet.ts, overlays.ts
+│  │  └─ renderers/            canvas-placeholder.ts, gum.ts, gum-anims.ts, gum-draw.ts, gum-shapes.ts, poses.ts, spritesheet.ts, overlays.ts
 │  ├─ modules/
 │  │  ├─ index.ts             LISTE DES MODULES (front)
 │  │  ├─ shelf/               Étagère et dépôt de fichiers (phase 2)
@@ -421,7 +421,8 @@ bus ──▶ MascotController (mascot-state.ts) ──▶ MascotRenderer (rende
 - **États** : idle, wake, sleep, happy, annoyed, dizzy, thinking, working,
   alert, eating, celebrate, love, bored, et les émotions de la goutte v2 :
   success, question, error, warning, info, sad, worried, surprise, shy, calm,
-  wink. Un état que la mascotte n'a pas retombe sur `fallback` (et le contrôleur
+  wink, et ceux de la famille gomme : wave, laugh, proud, pout, starstruck,
+  mischief, focus, moved, embarrassed, yawn, pensive, cheer. Un état que la mascotte n'a pas retombe sur `fallback` (et le contrôleur
   choisit l'ancien état équivalent quand il y en a un). Humeurs : neutral,
   happy, grumpy, tired.
 - **Déclencheurs** : voir le tableau du bus ; plus l'inactivité (bored après
@@ -452,6 +453,49 @@ bus ──▶ MascotController (mascot-state.ts) ──▶ MascotRenderer (rende
   fichiers, relance l'appli, choisis-la dans Réglages → Mascotte et teste chaque
   animation. Un manifeste invalide est signalé, et l'île garde la provisoire.
   Tant que son moteur n'est pas branché, la provisoire la remplace.
+
+### La famille gomme (`src/mascot/renderers/gum*.ts`, `src/mascot/gum-family.ts`)
+
+La goutte gomme et ses cousines (Guimauve, Dragée, Berlingot, étoile, soleil,
+lune, nuage, cœur, fleur, champignon, fantôme, flamme, plus « Ciel » et
+« Météo ») partagent le manifeste `mascots/goutte-gomme/manifest.json` et le
+moteur `gum` ; le catalogue fabrique les cousines à partir de `GUM_FAMILY`
+(champ `gum.shape` du manifeste). Quatre fichiers :
+
+- `gum-shapes.ts` : chaque forme est un **contour de N = 96 points** (sens des
+  aiguilles d'une montre, premier point en haut, bas à y = 0,94), plus la place
+  du visage, des reflets, la hauteur des sauts, le flottement et les décors.
+  Tous les contours ayant les mêmes points dans le même ordre, on passe d'une
+  forme à l'autre en faisant glisser chaque point (Ciel : soleil de 7 h à 20 h,
+  lune la nuit ; Météo : soleil, lune ou nuage avec pluie, neige, orage, d'après
+  l'icône de `weather.updated`).
+- `gum-anims.ts` : les animations (une fonction par animation : t, p, humeur →
+  ce qu'elle demande), traduites en **réglages chiffrés du visage** (`Face` :
+  ouverture et courbe des yeux, paupière, sourcils, largeur, courbe et
+  ouverture de la bouche, joues gonflées…), les poses des mains, et la gelée du
+  contour (`JellyRim` : chaque point est tenu par un ressort et relié à ses
+  voisins, une pichenette lance une onde qui s'éteint).
+- `gum.ts` : le moteur. Rien n'y saute : le visage glisse vers sa cible, les
+  yeux spéciaux (cœurs, étoiles, spirales) apparaissent en fondu, l'étirement et
+  l'inclinaison suivent un ressort, elle se tasse avant un saut (on regarde
+  l'animation 0,1 s plus loin), s'allonge en l'air et s'écrase en retombant, le
+  visage traîne un peu derrière le corps, les mains suivent leur pose avec leur
+  propre ressort, la couleur passe en fondu. Sans souris, de petits coups d'œil ;
+  le clignement se ferme vite et se rouvre lentement. `react()` reçoit ce qui
+  arrive à l'île (clic, étirement, lâcher, secousse). Avec « Réduire les
+  animations », tout va directement à sa cible.
+- `gum-draw.ts` : le dessin (couches de gomme, visage, moufles, accessoires,
+  météo) et les teintes (`TINTS`, plus l'arc-en-ciel).
+
+Réglages (Réglages → Mascotte → Style, seulement pour une mascotte gomme) :
+`mascot.color` (`auto` = la couleur de la forme), `mascot.hands` (`always`,
+`gestures`, `never`), `mascot.wearHead` (cap, straw, tophat, beanie, crown,
+bow), `mascot.wearEyes` (round, sun, heart), `mascot.wearNeck` (pearls,
+bowtie, scarf). Nouveaux déclencheurs : avant de dormir elle bâille (`yawn`),
+réveillée deux fois en 5 min elle boude (`pout`), deux clics rapides → `laugh`,
+une tâche de plus de 10 min finie → `moved`, nouvelle version ou trésor trouvé →
+`starstruck` ; le travail d'un agent joue `concentree` (au clavier) et la
+réflexion `pensive` (main au menton).
 
 ## Les surprises (`src/eggs/`)
 

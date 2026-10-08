@@ -130,6 +130,14 @@ pub struct MascotPrefs {
     pub surprises: String,
     /// Le carnet des trésors : les ids des surprises déjà trouvées.
     pub treasures: Vec<String>,
+    /// Famille gomme : la couleur ("auto" = celle de la forme).
+    pub color: String,
+    /// Famille gomme : les mains "always", "gestures" ou "never".
+    pub hands: String,
+    /// Famille gomme : les accessoires sur la tête, sur les yeux, au cou ("none" = aucun).
+    pub wear_head: String,
+    pub wear_eyes: String,
+    pub wear_neck: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -192,7 +200,7 @@ impl Default for IslandPrefs {
 
 impl Default for MascotPrefs {
     fn default() -> Self {
-        Self { enabled: true, id: "goutte-gomme".into(), bored_after_secs: 60.0, sleep_after_secs: 180.0, peek: true, peek_every_mins: 5.0, surprises: "all".into(), treasures: Vec::new() }
+        Self { enabled: true, id: "goutte-gomme".into(), bored_after_secs: 60.0, sleep_after_secs: 180.0, peek: true, peek_every_mins: 5.0, surprises: "all".into(), treasures: Vec::new(), color: "auto".into(), hands: "always".into(), wear_head: "none".into(), wear_eyes: "none".into(), wear_neck: "none".into() }
     }
 }
 

@@ -19,10 +19,20 @@ export interface MascotRenderer {
   setMood(mood: Mood): void;
   /** Regarde vers ce point, en px relatifs au centre du conteneur ; null = droit devant. */
   lookAt(x: number | null, y: number | null): void;
+  /**
+   * Facultatif : ce qui arrive à l'île (un clic qui l'enfonce, un étirement, le
+   * lâcher, une secousse), pour que la mascotte réagisse. x, y en px par rapport
+   * au centre de la mascotte.
+   */
+  react?(kind: MascotReaction, data: { x?: number; y?: number; amount?: number }): void;
+  /** Facultatif : la météo du moment (icône du module Météo), pour la mascotte « Météo ». */
+  setWeather?(icon: string | null): void;
   /** Appelé à la fin d'une animation non bouclée. */
   onAnimationEnd(cb: (name: string) => void): void;
   destroy(): void;
 }
+
+export type MascotReaction = "poke" | "stretch" | "release" | "shake";
 
 type RendererFactory = (manifest: MascotManifest, assets: Record<string, string>) => MascotRenderer;
 
@@ -31,7 +41,7 @@ const RENDERERS: Record<string, RendererFactory> = {
   "canvas-code": () => new PlaceholderCanvasRenderer(),
   spritesheet: (m, assets) => new SpriteSheetRenderer(m, assets),
   poses: (m, assets) => new PosesRenderer(m, assets),
-  gum: () => new GumRenderer(),
+  gum: (m) => new GumRenderer(m),
   // "lottie":      (m, assets) => new LottieRenderer(m, assets),
   // "rive":        (m, assets) => new RiveRenderer(m, assets),
 };

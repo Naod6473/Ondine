@@ -942,6 +942,7 @@ function mascot(main: HTMLElement) {
         "Déposez vos mascottes dans le dossier mascots/ du projet, puis relancez l'appli.",
       ),
     ]),
+    ...(cur?.manifest.renderer === "gum" ? [gumStyleGroup()] : []),
     group("Humeur", [
       row("S'ennuie après", stepper(s.mascot.boredAfterSecs, 10, 3600, (v) => save((d) => (d.mascot.boredAfterSecs = v)), 10, "s")),
       row("S'endort après", stepper(s.mascot.sleepAfterSecs, 20, 7200, (v) => save((d) => (d.mascot.sleepAfterSecs = v)), 10, "s")),
@@ -1024,6 +1025,93 @@ function mascot(main: HTMLElement) {
       ),
     );
   }
+}
+
+/** Les couleurs de la famille gomme (clés de TINTS dans gum-draw.ts), avec leur nom. */
+const GUM_COLORS: [string, string][] = [
+  ["auto", "Celle de la forme"],
+  ["blue", "Bleu"],
+  ["mint", "Menthe"],
+  ["green", "Vert"],
+  ["yellow", "Jaune"],
+  ["gold", "Or"],
+  ["orange", "Orange"],
+  ["coral", "Corail"],
+  ["red", "Rouge"],
+  ["pink", "Rose"],
+  ["lilac", "Lilas"],
+  ["violet", "Violet"],
+  ["night", "Nuit"],
+  ["cloud", "Nuage"],
+  ["licorice", "Réglisse"],
+  ["rainbow", "Arc-en-ciel"],
+];
+
+/** Couleur, mains et accessoires des mascottes de la famille gomme. */
+function gumStyleGroup(): HTMLElement {
+  const m = settingsStore.current.mascot;
+  return group(
+    "Style",
+    [
+      row("Couleur", choice(m.color ?? "auto", GUM_COLORS, (v) => save((d) => (d.mascot.color = v)))),
+      row(
+        "Mains",
+        choice(
+          m.hands ?? "always",
+          [
+            ["always", "Toujours"],
+            ["gestures", "Seulement pour les gestes"],
+            ["never", "Jamais"],
+          ],
+          (v) => save((d) => (d.mascot.hands = v as Settings["mascot"]["hands"])),
+        ),
+        "Des petites moufles en gomme qui flottent à côté d'elle : coucou, bravo, au clavier, mains sur les joues…",
+      ),
+      row(
+        "Sur la tête",
+        choice(
+          m.wearHead ?? "none",
+          [
+            ["none", "Rien"],
+            ["cap", "Casquette"],
+            ["straw", "Chapeau de paille"],
+            ["tophat", "Haut-de-forme"],
+            ["beanie", "Bonnet"],
+            ["crown", "Couronne"],
+            ["bow", "Nœud"],
+          ],
+          (v) => save((d) => (d.mascot.wearHead = v)),
+        ),
+      ),
+      row(
+        "Lunettes",
+        choice(
+          m.wearEyes ?? "none",
+          [
+            ["none", "Aucune"],
+            ["round", "Lunettes rondes"],
+            ["sun", "Lunettes de soleil"],
+            ["heart", "Lunettes cœur"],
+          ],
+          (v) => save((d) => (d.mascot.wearEyes = v)),
+        ),
+      ),
+      row(
+        "Au cou",
+        choice(
+          m.wearNeck ?? "none",
+          [
+            ["none", "Rien"],
+            ["pearls", "Collier de perles"],
+            ["bowtie", "Nœud papillon"],
+            ["scarf", "Écharpe"],
+          ],
+          (v) => save((d) => (d.mascot.wearNeck = v)),
+        ),
+      ),
+    ],
+    "Pour toutes les mascottes en gomme. L'aperçu ci-dessous change tout de suite.",
+  );
 }
 
 /** Le carnet des trésors : les surprises trouvées, et un indice pour les autres. */

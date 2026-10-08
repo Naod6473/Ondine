@@ -27,6 +27,19 @@ export const MASCOT_STATES = [
   "shy",
   "calm",
   "wink",
+  // Les nouvelles expressions de la famille gomme.
+  "wave",
+  "laugh",
+  "proud",
+  "pout",
+  "starstruck",
+  "mischief",
+  "focus",
+  "moved",
+  "embarrassed",
+  "yawn",
+  "pensive",
+  "cheer",
 ] as const;
 
 export type MascotState = (typeof MASCOT_STATES)[number];
@@ -87,7 +100,7 @@ export interface AnimationSource {
   variants?: string[];
 }
 
-export type Overlay = "none" | "zzz" | "dots" | "bang" | "confetti" | "hearts" | "steam" | "sweat" | "stars" | "question" | "check";
+export type Overlay = "none" | "zzz" | "dots" | "bang" | "confetti" | "hearts" | "steam" | "sweat" | "stars" | "question" | "check" | "sparkles";
 
 /** Un œil blanc d'une pose, en px dans l'image 256 × 256 : on y dessine la pupille. */
 export interface PoseEye {
@@ -148,6 +161,8 @@ export interface MascotManifest {
   /** État → nom d'animation. Un état absent utilise `fallback`. */
   states: Partial<Record<MascotState, string>>;
   animations: AnimationSpec[];
+  /** Moteur "gum" : la forme du bonbon (gum-shapes.ts), ou "ciel" / "meteo" qui changent toutes seules. */
+  gum?: { shape?: string };
   /** Moteur "poses" : nom de la pose → image et yeux. */
   poses?: Record<string, PoseSpec>;
 }

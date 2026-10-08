@@ -73,6 +73,14 @@ export interface Settings {
     surprises: "all" | "seasonal" | "none";
     /** Le carnet des trésors : les ids des surprises déjà trouvées. */
     treasures: string[];
+    /** Famille gomme : la couleur ("auto" = celle de la forme, sinon une teinte de gum-draw.ts). */
+    color: string;
+    /** Famille gomme : les mains toujours, seulement pour les gestes, ou jamais. */
+    hands: "always" | "gestures" | "never";
+    /** Famille gomme : les accessoires (sur la tête, sur les yeux, au cou ; "none" = aucun). */
+    wearHead: string;
+    wearEyes: string;
+    wearNeck: string;
   };
   privacy: {
     excludedFolders: string[];
@@ -144,7 +152,7 @@ export function defaultSettings(): Settings {
       tips: true,
       tipsSeen: [],
     },
-    mascot: { enabled: true, id: "goutte-gomme", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5, surprises: "all", treasures: [] },
+    mascot: { enabled: true, id: "goutte-gomme", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5, surprises: "all", treasures: [], color: "auto", hands: "always", wearHead: "none", wearEyes: "none", wearNeck: "none" },
     privacy: { excludedFolders: [] },
     modules: {},
     profiles: { list: [], active: "", auto: false, base: {} },
