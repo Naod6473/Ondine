@@ -31,6 +31,7 @@ import { changesLine, namesLine, since, type ChangeSummary } from "./texts";
 import { usageSection, watchBudget } from "./usage-view";
 import { HOOK_TOOLS, LAUNCH, launchName, sourceName, summaryLine } from "./tools";
 import { mountFilesPanel, requestFiles } from "./report-view";
+import { dayCardSection } from "./day-card";
 import { startWaitWatch } from "./wait-watch";
 
 /** Le bilan d'une fin de tâche, avec ce qu'il faut pour ses boutons. */
@@ -334,8 +335,10 @@ export const agents: IslandModule = {
       const projectRows = el("ul", { class: "agents-projects" });
       // La liste des fichiers d'un bilan (report-view.ts), vide le reste du temps.
       const filesBox = el("section", { class: "agents-files-box" });
+      // Le Bilan du jour en image, à partager (day-card.ts) : un bouton, et sa carte quand on l'ouvre.
+      const dayCard = dayCardSection(api);
       root.append(
-        el("div", { class: "agents" }, launch, projectRows, asks, filesBox, status, quiet, board, usageBox, githubBox, el("div", { class: "muted agents-subtitle" }, "Derniers messages"), list, guide),
+        el("div", { class: "agents" }, launch, projectRows, asks, filesBox, status, quiet, board, el("div", { class: "btn-row agents-daycard-row" }, dayCard.button), dayCard.box, usageBox, githubBox, el("div", { class: "muted agents-subtitle" }, "Derniers messages"), list, guide),
       );
       const stopFiles = mountFilesPanel(api, filesBox);
       /** Le nom de l'agent choisi (« Autre outil » : le mot du réglage). */
@@ -809,6 +812,7 @@ export const agents: IslandModule = {
         redraws.delete(draw);
         stopTimer();
         usage.stop();
+        dayCard.stop();
         stopGithub();
         stopFiles();
       };

@@ -44,6 +44,7 @@ mod agents_hooks;
 mod agents_git;
 // « Reprendre » : la dernière session de Claude Code d'un projet.
 mod agents_resume;
+mod agents_daycard;
 mod agents_usage;
 // L'historique des agents gardé 7 jours (fichier agents-history.json).
 mod agents_history;

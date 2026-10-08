@@ -374,6 +374,34 @@ function agentsWeek() {
     prices: "claude-opus ; 15 ; 75 ; 1,5 ; 18,75\ngpt-5-codex ; 1,25 ; 10 ; 0,125 ; 0",
   };
 }
+/** La journée des agents (Bilan du jour en image) : douze tâches, un pic à 15 h, douze jours d'affilée. */
+function agentsDay() {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const key = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const now = new Date();
+  const today = key(now);
+  const activeDays = Array.from({ length: 7 }, (_, i) => key(new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)));
+  // Les jetons du jour, et des jours d'avant tous actifs (la série en cours).
+  const days = Array.from({ length: 12 }, (_, i) => {
+    const day = key(new Date(now.getFullYear(), now.getMonth(), now.getDate() - i));
+    const k = 1 + ((i * 7) % 5);
+    return { day, tool: "claude-code", model: "claude-opus-5-5", input: 1_800 * k, output: 9_500 * k, cacheRead: 410_000 * k, cacheWrite: 38_000 * k, messages: 24 * k };
+  });
+  days.push({ day: today, tool: "codex", model: "gpt-5-codex", input: 22_000, output: 6_000, cacheRead: 90_000, cacheWrite: 0, messages: 9 });
+  return {
+    today,
+    done: 12,
+    waitMinutes: 34,
+    projects: ["site-ondine", "Island"],
+    hours: [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 2, 4, 1, 1, 0, 0, 0, 0, 0, 0],
+    longestMinutes: 48,
+    activeDays,
+    days,
+    usage: true,
+    prices: agentsWeek().prices,
+  };
+}
+
 /**
  * Le calendrier de contributions GitHub : une année inventée mais plausible
  * (des semaines chargées, des week-ends calmes, une série en cours), tirée au
@@ -653,6 +681,11 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     // La semaine des agents pour le Bilan de la semaine (carte « Agents IA »).
     case "agents.weekly":
       return agentsWeek();
+    // Le Bilan du jour en image : une belle journée inventée (rien n'est copié ni écrit).
+    case "agents.day_card":
+      return agentsDay();
+    case "agents.day_card_export":
+      return args.then === "copy" ? { copied: true } : { name: `bilan-du-jour-${agentsDay().today}.png`, shelf: true };
     // Le calendrier GitHub : la première lecture vient « de GitHub », les suivantes de la mémoire.
     case "agents.github_calendar": {
       const cal = githubCalendar(githubAsked);

@@ -4260,6 +4260,56 @@ body.retro .island .btn {
   background: rgba(124, 196, 255, 0.1);
   border: 1px solid rgba(124, 196, 255, 0.3);
 }
+/* Le Bilan du jour en image (day-card.ts) */
+.agents-daycard-row {
+  margin: 4px 0;
+}
+.agents-daycard-box:empty {
+  display: none;
+}
+.agents-daycard-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 6px 0;
+  padding: 8px 10px;
+  border-radius: 11px;
+  background: rgba(124, 196, 255, 0.1);
+  border: 1px solid rgba(124, 196, 255, 0.3);
+}
+.agents-daycard-box p {
+  margin: 0;
+}
+.agents-daycard-preview {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  aspect-ratio: 1200 / 675;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.28);
+}
+.agents-daycard-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.agents-daycard-mascot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+.agents-daycard-options {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.agents-daycard-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
 .agents-files-head {
   display: flex;
   align-items: center;

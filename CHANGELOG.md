@@ -2,6 +2,16 @@
 
 ## 1.2.0 · 2026-10-08
 
+- Bilan du jour en image (onglet Agents IA) : d'un clic, une carte soignée de
+  votre journée avec les agents (tâches finies, temps où ils vous ont
+  attendu, jetons, jours d'affilée, rythme heure par heure, votre mascotte),
+  à copier pour LinkedIn ou Teams ou à enregistrer en PNG. Thème Nuit ou
+  Jour ; projets et coût seulement si vous les cochez ; rien n'est envoyé. ·
+  Today's summary as an image (AI Agents tab): in one click, a polished card
+  of your day with the agents (tasks done, time they waited on you, tokens,
+  day streak, hour-by-hour rhythm, your mascot), to copy for LinkedIn or
+  Teams or save as a PNG. Night or Day theme; projects and cost only if you
+  tick them; nothing is sent.
 - La mascotte réagit à plus de choses : des étoiles plein les yeux quand un
   fichier arrive sur l'étagère, les bras levés à la fin du minuteur, un clin
   d'œil quand le presse-papiers nettoie un lien, fière d'une capture, un
