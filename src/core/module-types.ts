@@ -30,8 +30,9 @@ export type SettingField = FieldCommon &
   /**
    * Un texte. `check` : une vérification nommée (src/settings/field-checks.ts)
    * qui écrit un avertissement sous le champ, sans refuser la valeur.
+   * `multiline` : une zone de texte sur plusieurs lignes (une grille, une liste).
    */
-  | { key: string; type: "string"; label: string; help?: string; default: string; maxLength?: number; check?: FieldCheck }
+  | { key: string; type: "string"; label: string; help?: string; default: string; maxLength?: number; check?: FieldCheck; multiline?: boolean }
   | { key: string; type: "number"; label: string; help?: string; default: number; min?: number; max?: number; step?: number }
   | { key: string; type: "boolean"; label: string; help?: string; default: boolean }
   | { key: string; type: "select"; label: string; help?: string; default: string; options: { value: string; label: string }[] }
