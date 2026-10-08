@@ -14,8 +14,19 @@ export type Permission = "files" | "clipboard" | "network" | "claude-api" | "cre
 
 export type ViewKind = "compact" | "expanded" | "drop";
 
+/**
+ * Commun à tous les champs. `essential` : le champ compte parmi l'essentiel
+ * du module, montré même en mode Simple de la fenêtre de réglages (1 à 3 par
+ * module ; voir src/settings/visibility.ts). Les autres n'apparaissent qu'en
+ * mode Complet.
+ */
+interface FieldCommon {
+  essential?: boolean;
+}
+
 /** Un champ de réglage : l'écran de réglages est généré à partir de cette liste. */
-export type SettingField =
+export type SettingField = FieldCommon &
+  (
   /**
    * Un texte. `check` : une vérification nommée (src/settings/field-checks.ts)
    * qui écrit un avertissement sous le champ, sans refuser la valeur.
@@ -33,7 +44,8 @@ export type SettingField =
    * chacun avec un nom et une couleur. L'adresse d'un lien n'est PAS dans les
    * réglages : elle va dans le Gestionnaire d'identifiants (« agenda-ical-url-<id> »).
    */
-  | { key: string; type: "calendars"; label: string; help?: string; default: CalendarEntry[]; max?: number };
+  | { key: string; type: "calendars"; label: string; help?: string; default: CalendarEntry[]; max?: number }
+  );
 
 /** Les vérifications de champ texte connues : "cities" = noms de villes (horloges du monde). */
 export type FieldCheck = "cities";

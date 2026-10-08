@@ -9,7 +9,7 @@
   "settings": {
     "version": 1,
     "fields": [
-      { "key": "showTodoCount", "type": "boolean", "label": "Rappeler les tâches à faire au démarrage", "default": false }
+      { "key": "showTodoCount", "essential": true, "type": "boolean", "label": "Rappeler les tâches à faire au démarrage", "default": false }
     ]
   },
   "views": ["expanded"],

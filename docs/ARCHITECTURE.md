@@ -276,6 +276,8 @@ Ce qui est vérifié, et où :
   ramenée à quelque chose de valide (bornes, options) avant usage. Un champ
   `string` peut ajouter `"check": "cities"` (vérifications nommées de
   `src/settings/field-checks.ts`) : un avertissement s'affiche sous le champ.
+  Un champ `"essential": true` (1 à 3 par module) reste visible en mode Simple
+  de la fenêtre de réglages (voir « Fenêtre de réglages : mode Simple / Complet »).
 
 ### Les deux moitiés d'un module
 
@@ -1568,3 +1570,33 @@ En éco, en plus : les effets « Studio » (flou → net) sont remplacés par ce
   de 2 fois par seconde.
 
 Pour comparer : Réglages → Général → À propos → « Ressources utilisées ».
+
+## Fenêtre de réglages : mode Simple / Complet (`src/settings/visibility.ts`, `src/settings/mode.ts`)
+
+- Réglage `general.settingsMode` : `"simple"` (défaut, aussi pour un fichier
+  d'avant ce réglage) ou `"full"`. Rust : champ `settings_mode`, `Default`,
+  `sanitize` (autre valeur → "simple"). Interrupteur « Simple / Complet » dans
+  la barre latérale, sous la recherche.
+- En Simple, chaque page ne montre que l'essentiel ; les autres lignes sont
+  cachées **à leur place** (rien ne bouge d'un mode à l'autre), un bloc dont
+  toutes les lignes sont cachées disparaît, et une ligne « N réglages de plus en
+  mode Complet · Tout afficher » termine la page (le bouton passe en Complet).
+- L'essentiel : pour un module, les champs `"essential": true` du manifeste
+  (plus `MODULE_ESSENTIALS` dans visibility.ts pour un manifeste qu'on ne
+  pouvait pas toucher : Bilan de la semaine) ; l'en-tête de la page (Activé,
+  Permissions, À propos) reste. Pour les pages de l'île, `ISLAND_ESSENTIALS`
+  (clé = le `data-key` de la ligne, c'est-à-dire son libellé) : Général (Langue,
+  S'adresser à moi, Lancer avec Windows, Bord de l'écran, Mises à jour
+  automatiques), Apparence (Thème, Style des icônes), Onglets (la liste des
+  modules, marquée `data-essential` dans le DOM), Mascotte (Afficher la
+  mascotte, Mascotte, Couleur), Profils (Profil actif). Règles et les trois
+  pages Sécurité restent entières (`WHOLE_PAGE`) : courtes, ou pas une liste
+  de réglages.
+- `mode.ts` (`applyMode`) travaille sur la page déjà dessinée : `.row[data-key]`
+  et `section.group[data-key]` ; un conteneur `data-essential` garde tout ce
+  qu'il contient ; `data-follows="<clé>"` suit la ligne de cette clé (le pli des
+  surprises). La recherche trouve tout : un résultat caché en Simple porte
+  l'étiquette « réglage avancé », et y aller (comme un lien profond vers une
+  ligne cachée) passe en Complet avant de faire briller la ligne.
+- Tests : `tests/front/visibility.test.ts` (champs visibles selon le mode,
+  compte « N de plus », 1 à 3 champs essentiels par module, défauts).

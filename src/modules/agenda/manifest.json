@@ -15,6 +15,7 @@
     "fields": [
       {
         "key": "calendars",
+        "essential": true,
         "type": "calendars",
         "label": "Calendriers",
         "help": "Ajoutez un fichier .ics (relu tout seul quand il change) ou l'adresse secrète iCal d'un agenda en ligne (Google Agenda : Paramètres → votre agenda → « Adresse secrète au format iCal »). Le lien est rangé dans le Gestionnaire d'identifiants de Windows, jamais dans les réglages. Gardez-le pour vous : il donne accès à tout votre agenda.",

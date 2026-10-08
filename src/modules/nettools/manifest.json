@@ -36,12 +36,14 @@
     "fields": [
       {
         "key": "alertInternet",
+        "essential": true,
         "type": "boolean",
         "label": "Prévenir quand Internet coupe ou revient",
         "default": true
       },
       {
         "key": "alertVpn",
+        "essential": true,
         "type": "boolean",
         "label": "Prévenir quand un VPN se coupe ou se branche",
         "default": true
