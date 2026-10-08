@@ -4,7 +4,7 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { N, SHAPES, SHAPE_IDS, signedArea, mixPts, halfWidthAt } from "../../src/mascot/renderers/gum-shapes";
 import { FACE_BASE, palette, TINT_NAMES } from "../../src/mascot/renderers/gum-draw";
 import { faceOf, JellyRim, skyShape, weatherLook, ANIMS } from "../../src/mascot/renderers/gum-anims";
@@ -124,6 +124,14 @@ describe("manifeste de la goutte gomme et cousines", () => {
   test("le manifeste est valide et chaque animation a sa fonction", () => {
     assert.deepEqual(validateManifest(base), []);
     for (const a of base.animations) assert.ok(ANIMS[a.source.function ?? a.name], `pas de fonction pour ${a.name}`);
+  });
+
+  test("toutes les mascottes fournies savent danser (la musique en mini-île)", () => {
+    for (const id of readdirSync("mascots", { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name)) {
+      const m = JSON.parse(readFileSync(`mascots/${id}/manifest.json`, "utf8")) as MascotManifest;
+      const danse = m.animations.find((a) => a.name === "danse");
+      assert.ok(danse?.loop, `${id} : pas d'animation « danse » en boucle`);
+    }
   });
 
   test("il connaît tous les états", () => {
