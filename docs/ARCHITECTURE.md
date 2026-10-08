@@ -26,9 +26,7 @@ ondine/
 ├─ scripts/winget-manifests.mjs  refait les manifestes winget d'une version (télécharge l'installateur, SHA-256)
 ├─ packaging/winget/          manifestes winget prêts (Naod6473.Ondine), pas encore proposés à Microsoft ; README = comment les soumettre
 ├─ mascots/                   UNE MASCOTTE = UN DOSSIER (manifest.json + fichiers)
-│  ├─ goutte-gomme/           la goutte gomme, dessinée en code (gum.ts)
-│  ├─ goutte-classique/       la première goutte, mêmes poses et animations que goutte/
-│  └─ goutte/                 la goutte : une image par émotion, animations, fondus (par défaut)
+│  └─ goutte-gomme/           la goutte gomme, dessinée en code (gum.ts), par défaut ; ses cousines viennent de gum-family.ts
 ├─ src/                       ── FRONT (TypeScript) ──
 │  ├─ main.ts                 démarrage de la fenêtre de l'île
 │  ├─ core/                   le socle partagé par tout le front
@@ -490,7 +488,9 @@ bus ──▶ MascotController (mascot-state.ts) ──▶ MascotRenderer (rende
   « de près ». En attendant une vraie planche par état, `effect` (breathe, bounce,
   jump, shake, wobble…) anime le corps par du code et `overlay` (zzz, confetti,
   hearts…) dessine un effet autour.
-- **Moteur `poses`** (`mascots/goutte/`, `src/mascot/renderers/poses.ts`) : une
+- **Moteur `poses`** (`src/mascot/renderers/poses.ts` ; les deux gouttes en images qui
+  l'utilisaient, `goutte/` et `goutte-classique/`, ont été retirées en 1.2.0, le moteur
+  reste pour une mascotte faite d'images) : une
   image 256 × 256 par émotion, toutes cadrées pareil (même ligne de base). Le
   manifeste a une table `poses` : `"joie": { "file": "joie.png", "eyes": [...],
   "blink": "closed" }`. `eyes` = les yeux blancs (centre et rayons) où le code
@@ -589,9 +589,9 @@ déclencheurs aux effets ; le réglage `mascot.surprises` (`all`, `seasonal`,
 - **Carnet des trésors** (`treasures.ts`) : chaque surprise trouvée est ajoutée
   à `mascot.treasures` (vérifié par le Rust) et annoncée une fois ; la page
   Mascotte des réglages montre le carnet (noms trouvés, indices pour les autres).
-- Les animations propres à la goutte (`pluie-glitch`, `esquive`, `danse`,
-  `fondue`) sont dans son manifeste ; une mascotte qui ne les a pas montre une
-  émotion à la place.
+- Les animations propres à une surprise (`pluie-glitch`, `esquive`, `fondue`)
+  sont lues dans le manifeste de la mascotte ; une mascotte qui ne les a pas
+  (la famille gomme) montre une émotion à la place.
 
 ## Module Étagère (phase 2)
 

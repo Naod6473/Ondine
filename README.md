@@ -618,9 +618,11 @@ onglets directement dans l'île.
 
 ### Mascotte
 
-Afficher ou non la mascotte, et laquelle : **Goutte** (par défaut), **Goutte
-classique** ou **Goutte gomme** (on peut ajouter les siennes dans le dossier
-`mascots/`, voir [mascots/README.md](mascots/README.md)). Elle **s'ennuie**,
+Afficher ou non la mascotte, et laquelle : la **Goutte gomme** (par défaut) ou
+l'une de ses quatorze cousines (Guimauve, Dragée, Berlingot, étoile, soleil,
+lune, nuage, cœur, fleur, champignon, fantôme, flamme, Ciel, Météo ; on peut
+ajouter les siennes dans le dossier `mascots/`, voir
+[mascots/README.md](mascots/README.md)). Elle **s'ennuie**,
 puis **s'endort** si rien ne se passe ; elle peut venir **pendre au bord de
 l'écran** (au plus une visite toutes les N minutes, jamais pendant une
 présentation). Un aperçu permet d'essayer toutes ses animations.

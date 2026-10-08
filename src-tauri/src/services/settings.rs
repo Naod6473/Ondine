@@ -274,6 +274,11 @@ impl Settings {
         }
         i.hotkey = i.hotkey.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '+').take(40).collect();
         let m = &mut self.mascot;
+        // Les deux premières gouttes (en images) ont été retirées en 1.2.0 : un
+        // réglage qui les nomme encore retombe sur la goutte gomme.
+        if matches!(m.id.as_str(), "goutte" | "goutte-classique") {
+            m.id = "goutte-gomme".into();
+        }
         m.peek_every_mins = if m.peek_every_mins.is_finite() { m.peek_every_mins.clamp(1.0, 120.0) } else { 5.0 };
         if !matches!(m.surprises.as_str(), "all" | "seasonal" | "none") {
             m.surprises = "all".into();

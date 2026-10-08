@@ -2,6 +2,12 @@
 
 ## Pas encore publié · Unreleased
 
+- Les deux premières gouttes en images (« Goutte » et « Goutte classique »)
+  sont retirées : la goutte gomme et ses cousines restent, et un réglage qui
+  nommait encore une ancienne goutte retombe sur la goutte gomme. · The two
+  original image-based drops ("Goutte" and "Goutte classique") are gone: the
+  gummy drop and its cousins remain, and a setting that still named an old
+  drop falls back to the gummy drop.
 - Réglages : un mode Simple (par défaut) qui ne montre que l'essentiel de
   chaque page, et un mode Complet ; l'interrupteur est sous la recherche, et
   « N réglages de plus · Tout afficher » en bas d'une page réduite. La recherche
