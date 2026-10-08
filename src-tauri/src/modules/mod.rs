@@ -44,6 +44,7 @@ mod agents_hooks;
 mod agents_git;
 // « Reprendre » : la dernière session de Claude Code d'un projet.
 mod agents_resume;
+mod agents_usage;
 
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};

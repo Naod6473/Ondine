@@ -5,7 +5,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { changesLine, namesLine, since } from "../../src/modules/agents/texts";
+import { byModel, changesLine, modelLabel, namesLine, periodFrom, since, sumTokens, tokensShort } from "../../src/modules/agents/texts";
 
 const DICT = JSON.parse(readFileSync("src/core/i18n-en.json", "utf8")) as {
   exact: Record<string, string>;
@@ -70,5 +70,52 @@ describe("rejoindre une réunion", () => {
     assert.equal(english("Réunion dans 2 min : Point hebdo"), "Meeting in 2 min: Point hebdo");
     assert.equal(english("La réunion commence : Point hebdo"), "The meeting is starting: Point hebdo");
     assert.equal(english("Votre micro est coupé"), "Your mic is muted");
+  });
+});
+
+describe("le compteur de jetons", () => {
+  test("des jetons en bref", () => {
+    assert.equal(tokensShort(0), "0");
+    assert.equal(tokensShort(985), "985");
+    assert.equal(tokensShort(1000), "1 k");
+    assert.equal(tokensShort(12_345), "12,3 k");
+    assert.equal(tokensShort(123_456), "123 k");
+    assert.equal(tokensShort(1_234_567), "1,2 M");
+    assert.equal(tokensShort(2_000_000_000), "2 G");
+    assert.equal(tokensShort(Number.NaN), "0");
+  });
+
+  test("le nom court d'un modèle", () => {
+    assert.equal(modelLabel("claude-opus-5-5"), "Opus 5.5");
+    assert.equal(modelLabel("claude-opus-5-5[1m]"), "Opus 5.5");
+    assert.equal(modelLabel("claude-sonnet-4-5-20250929"), "Sonnet 4.5");
+    assert.equal(modelLabel("claude-3-5-haiku-20241022"), "Haiku 3.5");
+    assert.equal(modelLabel("gpt-5-codex"), "GPT-5 Codex");
+    assert.equal(modelLabel("gpt-5.1"), "GPT-5.1");
+    assert.equal(modelLabel("o3-mini"), "o3-mini");
+    assert.equal(modelLabel("<synthetic>"), "—");
+    assert.equal(modelLabel("?"), "—");
+  });
+
+  test("les périodes commencent au bon jour local", () => {
+    const now = new Date(2026, 9, 8, 13, 30); // 8 octobre 2026
+    assert.equal(periodFrom("today", now), "2026-10-08");
+    assert.equal(periodFrom("week", now), "2026-10-02");
+    assert.equal(periodFrom("month", now), "2026-09-09");
+    assert.equal(periodFrom("week", new Date(2026, 0, 3)), "2025-12-28");
+  });
+
+  test("les totaux, par modèle, les plus gros d'abord", () => {
+    const rows = [
+      { day: "2026-10-08", tool: "claude-code", model: "claude-opus-5-5", input: 10, output: 20, cacheRead: 1000, cacheWrite: 50, messages: 2 },
+      { day: "2026-10-07", tool: "claude-code", model: "claude-opus-5-5", input: 5, output: 5, cacheRead: 0, cacheWrite: 0, messages: 1 },
+      { day: "2026-10-08", tool: "codex", model: "gpt-5-codex", input: 600, output: 50, cacheRead: 400, cacheWrite: 0, messages: 1 },
+    ];
+    assert.deepEqual(sumTokens(rows), { input: 615, output: 75, cacheRead: 1400, cacheWrite: 50, messages: 4 });
+    assert.deepEqual(byModel(rows), [
+      { tool: "claude-code", model: "claude-opus-5-5", total: 1090, messages: 3 },
+      { tool: "codex", model: "gpt-5-codex", total: 1050, messages: 1 },
+    ]);
+    assert.deepEqual(sumTokens([]), { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, messages: 0 });
   });
 });

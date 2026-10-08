@@ -2396,6 +2396,50 @@ body {
   margin: 0;
   padding: 0;
 }
+/* Le compteur de jetons des agents */
+.agents-usage {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 4px 0;
+}
+.agents-usage p {
+  margin: 0;
+}
+.agents-usage-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.agents-usage-head .net-chips {
+  margin-left: auto;
+}
+.net-chip.on {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--island-fg);
+}
+.agents-usage-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+}
+.agents-usage-figure b {
+  font-variant-numeric: tabular-nums;
+}
+.agents-usage-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  font-size: 12px;
+}
+.agents-usage-list b {
+  margin-left: 6px;
+  font-variant-numeric: tabular-nums;
+}
 .agents-session {
   display: flex;
   align-items: center;
