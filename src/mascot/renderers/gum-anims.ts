@@ -213,6 +213,21 @@ export const ANIMS: Record<string, (t: number, p: number, mood: Mood) => Frame> 
   emue: (t) => ({ face: { eyeSize: 1.22, teary: 1, mouthW: 0.7, mouthC: 0.3 + Math.sin(t * 9) * 0.12, browA: 1, browTilt: -0.55, blush: 1 }, hands: "mouth", squash: 1 + Math.sin(t * 7) * 0.012 }),
   // Gênée : elle rougit, se cache les joues, une goutte de sueur.
   genee: (t) => ({ face: { eyeOpen: 0, eyeCurve: 1, blush: 1.6, lines: 1, mouthW: 0.7, mouthC: 0.4 }, hands: "cheeks", extra: "sweat", rot: Math.sin(t * 2.4) * 0.09, squash: breathe(t, 2, 0.02) }),
+  // Danse (de la musique en mini-île, src/eggs/) : elle rebondit à 120 battements
+  // par minute, se balance, et lève les moufles un coup sur deux.
+  danse: (t) => {
+    const beat = t * Math.PI * 4;
+    const hop = Math.abs(Math.sin(beat / 2));
+    return {
+      face: { mouthO: 0.3, mouthW: 1.1, mouthC: 0.9, eyeOpen: 0.85, blush: 0.8 },
+      hands: Math.sin(beat / 4) > 0 ? "cheer" : "flail",
+      squash: 1 - hop * 0.08,
+      dy: -hop * 0.06,
+      rot: Math.sin(beat / 2) * 0.12,
+      gaze: { x: Math.sin(beat / 2) * 0.5, y: -0.2 },
+      blink: false,
+    };
+  },
   // Bâille : elle s'étire bras en l'air et ouvre grand la bouche.
   baille: (_t, p) => {
     const y = Math.sin(ramp(p, 0.15, 0.75) * Math.PI);
