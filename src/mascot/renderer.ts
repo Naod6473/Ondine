@@ -21,6 +21,13 @@ export interface MascotRenderer {
   lookAt(x: number | null, y: number | null): void;
   /** Appelé à la fin d'une animation non bouclée. */
   onAnimationEnd(cb: (name: string) => void): void;
+  /**
+   * Facultatif : réagir à un geste sur l'île (src/island/island.ts) : « poke »
+   * (un appui), « stretch » (on tire la bosse, `amount` px), « release » (on
+   * la lâche), « shake » (l'île secouée). x, y : la souris, en px relatifs au
+   * centre de la mascotte.
+   */
+  react?(kind: "poke" | "stretch" | "release" | "shake", data: { x?: number; y?: number; amount?: number }): void;
   destroy(): void;
 }
 
