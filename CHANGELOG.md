@@ -1,5 +1,26 @@
 # Changements · Changelog
 
+## Pas encore publié · Unreleased
+
+- Douze nouvelles mascottes en gomme : Guimauve, Dragée, Berlingot, étoile,
+  soleil, lune, nuage, cœur, fleur, champignon, fantôme et flamme, plus Ciel
+  (soleil le jour, lune la nuit) et Météo. · Twelve new gummy mascots, plus Sky
+  (sun by day, moon at night) and Weather.
+- Les mascottes en gomme ont des mains, des accessoires (chapeaux, lunettes,
+  colliers), de nouvelles couleurs et douze nouvelles expressions. · Gummy
+  mascots get hands, accessories (hats, glasses, necklaces), new colors and
+  twelve new expressions.
+- Un mouvement plus fluide : le visage glisse d'une expression à l'autre et le
+  corps ondule comme une vraie gelée. · Smoother motion: the face glides between
+  expressions and the body wobbles like real jelly.
+- L'île en gelée : elle change de forme avec des ressorts qui gardent leur
+  élan, se creuse sous un clic, gonfle au survol, s'étire en bosse sous la
+  souris et encaisse le choc d'une alerte. Réglage « Élasticité » : Doux,
+  Normal, Gelée. · Jelly island: it changes shape with springs that keep
+  their momentum, dents under a click, swells on hover, stretches into a bump
+  under the mouse and absorbs the shock of an alert. "Elasticity" setting:
+  Soft, Normal, Jelly.
+
 ## 1.1.0 · 2026-10-07
 
 - Calculs dans le lanceur : opérations, pourcentages, unités, octets,

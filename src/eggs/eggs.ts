@@ -229,6 +229,8 @@ export class EasterEggs {
       priority: "low",
       key: "treasure",
     });
+    // Un trésor trouvé : des étoiles plein les yeux.
+    this.emote("starstruck");
   }
 
   // ── Les mots magiques du Lanceur ───────────────────────────────────────────

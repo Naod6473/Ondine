@@ -1,7 +1,7 @@
 {
   "id": "goutte-gomme",
   "name": "Goutte gomme",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "renderer": "gum",
   "fallback": "idle",
   "states": {
@@ -12,8 +12,8 @@
     "happy": "happy",
     "annoyed": "annoyed",
     "dizzy": "dizzy",
-    "thinking": "thinking",
-    "working": "working",
+    "thinking": "pensive",
+    "working": "concentree",
     "alert": "alert",
     "eating": "eating",
     "celebrate": "celebrate",
@@ -28,7 +28,19 @@
     "surprise": "surprise",
     "shy": "shy",
     "calm": "calm",
-    "wink": "wink"
+    "wink": "wink",
+    "wave": "coucou",
+    "laugh": "rire",
+    "proud": "fiere",
+    "pout": "boude",
+    "starstruck": "etoiles",
+    "mischief": "malice",
+    "focus": "concentree",
+    "moved": "emue",
+    "embarrassed": "genee",
+    "yawn": "baille",
+    "pensive": "pensive",
+    "cheer": "bras-leves"
   },
   "animations": [
     {
@@ -51,7 +63,7 @@
       "transitionsTo": [
         "*"
       ],
-      "next": "idle",
+      "next": "coucou",
       "source": {
         "function": "wake"
       }
@@ -199,7 +211,8 @@
       ],
       "source": {
         "function": "success"
-      }
+      },
+      "next": "fiere"
     },
     {
       "name": "question",
@@ -416,6 +429,150 @@
       ],
       "source": {
         "function": "surpris"
+      }
+    },
+    {
+      "name": "coucou",
+      "durationMs": 2600,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "coucou"
+      }
+    },
+    {
+      "name": "rire",
+      "durationMs": 2400,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "rire"
+      }
+    },
+    {
+      "name": "fiere",
+      "durationMs": 2400,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "fiere"
+      }
+    },
+    {
+      "name": "boude",
+      "durationMs": 3000,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "boude"
+      }
+    },
+    {
+      "name": "etoiles",
+      "durationMs": 2600,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "etoiles"
+      }
+    },
+    {
+      "name": "malice",
+      "durationMs": 2600,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "malice"
+      }
+    },
+    {
+      "name": "concentree",
+      "durationMs": 1600,
+      "loop": true,
+      "priority": 1,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "concentree"
+      }
+    },
+    {
+      "name": "emue",
+      "durationMs": 2800,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "emue"
+      }
+    },
+    {
+      "name": "genee",
+      "durationMs": 2400,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "genee"
+      }
+    },
+    {
+      "name": "baille",
+      "durationMs": 3000,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "baille"
+      }
+    },
+    {
+      "name": "pensive",
+      "durationMs": 2400,
+      "loop": true,
+      "priority": 1,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "pensive"
+      }
+    },
+    {
+      "name": "bras-leves",
+      "durationMs": 2400,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "bras-leves"
       }
     }
   ]

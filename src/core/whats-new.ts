@@ -44,6 +44,8 @@ export function startWhatsNew(bus: Bus, notifications: NotificationQueue, versio
   if (action === "show") {
     log.info(`nouvelle version : ${g.lastSeenVersion || "(non notée)"} → ${version}`);
     showWhatsNew(notifications, version);
+    // Une nouvelle version : Ondine a des étoiles plein les yeux (si sa mascotte sait le faire).
+    bus.emit("mascot.emote", { emotion: "starstruck" }, "whats-new");
   }
 }
 

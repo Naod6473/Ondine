@@ -25,6 +25,11 @@
 //   system.cpu-busy {on} → worried (elle transpire), humeur grognon tant que ça dure
 //   system.battery-low → sad, paupières lourdes ; system.battery-full → happy
 //   tard le soir (22 h – 6 h) → paupières lourdes au repos
+//   Les nouvelles têtes de la famille gomme (si la mascotte les a) :
+//   avant de s'endormir → yawn (elle bâille, puis dort)
+//   réveillée deux fois en moins de 5 min → pout (elle boude)
+//   deux clics rapides → laugh            une tâche de plus de 10 min finie → moved
+//   weather.updated → la mascotte « Météo » change de forme (renderer.setWeather)
 
 import type { Bus } from "../core/bus";
 import { settingsStore } from "../core/settings-store";
@@ -80,6 +85,10 @@ export class MascotController {
   private dance = false;
   /** Le processeur est à fond (message system.cpu-busy). */
   private cpuBusy = false;
+  /** Quand la première tâche en cours a commencé (pour une longue tâche → émue). */
+  private tasksSince = 0;
+  /** Les derniers réveils (pour bouder quand on la réveille trop souvent). */
+  private wakes: number[] = [];
   private stopInactivity: () => void;
   private offs: (() => void)[] = [];
 
@@ -105,8 +114,15 @@ export class MascotController {
   /** Toute action de l'utilisateur (souris qui bouge sur l'île, clic…). */
   activity() {
     this.lastActivity = Date.now();
-    if (this.state === "sleep") this.request("wake");
-    else if (this.state === "bored") this.request("idle");
+    if (this.state === "sleep" || this.state === "yawn") {
+      const now = Date.now();
+      this.wakes = [...this.wakes.filter((w) => now - w < 5 * 60_000), now];
+      // Réveillée deux fois en peu de temps : elle boude un peu en se réveillant.
+      if (this.wakes.length >= 2 && this.has("pout")) {
+        this.wakes = [];
+        this.request("pout", true);
+      } else this.request("wake");
+    } else if (this.state === "bored") this.request("idle");
   }
 
   lookAt(x: number | null, y: number | null) {
@@ -170,11 +186,19 @@ export class MascotController {
   }
 
   private onEnd(name: string) {
+    // Le bâillement mène au sommeil.
+    if (this.state === "yawn") {
+      this.request("sleep", true);
+      return;
+    }
     const anim = this.manifest.animations.find((a) => a.name === name);
     if (anim?.next) {
       const target = this.manifest.animations.find((a) => a.name === anim.next);
       if (target) {
         this.current = target;
+        // L'état suit l'animation qui joue (le coucou après le réveil n'est plus « wake »).
+        const state = Object.entries(this.manifest.states).find(([, a]) => a === target.name)?.[0];
+        if (state) this.state = state as MascotState;
         this.renderer.play(target);
         return;
       }
@@ -208,7 +232,7 @@ export class MascotController {
     if (this.moodUntil && Date.now() > this.moodUntil) this.moodUntil = 0;
     if (!this.moodUntil) this.renderer.setMood(this.baseMood());
     if (this.tasks > 0 || this.thinking || this.dance) return;
-    if (idleMs > this.timings.sleepAfterMs && this.state !== "sleep") this.request("sleep");
+    if (idleMs > this.timings.sleepAfterMs && this.state !== "sleep" && this.state !== "yawn") this.requestOr("yawn", "sleep");
     else if (idleMs > this.timings.boredAfterMs && this.state === "idle") this.request("bored");
   }
 
@@ -218,6 +242,7 @@ export class MascotController {
 
     on("app.ready", () => this.request("wake", true));
     on("task.started", () => {
+      if (this.tasks === 0) this.tasksSince = Date.now();
       this.tasks++;
       this.activity();
       this.request("working");
@@ -225,7 +250,9 @@ export class MascotController {
     on("task.finished", () => {
       this.tasks = Math.max(0, this.tasks - 1);
       this.setMood("happy", 30_000);
-      this.requestOr("success", "celebrate");
+      // Une longue tâche enfin finie : elle est émue.
+      if (this.tasks === 0 && Date.now() - this.tasksSince > 10 * 60_000 && this.has("moved")) this.request("moved");
+      else this.requestOr("success", "celebrate");
     });
     on("task.failed", () => {
       this.tasks = Math.max(0, this.tasks - 1);
@@ -269,6 +296,7 @@ export class MascotController {
       this.requestOr("sad", "bored");
     });
     on("system.battery-full", () => moodFollowsPc() && this.request("happy"));
+    on("weather.updated", (w: { icon?: string } | null) => this.renderer.setWeather?.(w?.icon ?? null));
     on("mascot.play", (p: { animation?: string }) => p?.animation && this.playAnimation(p.animation));
     on("mascot.dance", (p: { on?: boolean } | null) => {
       const want = !!p?.on && this.manifest.animations.some((a) => a.name === "danse");
@@ -301,6 +329,8 @@ export class MascotController {
       this.request("dizzy");
     } else if (this.clicks.length >= 3) {
       this.request("annoyed");
+    } else if (this.clicks.length === 2 && this.has("laugh")) {
+      this.request("laugh");
     } else if (this.clicks.length === 1) {
       this.request("happy");
     }

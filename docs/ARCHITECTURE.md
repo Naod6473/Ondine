@@ -52,7 +52,7 @@ ondine/
 │  │  ├─ mascot-state.ts      machine à états de la mascotte, reliée au bus
 │  │  ├─ catalog.ts           trouve et vérifie les mascottes de mascots/
 │  │  ├─ types.ts             états, humeurs, format du manifeste
-│  │  └─ renderers/            canvas-placeholder.ts, gum.ts, gum-draw.ts, poses.ts, spritesheet.ts, overlays.ts
+│  │  └─ renderers/            canvas-placeholder.ts, gum.ts, gum-anims.ts, gum-draw.ts, gum-shapes.ts, poses.ts, spritesheet.ts, overlays.ts
 │  ├─ modules/
 │  │  ├─ index.ts             LISTE DES MODULES (front)
 │  │  ├─ shelf/               Étagère et dépôt de fichiers (phase 2)
@@ -147,15 +147,68 @@ change d'échelle (vérifié deux fois par seconde).
 | hidden/peek → compact | notification low/normal |
 | menu « Ouvrir l'île » → expanded | |
 
-Les transitions sont animées en CSS (`width`, `height`, `border-radius`, 280 ms,
-dans `island.css`). Quand l'île se cache, la fenêtre ne redevient une bande
-qu'après la fin de l'animation.
+Les tailles de chaque état sont écrites dans `island.css`, mais le passage de
+l'une à l'autre est fait par des ressorts en JS (`src/island/jelly.ts`, voir
+« Les animations »). Quand l'île se cache, la fenêtre ne redevient une bande
+qu'une fois les ressorts posés (au plus tard après 1,5 s).
 
 ### Les animations
 
-- **Forme de l'île** : transitions CSS sur largeur, hauteur, arrondi, avec un
-  ressort (`--ease` en `linear()`, 420 ms, petit dépassement de 4 %).
-  `TRANSITION_MS` dans island.ts doit suivre `--speed`.
+- **Forme de l'île : une gelée à ressorts** (`src/island/jelly.ts`, calculs
+  purs dans `spring.ts` et `contour.ts`, testés par `tests/front/jelly.test.ts`).
+  - *Qui décide de la taille* : toujours le CSS (états, bords, `:has()` de
+    l'alerte, `--fit-h`). `Jelly.retarget()` retire un instant ses styles en
+    ligne, lit la taille voulue (`getComputedStyle`), les remet (rien n'est
+    dessiné entre les deux). Il est appelé par `render()`, `applyFit()`,
+    `applySettings()`, et par un `MutationObserver` (classe et `data-privacy`
+    de l'île, `data-edge` / `data-align` / classe de `<body>`) ; en alerte,
+    aussi quand le contenu change. `island.css` n'anime donc plus `width`,
+    `height`, `border-radius` ni `padding` (une transition fausserait la lecture).
+  - *Ressorts interruptibles* : 10 ressorts (largeur, hauteur, 4 marges,
+    4 arrondis) avec position ET vitesse : un nouvel état en route ne change
+    que la cible, l'île repart avec son élan. L'épaisseur (la hauteur en haut
+    de l'écran) mène et dépasse un peu, la longueur suit : à l'ouverture l'île
+    est d'abord haute et fine, à la fermeture elle s'aplatit encore large.
+    En plus, un écrasement à volume constant selon la vitesse de l'épaisseur
+    (`scale`, au plus 10 %, attaché au bord de l'écran).
+  - *Survol* (mini-île) : elle grandit de 2,5 px (vraie taille, sans découpe)
+    et se décale de 1,5 px vers la souris.
+  - *Clic* (hors boutons et champs) : le bord le plus proche s'enfonce tant
+    que le bouton est enfoncé, puis une onde fait le tour : le contour est
+    une chaîne de 96 ressorts reliés à leurs voisins (`EdgeChain`), dessinée
+    en `clip-path: path(…)`. Les points collés au bord de l'écran sont épinglés.
+  - *Étirement* (bord intérieur, `gestures.ts`) : une bosse sort sous la
+    souris, suit la souris le long du bord et penche au-delà du bout de
+    l'île, puis revient en rebondissant. La boîte est agrandie du côté
+    intérieur (compensé par le `padding` : le contenu ne bouge pas) pour
+    laisser sortir la bosse dans la découpe.
+  - *Alerte* : choc (creux au milieu du bord intérieur, onde, petit tassement).
+  - *Pourquoi `clip-path`* : fond, transparence du thème Verre, reflet,
+    contenu restent tels quels, simplement rognés (un SVG ou un canvas
+    obligerait à redessiner chaque thème ; un `mask-image` coûterait une image
+    par image). Une découpe ne fait que retirer : les crêtes de l'onde
+    deviennent un léger gonflement global (`scale`). Pas de découpe au repos
+    ni au survol (le liseré du thème Verre, une ombre intérieure, resterait
+    rogné).
+  - *Réglage* Réglages → Apparence → « Élasticité de l'île » :
+    `island.elasticity` = `soft` (Doux), `normal`, `jelly` (Gelée) ; règle
+    raideur, amortissement, écrasement et amplitude (`FEELS` dans spring.ts).
+    En Studio, un peu plus de rebond (sauf le grand panneau).
+  - *Performance* : une seule boucle `requestAnimationFrame`, qui s'arrête
+    quand tout est posé (au repos : aucun calcul, plus aucun style en ligne).
+    En éco, 30 images/s. Réduire les animations : la forme est prise tout de
+    suite, aucune déformation.
+  - *Ce qui attendait la fin des transitions* : la fenêtre qui redevient une
+    bande (`islandSetCollapsed(true)`) et le panneau haut rendu
+    (`islandSetTall(false)`) attendent `Jelly.whenSettled()` (au plus
+    `SETTLE_FALLBACK_MS` = 1,5 s) ; le rectangle des clics traversants est
+    envoyé à chaque changement de taille (`ResizeObserver`) et une dernière
+    fois quand tout est posé (`onSettle`, échelle comprise).
+  - *Réactions de la mascotte* : island.ts appelle, si le moteur la propose,
+    `MascotRenderer.react?(kind, data)` avec `poke` (appui), `stretch` (on
+    tire, `amount` px), `release` (on lâche), `shake` (allers-retours
+    rapides pendant qu'on tire, `ShakeDetector`) ; `x`, `y` en px depuis le
+    centre de la mascotte.
 - **Arrivée du contenu** quand l'état change : les onglets puis les morceaux de
   la vue passent de flous à nets l'un après l'autre (`src/island/motion.ts`).
 - **Deux intensités** (Réglages → Apparence → Animations) : « Classique » joue
@@ -421,7 +474,8 @@ bus ──▶ MascotController (mascot-state.ts) ──▶ MascotRenderer (rende
 - **États** : idle, wake, sleep, happy, annoyed, dizzy, thinking, working,
   alert, eating, celebrate, love, bored, et les émotions de la goutte v2 :
   success, question, error, warning, info, sad, worried, surprise, shy, calm,
-  wink. Un état que la mascotte n'a pas retombe sur `fallback` (et le contrôleur
+  wink, et ceux de la famille gomme : wave, laugh, proud, pout, starstruck,
+  mischief, focus, moved, embarrassed, yawn, pensive, cheer. Un état que la mascotte n'a pas retombe sur `fallback` (et le contrôleur
   choisit l'ancien état équivalent quand il y en a un). Humeurs : neutral,
   happy, grumpy, tired.
 - **Déclencheurs** : voir le tableau du bus ; plus l'inactivité (bored après
@@ -452,6 +506,49 @@ bus ──▶ MascotController (mascot-state.ts) ──▶ MascotRenderer (rende
   fichiers, relance l'appli, choisis-la dans Réglages → Mascotte et teste chaque
   animation. Un manifeste invalide est signalé, et l'île garde la provisoire.
   Tant que son moteur n'est pas branché, la provisoire la remplace.
+
+### La famille gomme (`src/mascot/renderers/gum*.ts`, `src/mascot/gum-family.ts`)
+
+La goutte gomme et ses cousines (Guimauve, Dragée, Berlingot, étoile, soleil,
+lune, nuage, cœur, fleur, champignon, fantôme, flamme, plus « Ciel » et
+« Météo ») partagent le manifeste `mascots/goutte-gomme/manifest.json` et le
+moteur `gum` ; le catalogue fabrique les cousines à partir de `GUM_FAMILY`
+(champ `gum.shape` du manifeste). Quatre fichiers :
+
+- `gum-shapes.ts` : chaque forme est un **contour de N = 96 points** (sens des
+  aiguilles d'une montre, premier point en haut, bas à y = 0,94), plus la place
+  du visage, des reflets, la hauteur des sauts, le flottement et les décors.
+  Tous les contours ayant les mêmes points dans le même ordre, on passe d'une
+  forme à l'autre en faisant glisser chaque point (Ciel : soleil de 7 h à 20 h,
+  lune la nuit ; Météo : soleil, lune ou nuage avec pluie, neige, orage, d'après
+  l'icône de `weather.updated`).
+- `gum-anims.ts` : les animations (une fonction par animation : t, p, humeur →
+  ce qu'elle demande), traduites en **réglages chiffrés du visage** (`Face` :
+  ouverture et courbe des yeux, paupière, sourcils, largeur, courbe et
+  ouverture de la bouche, joues gonflées…), les poses des mains, et la gelée du
+  contour (`JellyRim` : chaque point est tenu par un ressort et relié à ses
+  voisins, une pichenette lance une onde qui s'éteint).
+- `gum.ts` : le moteur. Rien n'y saute : le visage glisse vers sa cible, les
+  yeux spéciaux (cœurs, étoiles, spirales) apparaissent en fondu, l'étirement et
+  l'inclinaison suivent un ressort, elle se tasse avant un saut (on regarde
+  l'animation 0,1 s plus loin), s'allonge en l'air et s'écrase en retombant, le
+  visage traîne un peu derrière le corps, les mains suivent leur pose avec leur
+  propre ressort, la couleur passe en fondu. Sans souris, de petits coups d'œil ;
+  le clignement se ferme vite et se rouvre lentement. `react()` reçoit ce qui
+  arrive à l'île (clic, étirement, lâcher, secousse). Avec « Réduire les
+  animations », tout va directement à sa cible.
+- `gum-draw.ts` : le dessin (couches de gomme, visage, moufles, accessoires,
+  météo) et les teintes (`TINTS`, plus l'arc-en-ciel).
+
+Réglages (Réglages → Mascotte → Style, seulement pour une mascotte gomme) :
+`mascot.color` (`auto` = la couleur de la forme), `mascot.hands` (`always`,
+`gestures`, `never`), `mascot.wearHead` (cap, straw, tophat, beanie, crown,
+bow), `mascot.wearEyes` (round, sun, heart), `mascot.wearNeck` (pearls,
+bowtie, scarf). Nouveaux déclencheurs : avant de dormir elle bâille (`yawn`),
+réveillée deux fois en 5 min elle boude (`pout`), deux clics rapides → `laugh`,
+une tâche de plus de 10 min finie → `moved`, nouvelle version ou trésor trouvé →
+`starstruck` ; le travail d'un agent joue `concentree` (au clavier) et la
+réflexion `pensive` (main au menton).
 
 ## Les surprises (`src/eggs/`)
 
@@ -1434,6 +1531,7 @@ Front (ms) :
 | Pauses | 30 000 | 30 000 | 60 000 | |
 | Bilan de la semaine : l'heure du bilan ? | 60 000 | 60 000 | 120 000 | une première fois 20 s après le démarrage |
 | Dessins continus (mascotte, anneau du minuteur, chrono) | 60 im/s | 60 im/s | 30 im/s | `frameLoop` |
+| Forme de l'île en gelée (pendant une animation seulement) | 60 im/s | 60 im/s | 30 im/s | `jelly.ts`, arrêtée au repos |
 
 En éco, en plus : les effets « Studio » (flou → net) sont remplacés par ceux de
 « Classique », et les cartes de verre des Contrôles perdent leur flou

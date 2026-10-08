@@ -109,6 +109,27 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, overlay: Overlay, cx:
       ctx.stroke();
       break;
     }
+    case "sparkles": {
+      // Trois petites étincelles à quatre branches qui s'allument à tour de rôle (fière, étoiles plein les yeux).
+      ctx.fillStyle = "#fff6c8";
+      for (let i = 0; i < 3; i++) {
+        const k = Math.sin(((t * 0.7 + i / 3) % 1) * Math.PI);
+        const x = cx + [-1.05, 1.1, 0.8][i] * R;
+        const y = cy - [0.6, 0.85, 1.2][i] * R;
+        const ro = R * 0.13 * k;
+        const ri = R * 0.035 * k;
+        ctx.beginPath();
+        for (let j = 0; j < 8; j++) {
+          const a = -Math.PI / 2 + (j * Math.PI) / 4;
+          const r = j % 2 ? ri : ro;
+          if (j === 0) ctx.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+          else ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+      break;
+    }
     case "none":
       break;
   }
