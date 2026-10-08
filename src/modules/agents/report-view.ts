@@ -19,7 +19,12 @@ export interface ReportRequest {
   vscode: boolean;
 }
 
-/** Ce que l'onglet veut montrer en s'ouvrant (posé par la notification, lu par la vue). */
+/**
+ * Ce que l'onglet veut montrer en s'ouvrant (posé par la notification, lu par
+ * la vue). Gardé jusqu'à « Fermer » ou la demande suivante : la vue peut être
+ * montée plusieurs fois pendant l'ouverture de l'île (repliée → ouverte), et
+ * chaque montage doit retrouver la demande.
+ */
 let pending: ReportRequest | null = null;
 
 /** La notification « a fini · bilan » demande la liste : l'île s'ouvre sur l'onglet. */
@@ -46,11 +51,29 @@ async function openFile(api: ModuleApi, dir: string, file: string, diff: boolean
  * demandé). Rend la fonction qui le débranche.
  */
 export function mountFilesPanel(api: ModuleApi, box: HTMLElement): () => void {
+  /** La demande déjà affichée dans cette boîte : on ne relit pas le dépôt pour rien. */
+  let shown: ReportRequest | null = null;
   const draw = async () => {
     const req = pending;
-    if (!req) return box.replaceChildren();
-    pending = null;
-    const close = el("button", { class: "btn small", title: "Fermer la liste", onclick: api.handler(() => box.replaceChildren()) }, "✕");
+    if (!req) {
+      shown = null;
+      return box.replaceChildren();
+    }
+    if (req === shown) return;
+    shown = req;
+    const close = el(
+      "button",
+      {
+        class: "btn small",
+        title: "Fermer la liste",
+        onclick: api.handler(() => {
+          if (pending === req) pending = null;
+          shown = null;
+          box.replaceChildren();
+        }),
+      },
+      "✕",
+    );
     box.replaceChildren(el("div", { class: "agents-files-head" }, el("b", {}, req.title), close), el("p", { class: "muted" }, "Lecture du dépôt…"));
     let files: FileChange[];
     const vscode = req.vscode;
@@ -58,8 +81,11 @@ export function mountFilesPanel(api: ModuleApi, box: HTMLElement): () => void {
       const r = await api.invoke<{ root: string; files: FileChange[] }>("report_files", { path: req.dir });
       files = r.files;
     } catch (err) {
+      if (shown !== req) return;
       return box.replaceChildren(el("div", { class: "agents-files-head" }, el("b", {}, req.title), close), el("p", { class: "muted" }, errorText(err)));
     }
+    // Une autre demande est arrivée pendant la lecture : elle a déjà pris la boîte.
+    if (shown !== req) return;
     const rows = files.map((f) =>
       el(
         "li",
