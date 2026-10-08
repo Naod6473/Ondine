@@ -1444,7 +1444,18 @@
 "Compter les jetons des agents": "Count the agents' tokens",
 "Lu dans les journaux de Claude Code et de Codex sur ce PC, seulement quand l'onglet Agents IA est ouvert : jetons par jour, par modèle et par projet (le nom du dossier). Rien n'est envoyé.": "Read from the Claude Code and Codex logs on this PC, only while the AI Agents tab is open: tokens per day, per model and per project (the folder name). Nothing is sent.",
 "Un compteur de jetons, lu dans les journaux locaux de Claude Code et de Codex, montre ce que les agents ont consommé par jour, par modèle et par projet.": "A token counter, read from the local Claude Code and Codex logs, shows what the agents used per day, per model and per project.",
-"compteur désactivé dans les réglages": "counter turned off in the settings"
+"compteur désactivé dans les réglages": "counter turned off in the settings",
+"Quoi de neuf": "What's new",
+"Adopter": "Adopt",
+"Adoptée": "Adopted",
+"Suivant": "Next",
+"Goutte gomme": "Gummy drop",
+"Guimauve": "Marshmallow",
+"Dragée": "Sugared almond",
+"Berlingot": "Berlingot",
+"Ciel": "Sky",
+"De nouvelles mascottes en gomme. Cliquez sur l'une d'elles, puis « Adopter » : l'île change tout de suite.": "New gummy mascots. Click one, then \"Adopt\": the island changes right away.",
+"Les nouvelles mascottes, animées, avec le bouton « Adopter »": "The new mascots, animated, with the \"Adopt\" button"
 },
 "patterns": [
 [

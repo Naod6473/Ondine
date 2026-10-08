@@ -174,7 +174,8 @@
 "Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur votre ordinateur, hors ligne : l'image n'est envoyée nulle part. La pipette copie la couleur d'un point de l'écran. « Enregistrer un GIF » filme une zone de l'écran en GIF animé (30 s au plus), posé sur l'étagère.": "Capture une zone de l'écran avec l'outil de Windows, puis en lit le texte (OCR) ou l'enregistre en PNG. Marche aussi sur une image déjà copiée. La lecture du texte se fait sur ton ordinateur, hors ligne : l'image n'est envoyée nulle part. La pipette copie la couleur d'un point de l'écran. « Enregistrer un GIF » filme une zone de l'écran en GIF animé (30 s au plus), posé sur l'étagère.",
 "Décodé sur votre PC : rien n'est envoyé ni enregistré.": "Décodé sur ton PC : rien n'est envoyé ni enregistré.",
 "Choisissez une zone de l'écran, puis enregistrez-la en GIF animé (durée maximale dans les réglages du module)": "Choisis une zone de l'écran, puis enregistre-la en GIF animé (durée maximale dans les réglages du module)",
-"Glissez pour choisir la zone du GIF · Clic : tout l'écran · Échap : annuler": "Glisse pour choisir la zone du GIF · Clic : tout l'écran · Échap : annuler"
+"Glissez pour choisir la zone du GIF · Clic : tout l'écran · Échap : annuler": "Glisse pour choisir la zone du GIF · Clic : tout l'écran · Échap : annuler",
+"De nouvelles mascottes en gomme. Cliquez sur l'une d'elles, puis « Adopter » : l'île change tout de suite.": "De nouvelles mascottes en gomme. Clique sur l'une d'elles, puis « Adopter » : l'île change tout de suite."
 },
 "patterns": [
 [

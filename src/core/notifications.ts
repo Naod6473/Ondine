@@ -42,6 +42,13 @@ export interface NotificationRequest {
   tone?: "good" | "bad";
   /** En alerte, une île plus large et plus haute : pour un long texte (une empreinte entière). */
   wide?: boolean;
+  /**
+   * Un contenu dessiné par le demandeur à la place du corps de texte, dans
+   * l'alerte seulement (en compact, le titre suffit) : il reçoit l'élément à
+   * remplir et renvoie de quoi tout défaire (l'île l'appelle dès que la carte
+   * disparaît). Le panneau « Quoi de neuf » et ses mascottes animées.
+   */
+  content?: (host: HTMLElement) => () => void;
 }
 
 export interface IslandNotification extends NotificationRequest {
