@@ -17,6 +17,7 @@ Ondine ne se connecte à Internet que dans ces cas :
 | Vous lancez un ping, un test de port, un accès RDP/SSH ou un agent IA | la machine ou le service que vous avez choisi | Ce que vous avez demandé. |
 | Vous avez activé la Météo (désactivée par défaut) et saisi une ville, au plus toutes les 30 minutes | geocoding-api.open-meteo.com, api.open-meteo.com | Le nom de la ville (une fois, quand elle change), puis ses coordonnées arrondies à 2 décimales (environ 1 km). |
 | Vous cliquez « Signaler un problème » (Réglages → Général → À propos) | github.com, dans votre navigateur | Rien tant que vous n'envoyez pas : la page d'une nouvelle issue s'ouvre, préremplie avec la version, Windows et les 40 dernières lignes du journal (chemins personnels masqués). Vous relisez, modifiez ou abandonnez. |
+| Vous avez saisi votre identifiant GitHub (Réglages → Agents IA ; vide par défaut), au plus toutes les 30 minutes, jamais pendant une présentation ni la concentration | github.com (sans jeton) ou api.github.com/graphql (avec un jeton) | Sans jeton : une demande de la page publique des contributions ; seul l'identifiant part. Avec un jeton personnel en lecture seule (`read:user`), gardé dans le Gestionnaire d'identifiants de Windows : la même demande, contributions privées comprises. Une copie du calendrier reste dans `%APPDATA%\Ondine\github-calendar.json`. |
 | Vous cliquez « Tout voir » dans « Quoi de neuf » (après une mise à jour, ou Réglages → Général → À propos → Voir les nouveautés) | github.com, dans votre navigateur | Rien : la page de la version installée s'ouvre. Les nouveautés montrées dans l'île viennent du CHANGELOG intégré à l'appli, sans connexion. |
 
 Sur le **réseau local** seulement (rien ne sort sur Internet), et seulement quand
@@ -29,6 +30,15 @@ vous le demandez :
 
 Les clés et mots de passe sont rangés dans le Gestionnaire d'identifiants de Windows,
 jamais en clair dans un fichier.
+
+Ce que l'onglet Agents IA garde ou lit **sur le PC seulement** :
+`%APPDATA%\Ondine\agents-history.json` (l'historique des 7 derniers jours : « a
+fini », « vous attend », l'outil, le nom du projet, la durée, le bilan git ;
+jamais un message ni un chemin), `%APPDATA%\Ondine\github-calendar.json` (la
+copie du calendrier GitHub) et, sur « Exporter en CSV », un fichier
+`jetons-agents-AAAA-MM-JJ.csv` dans Téléchargements. Les journaux des agents
+(Claude Code, Codex) sont lus sur place pour le compteur de jetons et la
+dernière phrase d'une session ; rien n'en est envoyé ni journalisé.
 
 <a id="english"></a>
 ## English
@@ -54,6 +64,12 @@ specifically requested by the user, with one exception: the update check.
 - **Report a problem** (Settings → General → About): opens a new GitHub issue page in
   your browser, prefilled with the version, Windows and the last 40 log lines
   (personal paths hidden). Nothing is sent until you review it and click Submit.
+- **GitHub calendar** (AI agents; only once you enter your GitHub username, at most
+  every 30 minutes, never during a presentation or focus): without a token, a
+  request for the public contributions page on github.com, where only the username
+  goes. With a personal read-only token (`read:user`), kept in the Windows Credential
+  Manager: the same request to api.github.com/graphql, private contributions
+  included. A copy of the calendar stays in `%APPDATA%\Ondine\github-calendar.json`.
 - **See all** in "What's new" (after an update, or Settings → General → About → See
   what's new): opens the installed version's release page on github.com in your
   browser. The changes shown in the island come from the CHANGELOG built into the
@@ -73,3 +89,11 @@ On the **local network** only (nothing goes over the Internet), and only when yo
   public address.
 
 Keys and passwords are stored in the Windows Credential Manager, never in plain text.
+
+What the AI agents tab keeps or reads **on the PC only**:
+`%APPDATA%\Ondine\agents-history.json` (the last 7 days' history: "done",
+"waiting", the tool, the project name, the duration, the git summary; never a
+message or a path), `%APPDATA%\Ondine\github-calendar.json` (the copy of the
+GitHub calendar) and, on "Export to CSV", a `jetons-agents-YYYY-MM-DD.csv` file
+in Downloads. The agents' logs (Claude Code, Codex) are read in place for the
+token counter and a session's last line; nothing from them is sent or logged.
