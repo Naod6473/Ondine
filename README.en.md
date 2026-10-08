@@ -42,38 +42,38 @@ The intro video is on the website: [ondine.pissits.com](https://ondine.pissits.c
 
 ## What's new
 
-New in version 1.1.0 (the full list is in the
+New in version 1.2.0 (the full list is in the
 [CHANGELOG](CHANGELOG.md)). Click a picture to read the details.
 
 <table>
 <tr>
-<td width="50%" valign="top"><a href="#launcher"><img src="docs/captures/en/lanceur-calcul.webp" width="380" alt="Launcher: 192.168.1.0/26 gives the number of hosts, the mask, the network and the first address"></a><br><b><a href="#launcher">Calculations in the Launcher</a></b>: math, percentages, units, bytes, IPv4 subnets and the time in another city; Enter copies the result.</td>
-<td width="50%" valign="top"><a href="#clipboard"><img src="docs/captures/en/presse-papiers-decoder.webp" width="380" alt="Clipboard: a decoded JWT, with its algorithm and its issue and expiry dates"></a><br><b><a href="#clipboard">Decode a copy</a></b>: a JWT, Base64, an encoded address, compact JSON or a Unix timestamp, read in plain text on your PC.</td>
+<td width="50%" valign="top"><a href="#mascot"><img src="docs/captures/en/quoi-de-neuf.webp" width="391" alt="What's new in Ondine 1.2.0: the Marshmallow, Sugared almond and Berlingot mascots animated, with Adopt, See all and Later"></a><br><b><a href="#mascot">Fifteen gummy mascots</a></b>: twelve new cousins of the drop, plus Sky and Weather; "What's new" shows them live, and "Adopt" switches right away.</td>
+<td width="50%" valign="top"><a href="#ai-agents"><img src="docs/captures/en/onglet-agents.webp" width="380" alt="AI agents tab: the Claude Code, Codex, Gemini CLI, GitHub Copilot CLI, Cursor CLI, Qwen Code, Goose, OpenCode, Kiro CLI, Hermes, Aider, Amp chips and Other folder"></a><br><b><a href="#ai-agents">Twelve AI tools</a></b>: GitHub Copilot CLI, Cursor CLI, Qwen Code, Goose, OpenCode, Kiro CLI, Hermes, Aider and Amp join Claude Code, Codex and Gemini CLI; "Other tool" launches yours.</td>
 </tr>
 <tr>
-<td width="50%" valign="top"><a href="#shelf"><img src="docs/captures/en/etagere-telephone.webp" width="380" alt="Shelf: the “To the phone” QR code for Présentation.pptx, expiring in 4:59"></a><br><b><a href="#shelf">To the phone</a></b>: a file from the shelf goes to your phone through a QR code, on the same Wi-Fi, without going over the Internet.</td>
-<td width="50%" valign="top"><a href="#controls"><img src="docs/captures/en/onglet-controls.webp" width="380" alt="Controls tab: the Dark and Night light toggles on, and a KINGSTON USB drive with Eject"></a><br><b><a href="#controls">Dark, Night light and USB drives</a></b>: Windows dark mode and night light in one click, and "Eject" for each plugged-in USB drive.</td>
+<td width="50%" valign="top"><a href="#ai-agents"><img src="docs/captures/en/agents-jetons.webp" width="380" alt="Agent usage: the 30-day chart (Claude and Codex), 31.7 M tokens, input, output, cache, ≈ 29.23 USD, per model and per project"></a><br><b><a href="#ai-agents">Tokens and cost</a></b>: a 30-day chart, an estimated cost from an editable price grid, a daily budget alert and a CSV export.</td>
+<td width="50%" valign="top"><a href="#ai-agents"><img src="docs/captures/en/agents-github.webp" width="380" alt="GitHub contributions of simon-demo: 554 contributions this year, 11-day streak, the year's grid"></a><br><b><a href="#ai-agents">GitHub calendar</a></b>: the year's grid in the AI agents tab, with the current streak; the mascot celebrates 7, 30 and 100-day streaks.</td>
 </tr>
 <tr>
-<td width="50%" valign="top"><a href="#system"><img src="docs/captures/en/systeme-horloges.webp" width="380" alt="System tab: the clocks of Montreal (−6 h) and Tokyo (+7 h)"></a><br><b><a href="#system">World clocks</a></b>: up to 4 cities in the System tab, with the time difference (and "tomorrow" when the day changes).</td>
-<td width="50%" valign="top"><a href="#capture"><img src="docs/captures/en/onglet-capture.webp" width="380" alt="Capture tab: the new Animated GIF row, with Record a GIF"></a><br><b><a href="#capture">Animated GIF</a></b>: an area of the screen recorded as an animated GIF, saved with your screenshots and put on the shelf.</td>
+<td width="50%" valign="top"><a href="#ai-agents"><img src="docs/captures/en/agent-bilan.webp" width="347" alt="Alert: Claude is done, 3 files changed, +120 −14, Claude's last sentence, with Go there, Files…, Open in VS Code and Copy"></a><br><b><a href="#ai-agents">When an agent is done</a></b>: its last sentence with "Copy", and "Files…" for the list of changed files.</td>
+<td width="50%" valign="top"><a href="#ai-agents"><img src="docs/captures/en/agent-fichiers.webp" width="380" alt="AI agents tab: the list of changed files (index.astro +84 −9, site.css +30 −5, notes-lancement.md new), with Open and Diff"></a><br><b><a href="#ai-agents">The clickable git summary</a></b>: each changed file with "Open" (VS Code) and "Diff" (the comparison with the committed version).</td>
 </tr>
 <tr>
-<td width="50%" valign="top"><a href="#ai-agents"><img src="docs/captures/en/agent-bilan.webp" width="347" alt="Alert: Claude is done, 3 files changed, +120 −14, with Go there, Open in VS Code and Terminal here"></a><br><b><a href="#ai-agents">When an agent is done</a></b>: the changed files and "Open in VS Code"; in the tab, "Resume" reopens the last session.</td>
-<td width="50%" valign="top"><a href="#calendar"><img src="docs/captures/en/agenda-rejoindre.webp" width="293" alt="Alert: Meeting in 2 min, Revue du site, Google Meet, with Join"></a><br><b><a href="#calendar">Join the meeting</a></b>: two minutes before a video call, one click opens it, pauses the music and warns you if your mic is muted.</td>
+<td width="50%" valign="top"><a href="#settings"><img src="docs/captures/en/reglages-simple.webp" width="380" alt="Settings in Simple mode, General page: five settings, then “18 more settings in Full mode · Show all”"></a><br><b><a href="#settings">Simple or Full settings</a></b>: by default, each page only shows the essentials; "Show all" or the switch goes to Full. Search still finds everything.</td>
+<td width="50%" valign="top"><a href="#mascot"><img src="docs/captures/en/reglages-mascotte.webp" width="380" alt="Settings, Mascot page: Color “Custom” and the hue / saturation wheel, with lightness and the value #4da3ff"></a><br><b><a href="#mascot">Color wheel</a></b>: a "Custom" color for the gummy mascots, picked on a hue / saturation wheel; the preview and the island follow along.</td>
 </tr>
 <tr>
-<td width="50%" valign="top"><a href="#updates"><img src="docs/captures/en/quoi-de-neuf.webp" width="358" alt="Alert: What's new in Ondine 1.0.1, three changes, with See all and OK"></a><br><b><a href="#updates">What's new</a></b>: after an update, the island shows the version's main changes once.</td>
-<td width="50%" valign="top"><a href="#the-tabs"><img src="docs/captures/en/astuce-onglet.webp" width="380" alt="Empty Shelf tab, with the tip bubble: Drag a file onto the island to put it here"></a><br><b><a href="#the-tabs">A tip for each tab</a></b>: the first time a tab opens, a bubble explains its main gesture in one sentence.</td>
+<td width="50%" valign="top"><a href="#mascot"><img src="docs/captures/en/agent-question.webp" width="347" alt="Alert: Claude is asking you “Quel format pour l'export ?”, with CSV, JSON, Les deux; the mascot holds a “?” sign"></a><br><b><a href="#mascot">The mascot reacts</a></b>: a "?" sign while an agent waits for an answer, starry eyes for a received file, arms up when the timer ends, an umbrella when it rains…</td>
+<td width="50%" valign="top"><a href="#no-tab-breaks-weather-and-weekly-summary"><img src="docs/captures/en/bilan-semaine.webp" width="347" alt="Alert: Your week so far, 9 Pomodoros, 3 h 35 of focus, 14 tasks, then AI agents: 23 tasks finished, 2 h 10 waiting, 5.4 M tokens (≈ 23.03 $), projects site-ondine, Island"></a><br><b><a href="#no-tab-breaks-weather-and-weekly-summary">Agents in the weekly summary</a></b>: tasks finished, waiting time, tokens and cost, the week's projects, from a history kept 7 days on the PC.</td>
 </tr>
 </table>
 
 Also:
 
-- **SHA-256 hash**: drop a file on the "Hash" target; if you copied a hash, Ondine tells you whether it matches ([Shelf](#shelf)).
-- **Wake a remote PC** (Wake-on-LAN), from the tab or the Launcher ([Remote access](#remote-access)).
-- **Pending restart**: the System tab shows it, with a gentle reminder ([System](#system)).
-- **Weekly summary**: completed Pomodoros, focus time and checked tasks ([No tab](#no-tab-breaks-weather-and-weekly-summary)).
+- **Mascot**: **Size** (Small, Normal, Large) and **Calm** (fewer spontaneous gestures) settings; hands, accessories and twelve more expressions for the gummy mascots; the two old image-based drops are gone ([Mascot](#mascot)).
+- **Jelly island**: it dents under a click, swells on hover and absorbs the shock of an alert; **Island elasticity** setting (Soft, Normal, Jelly) in [Appearance](#appearance). **Animated mini island**: the music title bobs to the beat, an alert makes the island hop.
+- **AI agents**: a reminder when an agent has been waiting for 10 then 30 minutes; four more MCP tools (note, shelf, screenshot, open a link); the last 7 days' history restored at startup ([AI agents](#ai-agents)).
+- **Website**: a gallery of the fifteen mascots, drawn by the app's engine ([ondine.pissits.com](https://ondine.pissits.com)).
 
 ---
 
@@ -108,12 +108,14 @@ check off (**Automatic updates**). Updates are verified with a signature
 (Tauri's update key) before they are installed.
 
 On the first launch after an update, the island shows **"What's new in Ondine
-X.Y.Z"** once: the version's three main changes (taken from the
+X.Y.Z"** once: the version's main changes (taken from the
 [CHANGELOG](CHANGELOG.md), built into the app), and **See all**, which opens the
-version's page on GitHub. To see it again: Settings → General → About → **See
-what's new**.
+version's page on GitHub. When the version brings new mascots, the panel shows
+them live, three at a time: click one, then **Adopt**, and the island switches
+mascot right away. To see it again: Settings → General → About → **See what's
+new** (or the "What's new" scene of demo mode).
 
-<p align="center"><img src="docs/captures/en/quoi-de-neuf.webp" width="656" alt="Alert: What's new in Ondine 1.0.1, three changes, with See all and OK"></p>
+<p align="center"><img src="docs/captures/en/quoi-de-neuf.webp" width="716" alt="What's new in Ondine 1.2.0: Marshmallow, Sugared almond and Berlingot animated, Adopt, the changes, See all and Later"></p>
 
 ### Uninstall
 
@@ -144,7 +146,8 @@ Manager.
 
 The pill shows what matters right now: the track playing, the timer, the next
 meeting, the weather, or a notification (an AI agent that finished, a
-downloaded file…).
+downloaded file…). The music title bubble bobs to the beat, and an incoming
+alert makes the island hop.
 
 <p align="center"><img src="docs/captures/en/notification-agent.webp" width="396" alt="Notification in the pill: Claude is done, with a Go there button"></p>
 
@@ -401,67 +404,129 @@ servers, and tells you when something drops.
 
 ### AI agents
 
-<img src="docs/captures/en/onglet-agents.webp" width="696" alt="AI agents tab: launch Claude Code, Codex or Gemini CLI, Resume the project's last session, running sessions">
+<img src="docs/captures/en/onglet-agents.webp" width="696" alt="AI agents tab: the Claude Code, Codex, Gemini CLI, GitHub Copilot CLI, Cursor CLI, Qwen Code, Goose, OpenCode, Kiro CLI, Hermes, Aider and Amp chips, Other folder, Resume the project's last session, running sessions">
 
-Launch **Claude Code**, **Codex** or **Gemini CLI** in one of your projects with
-one click. A board shows running sessions; "Go there" brings the right window
-to the front, Windows Terminal included. Once connected, agents notify the
+Launch **Claude Code**, **Codex**, **Gemini CLI**, **GitHub Copilot CLI**,
+**Cursor CLI**, **Qwen Code**, **Goose**, **OpenCode**, **Kiro CLI**,
+**Hermes**, **Aider** or **Amp** in one of your projects with one click;
+**Other tool** launches the command word of your choice ("Other tool"
+setting, for example `my-agent`: looked up in the PATH, never a path or an
+option). A board shows running sessions; "Go there" brings the right window to
+the front, Windows Terminal included. Once connected, agents notify the
 island: "waiting for your permission", "finished". They go through the
 `ondine.exe notify` command and a local channel reserved for your Windows
 account: nothing goes over the Internet, and the island only accepts messages
 from its own copy of `ondine.exe`.
 
-**Resume**: next to each project, this button reopens Claude Code where you
-left it (`claude --continue`; for Codex: `codex resume --last`), with, in small
-print, the last line exchanged and its date ("2 h ago"). That line is read from
-the end of Claude Code's session file, on your PC: it is never sent or written
-to the log.
+**Resume**: next to each project, this button reopens the tool where you left
+it (`claude --continue`, `codex resume --last`, `copilot --continue`,
+`agent --continue` for Cursor, `qwen --continue`, `goose session --resume`,
+`opencode --continue`, `kiro-cli chat --resume`, `hermes --continue`; no
+resume for Gemini CLI, Aider or Amp), with, in small print, the last line
+exchanged in Claude Code and its date ("2 h ago"). That line is read from the
+end of Claude Code's session file, on your PC: it is never sent or written to
+the log.
 
-**End-of-task summary**: when an agent is done in a git repository, the
-notification says what changed ("3 files changed, +120 −14", and the most
-touched files), with **Open in VS Code** (if VS Code is installed) and
-**Terminal here**. Ondine runs `git status` and `git diff --numstat` read-only,
-for 3 seconds at most; without git or outside a repository, the notification
-stays as before.
+**When an agent is done**: the notification shows Claude's last sentence (read
+from its transcript, on your PC, 200 characters at most), with **Copy**. In a
+git repository, it also says what changed ("3 files changed, +120 −14"), with
+**Files…**, **Open in VS Code** (if VS Code is installed) and **Terminal
+here**. Ondine runs `git status` and `git diff --numstat` read-only, for 3
+seconds at most; without git or outside a repository, the notification stays
+simple.
 
-<p align="center"><img src="docs/captures/en/agent-bilan.webp" width="636" alt="Alert: Claude is done, 3 files changed, +120 −14 (index.html, style.css, README.md), with Go there, Open in VS Code and Terminal here"></p>
+<p align="center"><img src="docs/captures/en/agent-bilan.webp" width="636" alt="Alert: Claude is done · 3 files changed, +120 −14, Claude's last sentence and the project, with Go there, Files…, Open in VS Code and Copy"></p>
+
+**Files…** opens the tab on the list of changed files (the 20 most changed),
+each with **Open** (VS Code on the file) and **Diff** (the comparison with the
+committed version, in VS Code; not for a new file). Only on your click.
+
+<img src="docs/captures/en/agent-fichiers.webp" width="696" alt="AI agents tab: Claude is done · 3 files changed, the list index.astro +84 −9, site.css +30 −5, notes-lancement.md new, with Open and Diff">
+
+**When an agent has been waiting** for your answer for 10 minutes, then 30, a
+reminder says so ("Claude is still waiting for your answer · for 10 min", with
+"Go there"), and that's all. While the island is a pill, the mascot waves
+every two minutes. Nothing during focus.
 
 **Connect an agent in 3 steps:**
 
-1. In the AI agents tab, open **Connect Claude Code, Codex or Gemini**, choose
-   the tool, then click **⚡ Install automatically**. Ondine adds its hooks to the
-   tool's file (`%USERPROFILE%\.claude\settings.json` for Claude Code,
-   `%USERPROFILE%\.codex\config.toml` for Codex, `%USERPROFILE%\.gemini\settings.json`
-   for Gemini CLI) and keeps everything else, including other programs' hooks.
-   A `.bak` copy is made before each write, and **Remove** only takes out what
-   Ondine added.
+1. In the AI agents tab, open **Connect a tool**, choose the tool, then click
+   **⚡ Install automatically**. Ondine adds its hooks to the tool's file
+   (`%USERPROFILE%\.claude\settings.json` for Claude Code, `.codex\config.toml`
+   for Codex, `.gemini\settings.json` for Gemini CLI, `.copilot\hooks\ondine.json`
+   for GitHub Copilot CLI, `.cursor\hooks.json` for Cursor CLI,
+   `.qwen\settings.json` for Qwen Code, a plugin in `.agents\plugins\ondine\`
+   for Goose) and keeps everything else, including other programs' hooks. A
+   `.bak` copy is made before each write, and **Remove** only takes out what
+   Ondine added. OpenCode, Kiro CLI, Hermes, Aider and Amp launch without
+   hooks; for them and for "Other tool", **Connect another tool** shows the
+   line to run at the end of a task (`"…\ondine.exe" notify --source other --event done`).
 2. Restart the agent, then click **Try**: a notification should appear.
-3. To **allow or deny from the island**: turn on "Allow / Deny from the
-   island" (Settings → AI agents), then click **Install automatically** again.
-   The agent asks nothing in auto mode (Claude Code's "auto mode"): keep it in
-   normal mode.
+3. To **allow or deny from the island** (Claude Code and Codex): turn on
+   "Allow / Deny from the island" (Settings → AI agents), then click **Install
+   automatically** again. The agent asks nothing in auto mode (Claude Code's
+   "auto mode"): keep it in normal mode.
 
 If the state shows **Old path** (for example after an update or after moving
 Ondine), just click **Install automatically** again. Copying by hand is still
 possible, under **Or by hand**.
 
-Optionally, the island can also be added as an **MCP server**: the agent can
-then send you a message, its progress, start the timer or ask you a
-multiple-choice question. The **Focus** button (25 min, 1 h, 2 h or until
-stopped) holds their notifications and gives you a summary at the end. The
-island runs nothing the agents send it (it only runs git, read-only, for the
-summary), never decides for you, and doesn't read what you type: only the last
-line of a session is shown next to "Resume".
+Optionally, the island can also be added as an **MCP server** (Claude Code,
+Codex, Gemini CLI): the agent can then send you a message, its progress, start
+the timer, ask you a multiple-choice question, add a note, drop a file on the
+shelf, ask for a screenshot, or offer to open a link or a file (always after
+your click, "Capture" or "Open"; never a program). While a question waits for
+your answer, the mascot holds a "?" sign: a click on her opens the tab. The
+**Focus** button (25 min, 1 h, 2 h or until stopped) holds their notifications
+and gives you a summary at the end. The island runs nothing the agents send it
+(it only runs git, read-only, for the summary), never decides for you, and
+doesn't read what you type.
+
+<p align="center"><img src="docs/captures/en/agent-question.webp" width="636" alt="Alert: Claude is asking you “Quel format pour l'export ?”, with CSV, JSON and Les deux; the mascot holds a “?” sign"></p>
+
+**Agent usage** (further down the tab): the token counter, read from the
+local Claude Code and Codex logs (Gemini CLI writes none) while the tab is
+open: input, output, cache read, cache written and responses for today, 7 days
+or 30 days, per model and per project (the folder name only). A 30-day chart
+(one bar per day, per tool; hovering gives the date, the total and the day's
+cost), and an **estimated cost** ("≈ 12.40 USD") from the price grid in the
+settings. **Export to CSV** writes `jetons-agents-YYYY-MM-DD.csv` to Downloads
+(and puts it on the shelf). Nothing leaves the PC.
+
+<img src="docs/captures/en/agents-jetons.webp" width="696" alt="Agent usage: Today, 7 days, 30 days, the 30-day chart (Claude and Codex), 31.7 M tokens, input, output, cache read, cache written, 363 responses, ≈ 29.23 USD, per model and per project">
+
+**GitHub contributions**: enter your GitHub username (Settings → AI agents)
+and the tab shows your contribution calendar ("336 contributions this year ·
+12-day streak", the year's grid in the island's colour, lit up in a wave the
+first time). It is the only feature of the tab that talks to the Internet: at
+most one request every 30 minutes to github.com, which only receives the
+username; never during a presentation or focus. To count private
+contributions too, a personal read-only **token** (`read:user` scope), kept in
+the Windows Credential Manager. A copy of the calendar
+(`%APPDATA%\Ondine\github-calendar.json`) is shown right away at startup. The
+mascot celebrates 7, 30 and 100-day streaks.
+
+<img src="docs/captures/en/agents-github.webp" width="696" alt="GitHub contributions of simon-demo: 554 contributions this year · 11-day streak, the year's grid, Updated at 17:43, then Latest messages">
+
+The agents' history ("done", "waiting", with the tool, the project name, the
+duration and the git summary; never the messages or paths) is kept for 7 days
+in `%APPDATA%\Ondine\agents-history.json` and restored at startup under
+"Latest messages"; it feeds the AI agents card of the
+[weekly summary](#no-tab-breaks-weather-and-weekly-summary).
 
 - **Projects for agents**: up to 8 folders, one button each (in the tab and the launcher)
 - **Open agents in**: a console window (default) or Windows Terminal
-- **Offer Claude Code / Codex / Gemini CLI** (on)
+- **Offer Claude Code / Codex / Gemini CLI / GitHub Copilot CLI / Cursor CLI / Qwen Code / Goose / OpenCode / Kiro CLI / Hermes / Aider / Amp** (on); **Other tool: the command word** (empty)
 - **Show the session's last line next to "Resume"** (on)
 - **Notify when Claude waits for my answer or permission** (on), **when Claude is done** (on)
+- **Show Claude's last sentence when it is done** (on), with "Copy"
 - **Show what changed when an agent is done** (on): the git summary above
+- **Remind me that an agent is still waiting for my answer** (on): after 10 then 30 minutes
 - **Accept MCP tools** (on)
 - **Allow / Deny from the island** (**off** by default): when Claude Code or Codex asks permission to use a tool, the island shows the command with "Allow" (to confirm) and "Deny". After turning it on, reinstall the hooks (step 3 above). Without an answer within the chosen delay (1 min by default), the question goes back to the terminal.
 - **The mascot thinks while Claude works** (on)
+- **Count the agents' tokens** (on); **Model price grid** ($ per million tokens): one line per model, "name prefix ; input ; output ; cache read ; cache written" (the default grid is indicative: check with the vendors); **Daily budget** ($, 0 = no alert): beyond it, a notification (once a day) and the mascot worries
+- **GitHub username** (empty = nothing is requested); **GitHub token** (optional)
 
 ### Ask Claude
 
@@ -549,7 +614,13 @@ tasks. Settings: **Summary day** (Friday) and **Summary time** (17:00); **See th
 summary now** shows the current week. To stop it, turn the module off
 (Settings → Tabs → No tab).
 
-<p align="center"><img src="docs/captures/en/bilan-semaine.webp" width="636" alt="Alert: Your week so far, 9 Pomodoros completed, 3 h 35 of focus, 14 tasks checked off"></p>
+If AI agents worked during the week, an **AI agents** card is added: tasks
+finished, time spent waiting on you, tokens and estimated cost, most active
+projects (from the 7-day history of the [AI agents](#ai-agents) tab). The
+scheduled summary still only goes out when the classic week has something;
+"See the summary now" also shows it with agents only.
+
+<p align="center"><img src="docs/captures/en/bilan-semaine.webp" width="636" alt="Alert: Your week so far, 9 Pomodoros completed · 3 h 35 of focus · 14 tasks checked off · AI agents: 23 tasks finished, 2 h 10 waiting on you, 5.4 M tokens (≈ 23.03 $), projects: site-ondine, Island"></p>
 
 ---
 
@@ -559,7 +630,16 @@ The settings window opens from the island's ⚙ button or from the icon near the
 clock. A search box at the top left finds any setting. Each module has its own
 page (on/off switch, permissions, full description, settings).
 
-<img src="docs/captures/en/reglages-general.webp" width="700" alt="Settings, General page">
+Under the search box, the **Simple / Full** switch: in **Simple** (the
+default), each page only shows the essentials, and a "N more settings in Full
+mode · Show all" line ends the page; in **Full**, everything is there, in the
+same place. Search still finds everything: a result hidden in Simple is
+labelled "advanced setting", and going to it switches to Full. The lists below
+give all the settings (Full mode).
+
+<img src="docs/captures/en/reglages-simple.webp" width="700" alt="Settings in Simple mode, General page: Language, Start with Windows, Screen edge, Automatic updates, then “18 more settings in Full mode · Show all”">
+
+<img src="docs/captures/en/reglages-general.webp" width="700" alt="Settings in Full mode, General page">
 
 ### General
 
@@ -584,6 +664,7 @@ page (on/off switch, permissions, full description, settings).
 - **Theme**: Nuit (default), Ocean, Prune, Forest, Braise, Graphite, Verre, Studio, or a **custom color** (if it's too light, the island darkens it just enough to stay readable)
 - **Icon style**: **Color** (icons drawn for Ondine) or **Minimal** (line icons that take the text color; Phosphor)
 - **Animation style**: **Classic** (understated) or **Studio** (items arrive blurred then sharp, numbers roll, buttons bounce)
+- **Island elasticity**: **Soft** (it settles without bouncing), **Normal** (a small bounce, default) or **Jelly** (it wobbles, dents under your clicks and stretches like marshmallow). The island changes shape with springs that keep their momentum, swells on hover and absorbs the shock of an alert.
 - **Click sounds** (on) and their volume; sounds are generated on the fly, no files
 
 Animations respect Windows' "Animation effects" (reduce motion) setting.
@@ -600,12 +681,30 @@ Turn each module on or off, and order the tabs (drag a row, or use ↑ ↓;
 
 ### Mascot
 
-Show the mascot or not, and which one: **Goutte** (default), **Goutte
-classique** or **Goutte gomme** (you can add your own in the `mascots/` folder,
-see [mascots/README.md](mascots/README.md)). She **gets bored**, then **falls
-asleep** when nothing happens; she can **hang over the screen edge** (at most
-one visit every N minutes, never during a presentation). A preview lets you try
-all her animations.
+<img src="docs/captures/en/reglages-mascotte.webp" width="700" alt="Settings, Mascot page: Show the mascot, Mascot “Gummy drop”, Color “Custom” and the hue / saturation wheel">
+
+Show the mascot or not, and which one: the **Gummy drop** (default) or one of
+its fourteen cousins (Marshmallow, Sugared almond, Berlingot, star, sun, moon,
+cloud, heart, flower, mushroom, ghost, flame, **Sky** — sun by day, moon at
+night — and **Weather**, which follows the current weather; you can add your
+own in the `mascots/` folder, see [mascots/README.md](mascots/README.md)). The
+two old image-based drops ("Goutte" and "Goutte classique") are gone: a
+setting that still named them falls back to the gummy drop. A preview lets
+you try all her animations.
+
+She reacts to what happens: starry eyes when a file lands on the shelf, arms
+up when the timer ends, a wink when the clipboard cleans a link, proud of a
+screenshot, a wave to the ejected USB stick, worried when the disk is nearly
+full or the agents' budget is exceeded; mittens on the ears during focus, an
+umbrella when the Weather announces rain, and a "?" sign while an agent waits
+for your answer (a click on her opens the AI agents tab). She **gets bored**,
+then **falls asleep** when nothing happens; she can **hang over the screen
+edge** (at most one visit every N minutes, never during a presentation).
+
+- **Size**: Small, Normal (default) or Large, in the open island and the preview; the mini island keeps its size.
+- **Style** (gummy mascots): **Color** (the shape's own, a tint, Rainbow, or **Custom**: a hue / saturation wheel, a lightness slider and the value to type; the preview and the island follow the drag), **Hands** (always, only for gestures, never), hat, glasses and necklace.
+- **Mood**: **Gets bored after** and **Falls asleep after**; **Calm: fewer spontaneous gestures** (off): no more boredom, snack, edge visits, dancing or module reactions; she still reacts to AI agents (waiting, question), errors, successes, alerts, and she sleeps.
+- **Edge visits**: **Ondine comes to hang over the edge** (on), **at most one visit every** N min, **Bring Ondine over** to try.
 
 ### Profiles
 
@@ -635,6 +734,10 @@ hours, or by Wi-Fi network name.
   only after showing you what will be sent.
 - "To the phone" (Shelf) and "Wake up" (Remote access) stay on the local
   network, only when you click: nothing goes over the Internet.
+- The GitHub calendar (AI agents) only fetches when you enter your username:
+  at most every 30 minutes, github.com receives the username alone (or, with a
+  `read:user` token, api.github.com). The agents' logs and the token counter
+  are read locally, never sent.
 - Keys and secret links are stored in the Windows Credential Manager, never in
   plain text in a file or in the log.
 - Nothing is ever deleted for good: the Recycle Bin, with undo.
@@ -702,5 +805,6 @@ Ondine is released under the **MIT** license: see [LICENSE](LICENSE).
 - Music of the intro video: *Lovely Swindler*, Amarià (CC BY 3.0).
 - Everything that comes from elsewhere, with licenses: [THIRD-PARTY.md](THIRD-PARTY.md).
 
-Claude, Gemini and Codex are trademarks of their owners (Anthropic, Google,
-OpenAI); Ondine is not affiliated with them.
+Claude, Gemini, Codex, GitHub Copilot, Cursor, Qwen, Goose, OpenCode, Kiro,
+Hermes, Aider and Amp are trademarks of their owners; Ondine is not affiliated
+with any of them.
