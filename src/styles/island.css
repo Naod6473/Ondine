@@ -7,7 +7,8 @@
   --muted: #9aa0b4;
   --accent: #7cc4ff;
   --line: rgba(255, 255, 255, 0.08);
-  /* Doit suivre TRANSITION_MS dans island.ts. */
+  /* Les petits éléments (place de la mascotte, point micro…). La forme de
+     l'île elle-même ne suit plus de transition : des ressorts (jelly.ts). */
   --speed: 420ms;
   /* Un ressort : ça part vite, dépasse d'un poil (4 %) et se pose. Calculé
      pour un ressort amorti (amortissement 0,72) ; linear() relie ces points. */
@@ -49,11 +50,10 @@ body {
   grid-template-rows: minmax(0, 1fr);
   align-items: center;
   gap: 10px;
-  transition:
-    width var(--speed) var(--ease),
-    height var(--speed) var(--ease),
-    border-radius var(--speed) var(--ease),
-    padding var(--speed) var(--ease);
+  /* Pas de transition sur width, height, border-radius ni padding : la forme
+     est animée par des ressorts en JS (src/island/jelly.ts), qui lisent les
+     tailles ci-dessous puis les rejoignent avec leur élan (interruptibles).
+     Une transition CSS ici fausserait cette lecture. */
 }
 
 /* ── Les six états ───────────────────────────────────────────────────────── */
@@ -2930,8 +2930,8 @@ body {
   transition: opacity 200ms ease;
   pointer-events: none;
 }
-.island.grab-inner::after,
-.island.stretching::after {
+/* Pendant l'étirement, la bosse (jelly.ts) prend le relais de la poignée. */
+.island.grab-inner:not(.stretching)::after {
   opacity: 1;
 }
 
@@ -3525,7 +3525,9 @@ body.presenting .island[data-state="hidden"] {
    francs quand <body> porte la classe motion-studio. Le reste est dans
    src/island/motion.ts. */
 
-/* La pilule rebondit plus franchement (8 % de dépassement au lieu de 4 %).
+/* Ce qui suit --ease dans la pilule (mascotte, minuteur) rebondit plus
+   franchement (8 % de dépassement au lieu de 4 %). La forme de l'île, elle,
+   est un peu plus rebondie en Studio par feelFor() (spring.ts).
    Pas en grand : le panneau toucherait les bords de la fenêtre. */
 .motion-studio .island:not([data-state="expanded"]) {
   --ease: linear(0, 0.0319, 0.1132, 0.2252, 0.3523, 0.4828, 0.6077, 0.721, 0.8193, 0.9007, 0.9652, 1.0136,
@@ -3551,8 +3553,9 @@ body.presenting .island[data-state="hidden"] {
 .island {
   --spot-max: 0.04;
   background-image: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, calc(var(--spot) * var(--spot-max))), transparent 70%);
-  transition-property: width, height, border-radius, padding, --spot;
-  transition-duration: var(--speed), var(--speed), var(--speed), var(--speed), 400ms;
+  /* Seul le reflet est en transition (la forme : ressorts de jelly.ts). */
+  transition-property: --spot;
+  transition-duration: 400ms;
   transition-timing-function: var(--ease);
 }
 .motion-studio .island {

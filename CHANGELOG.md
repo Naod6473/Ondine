@@ -13,6 +13,13 @@
 - Un mouvement plus fluide : le visage glisse d'une expression à l'autre et le
   corps ondule comme une vraie gelée. · Smoother motion: the face glides between
   expressions and the body wobbles like real jelly.
+- L'île en gelée : elle change de forme avec des ressorts qui gardent leur
+  élan, se creuse sous un clic, gonfle au survol, s'étire en bosse sous la
+  souris et encaisse le choc d'une alerte. Réglage « Élasticité » : Doux,
+  Normal, Gelée. · Jelly island: it changes shape with springs that keep
+  their momentum, dents under a click, swells on hover, stretches into a bump
+  under the mouse and absorbs the shock of an alert. "Elasticity" setting:
+  Soft, Normal, Jelly.
 
 ## 1.1.0 · 2026-10-07
 

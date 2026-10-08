@@ -56,6 +56,9 @@ export interface Settings {
     alwaysMini: boolean;
     /** Style des animations : "classic" (sobre) ou "studio" (flou → net, chiffres qui roulent, gélatine). */
     motion: "classic" | "studio";
+    /** L'île en gelée (src/island/spring.ts) : "soft" (doux, presque sans rebond),
+        "normal", "jelly" (gelée : rebonds et déformations plus francs). */
+    elasticity: "soft" | "normal" | "jelly";
     /** Une bulle d'Ondine explique chaque onglet la première fois (src/island/tips.ts). */
     tips: boolean;
     /** Les onglets (ids de modules) dont l'astuce a déjà été vue. */
@@ -149,6 +152,7 @@ export function defaultSettings(): Settings {
       iconPack: "color",
       alwaysMini: true,
       motion: "classic",
+      elasticity: "normal",
       tips: true,
       tipsSeen: [],
     },

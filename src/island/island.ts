@@ -20,13 +20,15 @@ import { EasterEggs } from "../eggs/eggs";
 import { findMascot } from "../mascot/catalog";
 import { Hanger } from "../mascot/hang";
 import { MascotController } from "../mascot/mascot-state";
-import { createRenderer } from "../mascot/renderer";
+import { createRenderer, type MascotRenderer } from "../mascot/renderer";
 import type { MascotManifest } from "../mascot/types";
 import { clear, el } from "./dom";
 import { icon } from "./icon";
 import { IslandStateMachine, type IslandState } from "./island-state";
 import { contentHeight, FIT_ATTR, fitHeight } from "./fit";
 import { enableGestures, grabZone, type Edge } from "./gestures";
+import { Jelly } from "./jelly";
+import { elasticityOf } from "./spring";
 import { sounds, setSoundPrefs } from "./sounds";
 import { enableTabDrag, flip } from "./tab-drag";
 import { applyTheme } from "./themes";
@@ -35,8 +37,16 @@ import { Tips } from "./tips";
 
 const log = logger("island");
 
-/** Durée des animations CSS de l'île (doit suivre --speed dans island.css). */
-const TRANSITION_MS = 420;
+/** Les gestes sur l'île auxquels la mascotte peut réagir (MascotRenderer.react). */
+type MascotReaction = Parameters<NonNullable<MascotRenderer["react"]>>[0];
+
+/**
+ * La forme de l'île suit des ressorts (jelly.ts) : on attend qu'ils soient
+ * posés pour réduire la fenêtre (île cachée) ou lui rendre sa taille (fit.ts).
+ * Au cas où la boucle ne tournerait pas (fenêtre que Windows ne redessine
+ * plus), on n'attend jamais plus que ça (ms).
+ */
+const SETTLE_FALLBACK_MS = 1500;
 /** Zone au bord de l'écran qui compte comme « survol » même si l'île est minuscule. */
 const EDGE_ZONE = { len: 240, depth: 14 };
 /** Survol prolongé de la mascotte → `love`. */
@@ -85,6 +95,13 @@ export class Island {
   /** Qui utilise le micro et la caméra (message "controls.media-use" du module Contrôles). */
   private mediaUse: { mic: string[]; cam: string[] } = { mic: [], cam: [] };
   private mascot: MascotController | null = null;
+  /** Le moteur de dessin de la mascotte (pour ses réactions aux gestes sur l'île). */
+  private renderer: MascotRenderer | null = null;
+  /** La forme de l'île en gelée : ressorts, creux, bosse (jelly.ts). */
+  private jelly: Jelly;
+  /** Change à chaque transition : une fermeture de fenêtre prévue pour une
+      ancienne transition ne se fait plus. */
+  private collapseToken = 0;
   private mascotId = "";
   /** Le manifeste de la mascotte affichée (pour les surprises). */
   private mascotManifest: MascotManifest | null = null;
@@ -135,6 +152,14 @@ export class Island {
     this.fsm.onTransition = (from, to) => this.onTransition(from, to);
     this.shell.append(this.mascotSlot, this.content, this.privacyDot);
     this.root.append(this.shell);
+    this.jelly = new Jelly(this.shell, {
+      edge: () => this.edge(),
+      align: () => document.body.dataset.align ?? "center",
+      state: () => this.fsm.state,
+      // La forme est posée (fin de l'ancienne « transitionend ») : le Rust
+      // reçoit le rectangle final, échelle comprise, pour les clics traversants.
+      onSettle: () => this.pushRect(),
+    });
     this.hanger = new Hanger(this.root, {
       edge: () => this.edge(),
       align: () => document.body.dataset.align ?? "center",
@@ -158,13 +183,22 @@ export class Island {
     onPerfChange(() => setStudio(settingsStore.current.island.motion === "studio" && perfMode() !== "eco"));
     // Dans un navigateur (npm run dev) : window.ondinePeek() la fait venir tout de suite.
     // Et window.ondineBus.emit("controls.media-use", { mic: ["Zoom"], cam: [] }) simule un message.
-    if (!IS_TAURI) Object.assign(window, { ondinePeek: () => this.hanger.show(), ondineBus: this.bus, ondineEggs: this.eggs });
+    // window.ondineNotify({ moduleId: "island", title: "Test", priority: "high" }) : une alerte (le choc de jelly.ts).
+    if (!IS_TAURI) {
+      Object.assign(window, {
+        ondinePeek: () => this.hanger.show(),
+        ondineBus: this.bus,
+        ondineEggs: this.eggs,
+        ondineNotify: (n: Parameters<NotificationQueue["push"]>[0]) => this.notifications.push(n),
+      });
+    }
 
     this.notifications.defaultDurationMs = settingsStore.current.island.notificationSecs * 1000;
     let wasAlert = false;
     let lastShown = "";
     this.notifications.onShow = (n) => {
       const alert = isAlert(n);
+      const isNew = !!n && String(n.id) !== lastShown;
       // Une nouvelle notification : Ondine peut y réagir (voir mascot-state.ts).
       if (n && !alert && String(n.id) !== lastShown) {
         this.bus.emit("notify.shown", { moduleId: n.moduleId, icon: n.icon ?? "", priority: n.priority });
@@ -184,6 +218,9 @@ export class Island {
       // Notification normale affichée : l'île ne se replie pas avant sa fin.
       this.fsm.hold(!!n && !alert);
       this.render();
+      // Une alerte arrive (ou en remplace une autre) : l'île encaisse le choc,
+      // un creux puis une onde (jelly.ts), après render() qui a lu sa nouvelle taille.
+      if (alert && isNew) this.jelly.shock();
     };
 
     this.registry.onChange = () => this.render(true);
@@ -219,6 +256,8 @@ export class Island {
     this.fsm.timings = timingsFrom(s);
     this.fsm.setAlwaysMini(s.island.alwaysMini ?? false);
     setStudio(s.island.motion === "studio" && perfMode() !== "eco");
+    // Réglages → Apparence → Élasticité : raideur, rebond, amplitude des déformations.
+    this.jelly.setElasticity(elasticityOf(s.island.elasticity));
     // Le bord et la place de l'île : la forme s'adapte en CSS (island.css).
     document.body.dataset.edge = s.island.edge ?? "top";
     document.body.dataset.align = s.island.align ?? "center";
@@ -231,12 +270,14 @@ export class Island {
     if (wanted !== this.mascotId) {
       this.mascot?.destroy();
       this.mascot = null;
+      this.renderer = null;
       this.mascotId = wanted;
       const entry = wanted ? findMascot(wanted) : null;
       this.mascotManifest = entry?.manifest ?? null;
       if (entry) {
         const renderer = createRenderer(entry.manifest, entry.assets);
         renderer.mount(this.mascotSlot);
+        this.renderer = renderer;
         this.mascot = new MascotController(entry.manifest, renderer, this.bus, {
           boredAfterMs: s.mascot.boredAfterSecs * 1000,
           sleepAfterMs: s.mascot.sleepAfterSecs * 1000,
@@ -247,6 +288,8 @@ export class Island {
     if (this.mascot) {
       this.mascot.timings = { boredAfterMs: s.mascot.boredAfterSecs * 1000, sleepAfterMs: s.mascot.sleepAfterSecs * 1000 };
     }
+    // Le bord ou la place ont peut-être changé : la forme voulue aussi.
+    this.jelly.retarget();
   }
 
   // ── Micro et caméra ────────────────────────────────────────────────────────
@@ -292,15 +335,12 @@ export class Island {
       clearTimeout(this.collapseTimer);
       this.collapseTimer = null;
     }
+    const token = ++this.collapseToken;
     if (from === "hidden") {
       // On agrandit d'abord la fenêtre, puis l'île s'anime dedans.
       void Bridge.islandSetCollapsed(false);
       // Ondine pendait au bord : elle remonte, l'île arrive.
       this.hanger.hide();
-    }
-    if (to === "hidden") {
-      // On laisse l'animation de fermeture se finir avant de réduire la fenêtre.
-      this.collapseTimer = window.setTimeout(() => void Bridge.islandSetCollapsed(true), TRANSITION_MS);
     }
     // Focus clavier uniquement dans la vue agrandie (ouverte par un clic) : Échap
     // fonctionne, et on rend le focus à l'appli d'avant en sortant.
@@ -313,6 +353,20 @@ export class Island {
     if (to === "expanded") sounds.open();
     else if (from === "expanded") sounds.close();
     this.render();
+    if (to === "hidden") {
+      // On laisse l'animation de fermeture se finir avant de réduire la
+      // fenêtre : quand les ressorts sont posés (render() vient de leur donner
+      // la nouvelle forme), ou au plus tard après SETTLE_FALLBACK_MS.
+      const collapse = () => {
+        if (token !== this.collapseToken || this.fsm.state !== "hidden") return;
+        this.collapseToken++;
+        if (this.collapseTimer != null) clearTimeout(this.collapseTimer);
+        this.collapseTimer = null;
+        void Bridge.islandSetCollapsed(true);
+      };
+      this.collapseTimer = window.setTimeout(collapse, SETTLE_FALLBACK_MS);
+      this.jelly.whenSettled(collapse);
+    }
   }
 
   // ── Entrées : souris, clavier, glisser-déposer, menu ───────────────────────
@@ -336,8 +390,30 @@ export class Island {
       edge: () => this.edge(),
       enabled: () => ["peek", "compact", "expanded", "alert"].includes(this.fsm.state),
       onMoveStart: () => this.startMove(),
-      onRelease: (amount) => amount > 8 && sounds.boing(),
+      // La bosse qui suit la souris (jelly.ts), et Ondine qui le sent.
+      onPull: (amount, x, y) => {
+        this.jelly.pull(amount, x, y);
+        this.react("stretch", { ...this.fromMascot(x, y), amount });
+      },
+      onRelease: (amount) => {
+        this.jelly.letGo();
+        if (amount > 8) sounds.boing();
+        this.react("release", { amount });
+      },
+      onShake: (turns) => this.react("shake", { amount: turns }),
     });
+    // Un appui (hors boutons et champs) enfonce le bord le plus proche ; au
+    // relâcher, une onde fait le tour de l'île (jelly.ts).
+    this.shell.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      if ((e.target as HTMLElement).closest("button, input, select, textarea, a, [role='slider'], [contenteditable]")) return;
+      if (!["compact", "expanded", "alert", "drop"].includes(this.fsm.state)) return;
+      this.jelly.press(e.clientX, e.clientY);
+      this.react("poke", this.fromMascot(e.clientX, e.clientY));
+    });
+    const unpress = () => this.jelly.release();
+    window.addEventListener("pointerup", unpress);
+    window.addEventListener("pointercancel", unpress);
     // Un « tic » doux sur chaque bouton de l'île.
     this.shell.addEventListener("click", (e) => (e.target as HTMLElement).closest("button") && sounds.tap(), true);
     // Au survol, le pointeur montre ce qu'on peut faire sur les bords.
@@ -348,7 +424,10 @@ export class Island {
       this.shell.style.cursor = zone === "outer" ? "grab" : zone === "inner" ? along : "";
       this.shell.classList.toggle("grab-inner", zone === "inner");
     });
-    this.shell.addEventListener("pointerleave", () => this.shell.classList.remove("grab-inner"));
+    this.shell.addEventListener("pointerleave", () => {
+      this.shell.classList.remove("grab-inner");
+      this.jelly.pointerOut();
+    });
 
     this.shell.addEventListener("click", (e) => {
       if (this.wasGesture()) return;
@@ -385,8 +464,15 @@ export class Island {
 
     // La forme de l'île change (animation, contenu) : le Rust doit la connaître
     // pour décider où les clics passent au travers.
+    // (Pendant un ressort, la taille change à chaque image : un rectangle par
+    // image, comme avant avec les transitions CSS. La fin : onSettle de jelly.)
     new ResizeObserver(() => this.pushRect()).observe(this.shell);
     this.shell.addEventListener("transitionend", () => this.pushRect());
+    // Ce qui change la forme voulue par le CSS sans passer par render() :
+    // le point micro/caméra (île cachée), une classe, le bord ou la place.
+    const reshape = new MutationObserver(() => this.scheduleRetarget());
+    reshape.observe(this.shell, { attributes: true, attributeFilter: ["class", "data-privacy"] });
+    reshape.observe(document.body, { attributes: true, attributeFilter: ["class", "data-edge", "data-align"] });
     // Le contenu change (un QR code s'ouvre, un autre onglet) : l'île ouverte
     // grandit pour le montrer en entier, ou reprend sa taille (fit.ts).
     new MutationObserver(() => this.scheduleFit()).observe(this.content, { childList: true, subtree: true });
@@ -398,7 +484,40 @@ export class Island {
     requestAnimationFrame(() => {
       this.fitQueued = false;
       void this.applyFit();
+      // En alerte, la taille dépend du contenu (island.css : :has(.notif.many)…).
+      if (this.fsm.state === "alert") this.jelly.retarget();
     });
+  }
+
+  private retargetQueued = false;
+  /** Relit la forme voulue à la prochaine image (plusieurs changements → une seule lecture). */
+  private scheduleRetarget() {
+    if (this.retargetQueued) return;
+    this.retargetQueued = true;
+    requestAnimationFrame(() => {
+      this.retargetQueued = false;
+      this.jelly.retarget();
+    });
+  }
+
+  /** Un point de la fenêtre, en px depuis le centre de la mascotte (pour ses réactions). */
+  private fromMascot(x: number, y: number): { x: number; y: number } {
+    const m = this.mascotSlot.getBoundingClientRect();
+    return { x: x - (m.left + m.width / 2), y: y - (m.top + m.height / 2) };
+  }
+
+  /**
+   * Prévient la mascotte d'un geste sur l'île : « poke » (un appui), « stretch »
+   * (on tire la bosse), « release » (on lâche), « shake » (on secoue). La
+   * méthode `react` est facultative : un moteur qui ne la connaît pas ne fait rien.
+   */
+  private react(kind: MascotReaction, data: { x?: number; y?: number; amount?: number }) {
+    if (!this.renderer?.react) return;
+    try {
+      this.renderer.react(kind, data);
+    } catch (err) {
+      log.warn(`réaction de la mascotte en erreur : ${String(err)}`);
+    }
   }
 
   /** L'île ouverte prend la hauteur de son contenu marqué `data-island-fit`, ou sa taille habituelle. */
@@ -410,12 +529,17 @@ export class Island {
     window.clearTimeout(this.tallTimer);
     if (target === null) {
       this.shell.style.removeProperty("--fit-h");
-      // La fenêtre rend le panneau haut une fois l'île revenue à sa taille.
-      this.tallTimer = window.setTimeout(() => {
+      this.jelly.retarget();
+      // La fenêtre rend le panneau haut une fois l'île revenue à sa taille
+      // (ressorts posés, ou au plus tard après SETTLE_FALLBACK_MS).
+      const shrink = () => {
         if (this.fitH !== null || !this.tall) return;
+        window.clearTimeout(this.tallTimer);
         this.tall = false;
         void Bridge.islandSetTall(false);
-      }, TRANSITION_MS + 100);
+      };
+      this.tallTimer = window.setTimeout(shrink, SETTLE_FALLBACK_MS);
+      this.jelly.whenSettled(shrink);
       return;
     }
     // La fenêtre d'abord (sinon l'île grandirait coupée), puis l'île, avec son ressort.
@@ -423,7 +547,10 @@ export class Island {
       this.tall = true;
       await Bridge.islandSetTall(true);
     }
-    if (this.fitH === target) this.shell.style.setProperty("--fit-h", `${target}px`);
+    if (this.fitH === target) {
+      this.shell.style.setProperty("--fit-h", `${target}px`);
+      this.jelly.retarget();
+    }
   }
 
   /** Le bord de l'écran où se trouve l'île (posé sur <body> par applySettings). */
@@ -449,6 +576,7 @@ export class Island {
 
   /** On a attrapé l'île par son bord extérieur : le Rust déplace la fenêtre. */
   private startMove() {
+    this.jelly.release();
     this.shell.classList.add("moving");
     void Bridge.islandDragStart();
   }
@@ -556,6 +684,8 @@ export class Island {
     const inside = inIsland || this.inEdgeZone(x, y);
     if (inside) this.fsm.pointerEnter();
     else this.fsm.pointerLeave();
+    // Mini-île survolée : elle gonfle un peu et penche vers la souris.
+    this.jelly.pointer(x, y);
 
     if (!this.mascot) return;
     const m = this.mascotSlot.getBoundingClientRect();
@@ -701,6 +831,8 @@ export class Island {
         break;
     }
     this.renderBanner(n);
+    // La nouvelle forme (état, contenu) : l'île y va en ressort, avec son élan.
+    this.jelly.retarget();
 
     // Le contenu arrive en douceur quand l'île change de forme (motion.ts :
     // en douceur en Classique, plus franc en Studio).

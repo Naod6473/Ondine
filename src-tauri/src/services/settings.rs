@@ -101,6 +101,9 @@ pub struct IslandPrefs {
     /// Le style des animations : "classic" (sobre) ou "studio" (façon vidéo de
     /// présentation : flou → net, chiffres qui roulent, boutons en gélatine).
     pub motion: String,
+    /// L'élasticité de l'île (src/island/spring.ts) : "soft" (doux), "normal"
+    /// ou "jelly" (gelée : rebonds et déformations plus francs).
+    pub elasticity: String,
     /// Une petite bulle d'Ondine explique le geste principal d'un onglet, la
     /// première fois qu'on l'ouvre (src/island/tips.ts).
     pub tips: bool,
@@ -110,6 +113,10 @@ pub struct IslandPrefs {
 
 fn default_motion() -> String {
     "classic".into()
+}
+
+fn default_elasticity() -> String {
+    "normal".into()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -192,6 +199,7 @@ impl Default for IslandPrefs {
             icon_pack: "color".into(),
             always_mini: true,
             motion: default_motion(),
+            elasticity: default_elasticity(),
             tips: true,
             tips_seen: Vec::new(),
         }
@@ -231,6 +239,9 @@ impl Settings {
         }
         if !["classic", "studio"].contains(&self.island.motion.as_str()) {
             self.island.motion = default_motion();
+        }
+        if !["soft", "normal", "jelly"].contains(&self.island.elasticity.as_str()) {
+            self.island.elasticity = default_elasticity();
         }
         if !["auto", "fr", "en"].contains(&self.general.language.as_str()) {
             self.general.language = "auto".into();
