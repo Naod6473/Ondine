@@ -51,6 +51,7 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use tauri::AppHandle;
 
+use super::agents_daycard as daycard;
 use super::agents_git as git;
 use super::agents_history as history;
 use super::agents_github as github;
@@ -612,6 +613,75 @@ impl RustModule for Agents {
                 v["days"] = days;
                 v["prices"] = json!(prices);
                 Ok(v)
+            }
+            // { offsetMinutes } : le Bilan du jour en image (day-card.ts). Depuis
+            // minuit (heure du PC) : tâches finies, attente, projets, le rythme
+            // heure par heure et la plus longue tâche (historique sur le disque) ;
+            // les jetons des 60 derniers jours (pour la série de jours) et la
+            // grille de prix ; les jours où un agent a fini ou attendu (7 jours).
+            // Que des nombres et des noms de dossiers : rien ne sort du PC.
+            "day_card" => {
+                let offset = args.get("offsetMinutes").and_then(Value::as_i64).unwrap_or(0).clamp(-900, 900) as i32;
+                let now = now_ms();
+                let since = usage::start_of_day(now, offset);
+                let (day, hours, longest, active) = {
+                    let st = self.state.locked();
+                    let log = st.log.locked();
+                    let mut active: Vec<String> = log.entries.iter().map(|e| usage::day_key(e.at, offset)).collect();
+                    active.sort();
+                    active.dedup();
+                    (log.week(since), log.hours(since, offset), log.longest_minutes(since), active)
+                };
+                let usage_on = ctx.settings().get("usage").and_then(Value::as_bool) != Some(false);
+                let days = if usage_on {
+                    let mut cache = self.usage.locked();
+                    let from = usage::start_of_day(now.saturating_sub(59 * 86_400_000), offset);
+                    usage::scan(&mut cache, &claude_dir().join("projects"), &codex_dir().join("sessions"), from, offset)["days"].take()
+                } else {
+                    json!([])
+                };
+                let prices = ctx.settings().get("prices").and_then(Value::as_str).unwrap_or("").to_string();
+                Ok(json!({
+                    "today": usage::day_key(now, offset),
+                    "done": day.done,
+                    "waitMinutes": day.wait_minutes,
+                    "projects": day.projects,
+                    "hours": hours,
+                    "longestMinutes": longest,
+                    "activeDays": active,
+                    "days": days,
+                    "usage": usage_on,
+                    "prices": prices,
+                }))
+            }
+            // { png, then: "copy" | "save" } : la carte du Bilan du jour, en PNG
+            // (base64). « copy » : dans le presse-papiers, prête à coller ;
+            // « save » : dans Téléchargements, puis sur l'étagère si elle est
+            // active, sinon montrée dans l'Explorateur.
+            "day_card_export" => {
+                let card = daycard::decode(args.get("png").and_then(Value::as_str).unwrap_or(""))?;
+                if args.get("then").and_then(Value::as_str) == Some("copy") {
+                    ctx.require("clipboard")?;
+                    let mut clipboard = arboard::Clipboard::new().map_err(|e| format!("presse-papiers indisponible : {e}"))?;
+                    clipboard
+                        .set_image(arboard::ImageData { width: card.width as usize, height: card.height as usize, bytes: card.rgba.into() })
+                        .map_err(|e| format!("presse-papiers : {e}"))?;
+                    ctx.log_info(format!("bilan du jour : copié ({} × {})", card.width, card.height));
+                    return Ok(json!({ "copied": true }));
+                }
+                ctx.require("files")?;
+                let dir = platform::downloads_dir().ok_or("dossier Téléchargements introuvable")?;
+                let day = chrono::Local::now().format("%Y-%m-%d").to_string();
+                let path = daycard::save(&dir, &day, &card.png)?;
+                let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+                ctx.log_info(format!("bilan du jour : {name} enregistré"));
+                let shelf = super::is_active(ctx.app, "shelf");
+                if shelf {
+                    ctx.emit("shelf.add", json!({ "paths": [path.display().to_string()] }));
+                } else {
+                    files::reveal(&path)?;
+                }
+                Ok(json!({ "name": name, "shelf": shelf }))
             }
             // Le calendrier de contributions GitHub (agents_github.rs) : réglage
             // `githubLogin`, jeton facultatif dans le coffre Windows. Au plus une

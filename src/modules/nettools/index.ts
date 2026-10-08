@@ -1,4 +1,5 @@
-// Module « Réseau » : ping en continu, test de port, DNS.
+// Module « Réseau » : ping en continu, test de port, DNS, et « Scanner mon
+// réseau » (la liste des appareils du réseau local : scan-view.ts).
 //
 // Le Rust (src-tauri/src/modules/nettools.rs) envoie les paquets de test ;
 // ici on affiche. Le ping est répété chaque seconde tant que l'onglet est
@@ -10,6 +11,7 @@ import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
 import { setLabel } from "../../island/icon";
+import { runScan } from "./scan-view";
 
 interface PingReply {
   ip: string;
@@ -59,6 +61,17 @@ export const nettools: IslandModule = {
             : { title: `${p.host} ne répond plus`, body: "Pas de réponse depuis deux minutes.", icon: "🖥️", priority: "normal", key: `net-host-${p.host}` },
         );
       }),
+      api.on("nettools.new-device", (msg) => {
+        const p = (msg.payload ?? {}) as { ip?: string; vendor?: string };
+        api.notify({
+          title: "Nouvel appareil sur votre réseau",
+          body: [p.vendor || "Fabricant inconnu", p.ip].filter(Boolean).join(" · "),
+          icon: "📡",
+          priority: "normal",
+          key: `net-new-${p.ip}`,
+          actions: [{ label: "Scanner", run: () => api.openIsland("nettools") }],
+        });
+      }),
       api.on("nettools.public-ip", (msg) => {
         const p = (msg.payload ?? {}) as { ip?: string; previous?: string };
         api.notify({ title: "Votre adresse IP publique a changé", body: `${p.previous ?? "?"} → ${p.ip ?? "?"}`, icon: "🌍", priority: "low", key: "net-public-ip" });
@@ -81,6 +94,7 @@ export const nettools: IslandModule = {
       const pingBtn = el("button", { class: "btn small", title: "Ping chaque seconde (Entrée)" }, "📶 Ping");
       const portBtn = el("button", { class: "btn small", title: "Le port répond-il ?" }, "🔌 Port");
       const dnsBtn = el("button", { class: "btn small", title: "Nom → adresses, ou adresse IPv4 → nom" }, "🔎 DNS");
+      const scanBtn = el("button", { class: "btn small", title: "Lister les appareils de votre réseau local" }, "📡 Scanner mon réseau");
       const chips = el(
         "div",
         { class: "net-chips" },
@@ -91,7 +105,7 @@ export const nettools: IslandModule = {
       const out = el("div", { class: "net-out" });
       // L'état surveillé en fond : Internet, VPN, IP publique (si activée).
       const status = el("div", { class: "net-status muted" });
-      root.append(el("div", { class: "net" }, el("div", { class: "net-head" }, host, port, pingBtn, portBtn, dnsBtn), chips, status, out));
+      root.append(el("div", { class: "net" }, el("div", { class: "net-head" }, host, port, pingBtn, portBtn, dnsBtn), chips, el("div", { class: "btn-row net-scan-row" }, scanBtn), status, out));
       api
         .invoke<{ internet: boolean | null; vpns: string[]; publicIp: string | null }>("status")
         .then((st) => {
@@ -192,7 +206,26 @@ export const nettools: IslandModule = {
         }
       };
 
+      // ── Scanner mon réseau ─────────────────────────────────────────────────
+      let scanning = false;
+      const scanNetwork = async () => {
+        if (scanning) return;
+        stopPing();
+        scanning = true;
+        scanBtn.setAttribute("disabled", "");
+        try {
+          await runScan(api, out, (ip) => {
+            host.value = ip;
+            startPing();
+          });
+        } finally {
+          scanning = false;
+          scanBtn.removeAttribute("disabled");
+        }
+      };
+
       pingBtn.addEventListener("click", api.handler(startPing));
+      scanBtn.addEventListener("click", api.handler(scanNetwork));
       portBtn.addEventListener("click", api.handler(testPort));
       dnsBtn.addEventListener("click", api.handler(lookup));
       host.addEventListener(
@@ -207,7 +240,7 @@ export const nettools: IslandModule = {
           if (e.key === "Enter") return testPort();
         }),
       );
-      out.append(el("p", { class: "muted" }, "Tapez une adresse, puis Ping, Port ou DNS."));
+      out.append(el("p", { class: "muted" }, "Tapez une adresse, puis Ping, Port ou DNS, ou scannez votre réseau."));
       return stopPing;
     },
   },

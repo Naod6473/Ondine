@@ -374,6 +374,34 @@ function agentsWeek() {
     prices: "claude-opus ; 15 ; 75 ; 1,5 ; 18,75\ngpt-5-codex ; 1,25 ; 10 ; 0,125 ; 0",
   };
 }
+/** La journée des agents (Bilan du jour en image) : douze tâches, un pic à 15 h, douze jours d'affilée. */
+function agentsDay() {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const key = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const now = new Date();
+  const today = key(now);
+  const activeDays = Array.from({ length: 7 }, (_, i) => key(new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)));
+  // Les jetons du jour, et des jours d'avant tous actifs (la série en cours).
+  const days = Array.from({ length: 12 }, (_, i) => {
+    const day = key(new Date(now.getFullYear(), now.getMonth(), now.getDate() - i));
+    const k = 1 + ((i * 7) % 5);
+    return { day, tool: "claude-code", model: "claude-opus-5-5", input: 1_800 * k, output: 9_500 * k, cacheRead: 410_000 * k, cacheWrite: 38_000 * k, messages: 24 * k };
+  });
+  days.push({ day: today, tool: "codex", model: "gpt-5-codex", input: 22_000, output: 6_000, cacheRead: 90_000, cacheWrite: 0, messages: 9 });
+  return {
+    today,
+    done: 12,
+    waitMinutes: 34,
+    projects: ["site-ondine", "Island"],
+    hours: [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 2, 4, 1, 1, 0, 0, 0, 0, 0, 0],
+    longestMinutes: 48,
+    activeDays,
+    days,
+    usage: true,
+    prices: agentsWeek().prices,
+  };
+}
+
 /**
  * Le calendrier de contributions GitHub : une année inventée mais plausible
  * (des semaines chargées, des week-ends calmes, une série en cours), tirée au
@@ -568,6 +596,27 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return { ip: "93.184.215.14", state: "open", ms: 21 };
     case "nettools.dns":
       return { reverse: false, addrs: ["93.184.215.14", "2606:2800:21f:cb07::1"], ms: 12 };
+    // Le scanner du réseau local : une maison inventée (adresses de documentation, MAC fictives).
+    case "nettools.scan":
+      return {
+        network: "192.168.1.0/24",
+        adapter: "Wi-Fi",
+        me: { ip: "192.168.1.23", name: "PC-SIMON" },
+        gateway: "192.168.1.254",
+        elapsedMs: 3200,
+        devices: [
+          { ip: "192.168.1.254", mac: "00:24:D4:00:00:01", vendor: "Freebox", randomMac: false, name: "box", ms: 2, gateway: true, kind: "box", new: false },
+          { ip: "192.168.1.12", mac: "00:11:32:00:00:02", vendor: "Synology", randomMac: false, name: "nas-maison", ms: 3, gateway: false, kind: "nas", new: false },
+          { ip: "192.168.1.31", mac: "00:80:77:00:00:03", vendor: "Brother", randomMac: false, name: null, ms: 5, gateway: false, kind: "printer", new: false },
+          { ip: "192.168.1.40", mac: "00:0E:58:00:00:04", vendor: "Sonos", randomMac: false, name: "salon", ms: 7, gateway: false, kind: "speaker", new: false },
+          { ip: "192.168.1.57", mac: "DA:A1:19:00:00:05", vendor: null, randomMac: true, name: null, ms: 41, gateway: false, kind: "phone", new: true },
+          { ip: "192.168.1.88", mac: "28:CD:C1:00:00:06", vendor: "Raspberry Pi", randomMac: false, name: "pi-hole", ms: 4, gateway: false, kind: "unknown", new: false },
+        ],
+      };
+    case "nettools.probe":
+      return args.ip === "192.168.1.88" ? { open: [22, 80], kind: "server" } : { open: [80, 443], kind: "web" };
+    case "nettools.open_web":
+      return null;
     case "remote.list":
       return {
         favorites: [
@@ -653,6 +702,11 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     // La semaine des agents pour le Bilan de la semaine (carte « Agents IA »).
     case "agents.weekly":
       return agentsWeek();
+    // Le Bilan du jour en image : une belle journée inventée (rien n'est copié ni écrit).
+    case "agents.day_card":
+      return agentsDay();
+    case "agents.day_card_export":
+      return args.then === "copy" ? { copied: true } : { name: `bilan-du-jour-${agentsDay().today}.png`, shelf: true };
     // Le calendrier GitHub : la première lecture vient « de GitHub », les suivantes de la mémoire.
     case "agents.github_calendar": {
       const cal = githubCalendar(githubAsked);

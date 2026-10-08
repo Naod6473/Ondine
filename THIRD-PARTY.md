@@ -10,6 +10,7 @@ travaux, dont les licences sont respectées :
 | [Tauri](https://tauri.app) et ses plugins | Le socle de l'appli | MIT ou Apache-2.0 |
 | [windows-rs](https://github.com/microsoft/windows-rs) | Les appels aux API de Windows | MIT ou Apache-2.0 |
 | Crates Rust (serde, serde_json, trash, arboard, image, chrono, zip, getrandom, notify, sysinfo, ureq, keyring, qrcode) | Voir `src-tauri/Cargo.toml` | MIT, Apache-2.0 ou les deux |
+| [oui-data](https://github.com/silverwind/oui-data) (base IEEE des préfixes MAC) | Fabricants des appareils du scanner réseau (`src-tauri/src/modules/oui-vendors.txt`, extrait) | BSD-2-Clause |
 | Vite, TypeScript | Outils de construction (pas livrés dans l'appli) | MIT, Apache-2.0 |
 
 ## Images

@@ -142,6 +142,26 @@ impl Store {
     }
 }
 
+impl Store {
+    /// Les tâches finies depuis `since_ms`, heure locale par heure locale
+    /// (0 h → 23 h) : le rythme de la journée du Bilan du jour.
+    /// `offset_min` : celui de `getTimezoneOffset()` (UTC − heure locale).
+    pub fn hours(&self, since_ms: u64, offset_min: i32) -> [u32; 24] {
+        let mut h = [0u32; 24];
+        for e in self.entries.iter().filter(|e| e.at >= since_ms && e.kind == "done") {
+            let local = e.at as i64 - offset_min as i64 * 60_000;
+            h[(local.rem_euclid(86_400_000) / 3_600_000) as usize] += 1;
+        }
+        h
+    }
+
+    /// La plus longue tâche finie depuis `since_ms`, en minutes (arrondie).
+    pub fn longest_minutes(&self, since_ms: u64) -> u64 {
+        let ms = self.entries.iter().filter(|e| e.at >= since_ms && e.kind == "done").map(|e| e.duration_ms).max().unwrap_or(0);
+        (ms + 30_000) / 60_000
+    }
+}
+
 /// Relit le fichier (vide s'il n'existe pas). Un fichier abîmé donne une
 /// erreur : l'appelant le met de côté.
 pub fn load(path: &Path) -> Result<Store, String> {
@@ -246,6 +266,25 @@ mod tests {
         assert_eq!(w.projects, vec!["site-ondine".to_string(), "Island".to_string()]);
         assert!(!w.is_empty());
         assert!(Store::default().week(0).is_empty());
+    }
+
+    #[test]
+    fn hours_and_longest_follow_the_local_clock() {
+        let day = 30 * DAY;
+        // Paris en été : UTC+2, getTimezoneOffset() = -120.
+        let offset = -120;
+        let mut s = Store::default();
+        s.push(entry(day + 7 * 3_600_000, "done", "Island", 12 * 60_000)); // 9 h locales
+        s.push(entry(day + 7 * 3_600_000 + 60_000, "done", "Island", 47 * 60_000 + 40_000)); // 9 h
+        s.push(entry(day + 12 * 3_600_000, "done", "site", 0)); // 14 h
+        s.push(entry(day + 12 * 3_600_000, "waiting", "site", 99 * 60_000)); // pas une tâche
+        s.push(entry(day - DAY, "done", "hier", 200 * 60_000)); // hors journée
+        let h = s.hours(day, offset);
+        assert_eq!(h[9], 2);
+        assert_eq!(h[14], 1);
+        assert_eq!(h.iter().sum::<u32>(), 3);
+        assert_eq!(s.longest_minutes(day), 48);
+        assert_eq!(Store::default().longest_minutes(0), 0);
     }
 
     #[test]
