@@ -21,6 +21,7 @@ mod controls;
 mod launcher;
 mod media;
 mod nettools;
+mod nettools_scan;
 mod rules;
 mod notes;
 mod remote;

@@ -596,6 +596,27 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return { ip: "93.184.215.14", state: "open", ms: 21 };
     case "nettools.dns":
       return { reverse: false, addrs: ["93.184.215.14", "2606:2800:21f:cb07::1"], ms: 12 };
+    // Le scanner du réseau local : une maison inventée (adresses de documentation, MAC fictives).
+    case "nettools.scan":
+      return {
+        network: "192.168.1.0/24",
+        adapter: "Wi-Fi",
+        me: { ip: "192.168.1.23", name: "PC-SIMON" },
+        gateway: "192.168.1.254",
+        elapsedMs: 3200,
+        devices: [
+          { ip: "192.168.1.254", mac: "00:24:D4:00:00:01", vendor: "Freebox", randomMac: false, name: "box", ms: 2, gateway: true, kind: "box", new: false },
+          { ip: "192.168.1.12", mac: "00:11:32:00:00:02", vendor: "Synology", randomMac: false, name: "nas-maison", ms: 3, gateway: false, kind: "nas", new: false },
+          { ip: "192.168.1.31", mac: "00:80:77:00:00:03", vendor: "Brother", randomMac: false, name: null, ms: 5, gateway: false, kind: "printer", new: false },
+          { ip: "192.168.1.40", mac: "00:0E:58:00:00:04", vendor: "Sonos", randomMac: false, name: "salon", ms: 7, gateway: false, kind: "speaker", new: false },
+          { ip: "192.168.1.57", mac: "DA:A1:19:00:00:05", vendor: null, randomMac: true, name: null, ms: 41, gateway: false, kind: "phone", new: true },
+          { ip: "192.168.1.88", mac: "28:CD:C1:00:00:06", vendor: "Raspberry Pi", randomMac: false, name: "pi-hole", ms: 4, gateway: false, kind: "unknown", new: false },
+        ],
+      };
+    case "nettools.probe":
+      return args.ip === "192.168.1.88" ? { open: [22, 80], kind: "server" } : { open: [80, 443], kind: "web" };
+    case "nettools.open_web":
+      return null;
     case "remote.list":
       return {
         favorites: [

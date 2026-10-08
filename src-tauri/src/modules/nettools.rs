@@ -18,7 +18,14 @@
 //     toutes les minutes) : prévient quand l'un ne répond plus, puis revient ;
 //   - SEULEMENT si on l'active : l'adresse IP publique, demandée à
 //     api.ipify.org toutes les 10 minutes (ce site voit alors ton adresse IP,
-//     comme n'importe quel site visité ; rien d'autre ne part).
+//     comme n'importe quel site visité ; rien d'autre ne part) ;
+//   - SEULEMENT si on l'active : un nouvel appareil sur le réseau local, vu
+//     dans la table ARP de Windows (lue toutes les minutes, sans rien envoyer).
+//
+// « Scanner mon réseau » (sur clic) : un ping vers chaque adresse du réseau
+// local (un /24 privé au plus), la table ARP, puis le nom de chaque appareil ;
+// « Identifier » essaie quelques ports courants d'un appareil pour deviner ce
+// que c'est. La logique sans Windows est dans nettools_scan.rs.
 
 use crate::sync::LockExt;
 use std::collections::{BTreeSet, HashMap};
@@ -30,6 +37,7 @@ use std::time::{Duration, Instant};
 use serde_json::{json, Value};
 use tauri::AppHandle;
 
+use super::nettools_scan as scan;
 use super::remote::check_host;
 use super::{ModuleContext, RustModule};
 use crate::platform;
@@ -49,6 +57,14 @@ const PUBLIC_IP_EVERY: Duration = Duration::from_secs(600);
 const PUBLIC_IP_URL: &str = "https://api.ipify.org";
 /** Au plus tant de serveurs surveillés. */
 const MAX_WATCHED: usize = 10;
+/// Le scanner : attente d'un ping, nombre de pings en même temps, attente des noms.
+const SCAN_PING_MS: u32 = 700;
+const SCAN_WORKERS: usize = 48;
+const SCAN_NAMES: Duration = Duration::from_millis(2500);
+/// « Identifier » : attente de chaque port.
+const PROBE_TIMEOUT: Duration = Duration::from_millis(800);
+/// Les nouveaux appareils : un coup d'œil à la table ARP toutes les minutes.
+const NEIGHBORS_EVERY: Duration = Duration::from_secs(60);
 
 /// Ce que le thread de fond sait du réseau.
 #[derive(Default)]
@@ -60,6 +76,8 @@ struct Watch {
     public_ip: Option<String>,
     /// Pour chaque serveur surveillé : nombre d'échecs d'affilée, et prévenu « en panne ».
     hosts: HashMap<String, (u32, bool)>,
+    /// Les appareils déjà vus sur le réseau local (relus du disque au premier besoin).
+    known: Option<scan::Known>,
 }
 
 #[derive(Default)]
@@ -84,6 +102,32 @@ impl RustModule for NetTools {
             let w = self.watch.locked();
             let vpns: Vec<&String> = w.vpns.iter().flatten().collect();
             return Ok(json!({ "internet": w.internet, "vpns": vpns, "publicIp": w.public_ip }));
+        }
+        // {} → le réseau local, scanné (voir `scan_network`).
+        if command == "scan" {
+            return scan_network(&self.watch);
+        }
+        // { ip } → { open: [ports], kind } : quelques ports courants, pour deviner l'appareil.
+        if command == "probe" {
+            let ip: Ipv4Addr = args.get("ip").and_then(Value::as_str).and_then(|s| s.trim().parse().ok()).ok_or("adresse IPv4 attendue")?;
+            if !scan::is_private(ip) {
+                return Err("seuls les appareils du réseau local (adresse privée) peuvent être identifiés".into());
+            }
+            let open = probe(ip);
+            let gateway = primary_net().and_then(|n| n.gateway) == Some(ip);
+            let mac = platform::netwatch::neighbors().into_iter().find(|(a, _)| *a == ip).map(|(_, m)| m);
+            let vendor = mac.as_ref().and_then(scan::vendor);
+            let random = mac.as_ref().is_some_and(scan::is_random_mac);
+            return Ok(json!({ "open": open, "kind": scan::guess_kind(vendor, random, gateway, &open) }));
+        }
+        // { ip, port } : ouvre la page web d'un appareil du réseau local (après « Identifier »).
+        if command == "open_web" {
+            let ip: Ipv4Addr = args.get("ip").and_then(Value::as_str).and_then(|s| s.trim().parse().ok()).ok_or("adresse IPv4 attendue")?;
+            let port = args.get("port").and_then(Value::as_u64).unwrap_or(80) as u16;
+            let url = scan::web_url(ip, port).ok_or("seule la page web d'un appareil du réseau local peut être ouverte")?;
+            platform::forget_previous_foreground();
+            platform::shell_open(&url).map_err(|e| format!("page non ouverte : {e}"))?;
+            return Ok(Value::Null);
         }
         let host = arg_host(&args)?;
         match command {
@@ -164,11 +208,182 @@ fn resolve(host: &str) -> Result<Vec<SocketAddr>, String> {
     Ok(addrs)
 }
 
+// ── Le scanner du réseau local ───────────────────────────────────────────────
+
+/// La carte du réseau local à scanner : une adresse privée, pas un VPN, avec
+/// une passerelle de préférence (le Wi-Fi ou l'Ethernet de tous les jours).
+fn primary_net() -> Option<platform::netwatch::LocalNet> {
+    let mut nets: Vec<_> = platform::netwatch::local_nets().into_iter().filter(|n| !n.vpn && scan::is_private(n.ip) && n.prefix <= 30).collect();
+    nets.sort_by_key(|n| n.gateway.is_none());
+    nets.into_iter().next()
+}
+
+/// `f` sur chaque élément, `workers` à la fois ; les résultats dans l'ordre.
+fn parallel<T: Sync, R: Send>(items: &[T], workers: usize, f: impl Fn(&T) -> R + Sync) -> Vec<R> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let next = AtomicUsize::new(0);
+    let results: Mutex<Vec<Option<R>>> = Mutex::new((0..items.len()).map(|_| None).collect());
+    std::thread::scope(|s| {
+        for _ in 0..workers.min(items.len()).max(1) {
+            s.spawn(|| loop {
+                let i = next.fetch_add(1, Ordering::Relaxed);
+                let Some(item) = items.get(i) else { break };
+                let r = f(item);
+                results.locked()[i] = Some(r);
+            });
+        }
+    });
+    results.into_inner().unwrap_or_else(|e| e.into_inner()).into_iter().flatten().collect()
+}
+
+/// Les noms DNS des adresses, cherchés en même temps ; ce qui n'est pas
+/// arrivé au bout de `SCAN_NAMES` reste sans nom (le scan ne traîne pas).
+fn names_of(ips: &[Ipv4Addr]) -> HashMap<Ipv4Addr, String> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    for ip in ips.iter().copied() {
+        let tx = tx.clone();
+        std::thread::spawn(move || {
+            if let Some(name) = platform::reverse_dns(ip) {
+                let _ = tx.send((ip, name));
+            }
+        });
+    }
+    drop(tx);
+    let deadline = Instant::now() + SCAN_NAMES;
+    let mut names = HashMap::new();
+    while let Some(left) = deadline.checked_duration_since(Instant::now()) {
+        match rx.recv_timeout(left) {
+            Ok((ip, name)) => {
+                // Un nom qui n'est que l'adresse recopiée n'apprend rien.
+                if name != ip.to_string() {
+                    names.insert(ip, name);
+                }
+            }
+            Err(_) => break,
+        }
+    }
+    names
+}
+
+/// « Scanner mon réseau » : un ping vers chaque adresse du réseau local, puis
+/// la table ARP (les appareils qui ne répondent pas au ping y sont aussi),
+/// puis les noms. Les appareils trouvés sont ajoutés à la liste des déjà vus.
+fn scan_network(watch: &Mutex<Watch>) -> Result<Value, String> {
+    let start = Instant::now();
+    let net = primary_net().ok_or("aucun réseau local trouvé (Wi-Fi ou Ethernet avec une adresse privée)")?;
+    let targets = scan::targets(net.ip, net.prefix);
+    let pings = parallel(&targets, SCAN_WORKERS, |ip| platform::ping(*ip, SCAN_PING_MS).ok().flatten().map(|(ms, _)| ms));
+    let mut found: HashMap<Ipv4Addr, Option<u32>> = targets.iter().zip(pings).filter_map(|(ip, ms)| ms.map(|ms| (*ip, Some(ms)))).collect();
+    // Les voisins du même réseau (les pings viennent de remplir la table).
+    let in_net = |ip: &Ipv4Addr| targets.contains(ip) || *ip == net.ip;
+    let macs: HashMap<Ipv4Addr, [u8; 6]> = platform::netwatch::neighbors().into_iter().filter(|(ip, mac)| in_net(ip) && scan::is_device_mac(mac)).collect();
+    for ip in macs.keys() {
+        found.entry(*ip).or_insert(None);
+    }
+    found.remove(&net.ip);
+    let mut ips: Vec<Ipv4Addr> = found.keys().copied().collect();
+    ips.sort();
+    let mut with_me = ips.clone();
+    with_me.push(net.ip);
+    let names = names_of(&with_me);
+
+    let now = now_ms();
+    let mut seen = Vec::new();
+    let mut devices: Vec<Value> = ips
+        .iter()
+        .map(|ip| {
+            let mac = macs.get(ip);
+            let vendor = mac.and_then(scan::vendor);
+            let random = mac.is_some_and(scan::is_random_mac);
+            let gateway = net.gateway == Some(*ip);
+            if let Some(m) = mac {
+                seen.push((scan::mac_text(m), ip.to_string(), vendor.unwrap_or("").to_string()));
+            }
+            json!({
+                "ip": ip.to_string(),
+                "mac": mac.map(scan::mac_text),
+                "vendor": vendor,
+                "randomMac": random,
+                "name": names.get(ip),
+                "ms": found.get(ip).copied().flatten(),
+                "gateway": gateway,
+                "kind": scan::guess_kind(vendor, random, gateway, &[]),
+            })
+        })
+        .collect();
+    // Les appareils jamais vus avant (pas la toute première fois).
+    let fresh = {
+        let mut w = watch.locked();
+        let known = w.known.get_or_insert_with(|| scan::load_known(&known_file()));
+        let fresh = known.note(&seen, now);
+        if let Err(e) = scan::save_known(&known_file(), known) {
+            log::warn(format!("réseau : liste des appareils non enregistrée ({e})"));
+        }
+        fresh
+    };
+    for d in devices.iter_mut() {
+        let new = d["mac"].as_str().is_some_and(|m| fresh.iter().any(|f| f == m));
+        d["new"] = json!(new);
+    }
+    log::info(format!("réseau : scan de {} adresses, {} appareils en {} ms", targets.len(), devices.len(), start.elapsed().as_millis()));
+    Ok(json!({
+        "network": scan::network_label(net.ip, net.prefix),
+        "adapter": net.name,
+        "me": { "ip": net.ip.to_string(), "name": names.get(&net.ip) },
+        "gateway": net.gateway.map(|g| g.to_string()),
+        "devices": devices,
+        "elapsedMs": start.elapsed().as_millis() as u64,
+    }))
+}
+
+/// « Identifier » : les ports courants ouverts sur un appareil (en même temps).
+fn probe(ip: Ipv4Addr) -> Vec<u16> {
+    let open = parallel(scan::PROBE_PORTS, scan::PROBE_PORTS.len(), |port| {
+        TcpStream::connect_timeout(&SocketAddr::new(IpAddr::V4(ip), *port), PROBE_TIMEOUT).is_ok().then_some(*port)
+    });
+    open.into_iter().flatten().collect()
+}
+
+fn known_file() -> std::path::PathBuf {
+    platform::config_dir().join("network-devices.json")
+}
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
+}
+
+/// Un nouvel appareil dans la table ARP (réglage `alertNewDevice`) : on
+/// regarde seulement ce que Windows sait déjà, sans rien envoyer.
+fn watch_neighbors(ctx: &ModuleContext, watch: &Mutex<Watch>) {
+    let Some(net) = primary_net() else { return };
+    let targets = scan::targets(net.ip, net.prefix);
+    let seen: Vec<(String, String, String)> = platform::netwatch::neighbors()
+        .into_iter()
+        .filter(|(ip, mac)| targets.contains(ip) && scan::is_device_mac(mac))
+        .map(|(ip, mac)| (scan::mac_text(&mac), ip.to_string(), scan::vendor(&mac).unwrap_or("").to_string()))
+        .collect();
+    if seen.is_empty() {
+        return;
+    }
+    let mut w = watch.locked();
+    let known = w.known.get_or_insert_with(|| scan::load_known(&known_file()));
+    let fresh = known.note(&seen, now_ms());
+    if fresh.is_empty() {
+        return;
+    }
+    let _ = scan::save_known(&known_file(), known);
+    drop(w);
+    for (mac, ip, vendor) in seen.iter().filter(|(m, _, _)| fresh.contains(m)) {
+        ctx.emit("nettools.new-device", json!({ "ip": ip, "mac": mac, "vendor": vendor }));
+    }
+}
+
 // ── La surveillance en fond ──────────────────────────────────────────────────
 
 fn watch_loop(app: AppHandle, watch: Arc<Mutex<Watch>>) {
     let mut last_hosts: Option<Instant> = None;
     let mut last_ip: Option<Instant> = None;
+    let mut last_neighbors: Option<Instant> = None;
     loop {
         // Toutes les 5 s (3 s en haute, 15 s en éco : services/perf.rs).
         std::thread::sleep(perf::every(Loop::NetWatch));
@@ -185,6 +400,10 @@ fn watch_loop(app: AppHandle, watch: Arc<Mutex<Watch>>) {
                     last_hosts = Some(Instant::now());
                     let list = settings.get("watchHosts").and_then(Value::as_str).unwrap_or("");
                     watch_hosts(ctx, &watch, &parse_targets(list));
+                }
+                if on("alertNewDevice", false) && last_neighbors.is_none_or(|t| t.elapsed() >= NEIGHBORS_EVERY) {
+                    last_neighbors = Some(Instant::now());
+                    watch_neighbors(ctx, &watch);
                 }
                 if !on("publicIp", false) {
                     watch.locked().public_ip = None;

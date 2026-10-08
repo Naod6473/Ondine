@@ -14,6 +14,16 @@
   site), to copy for LinkedIn or
   Teams or save as a PNG. Night or Day theme; projects and cost only if you
   tick them; nothing is sent.
+- Scanner mon réseau (onglet Réseau) : la liste des appareils de votre
+  réseau local, avec leur nom, leur adresse MAC et leur fabricant, la box en
+  premier ; « Identifier » devine ce qu'est un appareil (imprimante, NAS,
+  caméra…) et « Ouvrir la page » ouvre son interface web. Réglage facultatif
+  pour être prévenu quand un nouvel appareil arrive. Seul votre réseau local
+  est contacté. · Scan my network (Network tab): the devices on your local
+  network with their name, MAC address and maker, router first; "Identify"
+  guesses what a device is (printer, NAS, camera…) and "Open the page" opens
+  its web interface. Optional setting to be told when a new device joins.
+  Only your local network is contacted.
 - La mascotte réagit à plus de choses : des étoiles plein les yeux quand un
   fichier arrive sur l'étagère, les bras levés à la fin du minuteur, un clin
   d'œil quand le presse-papiers nettoie un lien, fière d'une capture, un

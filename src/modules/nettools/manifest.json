@@ -3,7 +3,7 @@
   "name": "Réseau",
   "tip": "Tapez un nom ou une adresse, puis Entrée pour un ping en continu.",
   "icon": "🌐",
-  "description": "Ping en continu, test d'un port (ouvert, fermé ou bloqué) et recherche DNS, sans ouvrir de console. Surveille aussi Internet, les VPN et une liste de serveurs, et prévient quand ça coupe. Seuls les paquets de test partent, vers les adresses que vous donnez. Si vous l'activez, l'adresse IP publique est demandée à api.ipify.org toutes les 10 minutes (ce site voit alors votre adresse IP).",
+  "description": "Ping en continu, test d'un port (ouvert, fermé ou bloqué) et recherche DNS, sans ouvrir de console. Surveille aussi Internet, les VPN et une liste de serveurs, et prévient quand ça coupe. Seuls les paquets de test partent, vers les adresses que vous donnez. Si vous l'activez, l'adresse IP publique est demandée à api.ipify.org toutes les 10 minutes (ce site voit alors votre adresse IP). « Scanner mon réseau » liste, quand vous le demandez, les appareils de votre réseau local (adresse IP, nom, adresse MAC, fabricant) : un ping vers chaque adresse du réseau (privé, 254 adresses au plus), puis la table ARP de Windows ; « Identifier » essaie quelques ports courants d'un appareil pour deviner ce que c'est. Les appareils vus sont gardés sur ce PC pour repérer les nouveaux.",
   "version": "0.1.0",
   "permissions": [
     "network"
@@ -61,6 +61,13 @@
         "type": "boolean",
         "label": "Surveiller mon adresse IP publique (contacte api.ipify.org toutes les 10 min)",
         "help": "Désactivé par défaut : c'est le seul réglage qui contacte un site extérieur. Ce site reçoit votre adresse IP, rien d'autre.",
+        "default": false
+      },
+      {
+        "key": "alertNewDevice",
+        "type": "boolean",
+        "label": "Prévenir quand un nouvel appareil apparaît sur mon réseau",
+        "help": "Désactivé par défaut. Regarde la table ARP de Windows toutes les minutes, sans rien envoyer : la première fois, Ondine apprend les appareils déjà là.",
         "default": false
       }
     ]
