@@ -1444,7 +1444,19 @@
 "Compter les jetons des agents": "Count the agents' tokens",
 "Lu dans les journaux de Claude Code et de Codex sur ce PC, seulement quand l'onglet Agents IA est ouvert : jetons par jour, par modèle et par projet (le nom du dossier). Rien n'est envoyé.": "Read from the Claude Code and Codex logs on this PC, only while the AI Agents tab is open: tokens per day, per model and per project (the folder name). Nothing is sent.",
 "Un compteur de jetons, lu dans les journaux locaux de Claude Code et de Codex, montre ce que les agents ont consommé par jour, par modèle et par projet.": "A token counter, read from the local Claude Code and Codex logs, shows what the agents used per day, per model and per project.",
-"compteur désactivé dans les réglages": "counter turned off in the settings"
+"compteur désactivé dans les réglages": "counter turned off in the settings",
+"Taille": "Size",
+"Petite": "Small",
+"Normale": "Normal",
+"Grande": "Large",
+"Dans l'île ouverte et dans l'aperçu ci-dessous ; la mini-île garde sa taille.": "In the open island and in the preview below; the mini island keeps its size.",
+"Calme : moins de gestes spontanés": "Calm: fewer spontaneous gestures",
+"Plus d'ennui, de goûter, de visites au bord de l'écran, de danse ni de réactions aux modules. Elle réagit toujours aux agents IA (attente, question), aux erreurs, aux réussites, aux alertes, et elle dort.": "No more boredom, snack, visits at the screen edge, dancing or reactions to modules. She still reacts to AI agents (waiting, question), errors, successes, alerts, and she sleeps.",
+"Roue de couleur": "Color wheel",
+"La teinte tourne autour du disque, la saturation va du centre au bord. Au clavier : flèches gauche et droite pour la teinte, haut et bas pour la saturation.": "Hue goes around the disc, saturation from the center to the edge. Keyboard: left and right arrows for the hue, up and down for the saturation.",
+"Teinte et saturation": "Hue and saturation",
+"Luminosité": "Lightness",
+"Couleur exacte": "Exact color"
 },
 "patterns": [
 [

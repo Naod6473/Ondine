@@ -879,6 +879,88 @@ code.cals-source {
   background: radial-gradient(circle at 50% 35%, #1b2133, #0a0c12);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset;
 }
+/* Réglages → Mascotte → Taille : l'aperçu suit (mascot.size). */
+.mascot-stage[data-size="small"] {
+  width: 120px;
+  height: 120px;
+}
+.mascot-stage[data-size="large"] {
+  width: 190px;
+  height: 190px;
+}
+
+/* ── La roue de couleur libre (color-wheel.ts) ───────────────────────────── */
+.hue-picker {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.hue-disc {
+  position: relative;
+  width: 168px;
+  height: 168px;
+  flex: none;
+}
+.hue-wheel {
+  display: block;
+  width: 168px;
+  height: 168px;
+  border-radius: 50%;
+  cursor: crosshair;
+  touch-action: none;
+  box-shadow: 0 0 0 1px var(--field-edge);
+}
+.hue-wheel:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.hue-marker {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+.hue-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 150px;
+}
+.hue-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.hue-light {
+  flex: 1;
+  min-width: 90px;
+  accent-color: var(--accent);
+}
+.hue-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  flex: none;
+  box-shadow: 0 0 0 1px var(--field-edge);
+}
+.hue-hex {
+  font: inherit;
+  font-size: 12px;
+  font-family: ui-monospace, Consolas, monospace;
+  width: 84px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--field-edge);
+  background: var(--field);
+  color: var(--fg);
+}
+
 .anim-grid {
   display: flex;
   flex-wrap: wrap;

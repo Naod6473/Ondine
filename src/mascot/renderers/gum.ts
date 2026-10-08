@@ -21,13 +21,15 @@
 
 import { frameLoop } from "../../core/perf";
 import { settingsStore } from "../../core/settings-store";
-import type { MascotRenderer, MascotReaction } from "../renderer";
+import { NO_EXTRAS, type MascotExtras, type MascotRenderer, type MascotReaction } from "../renderer";
 import type { AnimationSpec, MascotManifest, MascotState, Mood } from "../types";
 import { reducedMotion } from "../../island/tab-pill";
 import { ANIMS, faceOf, HAND_FOR, HANDS, JellyRim, skyShape, weatherLook, type DynamicShape, type HandPose } from "./gum-anims";
 import {
+  DEFAULT_CUSTOM,
   drawGum,
   FACE_BASE,
+  isHexColor,
   FACE_KEYS,
   gumRadius,
   palette,
@@ -48,9 +50,10 @@ const TAU = Math.PI * 2;
 
 /** Les réglages de la mascotte qui touchent au dessin (couleur, mains, accessoires). */
 function prefs() {
-  const m = settingsStore.current.mascot as Partial<{ color: string; hands: string; wearHead: string; wearEyes: string; wearNeck: string }>;
+  const m = settingsStore.current.mascot as Partial<{ color: string; customColor: string; hands: string; wearHead: string; wearEyes: string; wearNeck: string }>;
   return {
     color: (m.color ?? "auto") as GumTint | "auto",
+    customColor: isHexColor(m.customColor) ? m.customColor : DEFAULT_CUSTOM,
     hands: (m.hands ?? "always") as "always" | "gestures" | "never",
     wear: { head: (m.wearHead ?? "none") as HeadWear, eyes: (m.wearEyes ?? "none") as EyeWear, neck: (m.wearNeck ?? "none") as NeckWear },
   };
@@ -108,12 +111,16 @@ export class GumRenderer implements MascotRenderer {
   private weatherFx: WeatherFx = "none";
   private nextShapeCheck = 0;
   private prefs = prefs();
+  /** Ce qu'elle porte en plus (mascot-state.ts) : oreilles bouchées, pancarte, parapluie. */
+  private extras: MascotExtras = NO_EXTRAS;
+  /** Le parapluie apparaît et disparaît en fondu. */
+  private umbrella = 0;
 
   constructor(manifest?: MascotManifest) {
     const wanted = manifest?.gum?.shape ?? "goutte";
     this.dynamic = wanted === "ciel" || wanted === "meteo" ? wanted : null;
     this.shape = SHAPES[isShape(wanted) ? wanted : this.dynamic ? this.dynamicShape().shape : "goutte"];
-    this.colors = palette(this.baseTint());
+    this.colors = palette(this.baseTint(), 0, this.prefs.customColor);
     const rest = HANDS.rest(0, 0, this.shape);
     this.hands = rest.map((h) => ({ x: 0, y: 0, r: 0, s: 1, thumb: 0, vx: 0, vy: 0, vr: 0, ...h })) as typeof this.hands;
   }
@@ -161,6 +168,10 @@ export class GumRenderer implements MascotRenderer {
   setWeather(icon: string | null) {
     this.weatherIcon = icon;
     this.nextShapeCheck = 0;
+  }
+
+  setExtras(extras: MascotExtras) {
+    this.extras = extras;
   }
 
   /**
@@ -306,7 +317,7 @@ export class GumRenderer implements MascotRenderer {
       const want = this.dynamicShape();
       this.weatherFx = want.fx;
       this.morphTo(want.shape);
-      this.colors = this.colors ?? palette(this.baseTint());
+      this.colors = this.colors ?? palette(this.baseTint(), 0, this.prefs.customColor);
     }
     if (this.morph < 1) this.morph = calm ? 1 : Math.min(1, this.morph + dt / 1.3);
     if (this.morph >= 1) {
@@ -437,19 +448,29 @@ export class GumRenderer implements MascotRenderer {
 
     // 6. La couleur : fondu vers la teinte voulue (l'arc-en-ciel tourne tout seul).
     const tint = f.tint ?? this.baseTint();
-    let goal = palette(tint, this.clock);
+    const custom = this.prefs.customColor;
+    let goal = palette(tint, this.clock, custom);
     if (f.tintTo && (f.tintK ?? 0) > 0) {
-      const to = palette(f.tintTo, this.clock);
+      const to = palette(f.tintTo, this.clock, custom);
       const k = Math.min(1, f.tintK ?? 0);
       goal = goal.map((c, i) => c.map((v, ch) => v + (to[i][ch] - v) * k)) as Palette;
     }
     const kc = calm || tint === "rainbow" ? 1 : 1 - Math.exp(-dt * 9);
     this.colors = this.colors.map((c, i) => c.map((v, ch) => v + (goal[i][ch] - v) * kc)) as Palette;
 
-    // 7. Les mains : chacune suit sa pose avec son ressort.
-    const pose: HandPose = f.hands ?? HAND_FOR[name] ?? "rest";
+    // 7. Les mains : chacune suit sa pose avec son ressort. La pancarte « ? »
+    // d'une question ouverte passe devant la pose de toute animation en boucle
+    // (repos, danse, travail…) et des poses tranquilles ; un geste ponctuel
+    // (coucou, bravo) la pose le temps du geste. Les moufles sur les oreilles
+    // pendant la concentration ne remplacent que le repos.
+    let pose: HandPose = f.hands ?? HAND_FOR[name] ?? "rest";
+    const quietPose = pose === "rest" || pose === "think" || pose === "clasp";
+    if (this.extras.sign && (quietPose || (anim?.loop ?? true))) pose = "sign";
+    else if (this.extras.ears && pose === "rest") pose = "ears";
     const mode = this.prefs.hands;
-    const showHands = mode === "always" || (mode === "gestures" && pose !== "rest");
+    // La pancarte se montre même sans mains : c'est une information, pas un geste.
+    const showHands = mode === "always" || pose === "sign" || (mode === "gestures" && pose !== "rest");
+    this.umbrella += ((this.extras.umbrella ? 1 : 0) - this.umbrella) * (calm ? 1 : 1 - Math.exp(-dt * 6));
     this.handsAlpha += ((showHands ? 1 : 0) - this.handsAlpha) * (calm ? 1 : 1 - Math.exp(-dt * 10));
     const goals = HANDS[pose](t, p, S);
     for (let i = 0; i < 2; i++) {
@@ -489,9 +510,10 @@ export class GumRenderer implements MascotRenderer {
       tip: this.tip,
       hands: this.handsAlpha > 0.02 ? this.hands : null,
       handsAlpha: this.handsAlpha,
-      handItem: pose === "heart" ? "heart" : null,
+      handItem: pose === "heart" ? "heart" : pose === "sign" ? "sign" : null,
       leftFront: pose === "crossed",
       wear: this.prefs.wear,
+      umbrella: this.umbrella,
       extra: f.extra ?? "none",
       weather: this.dynamic === "meteo" ? this.weatherFx : "none",
       t: this.clock,

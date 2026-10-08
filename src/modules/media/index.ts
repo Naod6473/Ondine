@@ -11,7 +11,8 @@ import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
-import { pacedInterval, setText } from "../../core/perf";
+import { pacedInterval, perfMode, setText } from "../../core/perf";
+import { reducedMotion } from "../../island/tab-pill";
 
 /** Miroir de `NowPlaying` (src-tauri/src/platform/media.rs). */
 interface NowPlaying {
@@ -252,7 +253,8 @@ export const media: IslandModule = {
       const controls = el("span", { class: "media-minis" }, prev, play, next);
       const coverSlot = el("span", { class: "media-cover-slot" });
       const eqSlot = el("span", { class: "media-eq-slot" });
-      root.append(el("div", { class: "media-compact" }, coverSlot, box, controls, eqSlot));
+      const compact = el("div", { class: "media-compact" }, coverSlot, box, controls, eqSlot);
+      root.append(compact);
 
       // Le titre défile seulement s'il est trop long pour la pilule.
       const measure = () => {
@@ -296,6 +298,8 @@ export const media: IslandModule = {
         prev.disabled = !p.canPrevious;
         next.disabled = !p.canNext;
         controls.hidden = !api.settings().compactControls;
+        // La bulle du titre ondule tant que ça joue (island.css ; rien avec « Réduire les animations » ni en éco).
+        compact.classList.toggle("playing", on && !reducedMotion() && perfMode() !== "eco");
         eqSlot.replaceChildren(equalizer());
       };
       draw();

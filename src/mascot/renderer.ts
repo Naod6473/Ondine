@@ -27,12 +27,27 @@ export interface MascotRenderer {
   react?(kind: MascotReaction, data: { x?: number; y?: number; amount?: number }): void;
   /** Facultatif : la météo du moment (icône du module Météo), pour la mascotte « Météo ». */
   setWeather?(icon: string | null): void;
+  /**
+   * Facultatif : ce qu'elle porte en plus, tant que ça dure (mascot-state.ts) :
+   * les moufles sur les oreilles (concentration), la pancarte « ? » (une
+   * question d'agent ouverte), le parapluie (la Météo annonce la pluie).
+   */
+  setExtras?(extras: MascotExtras): void;
   /** Appelé à la fin d'une animation non bouclée. */
   onAnimationEnd(cb: (name: string) => void): void;
   destroy(): void;
 }
 
 export type MascotReaction = "poke" | "stretch" | "release" | "shake";
+
+/** Ce que la mascotte porte en plus de son animation (voir `setExtras`). */
+export interface MascotExtras {
+  ears: boolean;
+  sign: boolean;
+  umbrella: boolean;
+}
+
+export const NO_EXTRAS: MascotExtras = { ears: false, sign: false, umbrella: false };
 
 type RendererFactory = (manifest: MascotManifest, assets: Record<string, string>) => MascotRenderer;
 

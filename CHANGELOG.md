@@ -2,6 +2,35 @@
 
 ## Pas encore publié · Unreleased
 
+- La mascotte réagit à plus de choses : des étoiles plein les yeux quand un
+  fichier arrive sur l'étagère, les bras levés à la fin du minuteur, un clin
+  d'œil quand le presse-papiers nettoie un lien, fière d'une capture, un
+  coucou à la clé USB éjectée, inquiète quand le disque est presque plein ;
+  les moufles sur les oreilles pendant la concentration et un parapluie quand
+  la Météo annonce la pluie. · The mascot reacts to more: starry eyes when a
+  file lands on the shelf, arms up when the timer ends, a wink when the
+  clipboard cleans a link, proud of a capture, a wave to the ejected USB
+  stick, worried when the disk is nearly full; mittens on the ears during
+  focus and an umbrella when the Weather announces rain.
+- Mascottes en gomme : une couleur « Personnalisée », choisie sur une roue
+  teinte / saturation dans les réglages, avec l'aperçu qui suit. · Gummy
+  mascots: a "Custom" color, picked on a hue / saturation wheel in the
+  settings, with the preview following along.
+- Mini-île animée : la bulle du titre de musique ondule au rythme, et une
+  alerte qui arrive fait faire un petit saut à l'île. · Animated mini island:
+  the music title bubble bobs to the beat, and an incoming alert makes the
+  island hop.
+- Réglage « Taille » de la mascotte (Petite, Normale, Grande) pour l'île
+  ouverte et l'aperçu. · "Size" setting for the mascot (Small, Normal, Large)
+  in the open island and the preview.
+- Réglage « Calme : moins de gestes spontanés » : plus d'ennui, de goûter, de
+  visites au bord, de danse ni de réactions aux modules ; les états utiles
+  restent. · "Calm: fewer spontaneous gestures" setting: no more boredom,
+  snack, edge visits, dancing or module reactions; the useful states stay.
+- Quand un agent pose une question, la mascotte tient une pancarte « ? »
+  jusqu'à la réponse ; un clic sur elle ouvre l'onglet Agents IA. · When an
+  agent asks a question, the mascot holds a "?" sign until it is answered; a
+  click on her opens the AI Agents tab.
 - Onglet Agents IA : un compteur de jetons (entrée, sortie, cache) par jour,
   par modèle et par projet, lu dans les journaux de Claude Code et de Codex
   sur ce PC. · AI Agents tab: a token counter (input, output, cache) per day,

@@ -150,8 +150,13 @@ export class EasterEggs {
       recall,
       remember,
     });
-    // Le réglage change (Surprises : aucune…) : l'accessoire suit.
-    this.offs.push(settingsStore.onChange(() => this.reactions.refresh()));
+    // Le réglage change (Surprises : aucune, Calme…) : l'accessoire et la danse suivent.
+    this.offs.push(
+      settingsStore.onChange(() => {
+        this.reactions.refresh();
+        this.syncDance();
+      }),
+    );
   }
 
   destroy() {
@@ -357,6 +362,7 @@ export class EasterEggs {
       !this.mfx.splitting &&
       Date.now() - this.lastHover > SNACK_QUIET_MS &&
       this.allowed("secret") &&
+      !settingsStore.current.mascot.calm &&
       !!this.hooks.manifest() &&
       this.visuals();
     if (!ready || !content) return;
@@ -550,7 +556,8 @@ export class EasterEggs {
 
   /** De la musique et la mini-île : Ondine danse (et le 21 juin, c'est un trésor). */
   private syncDance() {
-    const want = this.music && this.hooks.state() === "compact" && !this.busy && !!this.hooks.manifest();
+    // Pas de danse en « Calme » (mascot.calm).
+    const want = this.music && this.hooks.state() === "compact" && !this.busy && !!this.hooks.manifest() && !settingsStore.current.mascot.calm;
     if (want === this.dancing) return;
     this.dancing = want;
     this.bus.emit("mascot.dance", { on: want }, "eggs");

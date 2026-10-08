@@ -31,7 +31,9 @@ export type HandPose =
   | "belly"
   | "mouth"
   | "flail"
-  | "rub";
+  | "rub"
+  | "ears"
+  | "sign";
 
 /**
  * Ce qu'une animation décrit pour un instant. Les premiers champs sont ceux de
@@ -343,6 +345,18 @@ export const HANDS: Record<HandPose, (t: number, p: number, S: GumShape) => [Par
   rub: (t, _p, S) => {
     const w = Math.sin(t * 9) * 0.07;
     return [{ x: S.faceX - 0.16 + w, y: S.eyeY + 0.74, r: 0.9 }, { x: S.faceX + 0.16 + w, y: S.eyeY + 0.74, r: -0.9 }];
+  },
+  // Les moufles sur les oreilles (la concentration des agents : « chut »).
+  ears: (t, _p, S) => {
+    // Un peu en dedans du contour : elles couvrent le bord de la tête.
+    const w = halfWidthAt(S.pts, S.eyeY) - 0.1;
+    const b = Math.sin(t * 2.4) * 0.015;
+    return [{ x: -w, y: S.eyeY + b, r: 0.7, s: 0.95 }, { x: w, y: S.eyeY - b, r: -0.7, s: 0.95 }];
+  },
+  // La pancarte « ? » : la main droite la tient levée à côté d'elle (gum-draw.ts la dessine).
+  sign: (t, _p, S) => {
+    const w = halfWidthAt(S.pts, 0.55);
+    return [{ x: -w - 0.04, y: 0.55, r: -0.35 }, { x: w + 0.3, y: 0.18 + Math.sin(t * 1.8) * 0.02, r: -0.15 + Math.sin(t * 1.8) * 0.04 }];
   },
 };
 

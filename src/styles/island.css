@@ -125,6 +125,25 @@ body {
   width: 72px;
   height: 72px;
 }
+/* Réglages → Mascotte → Taille (mascot.size) : l'île ouverte seulement, la mini-île garde ses 32 px. */
+.island[data-mascot-size="small"][data-state="expanded"] .mascot-slot {
+  width: 48px;
+  height: 48px;
+}
+.island[data-mascot-size="small"][data-state="drop"] .mascot-slot,
+.island[data-mascot-size="small"][data-state="alert"] .mascot-slot {
+  width: 56px;
+  height: 56px;
+}
+.island[data-mascot-size="large"][data-state="expanded"] .mascot-slot {
+  width: 88px;
+  height: 88px;
+}
+.island[data-mascot-size="large"][data-state="drop"] .mascot-slot,
+.island[data-mascot-size="large"][data-state="alert"] .mascot-slot {
+  width: 92px;
+  height: 92px;
+}
 .island.no-mascot .mascot-slot {
   display: none;
 }
@@ -740,6 +759,23 @@ body {
   border-radius: 1px;
   background: var(--accent);
 }
+/* En mini-île, la bulle du titre ondule au rythme tant que ça joue (classe
+   « playing », posée par le module quand les animations ne sont pas réduites). */
+.media-compact.playing .marquee {
+  animation: media-bob 1s ease-in-out infinite;
+}
+@keyframes media-bob {
+  0%,
+  100% {
+    translate: 0 0.6px;
+  }
+  50% {
+    translate: 0 -1.2px;
+  }
+}
+body[data-perf="eco"] .media-compact.playing .marquee {
+  animation: none;
+}
 .media-eq.on i {
   animation: media-eq 900ms ease-in-out infinite alternate;
 }
@@ -749,9 +785,10 @@ body {
 .media-eq.on i:nth-child(3) {
   animation-delay: -600ms;
 }
-/* Animations réduites : l'égaliseur reste immobile. */
+/* Animations réduites : l'égaliseur et le titre restent immobiles. */
 @media (prefers-reduced-motion: reduce) {
-  .media-eq.on i {
+  .media-eq.on i,
+  .media-compact.playing .marquee {
     animation: none;
   }
 }
