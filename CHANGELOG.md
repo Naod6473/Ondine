@@ -23,13 +23,19 @@
   sur elle ouvre une bulle à côté d'elle, avec les onglets choisis (par défaut
   Parler à Ondine, Lanceur et Agents IA), qui la suit quand on la déplace.
   Elle garde ses danses et ses fêtes, au-dessus des fenêtres ou derrière, et
-  rentre dans l'île si on l'y glisse (ou par un bouton). ·
+  rentre dans l'île si on l'y glisse (ou par un bouton). Elle s'assoit sur la
+  barre des tâches, accepte les fichiers qu'on lui lâche, montre une pastille
+  quand une notification arrive, s'ouvre avec Ctrl+Alt+B et se promène quand
+  on ne touche plus au PC. ·
   Ondine on the desktop: drag the mascot out of the island (or Settings →
   Mascot → "Ondine lives on the desktop") and put her wherever you like. A
   click on her opens a bubble next to her with the chosen tabs (Talk to
   Ondine, Launcher and AI agents by default), which follows her when she
   moves. She keeps her dances and celebrations, above windows or behind them,
-  and goes back into the island when dragged onto it (or with a button).
+  and goes back into the island when dragged onto it (or with a button). She
+  sits on the taskbar, accepts files dropped on her, shows a badge when a
+  notification arrives, opens with Ctrl+Alt+B and wanders around when you
+  leave the PC alone.
 
 ## 1.2.0 · 2026-10-08
 

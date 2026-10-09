@@ -604,6 +604,7 @@ pub fn run() {
             island::apply_hotkey(&handle, &loaded.island.hotkey);
             pet::apply(&handle);
             pet::spawn_hit_poll(handle.clone());
+            pet::spawn_wander(handle.clone());
             // À chaque démarrage : l'exe a pu changer de place (réinstallation).
             apply_autostart(loaded.general.autostart);
             // Le mode de performance (réglage + batterie), avant les boucles qui le lisent.

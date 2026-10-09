@@ -1628,11 +1628,17 @@
 "Aucun onglet choisi : Réglages → Mascotte → Ondine sur le bureau.": "No tab chosen: Settings → Mascot → Ondine on the desktop.",
 "Ondine sur le bureau": "Ondine on the desktop",
 "Ondine vit sur le bureau": "Ondine lives on the desktop",
-"Seulement la mascotte, posée où vous voulez : attrapez-la pour la déplacer, cliquez sur elle pour ouvrir sa bulle. Vous pouvez aussi la tirer hors de l'île.": "Just the mascot, placed wherever you like: grab her to move her, click her to open her bubble. You can also drag her out of the island.",
 "Au-dessus des fenêtres": "Above windows",
 "Sinon, elle reste derrière les fenêtres, sur le fond d'écran.": "Otherwise she stays behind windows, on the wallpaper.",
 "Les onglets cochés apparaissent dans sa bulle, dans l'ordre où vous les cochez. Les notifications restent dans l'île.": "The ticked tabs appear in her bubble, in the order you tick them. Notifications stay in the island.",
-"Faire rentrer Ondine dans l'île": "Bring Ondine back into the island"
+"Faire rentrer Ondine dans l'île": "Bring Ondine back into the island",
+"Seulement la mascotte, posée où vous voulez : attrapez-la pour la déplacer, cliquez sur elle pour ouvrir sa bulle. Vous pouvez aussi la tirer hors de l'île, et l'y glisser pour la faire rentrer.": "Just the mascot, placed wherever you like: grab her to move her, click her to open her bubble. You can also drag her out of the island, and drag her back onto it to bring her home.",
+"Raccourci pour ouvrir sa bulle": "Shortcut to open her bubble",
+"Elle se promène quand vous ne touchez plus au PC": "She wanders around when you leave the PC alone",
+"Quelques pas le long de son bord, de temps en temps. Jamais bulle ouverte, en présentation, ni en « Calme ».": "A few steps along her edge, now and then. Never with her bubble open, during a presentation, or in \"Calm\" mode.",
+"Voir dans l'île": "See in the island",
+"Aucune cible de dépôt active": "No active drop target",
+"Un fichier pour Ondine : qu'en faire ?": "A file for Ondine: what should she do with it?"
 },
 "patterns": [
 [
@@ -3046,6 +3052,10 @@
 [
 "^Pas de clé API (\\w+) : ajoutez-la dans Réglages → Identifiants\\.$",
 "No $1 API key: add it in Settings → Credentials."
+],
+[
+"^(\\d+)\\ fichiers\\ pour\\ Ondine\\ :\\ qu'en\\ faire\\ \\?$",
+"$1 files for Ondine: what should she do with them?"
 ]
 ]
 }

@@ -295,7 +295,17 @@ Dans l'onglet 🤖, ouvre « Brancher Claude Code, Codex ou Gemini ».
    l'île : le bouton 💧 la fait rentrer aussi.
 10. ☐ Lance un diaporama PowerPoint ou une vidéo en plein écran : elle
     disparaît, puis revient à la fin.
-11. ☐ Avec deux écrans (ou une mise à l'échelle 125 % / 150 %) : elle reste
+11. ☐ Lâche-la près de la barre des tâches, puis près d'un bord : elle s'y
+    colle.
+12. ☐ Glisse un fichier depuis l'Explorateur sur elle : elle s'étonne, la
+    bulle propose « Parler à Ondine », « Étagère »… ; choisis-en une.
+13. ☐ Ctrl+Alt+B ouvre et ferme sa bulle. Le menu de l'icône près de
+    l'horloge : « Ondine sur le bureau » la rentre, puis la ressort.
+14. ☐ Lance un minuteur de 10 s : une pastille ⏱️ apparaît sur elle ; un clic
+    ouvre l'île.
+15. ☐ Ne touche plus au PC 2 minutes : elle fait quelques pas ; bouge la
+    souris, elle s'arrête.
+16. ☐ Avec deux écrans (ou une mise à l'échelle 125 % / 150 %) : elle reste
     nette et à sa place ; écran débranché, elle revient en bas à droite.
 
 ---

@@ -754,7 +754,13 @@ s'inquiète et dort comme dans l'île ; les notifications, elles, restent dans
 l'île. « Au-dessus des fenêtres » (oui) ; sinon elle reste derrière, sur le
 fond d'écran. Pour la faire rentrer : glissez-la sur l'île, ou utilisez le
 bouton ⤒ de sa bulle ou le bouton 💧 de l'île ouverte. Elle s'éclipse pendant
-une présentation ou un plein écran, puis revient.
+une présentation ou un plein écran, puis revient. Lâchée près d'un bord de
+l'écran ou de la barre des tâches, elle s'y assoit. Un fichier lâché sur elle :
+sa bulle propose les cibles de l'île (Parler à Ondine, Étagère…). Une
+notification arrive dans l'île : une pastille apparaît sur elle (un clic ouvre
+l'île). **Ctrl+Alt+B** ouvre sa bulle (réglable), le menu de l'icône près de
+l'horloge la sort ou la rentre, et quand vous ne touchez plus au PC, elle fait
+quelques pas (réglage « Elle se promène… »).
 
 - **Taille** : Petite, Normale (par défaut) ou Grande, dans l'île ouverte et l'aperçu ; la mini-île garde sa taille.
 - **Style** (mascottes en gomme) : **Couleur** (celle de la forme, une teinte, Arc-en-ciel, ou **Personnalisée** : une roue teinte / saturation, une glissière de luminosité et la valeur à taper ; l'aperçu et l'île suivent le glisser), **Mains** (toujours, seulement pour les gestes, jamais), chapeau, lunettes et collier.

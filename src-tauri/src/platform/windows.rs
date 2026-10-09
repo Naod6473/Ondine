@@ -254,6 +254,13 @@ pub fn unblock_webview_drops(app: &AppHandle) {
     super::drop_target::install(app, hwnd, crate::island::WINDOW_LABEL);
 }
 
+/// Pareil pour une autre fenêtre de l'appli (Ondine sur le bureau, pet.rs).
+pub fn unblock_window_drops(app: &AppHandle, label: &'static str) {
+    let Some(win) = app.get_webview_window(label) else { return };
+    let Some(hwnd) = hwnd_of(&win) else { return };
+    super::drop_target::install(app, hwnd, label);
+}
+
 /// L'appli tourne-t-elle « en tant qu'administrateur » ?
 ///
 /// Important pour le glisser-déposer : Windows interdit de glisser un fichier

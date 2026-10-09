@@ -723,7 +723,13 @@ worries and sleeps just like in the island; notifications stay in the island.
 "Above windows" (on); otherwise she stays behind them, on the wallpaper. The
 To bring her home: drag her onto the island, or use the ⤒ button in her
 bubble or the 💧 button of the open island. She steps out during a
-presentation or full screen, then comes back.
+presentation or full screen, then comes back. Dropped near a screen edge or
+the taskbar, she sits on it. Drop a file on her: her bubble offers the
+island's targets (Talk to Ondine, Shelf…). A notification arrives in the
+island: a badge appears on her (a click opens the island). **Ctrl+Alt+B** opens
+her bubble (configurable), the menu of the icon near the clock moves her out or
+back in, and when you leave the PC alone she takes a few steps ("She wanders
+around…" setting).
 
 - **Size**: Small, Normal (default) or Large, in the open island and the preview; the mini island keeps its size.
 - **Style** (gummy mascots): **Color** (the shape's own, a tint, Rainbow, or **Custom**: a hue / saturation wheel, a lightness slider and the value to type; the preview and the island follow the drag), **Hands** (always, only for gestures, never), hat, glasses and necklace.

@@ -649,6 +649,23 @@ fenêtre s'agrandit autour d'elle. Le Rust annonce le côté par l'événement
   montre, la mascotte rapetisse) ; lâchée là, elle rentre.
 - **Présentation, plein écran** : la boucle de la souris regarde toutes les
   2 s `presentation_busy` et cache la fenêtre le temps qu'il faut.
+- **Aimant** : au lâcher, `snap` colle la case aux bords de la zone de travail
+  (`Monitor::work_area`, barre des tâches exclue) à moins de 36 px, la case
+  dépassant de 10 px pour que la gomme soit assise sur le bord.
+- **Promenade** (`spawn_wander`, `mascot.petWander`) : toutes les 20 s, si
+  personne n'a touché le PC depuis 90 s (pas bulle ouverte, ni présentation,
+  ni « Calme »), quelques pas horizontaux (`pet-walk` → dandinement en CSS) ;
+  le moindre geste l'arrête, la place est enregistrée.
+- **Raccourci** (`mascot.petHotkey`, Ctrl+Alt+B par défaut, `pet::HOTKEYS`) :
+  enregistré seulement quand elle est sur le bureau ; envoie `pet-hotkey`.
+- **Menu de l'icône** : la case « Ondine sur le bureau » (`tray::sync_pet`).
+- **Fichiers lâchés sur elle** : la cible de dépôt Windows de l'île
+  (`drop_target.rs`) est posée aussi sur sa fenêtre (`unblock_window_drops`).
+  La page publie `pet.files-dropped` ; l'île, qui a les cibles des modules,
+  répond `island.drop-choices` (libellés), la bulle les propose, et le choix
+  revient par `pet.drop-choice` : l'île fait le dépôt.
+- **Pastille** : `notify.shown` / `notify.alert` (publiés par l'île) mettent
+  une pastille sur elle ; un clic publie `island.open`.
 - **Clics traversants** : la page envoie les cases de la mascotte et de la
   bulle (`pet_set_hit`) ; `spawn_hit_poll` lit la souris (30 fois par seconde
   près d'elle, 8 loin) et bascule `set_ignore_cursor_events`, rien ne change

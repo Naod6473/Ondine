@@ -14,8 +14,13 @@
 //
 // La mascotte écoute le même bus que celle de l'île : humeurs, danse quand la
 // musique joue, fête quand une tâche finit, tout se joue aussi ici.
+//
+// Aussi : un fichier lâché sur elle propose les cibles de dépôt de l'île dans
+// sa bulle ; une notification de l'île met une pastille sur elle ; le
+// raccourci `mascot.petHotkey` ouvre sa bulle ; elle marche quand le Rust la
+// promène (« pet-walk »).
 
-import { Bridge, IS_TAURI, onTauriEvent, windowLabel, type PetLayout } from "../core/bridge";
+import { Bridge, IS_TAURI, onDragDrop, onTauriEvent, windowLabel, type DragDropEvent, type PetLayout } from "../core/bridge";
 import { Bus } from "../core/bus";
 import { hidesRealData } from "../core/demo";
 import { startI18n } from "../core/i18n";
@@ -56,6 +61,9 @@ class Pet {
   private readonly slot = el("div", { class: "pet-slot", title: "Ondine" });
   private readonly bubble = el("section", { class: "pet-bubble", "aria-label": "Ondine" });
   private readonly toast = el("div", { class: "pet-toast", role: "status" });
+  /** La pastille d'une notification de l'île (un clic ouvre l'île). */
+  private readonly badge = el("button", { class: "pet-badge", hidden: true, title: "Voir dans l'île", "aria-label": "Voir dans l'île" });
+  private badgeTimer = 0;
   private mascot: MascotController | null = null;
   private renderer: MascotRenderer | null = null;
   private mascotId = "";
@@ -71,7 +79,7 @@ class Pet {
     private readonly registry: ModuleRegistry,
     private readonly notifications: NotificationQueue,
   ) {
-    this.box.append(el("div", { class: "pet-mascot" }, this.slot), this.bubble);
+    this.box.append(el("div", { class: "pet-mascot" }, this.slot, this.badge), this.bubble);
     root.append(this.box);
     this.wireMascot();
 
@@ -94,6 +102,15 @@ class Pet {
     // Portée au-dessus de l'île : elle se fait petite, prête à rentrer.
     void onTauriEvent<boolean>("pet-over-island", (over) => this.box.classList.toggle("homing", over));
     void onTauriEvent<{ x: number; y: number }>("pet-cursor", (p) => this.pointer(p.x, p.y));
+    void onTauriEvent("pet-hotkey", () => void this.setOpen(!this.layout.open));
+    // Elle se promène (pet.rs) : dir = 1 vers la droite, -1 vers la gauche, 0 arrêt.
+    void onTauriEvent<number>("pet-walk", (dir) => {
+      this.box.classList.toggle("walking", dir !== 0);
+      if (dir) this.box.dataset.walk = dir > 0 ? "right" : "left";
+    });
+    void onDragDrop((e) => this.onDrag(e));
+    this.wireBadge();
+    this.wireDropChoices();
     if (!IS_TAURI) document.addEventListener("mousemove", (e) => this.pointer(e.clientX, e.clientY));
     window.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && this.layout.open) void this.setOpen(false);
@@ -177,6 +194,70 @@ class Pet {
       this.hoverTimer = window.setTimeout(() => this.bus.emit("mascot.hover-long", null, "pet"), LONG_HOVER_MS);
     });
     this.slot.addEventListener("pointerleave", () => window.clearTimeout(this.hoverTimer));
+  }
+
+  // ── Fichiers lâchés sur elle ───────────────────────────────────────────────
+
+  private onDrag(e: DragDropEvent) {
+    if (e.type === "enter" || e.type === "over") {
+      if (!this.box.classList.contains("drop-over")) this.mascot?.request("surprise");
+      this.box.classList.add("drop-over");
+    } else if (e.type === "leave") {
+      this.box.classList.remove("drop-over");
+      this.mascot?.request("idle");
+    } else if (e.type === "drop") {
+      this.box.classList.remove("drop-over");
+      const paths = e.paths ?? [];
+      // L'île connaît les cibles : elle répond par « island.drop-choices ».
+      if (paths.length) this.bus.emit("pet.files-dropped", { paths }, "pet");
+    }
+  }
+
+  private wireDropChoices() {
+    this.bus.on("island.drop-choices", (msg) => {
+      const p = msg.payload as { id: number; count: number; choices: { label: string; icon: string }[] } | null;
+      if (!p) return;
+      void this.setOpen(true);
+      const what = p.count > 1 ? `${p.count} fichiers` : "Un fichier";
+      this.notifications.push({
+        moduleId: "pet",
+        title: p.choices.length ? `${what} pour Ondine : qu'en faire ?` : "Aucune cible de dépôt active",
+        icon: "📥",
+        priority: "normal",
+        sticky: true,
+        key: "pet-drop",
+        actions: p.choices.map((c, index) => ({ label: `${c.icon} ${c.label}`, run: () => this.bus.emit("pet.drop-choice", { id: p.id, index }, "pet") })),
+      });
+    }, "pet");
+  }
+
+  // ── La pastille des notifications de l'île ─────────────────────────────────
+
+  private wireBadge() {
+    const show = (icon: string, alert: boolean) => {
+      // Bulle ouverte : on la voit déjà dans l'île ou dans la bulle.
+      this.badge.textContent = icon || "•";
+      this.badge.classList.toggle("alert", alert);
+      this.badge.hidden = false;
+      window.clearTimeout(this.badgeTimer);
+      if (!alert) this.badgeTimer = window.setTimeout(() => (this.badge.hidden = true), 10_000);
+      this.pushHit();
+    };
+    this.bus.on("notify.shown", (msg) => {
+      const n = msg.payload as { icon?: string } | null;
+      show(n?.icon ?? "", false);
+    }, "pet");
+    this.bus.on("notify.alert", () => show("!", true), "pet");
+    this.bus.on("notify.alert-end", () => {
+      this.badge.hidden = true;
+      this.pushHit();
+    }, "pet");
+    this.badge.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.badge.hidden = true;
+      this.pushHit();
+      this.bus.emit("island.open", {}, "pet");
+    });
   }
 
   private dragEnded() {
@@ -305,7 +386,7 @@ class Pet {
 
   /** Dit au Rust où sont la mascotte et la bulle : ailleurs, les clics passent au travers. */
   private pushHit() {
-    const rects = [this.slot.parentElement!, ...(this.layout.open ? [this.bubble] : [])].map((e) => {
+    const rects = [this.slot.parentElement!, ...(this.layout.open ? [this.bubble] : []), ...(this.badge.hidden ? [] : [this.badge])].map((e) => {
       const r = e.getBoundingClientRect();
       return { x: r.left, y: r.top, w: r.width, h: r.height };
     });

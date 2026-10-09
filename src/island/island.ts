@@ -256,6 +256,9 @@ export class Island {
     this.wireFocus();
     // On porte Ondine (sur le bureau) au-dessus de l'île : elle se montre pour l'accueillir.
     void onTauriEvent<boolean>("pet-over-island", (over) => (over ? this.fsm.pointerEnter() : this.fsm.pointerLeave()));
+    // Des fichiers lâchés sur Ondine (sur le bureau) : l'île connaît les cibles,
+    // elle les propose dans la bulle d'Ondine, puis fait le dépôt choisi.
+    this.wirePetDrops();
     // La bulle d'Ondine sur le bureau demande un onglet qu'elle n'a pas.
     this.bus.on("island.open", (msg) => this.registry.onOpenRequest((msg.payload as { tab?: string } | null)?.tab));
     // Bouton « Faire venir Ondine » des réglages.
@@ -848,6 +851,35 @@ export class Island {
         break;
       }
     }
+  }
+
+  /**
+   * Fichiers lâchés sur Ondine sur le bureau (src/pet/) : les cibles de dépôt
+   * des modules vivent ici. On envoie leurs noms à sa bulle (« island.drop-choices »),
+   * et le choix revient (« pet.drop-choice ») : le dépôt se fait comme sur l'île.
+   */
+  private wirePetDrops() {
+    let pending: { id: number; paths: string[]; targets: ReturnType<ModuleRegistry["dropTargets"]> } | null = null;
+    let nextId = 1;
+    this.bus.on("pet.files-dropped", (msg) => {
+      const paths = ((msg.payload as { paths?: unknown } | null)?.paths ?? []) as unknown[];
+      const clean = paths.filter((p): p is string => typeof p === "string").slice(0, 50);
+      if (!clean.length) return;
+      const targets = this.registry.dropTargets();
+      pending = { id: nextId++, paths: clean, targets };
+      this.bus.emit("island.drop-choices", { id: pending.id, count: clean.length, choices: targets.map((t) => ({ label: t.target.label, icon: t.target.icon })) });
+    });
+    this.bus.on("pet.drop-choice", (msg) => {
+      const p = msg.payload as { id?: number; index?: number } | null;
+      if (!pending || p?.id !== pending.id || typeof p.index !== "number") return;
+      const chosen = pending.targets[p.index];
+      const paths = pending.paths;
+      pending = null;
+      if (!chosen) return;
+      sounds.drop();
+      this.bus.emit("island.files-dropped", { count: paths.length, target: chosen.target.id });
+      void this.registry.drop(chosen.moduleId, chosen.target, paths);
+    });
   }
 
   /** La cible sous ce point. La position de Tauri est en pixels physiques (à vérifier sur ta machine). */

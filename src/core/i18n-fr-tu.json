@@ -189,8 +189,9 @@
 "Bonjour ! Je suis Ondine. Posez-moi une question sur votre PC, collez une erreur, ou montrez-moi un fichier : je vous aide.": "Bonjour ! Je suis Ondine. Pose-moi une question sur ton PC, colle une erreur, ou montre-moi un fichier : je t'aide.",
 "Un module qui envoie du contenu à une API d'IA (Claude, GPT, Gemini) le déclare et vous montre ce qui part.": "Un module qui envoie du contenu à une API d'IA (Claude, GPT, Gemini) le déclare et te montre ce qui part.",
 "le fichier joint a changé : vérifiez ce qui part, puis renvoyez": "le fichier joint a changé : vérifie ce qui part, puis renvoie",
-"Seulement la mascotte, posée où vous voulez : attrapez-la pour la déplacer, cliquez sur elle pour ouvrir sa bulle. Vous pouvez aussi la tirer hors de l'île.": "Seulement la mascotte, posée où tu veux : attrape-la pour la déplacer, clique sur elle pour ouvrir sa bulle. Tu peux aussi la tirer hors de l'île.",
-"Les onglets cochés apparaissent dans sa bulle, dans l'ordre où vous les cochez. Les notifications restent dans l'île.": "Les onglets cochés apparaissent dans sa bulle, dans l'ordre où tu les coches. Les notifications restent dans l'île."
+"Les onglets cochés apparaissent dans sa bulle, dans l'ordre où vous les cochez. Les notifications restent dans l'île.": "Les onglets cochés apparaissent dans sa bulle, dans l'ordre où tu les coches. Les notifications restent dans l'île.",
+"Seulement la mascotte, posée où vous voulez : attrapez-la pour la déplacer, cliquez sur elle pour ouvrir sa bulle. Vous pouvez aussi la tirer hors de l'île, et l'y glisser pour la faire rentrer.": "Seulement la mascotte, posée où tu veux : attrape-la pour la déplacer, clique sur elle pour ouvrir sa bulle. Tu peux aussi la tirer hors de l'île, et l'y glisser pour la faire rentrer.",
+"Elle se promène quand vous ne touchez plus au PC": "Elle se promène quand tu ne touches plus au PC"
 },
 "patterns": [
 [

@@ -164,6 +164,10 @@ pub struct MascotPrefs {
     pub pet_on_top: bool,
     /// Les onglets de sa bulle (ids de modules), dans l'ordre.
     pub pet_tabs: Vec<String>,
+    /// Le raccourci qui ouvre sa bulle ("" = aucun ; voir pet::HOTKEYS).
+    pub pet_hotkey: String,
+    /// Elle se promène un peu quand personne ne touche le PC.
+    pub pet_wander: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -227,7 +231,7 @@ impl Default for IslandPrefs {
 
 impl Default for MascotPrefs {
     fn default() -> Self {
-        Self { enabled: true, id: "goutte-gomme".into(), bored_after_secs: 60.0, sleep_after_secs: 180.0, peek: true, peek_every_mins: 5.0, surprises: "all".into(), treasures: Vec::new(), color: "auto".into(), hands: "always".into(), wear_head: "none".into(), wear_eyes: "none".into(), wear_neck: "none".into(), custom_color: "#4da3ff".into(), size: "normal".into(), calm: false, pet: false, pet_x: -1.0, pet_y: -1.0, pet_on_top: true, pet_tabs: vec!["askclaude".into(), "launcher".into(), "agents".into()] }
+        Self { enabled: true, id: "goutte-gomme".into(), bored_after_secs: 60.0, sleep_after_secs: 180.0, peek: true, peek_every_mins: 5.0, surprises: "all".into(), treasures: Vec::new(), color: "auto".into(), hands: "always".into(), wear_head: "none".into(), wear_eyes: "none".into(), wear_neck: "none".into(), custom_color: "#4da3ff".into(), size: "normal".into(), calm: false, pet: false, pet_x: -1.0, pet_y: -1.0, pet_on_top: true, pet_tabs: vec!["askclaude".into(), "launcher".into(), "agents".into()], pet_hotkey: "Ctrl+Alt+B".into(), pet_wander: true }
     }
 }
 
@@ -309,6 +313,9 @@ impl Settings {
         m.treasures.truncate(64);
         clean_ids(&mut self.island.tips_seen, 64);
         clean_ids(&mut self.mascot.pet_tabs, 16);
+        if !crate::pet::HOTKEYS.contains(&self.mascot.pet_hotkey.as_str()) {
+            self.mascot.pet_hotkey.clear();
+        }
         for v in [&mut self.mascot.pet_x, &mut self.mascot.pet_y] {
             if !v.is_finite() {
                 *v = -1.0;

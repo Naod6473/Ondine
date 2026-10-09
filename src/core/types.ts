@@ -101,6 +101,10 @@ export interface Settings {
     petOnTop: boolean;
     /** Les onglets de sa bulle (ids de modules), dans l'ordre. */
     petTabs: string[];
+    /** Le raccourci qui ouvre sa bulle ("" = aucun ; voir PET_HOTKEYS). */
+    petHotkey: string;
+    /** Elle se promène un peu quand personne ne touche le PC. */
+    petWander: boolean;
   };
   privacy: {
     excludedFolders: string[];
@@ -173,7 +177,7 @@ export function defaultSettings(): Settings {
       tips: true,
       tipsSeen: [],
     },
-    mascot: { enabled: true, id: "goutte-gomme", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5, surprises: "all", treasures: [], color: "auto", hands: "always", wearHead: "none", wearEyes: "none", wearNeck: "none", customColor: "#4da3ff", size: "normal", calm: false, pet: false, petX: -1, petY: -1, petOnTop: true, petTabs: ["askclaude", "launcher", "agents"] },
+    mascot: { enabled: true, id: "goutte-gomme", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5, surprises: "all", treasures: [], color: "auto", hands: "always", wearHead: "none", wearEyes: "none", wearNeck: "none", customColor: "#4da3ff", size: "normal", calm: false, pet: false, petX: -1, petY: -1, petOnTop: true, petTabs: ["askclaude", "launcher", "agents"], petHotkey: "Ctrl+Alt+B", petWander: true },
     privacy: { excludedFolders: [] },
     modules: {},
     profiles: { list: [], active: "", auto: false, base: {} },

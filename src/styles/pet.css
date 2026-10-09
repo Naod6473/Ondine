@@ -179,3 +179,65 @@
   scale: 0.7;
   opacity: 0.85;
 }
+
+/* Un fichier qu'on lui apporte : elle s'ouvre grand. */
+.pet.drop-over .pet-slot {
+  scale: 1.15;
+  filter: drop-shadow(0 0 10px var(--accent));
+}
+
+/* Elle se promène (pet.rs) : un petit dandinement, tournée vers où elle va. */
+.pet.walking .pet-slot {
+  animation: pet-waddle 520ms ease-in-out infinite alternate;
+}
+.pet.walking[data-walk="left"] .pet-slot {
+  animation-direction: alternate-reverse;
+}
+@keyframes pet-waddle {
+  from {
+    rotate: -6deg;
+    translate: 0 0;
+  }
+  to {
+    rotate: 6deg;
+    translate: 0 -3px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pet.walking .pet-slot {
+    animation: none;
+  }
+}
+
+/* La pastille d'une notification de l'île, en haut à droite d'elle. */
+.pet-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--island-bg);
+  color: var(--island-fg);
+  box-shadow: 0 0 0 1px var(--line), 0 2px 6px rgba(0, 0, 0, 0.35);
+  font-size: 13px;
+  line-height: 26px;
+  cursor: pointer;
+  animation: pet-badge-in 300ms var(--ease) both;
+}
+.pet-badge[hidden] {
+  display: none;
+}
+.pet-badge.alert {
+  background: #e5484d;
+  color: #fff;
+  font-weight: 700;
+}
+@keyframes pet-badge-in {
+  from {
+    scale: 0.4;
+    opacity: 0;
+  }
+}

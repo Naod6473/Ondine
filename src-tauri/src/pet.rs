@@ -19,6 +19,10 @@
 // mascotte et la bulle doivent prendre la souris. La page envoie leurs cases
 // (`pet_set_hit`) et un petit thread lit la souris pour basculer
 // set_ignore_cursor_events (voir island/mod.rs pour la technique).
+//
+// Aussi : un raccourci global ouvre sa bulle (`mascot.petHotkey`), lâchée près
+// d'un bord de l'écran ou de la barre des tâches elle s'y aimante, et quand
+// personne ne touche le PC elle se promène un peu (`mascot.petWander`).
 
 use crate::sync::LockExt;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -40,6 +44,17 @@ pub const BUBBLE_W: f64 = 420.0;
 pub const BUBBLE_H: f64 = 480.0;
 /// La marge laissée au bord de l'écran quand Ondine n'a jamais été posée.
 const DEFAULT_MARGIN: f64 = 48.0;
+/// Lâchée à moins de ça (px logiques) d'un bord de la zone de travail, elle s'y colle.
+const SNAP: f64 = 36.0;
+/// La gomme ne touche pas les bords de sa case : collée à un bord, la case le
+/// dépasse d'autant, pour qu'elle soit vraiment assise dessus.
+const BOX_INSET: f64 = 10.0;
+/// Les raccourcis proposés pour ouvrir sa bulle (les autres sont refusés).
+pub const HOTKEYS: &[&str] = &["Ctrl+Alt+B", "Ctrl+Shift+B", "Alt+Shift+B"];
+/// Le raccourci actuellement enregistré auprès de Windows ("" = aucun).
+static HOTKEY: Mutex<String> = Mutex::new(String::new());
+/// Personne n'a touché le PC depuis ça : elle peut aller se promener.
+const WANDER_IDLE_MS: u64 = 90_000;
 
 /// Où est la bulle par rapport à la mascotte (le front place les deux d'après ça).
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
@@ -68,12 +83,13 @@ pub struct HitRect {
 pub struct PetState {
     layout: Mutex<Layout>,
     dragging: AtomicBool,
+    walking: AtomicBool,
     hit: Mutex<Vec<HitRect>>,
 }
 
 impl Default for PetState {
     fn default() -> Self {
-        Self { layout: Mutex::new(CLOSED), dragging: AtomicBool::new(false), hit: Mutex::new(Vec::new()) }
+        Self { layout: Mutex::new(CLOSED), dragging: AtomicBool::new(false), walking: AtomicBool::new(false), hit: Mutex::new(Vec::new()) }
     }
 }
 
@@ -98,6 +114,7 @@ pub fn spawn_hit_poll(app: AppHandle) {
         let mut last = (f64::MIN, f64::MIN);
         // Présentation ou plein écran : elle s'éclipse, et revient après.
         let mut stepped_out = false;
+        let mut was_down = false;
         let mut last_busy_check = std::time::Instant::now() - Duration::from_secs(10);
         loop {
             let Some(win) = window(&app) else { return };
@@ -139,10 +156,17 @@ pub fn spawn_hit_poll(app: AppHandle) {
                 Some((on_hit(&state.hit.locked(), x, y), inside))
             })();
             let (on, close) = near.unwrap_or((true, true));
-            // Bouton enfoncé (déplacement d'Ondine, ou d'autre chose par-dessus
-            // elle) : rien ne change avant le lâcher.
-            let held = state.dragging.load(Ordering::Relaxed) || platform::left_button_state().0;
-            let want_ignore = if held { ignoring } else { !on };
+            // Un bouton qui s'enfonce près d'elle peut être le début d'un
+            // glisser de fichier : sa page doit être une cible de dépôt.
+            let down = platform::left_button_state().0;
+            if down && !was_down && close {
+                let handle = app.clone();
+                let _ = app.run_on_main_thread(move || platform::unblock_window_drops(&handle, WINDOW_LABEL));
+            }
+            was_down = down;
+            // Pendant son déplacement, la fenêtre garde la souris. Sinon, elle
+            // la prend sur elle, bouton enfoncé ou non (un fichier qu'on lui apporte).
+            let want_ignore = if state.dragging.load(Ordering::Relaxed) { ignoring } else { !on };
             if want_ignore != ignoring {
                 ignoring = want_ignore;
                 let _ = win.set_ignore_cursor_events(ignoring);
@@ -203,11 +227,41 @@ fn mascot_place(app: &AppHandle) -> (i32, i32) {
     }
     let Some(m) = app.primary_monitor().ok().flatten().or_else(|| monitors.into_iter().next()) else { return (100, 100) };
     let scale = m.scale_factor();
-    let p = m.position();
-    let s = m.size();
-    let edge = ((PET_BOX + DEFAULT_MARGIN) * scale) as i32;
-    // Un peu plus haut en bas : la barre des tâches.
-    (p.x + s.width as i32 - edge, p.y + s.height as i32 - edge - (48.0 * scale) as i32)
+    // La zone de travail : l'écran sans la barre des tâches. Assise dessus, à droite.
+    let wa = m.work_area();
+    let pb = (PET_BOX * scale) as i32;
+    let inset = (BOX_INSET * scale) as i32;
+    (wa.position.x + wa.size.width as i32 - pb - (DEFAULT_MARGIN * scale) as i32, wa.position.y + wa.size.height as i32 - pb + inset)
+}
+
+/// Les bords de la zone de travail (gauche, haut, droite, bas), en px physiques.
+fn work_edges(m: &Monitor) -> (i32, i32, i32, i32) {
+    let wa = m.work_area();
+    (wa.position.x, wa.position.y, wa.position.x + wa.size.width as i32, wa.position.y + wa.size.height as i32)
+}
+
+/// Lâchée près d'un bord de la zone de travail (barre des tâches comprise),
+/// elle s'y colle ; elle ne sort jamais tout à fait de l'écran.
+fn snap(edges: (i32, i32, i32, i32), scale: f64, mx: i32, my: i32) -> (i32, i32) {
+    let (l, t, r, b) = edges;
+    let pb = (PET_BOX * scale).round() as i32;
+    let inset = (BOX_INSET * scale).round() as i32;
+    let near = (SNAP * scale).round() as i32;
+    let x = if (mx + inset - l).abs() < near {
+        l - inset
+    } else if (r - (mx + pb - inset)).abs() < near {
+        r - pb + inset
+    } else {
+        mx.clamp(l - inset, r - pb + inset)
+    };
+    let y = if (my + inset - t).abs() < near {
+        t - inset
+    } else if (b - (my + pb - inset)).abs() < near {
+        b - pb + inset
+    } else {
+        my.clamp(t - inset, b - pb + inset)
+    };
+    (x, y)
 }
 
 /// Où ouvrir la bulle : du côté où elle tient dans l'écran de la mascotte.
@@ -252,10 +306,12 @@ fn current_mascot(app: &AppHandle, win: &WebviewWindow) -> Option<(i32, i32)> {
 /// à chaque enregistrement des réglages).
 pub fn apply(app: &AppHandle) {
     let Some(win) = window(app) else { return };
-    let (on, on_top) = app.try_state::<crate::Shared>().map(|s| {
+    let (on, on_top, hotkey) = app.try_state::<crate::Shared>().map(|s| {
         let s = s.settings.locked();
-        (s.mascot.enabled && s.mascot.pet, s.mascot.pet_on_top)
-    }).unwrap_or((false, true));
+        (s.mascot.enabled && s.mascot.pet, s.mascot.pet_on_top, s.mascot.pet_hotkey.clone())
+    }).unwrap_or((false, true, String::new()));
+    apply_hotkey(app, if on { &hotkey } else { "" });
+    crate::tray::sync_pet(app, on);
     if !on {
         if win.is_visible().unwrap_or(false) {
             let _ = win.hide();
@@ -272,6 +328,33 @@ pub fn apply(app: &AppHandle) {
         apply_layout(app, &win, CLOSED, mx, my);
         platform::make_non_activating(&win);
         let _ = win.show();
+    }
+}
+
+/// Enregistre le raccourci qui ouvre sa bulle (ou le retire si `wanted` est
+/// vide ou inconnu). Un appui envoie "pet-hotkey" à sa page.
+fn apply_hotkey(app: &AppHandle, wanted: &str) {
+    use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
+    let wanted = if HOTKEYS.contains(&wanted) { wanted } else { "" };
+    let mut current = HOTKEY.locked();
+    if *current == wanted {
+        return;
+    }
+    let gs = app.global_shortcut();
+    if !current.is_empty() {
+        let _ = gs.unregister(current.as_str());
+    }
+    *current = wanted.to_string();
+    if wanted.is_empty() {
+        return;
+    }
+    let result = gs.on_shortcut(wanted, |app, _shortcut, event| {
+        if event.state == ShortcutState::Released {
+            let _ = app.emit_to(WINDOW_LABEL, "pet-hotkey", ());
+        }
+    });
+    if let Err(e) = result {
+        log::warn(format!("Ondine sur le bureau : le raccourci {wanted} est refusé ({e}) ; choisissez-en un autre dans Réglages > Mascotte"));
     }
 }
 
@@ -350,15 +433,81 @@ fn over_island(app: &AppHandle, x: f64, y: f64) -> bool {
 
 fn drag_end(app: &AppHandle, win: &WebviewWindow) {
     let Some((mx, my)) = current_mascot(app, win) else { return };
-    save_place(app, mx, my);
-    // La bulle ouverte a peut-être maintenant plus de place de l'autre côté.
     let open = app.try_state::<PetState>().map(|s| s.layout.locked().open).unwrap_or(false);
-    if open {
-        if let Some(m) = monitor_at(app, mx as f64, my as f64) {
-            apply_layout(app, win, choose_layout(&m, mx, my), mx, my);
+    let (mx, my) = match monitor_at(app, mx as f64 + 4.0, my as f64 + 4.0) {
+        Some(m) => {
+            // Près d'un bord : elle s'y colle. La bulle ouverte a peut-être
+            // maintenant plus de place de l'autre côté.
+            let (sx, sy) = snap(work_edges(&m), m.scale_factor(), mx, my);
+            let l = if open { choose_layout(&m, sx, sy) } else { CLOSED };
+            apply_layout(app, win, l, sx, sy);
+            (sx, sy)
         }
-    }
+        None => (mx, my),
+    };
+    save_place(app, mx, my);
     let _ = win.emit("pet-drag-end", ());
+}
+
+/// Quand personne ne touche le PC, elle fait quelques pas le long de son bord
+/// (réglage `mascot.petWander`) : jamais bulle ouverte, en présentation, en
+/// « Calme », ni pendant un déplacement. Le moindre mouvement de souris l'arrête.
+pub fn spawn_wander(app: AppHandle) {
+    std::thread::spawn(move || loop {
+        std::thread::sleep(Duration::from_secs(20));
+        let wanted = app.try_state::<crate::Shared>().map(|s| {
+            let s = s.settings.locked();
+            s.mascot.enabled && s.mascot.pet && s.mascot.pet_wander && !s.mascot.calm
+        }).unwrap_or(false);
+        let (Some(win), Some(state)) = (window(&app), app.try_state::<PetState>()) else { continue };
+        if !wanted || !win.is_visible().unwrap_or(false) || state.layout.locked().open || state.dragging.load(Ordering::SeqCst) {
+            continue;
+        }
+        if platform::idle_ms() < WANDER_IDLE_MS || platform::presentation_busy() {
+            continue;
+        }
+        let Some((mx, my)) = current_mascot(&app, &win) else { continue };
+        let Some(m) = monitor_at(&app, mx as f64 + 4.0, my as f64 + 4.0) else { continue };
+        let scale = m.scale_factor();
+        let (l, _, r, _) = work_edges(&m);
+        // Un « hasard » suffisant : les nanosecondes de l'horloge.
+        let seed = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.subsec_nanos()).unwrap_or(0);
+        let steps = (80.0 + (seed % 160) as f64) * scale;
+        let pb = (PET_BOX * scale) as i32;
+        let mut dir = if seed.is_multiple_of(2) { 1 } else { -1 };
+        // Pas de place de ce côté : l'autre.
+        if (dir > 0 && mx + pb + steps as i32 > r) || (dir < 0 && mx - (steps as i32) < l) {
+            dir = -dir;
+        }
+        let target = (mx + dir * steps as i32).clamp(l, r - pb);
+        if target == mx {
+            continue;
+        }
+        state.walking.store(true, Ordering::SeqCst);
+        let _ = win.emit("pet-walk", dir);
+        // ~45 px logiques par seconde, à 30 images par seconde.
+        let per_frame = (1.5 * scale).max(1.0);
+        let mut x = mx as f64;
+        loop {
+            std::thread::sleep(Duration::from_millis(33));
+            if platform::idle_ms() < 1500 || state.dragging.load(Ordering::SeqCst) || state.layout.locked().open {
+                break;
+            }
+            x += dir as f64 * per_frame;
+            if (dir > 0 && x >= target as f64) || (dir < 0 && x <= target as f64) {
+                x = target as f64;
+            }
+            let _ = win.set_position(PhysicalPosition::new(x.round() as i32, my));
+            if x as i32 == target {
+                break;
+            }
+        }
+        state.walking.store(false, Ordering::SeqCst);
+        let _ = win.emit("pet-walk", 0);
+        if !state.dragging.load(Ordering::SeqCst) && !state.layout.locked().open {
+            save_place(&app, x.round() as i32, my);
+        }
+    });
 }
 
 /// Enregistre la place de la mascotte, sous le verrou des réglages (comme
@@ -384,6 +533,7 @@ pub fn place_on_desk(app: &AppHandle, at: Option<(f64, f64)>) {
     let new = {
         let mut s = shared.settings.locked();
         s.mascot.pet = true;
+        s.mascot.enabled = true;
         if let Some((x, y)) = at {
             let scale = monitor_at(app, x, y).map(|m| m.scale_factor()).unwrap_or(1.0);
             // Le point lâché devient le centre de la mascotte.
@@ -435,6 +585,22 @@ mod tests {
         // Bulle à gauche, vers le bas : la mascotte en haut à droite.
         assert_eq!(mascot_offset(Layout { open: true, right: false, up: false }), (BUBBLE_W, 0.0));
         assert_eq!(window_size(Layout { open: true, right: false, up: false }), (PET_BOX + BUBBLE_W, BUBBLE_H));
+    }
+
+    #[test]
+    fn she_sticks_to_the_nearby_edges() {
+        // Écran 1920 × 1080, barre des tâches de 48 px en bas, échelle 1.
+        let edges = (0, 0, 1920, 1032);
+        // Au milieu : elle reste où on l'a lâchée.
+        assert_eq!(snap(edges, 1.0, 800, 500), (800, 500));
+        // Près de la barre des tâches : assise dessus (la case dépasse de BOX_INSET).
+        assert_eq!(snap(edges, 1.0, 800, 1032 - 112 + 10 - 20), (800, 1032 - 112 + 10));
+        // Près du bord gauche.
+        assert_eq!(snap(edges, 1.0, 15, 500), (-10, 500));
+        // Lâchée en partie hors de l'écran : ramenée dedans.
+        assert_eq!(snap(edges, 1.0, 3000, 500).0, 1920 - 112 + 10);
+        // Échelle 1,5 : les distances suivent.
+        assert_eq!(snap(edges, 1.5, 30, 500), (-15, 500));
     }
 
     #[test]

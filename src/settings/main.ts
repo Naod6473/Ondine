@@ -100,7 +100,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "💧",
     label: "Mascotte",
     sub: "Qui vit dans l'île, et quand elle s'ennuie ou s'endort.",
-    keywords: ["Afficher la mascotte", "Mascotte", "Taille", "Calme", "Couleur", "Personnalisée", "S'ennuie après", "S'endort après", "Ondine vient pendre au bord", "Visites", "Tester les animations", "Ondine sur le bureau", "Ondine vit sur le bureau", "Au-dessus des fenêtres"],
+    keywords: ["Afficher la mascotte", "Mascotte", "Taille", "Calme", "Couleur", "Personnalisée", "S'ennuie après", "S'endort après", "Ondine vient pendre au bord", "Visites", "Tester les animations", "Ondine sur le bureau", "Ondine vit sur le bureau", "Au-dessus des fenêtres", "Raccourci pour ouvrir sa bulle", "Elle se promène quand vous ne touchez plus au PC"],
     render: mascot,
   },
   {
@@ -999,12 +999,25 @@ function petGroup(): HTMLElement {
             if (v) d.mascot.enabled = true;
           }),
         "Ondine vit sur le bureau"),
-        "Seulement la mascotte, posée où vous voulez : attrapez-la pour la déplacer, cliquez sur elle pour ouvrir sa bulle. Vous pouvez aussi la tirer hors de l'île.",
+        "Seulement la mascotte, posée où vous voulez : attrapez-la pour la déplacer, cliquez sur elle pour ouvrir sa bulle. Vous pouvez aussi la tirer hors de l'île, et l'y glisser pour la faire rentrer.",
       ),
       row(
         "Au-dessus des fenêtres",
         toggle(s.mascot.petOnTop ?? true, (v) => save((d) => (d.mascot.petOnTop = v)), "Au-dessus des fenêtres"),
         "Sinon, elle reste derrière les fenêtres, sur le fond d'écran.",
+      ),
+      row(
+        "Raccourci pour ouvrir sa bulle",
+        choice(
+          s.mascot.petHotkey || "off",
+          [["Ctrl+Alt+B", "Ctrl+Alt+B"], ["Ctrl+Shift+B", "Ctrl+Maj+B"], ["Alt+Shift+B", "Alt+Maj+B"], ["off", "Aucun"]],
+          (v) => save((d) => (d.mascot.petHotkey = v === "off" ? "" : v)),
+        ),
+      ),
+      row(
+        "Elle se promène quand vous ne touchez plus au PC",
+        toggle(s.mascot.petWander ?? true, (v) => save((d) => (d.mascot.petWander = v)), "Elle se promène quand vous ne touchez plus au PC"),
+        "Quelques pas le long de son bord, de temps en temps. Jamais bulle ouverte, en présentation, ni en « Calme ».",
       ),
       ...ordered.map((m) =>
         row(

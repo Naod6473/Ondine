@@ -23,6 +23,8 @@ static ENGLISH: AtomicBool = AtomicBool::new(false);
 type ShownProfiles = (Vec<(String, String)>, String);
 /// Les profils tels que le menu les montre (on ne reconstruit que s'ils changent).
 static SHOWN: Mutex<Option<ShownProfiles>> = Mutex::new(None);
+/// Ondine est sur le bureau : la case « Ondine sur le bureau » est cochée.
+static PET: AtomicBool = AtomicBool::new(false);
 
 fn tr(fr: &'static str, english: &'static str) -> &'static str {
     if ENGLISH.load(Ordering::Relaxed) {
@@ -35,13 +37,14 @@ fn tr(fr: &'static str, english: &'static str) -> &'static str {
 /// Le menu complet. `profiles` : (id, nom) de chaque profil, et l'id de l'actif.
 fn menu(app: &AppHandle, profiles: &[(String, String)], active: &str) -> tauri::Result<Menu<Wry>> {
     let open = MenuItem::with_id(app, "open", tr("Ouvrir l'île", "Open the island"), true, None::<&str>)?;
+    let pet = CheckMenuItem::with_id(app, "pet", tr("Ondine sur le bureau", "Ondine on the desktop"), true, PET.load(Ordering::Relaxed), None::<&str>)?;
     let settings = MenuItem::with_id(app, "settings", tr("Réglages…", "Settings…"), true, None::<&str>)?;
     let logs = MenuItem::with_id(app, "logs", tr("Ouvrir le dossier du journal", "Open the log folder"), true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", tr("Quitter", "Quit"), true, None::<&str>)?;
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
     if profiles.is_empty() {
-        return Menu::with_items(app, &[&open, &sep1, &settings, &logs, &sep2, &quit]);
+        return Menu::with_items(app, &[&open, &pet, &sep1, &settings, &logs, &sep2, &quit]);
     }
     // Sous-menu « Profil » : une case cochée devant le profil actif.
     let mut items = vec![CheckMenuItem::with_id(app, PROFILE_PREFIX, tr("Aucun", "None"), true, active.is_empty(), None::<&str>)?];
@@ -57,7 +60,7 @@ fn menu(app: &AppHandle, profiles: &[(String, String)], active: &str) -> tauri::
     };
     let sub = Submenu::with_items(app, title, true, &refs)?;
     let sep3 = PredefinedMenuItem::separator(app)?;
-    Menu::with_items(app, &[&open, &sep1, &sub, &sep3, &settings, &logs, &sep2, &quit])
+    Menu::with_items(app, &[&open, &pet, &sep1, &sub, &sep3, &settings, &logs, &sep2, &quit])
 }
 
 /// `en` : le menu en anglais (réglage « Langue », lu au démarrage).
@@ -72,6 +75,14 @@ pub fn build(app: &AppHandle, en: bool) -> tauri::Result<()> {
             "quit" => app.exit(0),
             "settings" => crate::show_settings_window(app),
             "logs" => crate::open_logs_folder(),
+            // Ondine sort de l'île ou y rentre (pet.rs) ; le menu suivra (sync_pet).
+            "pet" => {
+                if PET.load(Ordering::Relaxed) {
+                    crate::pet::back_to_island(app);
+                } else {
+                    crate::pet::place_on_desk(app, None);
+                }
+            }
             // Un profil : on le change hors du gestionnaire du menu (qui sera remplacé).
             id if id.starts_with(PROFILE_PREFIX) => {
                 let (app, id) = (app.clone(), id[PROFILE_PREFIX.len()..].to_string());
@@ -105,9 +116,23 @@ pub fn sync_profiles(app: &AppHandle, profiles: &Profiles) {
         }
         *shown = Some(wanted.clone());
     }
-    let Some(tray) = app.tray_by_id(TRAY_ID) else { return };
     let (list, active) = wanted;
-    match menu(app, &list, &active) {
+    rebuild(app, &list, &active);
+}
+
+/// La case « Ondine sur le bureau » suit le réglage.
+pub fn sync_pet(app: &AppHandle, on: bool) {
+    if PET.swap(on, Ordering::Relaxed) == on {
+        return;
+    }
+    let (list, active) = SHOWN.locked().clone().unwrap_or_default();
+    rebuild(app, &list, &active);
+}
+
+/// Remplace le menu et l'infobulle.
+fn rebuild(app: &AppHandle, list: &[(String, String)], active: &str) {
+    let Some(tray) = app.tray_by_id(TRAY_ID) else { return };
+    match menu(app, list, active) {
         Ok(m) => {
             let _ = tray.set_menu(Some(m));
         }
