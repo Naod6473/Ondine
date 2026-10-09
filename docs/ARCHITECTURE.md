@@ -1808,7 +1808,7 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
 - Réglages → Onglets → Astuces : `island.tips` (oui) et « Revoir les
   astuces » (vide `tipsSeen`).
 
-## Parler à Ondine (`src/modules/askclaude/`, `src-tauri/src/modules/askclaude.rs`, `askclaude_providers.rs`)
+## Parler à Ondine (`src/modules/askclaude/`, `src-tauri/src/modules/askclaude.rs`, `askclaude_providers.rs`, `askclaude_tools.rs`)
 
 Une conversation avec Ondine (l'ancien « Demander à Claude » : l'identifiant
 `askclaude` est gardé pour ne pas perdre les réglages ni la place de l'onglet).
@@ -1838,7 +1838,8 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
   destination, consigne complète, conversation), `prepare {text | path}`
   (fichier joint : texte ≤ 100 Ko en UTF-8 ou image ≤ 3,7 Mo, `check_path`,
   gardé côté Rust, aperçu complet renvoyé), `unprepare`, `send {message,
-  attachment?}` (refusé si le fichier joint a changé), `reset`, `copy`.
+  attachment?}` (refusé si le fichier joint a changé), `confirm {id, ok}`,
+  `open_card {numero, how}`, `reset`, `copy`.
 - Conversation : en mémoire dans le Rust (`Mutex<Vec<Turn>>`), jamais sur le
   disque. Chaque message renvoie les 20 derniers (en commençant par un
   message de la personne, comme l'exigent les API), fichiers joints compris.
@@ -1857,6 +1858,37 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
   grandisse. Sous le champ : ce qui part et vers où, et « Voir la
   personnalité ». Le premier mot d'Ondine est écrit en local (gratuit).
 - Dépôt sur l'île : « Parler à Ondine » prépare le fichier et ouvre l'onglet.
+- Outils de fichiers (`askclaude_tools.rs`, réglage `fileTools`, activé par
+  défaut) : quatre outils proposés à l'IA, décrits dans le format de chaque
+  API (`Request.tools`) :
+  - `chercher_fichiers {requete}` : par le NOM seulement, dans Documents,
+    Bureau, Téléchargements, Images, le dossier d'Ondine et les fichiers
+    récents ; parcours en largeur, sans liens, sans dossiers techniques
+    (`SKIP_DIRS`), ni exécutables, ni dossiers exclus, borné (40 000 entrées,
+    profondeur 7, 2,5 s) ; 12 résultats au plus, chacun repassé par
+    `check_path`. Fait sans demander : les noms partent (choix de Simon) ;
+  - `lire_fichier {numero}` : un fichier texte trouvé (`read_file` : 100 Ko,
+    UTF-8), après votre accord ;
+  - `creer_fichier {nom, contenu}` : un fichier texte (`CREATE_EXTENSIONS`,
+    200 Ko, nom vérifié par `check_new_file`) dans le dossier d'Ondine
+    (réglage `filesFolder`, sinon Documents\Ondine), après votre accord ;
+    `create_new` + `unique_dest` : jamais écrasé ;
+  - `proposer_fichier {numero}` : une carte Ouvrir / Montrer (`open_card`,
+    `launcher::open_checked` : un programme est montré, jamais lancé).
+  L'IA ne voit jamais un chemin : chaque fichier a un numéro (`Found`, gardé
+  pour la conversation, vidé par `reset`). Les fichiers d'un échange sont
+  notés à la fin de la réponse d'Ondine (`Turn.notes`) pour les tours
+  suivants.
+- Boucle des outils (`AskClaude::run`) : la réponse donne ses appels sous une
+  seule forme (`calls`) et telle que l'API veut la relire (`native` :
+  contenu Claude, sortie OpenAI avec la réflexion chiffrée, contenu Gemini
+  avec ses signatures) ; les résultats repartent par `tool_results` dans
+  `Request.extra`. Au plus 6 allers-retours (les appels du dernier sont
+  ignorés ; les outils restent décrits, une API le demande). Lire et
+  créer arrêtent l'échange : `send` renvoie `{pending: {id, kind, name,
+  bytes, preview, …}}`, gardé dans `Pending` ; `confirm {id, ok}` fait (ou
+  refuse) l'action et reprend. Une réponse finale porte aussi `activity`
+  (lignes « Recherche… », « A créé… ») et `cards`.
 
 ## Modes de performance (`src-tauri/src/services/perf.rs`, `src/core/perf.ts`)
 

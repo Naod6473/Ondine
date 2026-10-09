@@ -1574,7 +1574,7 @@
 "La capture a été annulée ou a échoué.": "The screenshot was cancelled or failed.",
 "Parler à Ondine": "Talk to Ondine",
 "Écrivez à Ondine comme à une amie : elle répond grâce à Claude, GPT ou Gemini, et vous montre tout fichier joint avant l'envoi.": "Write to Ondine like a friend: she answers using Claude, GPT or Gemini, and shows you any attached file before sending.",
-"Une conversation avec Ondine, qui répond grâce à l'API de Claude (par défaut), d'OpenAI (GPT) ou de Gemini, avec sa petite personnalité (modifiable) et ses humeurs, que la mascotte joue sur l'île. Vous pouvez joindre un fichier texte ou une capture, ou en déposer un sur l'île. ENVOIE DU CONTENU À L'API CHOISIE (api.anthropic.com, api.openai.com ou generativelanguage.googleapis.com) : à chaque message partent la personnalité, les derniers messages de la conversation (20 au plus, avec leurs fichiers joints) et le nouveau. Un fichier joint vous est montré en entier avant l'envoi, et rien ne part sans votre clic. Les dossiers exclus sont refusés. La conversation reste en mémoire, jamais sur le disque : elle s'efface quand vous la recommencez ou quittez l'île. Les clés API restent dans le Gestionnaire d'identifiants Windows. Les réponses sont seulement affichées : rien n'est exécuté.": "A conversation with Ondine, who answers using the API of Claude (default), OpenAI (GPT) or Gemini, with her own little personality (editable) and moods, which the mascot acts out on the island. You can attach a text file or a screenshot, or drop one on the island. SENDS CONTENT TO THE CHOSEN API (api.anthropic.com, api.openai.com or generativelanguage.googleapis.com): each message sends the personality, the latest messages of the conversation (20 at most, with their attached files) and the new one. An attached file is shown to you in full before sending, and nothing leaves without your click. Excluded folders are refused. The conversation stays in memory, never on disk: it is erased when you start over or quit the island. API keys stay in the Windows Credential Manager. Answers are only displayed: nothing is executed.",
+"Une conversation avec Ondine, qui répond grâce à l'API de Claude (par défaut), d'OpenAI (GPT) ou de Gemini, avec sa petite personnalité (modifiable) et ses humeurs, que la mascotte joue sur l'île. Vous pouvez joindre un fichier texte ou une capture, ou en déposer un sur l'île. Ondine peut aussi chercher vos fichiers par leur nom (les noms trouvés partent avec la conversation), en lire un ou en créer un dans son dossier (Documents\\Ondine par défaut) après votre accord, et vous proposer d'en ouvrir un. ENVOIE DU CONTENU À L'API CHOISIE (api.anthropic.com, api.openai.com ou generativelanguage.googleapis.com) : à chaque message partent la personnalité, les derniers messages de la conversation (20 au plus, avec leurs fichiers joints) et le nouveau. Un fichier joint vous est montré en entier avant l'envoi, et rien ne part sans votre clic. Les dossiers exclus sont refusés. La conversation reste en mémoire, jamais sur le disque : elle s'efface quand vous la recommencez ou quittez l'île. Les clés API restent dans le Gestionnaire d'identifiants Windows. Les réponses sont seulement affichées : rien n'est exécuté.": "A conversation with Ondine, who answers using the API of Claude (default), OpenAI (GPT) or Gemini, with her own little personality (editable) and moods, which the mascot acts out on the island. You can attach a text file or a screenshot, or drop one on the island. Ondine can also search your files by name (the names found go out with the conversation), read one or create one in her folder (Documents\\Ondine by default) once you agree, and offer to open one. SENDS CONTENT TO THE CHOSEN API (api.anthropic.com, api.openai.com or generativelanguage.googleapis.com): each message sends the personality, the latest messages of the conversation (20 at most, with their attached files) and the new one. An attached file is shown to you in full before sending, and nothing leaves without your click. Excluded folders are refused. The conversation stays in memory, never on disk: it is erased when you start over or quit the island. API keys stay in the Windows Credential Manager. Answers are only displayed: nothing is executed.",
 "Fournisseur d'IA": "AI provider",
 "Chacun a sa clé API, à ajouter dans Réglages → Identifiants. Vous pouvez en changer à tout moment, même au milieu d'une conversation.": "Each one has its own API key, to add in Settings → Credentials. You can switch at any time, even in the middle of a conversation.",
 "Claude (Anthropic)": "Claude (Anthropic)",
@@ -1661,7 +1661,21 @@
 "Dans l'île ouverte et dans l'aperçu de « Tester les animations » ; la mini-île garde sa taille.": "In the open island and in the “Test the animations” preview; the mini island keeps its size.",
 "Pour toutes les mascottes en gomme. Le podium change tout de suite.": "For all gummy mascots. The podium updates right away.",
 "Glissez une mascotte sur la première marche : c'est elle qui vit dans l'île. Double-clic ou Entrée marchent aussi. Vos mascottes à vous vont dans le dossier mascots/ du projet (relancez l'appli).": "Drag a mascot onto the top step: she is the one who lives in the island. Double-click or Enter work too. Your own mascots go in the project's mascots/ folder (restart the app).",
-"Podium des mascottes": "Mascot podium"
+"Podium des mascottes": "Mascot podium",
+"Son contenu :": "Its content:",
+"Le début du fichier :": "The start of the file:",
+"Le fichier entier :": "The whole file:",
+"Ondine peut chercher vos fichiers par leur nom : les noms trouvés partent aussi. Pour lire ou créer un fichier, elle vous demande d'abord.": "Ondine can search your files by name: the names found go out too. To read or create a file, she asks you first.",
+"Répondez d'abord à Ondine": "Answer Ondine first",
+"Autoriser": "Allow",
+"Refuser": "Refuse",
+"Créer": "Create",
+"Ondine peut chercher et créer des fichiers": "Ondine can search and create files",
+"Elle cherche par le nom dans Documents, Bureau, Téléchargements, Images et vos fichiers récents : les noms trouvés partent vers l'IA, jamais leur contenu. Pour lire un fichier ou en créer un, elle vous montre tout et attend votre accord. Les dossiers exclus sont toujours sautés.": "She searches by name in Documents, Desktop, Downloads, Pictures and your recent files: the names found go to the AI, never their content. To read or create a file, she shows you everything and waits for your OK. Excluded folders are always skipped.",
+"Dossier des fichiers créés par Ondine": "Folder for the files Ondine creates",
+"Un chemin complet, par exemple D:\\Mes fichiers\\Ondine. Vide = Documents\\Ondine. Un fichier existant n'est jamais écrasé.": "A full path, for example D:\\My files\\Ondine. Empty = Documents\\Ondine. An existing file is never overwritten.",
+"cette demande n'est plus valable : renvoyez votre message": "this request is no longer valid: send your message again",
+"ce fichier n'est plus dans la conversation": "this file is no longer in the conversation"
 },
 "patterns": [
 [
@@ -3083,6 +3097,38 @@
 [
 "^(.+) vit maintenant dans l'île$",
 "$1 now lives in the island"
+],
+[
+"^Recherche « (.+) » : aucun fichier$",
+"Search « $1 »: no file"
+],
+[
+"^Recherche « (.+) » : 1 fichier$",
+"Search « $1 »: 1 file"
+],
+[
+"^Recherche « (.+) » : (\\d+) fichiers$",
+"Search « $1 »: $2 files"
+],
+[
+"^A lu « (.+) »$",
+"Read « $1 »"
+],
+[
+"^A créé « (.+) »$",
+"Created « $1 »"
+],
+[
+"^Refusé : « (.+) »$",
+"Refused: « $1 »"
+],
+[
+"^Ondine voudrait lire « (.+) » \\((.+?)\\)\\. Son texte partira vers (.+?)\\.$",
+"Ondine would like to read « $1 » ($2). Its text will go to $3."
+],
+[
+"^Ondine voudrait créer « (.+) » \\((.+?)\\) dans (.+?)\\.$",
+"Ondine would like to create « $1 » ($2) in $3."
 ]
 ]
 }

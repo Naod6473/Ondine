@@ -681,6 +681,8 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         system: "Vous êtes Ondine, la mascotte d'une petite île posée en haut de l'écran Windows : une goutte de gomme toute ronde, joyeuse, curieuse et un brin espiègle.",
         history: [],
         maxTurns: 20,
+        fileTools: true,
+        filesFolder: "C:\\Users\\Camille\\Documents\\Ondine",
       };
     case "askclaude.prepare":
       return {
@@ -694,7 +696,21 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     case "askclaude.unprepare":
     case "askclaude.reset":
       return null;
+    // Un message qui parle de fichiers : Ondine cherche, puis demande l'accord pour en créer un.
     case "askclaude.send":
+      if (/fichier|facture|liste|crée/i.test(String(args.message ?? ""))) {
+        return {
+          pending: {
+            id: 7,
+            kind: "create",
+            name: "liste-de-courses.md",
+            bytes: 118,
+            preview: "# Liste de courses\n\n- Pommes\n- Farine\n- Œufs\n- Chocolat noir\n- Lait d'avoine\n\n_Préparée par Ondine 💧_",
+            folder: "C:\\Users\\Camille\\Documents\\Ondine",
+          },
+          activity: [{ kind: "search", query: "courses", count: 2 }],
+        };
+      }
       return {
         answer: "Avec plaisir ! Ondine, c'est votre bureau en un coup d'œil : la musique, l'agenda, les notes et vos agents IA tiennent dans une petite île, toujours à portée de souris. Une goutte d'organisation, en somme.",
         emotion: "happy",
@@ -702,6 +718,24 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         truncated: false,
         inputTokens: 64,
         outputTokens: 48,
+      };
+    case "askclaude.confirm":
+      return {
+        answer: args.ok
+          ? "C'est fait ! Votre liste est rangée dans votre dossier Ondine. J'ai aussi retrouvé celle du mois dernier, au cas où."
+          : "Pas de souci, je n'ai rien créé. Dites-moi si vous voulez la changer.",
+        emotion: args.ok ? "proud" : "calm",
+        model: "claude-sonnet-5-5",
+        truncated: false,
+        inputTokens: 412,
+        outputTokens: 96,
+        activity: [{ kind: "search", query: "courses", count: 2 }, args.ok ? { kind: "created", name: "liste-de-courses.md" } : { kind: "refused", name: "liste-de-courses.md" }],
+        cards: args.ok
+          ? [
+              { numero: 3, nom: "liste-de-courses.md", dossier: "~\\Documents\\Ondine", taille: "118 o", cree: true },
+              { numero: 1, nom: "Courses septembre.txt", dossier: "~\\Documents", taille: "1 Ko", cree: false },
+            ]
+          : [],
       };
     case "weather.current":
       // Une fausse météo : un bel après-midi à Lyon.
