@@ -621,7 +621,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     case "capture.copy_color":
       return { text: String(args.hex ?? "") };
 
-    // Agents IA et « Demander à Claude »
+    // Agents IA et « Parler à Ondine »
     case "agents.history":
       return agentsHistory();
     case "agents.projects":
@@ -672,7 +672,16 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return command === "hook_install" ? { backup: null, changed: true, removed: 0, otherPermission: false } : { backup: null, removed: 1 };
     }
     case "askclaude.status":
-      return { hasKey: true };
+      return {
+        provider: "claude",
+        hasKey: true,
+        model: "claude-sonnet-5-5",
+        destination: "api.anthropic.com",
+        keyLabel: "Clé API Anthropic",
+        system: "Vous êtes Ondine, la mascotte d'une petite île posée en haut de l'écran Windows : une goutte de gomme toute ronde, joyeuse, curieuse et un brin espiègle.",
+        history: [],
+        maxTurns: 20,
+      };
     case "askclaude.prepare":
       return {
         id: 1,
@@ -680,14 +689,16 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         text: "Ondine est une petite île en haut de l'écran : musique, agenda, notes et agents IA, sans changer de fenêtre.",
         image: null,
         bytes: 112,
-        model: "claude-sonnet",
-        instruction: "Rendez ce texte plus accrocheur",
-        destination: "API Claude (Anthropic)",
+        destination: "api.anthropic.com",
       };
+    case "askclaude.unprepare":
+    case "askclaude.reset":
+      return null;
     case "askclaude.send":
       return {
-        answer: "Ondine, c'est votre bureau en un coup d'œil : la musique, l'agenda, les notes et vos agents IA tiennent dans une petite île, toujours à portée de souris.",
-        model: "claude-sonnet",
+        answer: "Avec plaisir ! Ondine, c'est votre bureau en un coup d'œil : la musique, l'agenda, les notes et vos agents IA tiennent dans une petite île, toujours à portée de souris. Une goutte d'organisation, en somme.",
+        emotion: "happy",
+        model: "claude-sonnet-5-5",
         truncated: false,
         inputTokens: 64,
         outputTokens: 48,

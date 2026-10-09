@@ -44,7 +44,7 @@ const PERMISSION_LABELS: Record<string, string> = {
   files: "Fichiers",
   clipboard: "Presse-papiers",
   network: "Réseau",
-  "claude-api": "Envoie à l'API Claude",
+  "claude-api": "Envoie à une API d'IA",
   credentials: "Identifiants",
 };
 
@@ -134,7 +134,7 @@ const SECURITY_PAGES: Page[] = [
     group: "Sécurité",
     icon: "🛡️",
     label: "Confidentialité",
-    sub: "Aucune télémétrie. Ce qui part vers Claude est toujours montré avant.",
+    sub: "Aucune télémétrie. Ce qui part vers une IA est toujours montré avant.",
     keywords: ["Télémétrie", "Dossiers exclus", "Exclure un dossier"],
     render: privacy,
   },
@@ -144,7 +144,7 @@ const SECURITY_PAGES: Page[] = [
     icon: "🔑",
     label: "Identifiants",
     sub: "Rangés dans le Gestionnaire d'identifiants Windows.",
-    keywords: ["Clé API Anthropic", "Gestionnaire d'identifiants"],
+    keywords: ["Clé API Anthropic", "Clé API OpenAI", "Clé API Gemini", "Gestionnaire d'identifiants"],
     render: credentials,
   },
   {
@@ -1251,7 +1251,7 @@ function privacy(main: HTMLElement) {
       "Ce que l'île promet",
       [
         row("Télémétrie", chip("Aucune", "ok"), "Rien n'est envoyé sur Internet sans que vous le demandiez."),
-        row("Envoi à Claude", chip("Toujours montré avant", "ok"), "Un module qui envoie du contenu à l'API Claude le déclare et vous montre ce qui part."),
+        row("Envoi à une IA", chip("Toujours montré avant", "ok"), "Un module qui envoie du contenu à une API d'IA (Claude, GPT, Gemini) le déclare et vous montre ce qui part."),
       ],
     ),
     group("Dossiers exclus", [...rows, wideRow(null, el("div", { class: "inline" }, input, el("button", { class: "btn", onclick: () => void add() }, "Exclure")))], "Aucun module ne lira ni n'enverra un fichier situé dans ces dossiers."),
@@ -1261,7 +1261,12 @@ function privacy(main: HTMLElement) {
 
 function credentials(main: HTMLElement) {
   // Les liens iCal de l'Agenda (un par calendrier) se gèrent dans les réglages du module Agenda.
-  const keys = [{ key: "anthropic-api-key", label: "Clé API Anthropic", placeholder: "Coller la clé ici", help: "" }];
+  // Les clés des fournisseurs d'IA de « Parler à Ondine » (une seule suffit).
+  const keys = [
+    { key: "anthropic-api-key", label: "Clé API Anthropic", placeholder: "Coller la clé ici", help: "Pour parler à Ondine avec Claude (fournisseur par défaut)." },
+    { key: "openai-api-key", label: "Clé API OpenAI", placeholder: "Coller la clé ici", help: "Pour parler à Ondine avec GPT. Facultative." },
+    { key: "gemini-api-key", label: "Clé API Gemini", placeholder: "Coller la clé ici", help: "Pour parler à Ondine avec Gemini (Google AI Studio). Facultative." },
+  ];
   for (const k of keys) {
     const status = chip("…");
     const input = el("input", { type: "password", class: "text grow", placeholder: k.placeholder, autocomplete: "off", "aria-label": k.label }) as HTMLInputElement;

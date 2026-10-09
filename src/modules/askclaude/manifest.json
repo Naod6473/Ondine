@@ -1,19 +1,32 @@
 {
   "id": "askclaude",
-  "name": "Demander à Claude",
-  "tip": "Collez une erreur ou déposez un fichier sur l'île : vous verrez tout ce qui part avant l'envoi.",
+  "name": "Parler à Ondine",
+  "tip": "Écrivez à Ondine comme à une amie : elle répond grâce à Claude, GPT ou Gemini, et vous montre tout fichier joint avant l'envoi.",
   "icon": "💬",
-  "description": "Collez une erreur, ou déposez un fichier texte ou une capture sur l'île, posez votre question : Claude répond. ENVOIE DU CONTENU À L'API CLAUDE (api.anthropic.com) : avant chaque envoi, l'île vous montre exactement ce qui part, et rien ne part sans votre clic. Les dossiers exclus sont refusés. La clé API reste dans le Gestionnaire d'identifiants Windows. La réponse est seulement affichée : rien n'est exécuté.",
-  "version": "0.1.0",
+  "description": "Une conversation avec Ondine, qui répond grâce à l'API de Claude (par défaut), d'OpenAI (GPT) ou de Gemini, avec sa petite personnalité (modifiable) et ses humeurs, que la mascotte joue sur l'île. Vous pouvez joindre un fichier texte ou une capture, ou en déposer un sur l'île. ENVOIE DU CONTENU À L'API CHOISIE (api.anthropic.com, api.openai.com ou generativelanguage.googleapis.com) : à chaque message partent la personnalité, les derniers messages de la conversation (20 au plus, avec leurs fichiers joints) et le nouveau. Un fichier joint vous est montré en entier avant l'envoi, et rien ne part sans votre clic. Les dossiers exclus sont refusés. La conversation reste en mémoire, jamais sur le disque : elle s'efface quand vous la recommencez ou quittez l'île. Les clés API restent dans le Gestionnaire d'identifiants Windows. Les réponses sont seulement affichées : rien n'est exécuté.",
+  "version": "0.2.0",
   "permissions": ["claude-api", "credentials", "files", "clipboard"],
   "settings": {
     "version": 1,
     "fields": [
       {
+        "key": "provider",
+        "essential": true,
+        "type": "select",
+        "label": "Fournisseur d'IA",
+        "help": "Chacun a sa clé API, à ajouter dans Réglages → Identifiants. Vous pouvez en changer à tout moment, même au milieu d'une conversation.",
+        "default": "claude",
+        "options": [
+          { "value": "claude", "label": "Claude (Anthropic)" },
+          { "value": "openai", "label": "GPT (OpenAI)" },
+          { "value": "gemini", "label": "Gemini (Google)" }
+        ]
+      },
+      {
         "key": "model",
         "essential": true,
         "type": "select",
-        "label": "Modèle",
+        "label": "Modèle Claude",
         "default": "claude-sonnet-5-5",
         "options": [
           { "value": "claude-sonnet-5-5", "label": "Claude Sonnet 5.5 (équilibré)" },
@@ -21,12 +34,25 @@
           { "value": "claude-haiku-4-5-20251001", "label": "Claude Haiku 4.5 (rapide, économique)" }
         ]
       },
-      { "key": "maxTokens", "type": "number", "label": "Longueur maximale de la réponse (jetons)", "default": 1024, "min": 256, "max": 4096, "step": 256 },
-      { "key": "instruction", "essential": true, "type": "string", "label": "Consigne donnée à Claude", "help": "Vide = « Répondez en français, simplement et brièvement… ». Elle est montrée avant chaque envoi.", "default": "", "maxLength": 500 },
-      { "key": "showDrop", "type": "boolean", "label": "Proposer « Demander à Claude » quand on dépose un fichier sur l'île", "default": true }
+      { "key": "openaiModel", "type": "string", "label": "Modèle GPT", "help": "Le nom exact du modèle chez OpenAI. Vide = gpt-6-luna (économique).", "default": "", "maxLength": 64 },
+      { "key": "geminiModel", "type": "string", "label": "Modèle Gemini", "help": "Le nom exact du modèle chez Google. Vide = gemini-3.8-flash.", "default": "", "maxLength": 64 },
+      { "key": "maxTokens", "type": "number", "label": "Longueur maximale d'une réponse (jetons)", "default": 1024, "min": 256, "max": 4096, "step": 256 },
+      {
+        "key": "personality",
+        "essential": true,
+        "type": "string",
+        "multiline": true,
+        "label": "Personnalité d'Ondine",
+        "help": "Vide = une goutte joyeuse, curieuse et un brin espiègle, qui répond en quelques phrases. Écrivez la vôtre pour changer son caractère. Elle part avec chaque message, et vous pouvez la relire dans l'onglet.",
+        "default": "",
+        "maxLength": 1500
+      },
+      { "key": "autoGrow", "type": "boolean", "label": "L'île s'agrandit avec la conversation", "help": "Elle grandit à chaque message jusqu'à sa taille maximale, puis la conversation défile. Sinon, elle garde sa taille habituelle.", "default": true },
+      { "key": "emotions", "type": "boolean", "label": "Ondine montre ses humeurs sur l'île", "help": "Elle termine chaque réponse par une humeur (joie, rire, réflexion…) que la mascotte joue.", "default": true },
+      { "key": "showDrop", "type": "boolean", "label": "Proposer « Parler à Ondine » quand on dépose un fichier sur l'île", "default": true }
     ]
   },
   "views": ["expanded", "drop"],
-  "commands": ["status", "prepare", "send", "copy"],
-  "events": { "emits": [], "listens": [] }
+  "commands": ["status", "prepare", "unprepare", "send", "reset", "copy"],
+  "events": { "emits": ["mascot.emote"], "listens": [] }
 }

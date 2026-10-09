@@ -23,4 +23,5 @@ import { timerModule } from "./timer";
 import { weather } from "./weather";
 import { weekly } from "./weekly";
 
-export const ALL_MODULES: IslandModule[] = [shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, agents, askclaude, launcher, rules, media, controls, pauses, weather, weekly];
+// « Parler à Ondine » (askclaude) en premier : c'est le premier onglet au premier lancement.
+export const ALL_MODULES: IslandModule[] = [askclaude, shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, agents, launcher, rules, media, controls, pauses, weather, weekly];

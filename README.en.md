@@ -31,7 +31,7 @@ The intro video is on the website: [ondine.pissits.com](https://ondine.pissits.c
 - [What's new](#whats-new)
 - [Install](#install)
 - [Getting started](#getting-started)
-- [The tabs](#the-tabs): [Music](#music) · [Controls](#controls) · [Shelf](#shelf) · [Clipboard](#clipboard) · [Capture](#capture) · [Timer](#timer) · [Notes](#notes) · [Calendar](#calendar) · [Terminal](#terminal) · [System](#system) · [Remote access](#remote-access) · [Network](#network) · [AI agents](#ai-agents) · [Ask Claude](#ask-claude) · [Launcher](#launcher) · [Rules](#rules)
+- [The tabs](#the-tabs): [Music](#music) · [Controls](#controls) · [Shelf](#shelf) · [Clipboard](#clipboard) · [Capture](#capture) · [Timer](#timer) · [Notes](#notes) · [Calendar](#calendar) · [Terminal](#terminal) · [System](#system) · [Remote access](#remote-access) · [Network](#network) · [AI agents](#ai-agents) · [Talk to Ondine](#talk-to-ondine) · [Launcher](#launcher) · [Rules](#rules)
 - [No tab: Breaks, Weather and Weekly summary](#no-tab-breaks-weather-and-weekly-summary)
 - [Settings](#settings)
 - [Privacy and security](#privacy-and-security)
@@ -528,21 +528,33 @@ in `%APPDATA%\Ondine\agents-history.json` and restored at startup under
 - **Count the agents' tokens** (on); **Model price grid** ($ per million tokens): one line per model, "name prefix ; input ; output ; cache read ; cache written" (the default grid is indicative: check with the vendors); **Daily budget** ($, 0 = no alert): beyond it, a notification (once a day) and the mascot worries
 - **GitHub username** (empty = nothing is requested); **GitHub token** (optional)
 
-### Ask Claude
+### Talk to Ondine
 
-<img src="docs/captures/en/onglet-askclaude.webp" width="696" alt="Ask Claude tab: what is going to the API, before sending">
+<img src="docs/captures/en/onglet-askclaude.webp" width="696" alt="Talk to Ondine tab: the conversation with Ondine">
 
-Paste an error, or drop a text file or a screenshot on the island, ask your
-question: Claude answers. **This module sends content to the Claude API**
-(api.anthropic.com), with **your** API key (Settings → Credentials): before
-each request, the island shows you exactly what will be sent, and nothing
-leaves without your click. Files in excluded folders are refused. The answer is
-only displayed: nothing is executed.
+A conversation with Ondine, like in a messaging app: she answers using
+**Claude** (default), **GPT** or **Gemini**, with her own little personality,
+and ends each answer with a mood that the mascot acts out on the island. You can
+attach a text file or a screenshot (or drop one on the island): it is shown to
+you in full before it leaves. Enter sends, Shift+Enter adds a line.
 
-- **Model**: Claude Sonnet 5.5 (default), Claude Opus 5.5 or Claude Haiku 4.5
-- **Maximum answer length**: 1,024 tokens
-- **Instruction given to Claude**: empty = a built-in instruction asking for a simple, short answer **in French**; write your own (for example "Answer in English, simply and briefly.") to get answers in English. It is shown before every request.
-- **Offer "Ask Claude" when a file is dropped on the island** (on)
+**This module sends content to the chosen API** (api.anthropic.com,
+api.openai.com or generativelanguage.googleapis.com), with **your** API key
+(Settings → Credentials): each message sends the personality, the latest
+messages of the conversation (20 at most, with their attached files) and the
+new one. The tab says so under the field, and "Show the personality" shows the
+exact instruction. The conversation stays in memory, never on disk: it is
+erased by "Start over" or when you quit the island. Files in excluded folders
+are refused. Answers are only displayed: nothing is executed.
+
+- **AI provider**: Claude (default), GPT or Gemini. Each has its own key; you can switch at any time
+- **Claude model**: Claude Sonnet 5.5 (default), Claude Opus 5.5 or Claude Haiku 4.5
+- **GPT model** (empty = gpt-6-luna) and **Gemini model** (empty = gemini-3.8-flash): the exact model name at the vendor
+- **Maximum length of an answer**: 1,024 tokens
+- **Ondine's personality**: empty = a cheerful, curious, slightly mischievous droplet who answers in a few sentences, in the interface language; write your own to change her character
+- **The island grows with the conversation** (on): up to its maximum size, then the conversation scrolls
+- **Ondine shows her moods on the island** (on)
+- **Offer "Talk to Ondine" when a file is dropped on the island** (on)
 
 ### Launcher
 
@@ -715,7 +727,7 @@ hours, or by Wi-Fi network name.
 
 ### Privacy, Credentials, Backup
 
-- **Privacy**: a reminder of the island's promises (no telemetry, anything going to Claude is always shown first) and **excluded folders**: no module will read or send a file in these folders (not the launcher, the shelf, nor Ask Claude).
+- **Privacy**: a reminder of the island's promises (no telemetry, anything going to an AI is always shown first) and **excluded folders**: no module will read or send a file in these folders (not the launcher, the shelf, nor Talk to Ondine).
 - **Credentials**: the **Anthropic API key**, stored in the Windows Credential Manager. The island can only tell whether a key exists: it can never display it again.
 - **Backup**: **export** your settings to a .json file (`%APPDATA%\Ondine\exports`) or **import** them. Keys are never part of the export.
 
@@ -727,11 +739,11 @@ hours, or by Wi-Fi network name.
 
 - **No telemetry**: no analytics, no crash reports, no account.
 - The only automatic connection: once a day, Ondine asks GitHub whether a new
-  version exists (can be turned off). Everything else (Ask Claude, iCal links,
+  version exists (can be turned off). Everything else (Talk to Ondine, iCal links,
   weather, public IP, ping…) only happens when you enable or request it. The
   full list: [PRIVACY.md](PRIVACY.md#english).
-- Ask Claude sends the text you chose to Anthropic's API, with **your** key,
-  only after showing you what will be sent.
+- Talk to Ondine sends your messages (and the files you attach, after showing
+  them to you) to the chosen API (Claude, GPT or Gemini), with **your** key.
 - "To the phone" (Shelf) and "Wake up" (Remote access) stay on the local
   network, only when you click: nothing goes over the Internet.
 - The GitHub calendar (AI agents) only fetches when you enter your username:
