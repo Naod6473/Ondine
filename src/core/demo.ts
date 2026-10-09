@@ -682,6 +682,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         history: [],
         maxTurns: 20,
         fileTools: true,
+        pcTools: true,
         filesFolder: "C:\\Users\\Camille\\Documents\\Ondine",
       };
     case "askclaude.prepare":
@@ -696,8 +697,15 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     case "askclaude.unprepare":
     case "askclaude.reset":
       return null;
-    // Un message qui parle de fichiers : Ondine cherche, puis demande l'accord pour en créer un.
+    // Un message qui parle de volume ou d'application : Ondine règle, puis demande avant d'ouvrir.
     case "askclaude.send":
+      if (/volume|musique|ouvre|calculatrice|lumi/i.test(String(args.message ?? ""))) {
+        return {
+          pending: { id: 8, kind: "action", what: "app", value: "Calculatrice" },
+          activity: [{ kind: "did", what: "volume", value: "30" }],
+        };
+      }
+      // Un message qui parle de fichiers : Ondine cherche, puis demande l'accord pour en créer un.
       if (/fichier|facture|liste|crée/i.test(String(args.message ?? ""))) {
         return {
           pending: {
@@ -720,6 +728,18 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         outputTokens: 48,
       };
     case "askclaude.confirm":
+      if (args.id === 8) {
+        return {
+          answer: args.ok ? "Voilà : le son est à 30 % et la calculatrice est ouverte. Bons calculs !" : "D'accord, je n'ouvre rien. Le son reste à 30 %.",
+          emotion: args.ok ? "happy" : "calm",
+          model: "claude-sonnet-5-5",
+          truncated: false,
+          inputTokens: 380,
+          outputTokens: 40,
+          activity: [{ kind: "did", what: "volume", value: "30" }, args.ok ? { kind: "did", what: "app", value: "Calculatrice" } : { kind: "refused-act", what: "app", value: "Calculatrice" }],
+          cards: [],
+        };
+      }
       return {
         answer: args.ok
           ? "C'est fait ! Votre liste est rangée dans votre dossier Ondine. J'ai aussi retrouvé celle du mois dernier, au cas où."

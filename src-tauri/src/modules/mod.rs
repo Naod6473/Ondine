@@ -19,6 +19,8 @@ mod askclaude;
 mod askclaude_providers;
 // Ses outils de fichiers : chercher, lire, créer, proposer.
 mod askclaude_tools;
+// Ses outils pour le PC et les onglets : regarder, régler, ouvrir.
+mod askclaude_pc;
 mod capture;
 mod clipboard;
 mod controls;
@@ -281,6 +283,12 @@ fn check_manifest(text: &str) -> Result<Manifest, String> {
 
 fn enabled(app: &AppHandle, id: &str) -> bool {
     app.state::<crate::Shared>().settings.locked().module_enabled(id)
+}
+
+/// Le module est-il activé dans les réglages ? Vaut aussi pour un module
+/// sans Rust (Minuteur, Pauses…), que `is_active` ne connaît pas.
+pub fn module_enabled(app: &AppHandle, id: &str) -> bool {
+    enabled(app, id)
 }
 
 /// Le module est-il activé ET pas mis à l'écart ? Pour les threads de fond.

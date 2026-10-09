@@ -24,6 +24,17 @@
   never overwritten) in her folder, Documents\Ondine by default, and offer to
   open one. The names found go out with the conversation; to read or create,
   she shows you everything and waits for your OK. Module settings → Files.
+- Parler à Ondine agit sur le PC quand vous le lui demandez : elle regarde
+  l'état du PC, l'agenda, la météo, la musique et vos notes ; elle règle le
+  volume, la luminosité, le mode sombre, la musique, lance un minuteur ou
+  ajoute une note ; elle ouvre une application ou un site, pose un fichier
+  sur l'Étagère, allume ou coupe le Wi-Fi et le Bluetooth après votre
+  accord. Elle ne peut rien supprimer ni lancer de commande. · Talk to
+  Ondine acts on the PC when you ask her: she looks at the PC status,
+  calendar, weather, music and your notes; she sets the volume, brightness,
+  dark mode, music, starts a timer or adds a note; she opens an app or a
+  website, puts a file on the Shelf, turns Wi-Fi and Bluetooth on or off
+  once you agree. She cannot delete anything or run commands.
 - « Parler à Ondine » est le premier onglet au premier lancement, et l'île
   s'agrandit avec la conversation (réglage « L'île s'agrandit avec la
   conversation »). · "Talk to Ondine" is the first tab on first launch, and

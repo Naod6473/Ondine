@@ -39,15 +39,19 @@ interface Status {
   history: { user: boolean; text: string; attachment: string | null }[];
   maxTurns: number;
   fileTools: boolean;
+  pcTools: boolean;
   filesFolder: string | null;
 }
 
 /** Ce qu'Ondine a fait avec ses outils (une ligne par action). */
 interface Activity {
-  kind: "search" | "read" | "created" | "refused";
+  kind: "search" | "read" | "created" | "refused" | "did" | "refused-act";
   query?: string;
   count?: number;
   name?: string;
+  /** Une action sur le PC (askclaude_pc.rs) : son genre et sa précision. */
+  what?: string;
+  value?: string;
 }
 
 /** Une carte de fichier trouvé ou créé. */
@@ -62,7 +66,9 @@ interface Card {
 /** Une demande d'accord : lire un fichier (son texte partira) ou en créer un. */
 interface Ask {
   id: number;
-  kind: "read" | "create";
+  kind: "read" | "create" | "action";
+  what?: string;
+  value?: string;
   name: string;
   bytes: number;
   preview: string;
@@ -221,12 +227,82 @@ function activityText(a: Activity): string {
       return `A lu « ${a.name} »`;
     case "created":
       return `A créé « ${a.name} »`;
+    case "did":
+      return doneText(a.what ?? "", a.value ?? "");
+    case "refused-act":
+      return `Refusé : ${askText(a.what ?? "", a.value ?? "")}`;
     default:
       return `Refusé : « ${a.name} »`;
   }
 }
 
-const ACTIVITY_ICONS: Record<Activity["kind"], string> = { search: "🔎", read: "📖", created: "✏️", refused: "🚫" };
+/** Une action faite sur le PC (phrases entières pour la traduction). */
+function doneText(what: string, value: string): string {
+  switch (what) {
+    case "volume":
+      return `Volume réglé à ${value} %`;
+    case "mute":
+      return "Son coupé";
+    case "unmute":
+      return "Son rétabli";
+    case "brightness":
+      return `Luminosité réglée à ${value} %`;
+    case "dark":
+      return "Mode sombre activé";
+    case "light":
+      return "Mode clair activé";
+    case "playpause":
+      return "Musique : lecture ou pause";
+    case "next":
+      return "Morceau suivant";
+    case "previous":
+      return "Morceau précédent";
+    case "timer":
+      return `Minuteur de ${value} min lancé`;
+    case "note":
+      return `Note ajoutée : « ${value} »`;
+    case "app":
+      return `A ouvert « ${value} »`;
+    case "site":
+      return `A ouvert ${value}`;
+    case "shelf":
+      return `A posé « ${value} » sur l'Étagère`;
+    case "wifi-on":
+      return "Wi-Fi allumé";
+    case "wifi-off":
+      return "Wi-Fi coupé";
+    case "bluetooth-on":
+      return "Bluetooth allumé";
+    case "bluetooth-off":
+      return "Bluetooth coupé";
+    default:
+      return what;
+  }
+}
+
+/** Une action qui attend votre accord, à l'infinitif. */
+function askText(what: string, value: string): string {
+  switch (what) {
+    case "app":
+      return `ouvrir l'application « ${value} »`;
+    case "site":
+      return `ouvrir ${value}`;
+    case "shelf":
+      return `poser « ${value} » sur l'Étagère`;
+    case "wifi-on":
+      return "allumer le Wi-Fi";
+    case "wifi-off":
+      return "couper le Wi-Fi";
+    case "bluetooth-on":
+      return "allumer le Bluetooth";
+    case "bluetooth-off":
+      return "couper le Bluetooth";
+    default:
+      return what;
+  }
+}
+
+const ACTIVITY_ICONS: Record<Activity["kind"], string> = { search: "🔎", read: "📖", created: "✏️", refused: "🚫", did: "⚡", "refused-act": "🚫" };
 
 /** Ce qui part à chaque message, en une phrase (trois phrases entières pour la traduction). */
 function footnote(destination: string, previous: number): string {
@@ -297,6 +373,21 @@ export const askclaude: IslandModule = {
       // La demande d'accord : tout ce qui partira (lire) ou sera écrit (créer).
       const askCard = (p: { ask: Ask; activity: Activity[] }): HTMLElement => {
         const a = p.ask;
+        if (a.kind === "action") {
+          return el(
+            "div",
+            { class: "ask-bubble ondine ask-confirm fresh" },
+            p.activity.length ? activityList(p.activity) : null,
+            el("p", { class: "ask-confirm-title" }, `Ondine voudrait ${askText(a.what ?? "", a.value ?? "")}.`),
+            a.what === "wifi-off" ? el("small", { class: "muted" }, "Sans Wi-Fi, Ondine ne pourra plus vous répondre.") : null,
+            el(
+              "div",
+              { class: "btn-row" },
+              el("button", { class: "btn small primary", disabled: state.busy, onclick: api.handler(() => confirm(api, true)) }, "Faire"),
+              el("button", { class: "btn small", disabled: state.busy, onclick: api.handler(() => confirm(api, false)) }, "Annuler"),
+            ),
+          );
+        }
         const read = a.kind === "read";
         const title = read
           ? `Ondine voudrait lire « ${a.name} » (${size(a.bytes)}). Son texte partira vers ${a.destination}.`
@@ -492,6 +583,9 @@ export const askclaude: IslandModule = {
               el("small", { class: "muted" }, footnote(s.destination, n)),
               s.fileTools
                 ? el("small", { class: "muted" }, "Ondine peut chercher vos fichiers par leur nom : les noms trouvés partent aussi. Pour lire ou créer un fichier, elle vous demande d'abord.")
+                : null,
+              s.pcTools
+                ? el("small", { class: "muted" }, "Ondine peut aussi régler le PC quand vous le lui demandez. Pour ouvrir une application ou un site, elle vous demande d'abord.")
                 : null,
               el(
                 "button",

@@ -1574,7 +1574,7 @@
 "La capture a été annulée ou a échoué.": "The screenshot was cancelled or failed.",
 "Parler à Ondine": "Talk to Ondine",
 "Écrivez à Ondine comme à une amie : elle répond grâce à Claude, GPT ou Gemini, et vous montre tout fichier joint avant l'envoi.": "Write to Ondine like a friend: she answers using Claude, GPT or Gemini, and shows you any attached file before sending.",
-"Une conversation avec Ondine, qui répond grâce à l'API de Claude (par défaut), d'OpenAI (GPT) ou de Gemini, avec sa petite personnalité (modifiable) et ses humeurs, que la mascotte joue sur l'île. Vous pouvez joindre un fichier texte ou une capture, ou en déposer un sur l'île. Ondine peut aussi chercher vos fichiers par leur nom (les noms trouvés partent avec la conversation), en lire un ou en créer un dans son dossier (Documents\\Ondine par défaut) après votre accord, et vous proposer d'en ouvrir un. ENVOIE DU CONTENU À L'API CHOISIE (api.anthropic.com, api.openai.com ou generativelanguage.googleapis.com) : à chaque message partent la personnalité, les derniers messages de la conversation (20 au plus, avec leurs fichiers joints) et le nouveau. Un fichier joint vous est montré en entier avant l'envoi, et rien ne part sans votre clic. Les dossiers exclus sont refusés. La conversation reste en mémoire, jamais sur le disque : elle s'efface quand vous la recommencez ou quittez l'île. Les clés API restent dans le Gestionnaire d'identifiants Windows. Les réponses sont seulement affichées : rien n'est exécuté.": "A conversation with Ondine, who answers using the API of Claude (default), OpenAI (GPT) or Gemini, with her own little personality (editable) and moods, which the mascot acts out on the island. You can attach a text file or a screenshot, or drop one on the island. Ondine can also search your files by name (the names found go out with the conversation), read one or create one in her folder (Documents\\Ondine by default) once you agree, and offer to open one. SENDS CONTENT TO THE CHOSEN API (api.anthropic.com, api.openai.com or generativelanguage.googleapis.com): each message sends the personality, the latest messages of the conversation (20 at most, with their attached files) and the new one. An attached file is shown to you in full before sending, and nothing leaves without your click. Excluded folders are refused. The conversation stays in memory, never on disk: it is erased when you start over or quit the island. API keys stay in the Windows Credential Manager. Answers are only displayed: nothing is executed.",
+"Une conversation avec Ondine, qui répond grâce à l'API de Claude (par défaut), d'OpenAI (GPT) ou de Gemini, avec sa petite personnalité (modifiable) et ses humeurs, que la mascotte joue sur l'île. Vous pouvez joindre un fichier texte ou une capture, ou en déposer un sur l'île. Ondine peut aussi chercher vos fichiers par leur nom (les noms trouvés partent avec la conversation), en lire un ou en créer un dans son dossier (Documents\\Ondine par défaut) après votre accord, et vous proposer d'en ouvrir un. Elle peut regarder l'état du PC, l'agenda, la météo ou la musique, et agir quand vous le lui demandez : volume, luminosité, mode sombre, musique, minuteur, note ; ouvrir une application ou un site, poser un fichier sur l'Étagère, Wi-Fi et Bluetooth après votre accord. Elle ne peut rien supprimer ni lancer de commande. ENVOIE DU CONTENU À L'API CHOISIE (api.anthropic.com, api.openai.com ou generativelanguage.googleapis.com) : à chaque message partent la personnalité, les derniers messages de la conversation (20 au plus, avec leurs fichiers joints) et le nouveau. Un fichier joint vous est montré en entier avant l'envoi, et rien ne part sans votre clic. Les dossiers exclus sont refusés. La conversation reste en mémoire, jamais sur le disque : elle s'efface quand vous la recommencez ou quittez l'île. Les clés API restent dans le Gestionnaire d'identifiants Windows. Les réponses sont seulement affichées : rien n'est exécuté.": "A conversation with Ondine, who answers using the API of Claude (default), OpenAI (GPT) or Gemini, with her own little personality (editable) and moods, which the mascot acts out on the island. You can attach a text file or a screenshot, or drop one on the island. Ondine can also search your files by name (the names found go out with the conversation), read one or create one in her folder (Documents\\Ondine by default) once you agree, and offer to open one. She can look at the PC status, calendar, weather or music, and act when you ask her: volume, brightness, dark mode, music, timer, note; open an app or a website, put a file on the Shelf, Wi-Fi and Bluetooth once you agree. She cannot delete anything or run commands. SENDS CONTENT TO THE CHOSEN API (api.anthropic.com, api.openai.com or generativelanguage.googleapis.com): each message sends the personality, the latest messages of the conversation (20 at most, with their attached files) and the new one. An attached file is shown to you in full before sending, and nothing leaves without your click. Excluded folders are refused. The conversation stays in memory, never on disk: it is erased when you start over or quit the island. API keys stay in the Windows Credential Manager. Answers are only displayed: nothing is executed.",
 "Fournisseur d'IA": "AI provider",
 "Chacun a sa clé API, à ajouter dans Réglages → Identifiants. Vous pouvez en changer à tout moment, même au milieu d'une conversation.": "Each one has its own API key, to add in Settings → Credentials. You can switch at any time, even in the middle of a conversation.",
 "Claude (Anthropic)": "Claude (Anthropic)",
@@ -1675,7 +1675,33 @@
 "Dossier des fichiers créés par Ondine": "Folder for the files Ondine creates",
 "Un chemin complet, par exemple D:\\Mes fichiers\\Ondine. Vide = Documents\\Ondine. Un fichier existant n'est jamais écrasé.": "A full path, for example D:\\My files\\Ondine. Empty = Documents\\Ondine. An existing file is never overwritten.",
 "cette demande n'est plus valable : renvoyez votre message": "this request is no longer valid: send your message again",
-"ce fichier n'est plus dans la conversation": "this file is no longer in the conversation"
+"ce fichier n'est plus dans la conversation": "this file is no longer in the conversation",
+"Sans Wi-Fi, Ondine ne pourra plus vous répondre.": "Without Wi-Fi, Ondine will not be able to answer you.",
+"Faire": "Do it",
+"Ondine peut aussi régler le PC quand vous le lui demandez. Pour ouvrir une application ou un site, elle vous demande d'abord.": "Ondine can also adjust the PC when you ask her. To open an app or a website, she asks you first.",
+"Ondine peut agir sur le PC": "Ondine can act on the PC",
+"Elle regarde l'état du PC, l'agenda, la météo, la musique et vos notes, et agit quand vous le lui demandez : volume, luminosité, mode sombre, musique, minuteur, note. Pour ouvrir une application ou un site, poser un fichier sur l'Étagère ou toucher au Wi-Fi et au Bluetooth, elle attend votre accord. Elle ne peut rien supprimer ni lancer de commande.": "She looks at the PC status, calendar, weather, music and your notes, and acts when you ask her: volume, brightness, dark mode, music, timer, note. To open an app or a website, put a file on the Shelf or change Wi-Fi and Bluetooth, she waits for your OK. She cannot delete anything or run commands.",
+"Fichiers et PC": "Files and PC",
+"Son coupé": "Sound muted",
+"Son rétabli": "Sound restored",
+"Mode sombre activé": "Dark mode on",
+"Mode clair activé": "Light mode on",
+"Musique : lecture ou pause": "Music: play or pause",
+"Morceau précédent": "Previous track",
+"Wi-Fi allumé": "Wi-Fi on",
+"Wi-Fi coupé": "Wi-Fi off",
+"Bluetooth allumé": "Bluetooth on",
+"Bluetooth coupé": "Bluetooth off",
+"les outils du PC sont désactivés dans les réglages": "PC tools are turned off in the settings",
+"les outils de fichiers sont désactivés dans les réglages": "file tools are turned off in the settings",
+"Ondine voudrait allumer le Wi-Fi.": "Ondine would like to turn Wi-Fi on.",
+"Refusé : allumer le Wi-Fi": "Refused: turn Wi-Fi on",
+"Ondine voudrait couper le Wi-Fi.": "Ondine would like to turn Wi-Fi off.",
+"Refusé : couper le Wi-Fi": "Refused: turn Wi-Fi off",
+"Ondine voudrait allumer le Bluetooth.": "Ondine would like to turn Bluetooth on.",
+"Refusé : allumer le Bluetooth": "Refused: turn Bluetooth on",
+"Ondine voudrait couper le Bluetooth.": "Ondine would like to turn Bluetooth off.",
+"Refusé : couper le Bluetooth": "Refused: turn Bluetooth off"
 },
 "patterns": [
 [
@@ -3129,6 +3155,58 @@
 [
 "^Ondine voudrait créer « (.+) » \\((.+?)\\) dans (.+?)\\.$",
 "Ondine would like to create « $1 » ($2) in $3."
+],
+[
+"^Volume réglé à (\\d+) %$",
+"Volume set to $1%"
+],
+[
+"^Luminosité réglée à (\\d+) %$",
+"Brightness set to $1%"
+],
+[
+"^Minuteur de (\\d+) min lancé$",
+"$1 min timer started"
+],
+[
+"^Note ajoutée : « (.*) »$",
+"Note added: « $1 »"
+],
+[
+"^A ouvert « (.+) »$",
+"Opened « $1 »"
+],
+[
+"^A ouvert (https?://\\S+)$",
+"Opened $1"
+],
+[
+"^A posé « (.+) » sur l'Étagère$",
+"Put « $1 » on the Shelf"
+],
+[
+"^Ondine voudrait ouvrir l'application « (.+) »\\.$",
+"Ondine would like to open the app « $1 »."
+],
+[
+"^Ondine voudrait ouvrir (https?://\\S+)\\.$",
+"Ondine would like to open $1."
+],
+[
+"^Ondine voudrait poser « (.+) » sur l'Étagère\\.$",
+"Ondine would like to put « $1 » on the Shelf."
+],
+[
+"^Refusé : ouvrir l'application « (.+) »$",
+"Refused: open the app « $1 »"
+],
+[
+"^Refusé : ouvrir (https?://\\S+)$",
+"Refused: open $1"
+],
+[
+"^Refusé : poser « (.+) » sur l'Étagère$",
+"Refused: put « $1 » on the Shelf"
 ]
 ]
 }
