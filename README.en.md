@@ -42,8 +42,35 @@ The intro video is on the website: [ondine.pissits.com](https://ondine.pissits.c
 
 ## What's new
 
-New in version 1.2.0 (the full list is in the
-[CHANGELOG](CHANGELOG.md)). Click a picture to read the details.
+New in version 1.2.1 (the full list is in the
+[CHANGELOG](CHANGELOG.md)):
+
+- **[Talk to Ondine](#talk-to-ondine)** replaces "Ask Claude": a real
+  conversation in bubbles, with Ondine's own personality (editable) and moods,
+  which the mascot acts out on the island. She answers with **Claude**
+  (default), **GPT** or **Gemini**, one API key per provider. The conversation
+  is never written to disk. It is the first tab on first launch, and the island
+  grows with the conversation.
+- **She handles your files**: she searches them by name, reads one, creates
+  one (text only, never overwritten) in Documents\Ondine, or offers to open
+  one. To read or create, she shows you everything and waits for your OK.
+- **She acts on the PC** when you ask: volume, brightness, dark mode, music,
+  the island's timer, notes; she checks the PC status, calendar and weather.
+  Opening an app or a website, putting a file on the Shelf, turning Wi-Fi or
+  Bluetooth on or off: only once you agree. She cannot delete anything or run
+  commands.
+- **[Ondine on the desktop](#mascot)**: drag the mascot out of the island and
+  put her wherever you like. A click on her opens a bubble with your favourite
+  tabs; she sits on the taskbar, accepts files dropped on her, opens with
+  Ctrl+Alt+B and wanders around when the PC is idle.
+- **Lighter [settings](#settings)**: modules grouped in collapsible
+  categories, long pages as sub-menus in the left bar.
+- **[The mascot podium](#mascot)**: every mascot, animated, on 3D steps; drag
+  the one you want onto the top step.
+
+### In 1.2.0
+
+Click a picture to read the details.
 
 <table>
 <tr>
@@ -538,6 +565,19 @@ and ends each answer with a mood that the mascot acts out on the island. You can
 attach a text file or a screenshot (or drop one on the island): it is shown to
 you in full before it leaves. Enter sends, Shift+Enter adds a line.
 
+**Files**: Ondine can search your files by name (Documents, Desktop,
+Downloads, Pictures, recent files), read one, create one (text only, never
+overwritten) in her folder, Documents\Ondine by default, and offer to open
+one. The names found go out with the conversation, never the content without
+your OK: to read or create, she shows you everything and waits for "Allow".
+
+**The PC**: she looks at the PC status, calendar, weather, current music and
+your notes; she sets the volume, brightness, dark mode, music, starts the
+island's timer, adds a note or plays an expression. To open an app or a
+website, put a file on the Shelf, or turn Wi-Fi and Bluetooth on or off, a
+card asks "Do it" or "Cancel". She cannot delete anything or run commands;
+what she cannot do, she explains how to do.
+
 **This module sends content to the chosen API** (api.anthropic.com,
 api.openai.com or generativelanguage.googleapis.com), with **your** API key
 (Settings → Credentials): each message sends the personality, the latest
@@ -545,7 +585,8 @@ messages of the conversation (20 at most, with their attached files) and the
 new one. The tab says so under the field, and "Show the personality" shows the
 exact instruction. The conversation stays in memory, never on disk: it is
 erased by "Start over" or when you quit the island. Files in excluded folders
-are refused. Answers are only displayed: nothing is executed.
+are refused. The text of answers is never executed: Ondine only acts through
+the tools described above.
 
 - **AI provider**: Claude (default), GPT or Gemini. Each has its own key; you can switch at any time
 - **Claude model**: Claude Sonnet 5.5 (default), Claude Opus 5.5 or Claude Haiku 4.5
@@ -555,6 +596,7 @@ are refused. Answers are only displayed: nothing is executed.
 - **The island grows with the conversation** (on): up to its maximum size, then the conversation scrolls
 - **Ondine shows her moods on the island** (on)
 - **Offer "Talk to Ondine" when a file is dropped on the island** (on)
+- **Files and PC** sub-menu: **Ondine can search and create files** (on), **Ondine can act on the PC** (on), **Folder for the files Ondine creates** (empty = Documents\Ondine)
 
 ### Launcher
 
@@ -640,7 +682,10 @@ scheduled summary still only goes out when the classic week has something;
 
 The settings window opens from the island's ⚙ button or from the icon near the
 clock. A search box at the top left finds any setting. Each module has its own
-page (on/off switch, permissions, full description, settings).
+page (on/off switch, permissions, full description, settings). Modules are
+grouped in collapsible categories, and long pages (Mascot, General, Tabs,
+Profiles, AI agents, Talk to Ondine) open as sub-menus in the left bar; search
+opens the right sub-menu.
 
 Under the search box, the **Simple / Full** switch: in **Simple** (the
 default), each page only shows the essentials, and a "N more settings in Full
@@ -701,8 +746,9 @@ cloud, heart, flower, mushroom, ghost, flame, **Sky** — sun by day, moon at
 night — and **Weather**, which follows the current weather; you can add your
 own in the `mascots/` folder, see [mascots/README.md](mascots/README.md)). The
 two old image-based drops ("Goutte" and "Goutte classique") are gone: a
-setting that still named them falls back to the gummy drop. A preview lets
-you try all her animations.
+setting that still named them falls back to the gummy drop. You pick her on a
+**podium**: every mascot, animated and changing moods, on steps; drag the one
+you want onto the top step. A preview lets you try all her animations.
 
 She reacts to what happens: starry eyes when a file lands on the shelf, arms
 up when the timer ends, a wink when the clipboard cleans a link, proud of a
@@ -746,7 +792,7 @@ hours, or by Wi-Fi network name.
 ### Privacy, Credentials, Backup
 
 - **Privacy**: a reminder of the island's promises (no telemetry, anything going to an AI is always shown first) and **excluded folders**: no module will read or send a file in these folders (not the launcher, the shelf, nor Talk to Ondine).
-- **Credentials**: the **Anthropic API key**, stored in the Windows Credential Manager. The island can only tell whether a key exists: it can never display it again.
+- **Credentials**: the Anthropic, OpenAI and Google (Gemini) **API keys**, stored in the Windows Credential Manager. The island can only tell whether a key exists: it can never display it again.
 - **Backup**: **export** your settings to a .json file (`%APPDATA%\Ondine\exports`) or **import** them. Keys are never part of the export.
 
 <img src="docs/captures/en/reglages-agents.webp" width="700" alt="Settings, a module page (AI agents): switch, permissions, about, settings">

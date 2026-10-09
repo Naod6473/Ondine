@@ -42,8 +42,36 @@ La vidéo de présentation est sur le site : [ondine.pissits.com](https://ondine
 
 ## Nouveautés
 
-Les nouveautés de la version 1.2.0 (la liste complète est dans le
-[CHANGELOG](CHANGELOG.md)). Cliquez sur une image pour lire le détail.
+Les nouveautés de la version 1.2.1 (la liste complète est dans le
+[CHANGELOG](CHANGELOG.md)) :
+
+- **[Parler à Ondine](#parler-à-ondine)** remplace « Demander à Claude » : une
+  vraie conversation dans des bulles, avec la personnalité d'Ondine
+  (modifiable) et ses humeurs, que la mascotte joue sur l'île. Elle répond avec
+  **Claude** (par défaut), **GPT** ou **Gemini**, une clé API par fournisseur.
+  La conversation n'est jamais écrite sur le disque. C'est le premier onglet au
+  premier lancement, et l'île s'agrandit avec la conversation.
+- **Elle s'occupe de vos fichiers** : elle les cherche par leur nom, en lit un,
+  en crée un (texte seulement, jamais écrasé) dans Documents\Ondine, ou vous
+  propose d'en ouvrir un. Pour lire ou créer, elle vous montre tout et attend
+  votre accord.
+- **Elle agit sur le PC** quand vous le lui demandez : volume, luminosité, mode
+  sombre, musique, minuteur de l'île, notes ; elle consulte l'état du PC,
+  l'agenda et la météo. Ouvrir une application ou un site, poser un fichier sur
+  l'Étagère, toucher au Wi-Fi ou au Bluetooth : seulement après votre accord.
+  Elle ne peut rien supprimer ni lancer de commande.
+- **[Ondine sur le bureau](#mascotte)** : tirez la mascotte hors de l'île et
+  posez-la où vous voulez. Un clic sur elle ouvre une bulle avec vos onglets
+  préférés ; elle s'assoit sur la barre des tâches, accepte les fichiers qu'on
+  lui lâche, s'ouvre avec Ctrl+Alt+B et se promène quand le PC est au repos.
+- **[Réglages](#réglages) plus légers** : les modules rangés en catégories
+  repliables, les pages longues en sous-menus dans la barre de gauche.
+- **[Le podium des mascottes](#mascotte)** : toutes les mascottes, animées, sur
+  des marches en 3D ; on glisse celle qu'on veut sur la première.
+
+### Dans la 1.2.0
+
+Cliquez sur une image pour lire le détail.
 
 <table>
 <tr>
@@ -559,6 +587,21 @@ pouvez joindre un fichier texte ou une capture (ou en déposer un sur l'île) :
 il vous est montré en entier avant de partir. Entrée envoie, Maj+Entrée va à la
 ligne.
 
+**Fichiers** : Ondine peut chercher vos fichiers par leur nom (Documents,
+Bureau, Téléchargements, Images, fichiers récents), en lire un, en créer un
+(texte seulement, jamais écrasé) dans son dossier, Documents\Ondine par
+défaut, et vous proposer d'en ouvrir un. Les noms trouvés partent avec la
+conversation, jamais le contenu sans votre accord : pour lire ou créer, elle
+vous montre tout et attend « Autoriser ».
+
+**Le PC** : elle regarde l'état du PC, l'agenda, la météo, la musique en cours
+et vos notes ; elle règle le volume, la luminosité, le mode sombre, la musique,
+lance le minuteur de l'île, ajoute une note ou joue une expression. Pour ouvrir
+une application ou un site, poser un fichier sur l'Étagère, allumer ou couper
+le Wi-Fi et le Bluetooth, une carte demande « Faire » ou « Annuler ». Elle ne
+peut rien supprimer ni lancer de commande ; ce qu'elle ne sait pas faire, elle
+vous explique comment le faire.
+
 **Ce module envoie du contenu à l'API choisie** (api.anthropic.com,
 api.openai.com ou generativelanguage.googleapis.com), avec **votre** clé API
 (Réglages → Identifiants) : à chaque message partent la personnalité, les
@@ -566,8 +609,8 @@ derniers messages de la conversation (20 au plus, avec leurs fichiers joints)
 et le nouveau. L'onglet le rappelle sous le champ, et « Voir la personnalité »
 montre la consigne exacte. La conversation reste en mémoire, jamais sur le
 disque : elle s'efface avec « Recommencer » ou en quittant l'île. Les fichiers
-des dossiers exclus sont refusés. Les réponses sont seulement affichées : rien
-n'est exécuté.
+des dossiers exclus sont refusés. Le texte des réponses n'est jamais exécuté :
+Ondine n'agit que par les outils décrits ci-dessus.
 
 - **Fournisseur d'IA** : Claude (par défaut), GPT ou Gemini. Chacun a sa clé ; on peut en changer à tout moment
 - **Modèle Claude** : Claude Sonnet 5.5 (par défaut), Claude Opus 5.5 ou Claude Haiku 4.5
@@ -577,6 +620,7 @@ n'est exécuté.
 - **L'île s'agrandit avec la conversation** (oui) : jusqu'à sa taille maximale, puis la conversation défile
 - **Ondine montre ses humeurs sur l'île** (oui)
 - **Proposer « Parler à Ondine » quand on dépose un fichier sur l'île** (oui)
+- Sous-menu **Fichiers et PC** : **Ondine peut chercher et créer des fichiers** (oui), **Ondine peut agir sur le PC** (oui), **Dossier des fichiers créés par Ondine** (vide = Documents\Ondine)
 
 ### Lanceur
 
@@ -666,7 +710,10 @@ seulement des agents.
 La fenêtre de réglages s'ouvre avec le bouton ⚙ de l'île ou depuis l'icône
 près de l'horloge. Une recherche en haut à gauche trouve n'importe quel
 réglage. Chaque module a sa page (interrupteur, permissions, description
-complète, réglages).
+complète, réglages). Les modules sont rangés en catégories repliables, et les
+pages longues (Mascotte, Général, Onglets, Profils, Agents IA, Parler à
+Ondine) s'ouvrent en sous-menus dans la barre de gauche ; la recherche ouvre le
+bon sous-menu.
 
 Sous la recherche, l'interrupteur **Simple / Complet** : en **Simple** (par
 défaut), chaque page ne montre que l'essentiel, et une ligne « N réglages de
@@ -730,8 +777,10 @@ jour, lune la nuit — et **Météo**, qui suit le temps qu'il fait ; on peut
 ajouter les siennes dans le dossier `mascots/`, voir
 [mascots/README.md](mascots/README.md)). Les deux anciennes gouttes en images
 (« Goutte » et « Goutte classique ») n'existent plus : un réglage qui les
-nommait encore retombe sur la goutte gomme. Un aperçu permet d'essayer toutes
-ses animations.
+nommait encore retombe sur la goutte gomme. On la choisit sur un **podium** :
+toutes les mascottes, animées et d'humeur changeante, sur des marches ; on
+glisse celle qu'on veut sur la première. Un aperçu permet d'essayer toutes ses
+animations.
 
 Elle réagit à ce qui se passe : des étoiles plein les yeux quand un fichier
 arrive sur l'étagère, les bras levés à la fin du minuteur, un clin d'œil quand
@@ -777,7 +826,7 @@ tout seul**, selon les jours et les heures, ou le nom du Wi-Fi.
 ### Confidentialité, Identifiants, Sauvegarde
 
 - **Confidentialité** : le rappel de ce que l'île promet (aucune télémétrie, ce qui part vers une IA toujours montré avant) et les **dossiers exclus** : aucun module ne lira ni n'enverra un fichier situé dans ces dossiers (ni le lanceur, ni l'étagère, ni « Parler à Ondine »).
-- **Identifiants** : la **clé API Anthropic**, rangée dans le Gestionnaire d'identifiants de Windows. L'île peut seulement savoir si une clé existe : elle ne peut jamais la réafficher.
+- **Identifiants** : les **clés API** Anthropic, OpenAI et Google (Gemini), rangées dans le Gestionnaire d'identifiants de Windows. L'île peut seulement savoir si une clé existe : elle ne peut jamais la réafficher.
 - **Sauvegarde** : **exporter** vos réglages dans un fichier .json (`%APPDATA%\Ondine\exports`) ou en **importer**. Les clés ne font jamais partie de l'export.
 
 <img src="docs/captures/fr/reglages-agents.webp" width="700" alt="Réglages, page d'un module (Agents IA) : interrupteur, permissions, à propos, réglages">
