@@ -564,7 +564,11 @@ export class EasterEggs {
   /** De la musique et la mini-île : Ondine danse (et le 21 juin, c'est un trésor). */
   private syncDance() {
     // Pas de danse en « Calme » (mascot.calm).
-    const want = this.music && this.hooks.state() === "compact" && !this.busy && !!this.hooks.manifest() && !settingsStore.current.mascot.calm;
+    // En mini-île, ou sur le bureau (src/pet/), où elle danse aussi.
+    const m = settingsStore.current.mascot;
+    const here = this.hooks.state() === "compact" && !!this.hooks.manifest();
+    const desk = m.enabled && !!m.pet;
+    const want = this.music && (here || desk) && !this.busy && !m.calm;
     if (want === this.dancing) return;
     this.dancing = want;
     this.bus.emit("mascot.dance", { on: want }, "eggs");

@@ -1,0 +1,243 @@
+/* Ondine sur le bureau (src/pet/main.ts, src-tauri/src/pet.rs).
+   La fenêtre fait 112 × 112 (la case de la mascotte) ou, bulle ouverte,
+   532 × 480 : la case dans un coin, la bulle à côté. Le reste est transparent
+   et laisse passer les clics. Les vues des onglets gardent les styles de l'île
+   (island.css, chargé avant). */
+
+.pet {
+  position: absolute;
+  inset: 0;
+}
+
+/* La case de la mascotte : en haut à gauche fermée ; ouverte, dans le coin
+   que le Rust a choisi (la bulle va du côté où l'écran a de la place). */
+.pet-mascot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 112px;
+  height: 112px;
+  display: grid;
+  place-items: center;
+}
+.pet[data-open="true"][data-side="left"] .pet-mascot {
+  left: auto;
+  right: 0;
+}
+.pet[data-open="true"][data-toward="up"] .pet-mascot {
+  top: auto;
+  bottom: 0;
+}
+
+.pet-slot {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  cursor: grab;
+  touch-action: none;
+  transition:
+    width var(--speed) var(--ease),
+    height var(--speed) var(--ease),
+    scale 300ms var(--ease);
+}
+.pet[data-mascot-size="small"] .pet-slot {
+  width: 72px;
+  height: 72px;
+}
+.pet[data-mascot-size="large"] .pet-slot {
+  width: 104px;
+  height: 104px;
+}
+.pet-slot:hover {
+  scale: 1.06;
+}
+.pet.dragging .pet-slot {
+  cursor: grabbing;
+  scale: 1.1;
+}
+
+/* ── La bulle ────────────────────────────────────────────────────────────── */
+
+.pet-bubble {
+  position: absolute;
+  box-sizing: border-box;
+  width: 408px;
+  max-height: 480px;
+  display: none;
+  flex-direction: column;
+  padding: 10px 12px 12px;
+  border-radius: 22px;
+  background: var(--island-bg);
+  box-shadow: 0 0 0 1px var(--line);
+  user-select: text;
+  transform-origin: var(--from-x, left) var(--from-y, bottom);
+}
+.pet[data-open="true"] .pet-bubble {
+  display: flex;
+  animation: pet-bubble-in 340ms var(--ease) both;
+}
+.pet[data-side="right"] .pet-bubble {
+  left: 112px;
+  --from-x: left;
+}
+.pet[data-side="left"] .pet-bubble {
+  right: 112px;
+  --from-x: right;
+}
+.pet[data-toward="up"] .pet-bubble {
+  bottom: 0;
+  --from-y: bottom;
+}
+.pet[data-toward="down"] .pet-bubble {
+  top: 0;
+  --from-y: top;
+}
+
+/* La pointe de la bulle, vers Ondine (à hauteur de son centre). */
+.pet-bubble::before {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: var(--island-bg);
+  box-shadow: 0 0 0 1px var(--line);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+  rotate: 45deg;
+}
+.pet[data-side="right"] .pet-bubble::before {
+  left: -6px;
+  rotate: -45deg;
+}
+.pet[data-side="left"] .pet-bubble::before {
+  right: -6px;
+  rotate: 135deg;
+}
+.pet[data-toward="up"] .pet-bubble::before {
+  bottom: 49px;
+}
+.pet[data-toward="down"] .pet-bubble::before {
+  top: 49px;
+}
+
+@keyframes pet-bubble-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pet[data-open="true"] .pet-bubble {
+    animation: none;
+  }
+}
+
+.pet-bubble .view-expanded {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+/* Parler à Ondine : la bulle a plus de place que l'île. */
+.pet-bubble .ask-thread {
+  max-height: 120px;
+}
+.pet-bubble .ask.grow .ask-thread {
+  max-height: 200px;
+}
+.pet-empty {
+  margin: 12px 4px;
+}
+
+/* Une notification d'un onglet (« Copié »…). */
+.pet-toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.07);
+}
+.pet-toast[hidden] {
+  display: none;
+}
+.pet-toast-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* L'onglet actif (l'île a sa pastille animée ; ici, un simple fond). */
+.pet-bubble .tab.active {
+  background: rgba(255, 255, 255, 0.09);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+/* Portée au-dessus de l'île : elle se fait petite (lâchée là, elle rentre). */
+.pet.homing .pet-slot {
+  scale: 0.7;
+  opacity: 0.85;
+}
+
+/* Un fichier qu'on lui apporte : elle s'ouvre grand. */
+.pet.drop-over .pet-slot {
+  scale: 1.15;
+  filter: drop-shadow(0 0 10px var(--accent));
+}
+
+/* Elle se promène (pet.rs) : un petit dandinement, tournée vers où elle va. */
+.pet.walking .pet-slot {
+  animation: pet-waddle 520ms ease-in-out infinite alternate;
+}
+.pet.walking[data-walk="left"] .pet-slot {
+  animation-direction: alternate-reverse;
+}
+@keyframes pet-waddle {
+  from {
+    rotate: -6deg;
+    translate: 0 0;
+  }
+  to {
+    rotate: 6deg;
+    translate: 0 -3px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pet.walking .pet-slot {
+    animation: none;
+  }
+}
+
+/* La pastille d'une notification de l'île, en haut à droite d'elle. */
+.pet-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--island-bg);
+  color: var(--island-fg);
+  box-shadow: 0 0 0 1px var(--line), 0 2px 6px rgba(0, 0, 0, 0.35);
+  font-size: 13px;
+  line-height: 26px;
+  cursor: pointer;
+  animation: pet-badge-in 300ms var(--ease) both;
+}
+.pet-badge[hidden] {
+  display: none;
+}
+.pet-badge.alert {
+  background: #e5484d;
+  color: #fff;
+  font-weight: 700;
+}
+@keyframes pet-badge-in {
+  from {
+    scale: 0.4;
+    opacity: 0;
+  }
+}

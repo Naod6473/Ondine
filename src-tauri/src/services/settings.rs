@@ -155,6 +155,19 @@ pub struct MascotPrefs {
     pub size: String,
     /// Calme : moins de gestes spontanés (ennui, goûter, visites au bord, danse, réactions aux modules).
     pub calm: bool,
+    /// Ondine sur le bureau (pet.rs) : la gomme sort de l'île et vit où on la pose.
+    pub pet: bool,
+    /// Sa place (px physiques du coin de sa case) ; négative = jamais posée.
+    pub pet_x: f64,
+    pub pet_y: f64,
+    /// Au-dessus des fenêtres (sinon derrière elles, sur le fond d'écran).
+    pub pet_on_top: bool,
+    /// Les onglets de sa bulle (ids de modules), dans l'ordre.
+    pub pet_tabs: Vec<String>,
+    /// Le raccourci qui ouvre sa bulle ("" = aucun ; voir pet::HOTKEYS).
+    pub pet_hotkey: String,
+    /// Elle se promène un peu quand personne ne touche le PC.
+    pub pet_wander: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -218,7 +231,7 @@ impl Default for IslandPrefs {
 
 impl Default for MascotPrefs {
     fn default() -> Self {
-        Self { enabled: true, id: "goutte-gomme".into(), bored_after_secs: 60.0, sleep_after_secs: 180.0, peek: true, peek_every_mins: 5.0, surprises: "all".into(), treasures: Vec::new(), color: "auto".into(), hands: "always".into(), wear_head: "none".into(), wear_eyes: "none".into(), wear_neck: "none".into(), custom_color: "#4da3ff".into(), size: "normal".into(), calm: false }
+        Self { enabled: true, id: "goutte-gomme".into(), bored_after_secs: 60.0, sleep_after_secs: 180.0, peek: true, peek_every_mins: 5.0, surprises: "all".into(), treasures: Vec::new(), color: "auto".into(), hands: "always".into(), wear_head: "none".into(), wear_eyes: "none".into(), wear_neck: "none".into(), custom_color: "#4da3ff".into(), size: "normal".into(), calm: false, pet: false, pet_x: -1.0, pet_y: -1.0, pet_on_top: true, pet_tabs: vec!["askclaude".into(), "launcher".into(), "agents".into()], pet_hotkey: "Ctrl+Alt+B".into(), pet_wander: true }
     }
 }
 
@@ -299,6 +312,15 @@ impl Settings {
         m.treasures.retain(|t| t.len() <= 32 && !t.is_empty() && t.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-') && seen.insert(t.clone()));
         m.treasures.truncate(64);
         clean_ids(&mut self.island.tips_seen, 64);
+        clean_ids(&mut self.mascot.pet_tabs, 16);
+        if !crate::pet::HOTKEYS.contains(&self.mascot.pet_hotkey.as_str()) {
+            self.mascot.pet_hotkey.clear();
+        }
+        for v in [&mut self.mascot.pet_x, &mut self.mascot.pet_y] {
+            if !v.is_finite() {
+                *v = -1.0;
+            }
+        }
         // Une version, c'est court : « 1.0.1 », « 1.1.0-beta.2 ».
         let v = &mut self.general.last_seen_version;
         if v.len() > 40 || !v.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '+')) {

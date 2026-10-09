@@ -21,6 +21,12 @@ export function group(title: string | null, rows: Child[], note?: string): HTMLE
   );
 }
 
+/** Range un bloc de page dans un sous-menu (main.ts, `Page.subs`). */
+export function inSub<T extends HTMLElement>(sub: string, node: T): T {
+  node.dataset.sub = sub;
+  return node;
+}
+
 /**
  * Une ligne : libellé (et aide en petit) à gauche, commande à droite.
  * `key` sert à la recherche : on peut faire défiler jusqu'à la ligne et la

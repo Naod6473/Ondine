@@ -713,6 +713,24 @@ for your answer (a click on her opens the AI agents tab). She **gets bored**,
 then **falls asleep** when nothing happens; she can **hang over the screen
 edge** (at most one visit every N minutes, never during a presentation).
 
+**Ondine on the desktop**: she can leave the island and live wherever you like
+on the desktop, just the mascot. Drag her out of the island (or turn on
+"Ondine lives on the desktop"), then grab her to move her: her place is
+remembered. A click on her opens a bubble next to her with a few of the
+island's tabs (Talk to Ondine, Launcher and AI agents by default, chosen in the
+same group), and the bubble follows her when she moves. She dances, cheers,
+worries and sleeps just like in the island; notifications stay in the island.
+"Above windows" (on); otherwise she stays behind them, on the wallpaper. The
+To bring her home: drag her onto the island, or use the ⤒ button in her
+bubble or the 💧 button of the open island. She steps out during a
+presentation or full screen, then comes back. Dropped near a screen edge or
+the taskbar, she sits on it. Drop a file on her: her bubble offers the
+island's targets (Talk to Ondine, Shelf…). A notification arrives in the
+island: a badge appears on her (a click opens the island). **Ctrl+Alt+B** opens
+her bubble (configurable), the menu of the icon near the clock moves her out or
+back in, and when you leave the PC alone she takes a few steps ("She wanders
+around…" setting).
+
 - **Size**: Small, Normal (default) or Large, in the open island and the preview; the mini island keeps its size.
 - **Style** (gummy mascots): **Color** (the shape's own, a tint, Rainbow, or **Custom**: a hue / saturation wheel, a lightness slider and the value to type; the preview and the island follow the drag), **Hands** (always, only for gestures, never), hat, glasses and necklace.
 - **Mood**: **Gets bored after** and **Falls asleep after**; **Calm: fewer spontaneous gestures** (off): no more boredom, snack, edge visits, dancing or module reactions; she still reacts to AI agents (waiting, question), errors, successes, alerts, and she sleeps.

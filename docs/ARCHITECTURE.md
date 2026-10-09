@@ -624,6 +624,67 @@ JavaScript, l'image fixe `site/media/mascottes/<id>.png` (256 px, fond
 transparent, générée avec Playwright depuis le script construit) reste
 affichée. Le site est en français et tutoie.
 
+### Ondine sur le bureau (`src-tauri/src/pet.rs`, `src/pet/`, `pet.html`)
+
+Une quatrième fenêtre, « pet », créée cachée au démarrage comme les autres
+(mêmes BROWSER_ARGS) : sans bordure, transparente, hors de la barre des
+tâches, au-dessus des fenêtres ou derrière (`mascot.petOnTop`). Elle est
+montrée quand `mascot.enabled && mascot.pet` (`pet::apply`, au démarrage et
+dans `apply_settings`). Deux tailles : la case de la mascotte (112 × 112) ou,
+bulle ouverte, la case dans un coin et la bulle (420 × 480) du côté où l'écran
+a de la place (`choose_layout`) ; la mascotte ne bouge pas à l'écran, seule la
+fenêtre s'agrandit autour d'elle. Le Rust annonce le côté par l'événement
+`pet-layout` avant de changer la fenêtre.
+
+- **Déplacer** : un appui suivi d'un mouvement sur la mascotte appelle
+  `pet_drag_start` ; un thread fait suivre la souris à la fenêtre (bulle
+  comprise) jusqu'au lâcher, enregistre la place (`mascot.petX/petY`, px
+  physiques du coin de la case, négatif = en bas à droite de l'écran
+  principal), replace la bulle si besoin, puis envoie `pet-drag-end`.
+- **Sortir de l'île** : dans l'île, tirer la mascotte hors de la forme puis la
+  lâcher appelle `pet_place(atCursor)` (island.ts, `wireCarry`). `pet_back`
+  la ramène (bouton ⤒ de la bulle, bouton 💧 de l'île ouverte). Portée
+  au-dessus de l'île (`island::screen_point_on_island` : sa forme, ou la
+  bande de réveil avec une marge), le Rust envoie `pet-over-island` (l'île se
+  montre, la mascotte rapetisse) ; lâchée là, elle rentre.
+- **Présentation, plein écran** : la boucle de la souris regarde toutes les
+  2 s `presentation_busy` et cache la fenêtre le temps qu'il faut.
+- **Aimant** : au lâcher, `snap` colle la case aux bords de la zone de travail
+  (`Monitor::work_area`, barre des tâches exclue) à moins de 36 px, la case
+  dépassant de 10 px pour que la gomme soit assise sur le bord.
+- **Promenade** (`spawn_wander`, `mascot.petWander`) : toutes les 20 s, si
+  personne n'a touché le PC depuis 90 s (pas bulle ouverte, ni présentation,
+  ni « Calme »), quelques pas horizontaux (`pet-walk` → dandinement en CSS) ;
+  le moindre geste l'arrête, la place est enregistrée.
+- **Raccourci** (`mascot.petHotkey`, Ctrl+Alt+B par défaut, `pet::HOTKEYS`) :
+  enregistré seulement quand elle est sur le bureau ; envoie `pet-hotkey`.
+- **Menu de l'icône** : la case « Ondine sur le bureau » (`tray::sync_pet`).
+- **Fichiers lâchés sur elle** : la cible de dépôt Windows de l'île
+  (`drop_target.rs`) est posée aussi sur sa fenêtre (`unblock_window_drops`).
+  La page publie `pet.files-dropped` ; l'île, qui a les cibles des modules,
+  répond `island.drop-choices` (libellés), la bulle les propose, et le choix
+  revient par `pet.drop-choice` : l'île fait le dépôt.
+- **Pastille** : `notify.shown` / `notify.alert` (publiés par l'île) mettent
+  une pastille sur elle ; un clic publie `island.open`.
+- **Clics traversants** : la page envoie les cases de la mascotte et de la
+  bulle (`pet_set_hit`) ; `spawn_hit_poll` lit la souris (30 fois par seconde
+  près d'elle, 8 loin) et bascule `set_ignore_cursor_events`, rien ne change
+  bouton enfoncé. Il envoie aussi la souris à la page (`pet-cursor`) pour que
+  ses yeux la suivent.
+- **Les onglets** : un second `ModuleRegistry`, en mode satellite
+  (`{ satellite: true, only }`), ne démarre que les modules de
+  `mascot.petTabs`, et par leur `satellite(api)` au lieu de `setup(api)` :
+  seulement ce qu'il faut aux vues (Lanceur : les listes de projets et de
+  serveurs ; Agents IA : se redessiner sur `agents.changed`). Les
+  notifications de fond restent à l'île ; celles des vues (« Copié ») sont
+  une ligne en haut de la bulle. `api.openIsland(tab)` vers un onglet absent
+  de la bulle publie `island.open`, que l'île écoute. Les conversations et
+  listes vivent dans le Rust : les deux fenêtres montrent la même chose.
+- **La mascotte** : un `MascotController` sur le même bus que celle de l'île
+  (humeurs, fêtes, sommeil). L'île n'a plus de mascotte (ni de visite au
+  bord) tant qu'Ondine est sur le bureau ; la danse (`syncDance`, eggs.ts) se
+  lance aussi quand elle est sur le bureau, même île cachée.
+
 ## Les surprises (`src/eggs/`)
 
 Des easter eggs, tous dans l'île, sans fichier ni réseau. `eggs.ts` relie les
@@ -1884,6 +1945,37 @@ En éco, en plus : les effets « Studio » (flou → net) sont remplacés par ce
 
 Pour comparer : Réglages → Général → À propos → « Ressources utilisées ».
 
+## Fenêtre de réglages : catégories et sous-menus (`src/settings/main.ts`)
+
+- La barre latérale range les pages de modules en **catégories** repliables
+  (`MODULE_CATEGORIES` : Ondine et IA, Fichiers, Organisation, Outils IT, Le PC
+  au quotidien ; un module inconnu va dans « Autres modules »). Titres en texte
+  seul ; dans une catégorie, l'ordre des onglets. Les catégories ouvertes sont
+  retenues (`localStorage` « settings.cats ») ; celle de la page affichée
+  s'ouvre toute seule.
+- Une page longue a des **sous-menus** (`Page.subs`) : Général, Onglets,
+  Mascotte, Profils (un par profil), et pour les modules `MODULE_SECTIONS`
+  (Agents IA, Parler à Ondine, par clé de champ du manifeste ; un champ non
+  listé va dans le premier sous-menu). Ils se déplient sous la page dans la
+  barre (pli `grid-template-rows`), la page n'affiche que celui choisi, retenu
+  par page (`localStorage` « settings.subs »).
+- Le rendu dessine **toute** la page et marque chaque bloc du haut avec
+  `data-sub` (`inSub`, controls.ts) ; `showPage` retire les autres blocs avant
+  `applyMode`, ce qui fait que « N réglages de plus » compte le sous-menu
+  affiché. Un sous-menu dont rien ne resterait en Simple est grisé dans la
+  barre (`dimSubs`). Un résultat de recherche ou un lien profond vers une ligne
+  d'un autre sous-menu y bascule d'abord (`showPage(…, focusKey)`).
+- `SEARCH_ALIASES` : des mots de recherche qui ne sont pas un libellé
+  (Tutoiement → « S'adresser à moi »…) mènent à la bonne ligne.
+- Mascotte → Apparence : le **podium** (`src/settings/podium.ts`, logique
+  pure dans `podium-layout.ts`) remplace la liste des mascottes. Marches de
+  1, 3, 5, 6 places en fausse 3D ; la première place est `mascot.id`, l'ordre
+  des autres est retenu dans `localStorage` (« settings.podium »). Un renderer
+  par mascotte, créé seulement quand le podium est affiché (microtâche après
+  `showPage`), détruit au changement de page ; humeurs au hasard toutes les
+  1,3 s (aucune si Windows réduit les animations). L'aperçu de « Tester les
+  animations » suit le même principe.
+
 ## Fenêtre de réglages : mode Simple / Complet (`src/settings/visibility.ts`, `src/settings/mode.ts`)
 
 - Réglage `general.settingsMode` : `"simple"` (défaut, aussi pour un fichier
@@ -1902,13 +1994,12 @@ Pour comparer : Réglages → Général → À propos → « Ressources utilisé
   S'adresser à moi, Lancer avec Windows, Bord de l'écran, Mises à jour
   automatiques), Apparence (Thème, Style des icônes), Onglets (la liste des
   modules, marquée `data-essential` dans le DOM), Mascotte (Afficher la
-  mascotte, Mascotte, Couleur), Profils (Profil actif). Règles et les trois
+  mascotte, Mascotte, Couleur, Ondine vit sur le bureau), Profils (Profil actif). Règles et les trois
   pages Sécurité restent entières (`WHOLE_PAGE`) : courtes, ou pas une liste
   de réglages.
 - `mode.ts` (`applyMode`) travaille sur la page déjà dessinée : `.row[data-key]`
   et `section.group[data-key]` ; un conteneur `data-essential` garde tout ce
-  qu'il contient ; `data-follows="<clé>"` suit la ligne de cette clé (le pli des
-  surprises). La recherche trouve tout : un résultat caché en Simple porte
+  qu'il contient ; `data-follows="<clé>"` suit la ligne de cette clé. La recherche trouve tout : un résultat caché en Simple porte
   l'étiquette « réglage avancé », et y aller (comme un lien profond vers une
   ligne cachée) passe en Complet avant de faire briller la ligne.
 - Tests : `tests/front/visibility.test.ts` (champs visibles selon le mode,

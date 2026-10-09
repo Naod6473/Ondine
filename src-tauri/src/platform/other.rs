@@ -42,6 +42,7 @@ pub fn enter_held_in(_win: &WebviewWindow) -> bool {
 pub fn make_non_activating(_win: &WebviewWindow) {}
 pub fn set_activating(_win: &WebviewWindow, _activating: bool) {}
 pub fn unblock_webview_drops(_app: &AppHandle) {}
+pub fn unblock_window_drops(_app: &AppHandle, _label: &'static str) {}
 pub fn is_elevated() -> bool {
     false
 }

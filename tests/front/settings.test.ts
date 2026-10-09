@@ -61,6 +61,8 @@ function rustValue(src: string, raw: string): unknown {
   if ((m = /^String::from\("((?:[^"\\]|\\.)*)"\)$/.exec(v))) return JSON.parse(`"${m[1]}"`);
   if (v === "true" || v === "false") return v === "true";
   if (/^-?\d+(\.\d+)?$/.test(v)) return Number(v);
+  // Une liste de textes : vec!["a".into(), "b".into()].
+  if ((m = /^vec!\[(.+)\]$/s.exec(v))) return splitTopLevel(m[1]).map((x) => rustValue(src, x));
   if (/^(Vec::new\(\)|vec!\[\]|Map::new\(\)|BTreeMap::new\(\))$/.test(v)) return v.startsWith("Vec") || v.startsWith("vec") ? [] : {};
   // Une petite fonction `fn default_x() -> T { valeur }`.
   if ((m = /^([a-z_][a-z0-9_]*)\(\)$/.exec(v))) {

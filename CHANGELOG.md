@@ -18,6 +18,35 @@
   conversation »). · "Talk to Ondine" is the first tab on first launch, and
   the island grows with the conversation ("The island grows with the
   conversation" setting).
+- Ondine sur le bureau : tirez la mascotte hors de l'île (ou Réglages →
+  Mascotte → « Ondine vit sur le bureau ») et posez-la où vous voulez. Un clic
+  sur elle ouvre une bulle à côté d'elle, avec les onglets choisis (par défaut
+  Parler à Ondine, Lanceur et Agents IA), qui la suit quand on la déplace.
+  Elle garde ses danses et ses fêtes, au-dessus des fenêtres ou derrière, et
+  rentre dans l'île si on l'y glisse (ou par un bouton). Elle s'assoit sur la
+  barre des tâches, accepte les fichiers qu'on lui lâche, montre une pastille
+  quand une notification arrive, s'ouvre avec Ctrl+Alt+B et se promène quand
+  on ne touche plus au PC. ·
+  Ondine on the desktop: drag the mascot out of the island (or Settings →
+  Mascot → "Ondine lives on the desktop") and put her wherever you like. A
+  click on her opens a bubble next to her with the chosen tabs (Talk to
+  Ondine, Launcher and AI agents by default), which follows her when she
+  moves. She keeps her dances and celebrations, above windows or behind them,
+  and goes back into the island when dragged onto it (or with a button). She
+  sits on the taskbar, accepts files dropped on her, shows a badge when a
+  notification arrives, opens with Ctrl+Alt+B and wanders around when you
+  leave the PC alone.
+- Réglages plus légers : les modules sont rangés en catégories repliables,
+  et les pages longues (Mascotte, Général, Onglets, Profils, Agents IA,
+  Parler à Ondine) s'ouvrent en sous-menus dans la barre de gauche. Rien n'a
+  été retiré, et la recherche ouvre le bon sous-menu. · Lighter settings:
+  modules are grouped in collapsible categories, and long pages (Mascot,
+  General, Tabs, Profiles, AI agents, Talk to Ondine) open as sub-menus in the
+  left bar. Nothing was removed, and search opens the right sub-menu.
+- La mascotte se choisit sur un podium en 3D : toutes les mascottes, animées
+  et d'humeur changeante, sur des marches ; on glisse celle qu'on veut sur la
+  première. · The mascot is picked on a 3D podium: every mascot, animated and
+  changing moods, on steps; drag the one you want onto the top step.
 
 ## 1.2.0 · 2026-10-08
 

@@ -51,6 +51,11 @@ const SETTLE_FALLBACK_MS = 1500;
 const EDGE_ZONE = { len: 240, depth: 14 };
 /** Survol prolongé de la mascotte → `love`. */
 const LONG_HOVER_MS = 2500;
+
+/** Ondine vit sur le bureau (src/pet/) : elle n'est plus dans l'île. */
+function petOn(s: Settings): boolean {
+  return s.mascot.enabled && !!s.mascot.pet;
+}
 /** Ondine vient pendre au bord seulement si personne n'a touché le PC depuis… */
 const PEEK_IDLE_MS = 20_000;
 // On se demande toutes les 15 s si c'est le moment de pendre au bord, et toutes
@@ -130,6 +135,8 @@ export class Island {
   private hoverMascotFired = false;
   /** Le dernier appui sur l'île était un geste (étirer, déplacer), pas un clic. */
   private wasGesture: () => boolean = () => false;
+  /** On vient de sortir Ondine de l'île en la tirant (le clic qui suit ne compte pas). */
+  private carried = false;
   /** Ondine qui pend au bord de l'écran (mascot/hang.ts), et sa dernière visite. */
   private hanger: Hanger;
   private lastPeek = Date.now();
@@ -247,6 +254,13 @@ export class Island {
     spotlight(this.shell);
     this.wirePrivacy();
     this.wireFocus();
+    // On porte Ondine (sur le bureau) au-dessus de l'île : elle se montre pour l'accueillir.
+    void onTauriEvent<boolean>("pet-over-island", (over) => (over ? this.fsm.pointerEnter() : this.fsm.pointerLeave()));
+    // Des fichiers lâchés sur Ondine (sur le bureau) : l'île connaît les cibles,
+    // elle les propose dans la bulle d'Ondine, puis fait le dépôt choisi.
+    this.wirePetDrops();
+    // La bulle d'Ondine sur le bureau demande un onglet qu'elle n'a pas.
+    this.bus.on("island.open", (msg) => this.registry.onOpenRequest((msg.payload as { tab?: string } | null)?.tab));
     // Bouton « Faire venir Ondine » des réglages.
     this.bus.on("mascot.peek-now", () => {
       if (this.fsm.state === "hidden") this.hanger.show();
@@ -272,7 +286,8 @@ export class Island {
     this.notifications.defaultDurationMs = s.island.notificationSecs * 1000;
     // Réglages → Mascotte → Taille : la place de la mascotte dans l'île ouverte (island.css).
     this.shell.dataset.mascotSize = s.mascot.size ?? "normal";
-    const wanted = s.mascot.enabled ? s.mascot.id : "";
+    // Ondine sur le bureau (src/pet/) : elle n'est plus dans l'île (ni au bord de l'écran).
+    const wanted = s.mascot.enabled && !petOn(s) ? s.mascot.id : "";
     if (wanted !== this.mascotId) {
       this.mascot?.destroy();
       this.mascot = null;
@@ -290,6 +305,8 @@ export class Island {
         });
       }
       this.shell.classList.toggle("no-mascot", !this.mascot);
+      // Ondine part sur le bureau ou en revient : le bouton « Faire rentrer » suit.
+      if (this.expandedUi) this.render(true);
     }
     if (this.mascot) {
       this.mascot.timings = { boredAfterMs: s.mascot.boredAfterSecs * 1000, sleepAfterMs: s.mascot.sleepAfterSecs * 1000 };
@@ -440,9 +457,10 @@ export class Island {
       if ((e.target as HTMLElement).closest("button, input, select, textarea, a")) return;
       this.fsm.click();
     });
+    this.wireCarry();
     this.mascotSlot.addEventListener("click", (e) => {
       e.stopPropagation();
-      if (this.wasGesture()) return;
+      if (this.wasGesture() || this.carried) return;
       // Elle tient la pancarte « ? » (un agent attend une réponse) : le clic
       // ouvre l'onglet Agents IA (une alerte affichée est fermée d'abord).
       if (this.mascot?.askOpen && this.fsm.state !== "expanded") {
@@ -511,6 +529,67 @@ export class Island {
       this.retargetQueued = false;
       this.jelly.retarget();
     });
+  }
+
+  /**
+   * Ondine sur le bureau : on attrape la mascotte et on la tire hors de l'île ;
+   * lâchée dehors, elle s'installe sur le bureau à cet endroit (src/pet/).
+   * Lâchée dans l'île, elle revient à sa place.
+   */
+  private wireCarry() {
+    const slot = this.mascotSlot;
+    let start: { x: number; y: number; id: number } | null = null;
+    let moving = false;
+    // La dernière place vue : hors de la fenêtre, le lâcher peut arriver sans coordonnées.
+    let last = { x: 0, y: 0 };
+    const outside = (x: number, y: number) => {
+      const r = this.shell.getBoundingClientRect();
+      return x < r.left - 24 || x > r.right + 24 || y < r.top - 24 || y > r.bottom + 24;
+    };
+    slot.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || !this.mascot || !["compact", "expanded"].includes(this.fsm.state)) return;
+      // La mascotte n'étire pas l'île et ne la déplace pas : on la prend, elle.
+      e.stopPropagation();
+      this.carried = false;
+      start = { x: e.clientX, y: e.clientY, id: e.pointerId };
+      slot.setPointerCapture(e.pointerId);
+      this.react("poke", { x: 0, y: 0 });
+    });
+    slot.addEventListener("pointermove", (e) => {
+      if (!start || !e.buttons) return;
+      const dx = e.clientX - start.x;
+      const dy = e.clientY - start.y;
+      if (!moving && Math.hypot(dx, dy) < 12) return;
+      if (!moving) {
+        moving = true;
+        slot.classList.add("carried");
+        this.mascot?.request("surprise");
+      }
+      last = { x: e.clientX, y: e.clientY };
+      slot.style.translate = `${dx}px ${dy}px`;
+      slot.classList.toggle("leaving", outside(e.clientX, e.clientY));
+    });
+    const end = (e: PointerEvent) => {
+      if (!start) return;
+      const wasMoving = moving;
+      start = null;
+      moving = false;
+      slot.classList.remove("carried", "leaving");
+      slot.style.translate = "";
+      if (!wasMoving) return;
+      this.carried = true;
+      window.setTimeout(() => (this.carried = false), 300);
+      if (e.type !== "pointercancel" && outside(last.x, last.y)) {
+        log.info("Ondine sortie de l'île vers le bureau");
+        void Bridge.petPlace(true);
+      } else {
+        this.mascot?.request("idle");
+      }
+    };
+    slot.addEventListener("pointerup", end);
+    slot.addEventListener("pointercancel", end);
+    // Windows a repris la souris (fenêtre devenue transparente aux clics) : c'est un lâcher.
+    slot.addEventListener("lostpointercapture", end);
   }
 
   /** Un point de la fenêtre, en px depuis le centre de la mascotte (pour ses réactions). */
@@ -774,6 +853,35 @@ export class Island {
     }
   }
 
+  /**
+   * Fichiers lâchés sur Ondine sur le bureau (src/pet/) : les cibles de dépôt
+   * des modules vivent ici. On envoie leurs noms à sa bulle (« island.drop-choices »),
+   * et le choix revient (« pet.drop-choice ») : le dépôt se fait comme sur l'île.
+   */
+  private wirePetDrops() {
+    let pending: { id: number; paths: string[]; targets: ReturnType<ModuleRegistry["dropTargets"]> } | null = null;
+    let nextId = 1;
+    this.bus.on("pet.files-dropped", (msg) => {
+      const paths = ((msg.payload as { paths?: unknown } | null)?.paths ?? []) as unknown[];
+      const clean = paths.filter((p): p is string => typeof p === "string").slice(0, 50);
+      if (!clean.length) return;
+      const targets = this.registry.dropTargets();
+      pending = { id: nextId++, paths: clean, targets };
+      this.bus.emit("island.drop-choices", { id: pending.id, count: clean.length, choices: targets.map((t) => ({ label: t.target.label, icon: t.target.icon })) });
+    });
+    this.bus.on("pet.drop-choice", (msg) => {
+      const p = msg.payload as { id?: number; index?: number } | null;
+      if (!pending || p?.id !== pending.id || typeof p.index !== "number") return;
+      const chosen = pending.targets[p.index];
+      const paths = pending.paths;
+      pending = null;
+      if (!chosen) return;
+      sounds.drop();
+      this.bus.emit("island.files-dropped", { count: paths.length, target: chosen.target.id });
+      void this.registry.drop(chosen.moduleId, chosen.target, paths);
+    });
+  }
+
   /** La cible sous ce point. La position de Tauri est en pixels physiques (à vérifier sur ta machine). */
   private dropTargetAt(pos: { x: number; y: number } | undefined) {
     // Même avec une seule cible, il faut lâcher dessus : lâcher ailleurs sur
@@ -966,6 +1074,8 @@ export class Island {
     }
     header.append(
       el("span", { class: "spacer" }),
+      // Ondine est sur le bureau : un bouton la fait rentrer dans l'île.
+      ...(petOn(settingsStore.current) ? [el("button", { class: "icon-btn", title: "Faire rentrer Ondine dans l'île", "aria-label": "Faire rentrer Ondine dans l'île", onclick: () => void Bridge.petBack() }, "💧")] : []),
       el("button", { class: "icon-btn", title: "Réglages", "aria-label": "Réglages", onclick: () => void Bridge.openSettingsWindow() }, "⚙"),
       el("button", { class: "icon-btn", title: "Réduire (Échap pour fermer)", "aria-label": "Réduire", onclick: () => this.fsm.shrink() }, "▴"),
     );

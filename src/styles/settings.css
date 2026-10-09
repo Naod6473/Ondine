@@ -269,6 +269,166 @@ body {
   background: var(--muted);
   opacity: 0.6;
 }
+/* Une page longue : sa flèche tourne quand ses sous-menus sont dépliés. */
+.nav-caret {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  transition: rotate 240ms var(--ease);
+}
+.nav-item.open .nav-caret {
+  rotate: 90deg;
+}
+
+/* Un pli (catégorie de modules, sous-menus d'une page) : s'ouvre en douceur. */
+.nav-fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 300ms var(--ease),
+    opacity 220ms var(--ease);
+}
+.nav-fold.open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.nav-fold-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-fold,
+  .nav-caret,
+  .nav-chevron {
+    transition: none;
+  }
+}
+
+/* Le titre d'une catégorie de modules (texte seul) : un clic la replie. */
+.nav-cat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 2px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color 160ms var(--ease),
+    background 160ms var(--ease);
+}
+.nav-cat:hover {
+  color: var(--fg);
+  background: var(--line);
+}
+.nav-cat:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+/* La page affichée est dedans, catégorie repliée : le titre le dit. */
+.nav-cat.has-active[aria-expanded="false"] {
+  color: var(--fg);
+}
+.nav-cat.has-active[aria-expanded="false"] .nav-cat-label::after {
+  content: " •";
+  color: var(--accent);
+}
+.nav-cat-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nav-chevron {
+  font-size: 14px;
+  line-height: 1;
+  transition: rotate 240ms var(--ease);
+}
+.nav-cat[aria-expanded="true"] .nav-chevron {
+  rotate: 90deg;
+}
+
+/* Les sous-menus d'une page, en retrait sous elle, avec un petit point. */
+.nav-sub {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 4px 10px 4px 42px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color 160ms var(--ease),
+    background 160ms var(--ease),
+    opacity 160ms var(--ease);
+}
+.nav-sub::before {
+  content: "";
+  position: absolute;
+  left: 30px;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.45;
+  translate: 0 -50%;
+  transition:
+    background 200ms var(--ease),
+    scale 200ms var(--ease);
+}
+.nav-sub:hover {
+  color: var(--fg);
+  background: var(--line);
+}
+.nav-sub.active {
+  color: var(--fg);
+  font-weight: 600;
+}
+.nav-sub.active::before {
+  background: var(--accent);
+  opacity: 1;
+  scale: 1.4;
+}
+.nav-sub:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+/* Mode Simple : rien à y montrer (« Tout afficher » une fois dedans). */
+.nav-sub.dim {
+  opacity: 0.5;
+}
+.nav-fold-inner > .nav-sub:last-child {
+  margin-bottom: 4px;
+}
+
+/* Le sous-menu affiché, à côté du titre de la page. */
+.page-crumb {
+  font-weight: 500;
+  color: var(--muted);
+}
+.page-crumb::before {
+  content: "›";
+  margin: 0 8px;
+}
+
 /* La pastille sous la page active (déplacée par nav-pill.ts). */
 .nav-pill {
   position: absolute;
@@ -1346,15 +1506,6 @@ html:not([lang="fr"]) .fr-only {
   content: "✦ ";
 }
 
-/* Réglages → Mascotte : surprises et carnet, repliés par défaut. */
-.eggs-fold {
-  display: contents;
-}
-
-.eggs-fold[hidden] {
-  display: none;
-}
-
 /* ── Mode Simple / Complet (src/settings/mode.ts) ───────────────────────── */
 /* L'interrupteur, sous la recherche : les deux boutons se partagent la largeur. */
 .mode-switch {
@@ -1402,4 +1553,236 @@ html:not([lang="fr"]) .fr-only {
   min-height: 110px;
   resize: vertical;
   line-height: 1.5;
+}
+
+/* ── Le podium des mascottes (src/settings/podium.ts) ─────────────────────── */
+/* Des marches en fausse 3D : un dessus vu d'en haut (trapèze plus étroit au
+   fond), une face avant éclairée d'en haut et une ombre portée sur la marche du
+   dessous. Les mascottes se tiennent sur le dessus ; la première marche est dorée. */
+.podium {
+  --m: clamp(46px, 9vw, 78px);
+  --step-top: #ffffff;
+  --step-top-back: #e4eaf5;
+  --step-face: #d6dff0;
+  --step-face-2: #b9c6de;
+  --step-side-l: rgba(255, 255, 255, 0.35);
+  --step-side-r: rgba(20, 30, 60, 0.14);
+  --step-shine: rgba(255, 255, 255, 0.95);
+  --step-cast: rgba(30, 45, 90, 0.28);
+  --gold: #e3a514;
+  --gold-top: #fff3cf;
+  --gold-back: #f3dd9c;
+  --gold-face: #f0cf72;
+  --gold-face-2: #d9a93a;
+  --gold-ink: #8a5a00;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 11;
+  user-select: none;
+  touch-action: none;
+}
+@media (prefers-color-scheme: dark) {
+  .podium {
+    --step-top: #4a5270;
+    --step-top-back: #2f3549;
+    --step-face: #2b3145;
+    --step-face-2: #1d2131;
+    --step-side-l: rgba(255, 255, 255, 0.06);
+    --step-side-r: rgba(0, 0, 0, 0.3);
+    --step-shine: rgba(255, 255, 255, 0.28);
+    --step-cast: rgba(0, 0, 0, 0.55);
+    --gold: #ffc94d;
+    --gold-top: #f1d27e;
+    --gold-back: #a8822c;
+    --gold-face: #b88a25;
+    --gold-face-2: #7d5b12;
+    --gold-ink: #4a3300;
+  }
+}
+.podium-top,
+.podium-face,
+.podium-ground {
+  position: absolute;
+  left: 50%;
+  translate: -50% 0;
+}
+.podium-top {
+  clip-path: polygon(var(--inset) 0, calc(100% - var(--inset)) 0, 100% 100%, 0 100%);
+  background: linear-gradient(var(--step-top-back), var(--step-top));
+}
+.podium-top::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--step-shine);
+}
+.podium-face {
+  border-radius: 0 0 6px 6px;
+  background:
+    linear-gradient(90deg, var(--step-side-l), transparent 14%, transparent 86%, var(--step-side-r)),
+    linear-gradient(var(--step-face), var(--step-face-2));
+  box-shadow: 0 10px 14px -8px var(--step-cast);
+}
+.podium-top.first {
+  background: linear-gradient(var(--gold-back), var(--gold-top));
+}
+.podium-face.first {
+  background:
+    linear-gradient(90deg, var(--step-side-l), transparent 14%, transparent 86%, var(--step-side-r)),
+    linear-gradient(var(--gold-face), var(--gold-face-2));
+}
+.podium-rank {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  font-size: clamp(18px, 3.4vw, 30px);
+  font-weight: 800;
+  color: var(--gold-ink);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+  font-variant-numeric: tabular-nums;
+}
+.podium-ground {
+  top: 95%;
+  width: 104%;
+  height: 6%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--step-cast), transparent);
+}
+.podium-mark {
+  position: absolute;
+  width: calc(var(--m) * 0.8);
+  height: 8px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: rgba(20, 30, 60, 0.12);
+  filter: blur(2px);
+  transition:
+    background 200ms var(--ease),
+    scale 200ms var(--ease);
+}
+.podium-mark.first {
+  width: calc(var(--m) * 1.1);
+}
+.podium-mark.target {
+  background: var(--accent);
+  scale: 1.3;
+}
+.podium-token {
+  position: absolute;
+  z-index: 2;
+  width: var(--m);
+  height: var(--m);
+  translate: -50% -100%;
+  border-radius: 16px;
+  outline: none;
+  cursor: grab;
+  transition:
+    left 520ms var(--spring),
+    top 520ms var(--spring),
+    width 420ms var(--ease),
+    height 420ms var(--ease);
+}
+.podium-token.first {
+  z-index: 3;
+  width: calc(var(--m) * 1.45);
+  height: calc(var(--m) * 1.45);
+}
+.podium-token.invalid {
+  opacity: 0.55;
+}
+.podium-canvas {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.podium-token:hover {
+  filter: drop-shadow(0 4px 8px rgba(30, 50, 100, 0.25));
+}
+.podium-token:focus-visible {
+  box-shadow: 0 0 0 3px var(--accent);
+}
+.podium-token.dragging {
+  z-index: 10;
+  scale: 1.15;
+  cursor: grabbing;
+  transition: none;
+  filter: drop-shadow(0 10px 16px rgba(30, 50, 100, 0.3));
+}
+.podium-name {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 2px);
+  translate: -50% 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--glass-strong);
+  box-shadow: var(--glass-shadow);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 160ms var(--ease),
+    translate 160ms var(--ease);
+}
+.podium-token:hover .podium-name,
+.podium-token:focus-visible .podium-name,
+.podium-token.dragging .podium-name {
+  opacity: 1;
+  translate: -50% 0;
+}
+.podium-token.first::after {
+  /* la couronne */
+  content: "♛";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  translate: -50% -100%;
+  font-size: calc(var(--m) * 0.3);
+  color: var(--gold);
+  pointer-events: none;
+  animation: podium-crown 2.6s ease-in-out infinite;
+}
+@keyframes podium-crown {
+  50% {
+    translate: -50% calc(-100% - 4px);
+  }
+}
+.podium-toast {
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  z-index: 20;
+  translate: -50% -6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--glass-strong);
+  box-shadow: var(--glass-shadow);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 200ms var(--ease),
+    translate 300ms var(--spring);
+}
+.podium-toast.show {
+  opacity: 1;
+  translate: -50% 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .podium-token,
+  .podium-mark,
+  .podium-toast {
+    transition: none;
+  }
+  .podium-token.first::after {
+    animation: none;
+  }
 }

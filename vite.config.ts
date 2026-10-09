@@ -1,8 +1,9 @@
 import { defineConfig } from "vite";
 import { resolve } from "node:path";
 
-// Trois pages : l'île (index.html), la fenêtre de réglages (settings.html)
-// et la fenêtre d'annotation des captures (annotate.html).
+// Quatre pages : l'île (index.html), la fenêtre de réglages (settings.html),
+// la fenêtre d'annotation des captures (annotate.html) et Ondine sur le
+// bureau (pet.html).
 // Les mascottes de `mascots/` sont trouvées par import.meta.glob dans
 // src/mascot/catalog.ts : Vite les embarque au moment du build.
 export default defineConfig({
@@ -29,6 +30,7 @@ export default defineConfig({
         island: resolve(__dirname, "index.html"),
         settings: resolve(__dirname, "settings.html"),
         annotate: resolve(__dirname, "annotate.html"),
+        pet: resolve(__dirname, "pet.html"),
       },
     },
   },

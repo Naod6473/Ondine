@@ -2,6 +2,6 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Ce que les fenêtres de l'île ont le droit de faire : écouter les événements (bus, glisser-déposer), et appeler les commandes Rust de l'île. Rien d'autre (pas de lecture d'image sur le disque, pas d'émission directe d'événements, pas de menu ni d'icône).",
-  "windows": ["island", "settings", "annotate"],
+  "windows": ["island", "settings", "annotate", "pet"],
   "permissions": ["core:event:allow-listen", "core:event:allow-unlisten"]
 }

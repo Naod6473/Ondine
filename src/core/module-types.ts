@@ -147,6 +147,13 @@ export interface IslandModule {
   manifest: ModuleManifest;
   /** Appelé quand le module démarre (ou est réactivé). Peut renvoyer un nettoyage. */
   setup?(api: ModuleApi): void | (() => void);
+  /**
+   * Dans une autre fenêtre que l'île (Ondine sur le bureau, src/pet/) : appelé
+   * À LA PLACE de setup. Seulement ce qu'il faut à ses vues (écouter le bus pour
+   * se redessiner…) : pas de notifications ni de travail de fond, que l'île
+   * fait déjà. Absent : rien n'est lancé.
+   */
+  satellite?(api: ModuleApi): void | (() => void);
   views?: {
     compact?: ViewMount;
     /**

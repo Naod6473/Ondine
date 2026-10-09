@@ -52,6 +52,15 @@ export interface BootInfo {
   mica?: boolean;
 }
 
+/** Où s'ouvre la bulle d'Ondine sur le bureau, par rapport à elle. */
+export interface PetLayout {
+  open: boolean;
+  /** À droite d'elle (sinon à gauche). */
+  right: boolean;
+  /** Vers le haut depuis son bas (sinon vers le bas depuis son haut). */
+  up: boolean;
+}
+
 export interface UpdateInfo {
   version: string;
   current: string;
@@ -84,6 +93,17 @@ export const Bridge = {
   islandReposition: () => call<void>("island_reposition"),
   /** On attrape l'île : la fenêtre suit la souris jusqu'au lâcher, puis s'aimante à un bord. */
   islandDragStart: () => call<void>("island_drag_start"),
+  // Ondine sur le bureau (src-tauri/src/pet.rs)
+  /** Ouvre ou ferme la bulle à côté d'elle ; renvoie de quel côté elle s'ouvre. */
+  petOpen: (open: boolean) => call<PetLayout>("pet_open", { open }),
+  /** On attrape Ondine : sa fenêtre suit la souris jusqu'au lâcher. */
+  petDragStart: () => call<void>("pet_drag_start"),
+  /** Les cases de la page qui prennent la souris (px logiques). */
+  petSetHit: (rects: { x: number; y: number; w: number; h: number }[]) => call<void>("pet_set_hit", { rects }),
+  /** Ondine sort de l'île : posée sous la souris (atCursor) ou à sa dernière place. */
+  petPlace: (atCursor: boolean) => call<void>("pet_place", { atCursor }),
+  /** Ondine rentre dans l'île. */
+  petBack: () => call<void>("pet_back"),
   /** Depuis quand personne n'a touché le PC, et si une présentation / un plein écran est en cours. */
   uiLanguage: () => call<string>("ui_language"),
   deskState: () => call<{ idleMs: number; busy: boolean }>("desk_state"),

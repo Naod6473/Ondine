@@ -92,6 +92,19 @@ export interface Settings {
     size: "small" | "normal" | "large";
     /** Calme : moins de gestes spontanés (pas d'ennui, de goûter, de visites, de danse ni de réactions aux modules). */
     calm: boolean;
+    /** Ondine sur le bureau : la gomme sort de l'île et vit où on la pose (src/pet/). */
+    pet: boolean;
+    /** Sa place (px physiques du coin de sa case) ; négative = jamais posée. */
+    petX: number;
+    petY: number;
+    /** Au-dessus des fenêtres (sinon derrière elles). */
+    petOnTop: boolean;
+    /** Les onglets de sa bulle (ids de modules), dans l'ordre. */
+    petTabs: string[];
+    /** Le raccourci qui ouvre sa bulle ("" = aucun ; voir PET_HOTKEYS). */
+    petHotkey: string;
+    /** Elle se promène un peu quand personne ne touche le PC. */
+    petWander: boolean;
   };
   privacy: {
     excludedFolders: string[];
@@ -164,7 +177,7 @@ export function defaultSettings(): Settings {
       tips: true,
       tipsSeen: [],
     },
-    mascot: { enabled: true, id: "goutte-gomme", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5, surprises: "all", treasures: [], color: "auto", hands: "always", wearHead: "none", wearEyes: "none", wearNeck: "none", customColor: "#4da3ff", size: "normal", calm: false },
+    mascot: { enabled: true, id: "goutte-gomme", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5, surprises: "all", treasures: [], color: "auto", hands: "always", wearHead: "none", wearEyes: "none", wearNeck: "none", customColor: "#4da3ff", size: "normal", calm: false, pet: false, petX: -1, petY: -1, petOnTop: true, petTabs: ["askclaude", "launcher", "agents"], petHotkey: "Ctrl+Alt+B", petWander: true },
     privacy: { excludedFolders: [] },
     modules: {},
     profiles: { list: [], active: "", auto: false, base: {} },
