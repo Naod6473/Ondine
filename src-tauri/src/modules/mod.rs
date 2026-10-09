@@ -285,6 +285,12 @@ fn enabled(app: &AppHandle, id: &str) -> bool {
     app.state::<crate::Shared>().settings.locked().module_enabled(id)
 }
 
+/// Le module est-il activé dans les réglages ? Vaut aussi pour un module
+/// sans Rust (Minuteur, Pauses…), que `is_active` ne connaît pas.
+pub fn module_enabled(app: &AppHandle, id: &str) -> bool {
+    enabled(app, id)
+}
+
 /// Le module est-il activé ET pas mis à l'écart ? Pour les threads de fond.
 pub fn is_active(app: &AppHandle, id: &str) -> bool {
     let Some(registry) = app.try_state::<Registry>() else { return false };

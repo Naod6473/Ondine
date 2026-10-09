@@ -85,8 +85,16 @@ pub fn tools() -> Vec<Tool> {
             "Met la musique en lecture ou en pause, ou passe au morceau suivant ou précédent.",
             json!({ "type": "object", "properties": { "action": { "type": "string", "enum": ["lecture_pause", "suivant", "precedent"] } }, "required": ["action"] }),
         ),
-        tool("lancer_minuteur", "Lance un minuteur dans l'île.", one("minutes", "integer", "De 1 à 180.")),
-        tool("creer_note", "Ajoute une note dans l'onglet Notes.", one("texte", "string", "Le texte de la note (2000 caractères au plus).")),
+        tool(
+            "lancer_minuteur",
+            "Lance le minuteur de l'île Ondine (son onglet Minuteur), pas l'application Horloge de Windows. À utiliser pour toute demande de minuteur ou de compte à rebours.",
+            one("minutes", "integer", "De 1 à 180."),
+        ),
+        tool(
+            "creer_note",
+            "Ajoute une note dans l'onglet Notes de l'île Ondine. À utiliser pour toute demande de note, de pense-bête ou de rappel écrit (pas creer_fichier).",
+            one("texte", "string", "Le texte de la note (2000 caractères au plus)."),
+        ),
         tool(
             "jouer_expression",
             "Fait jouer une expression à la mascotte d'Ondine.",
@@ -210,21 +218,23 @@ fn run(ctx: &ModuleContext, call: &Call, found: &Found) -> Result<Step, String> 
         }
         "lancer_minuteur" => {
             let minutes = call.args.get("minutes").and_then(Value::as_u64).filter(|m| (1..=MAX_TIMER_MIN).contains(m)).ok_or("minutes de 1 à 180")?;
-            if !super::is_active(ctx.app, "timer") {
+            // Le Minuteur n'a pas de Rust : seul son réglage dit s'il tourne
+            // (`is_active` ne connaît que les modules Rust).
+            if !super::module_enabled(ctx.app, "timer") {
                 return Err("le module Minuteur est désactivé".into());
             }
+            // L'onglet Minuteur de l'île écoute « timer.start » (comme une Règle).
             ctx.emit("timer.start", json!({ "minutes": minutes }));
-            Step::Done(ok(), did("timer", minutes.to_string()))
+            Step::Done(json!({ "ok": true, "note": "le minuteur de l'île tourne" }), did("timer", minutes.to_string()))
         }
         "creer_note" => {
             let text = call.args.get("texte").and_then(Value::as_str).unwrap_or("").trim();
             if text.is_empty() || text.chars().count() > MAX_NOTE_CHARS {
                 return Err("il faut un texte de 1 à 2000 caractères".into());
             }
-            if !super::is_active(ctx.app, "notes") {
-                return Err("le module Notes est désactivé".into());
-            }
-            ctx.emit("notes.add", json!({ "text": text }));
+            // La même commande que le bouton de l'onglet Notes : une vraie
+            // erreur revient si la note n'a pas pu être créée.
+            invoke(ctx, "notes", "note_save", json!({ "text": text }))?;
             Step::Done(ok(), did("note", text.chars().take(40).collect::<String>()))
         }
         "jouer_expression" => {

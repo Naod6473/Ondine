@@ -69,5 +69,5 @@
   },
   "views": ["expanded", "drop"],
   "commands": ["status", "prepare", "unprepare", "send", "confirm", "open_card", "reset", "copy"],
-  "events": { "emits": ["mascot.emote", "notes.add", "timer.start", "shelf.add"], "listens": [] }
+  "events": { "emits": ["mascot.emote", "timer.start", "shelf.add"], "listens": [] }
 }

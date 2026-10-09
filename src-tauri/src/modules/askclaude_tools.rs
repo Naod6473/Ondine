@@ -71,7 +71,7 @@ pub fn tools() -> Vec<Tool> {
         },
         Tool {
             name: CREATE,
-            description: "Crée un fichier texte (txt, md, csv, json, html…) dans le dossier d'Ondine de la personne. Un fichier du même nom n'est jamais écrasé. La personne voit le contenu et doit accepter.",
+            description: "Crée un fichier texte (txt, md, csv, json, html…) dans le dossier d'Ondine de la personne, seulement quand elle veut un fichier (pour une note de l'île, utiliser creer_note). Un fichier du même nom n'est jamais écrasé. La personne voit le contenu et doit accepter.",
             schema: json!({
                 "type": "object",
                 "properties": {

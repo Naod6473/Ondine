@@ -1890,8 +1890,10 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
   - agir tout de suite (demandé par la personne, défait d'un clic) :
     `regler_volume`, `couper_son`, `regler_luminosite` (tous les écrans),
     `mode_sombre`, `controler_musique`, `lancer_minuteur` (bus
-    `timer.start`), `creer_note` (bus `notes.add`), `jouer_expression`
-    (`mascot.emote`) ;
+    `timer.start`, écouté par l'onglet Minuteur ; le module n'a pas de
+    Rust, d'où `modules::module_enabled` au lieu de `is_active`),
+    `creer_note` (notes.note_save, comme le bouton de l'onglet),
+    `jouer_expression` (`mascot.emote`) ;
   - agir après accord (`Action::Pc`, carte « Faire / Annuler ») :
     `ouvrir_application` (entrées « app » et « tool » du Lanceur, puis
     launcher.launch), `ouvrir_site` (`web_url` : http(s) seulement),
