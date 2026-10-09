@@ -73,6 +73,9 @@ pub fn downloads_dir() -> Option<PathBuf> {
 pub fn documents_dir() -> Option<PathBuf> {
     Some(base("HOME").join("Documents"))
 }
+pub fn desktop_dir() -> Option<PathBuf> {
+    Some(base("HOME").join("Desktop"))
+}
 
 pub fn spawn_console(_program: &str, _args: &[String], _dir: &std::path::Path) -> Result<(), String> {
     Err("disponible seulement sous Windows".into())

@@ -124,6 +124,7 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
     { id: "general", label: "Général", keys: [] },
     { id: "models", label: "Fournisseur et modèles", keys: ["provider", "model", "openaiModel", "geminiModel", "maxTokens"] },
     { id: "persona", label: "Personnalité et affichage", keys: ["personality", "autoGrow", "emotions", "showDrop"] },
+    { id: "files", label: "Fichiers", keys: ["fileTools", "filesFolder"] },
   ],
 };
 

@@ -2959,6 +2959,58 @@ body[data-perf="eco"] .gh-today.gh-zero {
     opacity: 1;
   }
 }
+/* Ce qu'Ondine a fait avec ses outils : de petites lignes au-dessus de sa réponse. */
+.ask-activity {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 11px;
+  opacity: 0.7;
+}
+.ask-activity li {
+  display: flex;
+  gap: 5px;
+}
+/* Une carte de fichier : Ouvrir, ou le montrer dans l'Explorateur. */
+.ask-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+  padding: 5px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+}
+.ask-file-icon {
+  font-size: 16px;
+}
+.ask-file-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ask-file-text b,
+.ask-file-text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* La demande d'accord d'Ondine : bien visible, tout ce qui partira dedans. */
+.ask-bubble.ask-confirm {
+  max-width: 100%;
+  align-self: stretch;
+  border-color: rgba(255, 200, 110, 0.45);
+  background: rgba(255, 200, 110, 0.08);
+}
+.ask-confirm-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
 .ask-outgoing {
   padding: 8px 10px;
   border-radius: 11px;

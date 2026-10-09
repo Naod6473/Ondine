@@ -20,6 +20,13 @@
 //   - les fichiers passent par `check_path` (dossiers exclus refusés) ;
 //   - la réponse est du TEXTE À AFFICHER : rien n'est exécuté ;
 //   - le journal ne note que la taille de l'envoi, jamais son contenu.
+//
+// Les outils de fichiers (askclaude_tools.rs, réglage « fileTools ») : l'IA
+// peut demander à chercher des fichiers par leur nom (fait tout de suite, les
+// noms partent), à en lire un ou à en créer un (l'échange s'arrête alors sur
+// une demande d'accord, `pending`, et reprend avec `confirm`), ou à en
+// proposer un (une carte « Ouvrir / Montrer », `open_card`). Au plus
+// MAX_ROUNDS allers-retours par message.
 
 use crate::sync::LockExt;
 use std::sync::Mutex;
@@ -27,8 +34,9 @@ use std::sync::Mutex;
 use base64::Engine;
 use serde_json::{json, Value};
 
-use super::askclaude_providers::{self as providers, Attachment, Provider, Request, Turn};
-use super::{ModuleContext, RustModule};
+use super::askclaude_providers::{self as providers, Attachment, Call, Provider, Request, Turn};
+use super::askclaude_tools::{self as tools, Found};
+use super::{launcher, ModuleContext, RustModule};
 use crate::services::files;
 
 const MAX_TEXT_BYTES: u64 = 100 * 1024;
@@ -42,6 +50,10 @@ const MAX_TURNS: usize = 20;
 const CLAUDE_MODELS: &[&str] = &["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-4-5-20251001"];
 const DEFAULT_OPENAI_MODEL: &str = "gpt-6-luna";
 const DEFAULT_GEMINI_MODEL: &str = "gemini-3.8-flash";
+/// Allers-retours avec l'IA pour un seul message (outils compris).
+const MAX_ROUNDS: usize = 6;
+/// L'aperçu d'un fichier à lire, dans la demande d'accord.
+const READ_PREVIEW_CHARS: usize = 600;
 
 // La personnalité d'Ondine, selon la façon de s'adresser à la personne
 // (l'aperçu la montre telle qu'elle part, donc on ne la traduit pas à l'écran).
@@ -69,6 +81,10 @@ You only see what is written or shown to you here, and you do not act on the PC:
 const EMOTIONS_HINT: &str = "À la toute fin de chaque réponse, ajoutez votre humeur dans une balise, par exemple <humeur>joie</humeur>, choisie parmi : joie, rire, clin, reflexion, inquiete, triste, surprise, fierte, tendresse, timide. L'île la retire du texte et votre mascotte la joue.";
 const EMOTIONS_HINT_TU: &str = "À la toute fin de chaque réponse, ajoute ton humeur dans une balise, par exemple <humeur>joie</humeur>, choisie parmi : joie, rire, clin, reflexion, inquiete, triste, surprise, fierte, tendresse, timide. L'île la retire du texte et ta mascotte la joue.";
 const EMOTIONS_HINT_EN: &str = "At the very end of each answer, add your mood in a tag, for example <mood>happy</mood>, chosen from: happy, laugh, wink, thinking, worried, sad, surprise, proud, love, shy. The island removes it from the text and your mascot acts it out.";
+// Les outils de fichiers : ajoutés à la consigne quand ils sont activés.
+const TOOLS_HINT: &str = "Vous avez des outils de fichiers : chercher_fichiers (par le nom, sur le PC de la personne), lire_fichier (après son accord), creer_fichier (un fichier texte dans son dossier « {dossier} », après son accord) et proposer_fichier (une carte pour l'ouvrir). Vous ne voyez jamais un chemin, seulement des numéros. Utilisez-les quand la personne parle d'un fichier ou en veut un ; si elle refuse, n'insistez pas. Pour le reste, vous n'agissez pas sur le PC : vous expliquez comment faire.";
+const TOOLS_HINT_TU: &str = "Tu as des outils de fichiers : chercher_fichiers (par le nom, sur le PC de la personne), lire_fichier (après son accord), creer_fichier (un fichier texte dans son dossier « {dossier} », après son accord) et proposer_fichier (une carte pour l'ouvrir). Tu ne vois jamais un chemin, seulement des numéros. Utilise-les quand la personne parle d'un fichier ou en veut un ; si elle refuse, n'insiste pas. Pour le reste, tu n'agis pas sur le PC : tu expliques comment faire.";
+const TOOLS_HINT_EN: &str = "You have file tools: chercher_fichiers (search by name on the person's PC), lire_fichier (read, after they agree), creer_fichier (a text file in their « {dossier} » folder, after they agree) and proposer_fichier (a card to open it). You never see a path, only numbers. Use them when the person talks about a file or wants one; if they refuse, do not insist. Otherwise you do not act on the PC: you explain how to do things.";
 /// Mot de la balise → état de la mascotte (src/mascot/types.ts).
 const EMOTIONS: &[(&str, &str)] = &[
     ("joie", "happy"),
@@ -133,6 +149,44 @@ const TEXT_EXTENSIONS: &[&str] = &[
 ];
 const IMAGE_TYPES: &[(&str, &str)] = &[("png", "image/png"), ("jpg", "image/jpeg"), ("jpeg", "image/jpeg"), ("gif", "image/gif"), ("webp", "image/webp")];
 
+/// Un message en cours d'échange avec l'IA (les allers-retours des outils).
+struct Exchange {
+    provider: Provider,
+    model: String,
+    system: String,
+    /// La conversation, avec le nouveau message de la personne à la fin.
+    turns: Vec<Turn>,
+    /// Ce qui suit la conversation dans la requête : les réponses avec appels
+    /// et les résultats des outils, dans la forme de l'API.
+    extra: Vec<Value>,
+    /// La dernière réponse (forme de l'API), ses appels, et leurs résultats.
+    native: Vec<Value>,
+    calls: Vec<Call>,
+    results: Vec<(Call, Value)>,
+    /// Le prochain appel à traiter.
+    next: usize,
+    rounds: usize,
+    /// Ce qu'Ondine a fait (lignes affichées), les cartes de fichiers, les notes pour l'IA.
+    activity: Vec<Value>,
+    cards: Vec<Value>,
+    notes: Vec<String>,
+    input_tokens: u64,
+    output_tokens: u64,
+}
+
+/// Un échange arrêté sur une demande d'accord (lire ou créer un fichier).
+struct Pending {
+    id: u64,
+    exchange: Exchange,
+    /// Ce qui partira (lire) ou sera écrit (créer) si la personne accepte.
+    action: Action,
+}
+
+enum Action {
+    Read { numero: u64, name: String, text: String },
+    Create { name: String, content: String },
+}
+
 /// Un fichier joint préparé : montré, puis envoyé tel quel.
 #[derive(Clone)]
 struct Prepared {
@@ -146,6 +200,10 @@ pub struct AskClaude {
     next: Mutex<u64>,
     /// La conversation (en mémoire seulement).
     turns: Mutex<Vec<Turn>>,
+    /// Les fichiers donnés à l'IA dans cette conversation (leurs numéros).
+    found: Mutex<Found>,
+    /// L'échange qui attend votre accord.
+    pending: Mutex<Option<Pending>>,
 }
 
 impl RustModule for AskClaude {
@@ -175,6 +233,8 @@ impl RustModule for AskClaude {
                     "system": system(ctx),
                     "history": history,
                     "maxTurns": MAX_TURNS,
+                    "fileTools": file_tools(ctx),
+                    "filesFolder": tools::folder(ctx).map(|p| p.display().to_string()),
                 }))
             }
             // { text } ou { path } → l'aperçu complet du fichier joint.
@@ -234,26 +294,96 @@ impl RustModule for AskClaude {
                 let key = ctx.credential(provider.credential_key())?.ok_or(format!("Pas de {} : ajoutez-la dans Réglages → Identifiants.", lowercase_first(provider.key_label())))?;
 
                 let mut turns = self.turns.locked().clone();
-                turns.push(Turn { user: true, text: message, attachment });
-                let system = system(ctx);
-                let (url, body) = providers::request(provider, &Request { model: &model, max_tokens: max_tokens(ctx), system: &system, turns: window(&turns) });
-                ctx.log_info(format!("message envoyé à {} ({} octets)", provider.destination(), body.to_string().len()));
-                let mut answer = providers::call(provider, &key, &url, &body)?;
-
-                let (text, emotion) = take_emotion(answer["answer"].as_str().unwrap_or(""));
-                answer["answer"] = json!(text);
-                answer["emotion"] = json!(emotion);
-                turns.push(Turn { user: false, text, attachment: None });
-                // On ne garde que ce qui pourra encore partir.
-                let keep = turns.len().saturating_sub(MAX_TURNS * 2);
-                turns.drain(..keep);
-                *self.turns.locked() = turns;
+                turns.push(Turn { user: true, text: message, attachment, notes: None });
                 *self.prepared.locked() = None;
-                Ok(answer)
+                // Un échange qui attendait un accord est abandonné.
+                *self.pending.locked() = None;
+                let exchange = Exchange {
+                    provider,
+                    model,
+                    system: system(ctx),
+                    turns,
+                    extra: Vec::new(),
+                    native: Vec::new(),
+                    calls: Vec::new(),
+                    results: Vec::new(),
+                    next: 0,
+                    rounds: 0,
+                    activity: Vec::new(),
+                    cards: Vec::new(),
+                    notes: Vec::new(),
+                    input_tokens: 0,
+                    output_tokens: 0,
+                };
+                self.run(ctx, &key, exchange)
+            }
+            // { id, ok } : votre réponse à une demande d'accord ; l'échange reprend.
+            "confirm" => {
+                ctx.require("claude-api")?;
+                let id = args.get("id").and_then(Value::as_u64).unwrap_or(0);
+                let ok = args.get("ok").and_then(Value::as_bool).unwrap_or(false);
+                let Pending { mut exchange, action, .. } = {
+                    let mut p = self.pending.locked();
+                    match p.take() {
+                        Some(x) if x.id == id => x,
+                        other => {
+                            *p = other;
+                            return Err("cette demande n'est plus valable : renvoyez votre message".into());
+                        }
+                    }
+                };
+                let key = ctx.credential(exchange.provider.credential_key())?.ok_or("la clé API a disparu")?;
+                let call = exchange.calls[exchange.next].clone();
+                let result = match (ok, action) {
+                    (false, Action::Read { name, .. }) => {
+                        exchange.activity.push(json!({ "kind": "refused", "name": name }));
+                        json!({ "refus": "la personne a refusé de partager ce fichier" })
+                    }
+                    (false, Action::Create { name, .. }) => {
+                        exchange.activity.push(json!({ "kind": "refused", "name": name }));
+                        json!({ "refus": "la personne a refusé de créer ce fichier" })
+                    }
+                    (true, Action::Read { numero, name, text }) => {
+                        ctx.log_info(format!("fichier lu pour {} ({} octets)", exchange.provider.destination(), text.len()));
+                        exchange.activity.push(json!({ "kind": "read", "name": name }));
+                        exchange.notes.push(format!("#{numero} {name} (lu)"));
+                        json!({ "numero": numero, "nom": name, "contenu": text })
+                    }
+                    (true, Action::Create { name, content }) => match tools::create_file(ctx, &name, &content) {
+                        Ok(path) => {
+                            let numero = self.found.locked().add(path.clone());
+                            let card = tools::describe(numero, &path);
+                            let created = card["nom"].as_str().unwrap_or(&name).to_string();
+                            ctx.log_info(format!("fichier créé par Ondine ({} octets)", content.len()));
+                            exchange.activity.push(json!({ "kind": "created", "name": created }));
+                            exchange.notes.push(format!("#{numero} {created} (créé)"));
+                            push_card(&mut exchange.cards, card.clone(), true);
+                            json!({ "ok": true, "numero": numero, "nom": created })
+                        }
+                        Err(e) => json!({ "erreur": e }),
+                    },
+                };
+                exchange.results.push((call, result));
+                exchange.next += 1;
+                self.run(ctx, &key, exchange)
+            }
+            // { numero, how: "open" | "reveal" } : le bouton d'une carte de fichier.
+            "open_card" => {
+                let numero = args.get("numero").and_then(Value::as_u64).unwrap_or(0);
+                let path = self.found.locked().get(numero).cloned().ok_or("ce fichier n'est plus dans la conversation")?;
+                let path = ctx.check_path(&path.display().to_string())?;
+                if args.get("how").and_then(Value::as_str) == Some("reveal") {
+                    files::reveal(&path)?;
+                } else {
+                    launcher::open_checked(&path)?;
+                }
+                Ok(Value::Null)
             }
             // Recommencer : la conversation est oubliée.
             "reset" => {
                 self.turns.locked().clear();
+                self.found.locked().clear();
+                *self.pending.locked() = None;
                 *self.prepared.locked() = None;
                 Ok(Value::Null)
             }
@@ -266,6 +396,184 @@ impl RustModule for AskClaude {
             other => Err(format!("commande inconnue : {other}")),
         }
     }
+}
+
+impl AskClaude {
+    /// Fait avancer un échange : traite les appels d'outils en attente,
+    /// interroge l'IA, recommence tant qu'elle appelle des outils. S'arrête
+    /// sur une demande d'accord (`{pending}`) ou sur la réponse finale.
+    fn run(&self, ctx: &ModuleContext, key: &str, mut x: Exchange) -> Result<Value, String> {
+        loop {
+            while x.next < x.calls.len() {
+                let call = x.calls[x.next].clone();
+                match self.tool(ctx, &mut x, &call) {
+                    Step::Done(result) => {
+                        x.results.push((call, result));
+                        x.next += 1;
+                    }
+                    Step::Ask(action) => {
+                        let id = {
+                            let mut n = self.next.locked();
+                            *n += 1;
+                            *n
+                        };
+                        let ask = ask_json(id, &action, x.provider.destination(), ctx);
+                        let reply = json!({ "pending": ask, "activity": x.activity, "cards": x.cards });
+                        *self.pending.locked() = Some(Pending { id, exchange: x, action });
+                        return Ok(reply);
+                    }
+                }
+            }
+            if !x.calls.is_empty() {
+                // Tous les appels ont leur résultat : ils repartent avec la réponse qui les a demandés.
+                x.extra.append(&mut x.native);
+                x.extra.extend(providers::tool_results(x.provider, &x.results));
+                x.calls.clear();
+                x.results.clear();
+                x.next = 0;
+            }
+            // Les outils restent décrits jusqu'au bout (une API refuse des
+            // appels passés sans eux) ; au dernier tour, leurs appels sont ignorés.
+            let offered = if file_tools(ctx) || !x.extra.is_empty() { tools::tools() } else { Vec::new() };
+            let (url, body) = providers::request(
+                x.provider,
+                &Request { model: &x.model, max_tokens: max_tokens(ctx), system: &x.system, turns: window(&x.turns), tools: &offered, extra: &x.extra },
+            );
+            ctx.log_info(format!("message envoyé à {} ({} octets)", x.provider.destination(), body.to_string().len()));
+            let mut answer = providers::call(x.provider, key, &url, &body)?;
+            x.rounds += 1;
+            x.input_tokens += answer["inputTokens"].as_u64().unwrap_or(0);
+            x.output_tokens += answer["outputTokens"].as_u64().unwrap_or(0);
+            let calls = providers::calls_from(&answer);
+            if !calls.is_empty() && !offered.is_empty() && x.rounds < MAX_ROUNDS {
+                x.native = answer["native"].as_array().cloned().unwrap_or_default();
+                x.calls = calls;
+                continue;
+            }
+            return Ok(self.finish(ctx, x, &mut answer));
+        }
+    }
+
+    /// Un appel d'outil : fait tout de suite (chercher, proposer, ou une
+    /// erreur), ou à faire après votre accord (lire, créer).
+    fn tool(&self, ctx: &ModuleContext, x: &mut Exchange, call: &Call) -> Step {
+        let numero = call.args.get("numero").and_then(Value::as_u64).unwrap_or(0);
+        let err = |e: String| Step::Done(json!({ "erreur": e }));
+        match call.name.as_str() {
+            tools::SEARCH => {
+                let query = call.args.get("requete").and_then(Value::as_str).unwrap_or("").to_string();
+                let result = tools::search_files(ctx, &mut self.found.locked(), &query);
+                let list = result["fichiers"].as_array().cloned().unwrap_or_default();
+                for f in &list {
+                    x.notes.push(format!("#{} {} ({})", f["numero"], f["nom"].as_str().unwrap_or(""), f["dossier"].as_str().unwrap_or("")));
+                }
+                x.activity.push(json!({ "kind": "search", "query": query, "count": list.len() }));
+                Step::Done(result)
+            }
+            tools::PROPOSE => {
+                let Some(path) = self.found.locked().get(numero).cloned() else { return err(format!("pas de fichier n° {numero}")) };
+                match ctx.check_path(&path.display().to_string()) {
+                    Ok(real) if real.exists() => {
+                        push_card(&mut x.cards, tools::describe(numero, &real), false);
+                        Step::Done(json!({ "ok": true, "note": "la carte est affichée ; la personne l'ouvrira si elle veut" }))
+                    }
+                    Ok(_) => err("ce fichier n'existe plus".into()),
+                    Err(e) => err(e),
+                }
+            }
+            tools::READ => {
+                let Some(path) = self.found.locked().get(numero).cloned() else { return err(format!("pas de fichier n° {numero} : cherchez-le d'abord")) };
+                match read_file(ctx, &path.display().to_string()) {
+                    Ok((name, Some(text), _)) => Step::Ask(Action::Read { numero, name, text }),
+                    Ok((name, None, _)) => err(format!("« {name} » est une image : la personne peut la joindre elle-même")),
+                    Err(e) => err(e),
+                }
+            }
+            tools::CREATE => {
+                let name = call.args.get("nom").and_then(Value::as_str).unwrap_or("");
+                let content = call.args.get("contenu").and_then(Value::as_str).unwrap_or("");
+                match tools::check_new_file(name, content) {
+                    Ok(name) => Step::Ask(Action::Create { name, content: content.to_string() }),
+                    Err(e) => err(e),
+                }
+            }
+            other => err(format!("outil inconnu : {other}")),
+        }
+    }
+
+    /// La réponse finale : retire l'humeur, garde le tour dans la conversation.
+    fn finish(&self, ctx: &ModuleContext, mut x: Exchange, answer: &mut Value) -> Value {
+        let (mut text, emotion) = take_emotion(answer["answer"].as_str().unwrap_or(""));
+        if text.is_empty() && x.rounds >= MAX_ROUNDS {
+            text = match voice(ctx) {
+                Voice::Vous => "Je me suis arrêtée là : trop d'allers-retours pour un seul message. Dites-moi comment continuer.",
+                Voice::Tu => "Je me suis arrêtée là : trop d'allers-retours pour un seul message. Dis-moi comment continuer.",
+                Voice::English => "I stopped there: too many round trips for one message. Tell me how to go on.",
+            }
+            .to_string();
+        }
+        if let Some(o) = answer.as_object_mut() {
+            o.remove("calls");
+            o.remove("native");
+        }
+        answer["answer"] = json!(text);
+        answer["emotion"] = json!(emotion);
+        answer["inputTokens"] = json!(x.input_tokens);
+        answer["outputTokens"] = json!(x.output_tokens);
+        answer["activity"] = json!(x.activity);
+        answer["cards"] = json!(x.cards);
+        let notes = (!x.notes.is_empty()).then(|| format!("[Fichiers de cet échange : {}]", x.notes.join(" ; ")));
+        x.turns.push(Turn { user: false, text, attachment: None, notes });
+        // On ne garde que ce qui pourra encore partir.
+        let keep = x.turns.len().saturating_sub(MAX_TURNS * 2);
+        x.turns.drain(..keep);
+        *self.turns.locked() = x.turns;
+        answer.clone()
+    }
+}
+
+enum Step {
+    Done(Value),
+    Ask(Action),
+}
+
+/// Ajoute une carte de fichier (une seule par numéro).
+fn push_card(cards: &mut Vec<Value>, mut card: Value, created: bool) {
+    card["cree"] = json!(created);
+    if !cards.iter().any(|c| c["numero"] == card["numero"]) {
+        cards.push(card);
+    }
+}
+
+/// La demande d'accord montrée à la personne : tout ce qui partira ou sera écrit.
+fn ask_json(id: u64, action: &Action, destination: &str, ctx: &ModuleContext) -> Value {
+    match action {
+        Action::Read { name, text, .. } => {
+            let cut = text.chars().count() > READ_PREVIEW_CHARS;
+            json!({
+                "id": id,
+                "kind": "read",
+                "name": name,
+                "bytes": text.len(),
+                "preview": text.chars().take(READ_PREVIEW_CHARS).collect::<String>(),
+                "cut": cut,
+                "destination": destination,
+            })
+        }
+        Action::Create { name, content } => json!({
+            "id": id,
+            "kind": "create",
+            "name": name,
+            "bytes": content.len(),
+            "preview": content,
+            "folder": tools::folder(ctx).map(|p| p.display().to_string()),
+        }),
+    }
+}
+
+/// Le réglage « Ondine peut chercher et créer des fichiers ».
+fn file_tools(ctx: &ModuleContext) -> bool {
+    ctx.settings().get("fileTools").and_then(Value::as_bool).unwrap_or(true)
 }
 
 fn lowercase_first(s: &str) -> String {
@@ -341,7 +649,20 @@ fn system(ctx: &ModuleContext) -> String {
         s.push_str("\n\n");
         s.push_str(hint);
     }
+    if file_tools(ctx) {
+        s.push_str("\n\n");
+        let folder = tools::folder(ctx).map(|p| p.display().to_string()).unwrap_or_else(|| "Documents\\Ondine".into());
+        s.push_str(&tools_hint(voice(ctx)).replace("{dossier}", &folder));
+    }
     s
+}
+
+fn tools_hint(voice: Voice) -> &'static str {
+    match voice {
+        Voice::Vous => TOOLS_HINT,
+        Voice::Tu => TOOLS_HINT_TU,
+        Voice::English => TOOLS_HINT_EN,
+    }
 }
 
 /// Ce qu'on tire d'un fichier déposé : son nom, son texte (s'il en a), et
@@ -415,12 +736,29 @@ mod tests {
 
     #[test]
     fn window_starts_with_the_person() {
-        let t = |user| Turn { user, text: String::new(), attachment: None };
+        let t = |user| Turn { user, text: String::new(), attachment: None, notes: None };
         let mut turns: Vec<Turn> = (0..25).flat_map(|_| [t(true), t(false)]).collect();
         turns.push(t(true));
         let w = window(&turns);
         assert!(w.len() <= MAX_TURNS && w[0].user && w.last().unwrap().user);
         assert_eq!(window(&[t(false), t(true)]).len(), 1);
+    }
+
+    #[test]
+    fn tools_hint_follows_address() {
+        assert!(tools_hint(Voice::Vous).starts_with("Vous avez") && tools_hint(Voice::Vous).contains("{dossier}"));
+        assert!(tools_hint(Voice::Tu).starts_with("Tu as") && tools_hint(Voice::Tu).contains("n'insiste pas"));
+        assert!(tools_hint(Voice::English).starts_with("You have"));
+    }
+
+    #[test]
+    fn cards_are_not_repeated() {
+        let mut cards = Vec::new();
+        push_card(&mut cards, json!({ "numero": 1, "nom": "a.txt" }), false);
+        push_card(&mut cards, json!({ "numero": 1, "nom": "a.txt" }), true);
+        push_card(&mut cards, json!({ "numero": 2, "nom": "b.txt" }), true);
+        assert_eq!(cards.len(), 2);
+        assert_eq!((cards[0]["cree"].as_bool(), cards[1]["cree"].as_bool()), (Some(false), Some(true)));
     }
 
     #[test]

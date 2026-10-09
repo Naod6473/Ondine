@@ -269,6 +269,33 @@ Dans l'onglet 🤖, ouvre « Brancher Claude Code, Codex ou Gemini ».
 11. ☐ Réglages → Général → S'adresser à moi : Tu. « Recommencer », puis
     écris : Ondine tutoie.
 
+### 3.1 Les fichiers d'Ondine
+
+1. ☐ Réglages → Parler à Ondine → sous-menu « Fichiers » : « Ondine peut
+   chercher et créer des fichiers » est coché, le dossier est vide.
+2. ☐ Écris « Tu trouves ma dernière facture ? » (avec une facture dans
+   Documents ou Téléchargements) : une petite ligne « 🔎 Recherche … » au-dessus
+   de la réponse, et une carte du fichier. « Ouvrir » l'ouvre, 📂 le montre
+   dans l'Explorateur.
+3. ☐ « Lis-moi le fichier texte … » (un .txt ou .md trouvé) : une demande
+   d'accord montre le début du fichier et l'adresse où il partira.
+   « Refuser » : Ondine n'insiste pas. Redemande, « Autoriser » : elle
+   répond avec son contenu.
+4. ☐ « Crée-moi une liste de courses » : la demande montre le nom, le
+   dossier (Documents\Ondine) et TOUT le contenu. « Créer » : le fichier est
+   là, avec une carte ✨. Redemande le même nom : un nouveau fichier
+   « liste… (2).md », l'ancien n'est pas écrasé.
+5. ☐ Demande un fichier .bat ou .exe : Ondine dit qu'elle ne peut pas.
+6. ☐ Mets un dossier à toi dans « Dossier des fichiers créés par Ondine »
+   (D:\… par exemple) : le prochain fichier y va.
+7. ☐ Un fichier dans un **dossier exclu** n'apparaît jamais dans les
+   recherches.
+8. ☐ Pendant une demande d'accord, « Envoyer » est remplacé par « Répondez
+   d'abord à Ondine » ; « Recommencer » annule tout.
+9. ☐ Fais les points 2 à 4 avec GPT, puis avec Gemini.
+10. ☐ Décoche « Ondine peut chercher et créer des fichiers » : elle ne
+    cherche plus, et la phrase sous le champ disparaît.
+
 ## 4. 💧 Ondine sur le bureau
 
 1. ☐ Dans l'île ouverte, attrape la mascotte et tire-la hors de l'île : elle

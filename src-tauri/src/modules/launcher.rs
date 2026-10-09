@@ -370,7 +370,7 @@ fn start_menu_dirs() -> Vec<PathBuf> {
 }
 
 /// Le dossier « Récent » de Windows : un raccourci .lnk par fichier ouvert.
-fn recent_dir() -> Option<PathBuf> {
+pub(super) fn recent_dir() -> Option<PathBuf> {
     std::env::var_os("APPDATA").map(|base| PathBuf::from(base).join(r"Microsoft\Windows\Recent"))
 }
 
@@ -408,7 +408,7 @@ fn app_name(path: &Path) -> Option<String> {
 }
 
 /// Les fichiers ouverts récemment, du plus récent au plus ancien.
-fn recent_files(dir: &Path) -> Vec<PathBuf> {
+pub(super) fn recent_files(dir: &Path) -> Vec<PathBuf> {
     let Ok(read) = std::fs::read_dir(dir) else { return Vec::new() };
     let mut links: Vec<(SystemTime, PathBuf)> = read
         .flatten()
@@ -441,7 +441,7 @@ pub(super) fn open_checked(path: &Path) -> Result<bool, String> {
     Ok(false)
 }
 
-fn is_executable(path: &Path) -> bool {
+pub(super) fn is_executable(path: &Path) -> bool {
     let ext = path.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
     EXECUTABLE.contains(&ext.as_str())
 }

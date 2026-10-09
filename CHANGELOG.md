@@ -13,6 +13,17 @@
   messages, and can answer with Claude (default), GPT or Gemini: one API key
   per provider, in Settings → Credentials. The conversation is never written
   to disk.
+- Parler à Ondine : Ondine peut chercher vos fichiers par leur nom
+  (Documents, Bureau, Téléchargements, Images, fichiers récents), en lire un
+  ou en créer un (texte seulement, jamais écrasé) dans son dossier,
+  Documents\Ondine par défaut, et vous proposer d'en ouvrir un. Les noms
+  trouvés partent avec la conversation ; pour lire ou créer, elle vous montre
+  tout et attend votre accord. Réglages du module → Fichiers. · Talk to
+  Ondine: Ondine can search your files by name (Documents, Desktop,
+  Downloads, Pictures, recent files), read one or create one (text only,
+  never overwritten) in her folder, Documents\Ondine by default, and offer to
+  open one. The names found go out with the conversation; to read or create,
+  she shows you everything and waits for your OK. Module settings → Files.
 - « Parler à Ondine » est le premier onglet au premier lancement, et l'île
   s'agrandit avec la conversation (réglage « L'île s'agrandit avec la
   conversation »). · "Talk to Ondine" is the first tab on first launch, and

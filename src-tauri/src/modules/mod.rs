@@ -17,6 +17,8 @@ mod agents;
 mod askclaude;
 // Les fournisseurs d'IA de « Parler à Ondine » : Claude, OpenAI, Gemini.
 mod askclaude_providers;
+// Ses outils de fichiers : chercher, lire, créer, proposer.
+mod askclaude_tools;
 mod capture;
 mod clipboard;
 mod controls;
