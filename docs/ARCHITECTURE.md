@@ -1967,9 +1967,14 @@ Pour comparer : Réglages → Général → À propos → « Ressources utilisé
   d'un autre sous-menu y bascule d'abord (`showPage(…, focusKey)`).
 - `SEARCH_ALIASES` : des mots de recherche qui ne sont pas un libellé
   (Tutoiement → « S'adresser à moi »…) mènent à la bonne ligne.
-- Mascotte : deux scènes d'aperçu (sous Apparence, et dans Tester les
-  animations) ; le renderer va dans celle restée affichée (microtâche après
-  `showPage`).
+- Mascotte → Apparence : le **podium** (`src/settings/podium.ts`, logique
+  pure dans `podium-layout.ts`) remplace la liste des mascottes. Marches de
+  1, 3, 5, 6 places en fausse 3D ; la première place est `mascot.id`, l'ordre
+  des autres est retenu dans `localStorage` (« settings.podium »). Un renderer
+  par mascotte, créé seulement quand le podium est affiché (microtâche après
+  `showPage`), détruit au changement de page ; humeurs au hasard toutes les
+  1,3 s (aucune si Windows réduit les animations). L'aperçu de « Tester les
+  animations » suit le même principe.
 
 ## Fenêtre de réglages : mode Simple / Complet (`src/settings/visibility.ts`, `src/settings/mode.ts`)
 

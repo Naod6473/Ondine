@@ -44,7 +44,6 @@
 "Nœud papillon": "Bow tie",
 "Écharpe": "Scarf",
 "Des petites moufles en gomme qui flottent à côté d'elle : coucou, bravo, au clavier, mains sur les joues…": "Little gummy mittens floating next to her: hello, hooray, typing, hands on cheeks…",
-"Pour toutes les mascottes en gomme. L'aperçu ci-dessous change tout de suite.": "For all gummy mascots. The preview below updates right away.",
 "Guimauve (gomme carrée)": "Marshmallow (square gummy)",
 "Dragée (gomme ovale)": "Sugared almond (oval gummy)",
 "Berlingot (gomme triangulaire)": "Berlingot (triangle gummy)",
@@ -484,7 +483,6 @@
 "Désactivé, le module s'arrête et son onglet disparaît.": "Disabled, the module stops and its tab disappears.",
 "À propos": "About",
 "Ce module n'a pas de réglage.": "This module has no settings.",
-"Déposez vos mascottes dans le dossier mascots/ du projet, puis relancez l'appli.": "Drop your mascots in the project's mascots/ folder, then restart the app.",
 "Visites au bord de l'écran": "Visits at the screen edge",
 "Au plus une visite toutes les": "At most one visit every",
 "Faire venir Ondine": "Bring Ondine over",
@@ -1486,7 +1484,6 @@
 "Petite": "Small",
 "Normale": "Normal",
 "Grande": "Large",
-"Dans l'île ouverte et dans l'aperçu ci-dessous ; la mini-île garde sa taille.": "In the open island and in the preview below; the mini island keeps its size.",
 "Calme : moins de gestes spontanés": "Calm: fewer spontaneous gestures",
 "Plus d'ennui, de goûter, de visites au bord de l'écran, de danse ni de réactions aux modules. Elle réagit toujours aux agents IA (attente, question), aux erreurs, aux réussites, aux alertes, et elle dort.": "No more boredom, snack, visits at the screen edge, dancing or reactions to modules. She still reacts to AI agents (waiting, question), errors, successes, alerts, and she sleeps.",
 "Roue de couleur": "Color wheel",
@@ -1660,7 +1657,11 @@
 "Personnalité et affichage": "Personality & display",
 "Les onglets de sa bulle": "Tabs in her bubble",
 "Réglages en mode Complet": "Settings in Full mode",
-"Couleur personnalisée de la mascotte": "Custom mascot color"
+"Couleur personnalisée de la mascotte": "Custom mascot color",
+"Dans l'île ouverte et dans l'aperçu de « Tester les animations » ; la mini-île garde sa taille.": "In the open island and in the “Test the animations” preview; the mini island keeps its size.",
+"Pour toutes les mascottes en gomme. Le podium change tout de suite.": "For all gummy mascots. The podium updates right away.",
+"Glissez une mascotte sur la première marche : c'est elle qui vit dans l'île. Double-clic ou Entrée marchent aussi. Vos mascottes à vous vont dans le dossier mascots/ du projet (relancez l'appli).": "Drag a mascot onto the top step: she is the one who lives in the island. Double-click or Enter work too. Your own mascots go in the project's mascots/ folder (restart the app).",
+"Podium des mascottes": "Mascot podium"
 },
 "patterns": [
 [
@@ -3078,6 +3079,10 @@
 [
 "^(\\d+)\\ fichiers\\ pour\\ Ondine\\ :\\ qu'en\\ faire\\ \\?$",
 "$1 files for Ondine: what should she do with them?"
+],
+[
+"^(.+) vit maintenant dans l'île$",
+"$1 now lives in the island"
 ]
 ]
 }

@@ -322,6 +322,10 @@ Dans l'onglet 🤖, ouvre « Brancher Claude Code, Codex ou Gemini ».
    le bon sous-menu et fait briller la ligne.
 5. ☐ Rien n'a disparu : chaque réglage d'avant se retrouve (la recherche aide).
    Icônes couleur et épurées : Apparence → Style des icônes, la barre suit.
+6. ☐ Mascotte → Apparence : le podium montre les 15 mascottes, qui changent
+   d'humeur. Glisse-en une sur la première marche : elle fait la fête et
+   l'île change de mascotte tout de suite. Double-clic et Entrée aussi.
+   Ferme et rouvre les Réglages : l'ordre des marches est gardé.
 
 ---
 

@@ -42,7 +42,6 @@
 "Le journal reste sur votre PC (%LOCALAPPDATA%\\Ondine\\logs). Il ne contient jamais de clé ni de contenu de fichier.": "Le journal reste sur ton PC (%LOCALAPPDATA%\\Ondine\\logs). Il ne contient jamais de clé ni de contenu de fichier.",
 "Choisissez n'importe quelle couleur : si elle est trop claire, l'île l'assombrit juste assez pour que le texte reste lisible.": "Choisis n'importe quelle couleur : si elle est trop claire, l'île l'assombrit juste assez pour que le texte reste lisible.",
 "Glissez une ligne, ou utilisez ↑ ↓. Vous pouvez aussi faire glisser les onglets directement dans l'île.": "Glisse une ligne, ou utilise ↑ ↓. Tu peux aussi faire glisser les onglets directement dans l'île.",
-"Déposez vos mascottes dans le dossier mascots/ du projet, puis relancez l'appli.": "Dépose tes mascottes dans le dossier mascots/ du projet, puis relance l'appli.",
 "Quand l'île est cachée et que vous ne touchez plus au PC depuis un moment, Ondine descend du bord de l'écran tête en bas, cligne des yeux, puis remonte. Un clic sur elle ouvre l'île. Jamais pendant une présentation ou un plein écran.": "Quand l'île est cachée et que tu ne touches plus au PC depuis un moment, Ondine descend du bord de l'écran tête en bas, cligne des yeux, puis remonte. Un clic sur elle ouvre l'île. Jamais pendant une présentation ou un plein écran.",
 "Rien n'est envoyé sur Internet sans que vous le demandiez.": "Rien n'est envoyé sur Internet sans que tu le demandes.",
 "Remplace vos réglages actuels.": "Remplace tes réglages actuels.",
@@ -191,7 +190,8 @@
 "le fichier joint a changé : vérifiez ce qui part, puis renvoyez": "le fichier joint a changé : vérifie ce qui part, puis renvoie",
 "Les onglets cochés apparaissent dans sa bulle, dans l'ordre où vous les cochez. Les notifications restent dans l'île.": "Les onglets cochés apparaissent dans sa bulle, dans l'ordre où tu les coches. Les notifications restent dans l'île.",
 "Seulement la mascotte, posée où vous voulez : attrapez-la pour la déplacer, cliquez sur elle pour ouvrir sa bulle. Vous pouvez aussi la tirer hors de l'île, et l'y glisser pour la faire rentrer.": "Seulement la mascotte, posée où tu veux : attrape-la pour la déplacer, clique sur elle pour ouvrir sa bulle. Tu peux aussi la tirer hors de l'île, et l'y glisser pour la faire rentrer.",
-"Elle se promène quand vous ne touchez plus au PC": "Elle se promène quand tu ne touches plus au PC"
+"Elle se promène quand vous ne touchez plus au PC": "Elle se promène quand tu ne touches plus au PC",
+"Glissez une mascotte sur la première marche : c'est elle qui vit dans l'île. Double-clic ou Entrée marchent aussi. Vos mascottes à vous vont dans le dossier mascots/ du projet (relancez l'appli).": "Glisse une mascotte sur la première marche : c'est elle qui vit dans l'île. Double-clic ou Entrée marchent aussi. Tes mascottes à toi vont dans le dossier mascots/ du projet (relance l'appli)."
 },
 "patterns": [
 [

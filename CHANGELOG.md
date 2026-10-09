@@ -43,6 +43,10 @@
   modules are grouped in collapsible categories, and long pages (Mascot,
   General, Tabs, Profiles, AI agents, Talk to Ondine) open as sub-menus in the
   left bar. Nothing was removed, and search opens the right sub-menu.
+- La mascotte se choisit sur un podium en 3D : toutes les mascottes, animées
+  et d'humeur changeante, sur des marches ; on glisse celle qu'on veut sur la
+  première. · The mascot is picked on a 3D podium: every mascot, animated and
+  changing moods, on steps; drag the one you want onto the top step.
 
 ## 1.2.0 · 2026-10-08
 

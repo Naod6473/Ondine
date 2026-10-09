@@ -36,6 +36,7 @@ import { NavPill } from "./nav-pill";
 import { startI18n } from "../core/i18n";
 import { connectRules, rulesSection } from "./rules-editor";
 import { profilesPage, profileSubs } from "./profiles-page";
+import { mascotPodium, type Podium } from "./podium";
 import { aboutGroup } from "./about";
 import { perfGroup } from "./perf-group";
 import { startPerf } from "../core/perf";
@@ -291,6 +292,8 @@ let bus: Bus;
 let current = "general";
 let query = "";
 let preview: MascotRenderer | null = null;
+/** Le podium des mascottes (Mascotte → Apparence), s'il est affiché. */
+let podium: Podium | null = null;
 /** Le sous-menu choisi de chaque page qui en a (retenu d'une ouverture à l'autre). */
 let chosenSubs: Record<string, string> = {};
 /** Les catégories de modules dépliées dans la barre. */
@@ -691,6 +694,8 @@ function syncNav() {
 function showPage(animate: boolean, direction = 1, focusKey?: string) {
   preview?.destroy();
   preview = null;
+  podium?.destroy();
+  podium = null;
   const page = el("div", { class: "page" });
   if (!IS_TAURI) page.append(el("p", { class: "banner" }, "Aperçu dans un navigateur : rien n'est enregistré."));
   if (query.trim()) {
@@ -1380,22 +1385,23 @@ function mascot(main: HTMLElement) {
   const s = settingsStore.current;
   const catalog = mascotCatalog();
   const cur = catalog.find((e) => e.manifest.id === s.mascot.id) ?? catalog[0];
-  // Deux scènes d'aperçu : sous l'apparence, et avec les boutons d'animation.
-  // Une seule est affichée à la fois (un sous-menu) : elle reçoit le renderer.
-  const stageFor = () => el("div", { class: "mascot-stage", "data-size": s.mascot.size ?? "normal" });
-  const lookStage = stageFor();
-  const animStage = stageFor();
+  const animStage = el("div", { class: "mascot-stage", "data-size": s.mascot.size ?? "normal" });
+  // Le podium (podium.ts) : la mascotte de la première marche vit dans l'île.
+  const stand = mascotPodium(catalog, cur?.manifest.id ?? "", (id) => {
+    const gum = (e?: (typeof catalog)[number]) => e?.manifest.renderer === "gum";
+    const changes = gum(catalog.find((e) => e.manifest.id === id)) !== gum(cur);
+    save((d) => (d.mascot.id = id));
+    // Le bloc Style n'existe que pour la famille gomme : la page se redessine
+    // après la petite fête si on en sort (ou y revient).
+    if (changes) window.setTimeout(() => showPage(false), 1600);
+  });
   main.append(
     inSub("look", group("Apparence", [
       row("Afficher la mascotte", toggle(s.mascot.enabled, (v) => save((d) => (d.mascot.enabled = v)), "Afficher la mascotte")),
-      row(
+      wideRow(
         "Mascotte",
-        choice(
-          cur?.manifest.id ?? "",
-          catalog.map((e) => [e.manifest.id, e.problems.length ? `${e.manifest.name} (invalide)` : e.manifest.name]),
-          (v) => save((d) => (d.mascot.id = v), true),
-        ),
-        "Déposez vos mascottes dans le dossier mascots/ du projet, puis relancez l'appli.",
+        stand.el,
+        "Glissez une mascotte sur la première marche : c'est elle qui vit dans l'île. Double-clic ou Entrée marchent aussi. Vos mascottes à vous vont dans le dossier mascots/ du projet (relancez l'appli).",
       ),
       row(
         "Taille",
@@ -1408,11 +1414,10 @@ function mascot(main: HTMLElement) {
           ],
           (v) => save((d) => (d.mascot.size = v as Settings["mascot"]["size"]), true),
         ),
-        "Dans l'île ouverte et dans l'aperçu ci-dessous ; la mini-île garde sa taille.",
+        "Dans l'île ouverte et dans l'aperçu de « Tester les animations » ; la mini-île garde sa taille.",
       ),
     ])),
     ...(cur?.manifest.renderer === "gum" ? [inSub("look", gumStyleGroup())] : []),
-    ...(cur ? [inSub("look", el("section", { class: "group" }, el("h3", { class: "group-title" }, "Aperçu"), el("div", { class: "group-body stage-body" }, lookStage)))] : []),
     inSub("mood", group("Humeur", [
       row("S'ennuie après", stepper(s.mascot.boredAfterSecs, 10, 3600, (v) => save((d) => (d.mascot.boredAfterSecs = v)), 10, "s")),
       row("S'endort après", stepper(s.mascot.sleepAfterSecs, 20, 7200, (v) => save((d) => (d.mascot.sleepAfterSecs = v)), 10, "s")),
@@ -1480,11 +1485,16 @@ function mascot(main: HTMLElement) {
       ),
     );
   }
-  // Le renderer va dans la scène restée affichée, une fois la page posée
-  // (showPage ne garde qu'un sous-menu) ; aucune si la page a déjà changé.
+  // Les mascottes ne se dessinent que si leur sous-menu est affiché, une fois
+  // la page posée (showPage ne garde qu'un sous-menu).
   queueMicrotask(() => {
-    const stage = [lookStage, animStage].find((x) => x.isConnected);
-    if (!stage) return;
+    if (stand.el.isConnected) {
+      podium?.destroy();
+      podium = stand;
+      stand.start();
+    }
+    const stage = animStage;
+    if (!stage.isConnected) return;
     preview?.destroy();
     preview = createRenderer(cur.manifest, cur.assets);
     preview.mount(stage);
@@ -1595,7 +1605,7 @@ function gumStyleGroup(): HTMLElement {
         ),
       ),
     ],
-    "Pour toutes les mascottes en gomme. L'aperçu ci-dessous change tout de suite.",
+    "Pour toutes les mascottes en gomme. Le podium change tout de suite.",
   );
 }
 
