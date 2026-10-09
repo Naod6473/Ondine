@@ -5,6 +5,10 @@
 // une cible de dépôt) est rattrapée, notée dans le journal et comptée. Après
 // MAX_FAILURES erreurs, le module est arrêté jusqu'au prochain démarrage et
 // l'île l'annonce. Le reste de l'île continue normalement.
+//
+// Une fenêtre « satellite » (Ondine sur le bureau, src/pet/) a aussi son
+// registre, pour monter les vues de quelques modules : ceux-là y démarrent par
+// `satellite` au lieu de `setup` (le travail de fond reste dans l'île).
 
 import { Bridge } from "./bridge";
 import { Bus, topicMatches } from "./bus";
@@ -16,6 +20,13 @@ import { demoInvoke, demoOn } from "./demo";
 
 const MAX_FAILURES = 3;
 const log = logger("modules");
+
+export interface RegistryOptions {
+  /** Fenêtre satellite : `satellite` au lieu de `setup`, pas d'annonce des plantages Rust. */
+  satellite?: boolean;
+  /** Seulement ces modules (ex. les onglets de la bulle d'Ondine sur le bureau). */
+  only?: () => string[];
+}
 
 interface Running {
   module: IslandModule;
@@ -42,11 +53,12 @@ export class ModuleRegistry {
     private readonly all: IslandModule[],
     private readonly bus: Bus,
     private readonly notifications: NotificationQueue,
+    private readonly opts: RegistryOptions = {},
   ) {
     // Erreurs dans un abonné du bus : on les attribue à son propriétaire.
     bus.onHandlerError = (owner, err, msg) => this.fail(owner, err, `bus « ${msg.topic} »`);
-    // Un module Rust qui plante : le Rust prévient par le bus.
-    bus.on("module.crashed", (msg) => {
+    // Un module Rust qui plante : le Rust prévient par le bus (l'île l'annonce).
+    if (!opts.satellite) bus.on("module.crashed", (msg) => {
       const p = msg.payload as { module: string; disabled: boolean };
       const name = this.all.find((m) => m.manifest.id === p.module)?.manifest.name ?? p.module;
       this.notifications.push({
@@ -64,9 +76,10 @@ export class ModuleRegistry {
   /** Démarre les modules activés, arrête les autres. Appelé aussi à chaque changement de réglages. */
   sync() {
     let changed = false;
+    const only = this.opts.only?.();
     for (const module of this.all) {
       const id = module.manifest.id;
-      const wanted = settingsStore.moduleEnabled(id) && !this.benched.has(id);
+      const wanted = settingsStore.moduleEnabled(id) && !this.benched.has(id) && (!only || only.includes(id));
       if (wanted && !this.running.has(id)) {
         this.start(module);
         changed = true;
@@ -155,7 +168,7 @@ export class ModuleRegistry {
     const running: Running = { module, api, cleanups: [] };
     this.running.set(id, running);
     try {
-      const cleanup = module.setup?.(api);
+      const cleanup = this.opts.satellite ? module.satellite?.(api) : module.setup?.(api);
       if (cleanup) running.cleanups.push(cleanup);
       log.info(`module démarré : ${id}`);
     } catch (err) {

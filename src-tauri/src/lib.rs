@@ -12,6 +12,7 @@ mod cli;
 mod diagnostics;
 mod island;
 mod modules;
+mod pet;
 mod platform;
 mod services;
 mod sync;
@@ -101,6 +102,8 @@ pub(crate) fn apply_settings(app: &AppHandle, shared: &Shared, new: Settings) ->
     // Le menu de l'icône montre les profils et coche l'actif.
     tray::sync_profiles(app, &new.profiles);
     let _ = app.emit("settings-changed", new);
+    // Ondine sur le bureau : montrée, cachée, au-dessus ou derrière les fenêtres.
+    pet::apply(app);
     // Le mode de performance a peut-être changé : les boucles le lisent au tour suivant.
     services::perf::refresh(app);
     Ok(())
@@ -278,6 +281,40 @@ fn island_reposition(app: AppHandle, shared: State<Shared>) {
     island::apply_geometry(&app, &pref, shared.gate.collapsed.load(Ordering::Relaxed));
 }
 
+// ── Ondine sur le bureau (pet.rs) ────────────────────────────────────────────
+
+/// Ouvre ou ferme la bulle à côté d'elle ; renvoie la disposition choisie.
+#[tauri::command]
+fn pet_open(app: AppHandle, open: bool) -> pet::Layout {
+    pet::set_open(&app, open)
+}
+
+/// On a attrapé Ondine : elle suit la souris jusqu'au lâcher.
+#[tauri::command]
+fn pet_drag_start(app: AppHandle) {
+    pet::drag_start(&app);
+}
+
+/// Les cases de la page qui prennent la souris (la mascotte, la bulle).
+#[tauri::command]
+fn pet_set_hit(app: AppHandle, rects: Vec<pet::HitRect>) {
+    pet::set_hit(&app, rects);
+}
+
+/// Ondine sort de l'île : posée là où la souris est (glisser depuis l'île),
+/// ou à sa dernière place.
+#[tauri::command]
+fn pet_place(app: AppHandle, at_cursor: bool) {
+    let at = if at_cursor { platform::cursor_physical() } else { None };
+    pet::place_on_desk(&app, at);
+}
+
+/// Ondine rentre dans l'île.
+#[tauri::command]
+fn pet_back(app: AppHandle) {
+    pet::back_to_island(&app);
+}
+
 // ── Journal ──────────────────────────────────────────────────────────────────
 
 /// Le front écrit dans le même journal que le Rust. `source` : "ui" ou un id de module.
@@ -404,6 +441,29 @@ fn create_hidden_window(app: &AppHandle, label: &str, page: &str, title: &str, s
     }
 }
 
+/// La fenêtre d'Ondine sur le bureau (pet.rs) : sans bordure, transparente, hors
+/// de la barre des tâches, créée cachée comme les autres (voir create_hidden_window).
+fn create_pet_window(app: &AppHandle) {
+    let builder = WebviewWindowBuilder::new(app, pet::WINDOW_LABEL, page_url(app, "pet.html"))
+        .additional_browser_args(BROWSER_ARGS)
+        .title("Ondine")
+        .inner_size(pet::PET_BOX, pet::PET_BOX)
+        .decorations(false)
+        .transparent(true)
+        .shadow(false)
+        .resizable(false)
+        .maximizable(false)
+        .minimizable(false)
+        .closable(false)
+        .skip_taskbar(true)
+        .focused(false)
+        .visible(false);
+    match builder.build() {
+        Ok(win) => platform::make_non_activating(&win),
+        Err(err) => log::error(format!("fenêtre « pet » impossible à créer : {err}")),
+    }
+}
+
 /// Montre une fenêtre secondaire et lui donne le focus.
 pub fn show_window(app: &AppHandle, label: &str) {
     let Some(win) = app.get_webview_window(label) else { return };
@@ -481,6 +541,7 @@ pub fn run() {
         .manage(Shared { settings: Mutex::new(loaded.clone()), gate: gate.clone() })
         .manage(Registry::new())
         .manage(UndoService::default())
+        .manage(pet::PetState::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             settings_save,
@@ -495,6 +556,11 @@ pub fn run() {
             island_set_focus,
             island_reposition,
             island_drag_start,
+            pet_open,
+            pet_drag_start,
+            pet_set_hit,
+            pet_place,
+            pet_back,
             desk_state,
             ui_language,
             log_write,
@@ -523,6 +589,7 @@ pub fn run() {
             // Avant l'île : voir create_hidden_window.
             create_hidden_window(&handle, "settings", "settings.html", "Réglages — Ondine", (760.0, 720.0), (560.0, 480.0), true);
             create_hidden_window(&handle, "annotate", "annotate.html", "Annoter — Ondine", (1100.0, 760.0), (640.0, 420.0), false);
+            create_pet_window(&handle);
 
             if let Some(win) = island::window(&handle) {
                 platform::make_non_activating(&win);
@@ -535,6 +602,8 @@ pub fn run() {
                 let _ = win.show();
             }
             island::apply_hotkey(&handle, &loaded.island.hotkey);
+            pet::apply(&handle);
+            pet::spawn_hit_poll(handle.clone());
             // À chaque démarrage : l'exe a pu changer de place (réinstallation).
             apply_autostart(loaded.general.autostart);
             // Le mode de performance (réglage + batterie), avant les boucles qui le lisent.

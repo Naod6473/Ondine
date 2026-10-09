@@ -18,6 +18,16 @@
   conversation »). · "Talk to Ondine" is the first tab on first launch, and
   the island grows with the conversation ("The island grows with the
   conversation" setting).
+- Ondine sur le bureau : tirez la mascotte hors de l'île (ou Réglages →
+  Mascotte → « Ondine vit sur le bureau ») et posez-la où vous voulez. Un clic
+  sur elle ouvre une bulle à côté d'elle, avec les onglets choisis (par défaut
+  Parler à Ondine, Lanceur et Agents IA), qui la suit quand on la déplace.
+  Elle garde ses danses et ses fêtes, au-dessus des fenêtres ou derrière. ·
+  Ondine on the desktop: drag the mascot out of the island (or Settings →
+  Mascot → "Ondine lives on the desktop") and put her wherever you like. A
+  click on her opens a bubble next to her with the chosen tabs (Talk to
+  Ondine, Launcher and AI agents by default), which follows her when she
+  moves. She keeps her dances and celebrations, above windows or behind them.
 
 ## 1.2.0 · 2026-10-08
 

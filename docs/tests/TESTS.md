@@ -269,9 +269,34 @@ Dans l'onglet 🤖, ouvre « Brancher Claude Code, Codex ou Gemini ».
 11. ☐ Réglages → Général → S'adresser à moi : Tu. « Recommencer », puis
     écris : Ondine tutoie.
 
+## 4. 💧 Ondine sur le bureau
+
+1. ☐ Dans l'île ouverte, attrape la mascotte et tire-la hors de l'île : elle
+   grossit un peu une fois dehors ; lâche-la sur le bureau. Elle disparaît de
+   l'île et apparaît sous la souris.
+2. ☐ Attrape-la et déplace-la : elle suit la souris. Relance l'appli : elle
+   est toujours là.
+3. ☐ Hors d'elle, les clics passent au travers (clique sur une icône du
+   bureau juste à côté).
+4. ☐ Clique sur elle : la bulle s'ouvre à côté, avec Parler à Ondine,
+   Lanceur et Agents IA ; le champ prend le clavier. Mets-la au bord droit,
+   puis en haut de l'écran : la bulle s'ouvre de l'autre côté, vers le bas.
+5. ☐ Bulle ouverte, déplace Ondine : la bulle suit.
+6. ☐ Écris-lui dans la bulle : elle réfléchit puis joue son humeur, sur le
+   bureau. La même conversation est dans l'onglet de l'île.
+7. ☐ Lance de la musique : elle danse sur le bureau. Lance un minuteur
+   court : elle fête la fin.
+8. ☐ Réglages → Mascotte → Ondine sur le bureau : décoche Agents IA, coche
+   Notes ; la bulle suit. Décoche « Au-dessus des fenêtres » : elle passe
+   derrière les fenêtres.
+9. ☐ Le bouton ⤒ de la bulle la ramène dans l'île (et les visites au bord
+   reviennent).
+10. ☐ Avec deux écrans (ou une mise à l'échelle 125 % / 150 %) : elle reste
+    nette et à sa place ; écran débranché, elle revient en bas à droite.
+
 ---
 
-## 4. Ce que je dois savoir après tes tests
+## 5. Ce que je dois savoir après tes tests
 
 - 1.2 : l'onglet SSH avec port dans Windows Terminal.
 - 2.1 : « Y aller » trouve-t-il la bonne fenêtre (console et Windows Terminal) ?
@@ -280,3 +305,5 @@ Dans l'onglet 🤖, ouvre « Brancher Claude Code, Codex ou Gemini ».
 - 2.4 : « island » est-il connecté dans `/mcp` ?
 - 2.5, test 6 : la question du terminal arrive-t-elle tout de suite, ou
   seulement après le délai ?
+- 4 : le déplacement d'Ondine est-il fluide, et la bulle s'ouvre-t-elle du
+  bon côté ? Les clics passent-ils bien au travers à côté d'elle ?

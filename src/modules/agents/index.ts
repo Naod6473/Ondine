@@ -317,6 +317,12 @@ export const agents: IslandModule = {
     return watchBudget(api);
   },
 
+  // Ondine sur le bureau : la liste se redessine ; les notifications restent à l'île.
+  satellite(api) {
+    void api.invoke("projects").catch(() => {});
+    api.on("agents.changed", () => redraws.forEach((r) => r()));
+  },
+
   views: {
     expanded(root, api: ModuleApi) {
       const asks = el("ul", { class: "agents-asks" });

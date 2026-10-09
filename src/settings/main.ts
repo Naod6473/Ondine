@@ -100,7 +100,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "💧",
     label: "Mascotte",
     sub: "Qui vit dans l'île, et quand elle s'ennuie ou s'endort.",
-    keywords: ["Afficher la mascotte", "Mascotte", "Taille", "Calme", "Couleur", "Personnalisée", "S'ennuie après", "S'endort après", "Ondine vient pendre au bord", "Visites", "Tester les animations"],
+    keywords: ["Afficher la mascotte", "Mascotte", "Taille", "Calme", "Couleur", "Personnalisée", "S'ennuie après", "S'endort après", "Ondine vient pendre au bord", "Visites", "Tester les animations", "Ondine sur le bureau", "Ondine vit sur le bureau", "Au-dessus des fenêtres"],
     render: mascot,
   },
   {
@@ -978,6 +978,50 @@ function weeklyGroup(man: ModuleManifest): HTMLElement {
   ]);
 }
 
+/**
+ * Ondine sur le bureau (src/pet/) : la mascotte sort de l'île, et sa bulle
+ * montre les onglets choisis ici (`mascot.petTabs`, dans cet ordre).
+ */
+function petGroup(): HTMLElement {
+  const s = settingsStore.current;
+  const tabs = s.mascot.petTabs ?? [];
+  const withView = ALL_MODULES.filter((m) => m.views?.expanded);
+  // Les onglets choisis d'abord (leur ordre est celui de la bulle), puis les autres.
+  const ordered = [...tabs.map((id) => withView.find((m) => m.manifest.id === id)).filter((m) => !!m), ...withView.filter((m) => !tabs.includes(m.manifest.id))];
+  return group(
+    "Ondine sur le bureau",
+    [
+      row(
+        "Ondine vit sur le bureau",
+        toggle(!!s.mascot.pet, (v) =>
+          save((d) => {
+            d.mascot.pet = v;
+            if (v) d.mascot.enabled = true;
+          }),
+        "Ondine vit sur le bureau"),
+        "Seulement la mascotte, posée où vous voulez : attrapez-la pour la déplacer, cliquez sur elle pour ouvrir sa bulle. Vous pouvez aussi la tirer hors de l'île.",
+      ),
+      row(
+        "Au-dessus des fenêtres",
+        toggle(s.mascot.petOnTop ?? true, (v) => save((d) => (d.mascot.petOnTop = v)), "Au-dessus des fenêtres"),
+        "Sinon, elle reste derrière les fenêtres, sur le fond d'écran.",
+      ),
+      ...ordered.map((m) =>
+        row(
+          m.manifest.name,
+          toggle(tabs.includes(m.manifest.id), (v) =>
+            save((d) => {
+              const now = (d.mascot.petTabs ?? []).filter((id) => id !== m.manifest.id);
+              d.mascot.petTabs = v ? [...now, m.manifest.id] : now;
+            }),
+          m.manifest.name),
+        ),
+      ),
+    ],
+    "Les onglets cochés apparaissent dans sa bulle, dans l'ordre où vous les cochez. Les notifications restent dans l'île.",
+  );
+}
+
 function mascot(main: HTMLElement) {
   const s = settingsStore.current;
   const catalog = mascotCatalog();
@@ -1018,6 +1062,7 @@ function mascot(main: HTMLElement) {
         "Plus d'ennui, de goûter, de visites au bord de l'écran, de danse ni de réactions aux modules. Elle réagit toujours aux agents IA (attente, question), aux erreurs, aux réussites, aux alertes, et elle dort.",
       ),
     ]),
+    petGroup(),
     group(
       "Visites au bord de l'écran",
       [

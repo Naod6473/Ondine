@@ -624,6 +624,45 @@ JavaScript, l'image fixe `site/media/mascottes/<id>.png` (256 px, fond
 transparent, générée avec Playwright depuis le script construit) reste
 affichée. Le site est en français et tutoie.
 
+### Ondine sur le bureau (`src-tauri/src/pet.rs`, `src/pet/`, `pet.html`)
+
+Une quatrième fenêtre, « pet », créée cachée au démarrage comme les autres
+(mêmes BROWSER_ARGS) : sans bordure, transparente, hors de la barre des
+tâches, au-dessus des fenêtres ou derrière (`mascot.petOnTop`). Elle est
+montrée quand `mascot.enabled && mascot.pet` (`pet::apply`, au démarrage et
+dans `apply_settings`). Deux tailles : la case de la mascotte (112 × 112) ou,
+bulle ouverte, la case dans un coin et la bulle (420 × 480) du côté où l'écran
+a de la place (`choose_layout`) ; la mascotte ne bouge pas à l'écran, seule la
+fenêtre s'agrandit autour d'elle. Le Rust annonce le côté par l'événement
+`pet-layout` avant de changer la fenêtre.
+
+- **Déplacer** : un appui suivi d'un mouvement sur la mascotte appelle
+  `pet_drag_start` ; un thread fait suivre la souris à la fenêtre (bulle
+  comprise) jusqu'au lâcher, enregistre la place (`mascot.petX/petY`, px
+  physiques du coin de la case, négatif = en bas à droite de l'écran
+  principal), replace la bulle si besoin, puis envoie `pet-drag-end`.
+- **Sortir de l'île** : dans l'île, tirer la mascotte hors de la forme puis la
+  lâcher appelle `pet_place(atCursor)` (island.ts, `wireCarry`). `pet_back`
+  la ramène (bouton ⤒ de la bulle).
+- **Clics traversants** : la page envoie les cases de la mascotte et de la
+  bulle (`pet_set_hit`) ; `spawn_hit_poll` lit la souris (30 fois par seconde
+  près d'elle, 8 loin) et bascule `set_ignore_cursor_events`, rien ne change
+  bouton enfoncé. Il envoie aussi la souris à la page (`pet-cursor`) pour que
+  ses yeux la suivent.
+- **Les onglets** : un second `ModuleRegistry`, en mode satellite
+  (`{ satellite: true, only }`), ne démarre que les modules de
+  `mascot.petTabs`, et par leur `satellite(api)` au lieu de `setup(api)` :
+  seulement ce qu'il faut aux vues (Lanceur : les listes de projets et de
+  serveurs ; Agents IA : se redessiner sur `agents.changed`). Les
+  notifications de fond restent à l'île ; celles des vues (« Copié ») sont
+  une ligne en haut de la bulle. `api.openIsland(tab)` vers un onglet absent
+  de la bulle publie `island.open`, que l'île écoute. Les conversations et
+  listes vivent dans le Rust : les deux fenêtres montrent la même chose.
+- **La mascotte** : un `MascotController` sur le même bus que celle de l'île
+  (humeurs, fêtes, sommeil). L'île n'a plus de mascotte (ni de visite au
+  bord) tant qu'Ondine est sur le bureau ; la danse (`syncDance`, eggs.ts) se
+  lance aussi quand elle est sur le bureau, même île cachée.
+
 ## Les surprises (`src/eggs/`)
 
 Des easter eggs, tous dans l'île, sans fichier ni réseau. `eggs.ts` relie les

@@ -260,6 +260,19 @@ function prettyHotkey(keys: string): string {
   return keys.replace("Super", "Win").replace("Shift", "Maj").replace("Space", "Espace");
 }
 
+/** Les projets d'agents et les serveurs favoris, publiés par leurs modules. */
+function listenLists(api: ModuleApi) {
+  api.on("agents.projects", (msg) => {
+    const p = msg.payload as { projects?: typeof agentProjects; tools?: string[] } | null;
+    if (Array.isArray(p?.projects)) agentProjects = p.projects;
+    if (Array.isArray(p?.tools)) agentTools = p.tools;
+  });
+  api.on("remote.changed", (msg) => {
+    const list = (msg.payload as { favorites?: typeof servers } | null)?.favorites;
+    if (Array.isArray(list)) servers = list;
+  });
+}
+
 export const launcher: IslandModule = {
   manifest: manifest as ModuleManifest,
 
@@ -272,20 +285,18 @@ export const launcher: IslandModule = {
       shown?.focus();
       void load(api);
     });
-    api.on("agents.projects", (msg) => {
-      const p = msg.payload as { projects?: typeof agentProjects; tools?: string[] } | null;
-      if (Array.isArray(p?.projects)) agentProjects = p.projects;
-      if (Array.isArray(p?.tools)) agentTools = p.tools;
-    });
-    api.on("remote.changed", (msg) => {
-      const list = (msg.payload as { favorites?: typeof servers } | null)?.favorites;
-      if (Array.isArray(list)) servers = list;
-    });
+    listenLists(api);
     api.on("launcher.hotkey-error", (msg) => {
       const text = (msg.payload as { text?: string } | null)?.text ?? "raccourci du lanceur indisponible";
       api.notify({ title: text, icon: "⌨️", priority: "normal", key: "launcher-hotkey" });
       void load(api);
     });
+    void load(api);
+  },
+
+  // Ondine sur le bureau : la même recherche, sans le raccourci global (l'île l'a).
+  satellite(api) {
+    listenLists(api);
     void load(api);
   },
 

@@ -112,6 +112,19 @@ body {
     width var(--speed) var(--ease),
     height var(--speed) var(--ease);
 }
+/* On tire Ondine hors de l'île (Ondine sur le bureau) : elle suit la souris,
+   et grandit un peu une fois dehors (la lâcher la pose sur le bureau). */
+.mascot-slot.carried {
+  z-index: 5;
+  cursor: grabbing;
+  transition: scale 200ms var(--ease-out);
+}
+.mascot-slot.carried.leaving {
+  scale: 1.5;
+}
+.island:has(.mascot-slot.carried) {
+  overflow: visible;
+}
 .island[data-state="compact"] .mascot-slot {
   width: 32px;
   height: 32px;
