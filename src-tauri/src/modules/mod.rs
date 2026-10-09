@@ -19,6 +19,8 @@ mod askclaude;
 mod askclaude_providers;
 // Ses outils de fichiers : chercher, lire, créer, proposer.
 mod askclaude_tools;
+// Ses outils pour le PC et les onglets : regarder, régler, ouvrir.
+mod askclaude_pc;
 mod capture;
 mod clipboard;
 mod controls;

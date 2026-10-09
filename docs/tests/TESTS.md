@@ -271,7 +271,7 @@ Dans l'onglet 🤖, ouvre « Brancher Claude Code, Codex ou Gemini ».
 
 ### 3.1 Les fichiers d'Ondine
 
-1. ☐ Réglages → Parler à Ondine → sous-menu « Fichiers » : « Ondine peut
+1. ☐ Réglages → Parler à Ondine → sous-menu « Fichiers et PC » : « Ondine peut
    chercher et créer des fichiers » est coché, le dossier est vide.
 2. ☐ Écris « Tu trouves ma dernière facture ? » (avec une facture dans
    Documents ou Téléchargements) : une petite ligne « 🔎 Recherche … » au-dessus
@@ -295,6 +295,32 @@ Dans l'onglet 🤖, ouvre « Brancher Claude Code, Codex ou Gemini ».
 9. ☐ Fais les points 2 à 4 avec GPT, puis avec Gemini.
 10. ☐ Décoche « Ondine peut chercher et créer des fichiers » : elle ne
     cherche plus, et la phrase sous le champ disparaît.
+
+### 3.2 Ondine agit sur le PC
+
+1. ☐ Réglages → Parler à Ondine → « Fichiers et PC » : « Ondine peut agir sur
+   le PC » est coché.
+2. ☐ « Mon PC rame, tu regardes ? » : elle répond avec le processeur, la
+   mémoire, le disque.
+3. ☐ « Qu'est-ce que j'ai aujourd'hui ? » (agenda), « Il fait quel temps ? »
+   (météo), « C'est quoi cette musique ? ».
+4. ☐ « Baisse le son à 20 », « coupe le son », « remets le son » : c'est fait
+   tout de suite, avec une ligne ⚡ au-dessus de la réponse.
+5. ☐ « Luminosité à 50 », « passe en mode sombre » puis « en mode clair ».
+6. ☐ « Mets pause », « morceau suivant » (avec de la musique).
+7. ☐ « Lance un minuteur de 5 minutes » : l'onglet Minuteur tourne.
+   « Note : appeler le garagiste » : la note est dans Notes.
+8. ☐ « Ouvre la calculatrice » : la carte « Ondine voudrait ouvrir
+   l'application… » ; « Annuler » : rien ne s'ouvre ; redemande, « Faire » :
+   elle s'ouvre.
+9. ☐ « Ouvre le site de la météo » : carte d'accord, puis le navigateur.
+10. ☐ Cherche un fichier, puis « pose-le sur l'étagère » : carte d'accord,
+    puis le fichier est sur l'Étagère.
+11. ☐ « Coupe le Bluetooth » puis « rallume-le » (accord à chaque fois).
+12. ☐ « Supprime mon fichier … » ou « lance une commande » : elle explique
+    qu'elle ne peut pas.
+13. ☐ Décoche « Ondine peut agir sur le PC » : elle ne règle plus rien et
+    explique comment faire.
 
 ## 4. 💧 Ondine sur le bureau
 

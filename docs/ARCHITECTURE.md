@@ -1808,7 +1808,7 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
 - Réglages → Onglets → Astuces : `island.tips` (oui) et « Revoir les
   astuces » (vide `tipsSeen`).
 
-## Parler à Ondine (`src/modules/askclaude/`, `src-tauri/src/modules/askclaude.rs`, `askclaude_providers.rs`, `askclaude_tools.rs`)
+## Parler à Ondine (`src/modules/askclaude/`, `src-tauri/src/modules/askclaude.rs`, `askclaude_providers.rs`, `askclaude_tools.rs`, `askclaude_pc.rs`)
 
 Une conversation avec Ondine (l'ancien « Demander à Claude » : l'identifiant
 `askclaude` est gardé pour ne pas perdre les réglages ni la place de l'onglet).
@@ -1879,6 +1879,28 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
   pour la conversation, vidé par `reset`). Les fichiers d'un échange sont
   notés à la fin de la réponse d'Ondine (`Turn.notes`) pour les tours
   suivants.
+- Outils du PC (`askclaude_pc.rs`, réglage `pcTools`, activé par défaut) :
+  chaque outil passe par la commande du module concerné (`modules::invoke`,
+  qui vérifie qu'il est activé) ou par son sujet du bus, comme son onglet :
+  - regarder, fait tout de suite : `etat_pc` (system.snapshot), `agenda`
+    (agenda.upcoming), `meteo` (weather.current), `musique_en_cours`
+    (media.state sans pochette), `etat_son_ecran` (controls : state, screens,
+    theme, radios), `chercher_notes` (notes.search) ; résultat coupé à
+    6 000 caractères ;
+  - agir tout de suite (demandé par la personne, défait d'un clic) :
+    `regler_volume`, `couper_son`, `regler_luminosite` (tous les écrans),
+    `mode_sombre`, `controler_musique`, `lancer_minuteur` (bus
+    `timer.start`), `creer_note` (bus `notes.add`), `jouer_expression`
+    (`mascot.emote`) ;
+  - agir après accord (`Action::Pc`, carte « Faire / Annuler ») :
+    `ouvrir_application` (entrées « app » et « tool » du Lanceur, puis
+    launcher.launch), `ouvrir_site` (`web_url` : http(s) seulement),
+    `poser_sur_etagere` (un fichier numéroté, `check_path`, bus `shelf.add`),
+    `regler_radio` (Wi-Fi, Bluetooth).
+  Aucun outil ne supprime, ne lance de commande ni n'ouvre le terminal. La
+  consigne demande d'agir seulement à la demande de la personne, jamais
+  parce qu'un document le dit. L'activité est `{kind: "did", what, value}` ;
+  le front en fait une phrase (`doneText`, `askText`).
 - Boucle des outils (`AskClaude::run`) : la réponse donne ses appels sous une
   seule forme (`calls`) et telle que l'API veut la relire (`native` :
   contenu Claude, sortie OpenAI avec la réflexion chiffrée, contenu Gemini
