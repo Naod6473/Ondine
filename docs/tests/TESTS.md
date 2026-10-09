@@ -238,27 +238,36 @@ Dans l'onglet 🤖, ouvre « Brancher Claude Code, Codex ou Gemini ».
 
 ---
 
-## 3. 💬 Demander à Claude (API, payante)
+## 3. 💬 Parler à Ondine (API, payante)
 
-1. ☐ Réglages → Identifiants : colle ta clé API Anthropic. Elle se crée sur
-   https://console.anthropic.com.
+1. ☐ Réglages → Identifiants : colle ta clé API Anthropic (https://console.anthropic.com).
+   Facultatif : une clé OpenAI (https://platform.openai.com) et une clé Gemini
+   (https://aistudio.google.com).
 2. ☐ Onglet 💬 :
-   - colle une erreur, puis « Préparer l'envoi » ;
-   - **vérifie** que l'aperçu montre tout ce qui part : la consigne, le
-     modèle et le texte entier ;
-   - tape une question, puis « Envoyer à Claude » ;
-   - une réponse en français s'affiche.
-3. ☐ « 📋 Copier » copie la réponse.
-4. ☐ Dépose une **capture** (.png) sur l'île → cible « Demander à Claude » :
-   - l'onglet s'ouvre sur l'aperçu avec l'image ;
-   - envoie, et Claude décrit l'image.
-5. ☐ Dépose un fichier `.log` ou `.txt` : son texte entier s'affiche dans
-   l'aperçu.
-6. ☐ Dépose un fichier situé dans un **dossier exclu** (Réglages →
-   Confidentialité) : il est refusé.
-7. ☐ Mets une fausse clé : le message « clé API refusée » s'affiche.
-8. ☐ Dans le journal, il n'y a que « demande envoyée à Claude (N octets) » :
-   ni la clé, ni le texte.
+   - Ondine dit bonjour (ce premier message ne coûte rien) ;
+   - écris « Bonjour, qui es-tu ? » puis Entrée : trois petites gouttes,
+     puis une réponse courte et joyeuse ; la mascotte réfléchit puis joue une
+     humeur ;
+   - pose une 2e question qui dépend de la 1re (« et en une phrase ? ») :
+     Ondine se souvient.
+3. ☐ « Voir la personnalité » montre la consigne exacte ; la phrase du bas dit
+   vers quelle adresse partent les messages.
+4. ☐ Réglages du module → Fournisseur d'IA : GPT, puis Gemini. L'en-tête de
+   l'onglet change, la conversation continue avec le nouveau fournisseur.
+   Sans clé : le bandeau 🔑 le dit.
+5. ☐ Si un modèle GPT ou Gemini n'existe pas : « modèle introuvable ». Mets
+   alors le bon nom dans les réglages et dis-moi lequel marche.
+6. ☐ « 📎 Joindre un fichier… » ou dépôt d'une **capture** sur l'île → cible
+   « Parler à Ondine » : l'onglet s'ouvre, l'image s'affiche en entier ;
+   envoie, Ondine décrit l'image. « Retirer » enlève le fichier.
+7. ☐ Dépose un fichier situé dans un **dossier exclu** : il est refusé.
+8. ☐ Mets une fausse clé : « clé API refusée », la mascotte est triste, ton
+   message revient dans le champ.
+9. ☐ « Recommencer » efface tout. Quitte et relance l'île : rien n'est gardé.
+10. ☐ Dans le journal, il n'y a que « message envoyé à … (N octets) » : ni la
+    clé, ni le texte.
+11. ☐ Réglages → Général → S'adresser à moi : Tu. « Recommencer », puis
+    écris : Ondine tutoie.
 
 ---
 

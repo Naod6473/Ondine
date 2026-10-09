@@ -1747,32 +1747,55 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
 - Réglages → Onglets → Astuces : `island.tips` (oui) et « Revoir les
   astuces » (vide `tipsSeen`).
 
-## Demander à Claude (`src/modules/askclaude/`, `src-tauri/src/modules/askclaude.rs`)
+## Parler à Ondine (`src/modules/askclaude/`, `src-tauri/src/modules/askclaude.rs`, `askclaude_providers.rs`)
 
-Une erreur collée, un fichier texte ou une image (capture), une question :
-Claude répond par l'API Messages d'Anthropic (`POST
-https://api.anthropic.com/v1/messages`, en-tête `anthropic-version:
-2023-06-01`, client HTTP `ureq` 3).
+Une conversation avec Ondine (l'ancien « Demander à Claude » : l'identifiant
+`askclaude` est gardé pour ne pas perdre les réglages ni la place de l'onglet).
+Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
+`provider`). Client HTTP `ureq` 3, TLS de Windows.
 
-- Permissions : `claude-api` (déclarée et affichée dans les réglages),
-  `credentials` (lire `anthropic-api-key`, dans le Rust seulement), `files`,
-  `clipboard`.
-- Deux temps : `prepare {text | path}` lit le contenu (texte ≤ 100 Ko en
-  UTF-8, ou image png/jpg/gif/webp ≤ 3,7 Mo ; chemins validés par
-  `check_path`, donc dossiers exclus refusés), le GARDE côté Rust et renvoie
-  l'aperçu complet (texte entier, image, consigne, modèle, destination). Puis
-  `send {id, question}` envoie exactement ce contenu préparé (refusé si
-  l'aperçu a changé). Rien ne part sans ce clic.
-- Le texte est envoyé balisé `<document nom="…">…</document>` après la
-  question : un document à lire, pas des instructions.
-- `status` → `{hasKey, model}` : le front sait seulement si la clé existe.
-- Réglages : modèle (Sonnet 5.5 par défaut, Opus 5.5, Haiku 4.5), longueur
-  maximale (256 à 4096 jetons), consigne (montrée avant l'envoi), dépôt.
-- La réponse est affichée en texte (jamais en HTML), copiable. Le journal ne
-  note que la taille de l'envoi. Erreurs de l'API traduites (401 clé refusée,
-  429 trop de demandes, 529 surchargée).
-- Dépôt sur l'île : « Demander à Claude » prépare le fichier et ouvre l'onglet
-  sur l'aperçu.
+- Fournisseurs (`askclaude_providers.rs`) : une seule forme de conversation
+  (`Turn` : vous ou Ondine, texte, fichier joint), traduite vers :
+  - Claude : `POST https://api.anthropic.com/v1/messages`, en-têtes
+    `x-api-key` et `anthropic-version: 2023-06-01` ;
+  - OpenAI : API Responses, `POST https://api.openai.com/v1/responses`,
+    `authorization: Bearer`, `instructions` + `input`, `store: false` ;
+  - Gemini : `POST https://generativelanguage.googleapis.com/v1beta/models/<modèle>:generateContent`,
+    en-tête `x-goog-api-key`, `systemInstruction` + `contents`.
+  GPT et Gemini « réfléchissent » dans la limite de jetons : on leur donne
+  2 048 jetons de marge. Le nom d'un modèle tapé à la main est vérifié
+  (`valid_model` : lettres, chiffres, `. - _ :`) avant d'entrer dans l'URL.
+  La réponse revient sous une seule forme `{answer, model, truncated,
+  inputTokens, outputTokens}` ; erreurs traduites (clé refusée, y compris le
+  400 de Gemini, modèle introuvable, trop de demandes, panne).
+- Clés (`services/credentials.rs`) : `anthropic-api-key`, `openai-api-key`,
+  `gemini-api-key`, lues dans le Rust seulement ; Réglages → Identifiants en
+  propose les trois.
+- Permissions : `claude-api` (« Envoie à une API d'IA »), `credentials`,
+  `files`, `clipboard`.
+- Commandes : `status` (fournisseur, clé présente ou non, modèle,
+  destination, consigne complète, conversation), `prepare {text | path}`
+  (fichier joint : texte ≤ 100 Ko en UTF-8 ou image ≤ 3,7 Mo, `check_path`,
+  gardé côté Rust, aperçu complet renvoyé), `unprepare`, `send {message,
+  attachment?}` (refusé si le fichier joint a changé), `reset`, `copy`.
+- Conversation : en mémoire dans le Rust (`Mutex<Vec<Turn>>`), jamais sur le
+  disque. Chaque message renvoie les 20 derniers (en commençant par un
+  message de la personne, comme l'exigent les API), fichiers joints compris.
+  Un envoi raté n'entre pas dans la conversation (le front remet le message
+  dans le champ).
+- Consigne (`system`) : la personnalité (réglage `personality`, sinon celle
+  d'Ondine au « vous », au « tu » ou en anglais selon la langue et « S'adresser
+  à moi »), puis, si `emotions` est activé, la demande de finir par
+  `<humeur>…</humeur>` (`<mood>` en anglais). `take_emotion` retire la balise
+  et la traduit en état de mascotte ; le front l'émet (`mascot.emote`), après
+  « thinking » pendant l'attente et « sad » sur une erreur.
+- Un document est envoyé balisé `<document nom="…">…</document>` après le
+  message : un document à lire, pas des instructions.
+- Front : bulles (vous à droite, Ondine à gauche, `data-no-i18n`), trois
+  gouttes pendant l'attente, Entrée envoie, `data-island-fit` pour que l'île
+  grandisse. Sous le champ : ce qui part et vers où, et « Voir la
+  personnalité ». Le premier mot d'Ondine est écrit en local (gratuit).
+- Dépôt sur l'île : « Parler à Ondine » prépare le fichier et ouvre l'onglet.
 
 ## Modes de performance (`src-tauri/src/services/perf.rs`, `src/core/perf.ts`)
 

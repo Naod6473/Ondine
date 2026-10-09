@@ -1,5 +1,19 @@
 # Changements · Changelog
 
+## 1.3.0 · à venir
+
+- « Demander à Claude » devient « Parler à Ondine » : une vraie conversation
+  dans des bulles, avec la petite personnalité d'Ondine (modifiable) et ses
+  humeurs, que la mascotte joue sur l'île. Elle se souvient des derniers
+  messages, et peut répondre avec Claude (par défaut), GPT ou Gemini : une clé
+  API par fournisseur, dans Réglages → Identifiants. La conversation n'est
+  jamais écrite sur le disque. · "Ask Claude" becomes "Talk to Ondine": a real
+  conversation in bubbles, with Ondine's own little personality (editable) and
+  moods, which the mascot acts out on the island. She remembers the latest
+  messages, and can answer with Claude (default), GPT or Gemini: one API key
+  per provider, in Settings → Credentials. The conversation is never written
+  to disk.
+
 ## 1.2.0 · 2026-10-08
 
 - La mascotte réagit à plus de choses : des étoiles plein les yeux quand un

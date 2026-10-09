@@ -31,7 +31,7 @@ La vidéo de présentation est sur le site : [ondine.pissits.com](https://ondine
 - [Nouveautés](#nouveautés)
 - [Installer](#installer)
 - [Premiers pas](#premiers-pas)
-- [Les onglets](#les-onglets) : [Musique](#musique) · [Contrôles](#contrôles) · [Étagère](#étagère) · [Presse-papiers](#presse-papiers) · [Capture](#capture) · [Minuteur](#minuteur) · [Notes](#notes) · [Agenda](#agenda) · [Terminal](#terminal) · [Système](#système) · [Accès distants](#accès-distants) · [Réseau](#réseau) · [Agents IA](#agents-ia) · [Demander à Claude](#demander-à-claude) · [Lanceur](#lanceur) · [Règles](#règles)
+- [Les onglets](#les-onglets) : [Musique](#musique) · [Contrôles](#contrôles) · [Étagère](#étagère) · [Presse-papiers](#presse-papiers) · [Capture](#capture) · [Minuteur](#minuteur) · [Notes](#notes) · [Agenda](#agenda) · [Terminal](#terminal) · [Système](#système) · [Accès distants](#accès-distants) · [Réseau](#réseau) · [Agents IA](#agents-ia) · [Parler à Ondine](#parler-à-ondine) · [Lanceur](#lanceur) · [Règles](#règles)
 - [Sans onglet : Pauses, Météo et Bilan de la semaine](#sans-onglet--pauses-météo-et-bilan-de-la-semaine)
 - [Réglages](#réglages)
 - [Vie privée et sécurité](#vie-privée-et-sécurité)
@@ -548,21 +548,34 @@ démarrage sous « Derniers messages » ; il nourrit la carte Agents IA du
 - **Compter les jetons des agents** (oui) ; **Grille de prix des modèles** ($ par million de jetons) : une ligne par modèle, « début du nom ; entrée ; sortie ; cache lu ; cache écrit » (la grille par défaut est indicative : vérifiez chez les éditeurs) ; **Budget par jour** ($, 0 = pas d'alerte) : au-delà, une notification (une fois par jour) et la mascotte s'inquiète
 - **Identifiant GitHub** (vide = rien n'est demandé) ; **Jeton GitHub** (facultatif)
 
-### Demander à Claude
+### Parler à Ondine
 
-<img src="docs/captures/fr/onglet-askclaude.webp" width="696" alt="Onglet Demander à Claude : ce qui part vers l'API, avant l'envoi">
+<img src="docs/captures/fr/onglet-askclaude.webp" width="696" alt="Onglet Parler à Ondine : la conversation avec Ondine">
 
-Collez une erreur, ou déposez un fichier texte ou une capture sur l'île, posez
-votre question : Claude répond. **Ce module envoie du contenu à l'API Claude**
-(api.anthropic.com), avec **votre** clé API (Réglages → Identifiants) : avant
-chaque envoi, l'île vous montre exactement ce qui part, et rien ne part sans
-votre clic. Les fichiers des dossiers exclus sont refusés. La réponse est
-seulement affichée : rien n'est exécuté.
+Une conversation avec Ondine, comme dans une messagerie : elle répond grâce à
+**Claude** (par défaut), **GPT** ou **Gemini**, avec sa petite personnalité, et
+termine chaque réponse par une humeur que la mascotte joue sur l'île. Vous
+pouvez joindre un fichier texte ou une capture (ou en déposer un sur l'île) :
+il vous est montré en entier avant de partir. Entrée envoie, Maj+Entrée va à la
+ligne.
 
-- **Modèle** : Claude Sonnet 5.5 (par défaut), Claude Opus 5.5 ou Claude Haiku 4.5
-- **Longueur maximale de la réponse** : 1 024 jetons
-- **Consigne donnée à Claude** : vide = « Répondez en français, simplement et brièvement… » ; elle est montrée avant chaque envoi
-- **Proposer « Demander à Claude » quand on dépose un fichier sur l'île** (oui)
+**Ce module envoie du contenu à l'API choisie** (api.anthropic.com,
+api.openai.com ou generativelanguage.googleapis.com), avec **votre** clé API
+(Réglages → Identifiants) : à chaque message partent la personnalité, les
+derniers messages de la conversation (20 au plus, avec leurs fichiers joints)
+et le nouveau. L'onglet le rappelle sous le champ, et « Voir la personnalité »
+montre la consigne exacte. La conversation reste en mémoire, jamais sur le
+disque : elle s'efface avec « Recommencer » ou en quittant l'île. Les fichiers
+des dossiers exclus sont refusés. Les réponses sont seulement affichées : rien
+n'est exécuté.
+
+- **Fournisseur d'IA** : Claude (par défaut), GPT ou Gemini. Chacun a sa clé ; on peut en changer à tout moment
+- **Modèle Claude** : Claude Sonnet 5.5 (par défaut), Claude Opus 5.5 ou Claude Haiku 4.5
+- **Modèle GPT** (vide = gpt-6-luna) et **Modèle Gemini** (vide = gemini-3.8-flash) : le nom exact du modèle chez l'éditeur
+- **Longueur maximale d'une réponse** : 1 024 jetons
+- **Personnalité d'Ondine** : vide = une goutte joyeuse, curieuse et un brin espiègle, qui répond en quelques phrases (au « vous » ou au « tu » selon « S'adresser à moi ») ; écrivez la vôtre pour changer son caractère
+- **Ondine montre ses humeurs sur l'île** (oui)
+- **Proposer « Parler à Ondine » quand on dépose un fichier sur l'île** (oui)
 
 ### Lanceur
 
@@ -744,7 +757,7 @@ tout seul**, selon les jours et les heures, ou le nom du Wi-Fi.
 
 ### Confidentialité, Identifiants, Sauvegarde
 
-- **Confidentialité** : le rappel de ce que l'île promet (aucune télémétrie, ce qui part vers Claude toujours montré avant) et les **dossiers exclus** : aucun module ne lira ni n'enverra un fichier situé dans ces dossiers (ni le lanceur, ni l'étagère, ni « Demander à Claude »).
+- **Confidentialité** : le rappel de ce que l'île promet (aucune télémétrie, ce qui part vers une IA toujours montré avant) et les **dossiers exclus** : aucun module ne lira ni n'enverra un fichier situé dans ces dossiers (ni le lanceur, ni l'étagère, ni « Parler à Ondine »).
 - **Identifiants** : la **clé API Anthropic**, rangée dans le Gestionnaire d'identifiants de Windows. L'île peut seulement savoir si une clé existe : elle ne peut jamais la réafficher.
 - **Sauvegarde** : **exporter** vos réglages dans un fichier .json (`%APPDATA%\Ondine\exports`) ou en **importer**. Les clés ne font jamais partie de l'export.
 
@@ -756,11 +769,12 @@ tout seul**, selon les jours et les heures, ou le nom du Wi-Fi.
 
 - **Aucune télémétrie** : pas de statistiques, pas de rapport de plantage, pas de compte.
 - La seule connexion automatique : une fois par jour, Ondine demande à GitHub
-  s'il existe une nouvelle version (désactivable). Tout le reste (Demander à
-  Claude, liens iCal, météo, IP publique, ping…) n'a lieu que si vous l'activez
+  s'il existe une nouvelle version (désactivable). Tout le reste (Parler à
+  Ondine, liens iCal, météo, IP publique, ping…) n'a lieu que si vous l'activez
   ou le demandez. La liste complète : [PRIVACY.md](PRIVACY.md).
-- « Demander à Claude » envoie le texte choisi à l'API d'Anthropic, avec **votre**
-  clé, seulement après vous avoir montré ce qui part.
+- « Parler à Ondine » envoie vos messages (et les fichiers que vous joignez,
+  après vous les avoir montrés) à l'API choisie (Claude, GPT ou Gemini), avec
+  **votre** clé.
 - « Vers le téléphone » (Étagère) et « Réveiller » (Accès distants) restent sur
   le réseau local, seulement quand vous cliquez : rien ne part sur Internet.
 - Le calendrier GitHub (Agents IA) ne part chercher que si vous donnez votre

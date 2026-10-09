@@ -11,7 +11,7 @@ Ondine ne se connecte à Internet que dans ces cas :
 |---|---|---|
 | Une fois par jour, et sur « Rechercher maintenant » (désactivable : Réglages → Mises à jour automatiques) | github.com | Une simple demande du fichier `latest.json` de la dernière version. Rien sur vous ni sur votre PC. |
 | Vous cliquez « Installer » une mise à jour | github.com | Le téléchargement de l'installateur. |
-| Vous utilisez « Demander à Claude » | api.anthropic.com | Le texte que vous avez choisi, avec **votre** clé API, après vous avoir montré ce qui part. |
+| Vous écrivez à Ondine (« Parler à Ondine ») | api.anthropic.com, api.openai.com ou generativelanguage.googleapis.com, selon le fournisseur choisi | Votre message, la personnalité d'Ondine et les derniers messages de la conversation (20 au plus, avec les fichiers joints, qui vous sont montrés avant de partir), avec **votre** clé API. La conversation n'est jamais écrite sur le disque. |
 | Vous avez ajouté des liens iCal dans Agenda | les adresses que vous avez données | La lecture de vos calendriers (toutes les 15 minutes). |
 | Vous avez activé l'alerte « changement d'IP publique » (Outils IT, désactivée par défaut) | api.ipify.org | Une demande de votre adresse IP publique. |
 | Vous lancez un ping, un test de port, un accès RDP/SSH ou un agent IA | la machine ou le service que vous avez choisi | Ce que vous avez demandé. |
@@ -53,8 +53,11 @@ specifically requested by the user, with one exception: the update check.
   Automatic updates): a plain request for the latest release's `latest.json` on
   github.com. Nothing about you or your PC is sent.
 - **Installing an update** (you click "Install"): downloads the installer from github.com.
-- **Ask Claude**: sends the text you chose to api.anthropic.com with **your** API
-  key, after showing you what will be sent.
+- **Talk to Ondine**: sends your message, Ondine's personality and the latest
+  messages of the conversation (20 at most, with attached files, which are shown
+  to you before they leave) to api.anthropic.com, api.openai.com or
+  generativelanguage.googleapis.com depending on the chosen provider, with
+  **your** API key. The conversation is never written to disk.
 - **Calendar**: reads the iCal links you entered (every 15 minutes).
 - **Public IP alert** (IT tools, off by default): asks api.ipify.org for your public IP.
 - **Ping, port test, RDP/SSH, AI agents**: connect to the host or service you chose.

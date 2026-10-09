@@ -1,4 +1,4 @@
-// Les identifiants (clé API Anthropic, jetons…) vivent UNIQUEMENT dans le
+// Les identifiants (clés API Anthropic, OpenAI, Gemini, jetons…) vivent UNIQUEMENT dans le
 // Gestionnaire d'identifiants Windows, jamais sur disque ni dans le journal.
 //
 // Ce que le front peut faire : demander si une clé existe, en enregistrer une
@@ -8,7 +8,12 @@
 
 /// Toutes les clés que l'île accepte de stocker. Les autres sont refusées
 /// (sauf celles des agendas en ligne, voir `calendar_key`).
-pub const KNOWN_KEYS: &[&str] = &["anthropic-api-key", ICAL_URL, GITHUB_TOKEN];
+pub const KNOWN_KEYS: &[&str] = &["anthropic-api-key", OPENAI_KEY, GEMINI_KEY, ICAL_URL, GITHUB_TOKEN];
+
+/// Les clés des autres fournisseurs d'IA de « Parler à Ondine »
+/// (modules/askclaude_providers.rs). Facultatives.
+pub const OPENAI_KEY: &str = "openai-api-key";
+pub const GEMINI_KEY: &str = "gemini-api-key";
 
 /// Le jeton GitHub (lecture seule, read:user) du calendrier de contributions
 /// de l'onglet Agents IA (modules/agents_github.rs). Facultatif.
