@@ -160,8 +160,9 @@ export const askclaude: IslandModule = {
     drop: dropTargets,
 
     expanded(root, api) {
-      // data-island-fit : l'île grandit pour montrer la conversation et le champ (fit.ts).
-      const box = el("div", { class: "ask", "data-island-fit": "" });
+      // data-island-fit : l'île grandit avec la conversation, jusqu'à sa taille
+      // maximale (fit.ts), sauf si le réglage « autoGrow » est coupé.
+      const box = el("div", { class: "ask" });
       root.append(box);
       let list: HTMLElement | null = null;
 
@@ -203,6 +204,9 @@ export const askclaude: IslandModule = {
       };
 
       const draw = () => {
+        const grow = api.settings().autoGrow !== false;
+        box.classList.toggle("grow", grow);
+        box.toggleAttribute("data-island-fit", grow);
         const s = state.status;
         const who = PROVIDER_NAMES[s?.provider ?? "claude"] ?? "Claude";
         const parts: (HTMLElement | null)[] = [];

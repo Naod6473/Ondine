@@ -552,6 +552,7 @@ are refused. Answers are only displayed: nothing is executed.
 - **GPT model** (empty = gpt-6-luna) and **Gemini model** (empty = gemini-3.8-flash): the exact model name at the vendor
 - **Maximum length of an answer**: 1,024 tokens
 - **Ondine's personality**: empty = a cheerful, curious, slightly mischievous droplet who answers in a few sentences, in the interface language; write your own to change her character
+- **The island grows with the conversation** (on): up to its maximum size, then the conversation scrolls
 - **Ondine shows her moods on the island** (on)
 - **Offer "Talk to Ondine" when a file is dropped on the island** (on)
 

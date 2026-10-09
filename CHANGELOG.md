@@ -13,6 +13,11 @@
   messages, and can answer with Claude (default), GPT or Gemini: one API key
   per provider, in Settings → Credentials. The conversation is never written
   to disk.
+- « Parler à Ondine » est le premier onglet au premier lancement, et l'île
+  s'agrandit avec la conversation (réglage « L'île s'agrandit avec la
+  conversation »). · "Talk to Ondine" is the first tab on first launch, and
+  the island grows with the conversation ("The island grows with the
+  conversation" setting).
 
 ## 1.2.0 · 2026-10-08
 

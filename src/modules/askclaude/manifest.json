@@ -47,6 +47,7 @@
         "default": "",
         "maxLength": 1500
       },
+      { "key": "autoGrow", "type": "boolean", "label": "L'île s'agrandit avec la conversation", "help": "Elle grandit à chaque message jusqu'à sa taille maximale, puis la conversation défile. Sinon, elle garde sa taille habituelle.", "default": true },
       { "key": "emotions", "type": "boolean", "label": "Ondine montre ses humeurs sur l'île", "help": "Elle termine chaque réponse par une humeur (joie, rire, réflexion…) que la mascotte joue.", "default": true },
       { "key": "showDrop", "type": "boolean", "label": "Proposer « Parler à Ondine » quand on dépose un fichier sur l'île", "default": true }
     ]

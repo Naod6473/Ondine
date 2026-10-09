@@ -574,6 +574,7 @@ n'est exécuté.
 - **Modèle GPT** (vide = gpt-6-luna) et **Modèle Gemini** (vide = gemini-3.8-flash) : le nom exact du modèle chez l'éditeur
 - **Longueur maximale d'une réponse** : 1 024 jetons
 - **Personnalité d'Ondine** : vide = une goutte joyeuse, curieuse et un brin espiègle, qui répond en quelques phrases (au « vous » ou au « tu » selon « S'adresser à moi ») ; écrivez la vôtre pour changer son caractère
+- **L'île s'agrandit avec la conversation** (oui) : jusqu'à sa taille maximale, puis la conversation défile
 - **Ondine montre ses humeurs sur l'île** (oui)
 - **Proposer « Parler à Ondine » quand on dépose un fichier sur l'île** (oui)
 
