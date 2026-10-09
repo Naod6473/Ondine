@@ -173,3 +173,9 @@
   background: rgba(255, 255, 255, 0.09);
   box-shadow: 0 0 0 1px var(--line);
 }
+
+/* Portée au-dessus de l'île : elle se fait petite (lâchée là, elle rentre). */
+.pet.homing .pet-slot {
+  scale: 0.7;
+  opacity: 0.85;
+}

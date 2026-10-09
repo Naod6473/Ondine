@@ -721,7 +721,9 @@ island's tabs (Talk to Ondine, Launcher and AI agents by default, chosen in the
 same group), and the bubble follows her when she moves. She dances, cheers,
 worries and sleeps just like in the island; notifications stay in the island.
 "Above windows" (on); otherwise she stays behind them, on the wallpaper. The
-⤒ button in her bubble brings her back to the island.
+To bring her home: drag her onto the island, or use the ⤒ button in her
+bubble or the 💧 button of the open island. She steps out during a
+presentation or full screen, then comes back.
 
 - **Size**: Small, Normal (default) or Large, in the open island and the preview; the mini island keeps its size.
 - **Style** (gummy mascots): **Color** (the shape's own, a tint, Rainbow, or **Custom**: a hue / saturation wheel, a lightness slider and the value to type; the preview and the island follow the drag), **Hands** (always, only for gestures, never), hat, glasses and necklace.

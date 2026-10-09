@@ -752,7 +752,9 @@ de l'île (par défaut Parler à Ondine, Lanceur et Agents IA, à choisir dans c
 même groupe), et la bulle la suit quand on la déplace. Elle danse, fête,
 s'inquiète et dort comme dans l'île ; les notifications, elles, restent dans
 l'île. « Au-dessus des fenêtres » (oui) ; sinon elle reste derrière, sur le
-fond d'écran. Le bouton ⤒ de sa bulle la ramène dans l'île.
+fond d'écran. Pour la faire rentrer : glissez-la sur l'île, ou utilisez le
+bouton ⤒ de sa bulle ou le bouton 💧 de l'île ouverte. Elle s'éclipse pendant
+une présentation ou un plein écran, puis revient.
 
 - **Taille** : Petite, Normale (par défaut) ou Grande, dans l'île ouverte et l'aperçu ; la mini-île garde sa taille.
 - **Style** (mascottes en gomme) : **Couleur** (celle de la forme, une teinte, Arc-en-ciel, ou **Personnalisée** : une roue teinte / saturation, une glissière de luminosité et la valeur à taper ; l'aperçu et l'île suivent le glisser), **Mains** (toujours, seulement pour les gestes, jamais), chapeau, lunettes et collier.

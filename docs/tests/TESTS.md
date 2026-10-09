@@ -290,8 +290,12 @@ Dans l'onglet 🤖, ouvre « Brancher Claude Code, Codex ou Gemini ».
    Notes ; la bulle suit. Décoche « Au-dessus des fenêtres » : elle passe
    derrière les fenêtres.
 9. ☐ Le bouton ⤒ de la bulle la ramène dans l'île (et les visites au bord
-   reviennent).
-10. ☐ Avec deux écrans (ou une mise à l'échelle 125 % / 150 %) : elle reste
+   reviennent). Ressors-la, puis porte-la tout en haut de l'écran : l'île se
+   montre, Ondine rapetisse ; lâche-la : elle rentre. Ressors-la encore, ouvre
+   l'île : le bouton 💧 la fait rentrer aussi.
+10. ☐ Lance un diaporama PowerPoint ou une vidéo en plein écran : elle
+    disparaît, puis revient à la fin.
+11. ☐ Avec deux écrans (ou une mise à l'échelle 125 % / 150 %) : elle reste
     nette et à sa place ; écran débranché, elle revient en bas à droite.
 
 ---

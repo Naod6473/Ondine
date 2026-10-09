@@ -643,7 +643,12 @@ fenêtre s'agrandit autour d'elle. Le Rust annonce le côté par l'événement
   principal), replace la bulle si besoin, puis envoie `pet-drag-end`.
 - **Sortir de l'île** : dans l'île, tirer la mascotte hors de la forme puis la
   lâcher appelle `pet_place(atCursor)` (island.ts, `wireCarry`). `pet_back`
-  la ramène (bouton ⤒ de la bulle).
+  la ramène (bouton ⤒ de la bulle, bouton 💧 de l'île ouverte). Portée
+  au-dessus de l'île (`island::screen_point_on_island` : sa forme, ou la
+  bande de réveil avec une marge), le Rust envoie `pet-over-island` (l'île se
+  montre, la mascotte rapetisse) ; lâchée là, elle rentre.
+- **Présentation, plein écran** : la boucle de la souris regarde toutes les
+  2 s `presentation_busy` et cache la fenêtre le temps qu'il faut.
 - **Clics traversants** : la page envoie les cases de la mascotte et de la
   bulle (`pet_set_hit`) ; `spawn_hit_poll` lit la souris (30 fois par seconde
   près d'elle, 8 loin) et bascule `set_ignore_cursor_events`, rien ne change

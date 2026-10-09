@@ -91,6 +91,8 @@ class Pet {
 
     void onTauriEvent<PetLayout>("pet-layout", (l) => this.applyLayout(l));
     void onTauriEvent("pet-drag-end", () => this.dragEnded());
+    // Portée au-dessus de l'île : elle se fait petite, prête à rentrer.
+    void onTauriEvent<boolean>("pet-over-island", (over) => this.box.classList.toggle("homing", over));
     void onTauriEvent<{ x: number; y: number }>("pet-cursor", (p) => this.pointer(p.x, p.y));
     if (!IS_TAURI) document.addEventListener("mousemove", (e) => this.pointer(e.clientX, e.clientY));
     window.addEventListener("keydown", (e) => {
@@ -178,7 +180,7 @@ class Pet {
   }
 
   private dragEnded() {
-    this.box.classList.remove("dragging");
+    this.box.classList.remove("dragging", "homing");
     this.mascot?.request("idle");
     this.pushHit();
   }

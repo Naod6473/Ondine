@@ -1631,7 +1631,8 @@
 "Seulement la mascotte, posée où vous voulez : attrapez-la pour la déplacer, cliquez sur elle pour ouvrir sa bulle. Vous pouvez aussi la tirer hors de l'île.": "Just the mascot, placed wherever you like: grab her to move her, click her to open her bubble. You can also drag her out of the island.",
 "Au-dessus des fenêtres": "Above windows",
 "Sinon, elle reste derrière les fenêtres, sur le fond d'écran.": "Otherwise she stays behind windows, on the wallpaper.",
-"Les onglets cochés apparaissent dans sa bulle, dans l'ordre où vous les cochez. Les notifications restent dans l'île.": "The ticked tabs appear in her bubble, in the order you tick them. Notifications stay in the island."
+"Les onglets cochés apparaissent dans sa bulle, dans l'ordre où vous les cochez. Les notifications restent dans l'île.": "The ticked tabs appear in her bubble, in the order you tick them. Notifications stay in the island.",
+"Faire rentrer Ondine dans l'île": "Bring Ondine back into the island"
 },
 "patterns": [
 [

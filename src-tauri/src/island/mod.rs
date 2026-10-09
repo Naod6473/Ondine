@@ -315,6 +315,21 @@ pub fn window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window(WINDOW_LABEL)
 }
 
+/// Ce point de l'écran (px physiques) est-il sur l'île ? Sur sa forme quand
+/// elle est visible (avec une marge), sinon près de la bande de réveil. Sert à
+/// Ondine sur le bureau : lâchée sur l'île, elle y rentre (pet.rs).
+pub fn screen_point_on_island(app: &AppHandle, gate: &PollGate, px: f64, py: f64) -> bool {
+    let Some(win) = window(app) else { return false };
+    let Some(f) = gate.frame(&win) else { return false };
+    let (x, y) = ((px - f.x as f64) / f.scale, (py - f.y as f64) / f.scale);
+    if gate.collapsed.load(Ordering::Relaxed) {
+        // La bande ne fait que quelques px : une large marge autour.
+        let (w, h) = (f.w as f64 / f.scale, f.h as f64 / f.scale);
+        return x >= -40.0 && x <= w + 40.0 && y >= -40.0 && y <= h + 40.0;
+    }
+    on_shape(&gate.rect.locked(), x, y, 24.0)
+}
+
 fn monitor_contains(m: &Monitor, x: f64, y: f64) -> bool {
     let p = m.position();
     let s = m.size();

@@ -96,9 +96,29 @@ pub fn spawn_hit_poll(app: AppHandle) {
     std::thread::spawn(move || {
         let mut ignoring = false;
         let mut last = (f64::MIN, f64::MIN);
+        // Présentation ou plein écran : elle s'éclipse, et revient après.
+        let mut stepped_out = false;
+        let mut last_busy_check = std::time::Instant::now() - Duration::from_secs(10);
         loop {
             let Some(win) = window(&app) else { return };
             let Some(state) = app.try_state::<PetState>() else { return };
+            if last_busy_check.elapsed() >= Duration::from_secs(2) {
+                last_busy_check = std::time::Instant::now();
+                let wanted = app.try_state::<crate::Shared>().map(|s| {
+                    let s = s.settings.locked();
+                    s.mascot.enabled && s.mascot.pet
+                }).unwrap_or(false);
+                let busy = wanted && platform::presentation_busy();
+                if busy && !stepped_out && win.is_visible().unwrap_or(false) {
+                    stepped_out = true;
+                    let _ = win.hide();
+                } else if !busy && stepped_out {
+                    stepped_out = false;
+                    if wanted {
+                        let _ = win.show();
+                    }
+                }
+            }
             if !win.is_visible().unwrap_or(false) {
                 std::thread::sleep(Duration::from_millis(400));
                 continue;
@@ -292,6 +312,8 @@ pub fn drag_start(app: &AppHandle) {
     let (gx, gy) = (cx - origin.x as f64, cy - origin.y as f64);
     let app = app.clone();
     std::thread::spawn(move || {
+        // Au-dessus de l'île : l'île se montre et Ondine le sent (lâchée là, elle rentre).
+        let mut over = false;
         loop {
             std::thread::sleep(Duration::from_millis(8));
             let (down, _) = platform::left_button_state();
@@ -300,12 +322,30 @@ pub fn drag_start(app: &AppHandle) {
                 break;
             }
             let _ = win.set_position(PhysicalPosition::new((cx - gx).round() as i32, (cy - gy).round() as i32));
+            let now = over_island(&app, cx, cy);
+            if now != over {
+                over = now;
+                let _ = app.emit("pet-over-island", over);
+            }
+        }
+        if over {
+            let _ = app.emit("pet-over-island", false);
+            if let Some(state) = app.try_state::<PetState>() {
+                state.dragging.store(false, Ordering::SeqCst);
+            }
+            let _ = win.emit("pet-drag-end", ());
+            back_to_island(&app);
+            return;
         }
         drag_end(&app, &win);
         if let Some(state) = app.try_state::<PetState>() {
             state.dragging.store(false, Ordering::SeqCst);
         }
     });
+}
+
+fn over_island(app: &AppHandle, x: f64, y: f64) -> bool {
+    app.try_state::<crate::Shared>().map(|s| crate::island::screen_point_on_island(app, &s.gate, x, y)).unwrap_or(false)
 }
 
 fn drag_end(app: &AppHandle, win: &WebviewWindow) {

@@ -51,6 +51,11 @@ const SETTLE_FALLBACK_MS = 1500;
 const EDGE_ZONE = { len: 240, depth: 14 };
 /** Survol prolongé de la mascotte → `love`. */
 const LONG_HOVER_MS = 2500;
+
+/** Ondine vit sur le bureau (src/pet/) : elle n'est plus dans l'île. */
+function petOn(s: Settings): boolean {
+  return s.mascot.enabled && !!s.mascot.pet;
+}
 /** Ondine vient pendre au bord seulement si personne n'a touché le PC depuis… */
 const PEEK_IDLE_MS = 20_000;
 // On se demande toutes les 15 s si c'est le moment de pendre au bord, et toutes
@@ -249,6 +254,8 @@ export class Island {
     spotlight(this.shell);
     this.wirePrivacy();
     this.wireFocus();
+    // On porte Ondine (sur le bureau) au-dessus de l'île : elle se montre pour l'accueillir.
+    void onTauriEvent<boolean>("pet-over-island", (over) => (over ? this.fsm.pointerEnter() : this.fsm.pointerLeave()));
     // La bulle d'Ondine sur le bureau demande un onglet qu'elle n'a pas.
     this.bus.on("island.open", (msg) => this.registry.onOpenRequest((msg.payload as { tab?: string } | null)?.tab));
     // Bouton « Faire venir Ondine » des réglages.
@@ -277,7 +284,7 @@ export class Island {
     // Réglages → Mascotte → Taille : la place de la mascotte dans l'île ouverte (island.css).
     this.shell.dataset.mascotSize = s.mascot.size ?? "normal";
     // Ondine sur le bureau (src/pet/) : elle n'est plus dans l'île (ni au bord de l'écran).
-    const wanted = s.mascot.enabled && !s.mascot.pet ? s.mascot.id : "";
+    const wanted = s.mascot.enabled && !petOn(s) ? s.mascot.id : "";
     if (wanted !== this.mascotId) {
       this.mascot?.destroy();
       this.mascot = null;
@@ -295,6 +302,8 @@ export class Island {
         });
       }
       this.shell.classList.toggle("no-mascot", !this.mascot);
+      // Ondine part sur le bureau ou en revient : le bouton « Faire rentrer » suit.
+      if (this.expandedUi) this.render(true);
     }
     if (this.mascot) {
       this.mascot.timings = { boredAfterMs: s.mascot.boredAfterSecs * 1000, sleepAfterMs: s.mascot.sleepAfterSecs * 1000 };
@@ -1033,6 +1042,8 @@ export class Island {
     }
     header.append(
       el("span", { class: "spacer" }),
+      // Ondine est sur le bureau : un bouton la fait rentrer dans l'île.
+      ...(petOn(settingsStore.current) ? [el("button", { class: "icon-btn", title: "Faire rentrer Ondine dans l'île", "aria-label": "Faire rentrer Ondine dans l'île", onclick: () => void Bridge.petBack() }, "💧")] : []),
       el("button", { class: "icon-btn", title: "Réglages", "aria-label": "Réglages", onclick: () => void Bridge.openSettingsWindow() }, "⚙"),
       el("button", { class: "icon-btn", title: "Réduire (Échap pour fermer)", "aria-label": "Réduire", onclick: () => this.fsm.shrink() }, "▴"),
     );
