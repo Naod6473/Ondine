@@ -1,6 +1,6 @@
 # Changements · Changelog
 
-## 1.3.0 · à venir
+## 1.2.1 · 2026-10-09
 
 - « Demander à Claude » devient « Parler à Ondine » : une vraie conversation
   dans des bulles, avec la petite personnalité d'Ondine (modifiable) et ses
