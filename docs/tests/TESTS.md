@@ -308,6 +308,21 @@ Dans l'onglet 🤖, ouvre « Brancher Claude Code, Codex ou Gemini ».
 16. ☐ Avec deux écrans (ou une mise à l'échelle 125 % / 150 %) : elle reste
     nette et à sa place ; écran débranché, elle revient en bas à droite.
 
+### 4.1 Les Réglages en sous-menus
+
+1. ☐ Modules : rangés en 5 catégories (Ondine et IA, Fichiers, Organisation,
+   Outils IT, Le PC au quotidien). Un clic sur un titre la replie ou la
+   déplie ; en rouvrant les Réglages, elles sont comme tu les as laissées.
+2. ☐ Mascotte, Général, Onglets, Profils, Agents IA, Parler à Ondine : un clic
+   déplie leurs sous-menus juste en dessous, la page n'affiche que celui
+   choisi. Ferme et rouvre : tu reviens au même sous-menu.
+3. ☐ Mode Simple : les sous-menus sans rien à montrer sont grisés ; on peut
+   quand même les ouvrir (« Tout afficher »).
+4. ☐ Recherche « lunettes », « jeton GitHub », « tutoiement » : un clic ouvre
+   le bon sous-menu et fait briller la ligne.
+5. ☐ Rien n'a disparu : chaque réglage d'avant se retrouve (la recherche aide).
+   Icônes couleur et épurées : Apparence → Style des icônes, la barre suit.
+
 ---
 
 ## 5. Ce que je dois savoir après tes tests
@@ -319,5 +334,7 @@ Dans l'onglet 🤖, ouvre « Brancher Claude Code, Codex ou Gemini ».
 - 2.4 : « island » est-il connecté dans `/mcp` ?
 - 2.5, test 6 : la question du terminal arrive-t-elle tout de suite, ou
   seulement après le délai ?
+- 4.1 : les plis de la barre des Réglages sont-ils fluides ? Un réglage
+  manque-t-il quelque part ?
 - 4 : le déplacement d'Ondine est-il fluide, et la bulle s'ouvre-t-elle du
   bon côté ? Les clics passent-ils bien au travers à côté d'elle ?

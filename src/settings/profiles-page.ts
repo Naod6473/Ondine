@@ -14,7 +14,7 @@ import type { Profile, ProfileValues, Profiles, Settings } from "../core/types";
 import { el } from "../island/dom";
 import { THEMES } from "../island/themes";
 import { ALL_MODULES } from "../modules";
-import { chip, choice, group, row, select, toggle, wideRow } from "./controls";
+import { chip, choice, group, inSub, row, select, toggle, wideRow } from "./controls";
 
 /** Comme dans profiles.rs. */
 const MAX_PROFILES = 10;
@@ -63,6 +63,11 @@ async function activate(id: string) {
   }
 }
 
+/** Les sous-menus de la page : « Profil actif », puis un par profil (son nom). */
+export function profileSubs(s: Settings): { id: string; label: string; noI18n?: boolean }[] {
+  return [{ id: "active", label: "Profil actif" }, ...(s.profiles?.list ?? []).map((p) => ({ id: `p:${p.id}`, label: p.name, noI18n: true }))];
+}
+
 /** La page entière. `save` : l'enregistrement de la fenêtre de réglages. */
 export function profilesPage(main: HTMLElement, save: Save) {
   const s = settingsStore.current;
@@ -72,7 +77,7 @@ export function profilesPage(main: HTMLElement, save: Save) {
   // ── Le profil actif ──
   const options: [string, string][] = [["", "Aucun"], ...profiles.list.map((p): [string, string] => [p.id, p.name])];
   main.append(
-    group(
+    inSub("active", group(
       "Profil actif",
       [
         row(
@@ -83,21 +88,21 @@ export function profilesPage(main: HTMLElement, save: Save) {
         row(
           "Changer tout seul",
           toggle(profiles.auto, (v) => save((d) => (profilesOf(d).auto = v)), "Changer de profil tout seul"),
-          "Selon l'heure ou le Wi-Fi (règle de chaque profil ci-dessous). Un choix fait à la main tient jusqu'au prochain changement.",
+          "Selon l'heure ou le Wi-Fi (la règle de chaque profil, dans son sous-menu). Un choix fait à la main tient jusqu'au prochain changement.",
         ),
       ],
       "Un profil ne retient que ce qu'il remplace. Pendant qu'il est actif, vos changements de ces réglages (page Onglets, Apparence…) lui sont gardés ; les autres réglages restent communs.",
-    ),
+    )),
   );
 
   // ── Un bloc par profil ──
-  for (const p of profiles.list) main.append(profileBlock(p, p.id === profiles.active, save));
+  for (const p of profiles.list) main.append(inSub(`p:${p.id}`, profileBlock(p, p.id === profiles.active, save)));
 
   const full = profiles.list.length >= MAX_PROFILES;
   main.append(
     el(
       "div",
-      { class: "actions" },
+      { class: "actions", "data-sub": "active" },
       el(
         "button",
         {

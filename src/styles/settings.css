@@ -269,6 +269,166 @@ body {
   background: var(--muted);
   opacity: 0.6;
 }
+/* Une page longue : sa flèche tourne quand ses sous-menus sont dépliés. */
+.nav-caret {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  transition: rotate 240ms var(--ease);
+}
+.nav-item.open .nav-caret {
+  rotate: 90deg;
+}
+
+/* Un pli (catégorie de modules, sous-menus d'une page) : s'ouvre en douceur. */
+.nav-fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 300ms var(--ease),
+    opacity 220ms var(--ease);
+}
+.nav-fold.open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.nav-fold-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-fold,
+  .nav-caret,
+  .nav-chevron {
+    transition: none;
+  }
+}
+
+/* Le titre d'une catégorie de modules (texte seul) : un clic la replie. */
+.nav-cat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 2px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color 160ms var(--ease),
+    background 160ms var(--ease);
+}
+.nav-cat:hover {
+  color: var(--fg);
+  background: var(--line);
+}
+.nav-cat:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+/* La page affichée est dedans, catégorie repliée : le titre le dit. */
+.nav-cat.has-active[aria-expanded="false"] {
+  color: var(--fg);
+}
+.nav-cat.has-active[aria-expanded="false"] .nav-cat-label::after {
+  content: " •";
+  color: var(--accent);
+}
+.nav-cat-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nav-chevron {
+  font-size: 14px;
+  line-height: 1;
+  transition: rotate 240ms var(--ease);
+}
+.nav-cat[aria-expanded="true"] .nav-chevron {
+  rotate: 90deg;
+}
+
+/* Les sous-menus d'une page, en retrait sous elle, avec un petit point. */
+.nav-sub {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 4px 10px 4px 42px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color 160ms var(--ease),
+    background 160ms var(--ease),
+    opacity 160ms var(--ease);
+}
+.nav-sub::before {
+  content: "";
+  position: absolute;
+  left: 30px;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.45;
+  translate: 0 -50%;
+  transition:
+    background 200ms var(--ease),
+    scale 200ms var(--ease);
+}
+.nav-sub:hover {
+  color: var(--fg);
+  background: var(--line);
+}
+.nav-sub.active {
+  color: var(--fg);
+  font-weight: 600;
+}
+.nav-sub.active::before {
+  background: var(--accent);
+  opacity: 1;
+  scale: 1.4;
+}
+.nav-sub:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+/* Mode Simple : rien à y montrer (« Tout afficher » une fois dedans). */
+.nav-sub.dim {
+  opacity: 0.5;
+}
+.nav-fold-inner > .nav-sub:last-child {
+  margin-bottom: 4px;
+}
+
+/* Le sous-menu affiché, à côté du titre de la page. */
+.page-crumb {
+  font-weight: 500;
+  color: var(--muted);
+}
+.page-crumb::before {
+  content: "›";
+  margin: 0 8px;
+}
+
 /* La pastille sous la page active (déplacée par nav-pill.ts). */
 .nav-pill {
   position: absolute;
@@ -1344,15 +1504,6 @@ html:not([lang="fr"]) .fr-only {
 }
 .treasure.found b::before {
   content: "✦ ";
-}
-
-/* Réglages → Mascotte : surprises et carnet, repliés par défaut. */
-.eggs-fold {
-  display: contents;
-}
-
-.eggs-fold[hidden] {
-  display: none;
 }
 
 /* ── Mode Simple / Complet (src/settings/mode.ts) ───────────────────────── */

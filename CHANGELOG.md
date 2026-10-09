@@ -36,6 +36,13 @@
   sits on the taskbar, accepts files dropped on her, shows a badge when a
   notification arrives, opens with Ctrl+Alt+B and wanders around when you
   leave the PC alone.
+- Réglages plus légers : les modules sont rangés en catégories repliables,
+  et les pages longues (Mascotte, Général, Onglets, Profils, Agents IA,
+  Parler à Ondine) s'ouvrent en sous-menus dans la barre de gauche. Rien n'a
+  été retiré, et la recherche ouvre le bon sous-menu. · Lighter settings:
+  modules are grouped in collapsible categories, and long pages (Mascot,
+  General, Tabs, Profiles, AI agents, Talk to Ondine) open as sub-menus in the
+  left bar. Nothing was removed, and search opens the right sub-menu.
 
 ## 1.2.0 · 2026-10-08
 

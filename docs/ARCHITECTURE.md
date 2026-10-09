@@ -1945,6 +1945,32 @@ En éco, en plus : les effets « Studio » (flou → net) sont remplacés par ce
 
 Pour comparer : Réglages → Général → À propos → « Ressources utilisées ».
 
+## Fenêtre de réglages : catégories et sous-menus (`src/settings/main.ts`)
+
+- La barre latérale range les pages de modules en **catégories** repliables
+  (`MODULE_CATEGORIES` : Ondine et IA, Fichiers, Organisation, Outils IT, Le PC
+  au quotidien ; un module inconnu va dans « Autres modules »). Titres en texte
+  seul ; dans une catégorie, l'ordre des onglets. Les catégories ouvertes sont
+  retenues (`localStorage` « settings.cats ») ; celle de la page affichée
+  s'ouvre toute seule.
+- Une page longue a des **sous-menus** (`Page.subs`) : Général, Onglets,
+  Mascotte, Profils (un par profil), et pour les modules `MODULE_SECTIONS`
+  (Agents IA, Parler à Ondine, par clé de champ du manifeste ; un champ non
+  listé va dans le premier sous-menu). Ils se déplient sous la page dans la
+  barre (pli `grid-template-rows`), la page n'affiche que celui choisi, retenu
+  par page (`localStorage` « settings.subs »).
+- Le rendu dessine **toute** la page et marque chaque bloc du haut avec
+  `data-sub` (`inSub`, controls.ts) ; `showPage` retire les autres blocs avant
+  `applyMode`, ce qui fait que « N réglages de plus » compte le sous-menu
+  affiché. Un sous-menu dont rien ne resterait en Simple est grisé dans la
+  barre (`dimSubs`). Un résultat de recherche ou un lien profond vers une ligne
+  d'un autre sous-menu y bascule d'abord (`showPage(…, focusKey)`).
+- `SEARCH_ALIASES` : des mots de recherche qui ne sont pas un libellé
+  (Tutoiement → « S'adresser à moi »…) mènent à la bonne ligne.
+- Mascotte : deux scènes d'aperçu (sous Apparence, et dans Tester les
+  animations) ; le renderer va dans celle restée affichée (microtâche après
+  `showPage`).
+
 ## Fenêtre de réglages : mode Simple / Complet (`src/settings/visibility.ts`, `src/settings/mode.ts`)
 
 - Réglage `general.settingsMode` : `"simple"` (défaut, aussi pour un fichier
@@ -1963,13 +1989,12 @@ Pour comparer : Réglages → Général → À propos → « Ressources utilisé
   S'adresser à moi, Lancer avec Windows, Bord de l'écran, Mises à jour
   automatiques), Apparence (Thème, Style des icônes), Onglets (la liste des
   modules, marquée `data-essential` dans le DOM), Mascotte (Afficher la
-  mascotte, Mascotte, Couleur), Profils (Profil actif). Règles et les trois
+  mascotte, Mascotte, Couleur, Ondine vit sur le bureau), Profils (Profil actif). Règles et les trois
   pages Sécurité restent entières (`WHOLE_PAGE`) : courtes, ou pas une liste
   de réglages.
 - `mode.ts` (`applyMode`) travaille sur la page déjà dessinée : `.row[data-key]`
   et `section.group[data-key]` ; un conteneur `data-essential` garde tout ce
-  qu'il contient ; `data-follows="<clé>"` suit la ligne de cette clé (le pli des
-  surprises). La recherche trouve tout : un résultat caché en Simple porte
+  qu'il contient ; `data-follows="<clé>"` suit la ligne de cette clé. La recherche trouve tout : un résultat caché en Simple porte
   l'étiquette « réglage avancé », et y aller (comme un lien profond vers une
   ligne cachée) passe en Complet avant de faire briller la ligne.
 - Tests : `tests/front/visibility.test.ts` (champs visibles selon le mode,
