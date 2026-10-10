@@ -26,6 +26,7 @@ import type { MascotManifest } from "../mascot/types";
 import { clear, el } from "./dom";
 import { icon } from "./icon";
 import { IslandStateMachine, type IslandState } from "./island-state";
+import { IslandForms, islandStyle } from "./island-forms";
 import { contentHeight, FIT_ATTR, FIT_MAX_W, FIT_MAX_W_SIDE, FIT_W_ATTR, fitHeight, fitMode, fitWidth, naturalWidth, settle } from "./fit";
 import { attachHalo } from "./halo";
 import { attachLiquid } from "./liquid";
@@ -162,6 +163,8 @@ export class Island {
   private lastFright = 0;
   /** Ouverte au clavier (raccourci) : le focus va sur l'onglet actif. */
   private focusTabsOnOpen = false;
+  /** Format nano et île-bouche (1.2.3, island-forms.ts). */
+  private forms: IslandForms;
   /** Les surprises cachées (src/eggs/). */
   private eggs: EasterEggs;
   /** La bulle d'astuce à la première ouverture d'un onglet (tips.ts). */
@@ -188,6 +191,16 @@ export class Island {
       // La forme est posée (fin de l'ancienne « transitionend ») : le Rust
       // reçoit le rectangle final, échelle comprise, pour les clics traversants.
       onSettle: () => this.pushRect(),
+    });
+    this.forms = new IslandForms({
+      shell: this.shell,
+      root: this.root,
+      fsm: this.fsm,
+      bus: this.bus,
+      mascot: () => this.mascot,
+      retarget: () => this.scheduleRetarget(),
+      petOut: () => petOn(settingsStore.current),
+      awayChanged: (away) => void Bridge.islandSetCollapsed(away || this.fsm.state === "hidden"),
     });
     this.hanger = new Hanger(this.root, {
       edge: () => this.edge(),
@@ -278,7 +291,12 @@ export class Island {
     this.wireRulesQuiet();
     this.wireAiDot();
     // On porte Ondine (sur le bureau) au-dessus de l'île : elle se montre pour l'accueillir.
-    void onTauriEvent<boolean>("pet-over-island", (over) => (over ? this.fsm.pointerEnter() : this.fsm.pointerLeave()));
+    void onTauriEvent<boolean>("pet-over-island", (over) => {
+      // Île-bouche partie avec elle : la bouche revient le temps de l'accueillir.
+      this.forms.setHoming(over);
+      if (over) this.fsm.pointerEnter();
+      else this.fsm.pointerLeave();
+    });
     // Des fichiers lâchés sur Ondine (sur le bureau) : l'île connaît les cibles,
     // elle les propose dans la bulle d'Ondine, puis fait le dépôt choisi.
     this.wirePetDrops();
@@ -333,6 +351,8 @@ export class Island {
     if (this.mascot) {
       this.mascot.timings = { boredAfterMs: s.mascot.boredAfterSecs * 1000, sleepAfterMs: s.mascot.sleepAfterSecs * 1000 };
     }
+    // Format nano, île-bouche ; Ondine partie sur le bureau avec l'île : la fenêtre se fait bande.
+    this.forms.apply(s);
     // Le bord ou la place ont peut-être changé : la forme voulue aussi.
     this.jelly.retarget();
   }
@@ -381,7 +401,9 @@ export class Island {
       this.collapseTimer = null;
     }
     const token = ++this.collapseToken;
-    if (from === "hidden") {
+    this.forms.onTransition(from, to);
+    // (Île-bouche partie avec Ondine sur le bureau : la fenêtre reste une bande.)
+    if (from === "hidden" && !this.forms.away) {
       // On agrandit d'abord la fenêtre, puis l'île s'anime dedans.
       void Bridge.islandSetCollapsed(false);
       // Ondine pendait au bord : elle remonte, l'île arrive.
@@ -427,7 +449,7 @@ export class Island {
     }
     // Île cachée : la fenêtre n'est qu'une bande de 6 px. Le Rust surveille la
     // souris et prévient quand elle touche cette bande.
-    void onTauriEvent("wake-enter", () => this.fsm.state === "hidden" && !this.presenting && this.fsm.pointerEnter());
+    void onTauriEvent("wake-enter", () => this.fsm.state === "hidden" && !this.presenting && !this.forms.away && this.fsm.pointerEnter());
     void onTauriEvent("wake-leave", () => this.fsm.state === "hidden" && this.fsm.pointerLeave());
 
     // Étirer l'île par son bord intérieur, la déplacer par son bord extérieur (gestures.ts).
@@ -816,6 +838,8 @@ export class Island {
    */
   private startPeek() {
     if (this.hanger.showing || this.presenting) return;
+    // Île-bouche : Ondine est déjà au bord (c'est elle, l'île) ; elle s'étire et cligne.
+    if (islandStyle(settingsStore.current) === "mouth") return this.forms.visit();
     if (this.fsm.state === "hidden") {
       this.hanger.show();
       return;
@@ -927,6 +951,13 @@ export class Island {
   }
 
   private pushRect() {
+    this.forms.reshaped();
+    // Île-bouche : l'île et le corps d'Ondine autour (rien quand elle est partie avec Ondine).
+    const body = this.forms.hitRect();
+    if (body) {
+      void Bridge.islandSetRect(body.x, body.y, body.w, body.h);
+      return;
+    }
     // Île cachée et Ondine au bord : seul son petit rectangle prend la souris.
     const hang = this.fsm.state === "hidden" ? this.hanger.rect() : null;
     if (hang) {
@@ -946,14 +977,19 @@ export class Island {
       const h = this.hanger.rect();
       if (h && x >= h.left && x <= h.right && y >= h.top && y <= h.bottom) return;
     }
+    // Île-bouche partie avec Ondine sur le bureau : rien à suivre ici.
+    if (this.forms.away) return;
+    this.forms.pointer(x, y);
     // Présentation en cours : la souris au bord ne réveille pas l'île.
     if (this.presenting && this.fsm.state === "hidden") return;
     // Dans l'appli, l'île cachée est gérée par la bande de réveil (ci-dessus).
     if (this.fsm.state === "hidden" && IS_TAURI && !this.hanger.showing) return;
-    const r = this.shell.getBoundingClientRect();
+    const hb = this.forms.hitRect();
+    const r = hb ? { left: hb.x, top: hb.y, right: hb.x + hb.w, bottom: hb.y + hb.h } : this.shell.getBoundingClientRect();
     const margin = 8;
     const inIsland = x >= r.left - margin && x <= r.right + margin && y >= r.top - margin && y <= r.bottom + margin;
-    const inside = inIsland || this.inEdgeZone(x, y);
+    // L'encoche nano ne s'ouvre qu'au survol d'elle-même, pas de toute la bande du bord.
+    const inside = inIsland || ((this.fsm.state === "hidden" || this.fsm.shownForm !== "nano") && this.inEdgeZone(x, y));
     if (inside) this.fsm.pointerEnter();
     else this.fsm.pointerLeave();
     // Mini-île survolée : elle gonfle un peu et penche vers la souris.
@@ -1145,6 +1181,8 @@ export class Island {
       if (card) popIn(card);
     }
     this.renderedState = state;
+    // Ondine sortie avec l'île-bouche : elle montre la même chose dans sa bouche.
+    this.forms.publishMini();
   }
 
   /**

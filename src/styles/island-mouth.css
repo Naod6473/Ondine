@@ -1,0 +1,234 @@
+/* Les formes de l'île ajoutées en 1.2.3 (src/island/island-forms.ts) :
+   le format nano de la mini-île et l'île-bouche d'Ondine. Chargé après
+   island.css (index.html, pet.html) : à spécificité égale, ces règles gagnent.
+   Comme dans island.css, les tailles sont des CIBLES lues par la gelée
+   (jelly.ts) : pas de transition sur width, height, padding ni border-radius. */
+
+/* ── Format nano (island.size = "nano") ─────────────────────────────────────
+   L'état compact au repos devient une toute petite encoche qui ne montre
+   qu'Ondine ; `data-form="mini"` (survol, notification, morceau qui commence…)
+   lui rend la taille de la mini-île. */
+body[data-island-size="nano"][data-edge] .island[data-state="compact"][data-form="nano"] {
+  width: 76px;
+  height: 34px;
+  padding: 0;
+  --r: 17px;
+  grid-template-columns: 1fr;
+  justify-items: center;
+}
+body[data-island-size="nano"][data-edge] .island[data-state="compact"][data-form="nano"] .mascot-slot {
+  width: 28px;
+  height: 28px;
+}
+body[data-island-size="nano"][data-edge] .island[data-state="compact"][data-form="nano"] .island-content {
+  display: none;
+}
+/* Sur un côté de l'écran : l'encoche est debout. */
+body[data-island-size="nano"]:is([data-edge="left"], [data-edge="right"]) .island[data-state="compact"][data-form="nano"] {
+  width: 34px;
+  height: 76px;
+  padding: 0;
+  align-items: center;
+}
+
+/* Les points d'état à côté de l'encoche (idée 3) : posés en JS (dotPlaces). */
+.nano-dots {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.nano-dot {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dot);
+  box-shadow:
+    0 0 6px var(--dot),
+    inset 0 1px 1px rgba(255, 255, 255, 0.6);
+  animation: nano-dot-in 420ms var(--ease) both;
+}
+@keyframes nano-dot-in {
+  from {
+    scale: 0;
+    opacity: 0;
+  }
+}
+
+/* ── L'île-bouche (island.style = "mouth") ─────────────────────────────────
+   L'île est la bouche d'Ondine : elle se décolle un peu du bord (la lèvre
+   au-dessus), ses quatre coins sont ronds, et la mascotte n'est plus dedans
+   (c'est elle, le cadre : src/island/mouth.ts dessine son corps autour). */
+.mouth-body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+body[data-island-style="mouth"][data-edge] .island {
+  border-radius: var(--r, 0);
+  grid-template-columns: 1fr;
+  /* La lèvre entre la bouche et le bord de l'écran (pas « translate » : il centre l'île). */
+  transition: top var(--speed) var(--ease), bottom var(--speed) var(--ease), left var(--speed) var(--ease), right var(--speed) var(--ease);
+}
+body[data-island-style="mouth"] .island .mascot-slot {
+  display: none;
+}
+body[data-island-style="mouth"][data-edge="top"] .island {
+  top: var(--lip, 6px);
+}
+body[data-island-style="mouth"][data-edge="bottom"] .island {
+  bottom: var(--lip, 6px);
+}
+body[data-island-style="mouth"][data-edge="left"] .island {
+  left: var(--lip, 6px);
+}
+body[data-island-style="mouth"][data-edge="right"] .island {
+  right: var(--lip, 6px);
+}
+/* Les tailles de la maquette : bouche fermée (nano), entrouverte (mini), grande ouverte. */
+body[data-island-style="mouth"][data-edge] .island:is([data-state="hidden"], [data-state="peek"]) {
+  width: 20px;
+  height: 0;
+  padding: 0;
+  --r: 4px;
+  --lip: 11px;
+}
+body[data-island-style="mouth"][data-edge] .island[data-state="compact"] {
+  width: 318px;
+  height: 40px;
+  padding: 0 18px;
+  --r: 20px;
+  --lip: 6px;
+}
+body[data-island-style="mouth"][data-edge] .island[data-state="compact"][data-form="nano"] {
+  width: 20px;
+  height: 7px;
+  padding: 0;
+  --r: 3.5px;
+  --lip: 11px;
+}
+body[data-island-style="mouth"][data-edge] .island[data-state="compact"][data-form="nano"] .island-content {
+  display: none;
+}
+body[data-island-style="mouth"][data-edge] .island[data-state="expanded"] {
+  --r: 28px;
+  --lip: 4px;
+}
+body[data-island-style="mouth"][data-edge] .island:is([data-state="alert"], [data-state="drop"]) {
+  --r: 24px;
+  --lip: 5px;
+}
+/* Avant de s'ouvrir, la bouche se pince un court instant (90 ms). */
+body[data-island-style="mouth"][data-edge] .island.mouth-pinch {
+  width: 14px;
+  height: 4px;
+  padding: 0;
+}
+/* Sur un côté de l'écran, la bouche est debout (Ondine tourne : la tête vers le bord). */
+body[data-island-style="mouth"]:is([data-edge="left"], [data-edge="right"]) .island:is([data-state="hidden"], [data-state="peek"]) {
+  width: 0;
+  height: 20px;
+}
+body[data-island-style="mouth"]:is([data-edge="left"], [data-edge="right"]) .island[data-state="compact"] {
+  width: 40px;
+  height: 318px;
+  padding: 18px 0;
+}
+body[data-island-style="mouth"]:is([data-edge="left"], [data-edge="right"]) .island[data-state="compact"][data-form="nano"] {
+  width: 7px;
+  height: 20px;
+  padding: 0;
+}
+body[data-island-style="mouth"]:is([data-edge="left"], [data-edge="right"]) .island.mouth-pinch {
+  width: 4px;
+  height: 14px;
+}
+/* Une île collée dans un coin : la lèvre de côté se voit aussi. */
+body[data-island-style="mouth"]:is([data-edge="top"], [data-edge="bottom"])[data-align="start"] .island {
+  left: var(--lip, 6px);
+}
+body[data-island-style="mouth"]:is([data-edge="top"], [data-edge="bottom"])[data-align="end"] .island {
+  right: var(--lip, 6px);
+}
+
+/* Ondine est partie sur le bureau avec l'île : plus rien en haut de l'écran. */
+body.mouth-away .island,
+body.mouth-away .island-halo,
+body.mouth-away .mouth-body,
+body.mouth-away .nano-dots {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-island-style="mouth"][data-edge] .island {
+    transition: none;
+  }
+  .nano-dot {
+    animation: none;
+  }
+}
+
+/* ── Ondine sur le bureau fait l'île-bouche (src/pet/pet-mouth.ts) ─────────
+   Son corps et sa bouche sont dessinés dans le canvas (.mouth-body) ; la
+   mascotte en gomme reste là, invisible, pour qu'on puisse l'attraper. */
+.pet[data-mouth="1"] .pet-slot {
+  opacity: 0;
+}
+.pet[data-mouth="1"] .pet-badge {
+  display: none;
+}
+/* En mini, la fenêtre est agrandie mais la bulle reste fermée. */
+.pet[data-mouth="1"]:not([data-mform="open"]) .pet-bubble {
+  display: none;
+}
+/* Ouverte : la bulle est la bouche. Le noir et le corps sont dans le canvas,
+   le contenu passe par-dessus, en retrait des lèvres (PET_MOUTH_INSET). */
+.pet[data-mouth="1"] .pet-bubble {
+  z-index: 2;
+  background: transparent;
+  box-shadow: none;
+  padding: 27px 14px 12px;
+  border-radius: 28px;
+}
+.pet[data-mouth="1"] .pet-bubble::before {
+  display: none;
+}
+.pet[data-mouth="1"][data-open="true"] .pet-bubble {
+  animation: pet-mouth-content-in 260ms var(--ease-out) 200ms both;
+}
+@keyframes pet-mouth-content-in {
+  from {
+    opacity: 0;
+  }
+}
+.pet-mini {
+  position: fixed;
+  z-index: 2;
+  box-sizing: border-box;
+  display: none;
+  align-items: center;
+  padding: 0 18px;
+  color: var(--island-fg);
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 40px;
+  cursor: pointer;
+}
+.pet[data-mouth="1"] ~ .pet-mini.on,
+.pet-mini.on {
+  display: block;
+  animation: pet-mouth-content-in 160ms var(--ease-out) 180ms both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pet[data-mouth="1"][data-open="true"] .pet-bubble,
+  .pet-mini.on {
+    animation: none;
+  }
+}

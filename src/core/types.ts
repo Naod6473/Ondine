@@ -73,6 +73,12 @@ export interface Settings {
     suggestions?: boolean;
     /** Les propositions déjà faites (une fois chacune) : "usb", "visio", "drop", "hide-<onglet>". */
     suggested?: string[];
+    /** Taille de la mini-île (1.2.3) : "normal" ou "nano" (une encoche qui ne montre qu'Ondine, src/island/island-forms.ts). */
+    size?: "normal" | "nano";
+    /** Style de l'île (1.2.3) : "classic" ou "mouth" (l'île-bouche d'Ondine, src/island/mouth.ts). */
+    style?: "classic" | "mouth";
+    /** Île-bouche : quand Ondine est sur le bureau, l'île part avec elle (sinon une bouche vide reste en haut). */
+    mouthFollow?: boolean;
     /** Le dernier jour (jours depuis 1970) où chaque onglet a été ouvert : compteur local. */
     tabSeenAt?: Record<string, number>;
     /** Le jour où ce compte a commencé (fin de l'assistant) ; 0 = pas encore. */
@@ -193,6 +199,9 @@ export function defaultSettings(): Settings {
       suggested: [],
       tabSeenAt: {},
       usageSince: 0,
+      size: "normal",
+      style: "classic",
+      mouthFollow: true,
     },
     mascot: { enabled: true, id: "goutte-gomme", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5, surprises: "all", treasures: [], color: "auto", hands: "always", wearHead: "none", wearEyes: "none", wearNeck: "none", customColor: "#4da3ff", size: "normal", calm: false, pet: false, petX: -1, petY: -1, petOnTop: true, petTabs: ["askclaude", "launcher", "agents"], petHotkey: "Ctrl+Alt+B", petWander: true },
     privacy: { excludedFolders: [] },

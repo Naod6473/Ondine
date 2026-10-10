@@ -132,6 +132,15 @@ pub struct IslandPrefs {
     pub tab_seen_at: BTreeMap<String, u32>,
     /// Le jour où ce compte a commencé (fin de l'assistant) ; 0 = pas encore.
     pub usage_since: u32,
+    /// La taille de la mini-île (1.2.3) : "normal" ou "nano" (une toute petite
+    /// encoche qui ne montre qu'Ondine, src/island/island-forms.ts).
+    pub size: String,
+    /// Le style de l'île (1.2.3) : "classic" ou "mouth" (l'île-bouche d'Ondine,
+    /// src/island/mouth.ts).
+    pub style: String,
+    /// Île-bouche : quand Ondine est sur le bureau, l'île part avec elle (sa
+    /// fenêtre fait la bouche) ; sinon une bouche vide reste au bord.
+    pub mouth_follow: bool,
 }
 
 fn default_motion() -> String {
@@ -249,6 +258,9 @@ impl Default for IslandPrefs {
             suggested: Vec::new(),
             tab_seen_at: BTreeMap::new(),
             usage_since: 0,
+            size: "normal".into(),
+            style: "classic".into(),
+            mouth_follow: true,
         }
     }
 }
@@ -289,6 +301,12 @@ impl Settings {
         }
         if !["soft", "normal", "jelly"].contains(&self.island.elasticity.as_str()) {
             self.island.elasticity = default_elasticity();
+        }
+        if !["normal", "nano"].contains(&self.island.size.as_str()) {
+            self.island.size = "normal".into();
+        }
+        if !["classic", "mouth"].contains(&self.island.style.as_str()) {
+            self.island.style = "classic".into();
         }
         if !["auto", "fr", "en"].contains(&self.general.language.as_str()) {
             self.general.language = "auto".into();
@@ -508,6 +526,16 @@ mod tests {
         assert_eq!(s.island.collapse_secs, 1.5);
         assert_eq!(s.island.notification_secs, 3.0);
         assert_eq!(s.version, CURRENT_VERSION);
+    }
+
+    #[test]
+    fn island_size_and_style_are_checked() {
+        let s = parse(r#"{ "version": 2 }"#).unwrap();
+        assert_eq!((s.island.size.as_str(), s.island.style.as_str(), s.island.mouth_follow), ("normal", "classic", true));
+        let s = parse(r#"{ "version": 2, "island": { "size": "nano", "style": "mouth", "mouthFollow": false } }"#).unwrap();
+        assert_eq!((s.island.size.as_str(), s.island.style.as_str(), s.island.mouth_follow), ("nano", "mouth", false));
+        let s = parse(r#"{ "version": 2, "island": { "size": "huge", "style": "beak" } }"#).unwrap();
+        assert_eq!((s.island.size.as_str(), s.island.style.as_str()), ("normal", "classic"));
     }
 
     #[test]

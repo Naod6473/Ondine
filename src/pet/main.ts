@@ -50,6 +50,7 @@ import { MascotController } from "../mascot/mascot-state";
 import { createRenderer, type MascotRenderer } from "../mascot/renderer";
 import { ALL_MODULES } from "../modules";
 import { BUBBLE_MAX_H, BUBBLE_MAX_W, clampBubble, roomFor, sameSize, type Size } from "./bubble-size";
+import { PetMouth } from "./pet-mouth";
 
 const log = logger("pet");
 
@@ -96,6 +97,8 @@ class Pet {
   private glideRaf = 0;
   private lastFrame = 0;
   private lastHit = "";
+  /** L'île-bouche partie avec elle (1.2.3, pet-mouth.ts). */
+  private readonly mouth: PetMouth;
 
   constructor(
     root: HTMLElement,
@@ -105,6 +108,7 @@ class Pet {
   ) {
     this.box.append(el("div", { class: "pet-mascot" }, this.slot, this.badge), this.bubble);
     root.append(this.box);
+    this.mouth = new PetMouth({ root, box: this.box, slot: this.slot, bubble: this.bubble, bus, isOpen: () => this.layout.open, open: () => void this.setOpen(true), pushHit: () => this.pushHit() });
     this.wireMascot();
 
     registry.onChange = () => this.layout.open && this.renderBubble(true);
@@ -174,6 +178,7 @@ class Pet {
       }
     }
     if (this.mascot) this.mascot.timings = { boredAfterMs: s.mascot.boredAfterSecs * 1000, sleepAfterMs: s.mascot.sleepAfterSecs * 1000 };
+    this.mouth.apply(s);
     if (!petOn(s)) {
       // Rentrée dans l'île : la bulle se referme (la fenêtre est déjà cachée par le Rust).
       this.unmount();
@@ -297,6 +302,7 @@ class Pet {
 
   /** La souris (px de la fenêtre, envoyée par le Rust) : elle la suit des yeux. */
   private pointer(x: number, y: number) {
+    this.mouth.pointer(x, y);
     if (!this.mascot) return;
     const m = this.slot.getBoundingClientRect();
     this.mascot.lookAt(x - (m.left + m.width / 2), y - (m.top + m.height / 2));
@@ -348,7 +354,10 @@ class Pet {
       this.bubble.replaceChildren();
       this.shownTabs = "";
       this.resetSize();
+      // Île-bouche : la bouche revient à la mini-île ou à la nano.
+      this.mouth.closed();
     }
+    void this.mouth.refresh();
   }
 
   /**
@@ -570,7 +579,7 @@ class Pet {
 
   /** Dit au Rust où sont la mascotte et la bulle : ailleurs, les clics passent au travers. */
   private pushHit() {
-    const rects = [this.slot.parentElement!, ...(this.layout.open ? [this.bubble] : []), ...(this.badge.hidden ? [] : [this.badge])].map((e) => {
+    const rects = this.mouth.hitRects() ?? [this.slot.parentElement!, ...(this.layout.open ? [this.bubble] : []), ...(this.badge.hidden ? [] : [this.badge])].map((e) => {
       const r = e.getBoundingClientRect();
       return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) };
     });

@@ -431,6 +431,87 @@ reste celle de l'écran (l'eau monte du bas de l'île). Branché par
   décochées par défaut). Scènes démo : « Minuteur qui se remplit »,
   « Ambiances dans l'île », « Ondine qui flotte ».
 
+### Format nano et île-bouche (1.2.3, `src/island/island-forms.ts`)
+
+Deux options d'Apparence (Réglages → L'île → Apparence → « Forme de l'île »),
+branchées par `IslandForms` (island.ts n'a que quelques appels : réglages,
+transitions, souris, `pushRect`, fin de `render`). Styles : `src/styles/island-mouth.css`,
+chargé après island.css (index.html, pet.html). Tests : `tests/front/island-state.test.ts`
+(formes), `tests/front/mouth.test.ts` (géométrie, règles).
+
+| Réglage | Valeurs | Défaut |
+|---|---|---|
+| `island.size` | `normal`, `nano` | `normal` |
+| `island.style` | `classic`, `mouth` | `classic` |
+| `island.mouthFollow` | oui / non (seulement en style bouche) | oui |
+
+**Format nano.** L'état `compact` garde son nom mais a deux formes
+(`IslandStateMachine.form()` : `nano` | `mini`, annoncées par `onForm`, posées en
+`data-form` sur l'île) : l'encoche de 76 × 34 qui ne montre qu'Ondine (34 × 76 sur
+un côté), ou la mini-île. Raisons d'être en mini (`wideReasons`) : le survol depuis
+120 ms (idée 1 ; retour à l'encoche 320 ms après le départ de la souris, sans clic),
+une notification affichée (`hold`), un coup d'élargissement (`pulse(ms)`) ou une
+activité qui dure (`setBusy`). `src/island/nano-rules.ts` traduit le bus : nouveau
+morceau ou reprise (`media.changed`), minuteur qui démarre ou sonne
+(`timer.progress`, `timer.done`), agent qui commence, finit ou attend
+(`claude.thinking`, `agents.event`, `agents.ask`) → `pulse` ; la voix
+(`voice.listening`) → `setBusy`. Ce qui dure sans demander d'attention devient un
+point coloré à côté de l'encoche (idée 3, `.nano-dots`, `dotPlaces`) : musique
+(vert), agent au travail (violet), minuteur (or), voix (rose), trois au plus.
+Idée 2 : 12 s sans rien en nano → Ondine somnole (`sleep`, classe `dozing`) ; la
+souris à moins de 140 px → elle ouvre un œil (`wink`, et en style bouche un seul œil
+ouvert, celui du côté de la souris) ; le survol la réveille. Seule l'encoche (et
+pas toute la bande de 240 px du bord) déclenche le survol.
+
+**Île-bouche.** Ondine est suspendue tête en bas au bord de l'écran ; l'île est sa
+bouche. L'île garde tout (contenu, gelée, clics) ; `MouthBody` (`src/island/mouth.ts`)
+dessine le corps autour dans un `<canvas class="mouth-body">` de la taille de la
+fenêtre, AU-DESSUS de l'île (`z-index: 1`, `pointer-events: none`), la bouche y
+étant un trou (règle evenodd). À chaque image où quelque chose bouge, il relit le
+rectangle de l'île (gelée comprise) et pose le corps autour (`layoutMouth`,
+`src/island/mouth-geom.ts`) : les mesures sont interpolées entre les trois formes de
+la maquette d'après l'épaisseur de la bouche (`openness` : 7 px → nano, 41 → mini,
+200 → ouverte). Le corps suit donc la même gelée que l'île.
+- *Tailles* (island-mouth.css) : nano = bouche fermée 20 × 7 à 11 px du bord (corps
+  66 × 58 + pointe 15) ; mini = 318 × 40 à 6 px (corps 334 × 76, langue rose côté
+  bord) ; ouverte = les tailles habituelles de l'île, à 4 px (liseré de 4 px, yeux
+  étirés). La lèvre entre bouche et bord est `top` (ou `bottom`, `left`, `right`),
+  avec une transition CSS ; jamais `translate`. Volume conservé : lèvres et zone des
+  yeux ne font que diminuer quand la bouche s'ouvre (testé).
+- *Matière* (`src/island/mouth-draw.ts`) : les couches de gum-draw.ts (ombre,
+  dégradé de bonbon, volume, lueur intérieure, liseré clair, contour foncé `c[3]`,
+  grand reflet, point brillant, reflet du bas), dans la palette de `mascot.color`
+  (`mascotPalette`, « auto » = le bleu de la goutte, arc-en-ciel et couleur libre
+  compris). Le corps est construit dans le repère de la bouche puis coloré dans
+  celui de l'écran : la lumière reste en haut à gauche quand Ondine tourne.
+- *Gestes* : pincement de 90 ms avant d'ouvrir depuis la nano (classe
+  `mouth-pinch`, une cible de 14 × 4 pour la gelée) ; en refermant, petit rebond
+  (`kick`) et clignement 380 ms plus tard ; alerte : `kick` + le choc de jelly.ts ;
+  dépôt : grande bouche (état `drop`), puis gloups (rebond + clignement) ; clignements
+  au repos (2,6 à 5,8 s, pas en Calme) ; reflets des yeux qui suivent la souris
+  (`glintOffset`). Masquée : le corps glisse derrière le bord (ressort `retreat`) ;
+  aperçu (`peek`) : seule la pointe dépasse. Bords bas, gauche, droit : `dirForEdge`
+  (la tête reste vers le bord). Les visites au bord (hang.ts) sont remplacées par un
+  étirement et deux clignements (`visit`) : Ondine y est déjà.
+- *Halo et liseré* : `setHaloShape` (halo.ts) leur donne le rectangle et les arrondis
+  du corps au lieu de ceux de l'île.
+- *Souris* : `pushRect` envoie au Rust le rectangle de l'île ET du corps
+  (`hitRect`) ; un clic sur le corps ouvre l'île. Le reste de la fenêtre laisse passer
+  les clics ; la fenêtre 720 × 320 a déjà la place des yeux et de la pointe (24 px
+  sous l'île ouverte), aucun changement côté Rust.
+- *Réduire les animations* : ni pincement, ni rebond, ni clignement ; masquée = fondu.
+- *Performance* : une boucle `requestAnimationFrame` qui s'arrête 24 images après le
+  dernier changement (30 i/s en éco) ; rien au repos.
+- *Ondine sortie* (Ondine sur le bureau). Avec `mouthFollow` (défaut) : la bouche du
+  haut part (`body.mouth-away`, la fenêtre de l'île redevient la bande, sa machine à
+  états continue) et c'est Ondine qui fait l'île-bouche là où elle est (voir « Ondine
+  sur le bureau ») ; l'île lui publie `island.mouth` {form: nano | mini | alert | off,
+  text, icon, dots} à chaque dessin. Portée au-dessus de l'île, ou l'île entière
+  demandée (un onglet absent de sa bulle), la bouche du haut revient le temps qu'il
+  faut. Sans `mouthFollow` : une bouche en gomme vide (sans yeux) reste au bord et
+  marche comme d'habitude ; Ondine revenue, les yeux réapparaissent avec un rebond.
+- Les scènes où Ondine se déplace lisent `island.style` (pas jouées en style bouche).
+
 ### La file de notifications (`src/core/notifications.ts`)
 
 Un module **demande** l'attention (`api.notify({...})`), l'île **décide** :
@@ -940,6 +1021,20 @@ la plus grande bulle qui tient de ce côté.
   une ligne en haut de la bulle. `api.openIsland(tab)` vers un onglet absent
   de la bulle publie `island.open`, que l'île écoute. Les conversations et
   listes vivent dans le Rust : les deux fenêtres montrent la même chose.
+- **Île-bouche** (1.2.3, `src/pet/pet-mouth.ts`, avec `island.style = "mouth"` et
+  `island.mouthFollow`) : c'est elle qui fait l'île. Debout (pointe en haut, yeux
+  au-dessus de la bouche : la pose de la goutte sur le bureau), dessinée par le même
+  `MouthBody`, bouche remplie de la couleur de l'île. Nano : elle-même, bouche
+  fermée, dans sa case (la gomme d'origine reste là, invisible, pour qu'on
+  l'attrape). Mini (survol 120 ms, ou `island.mouth` mini / alerte, avec un petit
+  saut) : la fenêtre prend la plus petite bulle (`pet_open` 360 × 120, du côté choisi
+  par `choose_layout`, donc jamais hors de l'écran) et la bouche 318 × 40 s'étire de
+  côté, le texte de la mini-île dedans (`.pet-mini`, un clic l'ouvre). Ouverte (un
+  clic) : la bulle est la bouche (`PET_MOUTH_INSET` : 19 px pour les yeux et la
+  pointe, 4 px de liseré), ses onglets dedans. La bouche suit ses propres ressorts
+  (épaisseur vive, longueur plus molle), pincement de 90 ms en partant de la nano,
+  rebond et clignement en refermant. Zone cliquable : la case, le corps, la bulle
+  (`hitRects`). La pastille des notifications est cachée (la bouche les montre).
 - **La mascotte** : un `MascotController` sur le même bus que celle de l'île
   (humeurs, fêtes, sommeil). L'île n'a plus de mascotte (ni de visite au
   bord) tant qu'Ondine est sur le bureau ; la danse (`syncDance`, eggs.ts) se

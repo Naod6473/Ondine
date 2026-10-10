@@ -2386,7 +2386,17 @@
 "Halos": "Halos",
 "Liseré des minuteurs": "Timer outline",
 "Pour comparer les modes : la ligne « Ressources utilisées », dans la page À propos.": "To compare modes: the “Resources used” line, on the About page.",
-"Le module Système est désactivé : ces halos reviendront quand vous le rallumerez (Modules → Système).": "The System module is off: these halos will come back when you turn it back on (Modules → System)."
+"Le module Système est désactivé : ces halos reviendront quand vous le rallumerez (Modules → Système).": "The System module is off: these halos will come back when you turn it back on (Modules → System).",
+"Forme de l'île": "Island shape",
+"Taille de la mini-île": "Mini island size",
+"Nano": "Nano",
+"Nano : une toute petite encoche qui ne montre qu'Ondine. Elle s'élargit au survol, pour une notification, un morceau qui commence ou un minuteur, puis revient à l'encoche.": "Nano: a tiny notch that only shows Ondine. It widens when you hover it, for a notification, a song that starts or a timer, then goes back to the notch.",
+"Style de l'île": "Island style",
+"Bouche d'Ondine": "Ondine's mouth",
+"Bouche d'Ondine : Ondine est suspendue tête en bas au bord de l'écran, et l'île est sa bouche. Elle l'ouvre pour vous montrer ce qui se passe.": "Ondine's mouth: Ondine hangs upside down from the edge of the screen, and the island is her mouth. She opens it to show you what's going on.",
+"Quand Ondine est sortie": "When Ondine is out",
+"L'île part avec elle": "The island goes with her",
+"L'île part avec elle : sur le bureau, c'est Ondine qui ouvre la bouche, là où elle se trouve. Sinon, une bouche vide reste au bord de l'écran.": "The island goes with her: on the desktop, Ondine opens her mouth right where she is. Otherwise, an empty mouth stays at the edge of the screen."
 },
 "patterns": [
 [

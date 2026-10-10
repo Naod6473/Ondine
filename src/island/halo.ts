@@ -217,6 +217,13 @@ const STILL_PROGRESS_MS = 5000;
 // ── L'état partagé ───────────────────────────────────────────────────────────
 
 let layer: HaloLayer | null = null;
+
+/** Île-bouche (1.2.3, island-forms.ts) : le halo entoure le corps d'Ondine, pas seulement le noir. */
+type BodyShape = { x: number; y: number; w: number; h: number; r: { tl: number; tr: number; br: number; bl: number } };
+let shapeOverride: (() => BodyShape | null) | null = null;
+export function setHaloShape(fn: (() => BodyShape | null) | null): void {
+  shapeOverride = fn;
+}
 /** Les demandes faites avant que l'île n'existe (ou dans une autre fenêtre : ignorées). */
 let counter = 0;
 
@@ -661,7 +668,8 @@ class HaloLayer {
   // ── La géométrie ───────────────────────────────────────────────────────────
 
   private measure(): NonNullable<HaloLayer["geo"]> | null {
-    const sb = this.shell.getBoundingClientRect();
+    const ov = !this.preview ? shapeOverride?.() : null;
+    const sb = ov ? { x: ov.x, y: ov.y, width: ov.w, height: ov.h } : this.shell.getBoundingClientRect();
     if (sb.width < 2 || sb.height < 1) return null;
     // L'aperçu : en coordonnées de sa boîte.
     const o = this.preview ? this.root.getBoundingClientRect() : { x: 0, y: 0 };
@@ -676,7 +684,7 @@ class HaloLayer {
     const px = (v: string) => parseFloat(v) || 0;
     // La boîte peut être mise à l'échelle (gelée) : les arrondis aussi.
     const sx = this.shell.offsetWidth ? b.width / this.shell.offsetWidth : 1;
-    const r = {
+    const r = ov?.r ?? {
       tl: px(cs.borderTopLeftRadius) * sx,
       tr: px(cs.borderTopRightRadius) * sx,
       br: px(cs.borderBottomRightRadius) * sx,

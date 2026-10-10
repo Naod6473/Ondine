@@ -33,15 +33,36 @@
 // Réglage « Toujours en mini » (alwaysMini) : l'état de repos devient compact
 // au lieu de hidden. L'île ne disparaît plus ; elle redevient mini. Seul le mode
 // présentation la cache encore (hide), et elle revient en mini après (restore).
+//
+// Format nano (réglage island.size = "nano", 1.2.3) : l'état compact a alors
+// deux FORMES (`form`), sans changer d'état :
+//   nano  la toute petite encoche qui ne montre qu'Ondine (au repos)
+//   mini  la mini-île habituelle
+// Elle passe en mini tant qu'il y a une raison (`wideReasons`) : la souris
+// dessus depuis `nanoPreviewMs` (idée 1, sans clic), une notification affichée
+// (hold), un « coup d'élargissement » (`pulse` : un morceau qui commence, un
+// minuteur qui démarre ou sonne, un agent qui finit), ou une activité qui dure
+// (`setBusy` : la voix). Sans raison, elle revient à l'encoche ; la souris
+// partie, après `nanoRetractMs`.
 
 export type IslandState = "hidden" | "peek" | "compact" | "expanded" | "drop" | "alert";
+
+/** La forme de l'île compacte : l'encoche nano ou la mini-île. */
+export type CompactForm = "nano" | "mini";
 
 export interface IslandTimings {
   peekToCompactMs: number;
   peekToHiddenMs: number;
   /** Délai avant repli quand la souris n'est plus sur l'île (réglage collapseSecs). */
   collapseMs: number;
+  /** Format nano : survol avant que l'encoche devienne mini-île (ms). */
+  nanoPreviewMs?: number;
+  /** Format nano : la souris partie, délai avant de revenir à l'encoche (ms). */
+  nanoRetractMs?: number;
 }
+
+const NANO_PREVIEW_MS = 120;
+const NANO_RETRACT_MS = 320;
 
 export class IslandStateMachine {
   state: IslandState = "hidden";
@@ -59,8 +80,23 @@ export class IslandStateMachine {
   /** Cachée exprès (mode présentation), même en « Toujours en mini ». */
   private forcedHidden = false;
 
+  /** Format nano (réglage island.size). */
+  private nano = false;
+  /** Survol de la nano assez long : elle devient mini-île (idée 1). */
+  private hoverWide = false;
+  private formTimer: number | null = null;
+  /** Un coup d'élargissement en cours (pulse), et sa fin. */
+  private pulsing = false;
+  private pulseTimer: number | null = null;
+  /** Les activités qui gardent la mini-île tant qu'elles durent (setBusy). */
+  private busy = new Set<string>();
+  /** La forme affichée de l'île compacte (voir `form()`). */
+  shownForm: CompactForm = "mini";
+
   /** Appelé à chaque transition. */
   onTransition: (from: IslandState, to: IslandState) => void = () => {};
+  /** Appelé quand la forme de l'île compacte change (format nano). */
+  onForm: (form: CompactForm) => void = () => {};
 
   constructor(public timings: IslandTimings) {}
 
@@ -70,6 +106,7 @@ export class IslandStateMachine {
     if (this.hovering) return;
     this.hovering = true;
     this.cancelTimer();
+    this.armHoverWide(true);
     if (this.state === "hidden") {
       this.go("peek");
       this.later(this.timings.peekToCompactMs, () => this.state === "peek" && this.go("compact"));
@@ -79,6 +116,7 @@ export class IslandStateMachine {
   pointerLeave() {
     if (!this.hovering) return;
     this.hovering = false;
+    this.armHoverWide(false);
     this.scheduleCollapse();
   }
 
@@ -199,6 +237,7 @@ export class IslandStateMachine {
     this.holding = on;
     if (on && this.state === "compact") this.cancelTimer();
     if (!on) this.scheduleCollapse();
+    this.refreshForm();
   }
 
   /** Une notification normale : on montre l'île compacte si elle était cachée. */
@@ -207,6 +246,86 @@ export class IslandStateMachine {
       this.go("compact");
       this.scheduleCollapse();
     }
+  }
+
+  // ── Format nano ────────────────────────────────────────────────────────────
+
+  /** Active ou coupe le format nano (réglage island.size). */
+  setNano(on: boolean) {
+    if (on === this.nano) return;
+    this.nano = on;
+    this.hoverWide = this.hovering;
+    this.refreshForm();
+  }
+
+  /** Format nano activé ? */
+  get nanoOn(): boolean {
+    return this.nano;
+  }
+
+  /**
+   * Un « coup d'élargissement » : la nano devient mini-île pendant `ms`, puis
+   * revient à l'encoche (un nouveau morceau, un minuteur qui démarre…).
+   * Un nouveau coup prolonge le précédent.
+   */
+  pulse(ms: number) {
+    if (this.pulseTimer != null) clearTimeout(this.pulseTimer);
+    this.pulsing = true;
+    this.pulseTimer = window.setTimeout(() => {
+      this.pulseTimer = null;
+      this.pulsing = false;
+      this.refreshForm();
+    }, Math.max(0, ms));
+    this.refreshForm();
+  }
+
+  /** Une activité qui dure (la voix) garde la mini-île tant qu'elle est vraie. */
+  setBusy(key: string, on: boolean) {
+    if (on === this.busy.has(key)) return;
+    if (on) this.busy.add(key);
+    else this.busy.delete(key);
+    this.refreshForm();
+  }
+
+  /** Les raisons d'être en mini-île en ce moment (pour les tests et le journal). */
+  wideReasons(): string[] {
+    const out: string[] = [];
+    if (this.hoverWide) out.push("hover");
+    if (this.holding) out.push("notification");
+    if (this.pulsing) out.push("pulse");
+    for (const k of this.busy) out.push(k);
+    return out;
+  }
+
+  /** La forme voulue : nano seulement en format nano, état compact, et sans raison de s'élargir. */
+  form(): CompactForm {
+    if (!this.nano || this.state !== "compact") return "mini";
+    return this.wideReasons().length ? "mini" : "nano";
+  }
+
+  /** La souris arrive (true) ou part (false) : la nano s'ouvre après un court survol, se rétracte peu après. */
+  private armHoverWide(on: boolean) {
+    if (this.formTimer != null) clearTimeout(this.formTimer);
+    this.formTimer = null;
+    if (!this.nano) {
+      this.hoverWide = on;
+      return;
+    }
+    if (on === this.hoverWide) return;
+    const ms = on ? (this.timings.nanoPreviewMs ?? NANO_PREVIEW_MS) : (this.timings.nanoRetractMs ?? NANO_RETRACT_MS);
+    this.formTimer = window.setTimeout(() => {
+      this.formTimer = null;
+      this.hoverWide = on;
+      this.refreshForm();
+    }, ms);
+  }
+
+  /** Annonce la forme si elle a changé. */
+  private refreshForm() {
+    const f = this.form();
+    if (f === this.shownForm) return;
+    this.shownForm = f;
+    this.onForm(f);
   }
 
   // ── Mécanique ──────────────────────────────────────────────────────────────
@@ -238,8 +357,15 @@ export class IslandStateMachine {
     const from = this.state;
     this.state = to;
     // Une île cachée n'est plus survolée : le prochain survol doit la réveiller.
-    if (to === "hidden") this.hovering = false;
+    if (to === "hidden") {
+      this.hovering = false;
+      this.hoverWide = false;
+      if (this.formTimer != null) clearTimeout(this.formTimer);
+      this.formTimer = null;
+    }
     this.cancelTimer();
+    // La forme d'abord (sans annonce) : le dessin de la transition la connaît déjà.
+    this.shownForm = this.form();
     this.onTransition(from, to);
   }
 

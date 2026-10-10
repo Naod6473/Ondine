@@ -343,3 +343,110 @@ describe("mode présentation (hide / restore)", () => {
     assert.equal(fsm.state, "hidden");
   });
 });
+
+describe("format nano (island.size = nano)", () => {
+  let forms: string[];
+  beforeEach(() => {
+    forms = [];
+    fsm.onForm = (f) => forms.push(f);
+    fsm.setAlwaysMini(true);
+    fsm.setNano(true);
+  });
+
+  test("au repos en mini, l'île est une encoche nano", () => {
+    assert.equal(fsm.state, "compact");
+    assert.equal(fsm.form(), "nano");
+    assert.deepEqual(forms, ["nano"]);
+  });
+
+  test("hors de l'état compact, la forme est toujours mini", () => {
+    fsm.open();
+    assert.equal(fsm.form(), "mini");
+  });
+
+  test("survol : mini-île après un court délai, encoche quand la souris part (sans clic)", () => {
+    fsm.pointerEnter();
+    tick(119);
+    assert.equal(fsm.form(), "nano");
+    tick(1);
+    assert.equal(fsm.form(), "mini");
+    fsm.pointerLeave();
+    tick(319);
+    assert.equal(fsm.form(), "mini");
+    tick(1);
+    assert.equal(fsm.form(), "nano");
+    assert.equal(fsm.state, "compact");
+    assert.deepEqual(forms, ["nano", "mini", "nano"]);
+  });
+
+  test("un passage éclair de la souris ne l'ouvre pas", () => {
+    fsm.pointerEnter();
+    tick(60);
+    fsm.pointerLeave();
+    tick(1000);
+    assert.equal(fsm.form(), "nano");
+    assert.deepEqual(forms, ["nano"]);
+  });
+
+  test("revenir vite sur l'île annule le retour à l'encoche", () => {
+    fsm.pointerEnter();
+    tick(120);
+    fsm.pointerLeave();
+    tick(200);
+    fsm.pointerEnter();
+    tick(500);
+    assert.equal(fsm.form(), "mini");
+  });
+
+  test("une notification affichée garde la mini-île jusqu'à sa fin", () => {
+    fsm.hold(true);
+    assert.equal(fsm.form(), "mini");
+    assert.deepEqual(fsm.wideReasons(), ["notification"]);
+    fsm.hold(false);
+    assert.equal(fsm.form(), "nano");
+  });
+
+  test("pulse : la nano s'élargit le temps demandé, un nouveau coup prolonge", () => {
+    fsm.pulse(4000);
+    assert.equal(fsm.form(), "mini");
+    tick(3000);
+    fsm.pulse(4000);
+    tick(3999);
+    assert.equal(fsm.form(), "mini");
+    tick(1);
+    assert.equal(fsm.form(), "nano");
+  });
+
+  test("setBusy : une activité qui dure (la voix) garde la mini-île", () => {
+    fsm.setBusy("voice", true);
+    tick(60_000);
+    assert.equal(fsm.form(), "mini");
+    fsm.setBusy("voice", false);
+    assert.equal(fsm.form(), "nano");
+  });
+
+  test("format normal : jamais d'encoche", () => {
+    fsm.setNano(false);
+    assert.equal(fsm.form(), "mini");
+    fsm.pulse(10);
+    tick(10);
+    assert.equal(fsm.form(), "mini");
+  });
+
+  test("l'île ouverte qui se replie revient à l'encoche (pas à la mini-île)", () => {
+    fsm.open();
+    fsm.pointerEnter();
+    fsm.pointerLeave();
+    tick(1500);
+    assert.equal(fsm.state, "compact");
+    assert.equal(fsm.shownForm, "nano");
+  });
+
+  test("cachée (présentation) puis revenue : encoche", () => {
+    fsm.pointerEnter();
+    tick(200);
+    fsm.hide();
+    fsm.restore();
+    assert.equal(fsm.form(), "nano");
+  });
+});

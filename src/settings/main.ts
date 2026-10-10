@@ -218,7 +218,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "🎨",
     label: "Apparence",
     sub: "La couleur de l'île, ses icônes, son élasticité et ses petits sons.",
-    keywords: ["Thème", "Icônes", "Style des icônes", "Animations", "Style des animations", "Studio", "Élasticité de l'île", "Halo autour de l'île", "Couleur de l'île", "Couleur personnalisée", "Sons de clic", "Volume des sons"],
+    keywords: ["Thème", "Icônes", "Style des icônes", "Animations", "Style des animations", "Studio", "Élasticité de l'île", "Halo autour de l'île", "Couleur de l'île", "Taille de la mini-île", "Nano", "Style de l'île", "Bouche d'Ondine", "Couleur personnalisée", "Sons de clic", "Volume des sons"],
     render: look,
   },
   {
@@ -1250,6 +1250,28 @@ function look(main: HTMLElement) {
       null,
       [row("Couleur personnalisée", picker, "Choisissez n'importe quelle couleur : si elle est trop claire, l'île l'assombrit juste assez pour que le texte reste lisible.")],
     ),
+    // Format nano et île-bouche (1.2.3, src/island/island-forms.ts).
+    group("Forme de l'île", [
+      row(
+        "Taille de la mini-île",
+        segmented(s.island.size ?? "normal", [["normal", "Normale"], ["nano", "Nano"]], (v) => save((d) => (d.island.size = v as "normal" | "nano"))),
+        "Nano : une toute petite encoche qui ne montre qu'Ondine. Elle s'élargit au survol, pour une notification, un morceau qui commence ou un minuteur, puis revient à l'encoche.",
+      ),
+      row(
+        "Style de l'île",
+        segmented(s.island.style ?? "classic", [["classic", "Classique"], ["mouth", "Bouche d'Ondine"]], (v) => save((d) => (d.island.style = v as "classic" | "mouth"), true)),
+        "Bouche d'Ondine : Ondine est suspendue tête en bas au bord de l'écran, et l'île est sa bouche. Elle l'ouvre pour vous montrer ce qui se passe.",
+      ),
+      ...(s.island.style === "mouth"
+        ? [
+            row(
+              "Quand Ondine est sortie",
+              toggle(s.island.mouthFollow !== false, (v) => save((d) => (d.island.mouthFollow = v)), "L'île part avec elle"),
+              "L'île part avec elle : sur le bureau, c'est Ondine qui ouvre la bouche, là où elle se trouve. Sinon, une bouche vide reste au bord de l'écran.",
+            ),
+          ]
+        : []),
+    ]),
     group("Icônes", [
       row(
         "Style des icônes",
