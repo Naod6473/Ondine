@@ -40,6 +40,24 @@ export const MASCOT_STATES = [
   "yawn",
   "pensive",
   "cheer",
+  // Les expressions demandées par les autres parties de l'appli (1.2.2 : halos,
+  // fenêtres, voix…) avec mascot.emote ; une mascotte qui ne les a pas montre
+  // une expression proche (EMOTE_NEAR dans mascot-state.ts).
+  "panic",
+  "scared",
+  "relieved",
+  "stretch",
+  "surprised",
+  "listening",
+  "sunglasses",
+  "scarf",
+  "goodbye",
+  "push",
+  "sit-edge",
+  "hide",
+  "tap-glass",
+  "climb",
+  "talk",
 ] as const;
 
 export type MascotState = (typeof MASCOT_STATES)[number];

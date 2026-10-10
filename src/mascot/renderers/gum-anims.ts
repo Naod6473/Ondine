@@ -5,7 +5,7 @@
 // Le moteur qui s'en sert : gum.ts.
 
 import type { Mood, Overlay } from "../types";
-import { FACE_BASE, type EyeKind, type Face, type GumTint, type Hand, type WeatherFx } from "./gum-draw";
+import { FACE_BASE, type EyeKind, type Face, type GumTint, type Hand, type Props, type WeatherFx } from "./gum-draw";
 import { halfWidthAt, N, type GumShape, type ShapeId } from "./gum-shapes";
 
 const TAU = Math.PI * 2;
@@ -33,7 +33,17 @@ export type HandPose =
   | "flail"
   | "rub"
   | "ears"
-  | "sign";
+  | "sign"
+  | "panic"
+  | "wipe"
+  | "ear"
+  | "push"
+  | "peek"
+  | "tap"
+  | "climb"
+  | "sit"
+  | "talk"
+  | "adjust";
 
 /**
  * Ce qu'une animation décrit pour un instant. Les premiers champs sont ceux de
@@ -70,6 +80,8 @@ export type Frame = {
   hands?: HandPose;
   /** La pointe qui se plie (0 à 1). */
   tip?: number;
+  /** Ce qu'elle sort le temps du geste (lunettes, écharpe, pile vide, jambes…), en fondu. */
+  prop?: Partial<Props>;
 };
 
 // Petits outils de mouvement. t = secondes, p = progression de 0 à 1.
@@ -244,6 +256,187 @@ export const ANIMS: Record<string, (t: number, p: number, mood: Mood) => Frame> 
   pensive: (t) => ({ face: { mouthW: 0.6, mouthC: 0, browA: 1, browRaise: 0.4, browAsym: 0.4 }, tip: 1, gaze: { x: 0.65, y: -0.8 }, hands: "think", extra: "dots", squash: breathe(t, 2.4, 0.02), rot: 0.07 }),
   // Bras levés : la victoire, les deux mains en l'air.
   "bras-leves": (_t, p) => ({ face: { eyeOpen: 0, eyeCurve: 1, mouthO: 1, mouthC: 0.9, blush: 1 }, hands: "cheer", extra: "confetti", dy: hops(p, 3, 0.28), rot: Math.sin(p * TAU * 2) * 0.08 }),
+  // ── Les expressions de la 1.2.2 (mascot.emote des halos, des fenêtres, de la voix) ──
+  // Panique (batterie vide) : yeux ronds, pupilles minuscules, sueur ; elle
+  // court d'un côté à l'autre en brandissant une pile vide qui clignote.
+  panique: (t, p) => {
+    const stop = 1 - ramp(p, 0.88, 1);
+    return {
+      face: { eyeSize: 1.35, pupil: 0.55, browA: 1, browTilt: -0.8, browRaise: 0.6, mouthW: 0.7, mouthO: 0.55, mouthC: -0.3, blush: 0.2 },
+      extra: "sweat",
+      hands: "panic",
+      prop: { battery: stop },
+      dx: Math.sin(t * 5.5) * 0.2 * stop,
+      // Des petits pas rapides, penchée vers où elle court.
+      dy: -Math.abs(Math.sin(t * 16)) * 0.05 * stop,
+      rot: Math.cos(t * 5.5) * 0.14 * stop,
+      squash: 1 + Math.sin(t * 32) * 0.025,
+      gaze: { x: Math.cos(t * 5.5) > 0 ? 0.8 : -0.8, y: 0 },
+      blink: false,
+    };
+  },
+  // Peur : elle se fige, se penche en arrière, puis file sur le côté et revient.
+  peur: (t, p) => {
+    const flee = Math.sin((ramp(p, 0.15, 0.5) * Math.PI) / 2) * (1 - ramp(p, 0.78, 1));
+    const lean = ramp(p, 0, 0.12) * (1 - ramp(p, 0.78, 1));
+    return {
+      face: { eyeSize: 1.25, pupil: 0.6, browA: 1, browTilt: -0.9, browRaise: 0.4, mouthW: 0.8, wavy: 1, mouthC: 0, blush: 0 },
+      hands: "cheeks",
+      dx: -0.36 * flee + Math.sin(t * 40) * 0.012 * lean,
+      rot: -0.2 * lean,
+      squash: 0.93 + Math.sin(t * 40) * 0.008,
+      gaze: { x: 0.85, y: 0 },
+      extra: "sweat",
+      blink: false,
+    };
+  },
+  // Soulagée : une grande inspiration, un long soupir, et elle s'écroule assise.
+  soulagee: (t, p) => {
+    const inhale = Math.sin((ramp(p, 0, 0.3) * Math.PI) / 2);
+    const out = ramp(p, 0.3, 0.6);
+    const sit = out * out * (3 - 2 * out);
+    return {
+      face: {
+        eyeOpen: p < 0.28 ? 0.75 : 0,
+        eyeCurve: -0.5,
+        lid: 0.3,
+        mouthW: 0.45 + sit * 0.45,
+        mouthO: p < 0.62 ? (0.2 + inhale * 0.35) * (1 - sit * 0.8) : 0,
+        mouthC: p < 0.62 ? 0 : 0.7,
+        browA: 1 - sit * 0.6,
+        browTilt: -0.5 * (1 - sit),
+        blush: 0.6,
+      },
+      squash: 1 + inhale * 0.1 * (1 - sit) - sit * 0.15 + (p > 0.6 ? (breathe(t, 3.6, 0.012) - 1) : 0),
+      hands: p > 0.06 && p < 0.5 ? "wipe" : "rest",
+      prop: { legs: ramp(p, 0.42, 0.6) * (1 - ramp(p, 0.92, 1)) },
+      blink: false,
+    };
+  },
+  // S'étire : bras en l'air, elle s'allonge en penchant de chaque côté, puis s'ébroue.
+  etirement: (t, p) => {
+    const up = Math.sin(ramp(p, 0.08, 0.72) * Math.PI);
+    return {
+      face: { eyeOpen: 0, eyeCurve: -0.8, mouthW: 0.6, mouthO: up * 0.5, mouthC: 0.2, blush: 0.7 },
+      hands: p > 0.06 && p < 0.74 ? "stretch" : "rest",
+      squash: 1 + up * 0.2,
+      rot: Math.sin(ramp(p, 0.25, 0.72) * TAU) * 0.09 * up,
+      dx: Math.sin(t * 34) * 0.02 * ramp(p, 0.74, 0.8) * (1 - ramp(p, 0.9, 1)),
+      blink: false,
+    };
+  },
+  // Sursaut : un petit bond, yeux ronds, pupilles serrées, sourcils tout en haut.
+  sursaut: (_t, p) => ({
+    face: { eyeSize: 1.35, pupil: 0.5, browA: 1, browRaise: 1.2, mouthW: 0.45, mouthO: 0.8, mouthC: 0 },
+    dy: -Math.sin(ramp(p, 0.04, 0.38) * Math.PI) * 0.22,
+    squash: p < 0.3 ? 1.16 : 1,
+    hands: p < 0.4 ? "cheer" : "cheeks",
+    gaze: { x: 0, y: -0.1 },
+    blink: false,
+  }),
+  // Attentive : elle penche la tête et tend l'oreille (une moufle en cornet).
+  ecoute: (t) => ({
+    face: { eyeSize: 1.1, pupil: 1.15, browA: 0.8, browRaise: 0.45, browAsym: 0.3, mouthW: 0.55, mouthC: 0.25 },
+    hands: "ear",
+    rot: 0.12 + Math.sin(t * 1.3) * 0.02,
+    tip: 0.3,
+    squash: breathe(t, 2.8, 0.015),
+  }),
+  // Lunettes de soleil : elles descendent du front, sourire en coin, elle frime un peu.
+  lunettes: (t, p) => {
+    const g = ramp(p, 0.06, 0.24) * (1 - ramp(p, 0.88, 1));
+    return {
+      face: { mouthW: 0.95, mouthC: 0.55, skew: 0.65, browA: 0, blush: 0.5 },
+      prop: { glasses: g },
+      hands: p > 0.02 && p < 0.28 ? "adjust" : "hips",
+      rot: -0.06 * g + Math.sin(t * 2) * 0.02,
+      squash: 1.03,
+      extra: p > 0.26 && p < 0.7 ? "sparkles" : "none",
+      gaze: { x: 0.2, y: -0.2 },
+    };
+  },
+  // L'écharpe : elle l'enroule, puis fait au revoir avec un clin d'œil.
+  echarpe: (t, p) => ({
+    face: { mouthO: 0.3, mouthC: 0.75, blush: 1, pupil: 1.15, winkR: p > 0.55 && p < 0.75 ? 1 : 0 },
+    prop: { scarf: ramp(p, 0.02, 0.2) * (1 - ramp(p, 0.92, 1)) },
+    hands: p > 0.22 && p < 0.9 ? "wave" : "rest",
+    rot: Math.sin(t * 3) * 0.05,
+    squash: breathe(t),
+  }),
+  // Au revoir : elle salue, puis une petite révérence.
+  "au-revoir": (t, p) => {
+    const bow = Math.sin(ramp(p, 0.68, 0.95) * Math.PI);
+    return {
+      face: { mouthO: 0.35, mouthC: 0.8, blush: 0.9, pupil: 1.15, eyeOpen: bow > 0.3 ? 0 : 1, eyeCurve: 1 },
+      hands: p < 0.7 ? "wave" : "clasp",
+      rot: Math.sin(t * 3) * 0.05 * (1 - bow) + bow * 0.12,
+      squash: 1 - bow * 0.09,
+    };
+  },
+  // Pousse : les deux moufles en avant, joues gonflées par l'effort, par à-coups.
+  pousse: (t, p) => {
+    const heave = Math.max(0, Math.sin(t * 7));
+    return {
+      face: { eyeOpen: 0.55, lid: 0.3, browA: 1, browTilt: 0.6, mouthW: 0.6, mouthC: -0.2, puff: 0.6, blush: 1 },
+      hands: "push",
+      rot: 0.18 + heave * 0.03,
+      dx: 0.08 + heave * 0.03,
+      squash: 0.95 - heave * 0.03,
+      gaze: { x: 0.9, y: 0 },
+      extra: p > 0.3 ? "sweat" : "none",
+      blink: false,
+    };
+  },
+  // Assise au bord : les petites jambes dans le vide se balancent (en boucle).
+  "assise-bord": (t) => ({
+    face: { mouthC: 0.6, mouthW: 0.85, blush: 0.7, pupil: 1.1 },
+    prop: { legs: 1, swing: 1 },
+    hands: "sit",
+    squash: breathe(t, 3.4, 0.015) * 0.93,
+    rot: Math.sin(t * 1.1) * 0.03,
+  }),
+  // Se cache : elle se tasse, les moufles sur les yeux… et jette un œil entre ses doigts.
+  cachee: (t, p) => {
+    const down = Math.sin((ramp(p, 0, 0.15) * Math.PI) / 2) * (1 - ramp(p, 0.85, 1));
+    const peek = p > 0.45 && p < 0.7;
+    return {
+      face: { eyeOpen: peek ? 1 : 0, eyeCurve: -0.9, pupil: 0.8, browA: 1, browTilt: -0.5, mouthW: 0.5, mouthC: -0.1, blush: 1.2 },
+      hands: "peek",
+      squash: 1 - down * 0.18 + Math.sin(t * 30) * 0.008 * down,
+      dy: down * 0.16,
+      gaze: peek ? { x: 0.3, y: -0.2 } : undefined,
+      blink: false,
+    };
+  },
+  // Tapote la vitre : elle vous regarde et toque de la moufle (des ronds sur le verre).
+  "tapote-vitre": (_t, p) => ({
+    face: { eyeSize: 1.1, pupil: 1.1, browA: 1, browRaise: 0.6, browAsym: 0.5, mouthW: 0.5, mouthO: 0.25, mouthC: 0.1 },
+    hands: "tap",
+    prop: { taps: 1 - ramp(p, 0.85, 1) },
+    rot: -0.05,
+    squash: 1.02,
+    gaze: { x: 0, y: 0 },
+  }),
+  // Grimpe : les moufles l'une après l'autre, elle monte un peu, la langue au coin des lèvres.
+  grimpe: (t, p) => {
+    const step = Math.sin(t * 6);
+    return {
+      face: { eyeOpen: 0.85, browA: 1, browTilt: 0.35, mouthW: 0.55, mouthC: 0.1, tongueSide: 0.8, blush: 0.8 },
+      hands: "climb",
+      dy: -Math.abs(step) * 0.06 - Math.sin(ramp(p, 0, 1) * Math.PI) * 0.14,
+      rot: step * 0.07,
+      squash: 1.06 + Math.abs(step) * 0.04,
+      gaze: { x: 0, y: -0.8 },
+      extra: p > 0.5 ? "sweat" : "none",
+    };
+  },
+  // Parle : la bouche suit mascot.talk (ou babille toute seule), la moufle accompagne.
+  parle: (t) => ({
+    face: { mouthW: 0.8, mouthC: 0.45, blush: 0.65, pupil: 1.1, browA: 0.6, browRaise: 0.15 + Math.max(0, Math.sin(t * 2.3)) * 0.25 },
+    hands: "talk",
+    squash: breathe(t, 2.2, 0.015),
+    rot: Math.sin(t * 1.7) * 0.04,
+  }),
 };
 
 /** La pose des mains de chaque animation (absente : au repos). */
@@ -358,6 +551,68 @@ export const HANDS: Record<HandPose, (t: number, p: number, S: GumShape) => [Par
     const w = halfWidthAt(S.pts, 0.55);
     return [{ x: -w - 0.04, y: 0.55, r: -0.35 }, { x: w + 0.3, y: 0.18 + Math.sin(t * 1.8) * 0.02, r: -0.15 + Math.sin(t * 1.8) * 0.04 }];
   },
+  // La panique : la gauche s'agite, la droite brandit la pile vide.
+  panic: (t, _p, S) => {
+    const w = halfWidthAt(S.pts, 0.2);
+    return [
+      { x: -w - 0.2 - Math.sin(t * 11) * 0.08, y: 0.05 + Math.sin(t * 11) * 0.3, r: Math.sin(t * 11) },
+      { x: w + 0.08, y: -0.3 + Math.sin(t * 11 + 1.5) * 0.06, r: -0.2 + Math.sin(t * 11) * 0.2 },
+    ];
+  },
+  // S'essuie le front (le soupir de soulagement).
+  wipe: (t, _p, S) => {
+    const w = halfWidthAt(S.pts, 0.55);
+    const s = Math.sin(t * 5);
+    return [{ x: -w - 0.04, y: 0.55, r: -0.35 }, { x: S.faceX + s * 0.25, y: S.eyeY - 0.4, r: -1.4 + s * 0.2 }];
+  },
+  // Tend l'oreille : la moufle droite en cornet à côté de la tête.
+  ear: (t, _p, S) => {
+    const w = halfWidthAt(S.pts, 0.55);
+    const e = halfWidthAt(S.pts, S.eyeY);
+    return [{ x: -w - 0.04, y: 0.55, r: -0.35 }, { x: e + 0.12, y: S.eyeY - 0.02 + Math.sin(t * 2) * 0.01, r: -0.9, s: 1.05 }];
+  },
+  // Pousse : les deux moufles en avant, sur le côté, par à-coups.
+  push: (t) => {
+    const k = Math.max(0, Math.sin(t * 7)) * 0.05;
+    return [{ x: 0.95 + k, y: 0.08, r: 1.45 }, { x: 1.0 + k, y: 0.48, r: 1.45 }];
+  },
+  // Les moufles sur les yeux ; elles s'écartent un instant (entre 45 et 70 % du geste).
+  peek: (_t, p, S) => {
+    const open = p > 0.45 && p < 0.7 ? 1 : 0;
+    const dx = S.eyeDX + open * 0.24;
+    return [
+      { x: S.faceX - dx, y: S.eyeY + 0.02, r: 0.4 + open * 0.5, s: 1.1 },
+      { x: S.faceX + dx, y: S.eyeY + 0.02, r: -0.4 - open * 0.5, s: 1.1 },
+    ];
+  },
+  // Toque sur la vitre : la moufle droite tout près de vous, qui grossit à chaque coup.
+  tap: (t, _p, S) => {
+    const knock = Math.max(0, Math.sin(t * 12)) ** 3;
+    const w = halfWidthAt(S.pts, 0.55);
+    return [{ x: -w - 0.04, y: 0.55, r: -0.35 }, { x: S.faceX + 0.42, y: S.eyeY + 0.3 - knock * 0.04, r: -0.2, s: 1.3 + knock * 0.2 }];
+  },
+  // Grimpe : une moufle après l'autre, tout en haut.
+  climb: (t) => {
+    const a = Math.sin(t * 6);
+    return [{ x: -0.62, y: -0.95 - a * 0.18, r: 2.4 }, { x: 0.62, y: -0.95 + a * 0.18, r: -2.4 }];
+  },
+  // Assise : les moufles posées de chaque côté, sur le bord.
+  sit: (t, _p, S) => {
+    const w = halfWidthAt(S.pts, 0.8);
+    const b = Math.sin(t * 1.1) * 0.01;
+    return [{ x: -w - 0.06, y: 0.86 + b, r: -1.2 }, { x: w + 0.06, y: 0.86 - b, r: 1.2 }];
+  },
+  // Parle : la moufle droite accompagne ce qu'elle dit.
+  talk: (t, _p, S) => {
+    const w = halfWidthAt(S.pts, 0.55);
+    const g = Math.sin(t * 2.6);
+    return [{ x: -w - 0.04, y: 0.55, r: -0.35 }, { x: w + 0.18, y: 0.3 - Math.max(0, g) * 0.15, r: -0.5 + g * 0.3, thumb: 0.4 }];
+  },
+  // Ajuste ses lunettes : la moufle droite à la branche.
+  adjust: (_t, _p, S) => {
+    const w = halfWidthAt(S.pts, 0.55);
+    return [{ x: -w - 0.04, y: 0.55, r: -0.35 }, { x: S.faceX + S.eyeDX + 0.26, y: S.eyeY - 0.06, r: -1.1 }];
+  },
 };
 
 /** Traduit la description d'une animation en réglages du visage et en type d'yeux. */
@@ -372,6 +627,7 @@ export function faceOf(f: Frame): { face: Face; kind: EyeKind } {
     case "wide":
       face.eyeOpen = open;
       face.eyeSize = 1.3;
+      face.pupil = 0.62;
       break;
     case "happy":
       face.eyeOpen = 0;

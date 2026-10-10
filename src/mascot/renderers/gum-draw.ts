@@ -139,6 +139,8 @@ export interface Face {
   eyeCurve: number;
   /** Taille des yeux (1 = normale, 1,3 = grands ouverts). */
   eyeSize: number;
+  /** Pupille : 1 = normale, plus grande (contente, amoureuse), plus petite (surprise, peur). */
+  pupil: number;
   /** Paupière lourde (0 à 1) : coupe le haut de l'œil d'un trait. */
   lid: number;
   /** Clin d'œil : l'œil droit se ferme en arc (0 à 1). */
@@ -174,6 +176,7 @@ export const FACE_BASE: Face = {
   eyeOpen: 1,
   eyeCurve: -0.6,
   eyeSize: 1,
+  pupil: 1,
   lid: 0,
   winkR: 0,
   browA: 0,
@@ -225,6 +228,24 @@ export interface Wear {
 
 export type WeatherFx = "none" | "rain" | "snow" | "storm";
 
+/**
+ * Ce qu'une animation sort le temps d'un geste (chacun de 0 à 1, en fondu) :
+ * les lunettes de soleil qui descendent du front, l'écharpe, la pile vide qui
+ * clignote (panique), les petites jambes (assise) et leur balancement, les
+ * tapotements sur la vitre (des ronds qui s'élargissent sous la moufle).
+ */
+export interface Props {
+  glasses: number;
+  scarf: number;
+  battery: number;
+  legs: number;
+  swing: number;
+  taps: number;
+}
+
+export const NO_PROPS: Props = { glasses: 0, scarf: 0, battery: 0, legs: 0, swing: 0, taps: 0 };
+export const PROP_KEYS = Object.keys(NO_PROPS) as (keyof Props)[];
+
 // ── La scène complète d'une image ───────────────────────────────────────────
 
 export interface GumScene {
@@ -242,7 +263,24 @@ export interface GumScene {
   eyesMix: number;
   /** Multiplie l'ouverture des yeux (clignement). */
   blink: number;
+  /** Le regard (les pupilles) : il part avant la tête. */
   look: { x: number; y: number };
+  /** Où la tête est tournée (le visage glisse sur le volume, un peu après les yeux). */
+  head: { x: number; y: number };
+  /**
+   * La lumière, en unités de R depuis le centre : en haut à gauche par défaut
+   * (-0,35 ; -0,45). Le reflet, le dégradé, la lueur du bas et l'ombre la suivent.
+   */
+  light: { x: number; y: number };
+  /** La traînée de gomme : le haut du corps reste en arrière quand elle se déplace (cisaillement). */
+  shear: number;
+  /** Ce qu'elle sort le temps d'un geste (lunettes, écharpe, pile, jambes, tapotements). */
+  props: Props;
+  /** Les bulles tremblent (après un saut, une secousse), 0 à 1. */
+  jolt: number;
+  /** La teinte de l'environnement posée sur les reflets (la pochette en lecture), et sa force. */
+  envTint: Rgb | null;
+  envK: number;
   /** Le visage qui traîne derrière le corps (en R, vers le bas quand le corps monte). */
   faceLag: number;
   squash: number;
@@ -253,8 +291,8 @@ export interface GumScene {
   tip: number;
   hands: [Hand, Hand] | null;
   handsAlpha: number;
-  /** Ce que les mains tiennent : un cœur (pose « heart »), la pancarte « ? » (pose « sign », une question d'agent ouverte). */
-  handItem: "heart" | "sign" | null;
+  /** Ce que les mains tiennent : un cœur (pose « heart »), la pancarte « ? » (pose « sign », une question d'agent ouverte), la pile vide (panique). */
+  handItem: "heart" | "sign" | "battery" | null;
   /** La main gauche passe devant le corps (bras croisés). */
   leftFront: boolean;
   wear: Wear;
@@ -297,9 +335,12 @@ function starPath(ctx: CanvasRenderingContext2D, x: number, y: number, ro: numbe
   ctx.closePath();
 }
 
-/** Un dégradé de bonbon (clair en haut à gauche) centré en (x, y), de taille r. */
-function candy(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, c: Palette): CanvasGradient {
-  const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.45, r * 0.08, x - r * 0.1, y - r * 0.1, r * 1.45);
+/** La lumière par défaut : en haut à gauche (en unités de R). */
+export const LIGHT_REST = { x: -0.35, y: -0.45 };
+
+/** Un dégradé de bonbon (clair du côté de la lumière, en haut à gauche par défaut) centré en (x, y), de taille r. */
+function candy(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, c: Palette, light = LIGHT_REST): CanvasGradient {
+  const g = ctx.createRadialGradient(x + r * light.x, y + r * light.y, r * 0.08, x + r * (light.x + 0.25) * 0.4, y + r * (light.y + 0.35) * 0.4, r * 1.45);
   g.addColorStop(0, css(c[0]));
   g.addColorStop(0.45, css(c[1]));
   g.addColorStop(1, css(c[2]));
@@ -322,19 +363,27 @@ export function drawGum(ctx: CanvasRenderingContext2D, w: number, h: number, sc:
 
   ctx.clearRect(0, 0, w, h);
 
-  // 1. Ombre au sol (elle rétrécit quand la mascotte saute ou flotte).
+  const L = sc.light;
+  const dLx = L.x - LIGHT_REST.x;
+  const dLy = L.y - LIGHT_REST.y;
+
+  // 1. Ombre au sol : elle rétrécit et pâlit quand la mascotte saute ou flotte,
+  // s'élargit quand elle s'écrase, respire avec elle, et glisse à l'opposé de la lumière.
   const lift = Math.max(0, -sc.dy) + S.float * 0.8;
+  const spread = sx ** 2.5;
   ctx.save();
-  ctx.fillStyle = `rgba(0, 0, 0, ${0.28 * (1 - Math.min(0.75, lift))})`;
-  ctx.filter = `blur(${R * 0.06}px)`;
+  ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(0.36, 0.28 * (1 - Math.min(0.75, lift)) * (0.6 + 0.4 * spread))})`;
+  ctx.filter = `blur(${R * (0.06 + Math.min(0.08, lift * 0.1))}px)`;
   ctx.beginPath();
-  ctx.ellipse(w / 2 + sc.dx * R, footY + R * 0.04, R * 0.78 * sx * (1 - Math.min(0.6, lift * 0.45)), R * 0.11, 0, 0, TAU);
+  ctx.ellipse(w / 2 + sc.dx * R - dLx * R * 0.18, footY + R * 0.04, R * 0.78 * spread * (1 - Math.min(0.6, lift * 0.45)), R * 0.11, 0, 0, TAU);
   ctx.fill();
   ctx.restore();
 
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(sc.rot);
+  // La traînée : le bas reste posé, le haut part en arrière.
+  if (Math.abs(sc.shear) > 1e-3) ctx.transform(1, 0, sc.shear, 1, -sc.shear * R * 0.94 * sy, 0);
 
   // Les mains derrière le corps (la droite quand les bras sont croisés).
   if (sc.hands && sc.handsAlpha > 0.02 && sc.leftFront) drawMitt(ctx, sc.hands[1], sx, sy, R, 1, c, sc.handsAlpha);
@@ -346,30 +395,46 @@ export function drawGum(ctx: CanvasRenderingContext2D, w: number, h: number, sc:
 
   // Les rayons du soleil, derrière le corps.
   decorBehind(ctx, sc, R);
+  // Les petites jambes (assise), derrière le corps.
+  if (sc.props.legs > 0.02) drawLegs(ctx, sc, R);
 
   // 2. Le corps.
   smoothPath(ctx, P);
-  ctx.fillStyle = candy(ctx, 0, 0, R, c);
+  ctx.fillStyle = candy(ctx, 0, 0, R, c, L);
   ctx.fill();
 
+  const gel = S.gel;
   ctx.save();
   smoothPath(ctx, P);
   ctx.clip();
-  // 3. Lueur intérieure en bas : la lumière traverse la gomme.
-  const glow = ctx.createRadialGradient(R * 0.1, R * 0.75, 0, R * 0.1, R * 0.75, R * 0.85);
-  glow.addColorStop(0, css(c[0], 0.75));
+  // 3. Lueur intérieure en bas : la lumière traverse la gomme et ressort du
+  // côté opposé à la lampe (plus forte dans une gomme translucide).
+  const gx = R * (0.1 - dLx * 0.6);
+  const glow = ctx.createRadialGradient(gx, R * 0.75, 0, gx, R * 0.75, R * 0.85);
+  glow.addColorStop(0, css(c[0], 0.45 + 0.35 * gel));
   glow.addColorStop(1, css(c[0], 0));
   ctx.fillStyle = glow;
   ctx.fillRect(-R * 1.6, -R * 1.6, R * 3.2, R * 3.2);
   decorInside(ctx, sc, R);
-  // 4. Liseré clair à l'intérieur du bord.
+  // Les bulles d'air prises dans la gomme (ou les pores, les braises).
+  if (S.bubbles > 0) drawBubbles(ctx, sc, R);
+  // 4. Liseré clair à l'intérieur du bord ; le bas du bord s'éclaircit (la
+  // lumière qui a traversé ressort par la tranche).
   smoothPath(ctx, P);
   ctx.lineWidth = R * 0.16;
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
+  ctx.strokeStyle = `rgba(255, 255, 255, ${0.12 + 0.14 * gel})`;
   ctx.stroke();
   ctx.lineWidth = R * 0.05;
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+  ctx.strokeStyle = `rgba(255, 255, 255, ${0.25 + 0.15 * gel})`;
   ctx.stroke();
+  if (gel > 0.25) {
+    const rim = ctx.createLinearGradient(0, -R * 0.2, 0, R * 0.95);
+    rim.addColorStop(0, css(c[0], 0));
+    rim.addColorStop(1, css(c[0], 0.55 * gel));
+    ctx.lineWidth = R * 0.1;
+    ctx.strokeStyle = rim;
+    ctx.stroke();
+  }
   ctx.restore();
 
   // Contour fin, de la couleur foncée du bonbon (pas noir : plus doux).
@@ -378,33 +443,47 @@ export function drawGum(ctx: CanvasRenderingContext2D, w: number, h: number, sc:
   ctx.strokeStyle = css(c[3]);
   ctx.stroke();
 
-  // 5. Les reflets.
+  // 5. Les reflets : ils glissent sur le volume avec la lumière (une bille sous
+  // une lampe), restent dans le corps, et prennent un peu la teinte de
+  // l'environnement (la pochette du morceau en lecture).
   const [shx, shy, shr, shs] = S.shine;
+  const hi = sc.envTint && sc.envK > 0.01 ? mixRgb([255, 255, 255], sc.envTint, 0.35 * sc.envK) : ([255, 255, 255] as Rgb);
+  const mx = Math.max(-0.3, Math.min(0.3, dLx * 0.35));
+  const my = Math.max(-0.25, Math.min(0.25, dLy * 0.3));
+  const edge = 1 - Math.min(0.35, Math.hypot(mx, my) * 0.8);
   ctx.save();
-  ctx.translate(shx * R, shy * R);
-  ctx.rotate(shr);
+  smoothPath(ctx, P);
+  ctx.clip();
+  ctx.save();
+  ctx.translate((shx + mx) * R, (shy + my) * R);
+  ctx.rotate(shr + mx * 0.6);
   const shine = ctx.createLinearGradient(0, -R * 0.12, 0, R * 0.12);
-  shine.addColorStop(0, "rgba(255, 255, 255, 0.95)");
-  shine.addColorStop(1, "rgba(255, 255, 255, 0.35)");
+  shine.addColorStop(0, css(hi, 0.95));
+  shine.addColorStop(1, css(hi, 0.35));
   ctx.fillStyle = shine;
   ctx.beginPath();
-  ctx.ellipse(0, 0, R * 0.3 * shs, R * 0.12, 0, 0, TAU);
+  ctx.ellipse(0, 0, R * 0.3 * shs * edge, R * 0.12 * (0.85 + 0.15 * edge), 0, 0, TAU);
   ctx.fill();
   ctx.restore();
-  ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+  ctx.fillStyle = css(hi, 0.9);
   ctx.beginPath();
-  ctx.arc(S.dot[0] * R, S.dot[1] * R, R * 0.06, 0, TAU);
+  ctx.arc((S.dot[0] + mx * 0.8) * R, (S.dot[1] + my * 0.8) * R, R * 0.06, 0, TAU);
   ctx.fill();
-  // Le reflet du bas, à droite : il suit le contour, un peu à l'intérieur.
-  bottomGlint(ctx, sc.pts, R);
+  ctx.restore();
+  // Le reflet du bas, à l'opposé de la lumière : il suit le contour, un peu à l'intérieur.
+  bottomGlint(ctx, sc.pts, R, -dLx * 0.8, hi);
   ctx.globalAlpha = 1;
 
-  // Le visage, un peu décalé vers là où elle regarde (effet de volume).
-  const fx = (S.faceX + sc.look.x * 0.12) * R;
-  const fy = (sc.look.y * 0.08 + sc.faceLag) * R;
+  // Le visage, décalé vers là où la tête est tournée (effet de volume : il
+  // glisse sur une sphère ; les pupilles, elles, sont déjà parties).
+  const fx = (S.faceX + sc.head.x * 0.12) * R;
+  const fy = (sc.head.y * 0.08 + sc.faceLag) * R;
   drawFace(ctx, sc, R, fx, fy);
-  wearNeck(ctx, sc, R, fx);
-  wearEyes(ctx, sc, R, fx, fy);
+  wearNeck(ctx, sc, R, fx, sc.wear.neck, 1);
+  if (sc.props.scarf > 0.02 && sc.wear.neck !== "scarf") wearNeck(ctx, sc, R, fx, "scarf", sc.props.scarf);
+  wearEyes(ctx, sc, R, fx, fy, sc.wear.eyes, 1, 0);
+  // Les lunettes de soleil d'un geste descendent du front.
+  if (sc.props.glasses > 0.02) wearEyes(ctx, sc, R, fx, fy, "sun", Math.min(1, sc.props.glasses * 1.5), -(1 - sc.props.glasses) * R * 0.5);
   wearHead(ctx, sc, R);
   if (sc.umbrella > 0.02) drawUmbrella(ctx, sc, R);
   ctx.restore(); // fin de l'étirement
@@ -412,9 +491,11 @@ export function drawGum(ctx: CanvasRenderingContext2D, w: number, h: number, sc:
   // Les mains devant le corps.
   if (sc.hands && sc.handsAlpha > 0.02) {
     drawMitt(ctx, sc.hands[0], sx, sy, R, -1, c, sc.handsAlpha);
-    // La pancarte est derrière la moufle droite, qui tient son manche.
+    // La pancarte est derrière la moufle droite, qui tient son manche (la pile vide aussi).
     if (sc.handItem === "sign") drawSign(ctx, sc.hands[1], sx, sy, R, sc.handsAlpha, t);
+    if (sc.handItem === "battery" && sc.props.battery > 0.02) drawBattery(ctx, sc.hands[1], sx, sy, R, sc.handsAlpha * sc.props.battery, t);
     if (!sc.leftFront) drawMitt(ctx, sc.hands[1], sx, sy, R, 1, c, sc.handsAlpha);
+    if (sc.props.taps > 0.02) drawTaps(ctx, sc.hands[1], sx, sy, R, sc.props.taps, t);
     if (sc.handItem === "heart") {
       const a = sc.hands[0];
       const b = sc.hands[1];
@@ -436,17 +517,26 @@ export function drawGum(ctx: CanvasRenderingContext2D, w: number, h: number, sc:
   drawOverlay(ctx, sc.extra, w / 2, cy, R, t);
 }
 
-/** Le petit reflet du bas, à droite, le long du contour. */
-function bottomGlint(ctx: CanvasRenderingContext2D, pts: Pt[], R: number) {
-  const cyy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.45)";
+/** Mélange deux couleurs RVB (0 = a, 1 = b). */
+function mixRgb(a: Rgb, b: Rgb, k: number): Rgb {
+  return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+}
+
+/** Le petit reflet du bas, le long du contour (à droite ; `shift` le fait tourner, à l'opposé de la lumière). */
+function bottomGlint(ctx: CanvasRenderingContext2D, pts: Pt[], R: number, shift = 0, hi: Rgb = [255, 255, 255]) {
+  let cyy = 0;
+  for (const p of pts) cyy += p.y;
+  cyy /= pts.length;
+  const a0 = 0.3 + shift;
+  const a1 = 0.95 + shift;
+  ctx.strokeStyle = css(hi, 0.45);
   ctx.lineCap = "round";
   ctx.lineWidth = R * 0.05;
   ctx.beginPath();
   let started = false;
   for (const p of pts) {
     const a = Math.atan2(p.y - cyy, p.x);
-    if (a > 0.3 && a < 0.95) {
+    if (a > a0 && a < a1) {
       const x = p.x * 0.84 * R;
       const y = (cyy + (p.y - cyy) * 0.84) * R;
       if (!started) {
@@ -670,12 +760,18 @@ function drawEyes(ctx: CanvasRenderingContext2D, sc: GumScene, kind: EyeKind, al
   if (alpha < 0.02) return;
   const f = sc.face;
   const t = sc.t;
+  // L'iris : l'encre, un peu teintée par la couleur profonde du bonbon ; la pupille au milieu.
+  const iris = css(mixRgb([26, 22, 48], sc.colors[2], 0.38));
+  // Le point de lumière reste où est la lampe, même quand l'œil tourne.
+  const hlx = -0.32 + (sc.light.x - LIGHT_REST.x) * 0.3;
+  const hly = -0.38 + (sc.light.y - LIGHT_REST.y) * 0.25;
   ctx.save();
   ctx.globalAlpha = alpha;
   for (const side of [-1, 1]) {
     const x = side * eyeDX + fx;
     const y = eyeY;
-    const ew = R * 0.15 * f.eyeSize * scale * sc.shape.eyeScale;
+    // Un œil sur une sphère : il s'aplatit un peu quand il regarde sur le côté.
+    const ew = R * 0.15 * f.eyeSize * scale * sc.shape.eyeScale * (1 - Math.min(0.12, Math.abs(sc.look.x) * 0.1));
     const eh = R * 0.19 * f.eyeSize * scale * sc.shape.eyeScale;
     ctx.fillStyle = INK;
     ctx.strokeStyle = INK;
@@ -700,6 +796,24 @@ function drawEyes(ctx: CanvasRenderingContext2D, sc: GumScene, kind: EyeKind, al
           ctx.beginPath();
           ctx.ellipse(x, ey, ew, hh, 0, 0, TAU);
           ctx.fill();
+          if (open > 0.3) {
+            // L'iris et la pupille roulent dans l'œil vers où elle regarde ; la
+            // pupille se dilate (contente, amoureuse) ou se serre (surprise, peur).
+            ctx.save();
+            ctx.clip();
+            const ix = x + sc.look.x * ew * 0.32;
+            const iy = ey + sc.look.y * hh * 0.24;
+            ctx.fillStyle = iris;
+            ctx.beginPath();
+            ctx.ellipse(ix, iy, ew * 0.8, ew * 0.9, 0, 0, TAU);
+            ctx.fill();
+            ctx.fillStyle = "#06050d";
+            ctx.beginPath();
+            const pr = ew * 0.42 * Math.max(0.35, Math.min(1.5, f.pupil));
+            ctx.ellipse(ix, iy, pr, pr * 1.08, 0, 0, TAU);
+            ctx.fill();
+            ctx.restore();
+          }
           if (f.teary > 0.02) {
             ctx.save();
             ctx.beginPath();
@@ -716,10 +830,10 @@ function drawEyes(ctx: CanvasRenderingContext2D, sc: GumScene, kind: EyeKind, al
             ctx.globalAlpha = alpha * Math.min(1, (open - 0.4) / 0.3);
             ctx.fillStyle = "#ffffff";
             ctx.beginPath();
-            ctx.arc(x - ew * 0.32 + lx, ey - hh * 0.38 + ly, ew * (0.38 + f.teary * 0.08), 0, TAU);
+            ctx.arc(x + ew * hlx, ey + hh * hly, ew * (0.34 + f.teary * 0.08), 0, TAU);
             ctx.fill();
             ctx.beginPath();
-            ctx.arc(x + ew * 0.38 + lx, ey + hh * 0.42 + ly, ew * 0.16, 0, TAU);
+            ctx.arc(x - ew * hlx * 1.15, ey - hh * hly * 1.1, ew * 0.15, 0, TAU);
             ctx.fill();
             if (f.teary > 0.3) {
               ctx.beginPath();
@@ -1231,15 +1345,15 @@ function wearHead(ctx: CanvasRenderingContext2D, sc: GumScene, R: number) {
   ctx.restore();
 }
 
-/** Lunettes rondes, de soleil ou en cœur, posées sur les yeux. */
-function wearEyes(ctx: CanvasRenderingContext2D, sc: GumScene, R: number, fx: number, fy: number) {
-  const kind = sc.wear.eyes;
-  if (kind === "none") return;
+/** Lunettes rondes, de soleil ou en cœur, posées sur les yeux (ou en train de descendre du front : `dy`). */
+function wearEyes(ctx: CanvasRenderingContext2D, sc: GumScene, R: number, fx: number, fy: number, kind: EyeWear, alpha: number, dy: number) {
+  if (kind === "none" || alpha < 0.02) return;
   const S = sc.shape;
-  const y = S.eyeY * R + fy;
+  const y = S.eyeY * R + fy + dy;
   const dx = S.eyeDX * R;
   const r = R * 0.22 * S.eyeScale;
   ctx.save();
+  ctx.globalAlpha *= alpha;
   ctx.lineWidth = R * 0.045;
   ctx.lineJoin = "round";
   const lens = (x: number) => {
@@ -1271,14 +1385,14 @@ function wearEyes(ctx: CanvasRenderingContext2D, sc: GumScene, R: number, fx: nu
 }
 
 /** Collier de perles, nœud papillon ou écharpe, sous la bouche. */
-function wearNeck(ctx: CanvasRenderingContext2D, sc: GumScene, R: number, fx: number) {
-  const kind = sc.wear.neck;
-  if (kind === "none") return;
+function wearNeck(ctx: CanvasRenderingContext2D, sc: GumScene, R: number, fx: number, kind: NeckWear, alpha: number) {
+  if (kind === "none" || alpha < 0.02) return;
   const S = sc.shape;
   const ny = Math.min(0.74, S.eyeY + S.mouthDY + 0.2);
   const y = ny * R;
   const hw = Math.max(0.3, halfWidthAt(sc.pts, ny) - 0.06) * R;
   ctx.save();
+  ctx.globalAlpha *= alpha;
   ctx.lineJoin = "round";
   switch (kind) {
     case "pearls": {
@@ -1335,11 +1449,15 @@ function wearNeck(ctx: CanvasRenderingContext2D, sc: GumScene, R: number, fx: nu
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      // le pan qui pend
+      // le pan qui pend (et flotte un peu)
+      ctx.save();
+      ctx.translate(hw * 0.42, y + R * 0.08);
+      ctx.rotate(Math.sin(sc.t * 3.2) * 0.12);
       ctx.beginPath();
-      ctx.roundRect(hw * 0.35, y + R * 0.06, R * 0.14, R * 0.3, R * 0.05);
+      ctx.roundRect(-R * 0.07, -R * 0.02, R * 0.14, R * 0.3, R * 0.05);
       ctx.fill();
       ctx.stroke();
+      ctx.restore();
       ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
       ctx.beginPath();
       ctx.moveTo(-hw * 0.6, y + R * 0.02);
@@ -1347,6 +1465,152 @@ function wearNeck(ctx: CanvasRenderingContext2D, sc: GumScene, R: number, fx: nu
       ctx.stroke();
       break;
     }
+  }
+  ctx.restore();
+}
+
+// ── Ce qu'elle sort le temps d'un geste ─────────────────────────────────────
+
+/** Les petites jambes en gomme, sous le corps : écartées (assise par terre) ou qui se balancent dans le vide. */
+function drawLegs(ctx: CanvasRenderingContext2D, sc: GumScene, R: number) {
+  const { legs, swing } = sc.props;
+  const c = sc.colors;
+  ctx.save();
+  ctx.globalAlpha *= Math.min(1, legs * 1.4);
+  ctx.lineCap = "round";
+  for (const side of [-1, 1]) {
+    const ang = side * 0.45 * (1 - swing) + swing * Math.sin(sc.t * 3.1 + (side > 0 ? 1.6 : 0)) * 0.4;
+    const len = R * (0.26 + 0.18 * swing) * legs;
+    const x0 = side * R * 0.3;
+    const y0 = R * 0.78;
+    const x1 = x0 + Math.sin(ang) * len;
+    const y1 = y0 + Math.cos(ang) * len;
+    ctx.strokeStyle = css(c[3]);
+    ctx.lineWidth = R * 0.2;
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y1);
+    ctx.stroke();
+    ctx.strokeStyle = css(c[1]);
+    ctx.lineWidth = R * 0.14;
+    ctx.stroke();
+    // le pied, un petit ovale qui pointe vers l'avant
+    ctx.fillStyle = candy(ctx, x1, y1, R * 0.12, c);
+    ctx.strokeStyle = css(c[3]);
+    ctx.lineWidth = R * 0.03;
+    ctx.beginPath();
+    ctx.ellipse(x1 + side * R * 0.03, y1 + R * 0.02, R * 0.11, R * 0.075, side * 0.2 + ang * 0.5, 0, TAU);
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** Les petites ondes d'une table de bulles (même départ pour toutes les formes, décalées). */
+const BUBBLES = [
+  { x: -0.34, speed: 0.085, r: 0.05, ph: 0 },
+  { x: 0.24, speed: 0.11, r: 0.036, ph: 0.37 },
+  { x: -0.04, speed: 0.07, r: 0.028, ph: 0.71 },
+  { x: 0.42, speed: 0.095, r: 0.04, ph: 0.52 },
+];
+
+/**
+ * Les bulles prises dans la gomme, dessinées dans le corps (déjà découpé) :
+ * des bulles d'air qui remontent doucement et tremblent après un saut ; des
+ * pores immobiles dans la guimauve ; des braises dans le soleil et la flamme.
+ */
+function drawBubbles(ctx: CanvasRenderingContext2D, sc: GumScene, R: number) {
+  const S = sc.shape;
+  const t = sc.t;
+  const n = Math.min(BUBBLES.length, S.bubbles);
+  const big = S.gel >= 0.95 ? 1.35 : 1;
+  for (let i = 0; i < n; i++) {
+    const b = BUBBLES[i];
+    if (S.bubbleKind === "pore") {
+      // La guimauve : de petits trous d'air qui ne bougent pas, à peine plus sombres.
+      const x = (S.faceX * 0.3 + b.x * 1.6) * R;
+      const y = (-0.45 + i * 0.36 + (i % 2) * 0.1) * R;
+      ctx.fillStyle = css(sc.colors[2], 0.16);
+      ctx.beginPath();
+      ctx.ellipse(x, y, b.r * R * 0.8, b.r * R * 0.6, 0, 0, TAU);
+      ctx.fill();
+      continue;
+    }
+    const ph = (t * b.speed + b.ph) % 1;
+    const fade = Math.min(1, ph / 0.12) * Math.min(1, (1 - ph) / 0.3);
+    const wob = Math.sin(t * 1.7 + i * 2) * 0.03 + Math.sin(t * 31 + i * 1.3) * 0.035 * sc.jolt;
+    const x = (b.x + wob) * R;
+    const y = (0.78 - ph * 1.45) * R;
+    const r = b.r * R * big * (0.8 + ph * 0.35);
+    if (S.bubbleKind === "ember") {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r * 1.8);
+      g.addColorStop(0, `rgba(255, 250, 210, ${0.75 * fade})`);
+      g.addColorStop(1, "rgba(255, 220, 120, 0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, r * 1.8, 0, TAU);
+      ctx.fill();
+      continue;
+    }
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.12 * fade})`;
+    ctx.strokeStyle = `rgba(255, 255, 255, ${0.55 * fade})`;
+    ctx.lineWidth = R * 0.012;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, TAU);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.8 * fade})`;
+    ctx.beginPath();
+    ctx.arc(x - r * 0.35, y - r * 0.35, r * 0.25, 0, TAU);
+    ctx.fill();
+  }
+}
+
+/** La pile vide (panique) tenue par la moufle droite : le dernier trait rouge clignote. */
+function drawBattery(ctx: CanvasRenderingContext2D, H: Hand, sx: number, sy: number, R: number, alpha: number, t: number) {
+  ctx.save();
+  ctx.translate(H.x * R * sx, H.y * R * sy);
+  ctx.rotate(H.r * 0.5);
+  ctx.globalAlpha = Math.min(1, alpha);
+  const w = R * 0.34;
+  const h = R * 0.56;
+  const y = -h * 0.7;
+  ctx.lineJoin = "round";
+  ctx.fillStyle = "#f4f6fb";
+  ctx.strokeStyle = "#2a2840";
+  ctx.lineWidth = R * 0.04;
+  ctx.beginPath();
+  ctx.roundRect(-w / 2, y - h / 2, w, h, R * 0.05);
+  ctx.fill();
+  ctx.stroke();
+  // la borne
+  ctx.fillStyle = "#2a2840";
+  ctx.beginPath();
+  ctx.roundRect(-w * 0.22, y - h / 2 - R * 0.06, w * 0.44, R * 0.07, R * 0.02);
+  ctx.fill();
+  // le dernier trait, rouge, qui clignote
+  if (Math.sin(t * 7) > -0.4) {
+    ctx.fillStyle = "#ff3b4e";
+    ctx.beginPath();
+    ctx.roundRect(-w * 0.32, y + h / 2 - h * 0.2, w * 0.64, h * 0.12, R * 0.015);
+    ctx.fill();
+  }
+  gloss(ctx, -w * 0.2, y - h * 0.22, R * 0.03, R * 0.09, 0);
+  ctx.restore();
+}
+
+/** Les tapotements sur la vitre : des ronds qui s'élargissent sous la moufle et s'effacent. */
+function drawTaps(ctx: CanvasRenderingContext2D, H: Hand, sx: number, sy: number, R: number, amount: number, t: number) {
+  ctx.save();
+  ctx.translate(H.x * R * sx, H.y * R * sy);
+  ctx.lineWidth = R * 0.03;
+  for (let k = 0; k < 2; k++) {
+    // un rond par coup (les coups de la pose « tap » tombent à 12 / 2π par seconde)
+    const ph = ((t * 12) / TAU + k * 0.5) % 1;
+    ctx.strokeStyle = `rgba(200, 235, 255, ${0.65 * (1 - ph) * amount})`;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, R * (0.18 + ph * 0.45), R * (0.14 + ph * 0.35), 0, 0, TAU);
+    ctx.stroke();
   }
   ctx.restore();
 }

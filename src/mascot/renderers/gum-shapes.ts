@@ -42,6 +42,8 @@ export type ShapeId =
   | "flamme";
 
 /** Les petits décors propres à une forme, dessinés par gum-draw.ts. */
+export type BubbleKind = "air" | "pore" | "ember";
+
 export type ShapeDecor = "none" | "rays" | "craters" | "spots" | "petals" | "inner-flame" | "cloud-puffs";
 
 export interface GumShape {
@@ -67,6 +69,15 @@ export interface GumShape {
   /** Opacité du corps (le fantôme est un peu transparent). */
   alpha: number;
   decor: ShapeDecor;
+  /**
+   * La gomme laisse passer la lumière (0 = opaque comme une dragée, 1 = verre
+   * comme un berlingot) : lueur du bas, bord qui s'éclaircit.
+   */
+  gel: number;
+  /** Les bulles prises dans la gomme : combien (0 à 4), et lesquelles. */
+  bubbles: number;
+  /** "air" : bulles qui remontent ; "pore" : petits trous de guimauve ; "ember" : braises (soleil, flamme). */
+  bubbleKind: BubbleKind;
   /** La couleur par défaut de la forme (clé de TINTS, gum-draw.ts). */
   tint: string;
 }
@@ -392,29 +403,29 @@ function circleRaw(r: number, cy: number): Pt[] {
 
 // ── Le catalogue des formes ─────────────────────────────────────────────────
 
-type ShapeSpec = Omit<GumShape, "pts" | "faceX" | "eyeScale" | "float" | "alpha" | "decor"> &
-  Partial<Pick<GumShape, "faceX" | "eyeScale" | "float" | "alpha" | "decor">> & { raw: () => Pt[] };
+type Optional = "faceX" | "eyeScale" | "float" | "alpha" | "decor" | "gel" | "bubbles" | "bubbleKind";
+type ShapeSpec = Omit<GumShape, "pts" | Optional> & Partial<Pick<GumShape, Optional>> & { raw: () => Pt[] };
 
 const SPECS: ShapeSpec[] = [
-  { id: "goutte", raw: dropRaw, eyeY: 0.12, eyeDX: 0.38, mouthDY: 0.3, cheekDX: 0.62, shine: [-0.48, -0.36, -0.75, 1], dot: [-0.12, -0.66], hop: 1, tint: "blue" },
-  { id: "guimauve", raw: () => superPts(1.0, -0.86, 0.94, 4.6, 0.05), eyeY: 0.04, eyeDX: 0.42, mouthDY: 0.3, cheekDX: 0.66, shine: [-0.55, -0.5, -0.45, 1.05], dot: [-0.16, -0.66], hop: 0.6, tint: "mint" },
-  { id: "dragee", raw: () => superPts(0.84, -1.08, 0.94, 2, 0.1), eyeY: 0, eyeDX: 0.33, mouthDY: 0.3, cheekDX: 0.56, shine: [-0.4, -0.58, -0.95, 0.95], dot: [-0.06, -0.86], hop: 1.35, tint: "pink" },
-  { id: "berlingot", raw: triangleRaw, eyeY: 0.36, eyeDX: 0.33, mouthDY: 0.27, cheekDX: 0.56, shine: [-0.4, 0.02, -1.08, 0.9], dot: [-0.06, -0.6], hop: 1, tint: "violet" },
-  { id: "etoile", raw: starRaw, eyeY: 0.12, eyeDX: 0.3, mouthDY: 0.26, cheekDX: 0.48, eyeScale: 0.9, shine: [-0.3, -0.42, -0.9, 0.7], dot: [0.02, -0.7], hop: 1.15, tint: "gold" },
-  { id: "soleil", raw: () => circleRaw(0.78, 0.16), eyeY: 0.1, eyeDX: 0.32, mouthDY: 0.28, cheekDX: 0.52, shine: [-0.36, -0.3, -0.8, 0.85], dot: [-0.08, -0.46], hop: 0.9, float: 0.32, decor: "rays", tint: "sun" },
-  { id: "lune", raw: crescentRaw, eyeY: 0.08, eyeDX: 0.2, mouthDY: 0.25, cheekDX: 0.34, faceX: -0.52, eyeScale: 0.8, shine: [-0.6, -0.42, -1.1, 0.75], dot: [-0.34, -0.82], hop: 0.8, float: 0.12, decor: "craters", tint: "moon" },
-  { id: "nuage", raw: cloudRaw, eyeY: 0.3, eyeDX: 0.36, mouthDY: 0.27, cheekDX: 0.6, shine: [-0.3, -0.24, -0.5, 0.9], dot: [0.3, -0.42], hop: 0.8, float: 0.06, decor: "cloud-puffs", tint: "cloud" },
-  { id: "coeur", raw: heartRaw, eyeY: -0.05, eyeDX: 0.36, mouthDY: 0.28, cheekDX: 0.58, shine: [-0.55, -0.48, -0.7, 0.8], dot: [-0.3, -0.66], hop: 1, tint: "red" },
-  { id: "fleur", raw: flowerRaw, eyeY: 0.0, eyeDX: 0.28, mouthDY: 0.26, cheekDX: 0.46, eyeScale: 0.92, shine: [-0.5, -0.56, -0.8, 0.7], dot: [-0.2, -0.8], hop: 1, decor: "petals", tint: "lilac" },
-  { id: "champignon", raw: mushroomRaw, eyeY: -0.22, eyeDX: 0.38, mouthDY: 0.27, cheekDX: 0.64, shine: [-0.58, -0.56, -0.6, 0.9], dot: [-0.2, -0.78], hop: 0.9, decor: "spots", tint: "red" },
-  { id: "fantome", raw: ghostRaw, eyeY: 0.0, eyeDX: 0.34, mouthDY: 0.3, cheekDX: 0.58, shine: [-0.46, -0.56, -0.8, 0.85], dot: [-0.12, -0.84], hop: 0.6, float: 0.22, alpha: 0.88, tint: "ghost" },
-  { id: "flamme", raw: flameRaw, eyeY: 0.3, eyeDX: 0.32, mouthDY: 0.26, cheekDX: 0.54, shine: [-0.42, -0.1, -1.1, 0.85], dot: [-0.04, -0.4], hop: 1.1, decor: "inner-flame", tint: "orange" },
+  { id: "goutte", raw: dropRaw, eyeY: 0.12, eyeDX: 0.38, mouthDY: 0.3, cheekDX: 0.62, shine: [-0.48, -0.36, -0.75, 1], dot: [-0.12, -0.66], hop: 1, gel: 0.85, bubbles: 3, tint: "blue" },
+  { id: "guimauve", raw: () => superPts(1.0, -0.86, 0.94, 4.6, 0.05), eyeY: 0.04, eyeDX: 0.42, mouthDY: 0.3, cheekDX: 0.66, shine: [-0.55, -0.5, -0.45, 1.05], dot: [-0.16, -0.66], hop: 0.6, gel: 0.3, bubbles: 4, bubbleKind: "pore", tint: "mint" },
+  { id: "dragee", raw: () => superPts(0.84, -1.08, 0.94, 2, 0.1), eyeY: 0, eyeDX: 0.33, mouthDY: 0.3, cheekDX: 0.56, shine: [-0.4, -0.58, -0.95, 0.95], dot: [-0.06, -0.86], hop: 1.35, gel: 0.2, bubbles: 0, tint: "pink" },
+  { id: "berlingot", raw: triangleRaw, eyeY: 0.36, eyeDX: 0.33, mouthDY: 0.27, cheekDX: 0.56, shine: [-0.4, 0.02, -1.08, 0.9], dot: [-0.06, -0.6], hop: 1, gel: 1, bubbles: 2, tint: "violet" },
+  { id: "etoile", raw: starRaw, eyeY: 0.12, eyeDX: 0.3, mouthDY: 0.26, cheekDX: 0.48, eyeScale: 0.9, shine: [-0.3, -0.42, -0.9, 0.7], dot: [0.02, -0.7], hop: 1.15, gel: 0.7, bubbles: 2, tint: "gold" },
+  { id: "soleil", raw: () => circleRaw(0.78, 0.16), eyeY: 0.1, eyeDX: 0.32, mouthDY: 0.28, cheekDX: 0.52, shine: [-0.36, -0.3, -0.8, 0.85], dot: [-0.08, -0.46], hop: 0.9, float: 0.32, decor: "rays", gel: 0.65, bubbles: 2, bubbleKind: "ember", tint: "sun" },
+  { id: "lune", raw: crescentRaw, eyeY: 0.08, eyeDX: 0.2, mouthDY: 0.25, cheekDX: 0.34, faceX: -0.52, eyeScale: 0.8, shine: [-0.6, -0.42, -1.1, 0.75], dot: [-0.34, -0.82], hop: 0.8, float: 0.12, decor: "craters", gel: 0.55, bubbles: 1, tint: "moon" },
+  { id: "nuage", raw: cloudRaw, eyeY: 0.3, eyeDX: 0.36, mouthDY: 0.27, cheekDX: 0.6, shine: [-0.3, -0.24, -0.5, 0.9], dot: [0.3, -0.42], hop: 0.8, float: 0.06, decor: "cloud-puffs", gel: 0.15, bubbles: 0, tint: "cloud" },
+  { id: "coeur", raw: heartRaw, eyeY: -0.05, eyeDX: 0.36, mouthDY: 0.28, cheekDX: 0.58, shine: [-0.55, -0.48, -0.7, 0.8], dot: [-0.3, -0.66], hop: 1, gel: 0.85, bubbles: 3, tint: "red" },
+  { id: "fleur", raw: flowerRaw, eyeY: 0.0, eyeDX: 0.28, mouthDY: 0.26, cheekDX: 0.46, eyeScale: 0.92, shine: [-0.5, -0.56, -0.8, 0.7], dot: [-0.2, -0.8], hop: 1, decor: "petals", gel: 0.6, bubbles: 2, tint: "lilac" },
+  { id: "champignon", raw: mushroomRaw, eyeY: -0.22, eyeDX: 0.38, mouthDY: 0.27, cheekDX: 0.64, shine: [-0.58, -0.56, -0.6, 0.9], dot: [-0.2, -0.78], hop: 0.9, decor: "spots", gel: 0.35, bubbles: 1, tint: "red" },
+  { id: "fantome", raw: ghostRaw, eyeY: 0.0, eyeDX: 0.34, mouthDY: 0.3, cheekDX: 0.58, shine: [-0.46, -0.56, -0.8, 0.85], dot: [-0.12, -0.84], hop: 0.6, float: 0.22, alpha: 0.88, gel: 0.9, bubbles: 2, tint: "ghost" },
+  { id: "flamme", raw: flameRaw, eyeY: 0.3, eyeDX: 0.32, mouthDY: 0.26, cheekDX: 0.54, shine: [-0.42, -0.1, -1.1, 0.85], dot: [-0.04, -0.4], hop: 1.1, decor: "inner-flame", gel: 0.7, bubbles: 3, bubbleKind: "ember", tint: "orange" },
 ];
 
 export const SHAPES: Record<ShapeId, GumShape> = Object.fromEntries(
   SPECS.map(({ raw, ...s }) => [
     s.id,
-    { faceX: 0, eyeScale: 1, float: 0, alpha: 1, decor: "none", ...s, pts: normalize(raw()) } as GumShape,
+    { faceX: 0, eyeScale: 1, float: 0, alpha: 1, decor: "none", gel: 0.7, bubbles: 2, bubbleKind: "air", ...s, pts: normalize(raw()) } as GumShape,
   ]),
 ) as Record<ShapeId, GumShape>;
 
