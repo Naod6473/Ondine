@@ -267,9 +267,11 @@ pub use imp::*;
 
 /// Les points mesurés pour la luminosité (fractions du rectangle) : une grille
 /// de 3 × 3, un peu en retrait des bords (barre de titre, bordures).
+#[cfg_attr(not(windows), allow(dead_code))]
 pub const SAMPLES: [(f64, f64); 9] = [(0.2, 0.25), (0.5, 0.25), (0.8, 0.25), (0.2, 0.55), (0.5, 0.55), (0.8, 0.55), (0.2, 0.85), (0.5, 0.85), (0.8, 0.85)];
 
 /// La luminosité perçue d'une couleur (0 à 1, coefficients Rec. 709).
+#[cfg_attr(not(windows), allow(dead_code))]
 pub fn luma(r: u8, g: u8, b: u8) -> f64 {
     (0.2126 * r as f64 + 0.7152 * g as f64 + 0.0722 * b as f64) / 255.0
 }

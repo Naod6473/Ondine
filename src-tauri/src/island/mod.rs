@@ -266,6 +266,11 @@ pub struct PollGate {
     last_click: Mutex<Option<Instant>>,
     /// L'île qui s'écarte des fenêtres (place provisoire, ressort).
     pub dodge: dodge::Dodge,
+    /// Pendant un déplacement : les dernières positions de la souris (px
+    /// physiques, instant), pour reconnaître un lancer (module Ondine et les
+    /// fenêtres), et la fenêtre au premier plan quand on a attrapé l'île.
+    drag_trail: Mutex<Vec<(f64, f64, Instant)>>,
+    drag_fg: Mutex<Option<isize>>,
 }
 
 impl PollGate {
@@ -283,6 +288,8 @@ impl PollGate {
             frame_gen: AtomicU64::new(0),
             last_click: Mutex::new(None),
             dodge: dodge::Dodge::default(),
+            drag_trail: Mutex::new(Vec::new()),
+            drag_fg: Mutex::new(None),
         }
     }
 
@@ -345,6 +352,25 @@ pub fn screen_point_on_island(app: &AppHandle, gate: &PollGate, px: f64, py: f64
         return x >= -40.0 && x <= w + 40.0 && y >= -40.0 && y <= h + 40.0;
     }
     on_shape(&gate.rect.locked(), x, y, 24.0)
+}
+
+/// Le rectangle de l'île à l'écran (px physiques : gauche, haut, droite, bas),
+/// la bande de réveil quand elle est cachée ; None si inconnu.
+pub fn island_screen_rect(app: &AppHandle) -> Option<(f64, f64, f64, f64)> {
+    let shared = app.try_state::<crate::Shared>()?;
+    let gate = &shared.gate;
+    let f = gate.frame(&window(app)?)?;
+    let (x, y, s) = (f.x as f64, f.y as f64, f.scale);
+    if gate.collapsed.load(Ordering::Relaxed) {
+        return Some((x, y, x + f.w as f64, y + f.h as f64));
+    }
+    let r = *gate.rect.locked();
+    (r.w > 0.0).then_some((x + r.x * s, y + r.y * s, x + (r.x + r.w) * s, y + (r.y + r.h) * s))
+}
+
+/// Le bord où se trouve l'île maintenant (place provisoire comprise).
+pub fn current_edge(app: &AppHandle) -> String {
+    Placement::current(app).edge
 }
 
 fn monitor_contains(m: &Monitor, x: f64, y: f64) -> bool {
@@ -438,6 +464,12 @@ pub fn frame_in(a: &Area, scale: f64, place: &Placement, collapsed: bool, tall: 
     (pw, ph, x, y)
 }
 
+/// `target_frame`, perchée sur une barre de titre si besoin (dodge.rs).
+fn frame_for(m: &Monitor, place: &Placement, collapsed: bool, tall: bool, perch: Option<(i32, i32)>) -> (u32, u32, i32, i32) {
+    let screen = (m.position().x, m.position().y, m.size().width, m.size().height);
+    dodge::perched_frame(target_frame(m, place, collapsed, tall), perch, &place.edge, screen)
+}
+
 /// Place et dimensionne la fenêtre, en pixels physiques : taille logique × échelle
 /// de l'écran (125 %, 150 %…), au bord et à la place choisis (`Placement`).
 pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
@@ -448,7 +480,8 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     if let Some(shared) = app.try_state::<crate::Shared>() {
         *shared.gate.panel.locked() = place.window_size(false, tall);
     }
-    let (pw, ph, x, y) = target_frame(&m, &place, collapsed, tall);
+    let perch = app.try_state::<crate::Shared>().and_then(|s| s.gate.dodge.perch());
+    let (pw, ph, x, y) = frame_for(&m, &place, collapsed, tall, perch);
 
     // L'île est en train de s'écarter d'une fenêtre (ressort de dodge.rs) : la
     // taille tout de suite, la position reste au ressort (nouvelle cible).
@@ -477,6 +510,9 @@ pub fn drag_start(app: &AppHandle, gate: &PollGate) {
     let (Ok(origin), Some((cx, cy))) = (win.outer_position(), platform::cursor_physical()) else { return };
     // Elle s'écartait d'une fenêtre : la main reprend la main (le ressort s'arrête).
     gate.dodge.forget();
+    gate.drag_trail.locked().clear();
+    // L'île ne prend pas le focus : la fenêtre au premier plan est celle de la personne.
+    *gate.drag_fg.locked() = platform::winlife::foreground().filter(|w| !w.own).map(|w| w.hwnd);
     *gate.drag.locked() = Some((cx - origin.x as f64, cy - origin.y as f64));
 }
 
@@ -496,23 +532,35 @@ fn drag_end(app: &AppHandle, gate: &PollGate) {
     let ms = *m.size();
     let cx = ((origin.x - mp.x) as f64 + (r.x + r.w / 2.0) * scale) / scale;
     let cy = ((origin.y - mp.y) as f64 + (r.y + r.h / 2.0) * scale) / scale;
-    let place = snap(cx, cy, ms.width as f64 / scale, ms.height as f64 / scale);
-    log::info(format!("île déplacée : bord {}, place {}", place.edge, place.align));
 
-    // Enregistrer, et prévenir les fenêtres (l'île change de forme selon le bord).
-    // Enregistré sous le verrou des réglages, comme apply_settings (lib.rs) :
-    // une sauvegarde venue de la page ne peut pas se glisser entre les deux.
-    let new = {
-        let mut s = shared.settings.locked();
-        s.island.edge = place.edge.clone();
-        s.island.align = place.align.clone();
-        s.island.offset = place.offset;
-        if let Err(e) = crate::services::settings::save(&s) {
-            log::warn(format!("réglages non enregistrés : {e}"));
-        }
-        s.clone()
+    // Lancée d'un geste vif vers un bord (module Ondine et les fenêtres) : c'est
+    // la fenêtre au premier plan qui va se coller à ce bord ; l'île, elle,
+    // revient à sa place.
+    let trail: Vec<(f64, f64, Instant)> = std::mem::take(&mut *gate.drag_trail.locked());
+    let fg = gate.drag_fg.locked().take();
+    let thrown = fg.and_then(|hwnd| crate::modules::windowlife::throw_window(app, hwnd, &trail, scale));
+    let place = if thrown.is_some() {
+        Placement::current(app)
+    } else {
+        let place = snap(cx, cy, ms.width as f64 / scale, ms.height as f64 / scale);
+        log::info(format!("île déplacée : bord {}, place {}", place.edge, place.align));
+
+        // Enregistrer, et prévenir les fenêtres (l'île change de forme selon le bord).
+        // Enregistré sous le verrou des réglages, comme apply_settings (lib.rs) :
+        // une sauvegarde venue de la page ne peut pas se glisser entre les deux.
+        let new = {
+            let mut s = shared.settings.locked();
+            s.island.edge = place.edge.clone();
+            s.island.align = place.align.clone();
+            s.island.offset = place.offset;
+            if let Err(e) = crate::services::settings::save(&s) {
+                log::warn(format!("réglages non enregistrés : {e}"));
+            }
+            s.clone()
+        };
+        let _ = app.emit("settings-changed", new);
+        place
     };
-    let _ = app.emit("settings-changed", new);
 
     // La fenêtre glisse jusqu'à sa place (quelques images, en ralentissant),
     // puis prend la taille du panneau de ce bord.
@@ -633,6 +681,12 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
             if let Some((gx, gy)) = grab {
                 if down {
                     let _ = win.set_position(PhysicalPosition::new((cx - gx).round() as i32, (cy - gy).round() as i32));
+                    // Les dernières positions : la vitesse au lâcher dira si c'est un lancer.
+                    let mut trail = gate.drag_trail.locked();
+                    trail.push((cx, cy, Instant::now()));
+                    if trail.len() > 8 {
+                        trail.remove(0);
+                    }
                     continue;
                 }
                 *gate.drag.locked() = None;

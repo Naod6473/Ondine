@@ -30,7 +30,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize};
 
 use super::avoid::{self, Rect, Screen, Size};
-use super::{target_frame, target_monitor, window, Placement, WINDOW_LABEL};
+use super::{target_monitor, window, Placement, WINDOW_LABEL};
 use crate::platform;
 use crate::services::log;
 use crate::sync::LockExt;
@@ -86,6 +86,9 @@ pub struct Dodge {
     cornered: Mutex<bool>,
     last_shake: Mutex<Option<Instant>>,
     mover: Mutex<Mover>,
+    /// Posée sur la barre de titre d'une fenêtre (module Ondine et les
+    /// fenêtres) : le milieu de la barre et son haut (px physiques).
+    perch: Mutex<Option<(i32, i32)>>,
 }
 
 impl Dodge {
@@ -119,6 +122,47 @@ impl Dodge {
     pub fn has_obstacle(&self, source: &str) -> bool {
         self.obstacles.locked().contains_key(source)
     }
+
+    /// Où elle est perchée (None : sur son bord).
+    pub fn perch(&self) -> Option<(i32, i32)> {
+        *self.perch.locked()
+    }
+}
+
+/// Perchée sur une barre de titre (île du haut seulement) : la fenêtre de
+/// l'île se centre sur `cx` et se pose sur `top` (px physiques), sans sortir
+/// de l'écran `(x, y, largeur, hauteur)`. Sinon, la place calculée `frame`.
+pub fn perched_frame(frame: (u32, u32, i32, i32), perch: Option<(i32, i32)>, edge: &str, screen: (i32, i32, u32, u32)) -> (u32, u32, i32, i32) {
+    let (pw, ph, x, y) = frame;
+    let Some((cx, top)) = perch else { return (pw, ph, x, y) };
+    if edge != "top" {
+        return (pw, ph, x, y);
+    }
+    let (sx, sy, sw, sh) = screen;
+    let nx = (cx - pw as i32 / 2).clamp(sx, sx + (sw as i32 - pw as i32).max(0));
+    let ny = top.clamp(sy, sy + (sh as i32 - ph as i32).max(0));
+    (pw, ph, nx, ny)
+}
+
+/// Se percher sur une barre de titre (Some : son milieu et son haut, px
+/// physiques), ou revenir sur son bord (None). Au ressort, comme une fuite.
+pub fn set_perch(app: &AppHandle, perch: Option<(i32, i32)>) {
+    let Some(shared) = app.try_state::<crate::Shared>() else { return };
+    {
+        let mut p = shared.gate.dodge.perch.locked();
+        // Quelques pixels de différence : on ne bouge pas (la fenêtre tremble sinon).
+        let same = match (*p, perch) {
+            (Some(a), Some(b)) => (a.0 - b.0).abs() < 3 && (a.1 - b.1).abs() < 3,
+            (None, None) => true,
+            _ => false,
+        };
+        if same || shared.gate.drag.locked().is_some() {
+            return;
+        }
+        *p = perch;
+    }
+    let place = super::Placement::current(app);
+    move_to(app, &place);
 }
 
 /// Un rectangle à éviter (px physiques), ou None quand il n'y en a plus.
@@ -189,7 +233,8 @@ pub fn recompute(app: &AppHandle) {
         (s.general.screen.clone(), home, s.island.avoid_settings)
     };
     // Pendant un déplacement à la main : rien (la fin du déplacement décide).
-    if gate.drag.locked().is_some() {
+    // Perchée sur une barre de titre : elle y reste (le module la fait descendre).
+    if gate.drag.locked().is_some() || gate.dodge.perch().is_some() {
         return;
     }
     let Some(m) = target_monitor(app, &pref) else { return };
@@ -264,7 +309,7 @@ fn move_to(app: &AppHandle, place: &Placement) {
     let Some(m) = target_monitor(app, &pref) else { return };
     let collapsed = gate.collapsed.load(Ordering::Relaxed);
     let tall = gate.tall.load(Ordering::Relaxed);
-    let (pw, ph, x, y) = target_frame(&m, place, collapsed, tall);
+    let (pw, ph, x, y) = super::frame_for(&m, place, collapsed, tall, gate.dodge.perch());
     *gate.panel.locked() = place.window_size(false, tall);
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     gate.invalidate_frame();
@@ -401,7 +446,20 @@ fn spawn_mover(app: AppHandle) {
 
 #[cfg(test)]
 mod tests {
-    use super::{shake_offset, spring_step};
+    use super::{perched_frame, shake_offset, spring_step};
+
+    #[test]
+    fn perched_on_a_title_bar_but_never_off_screen() {
+        let screen = (0, 0, 1920, 1080);
+        let frame = (720, 320, 600, 0);
+        // Pas perchée, ou pas en haut : la place calculée.
+        assert_eq!(perched_frame(frame, None, "top", screen), frame);
+        assert_eq!(perched_frame(frame, Some((400, 200)), "left", screen), frame);
+        // Centrée sur la barre de titre, posée sur son haut.
+        assert_eq!(perched_frame(frame, Some((1000, 200)), "top", screen), (720, 320, 640, 200));
+        // Une fenêtre au bord de l'écran : la fenêtre de l'île reste dedans.
+        assert_eq!(perched_frame(frame, Some((100, 900)), "top", screen), (720, 320, 0, 760));
+    }
 
     #[test]
     fn spring_reaches_target_smoothly_with_a_small_bounce() {

@@ -61,6 +61,8 @@ mod agents_tools;
 mod agents_mcp_extra;
 // Les rappels d'attente.
 mod agents_wait;
+// Ondine et les fenêtres (public : island/mod.rs lui demande le « lancer »).
+pub mod windowlife;
 
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -234,6 +236,7 @@ impl Registry {
             Box::new(askclaude::AskClaude::default()),
             Box::new(weather::WeatherModule::default()),
             Box::new(weekly::Weekly::default()),
+            Box::new(windowlife::WindowLife),
         ];
 
         let mut entries = Vec::new();
