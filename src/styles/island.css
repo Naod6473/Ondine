@@ -77,7 +77,9 @@ body {
   --r: 21px;
 }
 .island[data-state="expanded"] {
-  width: 640px;
+  /* --fit-w : plus étroite pour une réponse courte, un peu plus large pour un
+     contenu large (data-island-fit="both", fit.ts). */
+  width: var(--fit-w, 640px);
   /* Plus haute si un contenu doit se voir en entier (un QR code) : --fit-h,
      posée par island.ts (fit.ts). Le ressort de l'île anime le changement. */
   height: max(270px, var(--fit-h, 0px));
@@ -3532,7 +3534,7 @@ body[data-perf="eco"] .gh-today.gh-zero {
 }
 
 /* ── L'île ailleurs qu'en haut au centre (gestures.ts, island/mod.rs) ──── */
-/* <body data-edge="top|left|right" data-align="start|center|end"> */
+/* <body data-edge="top|bottom|left|right" data-align="start|center|end"> */
 body[data-edge="top"][data-align="start"] .island {
   left: 0;
   translate: 0 0;
@@ -3543,6 +3545,28 @@ body[data-edge="top"][data-align="end"] .island {
   right: 0;
   translate: 0 0;
   border-radius: 0 0 0 var(--r, 0);
+}
+/* En bas : posée sur la barre des tâches, elle s'ouvre vers le haut (le
+   centre de l'écran) ; les coins arrondis sont ceux du haut. */
+body[data-edge="bottom"] .island {
+  top: auto;
+  bottom: 0;
+  border-radius: var(--r, 0) var(--r, 0) 0 0;
+}
+body[data-edge="bottom"][data-align="start"] .island {
+  left: 0;
+  translate: 0 0;
+  border-radius: 0 var(--r, 0) 0 0;
+}
+body[data-edge="bottom"][data-align="end"] .island {
+  left: auto;
+  right: 0;
+  translate: 0 0;
+  border-radius: var(--r, 0) 0 0 0;
+}
+body[data-edge="bottom"] .island::after {
+  bottom: auto;
+  top: 4px;
 }
 body[data-edge="left"] .island,
 body[data-edge="right"] .island {
@@ -3673,6 +3697,12 @@ body[data-edge="right"] .island::after {
   left: auto;
   right: 0;
 }
+/* En bas : elle sort la tête de la barre des tâches, debout. */
+.hang[data-edge="bottom"] {
+  --hide: 0 115%;
+  top: auto;
+  bottom: 0;
+}
 .hang[data-edge="left"][data-align="start"],
 .hang[data-edge="right"][data-align="start"] {
   top: 64px;
@@ -3704,6 +3734,9 @@ body[data-edge="right"] .island::after {
 }
 .hang[data-edge="right"] .hang-sway {
   transform-origin: 100% 50%;
+}
+.hang[data-edge="bottom"] .hang-sway {
+  transform-origin: 50% 100%;
 }
 @keyframes hang-sway {
   from {

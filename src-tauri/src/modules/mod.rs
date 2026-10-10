@@ -77,6 +77,8 @@ mod agents_mcp_extra;
 mod agents_wait;
 // Animations de l'île : sortie de veille, Verr Maj, copier / coller, volume, Wi-Fi, niveaux sonores.
 mod halos;
+// Ondine et les fenêtres (public : island/mod.rs lui demande le « lancer »).
+pub mod windowlife;
 
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -252,6 +254,7 @@ impl Registry {
             Box::new(weekly::Weekly::default()),
             Box::new(halos::Halos),
             Box::new(team::Team::default()),
+            Box::new(windowlife::WindowLife),
         ];
 
         let mut entries = Vec::new();

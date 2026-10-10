@@ -117,6 +117,33 @@ clavier est entouré de la couleur d'accent du thème (`:focus-visible`).
 souris. L'île se replace toute seule quand un écran est branché, débranché ou
 change d'échelle (vérifié deux fois par seconde).
 
+**Les quatre bords.** `island.edge` = `top`, `bottom`, `left` ou `right`
+(`Placement`, `frame_in` testé dans island/mod.rs). En bas, l'île se pose sur
+la barre des tâches (le bas de la zone de travail), et s'ouvre vers le haut
+(island.css `body[data-edge="bottom"]`, jelly.ts : marge de bosse en haut,
+points collés en bas). L'aimant (`snap`) choisit le bord le plus proche des
+quatre.
+
+**L'île s'écarte des fenêtres** (`island/avoid.rs` : le calcul pur, testé ;
+`island/dodge.rs` : le reste). Des sources donnent un rectangle à éviter :
+`settings` (la fenêtre de réglages : ses événements Moved / Resized, montrée
+par `show_window`, cachée par CloseRequested / `window_hide`), `foreground` et
+`toast` (module Ondine et les fenêtres). `escape` : la maison libre → elle y
+reste ; sinon elle glisse le long de son bord (côté le plus proche) ; bord
+couvert → le bord libre le plus proche ; plus rien → le coin le plus loin,
+« acculée ». La place trouvée est **provisoire** (`Placement::current`,
+jamais enregistrée) ; plus rien ne gêne → elle rentre. La fenêtre de l'île y
+va au ressort (thread de ~60 Hz, un peu amorti, interruptible ; acculée : un
+tremblement de 3 px) ; Réduire les animations de Windows
+(`winlife::reduced_motion`) ou mode Calme → directement. Le front reçoit
+`island-placement` {edge, align, phase: flee | cornered | home, soft} : le
+`data-edge` / `data-align` de `<body>` suivent, et Ondine a peur (`scared`,
+`panic` acculée) puis est soulagée (`relieved`). Une source « douce »
+(premier plan, bulle) : marge plus petite, ni peur, ni coin. Réglage
+`island.avoidSettings` (oui). Le module peut aussi la **percher** sur la barre
+de titre de la fenêtre active (`set_perch`, `perched_frame`, île du haut).
+Scène démo « L'île s'écarte ».
+
 ### La machine à états (`src/island/island-state.ts`)
 
 | État       | Ce qu'on voit |
@@ -228,6 +255,13 @@ qu'une fois les ressorts posés (au plus tard après 1,5 s).
   ouverte grandit alors juste assez (jusqu'à 480 px, variable CSS `--fit-h`),
   avec le même ressort, puis reprend sa taille quand il s'en va. La fenêtre
   passe d'abord au panneau haut (`island_set_tall`, 720 × 530).
+  `data-island-fit="both"` : en largeur aussi (`--fit-w`, de 420 px ou la
+  largeur des onglets jusqu'à 700 px), d'après la largeur naturelle
+  (`max-content`) de la partie marquée `data-island-fit-w` (les bulles de
+  Parler à Ondine). La mesure est continue (ResizeObserver sur le contenu
+  marqué, texte observé) ; la gelée passe en « glisse » (`Jelly.setGlide` :
+  ressort amorti sans rebond, qui garde sa vitesse) et `settle` ne la laisse
+  rétrécir que nettement : pas de saut à chaque mot.
 - **Changement d'onglet** (`switchTab`) : on ne redessine pas toute la vue. La
   pastille de l'onglet actif (`src/island/tab-pill.ts`) se déplace avec deux
   ressorts, un par bord : le bord qui mène est raide, celui qui suit est mou,
@@ -2282,6 +2316,29 @@ En éco, en plus : les effets « Studio » (flou → net) sont remplacés par ce
   de 2 fois par seconde.
 
 Pour comparer : Réglages → Général → À propos → « Ressources utilisées ».
+
+## Ondine et les fenêtres (`src/modules/windowlife/`, `src-tauri/src/modules/windowlife.rs`, `src-tauri/src/platform/winlife.rs`)
+
+Module sans onglet. Un thread (4 fois par seconde, 2 en éco ; 30 quand la
+souris est tout près de l'île) lit la fenêtre au premier plan
+(`winlife::foreground` : place sans bordure invisible, agrandie, à Ondine…)
+et publie ce qu'il voit ; le front en fait des expressions (`mascot.emote`,
+rien en mode Calme). Réglages (les intrusifs coupés par défaut) :
+`avoidForeground` (non : source `foreground` de dodge.rs, sauf fenêtre
+agrandie ou plein écran), `perchTitle` (non), `throwSnap` (non : à la fin
+d'un déplacement, island/mod.rs appelle `throw_window` ; un geste de plus de
+1800 px/s colle la fenêtre au premier plan à la moitié gauche / droite,
+l'agrandit (haut) ou la restaure (bas), `push`), `fullscreenHop`
+(`surprised` ; le mode présentation cache toujours l'île), `sitEdge`
+(`sit-edge`), `mouseShake` (`laugh` / `hide`), `toastRoom` (heuristique :
+fenêtres `Windows.UI.Core.CoreWindow` petites dans le coin bas droit → source
+`toast`), `nightSunglasses` (21 h – 6 h, 9 pixels de la nouvelle fenêtre au
+premier plan, au plus toutes les 15 min), `agendaClimb` (`agenda.reminder` →
+`climb`), `lockGoodbye` (`OpenInputDesktop` refusé = verrouillé : `goodbye`,
+puis `stretch`), `tidyForgotten` (non) + `forgottenMins` (une notification
+propose « Réduire » : commande `minimize`, jamais fermer). Le « pont » de
+fichiers à travers l'île n'est pas fait (l'Étagère sait déjà glisser un
+fichier vers l'Explorateur).
 
 ## Fenêtre de réglages : catégories et sous-menus (`src/settings/main.ts`)
 

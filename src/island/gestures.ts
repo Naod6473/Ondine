@@ -17,7 +17,7 @@
 // Secouer : des allers-retours rapides pendant qu'on tire (ShakeDetector)
 // préviennent Ondine (onShake), qui peut avoir le tournis.
 //
-// L'île peut être en haut, à gauche ou à droite de l'écran (`data-edge` sur
+// L'île peut être en haut, en bas, à gauche ou à droite de l'écran (`data-edge` sur
 // <body>) : les calculs se font sur un « axe » qui va du bord de l'écran vers
 // le centre, et un axe perpendiculaire.
 
@@ -37,7 +37,12 @@ const SHAKE_TURNS = 4;
 const SHAKE_MIN = 10;
 const SHAKE_MS = 900;
 
-export type Edge = "top" | "left" | "right";
+export type Edge = "top" | "bottom" | "left" | "right";
+
+/** Le bord est-il horizontal (l'île couchée le long du haut ou du bas) ? */
+export function horizontal(edge: Edge): boolean {
+  return edge === "top" || edge === "bottom";
+}
 
 /** L'axe « bord de l'écran → centre » et l'axe perpendiculaire, selon le bord. */
 function axes(edge: Edge) {
@@ -46,6 +51,8 @@ function axes(edge: Edge) {
       return { along: { x: 1, y: 0 }, across: { x: 0, y: 1 } };
     case "right":
       return { along: { x: -1, y: 0 }, across: { x: 0, y: 1 } };
+    case "bottom":
+      return { along: { x: 0, y: -1 }, across: { x: 1, y: 0 } };
     default:
       return { along: { x: 0, y: 1 }, across: { x: 1, y: 0 } };
   }
@@ -57,9 +64,15 @@ export function grabZone(shell: HTMLElement, edge: Edge, x: number, y: number): 
   if (x < r.left || x > r.right || y < r.top || y > r.bottom) return null;
   // Distance au bord de l'écran (extérieur) et au bord opposé (intérieur).
   const [toOuter, toInner] =
-    edge === "left" ? [x - r.left, r.right - x] : edge === "right" ? [r.right - x, x - r.left] : [y - r.top, r.bottom - y];
+    edge === "left"
+      ? [x - r.left, r.right - x]
+      : edge === "right"
+        ? [r.right - x, x - r.left]
+        : edge === "bottom"
+          ? [r.bottom - y, y - r.top]
+          : [y - r.top, r.bottom - y];
   // Île très fine (aperçu) : pas de place pour deux bandes, on étire seulement.
-  const thickness = edge === "top" ? r.height : r.width;
+  const thickness = horizontal(edge) ? r.height : r.width;
   if (thickness < GRAB_BAND * 3) return "inner";
   if (toOuter <= GRAB_BAND) return "outer";
   if (toInner <= GRAB_BAND) return "inner";

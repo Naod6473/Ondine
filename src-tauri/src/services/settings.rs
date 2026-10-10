@@ -79,7 +79,7 @@ pub struct IslandPrefs {
     /// L'ordre des onglets (ids de modules) choisi par l'utilisateur ; vide =
     /// l'ordre d'origine. Un module absent de la liste se met après les autres.
     pub tab_order: Vec<String>,
-    /// Le bord de l'écran où vit l'île : "top", "left" ou "right".
+    /// Le bord de l'écran où vit l'île : "top", "bottom", "left" ou "right".
     pub edge: String,
     /// Sa place le long de ce bord : "start" (coin haut ou gauche), "center"
     /// (à `offset`), "end" (coin bas ou droit).
@@ -113,6 +113,9 @@ pub struct IslandPrefs {
     pub tips: bool,
     /// Les onglets (ids de modules) dont l'astuce a déjà été vue.
     pub tips_seen: Vec<String>,
+    /// L'île s'écarte de la fenêtre de réglages quand elle la cacherait
+    /// (island/dodge.rs), puis revient à sa place à la fermeture.
+    pub avoid_settings: bool,
 }
 
 fn default_motion() -> String {
@@ -225,6 +228,7 @@ impl Default for IslandPrefs {
             elasticity: default_elasticity(),
             tips: true,
             tips_seen: Vec::new(),
+            avoid_settings: true,
         }
     }
 }
@@ -279,7 +283,7 @@ impl Settings {
             self.general.settings_mode = "simple".into();
         }
         let i = &mut self.island;
-        if !["top", "left", "right"].contains(&i.edge.as_str()) {
+        if !["top", "bottom", "left", "right"].contains(&i.edge.as_str()) {
             i.edge = "top".into();
         }
         if !["start", "center", "end"].contains(&i.align.as_str()) {

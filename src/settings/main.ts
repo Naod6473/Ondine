@@ -95,7 +95,7 @@ const MODULE_CATEGORIES: { id: string; label: string; modules: string[] }[] = [
   { id: "files", label: "Fichiers", modules: ["shelf", "clipboard", "capture", "launcher"] },
   { id: "organize", label: "Organisation", modules: ["timer", "notes", "agenda", "pauses", "weekly"] },
   { id: "it", label: "Outils IT", modules: ["terminal", "system", "remote", "nettools", "team"] },
-  { id: "daily", label: "Le PC au quotidien", modules: ["media", "controls", "weather", "halos"] },
+  { id: "daily", label: "Le PC au quotidien", modules: ["media", "controls", "weather", "halos", "windowlife"] },
   { id: "other", label: "Autres modules", modules: [] },
 ];
 
@@ -919,7 +919,7 @@ function general(main: HTMLElement) {
       ),
       row(
         "Bord de l'écran",
-        choice(s.island.edge, [["top", "En haut"], ["left", "À gauche"], ["right", "À droite"]], (v) =>
+        choice(s.island.edge, [["top", "En haut"], ["bottom", "En bas"], ["left", "À gauche"], ["right", "À droite"]], (v) =>
           save((d) => {
             d.island.edge = v as Settings["island"]["edge"];
             d.island.align = "center";
@@ -927,6 +927,11 @@ function general(main: HTMLElement) {
           }, true),
         ),
         "Vous pouvez aussi attraper l'île par son bord collé à l'écran et la poser ailleurs : elle s'aimante aux bords, aux coins et au centre.",
+      ),
+      row(
+        "Ondine évite la fenêtre de réglages",
+        toggle(s.island.avoidSettings ?? true, (v) => save((d) => (d.island.avoidSettings = v)), "Ondine évite la fenêtre de réglages"),
+        "Si cette fenêtre la cache, l'île glisse le long du bord pour lui laisser la place, puis revient à sa place quand vous la fermez.",
       ),
       row(
         "Mode présentation",
@@ -1052,6 +1057,7 @@ function demoGroup(): HTMLElement {
                 scene("mascot-talk", "Ondine parle"),
                 scene("team-visit", "Visite d'une collègue"),
                 scene("ai-outage", "Panne d'un service IA"),
+                scene("island-dodge", "L'île s'écarte"),
               ),
               "La notification arrive dans l'île : lancez l'enregistrement avant de cliquer.",
             ),

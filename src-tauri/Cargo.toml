@@ -167,6 +167,10 @@ windows = { version = "0.61", features = [
   "Win32_System_RemoteDesktop",
   # Contrôles : batterie des appareils Bluetooth (SetupDiGetDevicePropertyW, DEVPROPTYPE).
   "Win32_Devices_Properties",
+  # Ondine et les fenêtres : la vraie place des fenêtres (sans bordure
+  # invisible), les fenêtres cachées par Windows, la session verrouillée.
+  "Win32_Graphics_Dwm",
+  "Win32_System_StationsAndDesktops",
 ] }
 
 [profile.release]

@@ -49,6 +49,8 @@ pub mod bt_battery;
 pub mod desktop_icons;
 // Contrôles → télécommande sur le téléphone : Page suivante / précédente. Contient sa propre version Linux.
 pub mod keys;
+// Les autres fenêtres (premier plan, bulles, verrouillage) pour « Ondine et les fenêtres ». Contient sa propre version Linux.
+pub mod winlife;
 
 #[cfg(windows)]
 mod drop_target;

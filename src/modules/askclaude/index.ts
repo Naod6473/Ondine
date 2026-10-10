@@ -671,7 +671,9 @@ export const askclaude: IslandModule = {
       const draw = () => {
         const grow = api.settings().autoGrow !== false;
         box.classList.toggle("grow", grow);
-        box.toggleAttribute("data-island-fit", grow);
+        // "both" : en largeur aussi, d'après les bulles (data-island-fit-w, fit.ts).
+        if (grow) box.setAttribute("data-island-fit", "both");
+        else box.removeAttribute("data-island-fit");
         const s = state.status;
         const who = PROVIDER_NAMES[s?.provider ?? "claude"] ?? "Claude";
         const parts: (HTMLElement | null)[] = [];
@@ -716,7 +718,7 @@ export const askclaude: IslandModule = {
         // La conversation. Le premier mot d'Ondine est écrit ici : il ne coûte rien.
         list = el(
           "div",
-          { class: "ask-thread", role: "log", "aria-live": "polite" },
+          { class: "ask-thread", role: "log", "aria-live": "polite", "data-island-fit-w": "" },
           state.bubbles.length === 0
             ? el(
                 "div",
