@@ -13,12 +13,32 @@
 // avec ce qu'Ondine a fait (`activity`) et des cartes de fichiers (`cards` :
 // Ouvrir, Montrer dans l'Explorateur), ou s'arrêter sur une demande d'accord
 // (`pending` : lire ou créer un fichier), qui reprend avec `confirm`.
+//
+// La voix (askclaude_voice.rs) : un raccourci global, ou le bouton 🎙️, ouvre
+// l'écoute. Le Rust publie `askclaude.voice` : `open` (la mascotte sursaute
+// puis tend l'oreille, un point rouge et une bulle de sous-titres en direct),
+// `partial`, `final` (le texte part comme un message tapé ; « Regarde ça » :
+// l'image de la fenêtre est jointe et attend votre clic), `empty`, `cancel`,
+// `blocked` (discrétion), `error`. Ondine sur le bureau (src/pet/) l'écoute
+// aussi : une seule fenêtre « s'en occupe » (`owner`), la bulle d'Ondine si
+// elle est sur le bureau avec cet onglet, sinon l'île.
+//
+// La réponse s'écrit petit à petit avec des « plop plip » (plops.ts) ; la
+// bouche suit (sujet « mascot.talk {open: 0..1, brow?} », la bouche se
+// referme seule ; `brow` : "question" sur « ? », "exclaim" sur « ! »).
+// L'humeur est jouée à la fin. Mains libres : le micro se rallume ensuite.
+//
+// Commandes rapides (askclaude_quick.rs) : « volume 30 », « minuteur 10
+// minutes », « note : … » sont faites sans IA ni clé (`quick`), avant tout envoi.
 
 import manifest from "./manifest.json";
 import { Bridge } from "../../core/bridge";
 import { errorText } from "../../core/log";
 import type { DropTarget, IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
+import { settingsStore } from "../../core/settings-store";
+import { reducedMotion } from "../../island/tab-pill";
+import { DEFAULT_TIMBRE, speak, TIMBRES } from "./plops";
 
 interface Preview {
   id: number;
@@ -89,6 +109,24 @@ interface Answer {
   pending?: Ask;
 }
 
+/** Une commande rapide faite sans IA (`quick`). */
+interface Quick {
+  handled: boolean;
+  answer?: string;
+  error?: string;
+  activity?: Activity[];
+}
+
+/** Un message du Rust sur l'écoute (sujet « askclaude.voice »). */
+interface VoiceMsg {
+  kind: "open" | "partial" | "transcribing" | "final" | "empty" | "cancel" | "blocked" | "error";
+  text?: string;
+  look?: boolean;
+  hold?: boolean;
+  why?: string;
+  message?: string;
+}
+
 /** Un message affiché. Les réponses gardent leurs jetons pour la petite ligne du bas. */
 interface Bubble {
   user: boolean;
@@ -112,7 +150,23 @@ const state: {
   error: string;
   /** L'échange arrêté sur une demande d'accord, et ce qu'Ondine a déjà fait. */
   pending: { ask: Ask; activity: Activity[] } | null;
-} = { draft: "", attachment: null, bubbles: [], status: null, busy: false, error: "", pending: null };
+  /** L'écoute : en cours, « Regarde ça », touche tenue, sous-titres, texte en cours d'écriture, petite note. */
+  voice: { on: boolean; look: boolean; hold: boolean; partial: string; transcribing: boolean; note: string };
+  /** Le message en cours venait de la voix (mains libres après la réponse). */
+  spoken: boolean;
+} = {
+  draft: "",
+  attachment: null,
+  bubbles: [],
+  status: null,
+  busy: false,
+  error: "",
+  pending: null,
+  voice: { on: false, look: false, hold: false, partial: "", transcribing: false, note: "" },
+  spoken: false,
+};
+/** La réponse qui s'écrit petit à petit (son indice, ce qui est visible, de quoi l'arrêter). */
+let reveal: { index: number; shown: number; stop: () => void } | null = null;
 /** Les bulles déjà apparues : seules les nouvelles s'animent à l'arrivée. */
 let shown = 0;
 const redraws = new Set<() => void>();
@@ -137,7 +191,7 @@ async function refresh(api: ModuleApi) {
 }
 
 /** Prépare un fichier (ou un texte) à joindre : l'aperçu s'affiche, rien n'est envoyé. */
-async function attach(api: ModuleApi, args: { text?: string; path?: string }) {
+async function attach(api: ModuleApi, args: { text?: string; path?: string; look?: boolean }) {
   state.error = "";
   try {
     state.attachment = await api.invoke<Preview>("prepare", args);
@@ -165,7 +219,58 @@ function receive(api: ModuleApi, a: Answer) {
     activity: a.activity,
     cards: a.cards,
   });
-  if (a.emotion) api.emit("mascot.emote", { emotion: a.emotion });
+  // L'humeur est jouée quand le texte a fini de s'écrire.
+  void startReveal(api, state.bubbles.length - 1, a.answer || "…", a.emotion);
+}
+
+/** Les petits sons sont-ils permis maintenant (réglages, discrétion) ? Leur volume, 0 = muets. */
+async function plopVolume(api: ModuleApi): Promise<number> {
+  const s = api.settings();
+  if (s.plops === false) return 0;
+  const volume = Math.max(0, Math.min(100, Number(s.plopVolume ?? 50))) / 100;
+  if (volume <= 0) return 0;
+  const now = await api.invoke<{ discreet: string | null } | null>("voice_state").catch(() => null);
+  return now?.discreet ? 0 : volume;
+}
+
+/**
+ * Écrit la réponse n° `index` petit à petit, avec ses gouttes et la bouche
+ * de la mascotte ; puis l'humeur, et le micro si « Mains libres ».
+ */
+async function startReveal(api: ModuleApi, index: number, text: string, mood: string | null) {
+  reveal?.stop();
+  const spoken = state.spoken;
+  state.spoken = false;
+  const r = { index, shown: 0, stop: () => {} };
+  reveal = r;
+  const volume = await plopVolume(api);
+  if (reveal !== r) return;
+  const instant = reducedMotion() || settingsStore.current.mascot.calm === true;
+  if (!instant) api.emit("mascot.emote", { emotion: "talk" });
+  r.stop = speak(text, {
+    timbre: TIMBRES[settingsStore.current.mascot.id] ?? DEFAULT_TIMBRE,
+    mood,
+    volume,
+    instant,
+    onText: (n) => {
+      r.shown = n;
+      const node = document.querySelector<HTMLElement>(`[data-reveal="${index}"]`);
+      if (!node) return;
+      node.textContent = text.slice(0, n);
+      const list = node.closest<HTMLElement>(".ask-thread");
+      if (list) list.scrollTop = list.scrollHeight;
+    },
+    onMouth: (open, brow) => {
+      if (!instant) api.emit("mascot.talk", brow ? { open, brow } : { open });
+    },
+    onEnd: () => {
+      if (reveal === r) reveal = null;
+      if (mood) api.emit("mascot.emote", { emotion: mood });
+      redraw();
+      // Mains libres : après une question dite à voix haute, le micro se rallume.
+      if (spoken && api.settings().handsFree === true) void api.invoke("listen", { handsFree: true }).catch(() => {});
+    },
+  });
 }
 
 async function send(api: ModuleApi) {
@@ -174,9 +279,28 @@ async function send(api: ModuleApi) {
   const attachment = state.attachment;
   state.busy = true;
   state.error = "";
+  state.voice.note = "";
   state.bubbles.push({ user: true, text: message, attachment: attachment?.name ?? null });
   state.draft = "";
   redraw();
+  // Une commande rapide (« volume 30 », « minuteur 10 minutes »…) : faite ici, sans IA ni clé.
+  const quick = !attachment && message ? await api.invoke<Quick | null>("quick", { text: message }).catch(() => null) : null;
+  if (quick?.handled) {
+    state.busy = false;
+    if (quick.error) {
+      state.bubbles.pop();
+      state.draft = message;
+      state.error = quick.error;
+      state.spoken = false;
+      api.emit("mascot.emote", { emotion: "sad" });
+    } else {
+      state.bubbles.push({ user: false, text: quick.answer ?? "", attachment: null, activity: quick.activity });
+      state.spoken = false; // une commande faite : pas besoin de rallumer le micro
+      void startReveal(api, state.bubbles.length - 1, quick.answer ?? "", "happy");
+    }
+    redraw();
+    return;
+  }
   api.emit("mascot.emote", { emotion: "thinking" });
   try {
     const a = await api.invoke<Answer>("send", { message, attachment: attachment?.id });
@@ -187,11 +311,95 @@ async function send(api: ModuleApi) {
     state.bubbles.pop();
     state.draft = message;
     state.error = errorText(err);
+    state.spoken = false;
     api.emit("mascot.emote", { emotion: "sad" });
   } finally {
     state.busy = false;
     redraw();
   }
+}
+
+/** Ondine sur le bureau avec cet onglet dans sa bulle : c'est elle qui écoute. */
+function petHandles(): boolean {
+  const m = settingsStore.current.mascot;
+  return !!(m.enabled && m.pet && (m.petTabs ?? []).includes("askclaude"));
+}
+
+/** Pourquoi le micro ne s'est pas ouvert (discrétion). */
+function blockedText(why: string | undefined): string {
+  switch (why) {
+    case "call":
+      return "Le micro est déjà utilisé par une autre appli : Ondine reste discrète.";
+    case "presentation":
+      return "Présentation en cours : Ondine reste discrète.";
+    default:
+      return "Concentration en cours : Ondine reste discrète.";
+  }
+}
+
+/** Ce que vous avez dit arrive : envoyé comme un message tapé (ou joint à l'image de « Regarde ça »). */
+async function heard(api: ModuleApi, text: string, look: boolean) {
+  state.draft = text;
+  if (look) {
+    // L'image de la fenêtre est montrée : rien ne part sans votre clic.
+    await attach(api, { look: true });
+    return;
+  }
+  state.spoken = true;
+  await send(api);
+}
+
+/**
+ * Écoute les nouvelles de la voix. `owner` : cette fenêtre s'en occupe
+ * (ouvrir l'onglet, la mascotte, envoyer) ; l'autre ne fait que suivre.
+ */
+function wireVoice(api: ModuleApi, owner: () => boolean) {
+  let listenTimer = 0;
+  return api.on("askclaude.voice", (msg) => {
+    const p = (msg.payload ?? {}) as VoiceMsg;
+    const v = state.voice;
+    const mine = owner();
+    switch (p.kind) {
+      case "open":
+        reveal?.stop();
+        state.voice = { on: true, look: !!p.look, hold: !!p.hold, partial: "", transcribing: false, note: "" };
+        state.error = "";
+        if (mine) {
+          api.openIsland("askclaude");
+          // Surprise au début, puis elle tend l'oreille.
+          api.emit("mascot.emote", { emotion: "surprised" });
+          window.clearTimeout(listenTimer);
+          listenTimer = window.setTimeout(() => state.voice.on && api.emit("mascot.emote", { emotion: "listening" }), 700);
+        }
+        break;
+      case "partial":
+        v.partial = p.text ?? "";
+        break;
+      case "transcribing":
+        v.transcribing = true;
+        break;
+      case "final":
+        state.voice = { ...v, on: false, transcribing: false, partial: "" };
+        if (mine && p.text) void heard(api, p.text, !!p.look);
+        break;
+      case "empty":
+        state.voice = { ...v, on: false, transcribing: false, partial: "", note: "Je n'ai rien entendu." };
+        break;
+      case "cancel":
+        state.voice = { ...v, on: false, transcribing: false, partial: "" };
+        break;
+      case "blocked":
+        v.note = blockedText(p.why);
+        if (mine) api.notify({ title: v.note, icon: "🤫", priority: "low", key: "askclaude-voice" });
+        break;
+      case "error":
+        state.voice = { ...v, on: false, transcribing: false, partial: "" };
+        state.error = p.message ?? "écoute impossible";
+        if (mine) api.notify({ title: state.error, icon: "🎙️", priority: "normal", key: "askclaude-voice" });
+        break;
+    }
+    redraw();
+  });
 }
 
 /** Votre réponse à une demande d'accord : l'échange reprend. */
@@ -329,6 +537,15 @@ function dropTargets(api: ModuleApi): DropTarget[] {
 export const askclaude: IslandModule = {
   manifest: manifest as ModuleManifest,
 
+  // La voix : l'île s'en occupe, sauf si Ondine est sur le bureau avec cet onglet.
+  setup(api) {
+    return wireVoice(api, () => !petHandles());
+  },
+
+  satellite(api) {
+    return wireVoice(api, petHandles);
+  },
+
   views: {
     drop: dropTargets,
 
@@ -415,11 +632,13 @@ export const askclaude: IslandModule = {
             b.attachment ? el("small", { class: "ask-bubble-meta" }, `📎 ${b.attachment}`) : null,
           );
         }
+        // La réponse en train de s'écrire (plops.ts) : seulement ce qui est déjà visible.
+        const writing = reveal?.index === i;
         return el(
           "div",
           { class: `ask-bubble ondine${fresh}` },
           b.activity?.length ? activityList(b.activity) : null,
-          el("div", { class: "ask-bubble-text", "data-no-i18n": "" }, b.text),
+          b.text ? el("div", { class: "ask-bubble-text", "data-no-i18n": "", "data-reveal": writing ? String(i) : undefined }, writing ? b.text.slice(0, reveal?.shown ?? 0) : b.text) : null,
           ...(b.cards ?? []).map(fileCard),
           el(
             "div",
@@ -501,11 +720,27 @@ export const askclaude: IslandModule = {
             : null,
           ...state.bubbles.map(bubble),
           state.pending ? askCard(state.pending) : null,
+          // Pendant l'écoute : vos mots s'écrivent en direct, avec le point rouge du micro.
+          state.voice.on || state.voice.transcribing
+            ? el(
+                "div",
+                { class: "ask-bubble me live" },
+                el(
+                  "div",
+                  { class: "ask-live-head" },
+                  el("span", { class: `ask-mic-dot${state.voice.on ? " on" : ""}`, "aria-hidden": "true" }),
+                  el("small", {}, state.voice.transcribing ? "J'écris ce que vous avez dit…" : state.voice.look ? "Je regarde et j'écoute…" : "J'écoute…"),
+                ),
+                state.voice.partial ? el("div", { class: "ask-bubble-text", "data-no-i18n": "" }, state.voice.partial) : null,
+                state.voice.on ? el("small", { class: "muted" }, state.voice.hold ? "Relâchez les touches quand vous avez fini · Échap pour annuler" : "Parlez, je m'arrête quand vous vous taisez · Échap pour annuler") : null,
+              )
+            : null,
           state.busy ? el("div", { class: "ask-bubble ondine typing fresh", "aria-label": `${who} réfléchit…` }, el("span", {}), el("span", {}), el("span", {})) : null,
         );
         parts.push(list);
 
         if (state.error) parts.push(el("p", { class: "ask-error" }, `⚠️ ${state.error}`));
+        if (state.voice.note && !state.voice.on) parts.push(el("p", { class: "ask-voice-note muted" }, state.voice.note));
 
         // Le fichier joint : montré en entier, il partira avec le prochain message.
         const p = state.attachment;
@@ -562,8 +797,30 @@ export const askclaude: IslandModule = {
             el(
               "button",
               // « thinking » : le design Studio fait respirer le bouton pendant l'attente.
-              { class: `btn small primary ${state.busy ? "thinking" : ""}`, disabled: state.busy || !!state.pending || !s?.hasKey, onclick: api.handler(() => send(api)) },
+              // Sans clé, les commandes rapides marchent quand même (sinon le Rust dit qu'il manque la clé).
+              { class: `btn small primary ${state.busy ? "thinking" : ""}`, disabled: state.busy || !!state.pending, onclick: api.handler(() => send(api)) },
               state.busy ? "Ondine réfléchit…" : state.pending ? "Répondez d'abord à Ondine" : "Envoyer",
+            ),
+            // Le micro : un clic écoute (arrêt au silence), un 2e termine.
+            el(
+              "button",
+              {
+                class: `btn small ask-mic-btn${state.voice.on ? " on" : ""}`,
+                title: "Parler à Ondine à voix haute",
+                "aria-label": "Parler à Ondine à voix haute",
+                "aria-pressed": state.voice.on ? "true" : "false",
+                disabled: (state.busy || !!state.pending) && !state.voice.on,
+                onclick: api.handler(async () => {
+                  try {
+                    if (state.voice.on) await api.invoke("voice_stop", { cancel: false });
+                    else await api.invoke("listen", {});
+                  } catch (err) {
+                    state.error = errorText(err);
+                    redraw();
+                  }
+                }),
+              },
+              state.voice.on ? "⏹ Terminer" : "🎙️ Parler",
             ),
             el("button", { class: "btn small", disabled: state.busy, onclick: pick }, "📎 Joindre un fichier…"),
           ),
