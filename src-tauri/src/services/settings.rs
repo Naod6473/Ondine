@@ -331,9 +331,13 @@ impl Settings {
 
     /// Un module est actif sauf si l'utilisateur l'a désactivé.
     pub fn module_enabled(&self, id: &str) -> bool {
-        self.modules.get(id).map(|m| m.enabled).unwrap_or(true)
+        self.modules.get(id).map(|m| m.enabled).unwrap_or(!MODULES_OFF_BY_DEFAULT.contains(&id))
     }
 }
+
+/// Les modules désactivés tant qu'on ne les a pas allumés (ceux qui ouvrent un
+/// port sur le réseau local). Même liste dans src/core/settings-store.ts.
+pub const MODULES_OFF_BY_DEFAULT: &[&str] = &["team"];
 
 /// Une couleur « #rrggbb » (sept caractères, hexadécimaux).
 fn is_hex_color(s: &str) -> bool {

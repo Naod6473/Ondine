@@ -22,7 +22,7 @@ export function demoOn(): boolean {
 }
 
 /** Les scènes que la fenêtre de réglages peut demander (sujet « demo.scene »). */
-export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "voice", "mascot-talk", "ai-outage"] as const;
+export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "voice", "mascot-talk", "ai-outage", "team-visit"] as const;
 export type DemoScene = (typeof DEMO_SCENES)[number];
 
 /**
@@ -32,7 +32,7 @@ export type DemoScene = (typeof DEMO_SCENES)[number];
 const REAL_DATA = [
   "agenda.", "agents.", "claude.", "capture.", "clipboard.changed", "clipboard.link-cleaned", "controls.",
   "media.", "nettools.", "notes.", "remote.", "rules.notify", "shelf.", "system.", "task.",
-  "weather.", "halos.",
+  "weather.", "halos.", "team.",
 ];
 
 export function hidesRealData(msg: BusMessage): boolean {
@@ -477,7 +477,6 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         { kind: "wifi", on: state.radios.wifi, disabled: false },
         { kind: "bluetooth", on: state.radios.bluetooth, disabled: false },
       ];
-      break;
     case "controls.set_radio":
       if (args.kind === "wifi" || args.kind === "bluetooth") state.radios[args.kind] = args.on === true;
       return null;
@@ -494,7 +493,6 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         { id: "speakers", name: "Haut-parleurs", default: state.output === "speakers" },
         { id: "headset", name: "Casque Bluetooth", default: state.output === "headset" },
       ];
-      break;
     case "controls.set_output":
       state.output = String(args.id);
       return null;
@@ -512,7 +510,6 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         { name: "Casque Bluetooth", percent: 62, connected: true },
         { name: "Souris MX", percent: 11, connected: true },
       ];
-      break;
     case "controls.desktop_icons":
       return { hidden: demoDeskHidden };
     case "controls.set_desktop_icons":
@@ -545,7 +542,6 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       bus.inject("notes.changed", null, "notes");
       return null;
     }
-      break;
     case "notes.note_save":
       return { id: Number(args.id) || 99 };
     case "clipboard.list":
@@ -557,7 +553,6 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       bus.inject("clipboard.changed", null, "clipboard");
       return null;
     }
-      break;
     case "clipboard.password_generate":
       return { password: "Vague-Corail-Lagune-27" };
     case "clipboard.qr":
@@ -599,7 +594,6 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         services: DEMO_AI.map((s) => ({ ...s, level: "ok", description: "All Systems Operational", checkedAt: Date.now() })),
         history: [{ id: "chatgpt", from: Date.now() - 26 * 3600_000, to: Date.now() - 25 * 3600_000 - 20 * MIN, level: "degraded" }],
       };
-      break;
     case "remote.list":
       return {
         favorites: [
@@ -607,7 +601,6 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
           { id: 2, name: "Poste de l'accueil", kind: "rdp", host: "accueil.exemple.local", port: null, user: "", mac: "02:4F:4E:44:49:4E" },
         ],
       };
-      break;
     case "remote.probe":
       return { online: true, ms: 10 + Number(args.id) * 7 };
     // Réveiller : rien ne part, le « poste » répond au bout de 4 s.
@@ -617,7 +610,11 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       window.setTimeout(() => bus.inject("remote.wake-done", { ...fav, awake: true, secs: 4, ms: 3 }, "remote"), 4000);
       return { sent: 3 };
     }
-      break;
+    // Équipe : de faux collègues, aucun réseau.
+    case "team.state":
+      return teamDemo();
+    case "team.show_code":
+      return { code: "482913", seconds: 180, ip: "192.168.1.20" };
     case "rules.list":
       return {
         rules: [
@@ -636,7 +633,6 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         topics: [],
         counts: { "1": 7, "3": 12, "4": 4 },
       };
-      break;
     case "launcher.entries":
       return {
         items: [
@@ -648,7 +644,6 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         hotkey: "",
         hotkeyError: null,
       };
-      break;
     case "launcher.search":
       return islandSearch(String(args.query ?? ""));
     case "terminal.start_dir":
@@ -684,7 +679,6 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
           { path: "docs/notes-lancement.md", added: 6, removed: 0, untracked: true, exists: true },
         ],
       };
-      break;
     case "agents.open_vscode_file":
     case "agents.copy_text":
       return null;
@@ -703,7 +697,6 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       githubAsked = true;
       return cal;
     }
-      break;
     case "agents.answer":
       bus.inject("agents.ask.closed", { id: Number(args.id), expired: false }, "agents");
       return null;
@@ -716,7 +709,6 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       if (t in DEMO_HOOKS) DEMO_HOOKS[t] = command === "hook_install" ? "installed" : "absent";
       return command === "hook_install" ? { backup: null, changed: true, removed: 0, otherPermission: false } : { backup: null, removed: 1 };
     }
-      break;
     case "askclaude.status":
       return {
         provider: "claude",
@@ -731,7 +723,6 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         pcTools: true,
         filesFolder: "C:\\Users\\Camille\\Documents\\Ondine",
       };
-      break;
     case "askclaude.prepare":
       return {
         id: 1,
@@ -741,7 +732,6 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         bytes: 112,
         destination: "api.anthropic.com",
       };
-      break;
     case "askclaude.unprepare":
     case "askclaude.reset":
       return null;
@@ -781,7 +771,6 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         inputTokens: 64,
         outputTokens: 48,
       };
-      break;
     case "askclaude.confirm":
       if (args.id === 8) {
         return {
@@ -812,7 +801,6 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
             ]
           : [],
       };
-      break;
     case "weather.current":
       // Une fausse météo : un bel après-midi à Lyon.
       return { place: "Lyon", temp: 21.4, min: 12.1, max: 23.6, wind: 9, code: 1, isDay: true, icon: "🌤️", label: "Plutôt dégagé", unit: "c", at: "15:00" };
@@ -822,7 +810,6 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       const v = Math.max(0, 0.08 + 0.3 * Math.sin(t * 5.3) * Math.sin(t * 1.7) + 0.12 * Math.sin(t * 11));
       return { mic: args.mic ? v : null, out: args.out ? v : null };
     }
-      break;
     case "weekly.peek":
       // « Voir le bilan maintenant » : une belle semaine inventée (« due » reste null : pas de vrai bilan en démo).
       return { pomodoros: 9, focusMinutes: 215, todos: 14, until: "", agents: agentsWeek() };
@@ -901,6 +888,10 @@ function playScene(bus: Bus, scene: string) {
       bus.inject("mascot.emote", { emotion: "worried" }, "demo");
       break;
     }
+    case "team-visit":
+      // La mascotte d'une collègue traverse l'île (module Équipe).
+      bus.inject("team.event", { kind: "visit", from: TEAM_PEERS[0], note: "Le café est prêt !" }, "demo");
+      break;
   }
 }
 
@@ -977,6 +968,30 @@ function talkScene(bus: Bus) {
   bus.inject("mascot.emote", { emotion: "talk" }, "demo");
   syllables.forEach(([open, mark], i) => setTimeout(() => bus.inject("mascot.talk", { open, mark }, "demo"), 150 + i * 190));
   setTimeout(() => bus.inject("mascot.emote", { emotion: "sunglasses" }, "demo"), 2600);
+}
+
+// ── Équipe ───────────────────────────────────────────────────────────────────
+
+const TEAM_PEERS = [
+  { id: "a1b2c3d4e5f60718", name: "Léa", color: "#ff8f78", mascot: "goutte-gomme", mine: false, it: false },
+  { id: "0f1e2d3c4b5a6978", name: "Karim", color: "#62e6c4", mascot: "goutte-gomme", mine: false, it: true },
+  { id: "1122334455667788", name: "Portable", color: "#b98cff", mascot: "goutte-gomme", mine: true, it: false },
+];
+
+function teamDemo() {
+  const live = [
+    { status: "available", statusText: "", battery: null },
+    { status: "meeting", statusText: "Point hebdo", battery: null },
+    { status: "focus", statusText: "", battery: { percent: 64, charging: false } },
+  ];
+  return {
+    me: { id: "9988776655443322", fingerprint: "9988 7766 5544 3322", name: "Simon", ip: "192.168.1.20", status: "available", statusText: "", auto: true, visible: true },
+    peers: TEAM_PEERS.map((p, i) => ({ ...p, ...live[i], addr: `192.168.1.${30 + i}`, online: true, version: "1.2.2", visits: true, fingerprint: p.id.replace(/(.{4})(?!$)/g, "$1 ") })),
+    nearby: [{ id: "5566778899aabbcc", name: "Camille", color: "#ffd24a", addr: "192.168.1.44" }],
+    pending: [{ id: 1, peer: TEAM_PEERS[0].id, kind: "file", text: "", name: "Planning-octobre.xlsx", size: 48_640, folder: false, at: Date.now() - MIN }],
+    code: null,
+    polls: [],
+  };
 }
 
 /** Branche le mode démo sur l'île (fenêtre principale). */

@@ -220,7 +220,24 @@
 "choisissez où décompresser l'archive": "choisis où décompresser l'archive",
 "choisissez le dossier de destination": "choisis le dossier de destination",
 "Le volume des haut-parleurs et du micro, la luminosité des écrans, le Wi-Fi, le Bluetooth, le mode avion, le mode sombre et l'éclairage nocturne de Windows, sans ouvrir Windows. Les clés et disques USB s'éjectent d'un clic, la batterie des appareils Bluetooth s'affiche, les icônes du bureau se cachent d'un clic, et le téléphone peut servir de télécommande (si vous l'activez). Un point orange (micro) ou vert (caméra) sur l'île montre quand une appli s'en sert, et un raccourci coupe le micro de partout. Agit sur les périphériques que Windows utilise par défaut ; les écrans externes doivent accepter le réglage DDC/CI (souvent activé dans leur menu). Rien n'est écouté ni enregistré : on lit seulement ce que Windows note pour sa page Confidentialité.": "Le volume des haut-parleurs et du micro, la luminosité des écrans, le Wi-Fi, le Bluetooth, le mode avion, le mode sombre et l'éclairage nocturne de Windows, sans ouvrir Windows. Les clés et disques USB s'éjectent d'un clic, la batterie des appareils Bluetooth s'affiche, les icônes du bureau se cachent d'un clic, et le téléphone peut servir de télécommande (si tu l'actives). Un point orange (micro) ou vert (caméra) sur l'île montre quand une appli s'en sert, et un raccourci coupe le micro de partout. Agit sur les périphériques que Windows utilise par défaut ; les écrans externes doivent accepter le réglage DDC/CI (souvent activé dans leur menu). Rien n'est écouté ni enregistré : on lit seulement ce que Windows note pour sa page Confidentialité.",
-"Désactivé par défaut. Ondine lit les pages d'état publiques d'Anthropic, d'OpenAI et de Google Cloud, et vous prévient quand un service tombe ou revient. En pause pendant une présentation ou une séance de concentration. Ces sites voient votre adresse IP, rien d'autre.": "Désactivé par défaut. Ondine lit les pages d'état publiques d'Anthropic, d'OpenAI et de Google Cloud, et te prévient quand un service tombe ou revient. En pause pendant une présentation ou une séance de concentration. Ces sites voient ton adresse IP, rien d'autre."
+"Désactivé par défaut. Ondine lit les pages d'état publiques d'Anthropic, d'OpenAI et de Google Cloud, et vous prévient quand un service tombe ou revient. En pause pendant une présentation ou une séance de concentration. Ces sites voient votre adresse IP, rien d'autre.": "Désactivé par défaut. Ondine lit les pages d'état publiques d'Anthropic, d'OpenAI et de Google Cloud, et te prévient quand un service tombe ou revient. En pause pendant une présentation ou une séance de concentration. Ces sites voient ton adresse IP, rien d'autre.",
+"Affichez votre code sur un PC, tapez-le sur l'autre : vous voilà collègues.": "Affiche ton code sur un PC, tape-le sur l'autre : et hop, collègues !",
+"Les Ondine d'un même réseau local se parlent directement, sans serveur, sans Internet et sans compte : présence, coucou, « Tu es dispo ? », fichiers et textes (toujours à accepter), café collectif, sondage, Pomodoro d'équipe, aide à l'IT, et entre vos propres PC le presse-papiers partagé. On n'échange qu'avec un collègue ajouté par un code à 6 chiffres ; tout est chiffré de bout en bout avec les clés de l'appairage (gardées dans le Gestionnaire d'identifiants de Windows). Rien de ce qui arrive n'est exécuté. Ports : 47820 (UDP, découverte) et 47821 (TCP). Le pare-feu de Windows peut demander l'autorisation la première fois.": "Les Ondine d'un même réseau local se parlent directement, sans serveur, sans Internet et sans compte : présence, coucou, « Tu es dispo ? », fichiers et textes (toujours à accepter), café collectif, sondage, Pomodoro d'équipe, aide à l'IT, et entre tes propres PC le presse-papiers partagé. On n'échange qu'avec un collègue ajouté par un code à 6 chiffres ; tout est chiffré de bout en bout avec les clés de l'appairage (gardées dans le Gestionnaire d'identifiants de Windows). Rien de ce qui arrive n'est exécuté. Ports : 47820 (UDP, découverte) et 47821 (TCP). Le pare-feu de Windows peut demander l'autorisation la première fois.",
+"Votre nom apparaît chez les Ondine voisines, qui peuvent alors vous proposer de vous ajouter. Invisible, seuls vos collègues déjà ajoutés vous voient.": "Ton nom apparaît chez les Ondine voisines, qui peuvent alors te proposer de t'ajouter. Invisible, seuls tes collègues déjà ajoutés te voient.",
+"Votre nom pour les collègues": "Ton nom pour les collègues",
+"Vide : le nom de votre session Windows.": "Vide : le nom de ta session Windows.",
+"La mascotte d'un collègue traverse votre île avec un petit mot.": "La mascotte d'un collègue traverse ton île avec un petit mot.",
+"Le texte copié passe sur vos autres PC (ceux marqués « mon PC »). Jamais un élément marqué sensible (mot de passe).": "Le texte copié passe sur tes autres PC (ceux marqués « mon PC »). Jamais un élément marqué sensible (mot de passe).",
+"Changer de mascotte ou de couleur sur un PC le fait aussi sur vos autres PC.": "Changer de mascotte ou de couleur sur un PC le fait aussi sur tes autres PC.",
+"Vous êtes disponible ?": "Tu es disponible ?",
+"Visible : les Ondine voisines vous voient et peuvent vous ajouter": "Visible : les Ondine voisines te voient et peuvent t'ajouter",
+"Tapez ce code sur l'autre PC (onglet Équipe, « Ajouter »). Un seul essai.": "Tape ce code sur l'autre PC (onglet Équipe, « Ajouter »). Un seul essai.",
+"Aucun collègue pour l'instant. Sur l'autre PC, activez le module Équipe et cliquez sur « Mon code » ; ici, cliquez sur « Ajouter » et tapez ce code.": "Aucun collègue pour l'instant. Sur l'autre PC, active le module Équipe et clique sur « Mon code » ; ici, clique sur « Ajouter » et tape ce code.",
+"Sur l'autre PC : onglet Équipe, « Mon code ». Tapez ici le code affiché.": "Sur l'autre PC : onglet Équipe, « Mon code ». Tape ici le code affiché.",
+"Seulement les PC qui l'acceptent (réglage « Partager l'inventaire » chez eux, et vous marqué « IT » de leur côté).": "Seulement les PC qui l'acceptent (réglage « Partager l'inventaire » chez eux, et toi marqué « IT » de leur côté).",
+"choisissez de 1 à 100 éléments": "choisis de 1 à 100 éléments",
+"clé du collègue abîmée : retirez-le puis ajoutez-le de nouveau": "clé du collègue abîmée : retire-le puis ajoute-le de nouveau",
+"dossier trop gros (200 Mo au plus) : envoyez plutôt une archive faite à la main": "dossier trop gros (200 Mo au plus) : envoie plutôt une archive faite à la main"
 },
 "patterns": [
 [
@@ -370,6 +387,10 @@
 [
 "^Quand vous parlez à Ondine, l'audio de votre voix part vers (.+?) pour être écrit en texte\\. Il reste en mémoire, jamais sur le disque\\.$",
 "Quand tu parles à Ondine, l'audio de ta voix part vers $1 pour être écrit en texte. Il reste en mémoire, jamais sur le disque."
+],
+[
+"^adresse de (.+) inconnue : il doit être allumé et visible, ou ajoutez-le par son adresse IP$",
+"adresse de $1 inconnue : il doit être allumé et visible, ou ajoute-le par son adresse IP"
 ]
 ]
 }

@@ -5,6 +5,12 @@ import { Bridge, onTauriEvent } from "./bridge";
 import { defaultSettings, type Settings } from "./types";
 import type { CalendarEntry, ModuleManifest, SettingField } from "./module-types";
 
+/**
+ * Les modules désactivés tant qu'on ne les a pas allumés (ceux qui ouvrent un
+ * port sur le réseau local). Même liste dans src-tauri/src/services/settings.rs.
+ */
+export const MODULES_OFF_BY_DEFAULT: readonly string[] = ["team"];
+
 type Listener = (s: Settings) => void;
 
 class SettingsStore {
@@ -40,7 +46,7 @@ class SettingsStore {
   }
 
   moduleEnabled(id: string): boolean {
-    return this.current.modules[id]?.enabled ?? true;
+    return this.current.modules[id]?.enabled ?? !MODULES_OFF_BY_DEFAULT.includes(id);
   }
 
   /** Les réglages d'un module, complétés par les valeurs par défaut du manifeste. */

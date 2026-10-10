@@ -94,7 +94,7 @@ const MODULE_CATEGORIES: { id: string; label: string; modules: string[] }[] = [
   { id: "ai", label: "Ondine et IA", modules: ["askclaude", "agents"] },
   { id: "files", label: "Fichiers", modules: ["shelf", "clipboard", "capture", "launcher"] },
   { id: "organize", label: "Organisation", modules: ["timer", "notes", "agenda", "pauses", "weekly"] },
-  { id: "it", label: "Outils IT", modules: ["terminal", "system", "remote", "nettools"] },
+  { id: "it", label: "Outils IT", modules: ["terminal", "system", "remote", "nettools", "team"] },
   { id: "daily", label: "Le PC au quotidien", modules: ["media", "controls", "weather", "halos"] },
   { id: "other", label: "Autres modules", modules: [] },
 ];
@@ -135,6 +135,12 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
     { id: "persona", label: "Personnalité et affichage", keys: ["personality", "autoGrow", "emotions", "showDrop"] },
     { id: "voice", label: "Voix et sons", keys: ["voiceHotkey", "micMode", "voiceEngine", "lookHotkey", "handsFree", "quickCommands", "plops", "plopVolume", "discreet"] },
     { id: "files", label: "Fichiers et PC", keys: ["fileTools", "pcTools", "filesFolder"] },
+  ],
+  // Équipe (réseau local).
+  team: [
+    { id: "general", label: "Général", keys: ["visible", "name", "visits", "autoStatus"] },
+    { id: "files", label: "Fichiers et IT", keys: ["maxMb", "shareInventory"] },
+    { id: "mine", label: "Entre mes PC", keys: ["clipboardSync", "mascotSync"] },
   ],
 };
 
@@ -1044,6 +1050,7 @@ function demoGroup(): HTMLElement {
                 scene("halos-tour", "Autres halos"),
                 scene("voice", "Parler à Ondine"),
                 scene("mascot-talk", "Ondine parle"),
+                scene("team-visit", "Visite d'une collègue"),
               ),
               "La notification arrive dans l'île : lancez l'enregistrement avant de cliquer.",
             ),
@@ -1292,7 +1299,7 @@ function modulePage(main: HTMLElement, man: ModuleManifest, compact = false) {
   const rowsOf = (list: typeof fields) =>
     settingsRows(list, settingsStore.moduleValues(man), (key, value) =>
       save((d) => {
-        const entry = (d.modules[man.id] ??= { enabled: true, values: {} });
+        const entry = (d.modules[man.id] ??= { enabled: settingsStore.moduleEnabled(man.id), values: {} });
         entry.values[key] = value;
       }),
     );
