@@ -125,7 +125,7 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
   halos: [
     { id: "general", label: "Général", keys: ["intensity", "colors"] },
     { id: "pc", label: "Événements du PC", keys: ["wake", "usb", "download", "disk", "wifi", "weather", "network", "capture", "shelfDrop", "cpu", "update"] },
-    { id: "ondine", label: "Ondine et agents", keys: ["think", "agents", "voice", "focus", "meeting", "streak", "dance"] },
+    { id: "ondine", label: "Ondine et agents", keys: ["think", "agents", "voice", "focus", "timerRing", "meeting", "streak", "dance"] },
     { id: "keys", label: "Clavier et presse-papiers", keys: ["capsLock", "numLock", "clipboard", "clipText", "volumeKeys"] },
     { id: "day", label: "Moments de la journée", keys: ["leaveTime", "morning", "sky", "music"] },
   ],
@@ -1053,6 +1053,7 @@ function demoGroup(): HTMLElement {
                 scene("whats-new", "Quoi de neuf"),
                 scene("halos-battery", "Halos de batterie"),
                 scene("halos-tour", "Autres halos"),
+                scene("timer-ring", "Liseré d'un minuteur"),
                 scene("voice", "Parler à Ondine"),
                 scene("mascot-talk", "Ondine parle"),
                 scene("team-visit", "Visite d'une collègue"),

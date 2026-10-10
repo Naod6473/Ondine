@@ -26,6 +26,8 @@
 //   priority   "low" | "normal" | "high" | "critical" : une demande plus
 //              prioritaire passe devant ; l'état d'avant revient quand elle finit
 //   level      0 à 1, pour la forme "level"
+//   endsAt     forme "progress" : l'heure de fin (Date.now()), le liseré se vide jusque-là
+//   total      forme "progress" : la durée complète (ms)
 //
 // ── Les formes ───────────────────────────────────────────────────────────────
 //   aurora     les couleurs coulent en continu autour de l'île
@@ -42,6 +44,10 @@
 //   rise / set la lumière monte depuis le bas (lever de soleil) ou redescend (coucher)
 //   cocoon     une lueur serrée et très douce (concentration)
 //   level      la lueur et les vagues suivent un niveau donné par updateHalo
+//   progress   un liseré qui fait le tour de l'île et se vide au fil du temps
+//              (minuteurs) : donner `endsAt` (Date.now() de la fin) et `total`
+//              (ms) ; il est recalculé à chaque image (aucun saut), passe au
+//              rouge dans les dernières secondes. Sans `endsAt` (en pause) : figé à `fill`.
 //
 // ── Comment c'est dessiné ────────────────────────────────────────────────────
 // Un <canvas> transparent, sous l'île, de la taille de la fenêtre, qui laisse
@@ -77,6 +83,8 @@ import {
   mix,
   paletteColors,
   PALETTES,
+  progressLeft,
+  progressWarn,
   pulse,
   rgba,
   rgbToHex,
@@ -102,9 +110,10 @@ export type HaloShape =
   | "rise"
   | "set"
   | "cocoon"
-  | "level";
+  | "level"
+  | "progress";
 
-const SHAPES: readonly HaloShape[] = ["aurora", "breathe", "comet", "sweep", "burst", "ripple", "waves", "drops", "crackle", "reservoir", "rain", "rise", "set", "cocoon", "level"];
+const SHAPES: readonly HaloShape[] = ["aurora", "breathe", "comet", "sweep", "burst", "ripple", "waves", "drops", "crackle", "reservoir", "rain", "rise", "set", "cocoon", "level", "progress"];
 
 export type HaloFrom = "left" | "right" | "center";
 
@@ -118,6 +127,8 @@ export interface HaloOptions {
   from?: HaloFrom;
   priority?: HaloPriority;
   level?: number;
+  endsAt?: number | null;
+  total?: number;
 }
 
 /** Une demande en cours. */
@@ -135,6 +146,9 @@ interface Halo {
   /** Niveau visé (forme "level") et niveau lissé. */
   level: number;
   levelS: Spring;
+  /** Forme "progress" : heure de fin (Date.now()) et durée complète ; null = figé à `fill`. */
+  endsAt: number | null;
+  total: number;
   start: number;
   /** Fondu d'entrée / de sortie (ressort : l'entrée dépasse un peu, ça « embrase »). */
   env: Spring;
@@ -174,6 +188,14 @@ const LEVEL: SpringParams = { stiffness: 180, damping: 0.7 };
 const RING_REACH = 26;
 /** Les halos lents n'ont pas besoin de plus de 30 images par seconde. */
 const SLOW_FPS = 30;
+/**
+ * Le liseré d'un minuteur avance de quelques pixels par minute : 12 images par
+ * seconde suffisent pour qu'il glisse sans saut (30 dans les dernières secondes).
+ */
+const PROGRESS_FPS = 12;
+/** Animations réduites ou Calme : le liseré d'un minuteur est redessiné (sans bouger) toutes les 5 s. */
+const STILL_PROGRESS_MS = 5000;
+
 
 // ── L'état partagé ───────────────────────────────────────────────────────────
 
@@ -315,6 +337,8 @@ class HaloLayer {
   private fading: Halo[] = [];
   private raf = 0;
   private timer = 0;
+  /** Animations réduites : le prochain petit pas d'un liseré de minuteur. */
+  private stillTimer = 0;
   private last = 0;
   private dpr = 1;
   /** La durée de l'image en cours (s), pour les étincelles. */
@@ -368,6 +392,8 @@ class HaloLayer {
       from: o.from === "right" || o.from === "center" ? o.from : "left",
       level: clamp01(Number(o.level) || 0),
       levelS: { x: 0, v: 0 },
+      endsAt: typeof o.endsAt === "number" && Number.isFinite(o.endsAt) ? o.endsAt : null,
+      total: Math.max(0, Number(o.total) || 0),
       // Même forme qu'avant (le volume qu'on monte, touche après touche) : elle continue.
       start: old && old.shape === shape ? old.start : now,
       // Une demande qui remplace la même garde sa lumière (pas de trou noir entre les deux).
@@ -443,6 +469,8 @@ class HaloLayer {
 
   /** Demande une image (relance la boucle si elle dormait). */
   wake() {
+    window.clearTimeout(this.stillTimer);
+    this.stillTimer = 0;
     if (this.raf || this.timer) return;
     this.raf = requestAnimationFrame((t) => this.frame(t));
   }
@@ -474,9 +502,19 @@ class HaloLayer {
     this.draw(visible ? drawn : [], now, still);
 
     // On continue tant que quelque chose bouge et se voit.
-    const moving = visible && !still && drawn.length > 0;
+    // Un liseré de minuteur en pause (figé) n'a pas besoin d'être redessiné.
+    const settled = drawn.every((h) => Math.abs(h.env.v) < 0.05);
+    const frozen = settled && drawn.every((h) => h.shape === "progress" && h.endsAt == null);
+    const moving = visible && !still && drawn.length > 0 && !frozen;
     if (!moving) {
       this.last = 0;
+      // Animations réduites ou Calme : le liseré d'un minuteur qui tourne avance quand même, par petits pas.
+      if (visible && still && drawn.some((h) => h.shape === "progress" && h.endsAt != null)) {
+        this.stillTimer = window.setTimeout(() => {
+          this.stillTimer = 0;
+          this.wake();
+        }, STILL_PROGRESS_MS);
+      }
       return; // repartira à la prochaine demande, au retour de l'île, au redimensionnement
     }
     // Les halos lents, et ceux qui suivent un niveau (une visio d'une heure), à 30 images/s.
@@ -484,7 +522,11 @@ class HaloLayer {
     const slow = drawn.every(
       (h) => h.shape === "aurora" || h.shape === "cocoon" || h.shape === "level" || (h.shape === "breathe" && rhythmMs(h.rhythm) >= 3000) || (h.shape === "sweep" && now - h.start > 2000),
     );
-    const fps = perfMode() === "eco" ? ECO_FPS : slow && drawn.every((h) => Math.abs(h.env.v) < 0.05) ? SLOW_FPS : 60;
+    // Seulement des liserés de minuteur, loin de la fin : ils avancent lentement.
+    const nowMs = Date.now();
+    const crawl = settled && drawn.every((h) => h.shape === "progress" && progressWarn(nowMs, h.endsAt, h.total) === 0);
+    const base = perfMode() === "eco" ? ECO_FPS : (slow || drawn.every((h) => h.shape === "progress")) && settled ? SLOW_FPS : 60;
+    const fps = crawl ? Math.min(base, PROGRESS_FPS) : base;
     if (fps >= 60) this.raf = requestAnimationFrame((t) => this.frame(t));
     else
       this.timer = window.setTimeout(() => {
@@ -599,6 +641,7 @@ class HaloLayer {
 
   /** Un halo fixe (animations réduites, Calme) : tout le contour, couleurs immobiles. */
   private drawStill(ctx: CanvasRenderingContext2D, g: NonNullable<HaloLayer["geo"]>, h: Halo, glow: number, alpha: number) {
+    if (h.shape === "progress") return this.drawProgress(ctx, g, h, 0, glow, alpha, true);
     if (h.fill < 1) this.clipFill(ctx, g, h, h.fill);
     this.glowStroke(ctx, g.path!, this.gradient(ctx, g, h.colors, -Math.PI / 2), glow, alpha * 0.85);
   }
@@ -628,7 +671,7 @@ class HaloLayer {
     const grad = this.gradient(ctx, g, h.colors, spin - Math.PI / 2);
     const path = g.path!;
     // Une part seulement du contour (une petite braise, une jauge) : pour toutes les formes.
-    if (h.fill < 1 && h.shape !== "sweep" && h.shape !== "reservoir" && h.shape !== "rise" && h.shape !== "set") this.clipFill(ctx, g, h, h.fill);
+    if (h.fill < 1 && h.shape !== "sweep" && h.shape !== "reservoir" && h.shape !== "rise" && h.shape !== "set" && h.shape !== "progress") this.clipFill(ctx, g, h, h.fill);
     switch (h.shape) {
       case "aurora": {
         // Les couleurs coulent, la lueur ondule à peine.
@@ -708,6 +751,9 @@ class HaloLayer {
         this.drawRings(ctx, g, h, now, grad, alpha * l);
         break;
       }
+      case "progress":
+        this.drawProgress(ctx, g, h, t, glow, alpha, false);
+        break;
       case "crackle": {
         // Le contour coupé en morceaux qui s'éteignent par à-coups (8 fois par seconde).
         const step = Math.floor(t / 125);
@@ -755,6 +801,56 @@ class HaloLayer {
     // Une touche sur l'île : une onde de couleur part de là, des deux côtés.
     h.pokes = h.pokes.filter((p) => now - p.at < 1200);
     for (const p of h.pokes) this.drawFronts(ctx, g, h.colors, p.u, (now - p.at) / 1200, glow * 0.9, alpha);
+  }
+
+  /**
+   * Le liseré d'un minuteur : un rail très pâle sur tout le contour, la part
+   * qui reste allumée (de l'autre bout vers le début du tour : elle se vide
+   * comme un sablier), et une tête de lumière qui scintille à peine. Dans les
+   * dernières secondes, les couleurs glissent vers le rouge et battent une fois
+   * par seconde. `still` : figé (pas de scintillement ni de battement).
+   */
+  private drawProgress(ctx: CanvasRenderingContext2D, g: NonNullable<HaloLayer["geo"]>, h: Halo, t: number, glow: number, alpha: number, still: boolean) {
+    const pts = g.pts;
+    const n = pts.length;
+    if (n < 3) return;
+    const now = Date.now();
+    const left = progressLeft(now, h.endsAt, h.total, h.fill);
+    const warn = progressWarn(now, h.endsAt, h.total);
+    const red = paletteColors(PALETTES.critical, darkBackground());
+    const colors = warn > 0 ? h.colors.map((c, i) => mix(c, red[i % red.length], warn)) : h.colors;
+    // En pause : plus pâle (le temps est arrêté).
+    const paused = h.endsAt == null;
+    const beat = warn > 0 && !still ? 0.75 + 0.25 * Math.cos(((h.endsAt! - now) / 1000) * Math.PI * 2) : 1;
+    const a = alpha * (paused ? 0.6 : 1) * beat;
+    // Le rail : tout le tour, à peine visible, pour qu'on voie ce qui est déjà passé.
+    const rail = this.gradient(ctx, g, colors, -Math.PI / 2);
+    this.glowStroke(ctx, g.path!, rail, glow * 0.3, a * 0.12);
+    if (left <= 0.001) return;
+    // La part allumée, jusqu'à un point placé entre deux échantillons (le liseré glisse, sans à-coups).
+    const pos = left * (n - 1);
+    const i = Math.floor(pos);
+    const f = pos - i;
+    const q = i + 1 < n ? { x: pts[i].x + (pts[i + 1].x - pts[i].x) * f, y: pts[i].y + (pts[i + 1].y - pts[i].y) * f } : pts[i];
+    const seg = new Path2D();
+    seg.moveTo(pts[0].x, pts[0].y);
+    for (let k = 1; k <= i; k++) seg.lineTo(pts[k].x, pts[k].y);
+    seg.lineTo(q.x, q.y);
+    // Les couleurs coulent lentement le long du liseré (figées en Calme).
+    const spin = still ? 0 : (t / 6000) * Math.PI * 2;
+    this.glowStroke(ctx, seg, this.gradient(ctx, g, colors, spin - Math.PI / 2), glow * 0.75, a);
+    // La tête : un point de lumière qui scintille à peine, là où le liseré s'arrête.
+    const shimmer = still || paused ? 1 : 0.85 + 0.15 * Math.sin(t / 240);
+    const r = glow * (0.9 + 0.5 * warn) * shimmer;
+    const rad = ctx.createRadialGradient(q.x, q.y, 0, q.x, q.y, r);
+    rad.addColorStop(0, rgba("#ffffff", a * 0.9));
+    rad.addColorStop(0.4, rgba(colors[colors.length - 1], a * 0.7));
+    rad.addColorStop(1, rgba(colors[0], 0));
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = rad;
+    ctx.beginPath();
+    ctx.arc(q.x, q.y, r, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   /** Une tête brillante à `u` (0 à 1 du tour) et sa traînée de longueur `trail`. */

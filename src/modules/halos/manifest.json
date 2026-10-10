@@ -147,6 +147,13 @@
         "default": true
       },
       {
+        "key": "timerRing",
+        "type": "boolean",
+        "label": "Minuteurs : un liseré qui montre le temps qui reste",
+        "default": true,
+        "help": "Minuteur, Pomodoro (travail et pause), minuteurs lancés par le Lanceur ou par Ondine : une ligne de lumière fait le tour de l'île et se vide, rougit dans les dernières secondes, puis un éclat. Figée en pause."
+      },
+      {
         "key": "meeting",
         "type": "boolean",
         "label": "Rendez-vous qui approche",
@@ -162,7 +169,8 @@
         "key": "dance",
         "type": "boolean",
         "label": "Le halo danse avec la mascotte",
-        "default": true
+        "default": true,
+        "help": "Quand la mascotte danse sur la musique. Seulement si « Le halo suit la musique » est coché."
       },
       {
         "key": "capsLock",
@@ -266,6 +274,7 @@
       "claude.done",
       "timer.focus",
       "timer.work-session",
+      "timer.progress",
       "agenda.reminder",
       "agenda.join",
       "agents.github-streak",
