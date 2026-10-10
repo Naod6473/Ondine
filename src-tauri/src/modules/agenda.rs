@@ -289,6 +289,9 @@ fn refresh(ctx: &ModuleContext, state: &Shared) {
     let to = now + chrono::Duration::days(horizon);
     let merged = ics_calendars::merge(events.iter().map(|e| ics::occurrences(e, now, to)).collect());
     let shown = &merged[..merged.len().min(MAX_UPCOMING)];
+    // Pour le module Équipe (« en réunion » d'après l'agenda) : les plages des
+    // prochains rendez-vous à heure fixe (pas ceux de la journée entière).
+    *BUSY.locked() = merged.iter().filter(|(_, o)| !o.all_day).take(64).map(|(_, o)| (to_ms(o.start), to_ms(o.end))).collect();
     let upcoming: Vec<Value> = shown.iter().map(|(i, o)| to_json(&calendars[*i], o)).collect();
     let links: HashMap<String, String> =
         shown.iter().filter_map(|(i, o)| Some((link_id(&calendars[*i].id, &key_of(o)), o.link.clone()?))).collect();
@@ -501,6 +504,15 @@ fn modified(path: &str) -> Option<SystemTime> {
 }
 
 /// Une heure locale → millisecondes depuis 1970 (ce que `new Date()` comprend).
+/// Les plages (début, fin, en ms) des prochains rendez-vous à heure fixe,
+/// relues par le module Équipe (`in_meeting`). Rien d'autre : ni titre, ni lieu.
+static BUSY: Mutex<Vec<(i64, i64)>> = Mutex::new(Vec::new());
+
+/// Un rendez-vous à heure fixe est-il en cours à `now_ms` ?
+pub(super) fn in_meeting(now_ms: i64) -> bool {
+    BUSY.locked().iter().any(|&(start, end)| start <= now_ms && now_ms < end)
+}
+
 fn to_ms(t: NaiveDateTime) -> i64 {
     Local.from_local_datetime(&t).earliest().map(|d| d.timestamp_millis()).unwrap_or(0)
 }

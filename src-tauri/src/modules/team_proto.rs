@@ -316,8 +316,9 @@ pub enum Msg {
     InventoryAsk,
     /// Entre mes PC : le texte copié (jamais un élément marqué sensible).
     Clipboard { text: String },
-    /// Entre mes PC : la mascotte et sa couleur.
-    MascotSync { mascot: String, color: String },
+    /// Entre mes PC : la mascotte, sa couleur (« auto », « mint »… ou
+    /// « custom ») et la couleur personnalisée.
+    MascotSync { mascot: String, palette: String, custom: String },
     /// Réponses courtes.
     Ok,
     Refused { reason: String },
@@ -379,9 +380,10 @@ impl Msg {
             }
             Msg::StatusReport { report, .. } => check_report(report),
             Msg::Clipboard { text } => nonempty(text).and(check_text(text, MAX_TEXT, true)),
-            Msg::MascotSync { mascot, color } => {
+            Msg::MascotSync { mascot, palette, custom } => {
                 check_id(mascot, 40)?;
-                check_color(color)
+                check_id(palette, 20)?;
+                check_color(custom)
             }
             Msg::Refused { reason } => check_text(reason, 200, false),
             Msg::FileEnd { sha256 } => {
@@ -586,11 +588,6 @@ pub enum Packet {
 }
 
 impl Channel {
-    /// La clé publique de l'autre (prouvée par la poignée de main).
-    pub fn peer_public(&self) -> Option<[u8; 32]> {
-        self.t.get_remote_static().and_then(|k| to32(k).ok())
-    }
-
     fn seal(&mut self, plain: &[u8]) -> Result<Vec<u8>, String> {
         if plain.len() + TAG > MAX_FRAME {
             return Err("message trop gros".into());

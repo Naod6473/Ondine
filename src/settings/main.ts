@@ -93,7 +93,7 @@ const MODULE_CATEGORIES: { id: string; label: string; modules: string[] }[] = [
   { id: "ai", label: "Ondine et IA", modules: ["askclaude", "agents"] },
   { id: "files", label: "Fichiers", modules: ["shelf", "clipboard", "capture", "launcher"] },
   { id: "organize", label: "Organisation", modules: ["timer", "notes", "agenda", "pauses", "weekly"] },
-  { id: "it", label: "Outils IT", modules: ["terminal", "system", "remote", "nettools"] },
+  { id: "it", label: "Outils IT", modules: ["terminal", "system", "remote", "nettools", "team"] },
   { id: "daily", label: "Le PC au quotidien", modules: ["media", "controls", "weather"] },
   { id: "other", label: "Autres modules", modules: [] },
 ];
@@ -1272,7 +1272,7 @@ function modulePage(main: HTMLElement, man: ModuleManifest, compact = false) {
   const rowsOf = (list: typeof fields) =>
     settingsRows(list, settingsStore.moduleValues(man), (key, value) =>
       save((d) => {
-        const entry = (d.modules[man.id] ??= { enabled: true, values: {} });
+        const entry = (d.modules[man.id] ??= { enabled: settingsStore.moduleEnabled(man.id), values: {} });
         entry.values[key] = value;
       }),
     );

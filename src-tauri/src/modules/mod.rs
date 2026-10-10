@@ -41,6 +41,8 @@ mod shelf_tools;
 mod system;
 // Équipe : les Ondine du réseau local se parlent (découverte, appairage, échanges chiffrés).
 mod team;
+// Ses fils de fond : écoute, découverte, présence, fichiers.
+mod team_net;
 // Son protocole (messages, chiffrement, appairage), en code pur testé.
 mod team_proto;
 mod terminal;
@@ -238,6 +240,7 @@ impl Registry {
             Box::new(askclaude::AskClaude::default()),
             Box::new(weather::WeatherModule::default()),
             Box::new(weekly::Weekly::default()),
+            Box::new(team::Team::default()),
         ];
 
         let mut entries = Vec::new();
@@ -464,6 +467,14 @@ mod tests {
         assert_eq!(m.id, "weekly");
         assert!(m.events.listens.iter().any(|t| t == "timer.work-session"));
         assert!(m.events.listens.iter().any(|t| t == "notes.todo-toggled"));
+    }
+
+    #[test]
+    fn team_manifest_is_valid() {
+        let m = check_manifest(team::Team::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "team");
+        assert!(m.events.listens.iter().any(|t| t == "timer.focus"));
+        assert!(m.events.emits.iter().any(|t| t == "mascot.emote"));
     }
 
     #[test]

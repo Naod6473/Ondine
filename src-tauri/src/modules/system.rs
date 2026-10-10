@@ -328,6 +328,32 @@ fn support_snapshot(state: &Shared) -> Value {
     s
 }
 
+// ── Pour le module Équipe (« Demander de l'aide », état du PC pour l'IT) ────
+
+/// La même photo, mesurée sur le moment (le processeur sur 300 ms), sans
+/// dépendre du fil de fond (le module Système peut être désactivé).
+pub(super) fn fresh_support_snapshot() -> Value {
+    let mut sys = System::new();
+    sys.refresh_cpu_all();
+    std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL.max(Duration::from_millis(300)));
+    sys.refresh_cpu_usage();
+    sys.refresh_memory();
+    let state = State {
+        cpu_usage: sys.global_cpu_usage(),
+        cpu_brand: sys.cpus().first().map(|c| c.brand().trim().to_string()).unwrap_or_default(),
+        cpu_cores: sys.cpus().len(),
+        mem_total: sys.total_memory(),
+        mem_used: sys.used_memory(),
+        ..State::default()
+    };
+    support_snapshot(&Arc::new(Mutex::new(state)))
+}
+
+/// Le texte « pour le support » d'une photo (voir `support_text`).
+pub(super) fn support_text_of(snap: &Value) -> String {
+    support_text(snap)
+}
+
 /// « Redémarrage en attente : oui, depuis 3 j (mises à jour de Windows) ».
 fn reboot_line(r: &Value, now_secs: u64) -> Option<String> {
     if r["pending"].as_bool() != Some(true) {
