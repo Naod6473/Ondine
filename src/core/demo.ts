@@ -22,7 +22,7 @@ export function demoOn(): boolean {
 }
 
 /** Les scènes que la fenêtre de réglages peut demander (sujet « demo.scene »). */
-export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour"] as const;
+export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "voice"] as const;
 export type DemoScene = (typeof DEMO_SCENES)[number];
 
 /**
@@ -697,6 +697,12 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     case "askclaude.unprepare":
     case "askclaude.reset":
       return null;
+    // Le bouton 🎙️ : la petite scène de la voix (sous-titres, halo, réponse en « plop plip »).
+    case "askclaude.listen":
+      demoVoice(bus);
+      return null;
+    case "askclaude.voice_state":
+      return { listening: false, discreet: null };
     // Un message qui parle de volume ou d'application : Ondine règle, puis demande avant d'ouvrir.
     case "askclaude.send":
       if (/volume|musique|ouvre|calculatrice|lumi/i.test(String(args.message ?? ""))) {
@@ -831,6 +837,9 @@ function playScene(bus: Bus, scene: string) {
     case "halos-tour":
       play(bus, HALOS_TOUR);
       break;
+    case "voice":
+      demoVoice(bus);
+      break;
   }
 }
 
@@ -870,6 +879,31 @@ const HALOS_TOUR: Step[] = [
 
 function play(bus: Bus, steps: Step[]) {
   for (const [ms, topic, payload] of steps) window.setTimeout(() => demoOn() && bus.inject(topic, payload, "demo"), ms);
+}
+
+/**
+ * Parler à Ondine à voix haute, pour la vidéo : l'écoute s'ouvre, les mots
+ * s'écrivent en direct pendant que le niveau du micro bouge (le halo), puis
+ * la question part (réponse inventée de `askclaude.send`).
+ */
+function demoVoice(bus: Bus) {
+  const words = ["Dis", "Ondine,", "c'est", "quoi", "cette", "petite", "île", "en", "haut", "de", "l'écran", "?"];
+  bus.inject("voice.listening", { on: true, look: false }, "askclaude");
+  bus.inject("askclaude.voice", { kind: "open", look: false, hold: false }, "askclaude");
+  const start = Date.now();
+  const level = window.setInterval(() => {
+    const t = (Date.now() - start) / 1000;
+    bus.inject("voice.level", { level: Math.round((0.35 + 0.3 * Math.sin(t * 9) * Math.sin(t * 2.3)) * 100) / 100 }, "askclaude");
+  }, 80);
+  words.forEach((_, i) => {
+    window.setTimeout(() => bus.inject("askclaude.voice", { kind: "partial", text: words.slice(0, i + 1).join(" ").replace(" ?", " ?") }, "askclaude"), 500 + i * 260);
+  });
+  window.setTimeout(() => {
+    window.clearInterval(level);
+    bus.inject("voice.level", { level: 0 }, "askclaude");
+    bus.inject("voice.listening", { on: false, look: false }, "askclaude");
+    bus.inject("askclaude.voice", { kind: "final", text: "Dis Ondine, c'est quoi cette petite île en haut de l'écran ?", look: false }, "askclaude");
+  }, 500 + words.length * 260 + 900);
 }
 
 /** Branche le mode démo sur l'île (fenêtre principale). */

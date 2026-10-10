@@ -38,6 +38,7 @@ import { connectRules, rulesSection } from "./rules-editor";
 import { profilesPage, profileSubs } from "./profiles-page";
 import { mascotPodium, type Podium } from "./podium";
 import { aboutGroup } from "./about";
+import { askclaudeGroups } from "./askclaude-page";
 import { perfGroup } from "./perf-group";
 import { startPerf } from "../core/perf";
 import { applyMode, hiddenByMode, modeSwitch } from "./mode";
@@ -132,6 +133,7 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
     { id: "general", label: "Général", keys: [] },
     { id: "models", label: "Fournisseur et modèles", keys: ["provider", "model", "openaiModel", "geminiModel", "maxTokens"] },
     { id: "persona", label: "Personnalité et affichage", keys: ["personality", "autoGrow", "emotions", "showDrop"] },
+    { id: "voice", label: "Voix et sons", keys: ["voiceHotkey", "micMode", "voiceEngine", "lookHotkey", "handsFree", "quickCommands", "plops", "plopVolume", "discreet"] },
     { id: "files", label: "Fichiers et PC", keys: ["fileTools", "pcTools", "filesFolder"] },
   ],
 };
@@ -1040,6 +1042,7 @@ function demoGroup(): HTMLElement {
                 scene("whats-new", "Quoi de neuf"),
                 scene("halos-battery", "Halos de batterie"),
                 scene("halos-tour", "Autres halos"),
+                scene("voice", "Parler à Ondine"),
               ),
               "La notification arrive dans l'île : lancez l'enregistrement avant de cliquer.",
             ),
@@ -1301,6 +1304,8 @@ function modulePage(main: HTMLElement, man: ModuleManifest, compact = false) {
     });
   }
   if (!compact && man.id === "weekly") main.append(weeklyGroup(man));
+  // Parler à Ondine : ce qui part et la consigne exacte (askclaude-page.ts).
+  if (!compact && man.id === "askclaude") main.append(...askclaudeGroups());
   if (!compact) main.append(el("p", { class: "version" }, `${man.name} · version ${man.version}`));
 }
 

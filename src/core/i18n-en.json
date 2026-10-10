@@ -923,7 +923,7 @@
 "Dernier texte lu": "Last text read",
 "Créer l'image": "Create the image",
 "Renommer le fichier": "Rename the file",
-"Un raccourci clavier (Alt+Espace par défaut) ouvre une recherche : applications du menu Démarrer, outils Windows (Services, Gestionnaire de périphériques…), fichiers récents, serveurs favoris (Accès distants) et actions de l'île. Il cherche aussi dans l'île : notes et tâches, presse-papiers, étagère et captures. Entrée pour ouvrir. Il fait aussi les calculs (« 18 % de 240 », « 1 Go en Mio », « 255 en hex », « 192.168.1.0/26 », « 15 h Montréal ») et crée des GUID : Entrée copie le résultat.": "A keyboard shortcut (Alt+Space by default) opens a search: Start menu apps, Windows tools (Services, Device Manager…), recent files, favorite servers (Remote access) and island actions. It also searches the island: notes and tasks, clipboard, shelf and captures. Enter to open. It also does calculations (“18% of 240”, “1 GB in MiB”, “255 in hex”, “192.168.1.0/26”, “3 pm Montreal”) and creates GUIDs: Enter copies the result.",
+"Un raccourci clavier (Alt+Espace par défaut) ouvre une recherche : applications du menu Démarrer, outils Windows (Services, Gestionnaire de périphériques…), fichiers récents, serveurs favoris (Accès distants) et actions de l'île. Il cherche aussi dans l'île : notes et tâches, presse-papiers, étagère et captures. Entrée pour ouvrir. Il fait aussi les calculs (« 18 % de 240 », « 1 Go en Mio », « 255 en hex », « 192.168.1.0/26 », « 15 h Montréal ») et crée des GUID : Entrée copie le résultat. La dernière ligne cherche ce que vous tapez sur le web (Google par défaut) : la page s'ouvre dans votre navigateur, rien ne part avant Entrée.": "A keyboard shortcut (Alt+Space by default) opens a search: Start menu apps, Windows tools (Services, Device Manager…), recent files, favorite servers (Remote access) and island actions. It also searches the island: notes and tasks, clipboard, shelf and captures. Enter to open. It also does calculations (“18% of 240”, “1 GB in MiB”, “255 in hex”, “192.168.1.0/26”, “3 pm Montreal”) and creates GUIDs: Enter copies the result. The last line searches the web for what you type (Google by default): the page opens in your browser, nothing goes out before Enter.",
 "Une appli, un fichier, une note, un calcul… (ou « 10 min »)": "An app, a file, a note, a calculation… (or “10 min”)",
 "Tapez le nom d'une appli, d'un fichier, d'un onglet, un mot de vos notes, ou un calcul (« 18 % de 240 », « 1 Go en Mio »).": "Type the name of an app, a file, a tab, a word from your notes, or a calculation (“18% of 240”, “1 GB in MiB”).",
 "Chercher aussi dans l'île (notes, presse-papiers, étagère, captures)": "Also search the island (notes, clipboard, shelf, captures)",
@@ -1574,7 +1574,6 @@
 "La capture a été annulée ou a échoué.": "The screenshot was cancelled or failed.",
 "Parler à Ondine": "Talk to Ondine",
 "Écrivez à Ondine comme à une amie : elle répond grâce à Claude, GPT ou Gemini, et vous montre tout fichier joint avant l'envoi.": "Write to Ondine like a friend: she answers using Claude, GPT or Gemini, and shows you any attached file before sending.",
-"Une conversation avec Ondine, qui répond grâce à l'API de Claude (par défaut), d'OpenAI (GPT) ou de Gemini, avec sa petite personnalité (modifiable) et ses humeurs, que la mascotte joue sur l'île. Vous pouvez joindre un fichier texte ou une capture, ou en déposer un sur l'île. Ondine peut aussi chercher vos fichiers par leur nom (les noms trouvés partent avec la conversation), en lire un ou en créer un dans son dossier (Documents\\Ondine par défaut) après votre accord, et vous proposer d'en ouvrir un. Elle peut regarder l'état du PC, l'agenda, la météo ou la musique, et agir quand vous le lui demandez : volume, luminosité, mode sombre, musique, minuteur, note ; ouvrir une application ou un site, poser un fichier sur l'Étagère, Wi-Fi et Bluetooth après votre accord. Elle ne peut rien supprimer ni lancer de commande. ENVOIE DU CONTENU À L'API CHOISIE (api.anthropic.com, api.openai.com ou generativelanguage.googleapis.com) : à chaque message partent la personnalité, les derniers messages de la conversation (20 au plus, avec leurs fichiers joints) et le nouveau. Un fichier joint vous est montré en entier avant l'envoi, et rien ne part sans votre clic. Les dossiers exclus sont refusés. La conversation reste en mémoire, jamais sur le disque : elle s'efface quand vous la recommencez ou quittez l'île. Les clés API restent dans le Gestionnaire d'identifiants Windows. Les réponses sont seulement affichées : rien n'est exécuté.": "A conversation with Ondine, who answers using the API of Claude (default), OpenAI (GPT) or Gemini, with her own little personality (editable) and moods, which the mascot acts out on the island. You can attach a text file or a screenshot, or drop one on the island. Ondine can also search your files by name (the names found go out with the conversation), read one or create one in her folder (Documents\\Ondine by default) once you agree, and offer to open one. She can look at the PC status, calendar, weather or music, and act when you ask her: volume, brightness, dark mode, music, timer, note; open an app or a website, put a file on the Shelf, Wi-Fi and Bluetooth once you agree. She cannot delete anything or run commands. SENDS CONTENT TO THE CHOSEN API (api.anthropic.com, api.openai.com or generativelanguage.googleapis.com): each message sends the personality, the latest messages of the conversation (20 at most, with their attached files) and the new one. An attached file is shown to you in full before sending, and nothing leaves without your click. Excluded folders are refused. The conversation stays in memory, never on disk: it is erased when you start over or quit the island. API keys stay in the Windows Credential Manager. Answers are only displayed: nothing is executed.",
 "Fournisseur d'IA": "AI provider",
 "Chacun a sa clé API, à ajouter dans Réglages → Identifiants. Vous pouvez en changer à tout moment, même au milieu d'une conversation.": "Each one has its own API key, to add in Settings → Credentials. You can switch at any time, even in the middle of a conversation.",
 "Claude (Anthropic)": "Claude (Anthropic)",
@@ -1587,7 +1586,69 @@
 "Le nom exact du modèle chez Google. Vide = gemini-3.8-flash.": "The exact model name at Google. Empty = gemini-3.8-flash.",
 "Longueur maximale d'une réponse (jetons)": "Maximum length of an answer (tokens)",
 "Personnalité d'Ondine": "Ondine's personality",
-"Vide = une goutte joyeuse, curieuse et un brin espiègle, qui répond en quelques phrases. Écrivez la vôtre pour changer son caractère. Elle part avec chaque message, et vous pouvez la relire dans l'onglet.": "Empty = a cheerful, curious, slightly mischievous droplet who answers in a few sentences. Write your own to change her character. It goes with every message, and you can read it again in the tab.",
+"Vide = une goutte joyeuse, curieuse et un brin espiègle, qui répond en quelques phrases. Écrivez la vôtre pour changer son caractère. Elle part avec chaque message : relisez la consigne exacte dans ces réglages.": "Empty = a cheerful, curious, slightly mischievous droplet who answers in a few sentences. Write your own to change her character. It goes with every message: read the exact instructions in these settings.",
+"Parler à Ondine à voix haute": "Talk to Ondine out loud",
+"⏹ Terminer": "⏹ Finish",
+"🎙️ Parler": "🎙️ Talk",
+"J'écris ce que vous avez dit…": "Writing down what you said…",
+"Je regarde et j'écoute…": "Looking and listening…",
+"J'écoute…": "Listening…",
+"Relâchez les touches quand vous avez fini · Échap pour annuler": "Release the keys when you're done · Esc to cancel",
+"Parlez, je m'arrête quand vous vous taisez · Échap pour annuler": "Speak, I stop when you go quiet · Esc to cancel",
+"Je n'ai rien entendu.": "I didn't hear anything.",
+"Le micro est déjà utilisé par une autre appli : Ondine reste discrète.": "The microphone is already used by another app: Ondine stays quiet.",
+"Présentation en cours : Ondine reste discrète.": "Presentation in progress: Ondine stays quiet.",
+"Concentration en cours : Ondine reste discrète.": "Focus session in progress: Ondine stays quiet.",
+"écoute impossible": "listening failed",
+"la dictée de Windows est coupée : activez « Reconnaissance vocale en ligne » dans Paramètres Windows → Confidentialité → Voix, ou choisissez la transcription par l'API dans les réglages": "Windows dictation is off: turn on « Online speech recognition » in Windows Settings → Privacy → Speech, or choose transcription by the API in the settings",
+"Windows refuse le micro : Paramètres Windows → Confidentialité → Microphone → « Autoriser les applications de bureau à accéder au microphone »": "Windows denies the microphone: Windows Settings → Privacy → Microphone → « Let desktop apps access your microphone »",
+"aucun micro trouvé": "no microphone found",
+"Windows ne sait pas encore écouter dans cette langue : ajoutez la reconnaissance vocale de la langue dans Paramètres Windows → Heure et langue → Voix": "Windows cannot listen in this language yet: add the language's speech recognition in Windows Settings → Time & language → Speech",
+"la dictée de Windows a besoin d'Internet": "Windows dictation needs the Internet",
+"le micro n'est pas disponible": "the microphone is not available",
+"le son du micro est trop mauvais": "the microphone sound is too poor",
+"Ondine écoute déjà": "Ondine is already listening",
+"le module Parler à Ondine est désactivé": "the Talk to Ondine module is turned off",
+"pas de fenêtre à regarder : cliquez d'abord dans la fenêtre à montrer": "no window to look at: click in the window to show first",
+"Claude n'écoute pas l'audio : pour la transcription par l'API, ajoutez une clé OpenAI ou Gemini dans Réglages → Identifiants, ou choisissez la reconnaissance de Windows": "Claude does not listen to audio: for transcription by the API, add an OpenAI or Gemini key in Settings → Credentials, or choose Windows recognition",
+"l'image de la fenêtre n'est plus là : reprenez-la avec « Regarde ça »": "the window image is gone: do « Look at this » again",
+"erreur inattendue pendant l'écoute": "unexpected error while listening",
+"Voix et sons": "Voice and sounds",
+"Raccourci pour parler à Ondine": "Shortcut to talk to Ondine",
+"Ouvre Parler à Ondine et écoute, de n'importe où. Échap annule. Un point rouge reste visible tant que le micro écoute ; rien n'est enregistré sur le disque.": "Opens Talk to Ondine and listens, from anywhere. Esc cancels. A red dot stays visible while the microphone listens; nothing is recorded on disk.",
+"Alt + Maj + V": "Alt + Shift + V",
+"Alt + Maj + G": "Alt + Shift + G",
+"Ctrl + Alt + Entrée": "Ctrl + Alt + Enter",
+"Mode du micro": "Microphone mode",
+"Appuyer une fois (arrêt au silence)": "Press once (stops on silence)",
+"Maintenir pour parler": "Hold to talk",
+"Reconnaissance de la voix": "Voice recognition",
+"Windows : la dictée de Windows écrit vos mots en direct (elle passe par le service en ligne de Microsoft, à activer dans Paramètres Windows → Confidentialité → Voix). API : l'audio de votre voix part vers OpenAI ou Gemini, avec votre clé (Claude n'écoute pas l'audio : il faut alors une clé OpenAI ou Gemini). Rien ne part si personne ne parle.": "Windows: Windows dictation writes your words live (it uses Microsoft's online service, to turn on in Windows Settings → Privacy → Speech). API: the audio of your voice goes to OpenAI or Gemini, with your key (Claude does not listen to audio: you then need an OpenAI or Gemini key). Nothing is sent if nobody speaks.",
+"Reconnaissance vocale de Windows": "Windows speech recognition",
+"Transcription par l'API (l'audio part)": "Transcription by the API (the audio is sent)",
+"Raccourci « Regarde ça »": "« Look at this » shortcut",
+"Comme le raccourci pour parler, et Ondine prend une image de la fenêtre active pour la joindre à votre question. Elle vous est montrée avant l'envoi : rien ne part sans votre clic.": "Like the shortcut to talk, and Ondine takes an image of the active window to attach to your question. It is shown to you before sending: nothing goes out without your click.",
+"Mains libres": "Hands-free",
+"Après une réponse à une question dite à voix haute, le micro se rallume quelques secondes pour enchaîner.": "After answering a question asked out loud, the microphone turns back on for a few seconds so you can go on.",
+"Commandes rapides sans IA": "Quick commands without AI",
+"« minuteur 10 minutes », « volume 30 », « musique suivante », « note : … », « luminosité 50 » : faits tout de suite sur le PC, sans clé et sans rien envoyer.": "« timer 10 minutes », « volume 30 », « next song », « note: … », « brightness 50 »: done right away on the PC, without a key and without sending anything.",
+"Petits sons pendant qu'Ondine répond": "Little sounds while Ondine answers",
+"Des « plop plip » de gouttes au rythme du texte, plus graves quand elle est triste, plus aigus quand elle est joyeuse, avec le timbre de votre mascotte.": "Little droplet « plop plip » sounds in rhythm with the text, lower when she is sad, higher when she is happy, with your mascot's own tone.",
+"Volume des petits sons": "Little sounds volume",
+"Discrétion en visio, présentation et concentration": "Discretion in video calls, presentations and focus",
+"Le micro ne s'ouvre pas et les petits sons se taisent quand une autre appli utilise le micro, pendant une présentation ou une séance de concentration.": "The microphone does not open and the little sounds go quiet when another app uses the microphone, during a presentation or a focus session.",
+"Une conversation avec Ondine, qui répond grâce à l'API de Claude (par défaut), d'OpenAI (GPT) ou de Gemini, avec sa petite personnalité (modifiable) et ses humeurs, que la mascotte joue sur l'île. Vous pouvez joindre un fichier texte ou une capture, ou en déposer un sur l'île. Ondine peut aussi chercher vos fichiers par leur nom (les noms trouvés partent avec la conversation), en lire un ou en créer un dans son dossier (Documents\\Ondine par défaut) après votre accord, et vous proposer d'en ouvrir un. Elle peut regarder l'état du PC, l'agenda, la météo ou la musique, et agir quand vous le lui demandez : volume, luminosité, mode sombre, musique, minuteur, note ; ouvrir une application, un site ou une recherche web, poser un fichier sur l'Étagère, Wi-Fi et Bluetooth après votre accord. Elle ne peut rien supprimer ni lancer de commande. ENVOIE DU CONTENU À L'API CHOISIE (api.anthropic.com, api.openai.com ou generativelanguage.googleapis.com) : à chaque message partent la personnalité, les derniers messages de la conversation (20 au plus, avec leurs fichiers joints) et le nouveau. Un fichier joint vous est montré en entier avant l'envoi, et rien ne part sans votre clic. Les dossiers exclus sont refusés. La conversation reste en mémoire, jamais sur le disque : elle s'efface quand vous la recommencez ou quittez l'île. Les clés API restent dans le Gestionnaire d'identifiants Windows. Les réponses sont seulement affichées : rien n'est exécuté. Vous pouvez aussi lui parler à voix haute (raccourci Ctrl+Alt+V ou bouton 🎙️) : la reconnaissance vocale de Windows écrit vos mots, ou, en option, l'audio part vers OpenAI ou Gemini pour être transcrit. Rien n'est enregistré sur le disque. Les commandes simples (« volume 30 », « minuteur 10 minutes », « note : … ») sont faites sans IA ni clé.": "A conversation with Ondine, who answers using the API of Claude (default), OpenAI (GPT) or Gemini, with her own little personality (editable) and moods, which the mascot acts out on the island. You can attach a text file or a screenshot, or drop one on the island. Ondine can also search your files by name (the names found go out with the conversation), read one or create one in her folder (Documents\\Ondine by default) once you agree, and offer to open one. She can look at the PC status, calendar, weather or music, and act when you ask her: volume, brightness, dark mode, music, timer, note; open an app, a website or a web search, put a file on the Shelf, Wi-Fi and Bluetooth once you agree. She cannot delete anything or run commands. SENDS CONTENT TO THE CHOSEN API (api.anthropic.com, api.openai.com or generativelanguage.googleapis.com): each message sends the personality, the latest messages of the conversation (20 at most, with their attached files) and the new one. An attached file is shown to you in full before sending, and nothing leaves without your click. Excluded folders are refused. The conversation stays in memory, never on disk: it is erased when you start over or quit the island. API keys stay in the Windows Credential Manager. Answers are only displayed: nothing is executed. You can also talk to her out loud (Ctrl+Alt+V shortcut or the 🎙️ button): Windows speech recognition writes your words or, as an option, the audio goes to OpenAI or Gemini to be transcribed. Nothing is recorded on disk. Simple commands (« volume 30 », « timer 10 minutes », « note: … ») are done without AI or key.",
+"La dernière ligne propose « Rechercher « … » sur Google » : Entrée ouvre la page de résultats dans votre navigateur. Rien ne part avant.": "The last line offers « Search « … » on Google »: Enter opens the results page in your browser. Nothing goes out before.",
+"Moteur de recherche": "Search engine",
+"Voir la consigne exacte": "Show the exact instructions",
+"Masquer la consigne exacte": "Hide the exact instructions",
+"Ce qui part": "What is sent",
+"Consigne exacte": "Exact instructions",
+"La consigne envoyée à chaque message": "The instructions sent with each message",
+"La personnalité, puis les consignes des humeurs et des outils, telles qu'elles partent.": "The personality, then the mood and tool instructions, exactly as they are sent.",
+"Activez le module pour voir ce qui part.": "Turn the module on to see what is sent.",
+"Un fichier joint vous est toujours montré en entier avant l'envoi, et rien ne part sans votre clic ou votre voix.": "An attached file is always shown to you in full before sending, and nothing goes out without your click or your voice.",
+"Quand vous parlez à Ondine, la reconnaissance vocale de Windows écrit vos mots. Pour la dictée, Windows passe par son service en ligne (réglage « Reconnaissance vocale en ligne » de Windows). Rien n'est enregistré sur le disque.": "When you talk to Ondine, Windows speech recognition writes your words. For dictation, Windows uses its online service (the Windows « Online speech recognition » setting). Nothing is recorded on disk.",
 "Ondine montre ses humeurs sur l'île": "Ondine shows her moods on the island",
 "L'île s'agrandit avec la conversation": "The island grows with the conversation",
 "Elle grandit à chaque message jusqu'à sa taille maximale, puis la conversation défile. Sinon, elle garde sa taille habituelle.": "It grows with each message up to its maximum size, then the conversation scrolls. Otherwise, it keeps its usual size.",
@@ -1612,8 +1673,6 @@
 "📎 Joindre un fichier…": "📎 Attach a file…",
 "Montrer un fichier à Ondine": "Show a file to Ondine",
 "Copier la réponse": "Copy the answer",
-"Voir la personnalité": "Show the personality",
-"Masquer la personnalité": "Hide the personality",
 "Envoie à une API d'IA": "Sends to an AI API",
 "Aucune télémétrie. Ce qui part vers une IA est toujours montré avant.": "No telemetry. What is sent to an AI is always shown first.",
 "Envoi à une IA": "Sending to an AI",
@@ -1680,7 +1739,7 @@
 "Faire": "Do it",
 "Ondine peut aussi régler le PC quand vous le lui demandez. Pour ouvrir une application ou un site, elle vous demande d'abord.": "Ondine can also adjust the PC when you ask her. To open an app or a website, she asks you first.",
 "Ondine peut agir sur le PC": "Ondine can act on the PC",
-"Elle regarde l'état du PC, l'agenda, la météo, la musique et vos notes, et agit quand vous le lui demandez : volume, luminosité, mode sombre, musique, minuteur, note. Pour ouvrir une application ou un site, poser un fichier sur l'Étagère ou toucher au Wi-Fi et au Bluetooth, elle attend votre accord. Elle ne peut rien supprimer ni lancer de commande.": "She looks at the PC status, calendar, weather, music and your notes, and acts when you ask her: volume, brightness, dark mode, music, timer, note. To open an app or a website, put a file on the Shelf or change Wi-Fi and Bluetooth, she waits for your OK. She cannot delete anything or run commands.",
+"Elle regarde l'état du PC, l'agenda, la météo, la musique et vos notes, et agit quand vous le lui demandez : volume, luminosité, mode sombre, musique, minuteur, note. Pour ouvrir une application, un site ou une recherche web, poser un fichier sur l'Étagère ou toucher au Wi-Fi et au Bluetooth, elle attend votre accord. Elle ne peut rien supprimer ni lancer de commande.": "She looks at the PC status, calendar, weather, music and your notes, and acts when you ask her: volume, brightness, dark mode, music, timer, note. To open an app, a website or a web search, put a file on the Shelf or change Wi-Fi and Bluetooth, she waits for your OK. She cannot delete anything or run commands.",
 "Fichiers et PC": "Files and PC",
 "Son coupé": "Sound muted",
 "Son rétabli": "Sound restored",
@@ -1776,6 +1835,34 @@
 "Un liseré de lumière en couleurs qui bougent : batterie, agents, sortie de veille, téléchargements… Chaque moment se coupe à part.": "A rim of light in moving colors: battery, agents, waking from sleep, downloads… Each moment can be turned off on its own."
 },
 "patterns": [
+[
+"^(.+) est déjà pris par un autre logiciel : choisissez un autre raccourci dans les réglages de Parler à Ondine$",
+"$1 is already taken by another program: choose another shortcut in the Talk to Ondine settings"
+],
+[
+"^Rechercher « (.+) » sur (.+)$",
+"Search « $1 » on $2"
+],
+[
+"^A cherché « (.+) » sur le web$",
+"Searched the web for « $1 »"
+],
+[
+"^Ondine voudrait chercher « (.+) » sur le web\\.$",
+"Ondine would like to search the web for « $1 »."
+],
+[
+"^Refusé : chercher « (.+) » sur le web$",
+"Refused: search the web for « $1 »"
+],
+[
+"^À chaque message partent vers (.+?) : la personnalité d'Ondine, les (\\d+) derniers messages au plus \\(avec leurs fichiers joints\\) et votre nouveau message\\. Rien n'est gardé sur le disque\\.$",
+"Each message sends to $1: Ondine's personality, the last $2 messages at most (with their attached files) and your new message. Nothing is kept on disk."
+],
+[
+"^Quand vous parlez à Ondine, l'audio de votre voix part vers (.+?) pour être écrit en texte\\. Il reste en mémoire, jamais sur le disque\\.$",
+"When you talk to Ondine, the audio of your voice goes to $1 to be written as text. It stays in memory, never on disk."
+],
 [
 "^(\\d+)\\ réglages?\\ de\\ plus\\ en\\ mode\\ Complet$",
 "$1 more settings in Full mode"
@@ -3171,18 +3258,6 @@
 [
 "^(.+?) · partira vers (.+?) avec votre message$",
 "$1 · will go to $2 with your message"
-],
-[
-"^À chaque message partent vers (.+?) : la personnalité d'Ondine et le vôtre\\. Rien n'est gardé sur le disque\\.$",
-"Each message sends to $1: Ondine's personality and yours. Nothing is kept on disk."
-],
-[
-"^À chaque message partent vers (.+?) : la personnalité d'Ondine, le message précédent et le vôtre\\. Rien n'est gardé sur le disque\\.$",
-"Each message sends to $1: Ondine's personality, the previous message and yours. Nothing is kept on disk."
-],
-[
-"^À chaque message partent vers (.+?) : la personnalité d'Ondine, les (\\d+) messages précédents et le vôtre\\. Rien n'est gardé sur le disque\\.$",
-"Each message sends to $1: Ondine's personality, the $2 previous messages and yours. Nothing is kept on disk."
 ],
 [
 "^Pas de clé API (\\w+) : ajoutez-la dans Réglages → Identifiants\\.$",

@@ -21,6 +21,10 @@ mod askclaude_providers;
 mod askclaude_tools;
 // Ses outils pour le PC et les onglets : regarder, régler, ouvrir.
 mod askclaude_pc;
+// Sa voix : raccourci, écoute, transcription (Windows ou API), « Regarde ça ».
+mod askclaude_voice;
+// Ses commandes rapides comprises sans IA (minuteur, volume, note…).
+mod askclaude_quick;
 mod capture;
 mod clipboard;
 mod controls;

@@ -39,6 +39,8 @@ pub mod record;
 // Les halos de l'île : niveau du micro et du son, signal Wi-Fi, Verr Maj / Verr Num,
 // quelques touches (copier, coller, volume). Contient sa propre version Linux.
 pub mod halos;
+// Parler à Ondine à voix haute : dictée de Windows, micro en mémoire, fenêtre active. Contient sa propre version Linux.
+pub mod voice;
 
 #[cfg(windows)]
 mod drop_target;
