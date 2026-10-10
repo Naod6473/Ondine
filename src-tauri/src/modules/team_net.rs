@@ -535,6 +535,8 @@ fn housekeeping(app: AppHandle, inner: Arc<Inner>) {
                 team::emit(&app, "team.changed", Value::Null);
             }
             sync_clipboard(&app, &inner);
+            // Le chat : « … écrit » qui s'efface, historique gardé 7 jours (si réglé).
+            super::team_chat::tick(&app, &inner);
             if tick.is_multiple_of(5) {
                 sync_mascot(&app, &inner);
             }

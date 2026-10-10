@@ -93,6 +93,9 @@ pub const MAX_FILE_NAME: usize = 120;
 pub const MAX_SUMMARY: usize = 8_000;
 pub const MAX_CHOICE: usize = 60;
 pub const MAX_QUESTION: usize = 200;
+/// Un message du chat : 4 000 caractères au plus (un long message se coupe
+/// en plusieurs ; un texte plus long passe par « Envoyer le texte »).
+pub const MAX_CHAT: usize = 4_000;
 
 // ── Les clés ─────────────────────────────────────────────────────────────────
 
@@ -325,6 +328,16 @@ pub enum Msg {
     /// Avant les morceaux d'un fichier, et après.
     FileStart { size: u64 },
     FileEnd { sha256: String },
+    // ── Le chat (1.2.2, team_chat.rs) : entre collègues appairés, il arrive
+    //    directement, sans « Accepter » ; rien n'y est jamais ouvert ni exécuté.
+    /// Un message du chat ; `group` : dans le salon « Toute l'équipe ».
+    Chat { id: u64, text: String, #[serde(default)] group: bool },
+    /// « … écrit » (renvoyé au plus toutes les 3 s pendant la frappe).
+    ChatTyping { #[serde(default)] group: bool },
+    /// « Lu » : l'autre a lu la conversation à deux jusqu'au message `id`.
+    ChatRead { id: u64 },
+    /// Une réaction (👍 😂 ❤️) à un message ; la même une deuxième fois l'enlève.
+    ChatReact { id: u64, kind: String, #[serde(default)] group: bool },
 }
 
 /// Les gestes qu'un collègue peut envoyer.
@@ -332,6 +345,8 @@ pub const PING_KINDS: &[&str] = &["wave", "thumb", "coffee", "heart", "clap", "p
 pub const ANSWERS: &[&str] = &["yes", "later", "no"];
 pub const STATUSES: &[&str] = &["available", "meeting", "focus", "away"];
 pub const INVITE_KINDS: &[&str] = &["coffee", "lunch"];
+/// Les réactions du chat : 👍 😂 ❤️.
+pub const REACTIONS: &[&str] = &["thumb", "laugh", "heart"];
 
 impl Msg {
     /// Vérifie chaque champ. Un message qui ne passe pas est ignoré en entier.
@@ -386,6 +401,8 @@ impl Msg {
                 check_color(custom)
             }
             Msg::Refused { reason } => check_text(reason, 200, false),
+            Msg::Chat { text, .. } => nonempty(text).and(check_text(text, MAX_CHAT, true)),
+            Msg::ChatReact { kind, .. } => one_of(kind, REACTIONS),
             Msg::FileEnd { sha256 } => {
                 if sha256.len() == 64 && sha256.bytes().all(|b| b.is_ascii_hexdigit()) {
                     Ok(())
@@ -401,7 +418,9 @@ impl Msg {
             | Msg::RdpReply { .. }
             | Msg::InventoryAsk
             | Msg::Ok
-            | Msg::FileStart { .. } => Ok(()),
+            | Msg::FileStart { .. }
+            | Msg::ChatTyping { .. }
+            | Msg::ChatRead { .. } => Ok(()),
         }
     }
 }
@@ -1093,6 +1112,34 @@ mod tests {
         assert!(Msg::Hello(hello.clone()).check().is_ok());
         assert!(Msg::Hello(Hello { status: "root".into(), ..hello.clone() }).check().is_err());
         assert!(Msg::Hello(Hello { color: "red".into(), ..hello }).check().is_err());
+    }
+
+    #[test]
+    fn chat_messages_travel_encrypted_and_are_checked() {
+        let (mut a, mut b) = session(true).unwrap();
+        // Un message du chat, « … écrit », « Lu », une réaction : chiffrés, puis relus tels quels.
+        let msgs = [
+            Msg::Chat { id: 7, text: "On déjeune à 12 h 30 ?\nhttps://exemple.fr/menu".into(), group: false },
+            Msg::Chat { id: 8, text: "Bonjour l'équipe".into(), group: true },
+            Msg::ChatTyping { group: true },
+            Msg::ChatRead { id: 7 },
+            Msg::ChatReact { id: 7, kind: "laugh".into(), group: false },
+        ];
+        for m in msgs {
+            let sealed = a.seal_msg(&m).unwrap();
+            assert!(!String::from_utf8_lossy(&sealed).contains("déjeune"), "rien en clair");
+            assert_eq!(b.open_msg(&sealed).unwrap(), m);
+        }
+        // Les limites : vide, trop long, caractères qui retournent le texte, réaction inconnue.
+        assert!(Msg::Chat { id: 1, text: " \n ".into(), group: false }.check().is_err());
+        assert!(Msg::Chat { id: 1, text: "x".repeat(MAX_CHAT), group: false }.check().is_ok());
+        assert!(Msg::Chat { id: 1, text: "x".repeat(MAX_CHAT + 1), group: false }.check().is_err());
+        assert!(Msg::Chat { id: 1, text: "fac\u{202E}fdp.exe".into(), group: false }.check().is_err());
+        assert!(Msg::ChatReact { id: 1, kind: "💩".into(), group: false }.check().is_err());
+        assert!(a.seal_msg(&Msg::ChatReact { id: 1, kind: "rm".into(), group: true }).is_err());
+        // Un message d'une version d'avant (sans « group ») se lit encore : à deux.
+        let old: Msg = serde_json::from_str(r#"{"t":"chat","id":3,"text":"Salut"}"#).unwrap();
+        assert_eq!(old, Msg::Chat { id: 3, text: "Salut".into(), group: false });
     }
 
     #[test]

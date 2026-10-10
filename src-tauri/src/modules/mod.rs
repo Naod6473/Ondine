@@ -49,6 +49,8 @@ mod shelf_tools;
 mod system;
 // Équipe : les Ondine du réseau local se parlent (découverte, appairage, échanges chiffrés).
 mod team;
+// Son chat (1.2.2) : conversations à deux, salon « Toute l'équipe », historique.
+mod team_chat;
 // Ses fils de fond : écoute, découverte, présence, fichiers.
 mod team_net;
 // Son protocole (messages, chiffrement, appairage), en code pur testé.

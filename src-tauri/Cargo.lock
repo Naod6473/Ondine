@@ -2888,6 +2888,7 @@ version = "1.2.2"
 dependencies = [
  "arboard",
  "base64 0.22.1",
+ "chacha20poly1305",
  "chrono",
  "curve25519-dalek",
  "getrandom 0.3.4",
