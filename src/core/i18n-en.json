@@ -2185,7 +2185,77 @@
 "⚙️ Ouvrir les paramètres Windows": "⚙️ Open Windows Settings",
 "🎙️ Passer à la transcription par l'API": "🎙️ Switch to transcription by the API",
 "page des Paramètres inconnue": "unknown Settings page",
-"La dictée échoue": "Dictation fails"
+"La dictée échoue": "Dictation fails",
+"Passer": "Skip",
+"Continuer": "Continue",
+"Votre prénom": "Your first name",
+"Je vous parle": "I talk to you",
+"en vous vouvoyant": "formally (vous)",
+"en vous tutoyant": "informally (tu)",
+"Vous / Tu": "Vous / Tu",
+"Reprendre la configuration de mon autre PC": "Bring over the setup from my other PC",
+"Bonjour, je suis Ondine. Et vous ?": "Hi, I'm Ondine. And you?",
+"Trouvé sur ce PC": "Found on this PC",
+"Je regarde les logiciels de ce PC…": "Looking at the software on this PC…",
+"Pré-cochées d'après les logiciels de ce PC : rien n'est envoyé.": "Pre-checked from the software on this PC: nothing is sent.",
+"Cochez ce qui vous ressemble. Le reste se rallume dans Réglages → Onglets.": "Check what sounds like you. The rest can be turned back on in Settings → Tabs.",
+"Vous faites quoi sur ce PC ?": "What do you do on this PC?",
+"Qui vit dans l'île ?": "Who lives in the island?",
+"Cliquez sur une mascotte, puis « Adopter ». Vous la changerez quand vous voudrez dans Réglages → Mascotte.": "Click a mascot, then “Adopt”. You can change it anytime in Settings → Mascot.",
+"Où vit l'île ?": "Where does the island live?",
+"En couleur": "In color",
+"Vous pourrez aussi attraper l'île par son bord et la poser ailleurs.": "You can also grab the island by its edge and drop it elsewhere.",
+"sk-ant-…": "sk-ant-…",
+"Clé de l'API de Claude": "Claude API key",
+"Une clé est déjà enregistrée sur ce PC.": "A key is already saved on this PC.",
+"Clé enregistrée dans le Gestionnaire d'identifiants de Windows.": "Key saved in Windows Credential Manager.",
+"Ondine répond grâce à l'API de Claude. Collez votre clé maintenant, ou plus tard dans Réglages → Parler à Ondine.": "Ondine answers using the Claude API. Paste your key now, or later in Settings → Talk to Ondine.",
+"La clé reste sur ce PC, dans le coffre de Windows, jamais dans les réglages.": "The key stays on this PC, in the Windows vault, never in the settings.",
+"C'est prêt !": "All set!",
+"Vos réglages de l'autre PC sont là.": "Your settings from the other PC are here.",
+"Ondine vous proposera d'autres onglets au bon moment, jamais sans vous demander.": "Ondine will suggest other tabs at the right moment, never without asking you.",
+"Pas en mode démo.": "Not in demo mode.",
+"Choisir un fichier de réglages exporté": "Choose an exported settings file",
+"Collez d'abord la clé.": "Paste the key first.",
+"Ce n'est pas une clé : elle tient sur une ligne, sans espace.": "That's not a key: it fits on one line, with no spaces.",
+"Bureautique": "Office work",
+"Fichiers, copies, captures, rendez-vous": "Files, copies, screenshots, meetings",
+"Développement et agents IA": "Development and AI agents",
+"Agents IA, terminal, automatisations": "AI agents, terminal, automations",
+"IT et support": "IT and support",
+"Système, accès distants, réseau": "System, remote access, network",
+"Réunions et visio": "Meetings and video calls",
+"Micro coupé en un clic, agenda, minuteur": "One-click mic mute, calendar, timer",
+"Musique et création": "Music and creative work",
+"Ce qui joue, le son, les captures": "What's playing, sound, screenshots",
+"Études": "Studies",
+"Notes, Pomodoro, agenda": "Notes, Pomodoro, calendar",
+"Développement": "Development",
+"Support": "Support",
+"Réunions": "Meetings",
+"Une clé USB ! Voulez-vous l'onglet Contrôles ?": "A USB drive! Want the Controls tab?",
+"Il l'éjecte en un clic, et règle le son, le micro et l'écran.": "It ejects it in one click, and sets the sound, mic and screen.",
+"Une visio ? L'onglet Contrôles coupe le micro en un clic.": "A video call? The Controls tab mutes the mic in one click.",
+"Il montre aussi quelle appli utilise le micro ou la caméra.": "It also shows which app is using the mic or camera.",
+"Voulez-vous l'Étagère ?": "Want the Shelf?",
+"Les fichiers glissés sur l'île y restent sous la main.": "Files dropped on the island stay close at hand there.",
+"Ajouter l'onglet": "Add the tab",
+"Non merci": "No thanks",
+"Vous ne l'avez pas ouvert depuis 3 semaines. Vous pourrez le rallumer dans Réglages → Onglets.": "You haven't opened it in 3 weeks. You can turn it back on in Settings → Tabs.",
+"Le garder": "Keep it",
+"Prénom": "First name",
+"Premiers pas": "First steps",
+"Refaire l'assistant": "Run the setup again",
+"L'assistant s'ouvre dans l'île.": "The setup opens in the island.",
+"Ondine dit bonjour avec, dans l'île, le bilan de la semaine et la bulle du bureau. Il reste sur ce PC.": "Ondine greets you with it in the island, the weekly summary and the desktop bubble. It stays on this PC.",
+"Votre prénom, ce que vous faites sur ce PC (les onglets), la mascotte, la place de l'île et la clé de Parler à Ondine.": "Your first name, what you do on this PC (the tabs), the mascot, where the island lives and the Talk to Ondine key.",
+"Propositions": "Suggestions",
+"Propositions d'Ondine": "Ondine's suggestions",
+"À la première clé USB, la première visio ou le premier fichier glissé sur l'île, Ondine propose l'onglet qui va avec. Un onglet jamais ouvert depuis 3 semaines : elle propose de le masquer. Toujours à accepter, une seule fois chacune, compté sur ce PC.": "On the first USB drive, the first video call or the first file dropped on the island, Ondine suggests the matching tab. A tab not opened in 3 weeks: she offers to hide it. Always up to you, each one only once, counted on this PC.",
+"Revoir les propositions": "Show suggestions again",
+"Ondine pourra refaire ses propositions.": "Ondine may make her suggestions again.",
+"Premier lancement": "First launch",
+"Pour m'ouvrir : la souris sur l'île. Mon icône est près de l'horloge (clic droit : Réglages, Quitter).": "To open me: hover the island. My icon is near the clock (right-click: Settings, Quit)."
 },
 "patterns": [
 ["^L'audio de votre voix partira vers (.+), avec votre clé\\.$", "The audio of your voice will go to $1, with your key."],
@@ -3113,10 +3183,6 @@
 "$1 created"
 ],
 [
-"^Je vis en haut de l'écran : passez la souris tout en haut, ou (.+)\\. Mon icône est près de l'horloge \\(clic droit : Réglages, Quitter\\)\\.$",
-"I live at the top of the screen: move the mouse to the very top, or press $1. My icon is next to the clock (right-click: Settings, Quit)."
-],
-[
 "^La version (.+) est disponible\\.$",
 "Version $1 is available."
 ],
@@ -3955,6 +4021,38 @@
 [
 "^fichier trop gros \\((\\d+) Mo au plus\\)$",
 "file too big ($1 MB at most)"
+],
+[
+"^Étape (\\d) sur 5$",
+"Step $1 of 5"
+],
+[
+"^(\\d+) onglets$",
+"$1 tabs"
+],
+[
+"^C'est prêt, (.+) !$",
+"All set, $1!"
+],
+[
+"^Bonjour (.+) !$",
+"Hello $1!"
+],
+[
+"^Masquer l'onglet (.+) \\?$",
+"Hide the $1 tab?"
+],
+[
+"^Le bilan de votre semaine, (.+)$",
+"Your week in review, $1"
+],
+[
+"^Bonjour (.+) ! Je suis Ondine\\. Posez-moi une question sur votre PC, collez une erreur, ou montrez-moi un fichier : je vous aide\\.$",
+"Hello $1! I'm Ondine. Ask me a question about your PC, paste an error, or show me a file: I'll help you."
+],
+[
+"^Pour m'ouvrir : la souris sur l'île, ou (.+)\\. Mon icône est près de l'horloge \\(clic droit : Réglages, Quitter\\)\\.$",
+"To open me: hover the island, or $1. My icon is near the clock (right-click: Settings, Quit)."
 ]
 ]
 }

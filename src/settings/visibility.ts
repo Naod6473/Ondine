@@ -27,7 +27,7 @@ export const WHOLE_PAGE = "*";
  * il est donc essentiel là où il est.
  */
 export const ISLAND_ESSENTIALS: Record<string, string[] | typeof WHOLE_PAGE> = {
-  general: ["Langue", "S'adresser à moi", "Lancer avec Windows", "Bord de l'écran", "Mises à jour automatiques"],
+  general: ["Langue", "S'adresser à moi", "Prénom", "Premiers pas", "Lancer avec Windows", "Bord de l'écran", "Mises à jour automatiques"],
   look: ["Thème", "Style des icônes"],
   // La liste des modules (ordre des onglets, sans onglet) est marquée dans le
   // DOM (data-essential) : ses clés sont les noms des modules.

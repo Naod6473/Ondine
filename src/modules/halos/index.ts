@@ -26,6 +26,8 @@ import { hideHalo, mascotPalette, showHalo, updateHalo, type HaloOptions } from 
 import { skyPalette } from "../../island/halo-palettes";
 import { calmMode } from "../../mascot/mascot-state";
 import { dayKey, leaveDue, levelFromPeak, mediaPlaying, meetingCometMs, morningDue, parseTime, sessionProgress, timerHaloPlan, weatherKind, type TimerProgress } from "./halo-rules";
+import { settingsStore } from "../../core/settings-store";
+import { helloText } from "../../core/setup-plan";
 
 /** Un petit retour (Verr Maj, Copié…) : une ligne dans l'île, vite repartie. */
 const KEY_NOTE_MS = 1600;
@@ -311,7 +313,8 @@ export const halos: IslandModule = {
         if (morningDue(now, desk?.idleMs ?? 0, remember("halos.morning"))) {
           remember("halos.morning", dayKey(now));
           showHalo({ id: "morning", palette: "morning", shape: "burst", durationMs: 3000 });
-          api.notify({ title: "Bonjour !", body: weatherLine || undefined, icon: "🌅", priority: "low", key: "halo-morning" });
+          // Avec le prénom donné à l'assistant de premier lancement : « Bonjour Simon ! ».
+          api.notify({ title: helloText(settingsStore.current.general.firstName), body: weatherLine || undefined, icon: "🌅", priority: "low", key: "halo-morning" });
         }
       }
       // Les couleurs du ciel au repos (désactivé par défaut), changées à chaque heure.

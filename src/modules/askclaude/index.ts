@@ -39,7 +39,16 @@ import { el } from "../../island/dom";
 import { ondineThinking } from "../../island/halo";
 import { settingsStore } from "../../core/settings-store";
 import { reducedMotion } from "../../island/tab-pill";
+import { cleanFirstName } from "../../core/setup-plan";
 import { DEFAULT_TIMBRE, speak, TIMBRES } from "./plops";
+
+/** Le premier mot d'Ondine, avec le prénom donné à l'assistant de premier lancement. */
+function helloBubble(): string {
+  const name = cleanFirstName(settingsStore.current.general.firstName ?? "");
+  return name
+    ? `Bonjour ${name} ! Je suis Ondine. Posez-moi une question sur votre PC, collez une erreur, ou montrez-moi un fichier : je vous aide.`
+    : "Bonjour ! Je suis Ondine. Posez-moi une question sur votre PC, collez une erreur, ou montrez-moi un fichier : je vous aide.";
+}
 
 interface Preview {
   id: number;
@@ -788,7 +797,7 @@ export const askclaude: IslandModule = {
             ? el(
                 "div",
                 { class: "ask-bubble ondine hello" },
-                el("div", { class: "ask-bubble-text" }, "Bonjour ! Je suis Ondine. Posez-moi une question sur votre PC, collez une erreur, ou montrez-moi un fichier : je vous aide."),
+                el("div", { class: "ask-bubble-text" }, helloBubble()),
               )
             : null,
           ...state.bubbles.map(bubble),
