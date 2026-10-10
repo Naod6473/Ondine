@@ -291,7 +291,11 @@ le constructeur de `Island`.
   des deux côtés + ronds dans l'eau), `waves`, `drops`, `crackle`,
   `reservoir` (déborde en gouttes au-delà de 95 %), `rain` (palette `storm` :
   éclairs), `rise` / `set` (soleil qui monte ou descend), `cocoon`, `level`
-  (suit `updateHalo(id, {level})`). `fill` < 1 coupe n'importe quelle forme
+  (suit `updateHalo(id, {level})`), `progress` (liseré d'un minuteur : se
+  vide jusqu'à `endsAt` sur `total` ms, recalculé à chaque image, 12 i/s loin
+  de la fin ; rouge dans les 10 dernières secondes (`progressWarn`) ; sans
+  `endsAt` : figé à `fill`, la boucle s'arrête ; animations réduites / Calme :
+  un pas toutes les 5 s). `fill` < 1 coupe n'importe quelle autre forme
   (une braise, une jauge).
 - **Palettes** : `PALETTES` dans halo-palettes.ts, à UN seul endroit, écrites
   pour fond sombre ; sur fond clair (`prefers-color-scheme: light`),
@@ -502,6 +506,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `agenda.join` `{key, minutes}` | Agenda (Rust) | alerte « Réunion dans 2 min : … » avec « Rejoindre » (une fois par réunion en ligne) |
 | `media.pause` | Agenda (Rust, « Rejoindre ») | Musique met en pause ce qui joue (rien si c'est déjà en pause) |
 | `controls.mic-set` `{muted}` | Agenda (front, « Rétablir le micro ») | Contrôles coupe ou rétablit le micro, puis publie `controls.mic-muted` (`source: "request"`) |
+| `timer.progress` `{id, phase, state, endsAt, total, left}` | Minuteur (front) | un compte à rebours change (`id` "timer" ou "pomodoro", `state` running / paused / off / done) : Animations de l'île dessine le liseré qui se vide (réglage `timerRing`), un éclat à `done` |
 | `timer.work-session` `{seconds, completed}` | Minuteur (front) | une séance de travail Pomodoro s'arrête (finie, en pause, passée, remise à zéro, module coupé) : Bilan de la semaine ajoute le temps, et un Pomodoro si `completed` |
 | `notes.todo-toggled` `{done}` | Notes (Rust) | une tâche cochée (`true`) ou décochée : Bilan de la semaine compte (jamais le texte de la tâche) |
 | `weekly.show` | réglages (« Voir le bilan maintenant ») | Bilan de la semaine montre la semaine en cours (`peek`), sans rien consommer |
@@ -1131,6 +1136,11 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   rebours a avancé depuis le départ (ou la reprise) : un PC en veille pendant
   la séance ne compte jamais plus que la séance. `completed` seulement à la
   fin naturelle d'une séance de travail (pas « Passer »).
+- Liseré de l'île : `syncProgress` (à chaque tick) publie `timer.progress`
+  seulement quand la signature change (lancé, pause, reprise, +1 min, phase,
+  fin) ; `done` juste avant la remise à zéro. `timer.start` accepte aussi
+  `seconds` (10 à 600), pour la scène de démo « Liseré d'un minuteur ».
+  Avec `timerRing`, pas de cocon de concentration (la séance a déjà sa jauge).
 
 ### Module Notes (`src/modules/notes/`, `src-tauri/src/modules/notes.rs`)
 

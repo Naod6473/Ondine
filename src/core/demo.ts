@@ -22,7 +22,7 @@ export function demoOn(): boolean {
 }
 
 /** Les scènes que la fenêtre de réglages peut demander (sujet « demo.scene »). */
-export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "voice", "voice-error", "mascot-talk", "ai-outage", "team-visit", "island-dodge"] as const;
+export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "timer-ring", "voice", "voice-error", "mascot-talk", "ai-outage", "team-visit", "island-dodge"] as const;
 export type DemoScene = (typeof DEMO_SCENES)[number];
 
 /**
@@ -876,6 +876,11 @@ function playScene(bus: Bus, scene: string) {
       break;
     case "halos-tour":
       play(bus, HALOS_TOUR);
+      break;
+    case "timer-ring":
+      // Un vrai minuteur de 40 s (module Minuteur) : le liseré fait le tour de
+      // l'île et se vide, rougit dans les 10 dernières secondes, puis l'éclat.
+      bus.inject("timer.start", { seconds: 40 }, "demo");
       break;
     case "voice":
       demoVoice(bus);

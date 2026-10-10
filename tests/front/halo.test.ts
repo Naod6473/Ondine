@@ -6,10 +6,10 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { forLightBackground, hexToRgb, intensityOf, isPaletteName, MIN_PERIOD_MS, PALETTES, paletteColors, pulse, rhythmMs, skyPalette } from "../../src/island/halo-palettes";
+import { forLightBackground, hexToRgb, intensityOf, isPaletteName, MIN_PERIOD_MS, PALETTES, paletteColors, progressLeft, progressWarn, pulse, rhythmMs, skyPalette } from "../../src/island/halo-palettes";
 import { HaloStack, priorityOf, type HaloPriority } from "../../src/island/halo-stack";
 import { batteryPrefs, BRIEF_CHARGE_MS, chargeHaloMs, fillFor, PLUG_WAVE_MS } from "../../src/modules/system/battery-rules";
-import { dayKey, leaveDue, levelFromPeak, meetingCometMs, morningDue, parseTime, sessionProgress, weatherKind } from "../../src/modules/halos/halo-rules";
+import { dayKey, leaveDue, levelFromPeak, mediaPlaying, meetingCometMs, morningDue, parseTime, sessionProgress, timerHaloPlan, weatherKind } from "../../src/modules/halos/halo-rules";
 
 describe("palettes du halo", () => {
   test("chaque palette a 2 à 6 couleurs « #rrggbb », jamais une couleur plate", () => {
@@ -224,10 +224,11 @@ describe("module « Animations de l'île »", () => {
     assert.equal(def("sky"), false);
     assert.equal(def("music"), false);
     assert.equal(def("think"), true);
+    assert.equal(def("timerRing"), true);
   });
 
   test("chaque catégorie a son réglage pour la couper", () => {
-    for (const k of ["wake", "usb", "download", "disk", "wifi", "weather", "network", "capture", "shelfDrop", "cpu", "update", "think", "agents", "voice", "focus", "meeting", "streak", "dance", "capsLock", "numLock", "clipboard", "clipText", "volumeKeys", "morning"]) {
+    for (const k of ["wake", "usb", "download", "disk", "wifi", "weather", "network", "capture", "shelfDrop", "cpu", "update", "think", "agents", "voice", "focus", "meeting", "streak", "dance", "timerRing", "capsLock", "numLock", "clipboard", "clipText", "volumeKeys", "morning"]) {
       assert.equal(m.settings.fields.find((f) => f.key === k)?.type, "boolean", k);
     }
   });
@@ -237,5 +238,74 @@ describe("module « Animations de l'île »", () => {
     for (const t of ["halos.wake", "halos.lock-key", "halos.clip", "halos.volume", "halos.wifi"]) {
       assert.ok(m.events.emits.includes(t) && m.events.listens.includes(t), t);
     }
+  });
+});
+
+describe("le halo suit la musique", () => {
+  test("lit l'état publié par le module Musique (un objet, pas un booléen)", () => {
+    // Le bug de la 1.2.2 : on testait `playing === true`, jamais vrai : le halo
+    // de la musique ne s'allumait jamais, et ce qu'on voyait était la danse.
+    assert.equal(mediaPlaying({ playing: { status: "playing", title: "Nuit bleue" }, artwork: 2 }), true);
+    assert.equal(mediaPlaying({ playing: { status: "paused" }, artwork: 2 }), false);
+    assert.equal(mediaPlaying({ playing: null, artwork: -1 }), false);
+    assert.equal(mediaPlaying({ playing: true }), false);
+    assert.equal(mediaPlaying(null), false);
+    // Le lecteur change de morceau : on ne sait pas, on garde l'état.
+    assert.equal(mediaPlaying({ playing: { status: "changing" } }), null);
+  });
+
+  test("le module relit ses réglages pendant la lecture, et la danse obéit à la case Musique", () => {
+    const src = readFileSync("src/modules/halos/index.ts", "utf8");
+    assert.match(src, /onSettingsChange\(\(\) => \{\s*syncLevels\(\);/);
+    assert.match(src, /on\("dance"\) && on\("music"\)/);
+    assert.ok(!src.includes("p.playing === true"));
+  });
+});
+
+describe("liseré des minuteurs", () => {
+  test("ce qui reste : calculé depuis l'heure de fin, figé en pause", () => {
+    assert.equal(progressLeft(0, 60_000, 60_000, 1), 1);
+    assert.equal(progressLeft(30_000, 60_000, 60_000, 1), 0.5);
+    assert.equal(progressLeft(90_000, 60_000, 60_000, 1), 0);
+    // Interpolé : pas de marche d'escalier.
+    assert.ok(Math.abs(progressLeft(10, 60_000, 60_000, 1) - (1 - 10 / 60_000)) < 1e-9);
+    assert.equal(progressLeft(5, null, 60_000, 0.3), 0.3);
+  });
+
+  test("rougit seulement dans les dernières secondes", () => {
+    const total = 5 * 60_000;
+    assert.equal(progressWarn(0, total, total), 0);
+    assert.equal(progressWarn(total - 10_000, total, total), 0);
+    assert.equal(progressWarn(total - 5_000, total, total), 0.5);
+    assert.equal(progressWarn(total, total, total), 1);
+    assert.equal(progressWarn(0, null, total), 0);
+    // Un minuteur très court : le dernier quart.
+    assert.equal(progressWarn(0, 20_000, 20_000), 0);
+    assert.equal(progressWarn(17_500, 20_000, 20_000), 0.5);
+  });
+
+  test("ce que fait le liseré à chaque nouvelle du Minuteur", () => {
+    assert.deepEqual(timerHaloPlan({ id: "timer", phase: "timer", state: "running", endsAt: 1000, total: 600_000, left: 600_000 }), {
+      action: "show",
+      id: "timer-timer",
+      palette: "timer",
+      endsAt: 1000,
+      total: 600_000,
+      fill: 1,
+    });
+    // En pause : figé à ce qui reste.
+    const paused = timerHaloPlan({ id: "pomodoro", phase: "work", state: "paused", endsAt: null, total: 100, left: 25 });
+    assert.deepEqual(paused, { action: "show", id: "timer-pomodoro", palette: "tomato", endsAt: null, total: 100, fill: 0.25 });
+    assert.equal((timerHaloPlan({ id: "pomodoro", phase: "short", state: "running", endsAt: 5, total: 5 }) as { palette: string }).palette, "rest");
+    assert.deepEqual(timerHaloPlan({ id: "timer", state: "off", total: 0 }), { action: "hide", id: "timer-timer" });
+    assert.deepEqual(timerHaloPlan({ id: "pomodoro", phase: "work", state: "done", total: 100 }), { action: "done", id: "timer-pomodoro-done", palette: "bloom" });
+    assert.equal(timerHaloPlan({ id: "autre", state: "running" }), null);
+  });
+
+  test("le Minuteur publie timer.progress et les Animations de l'île l'écoutent", () => {
+    const t = JSON.parse(readFileSync("src/modules/timer/manifest.json", "utf8")) as { events: { emits: string[] } };
+    const h = JSON.parse(readFileSync("src/modules/halos/manifest.json", "utf8")) as { events: { listens: string[] } };
+    assert.ok(t.events.emits.includes("timer.progress"));
+    assert.ok(h.events.listens.includes("timer.progress"));
   });
 });

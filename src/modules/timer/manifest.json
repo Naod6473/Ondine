@@ -22,7 +22,7 @@
   "views": ["compact", "expanded"],
   "commands": [],
   "events": {
-    "emits": ["timer.done", "task.finished", "timer.focus", "timer.work-session"],
+    "emits": ["timer.done", "task.finished", "timer.focus", "timer.work-session", "timer.progress"],
     "listens": ["timer.start"]
   }
 }

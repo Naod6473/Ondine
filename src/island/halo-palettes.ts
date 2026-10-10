@@ -71,8 +71,12 @@ export const PALETTES = {
   online: { dark: ["#22c55e", "#4ade80", "#2dd4bf"] },
   /** Rendez-vous qui approche. */
   meeting: { dark: ["#f472b6", "#a78bfa", "#60a5fa"] },
-  /** Minuteur : la jauge qui se remplit. */
+  /** Minuteur : le liseré qui se vide (rouge-rose → ambre → citron ; passe au rouge à la fin). */
   timer: { dark: ["#fb7185", "#f59e0b", "#fde047"] },
+  /** Pomodoro, séance de travail : tomate → corail → rose. */
+  tomato: { dark: ["#ff5a4e", "#ff8f6b", "#f472b6"] },
+  /** Pomodoro, pause : menthe → vert d'eau → ciel. */
+  rest: { dark: ["#34d399", "#5eead4", "#7dd3fc"] },
   /** Musique (quand la pochette n'a pas donné ses couleurs). */
   music: { dark: ["#f472b6", "#818cf8", "#22d3ee"] },
   // ── Petits événements du clavier et du presse-papiers ──
@@ -225,4 +229,28 @@ export const INTENSITY: Record<Intensity, { glow: number; alpha: number }> = {
 
 export function intensityOf(v: unknown): Intensity {
   return v === "subtle" || v === "normal" || v === "vivid" ? v : "vivid";
+}
+
+// ── Le liseré d'un minuteur (forme "progress" de halo.ts) ────────────────────
+
+const clamp = (v: number) => Math.max(0, Math.min(1, v));
+
+/** Les dernières secondes d'un minuteur : le liseré passe au rouge et bat doucement. */
+export const PROGRESS_WARN_MS = 10_000;
+
+/**
+ * Ce qui reste d'un minuteur (0 à 1) à `now` (Date.now()). Sans heure de fin
+ * (en pause) : `fill`. Pur : testé par tests/front/halo.test.ts.
+ */
+export function progressLeft(now: number, endsAt: number | null, total: number, fill: number): number {
+  if (endsAt == null || !(total > 0)) return clamp(fill);
+  return clamp((endsAt - now) / total);
+}
+
+/** Le passage au rouge (0 à 1) dans les dernières secondes ; 0 en pause. */
+export function progressWarn(now: number, endsAt: number | null, total: number): number {
+  if (endsAt == null || !(total > 0)) return 0;
+  const warn = Math.min(PROGRESS_WARN_MS, total / 4);
+  const left = endsAt - now;
+  return left >= warn ? 0 : clamp(1 - left / warn);
 }

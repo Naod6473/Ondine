@@ -12,7 +12,8 @@
 //     et le niveau du micro ou du son (commande `levels`) ;
 //   les autres modules, par le bus : clés USB (Contrôles), téléchargements
 //     (Étagère), disque presque plein et processeur (Système), météo, réseau,
-//     captures, agents IA, Minuteur, Agenda, danse de la mascotte, musique ;
+//     captures, agents IA, Minuteur (le liseré qui se vide), Agenda, danse de
+//     la mascotte, musique ;
 //   l'île : un fichier lâché dessus.
 // « Ondine réfléchit » et « Mise à jour disponible » sont appelés directement
 // (ondineThinking dans halo.ts, et core/updates.ts).
@@ -24,7 +25,7 @@ import type { IslandModule, ModuleManifest } from "../../core/module-types";
 import { hideHalo, mascotPalette, showHalo, updateHalo, type HaloOptions } from "../../island/halo";
 import { skyPalette } from "../../island/halo-palettes";
 import { calmMode } from "../../mascot/mascot-state";
-import { dayKey, leaveDue, levelFromPeak, meetingCometMs, morningDue, parseTime, sessionProgress, weatherKind } from "./halo-rules";
+import { dayKey, leaveDue, levelFromPeak, mediaPlaying, meetingCometMs, morningDue, parseTime, sessionProgress, timerHaloPlan, weatherKind, type TimerProgress } from "./halo-rules";
 
 /** Un petit retour (Verr Maj, Copié…) : une ligne dans l'île, vite repartie. */
 const KEY_NOTE_MS = 1600;
@@ -123,11 +124,39 @@ export const halos: IslandModule = {
       if (p.to === "expanded") hideHalo("agent-wait");
     });
 
+    // ── Minuteurs : un liseré qui fait le tour de l'île et se vide ─────────
+    // Minuteur (et les « 10 min » du Lanceur, d'Ondine, des Règles), Pomodoro
+    // travail et pause. Le Minuteur ne publie qu'aux changements (lancé, pause,
+    // +1 min, fini…) : halo.ts recalcule la longueur à chaque image depuis
+    // `endsAt`, sans saut. En pause : figé. À la fin : un éclat.
+    const timers = new Map<string, TimerProgress>();
+    const showTimer = (p: TimerProgress, fresh: boolean) => {
+      const plan = timerHaloPlan(p);
+      if (!plan) return;
+      if (plan.action === "hide" || !on("timerRing")) {
+        hideHalo(plan.action === "done" ? plan.id.replace(/-done$/, "") : plan.id);
+        return;
+      }
+      if (plan.action === "done") {
+        hideHalo(plan.id.replace(/-done$/, ""));
+        if (fresh) showHalo({ id: plan.id, palette: plan.palette, shape: "burst", priority: "high", durationMs: 2600 });
+        return;
+      }
+      showHalo({ id: plan.id, palette: plan.palette, shape: "progress", endsAt: plan.endsAt, total: plan.total, fill: plan.fill, priority: "normal" });
+    };
+    listen("timer.progress", (p) => {
+      const id = String(p.id ?? "");
+      if (p.state === "running" || p.state === "paused") timers.set(id, p);
+      else timers.delete(id);
+      showTimer(p, true);
+    });
+
     // ── Concentration (Minuteur) : un cocon qui se remplit comme une jauge, puis une fleur ──
+    // (Avec le liseré des minuteurs, la séance a déjà sa jauge : pas de cocon en plus.)
     let focusTimer = 0;
     listen("timer.focus", (p) => {
       window.clearInterval(focusTimer);
-      if (!p.on) return hideHalo("focus");
+      if (!p.on || on("timerRing")) return hideHalo("focus");
       const endsAt = typeof p.endsAt === "number" ? p.endsAt : null;
       const total = typeof p.total === "number" ? p.total : 0;
       const fill = () => Math.max(0.05, sessionProgress(Date.now(), endsAt, total));
@@ -135,7 +164,8 @@ export const halos: IslandModule = {
       focusTimer = window.setInterval(() => updateHalo("focus", { fill: fill() }), 15_000);
     });
     listen("timer.work-session", (p) => {
-      if (p.completed) halo("focus", { id: "focus-bloom", palette: "bloom", shape: "burst", durationMs: 2800 });
+      // Le liseré a déjà son éclat de fin.
+      if (p.completed && !on("timerRing")) halo("focus", { id: "focus-bloom", palette: "bloom", shape: "burst", durationMs: 2800 });
     });
 
     // ── Rendez-vous : une comète toutes les 30 s, de plus en plus vite ─────
@@ -171,9 +201,18 @@ export const halos: IslandModule = {
       remember("halos.streak", today);
       halo("streak", { id: "streak", palette: "rainbow", shape: "burst", durationMs: 3200 });
     });
-    listen("mascot.dance", (p) => {
-      if (p.on) halo("dance", { id: "dance", palette: mascotPalette(), shape: "breathe", rhythm: 520, priority: "low" });
+    // La danse vient de la musique (src/eggs/ : musique + mini-île) : elle
+    // obéit aussi à « Le halo suit la musique », et laisse la place au halo qui
+    // suit vraiment le son quand il tourne (plus bas, syncLevels).
+    let dancing = false;
+    let levelsOn: "voice" | "music" | null = null;
+    const syncDance = () => {
+      if (dancing && on("dance") && on("music") && levelsOn !== "music") showHalo({ id: "dance", palette: mascotPalette(), shape: "breathe", rhythm: 520, priority: "low" });
       else hideHalo("dance");
+    };
+    listen("mascot.dance", (p) => {
+      dancing = p.on === true;
+      syncDance();
     });
 
     // ── Petits événements du clavier et du presse-papiers ──────────────────
@@ -205,14 +244,18 @@ export const halos: IslandModule = {
     const syncLevels = () => {
       const mic = micInUse && on("voice");
       const out = !mic && playing && on("music");
-      if (!mic && !out) {
+      const want = mic ? "voice" : out ? "music" : null;
+      // Rien n'a changé (un réglage d'un autre moment) : on ne relance pas la lecture du niveau.
+      if (want === levelsOn && (want === null || stopLevels)) return syncDance();
+      levelsOn = want;
+      if (!want) {
         stopLevels?.();
         stopLevels = null;
         hideHalo("voice");
         hideHalo("music");
-        return;
+        return syncDance();
       }
-      const id = mic ? "voice" : "music";
+      const id = want;
       hideHalo(mic ? "music" : "voice");
       showHalo({ id, palette: mic ? "voice" : "music", shape: "level", priority: "low" });
       stopLevels?.();
@@ -226,6 +269,7 @@ export const halos: IslandModule = {
           .catch(() => undefined)
           .finally(() => (busy = false));
       }, "halosLevel", true);
+      syncDance();
     };
     // Parler à Ondine à voix haute : le halo tremble avec la voix tant que le micro écoute
     // (niveau envoyé par le Rust du module, ~15 fois par seconde).
@@ -243,8 +287,9 @@ export const halos: IslandModule = {
       syncLevels();
     });
     listen("media.changed", (p) => {
-      const now = p.playing === true;
-      if (now === playing) return;
+      // Le module Musique publie le morceau ({playing: {status: "playing"…}}), pas un booléen.
+      const now = mediaPlaying(p);
+      if (now === null || now === playing) return;
       playing = now;
       syncLevels();
     });
@@ -281,6 +326,15 @@ export const halos: IslandModule = {
       }
     };
     const stopClock = pacedInterval(() => void clock(), "halosClock");
+    // Une case cochée ou décochée pendant que ça joue : prise en compte tout de
+    // suite (avant, la musique, la visio et la danse attendaient le prochain
+    // changement de morceau ou de micro, et restaient allumées).
+    offs.push(
+      api.onSettingsChange(() => {
+        syncLevels();
+        for (const p of timers.values()) showTimer(p, false);
+      }),
+    );
     // Un premier coup d'œil peu après le démarrage (le bonjour d'un PC allumé le matin).
     const first = window.setTimeout(() => void clock(), 5000);
 
@@ -292,7 +346,7 @@ export const halos: IslandModule = {
       window.clearInterval(meetingTimer);
       window.clearTimeout(meetingWait);
       stopLevels?.();
-      for (const id of ["wake", "usb", "download", "disk", "wifi", "weather", "network", "network-up", "capture", "drop", "cpu", "agent-work", "agent-wait", "agent-done", "focus", "focus-bloom", "meeting", "streak", "dance", "key", "volume", "voice", "music", "leave", "morning", "sky"]) hideHalo(id);
+      for (const id of ["wake", "usb", "download", "disk", "wifi", "weather", "network", "network-up", "capture", "drop", "cpu", "agent-work", "agent-wait", "agent-done", "focus", "focus-bloom", "timer-timer", "timer-pomodoro", "timer-timer-done", "timer-pomodoro-done", "meeting", "streak", "dance", "key", "volume", "voice", "music", "leave", "morning", "sky"]) hideHalo(id);
     };
   },
 };

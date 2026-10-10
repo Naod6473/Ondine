@@ -67,3 +67,52 @@ export function levelFromPeak(peak: number | null | undefined): number {
   if (peak == null || !Number.isFinite(peak) || peak <= 0.01) return 0;
   return Math.max(0, Math.min(1, Math.sqrt(peak) * 1.4));
 }
+
+/**
+ * La musique joue-t-elle, d'après « media.changed » (module Musique) ? Le
+ * module publie `{playing: {status: "playing" | "paused" | "changing" | …} | null}`.
+ * null : on ne sait pas (le lecteur change de morceau), on garde l'état d'avant.
+ */
+export function mediaPlaying(p: unknown): boolean | null {
+  const playing = (p as { playing?: unknown } | null)?.playing;
+  if (!playing || typeof playing !== "object") return false;
+  const status = (playing as { status?: unknown }).status;
+  if (status === "changing") return null;
+  return status === "playing";
+}
+
+/** Ce que publie le Minuteur à chaque changement (« timer.progress »). */
+export interface TimerProgress {
+  id?: unknown;
+  phase?: unknown;
+  state?: unknown;
+  endsAt?: unknown;
+  total?: unknown;
+  left?: unknown;
+}
+
+/** Ce que le liseré d'un minuteur doit faire. */
+export type TimerHaloPlan =
+  | { action: "show"; id: string; palette: "timer" | "tomato" | "rest"; endsAt: number | null; total: number; fill: number }
+  | { action: "done"; id: string; palette: "done" | "bloom" | "rest" }
+  | { action: "hide"; id: string };
+
+/**
+ * Le liseré d'un minuteur, d'après « timer.progress » : il tourne (il se vide
+ * jusqu'à `endsAt`), il est en pause (figé à ce qui reste), il vient de finir
+ * (un éclat), ou plus rien. Un id par compte à rebours (Minuteur, Pomodoro).
+ * La couleur suit la phase : minuteur, travail (tomate), pause (menthe).
+ */
+export function timerHaloPlan(p: TimerProgress | null | undefined): TimerHaloPlan | null {
+  const which = p?.id === "pomodoro" ? "pomodoro" : p?.id === "timer" ? "timer" : null;
+  if (!which) return null;
+  const id = `timer-${which}`;
+  const phase = which === "timer" ? "timer" : p?.phase === "short" || p?.phase === "long" ? "rest" : "work";
+  const total = typeof p?.total === "number" && p.total > 0 ? p.total : 0;
+  if (p?.state === "done") return { action: "done", id: `${id}-done`, palette: phase === "work" ? "bloom" : phase === "rest" ? "rest" : "done" };
+  if (!total || (p?.state !== "running" && p?.state !== "paused")) return { action: "hide", id };
+  const palette = phase === "work" ? "tomato" : phase === "rest" ? "rest" : "timer";
+  if (p.state === "running" && typeof p.endsAt === "number") return { action: "show", id, palette, endsAt: p.endsAt, total, fill: 1 };
+  const left = typeof p.left === "number" ? p.left : 0;
+  return { action: "show", id, palette, endsAt: null, total, fill: Math.max(0, Math.min(1, left / total)) };
+}

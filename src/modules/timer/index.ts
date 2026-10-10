@@ -16,6 +16,13 @@
 // ses notifications en attente (voir island.ts, wireFocus). En pause, à l'arrêt
 // ou à la fin de la séance : {on: false}, et elles arrivent avec un résumé.
 //
+// Le liseré de l'île : à chaque changement d'un compte à rebours (lancé, mis
+// en pause, repris, +1 min, fini, remis à zéro), on publie "timer.progress"
+// {id, phase, state, endsAt, total, left}. Le module « Animations de l'île »
+// en fait une ligne de lumière qui fait le tour de l'île et se vide au fil du
+// temps (calculée à chaque image à partir de `endsAt` : rien n'est publié
+// entre deux changements).
+//
 // Et « Ne pas déranger » de Windows ? Il n'existe pas d'API publique simple :
 //   - FocusSessionManager (WinRT, Windows 11) est une « fonction à accès
 //     limité » : il faut un jeton demandé à Microsoft ;
@@ -202,6 +209,33 @@ function trackWork(api: ModuleApi) {
   else if (!working) endWork(api, false);
 }
 
+// ── Le liseré de l'île : "timer.progress" ───────────────────────────────────
+
+type ProgressState = "running" | "paused" | "off" | "done";
+
+/** Ce qu'on a publié en dernier pour chaque compte à rebours (pour ne publier qu'aux changements). */
+const lastProgress: Record<"timer" | "pomodoro", string> = { timer: "", pomodoro: "" };
+
+/** L'état d'un compte à rebours pour le liseré : il tourne, il est en pause (entamé), ou rien. */
+function progressState(c: Countdown, started: boolean): ProgressState {
+  if (running(c)) return "running";
+  return started && c.left > 0 && c.left < c.total ? "paused" : "off";
+}
+
+function sendProgress(api: ModuleApi, id: "timer" | "pomodoro", phase: string, state: ProgressState, c: Countdown) {
+  const left = remaining(c);
+  const sig = state === "running" ? `${state}|${phase}|${c.endsAt}|${c.total}` : state === "paused" ? `${state}|${phase}|${left}|${c.total}` : state;
+  if (sig === lastProgress[id] && state !== "done") return;
+  lastProgress[id] = state === "done" ? "" : sig;
+  api.emit("timer.progress", { id, phase, state, endsAt: c.endsAt, total: c.total, left });
+}
+
+/** Publie ce qui a changé depuis la dernière fois (appelé à chaque tick, 4 fois par seconde). */
+function syncProgress(api: ModuleApi) {
+  sendProgress(api, "timer", "timer", progressState(timer, true), timer);
+  sendProgress(api, "pomodoro", pomodoro.phase, progressState(pomodoro.clock, pomodoro.started), pomodoro.clock);
+}
+
 /** Quelque chose tourne-t-il ? (pour la pilule) */
 function anyActive(): boolean {
   return running(timer) || running(pomodoro.clock) || stopwatch.startedAt !== null;
@@ -209,12 +243,14 @@ function anyActive(): boolean {
 
 function tick(api: ModuleApi) {
   if (running(timer) && remaining(timer) === 0) {
+    sendProgress(api, "timer", "timer", "done", timer);
     reset(timer);
     finished(api, "Minuteur terminé", `${clock(timer.total)} écoulées`, "⏱️");
   }
   trackWork(api);
   if (running(pomodoro.clock) && remaining(pomodoro.clock) === 0) {
     const ended = pomodoro.phase;
+    sendProgress(api, "pomodoro", ended, "done", pomodoro.clock);
     if (ended === "work") {
       pomodoro.done++;
       endWork(api, true);
@@ -233,6 +269,7 @@ function tick(api: ModuleApi) {
   // Une séance de travail enchaînée après une pause commence à compter.
   trackWork(api);
   syncFocus(api);
+  syncProgress(api);
   // La pilule n'a besoin d'être changée que quand ça démarre ou s'arrête.
   const active = anyActive();
   if (active !== wasActive) {
@@ -301,10 +338,14 @@ export const timerModule: IslandModule = {
     // Toutes les 250 ms (500 en économie d'énergie : src/core/perf.ts).
     const stopTick = pacedInterval(() => tick(api), "timerTick");
     // Une règle (raccourci, événement…) lance un minuteur.
+    // `seconds` (10 à 600) : seulement pour la scène du mode démo (un minuteur court).
     const offStart = api.on("timer.start", (msg) => {
-      const minutes = Number((msg.payload as { minutes?: number } | null)?.minutes);
-      if (!(minutes >= 1 && minutes <= 180)) return;
-      reset(timer, minutes * 60_000);
+      const p = msg.payload as { minutes?: number; seconds?: number } | null;
+      const minutes = Number(p?.minutes);
+      const seconds = Number(p?.seconds);
+      const ms = minutes >= 1 && minutes <= 180 ? minutes * 60_000 : seconds >= 10 && seconds <= 600 ? seconds * 1000 : 0;
+      if (!ms) return;
+      reset(timer, ms);
       start(timer);
       pane = "timer";
       api.refreshCompact();
@@ -322,6 +363,11 @@ export const timerModule: IslandModule = {
       endWork(api, false);
       // Et les notifications de l'île reprennent.
       syncFocus(api, false);
+      // Le liseré s'éteint.
+      for (const id of ["timer", "pomodoro"] as const) {
+        if (lastProgress[id] && lastProgress[id] !== "off") api.emit("timer.progress", { id, phase: "", state: "off", endsAt: null, total: 0, left: 0 });
+        lastProgress[id] = "";
+      }
     };
   },
 
