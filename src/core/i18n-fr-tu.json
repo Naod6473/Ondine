@@ -271,7 +271,9 @@
 "Discuter avec vos collègues": "Discuter avec tes collègues",
 "Vos collègues voient quand vous écrivez et quand vous avez lu leurs messages, et vous voyez les leurs. Éteint : ni l'un ni l'autre, dans les deux sens.": "Tes collègues voient quand tu écris et quand tu as lu leurs messages, et tu vois les leurs. Éteint : ni l'un ni l'autre, dans les deux sens.",
 "Éteint (recommandé) : les conversations restent en mémoire et s'effacent quand vous quittez Ondine. Allumé : elles sont gardées 7 jours sur ce PC, chiffrées (clé dans le Gestionnaire d'identifiants de Windows) ; l'éteindre les efface du disque.": "Éteint (recommandé) : les conversations restent en mémoire et s'effacent quand tu quittes Ondine. Allumé : elles sont gardées 7 jours sur ce PC, chiffrées (clé dans le Gestionnaire d'identifiants de Windows) ; l'éteindre les efface du disque.",
-"glissez le fichier dans une conversation à deux": "glisse le fichier dans une conversation à deux"
+"glissez le fichier dans une conversation à deux": "glisse le fichier dans une conversation à deux",
+"Un liquide remplit l'île derrière son contenu (minuteurs, fichiers, batterie…), avec des bulles et des vagues ; il penche quand vous déplacez l'île. Le texte reste lisible. Figé si Windows réduit les animations, ou avec le réglage Calme de la mascotte.": "Un liquide remplit l'île derrière son contenu (minuteurs, fichiers, batterie…), avec des bulles et des vagues ; il penche quand tu déplaces l'île. Le texte reste lisible. Figé si Windows réduit les animations, ou avec le réglage Calme de la mascotte.",
+"Parler à Ondine : la surface vibre avec votre voix": "Parler à Ondine : la surface vibre avec ta voix"
 },
 "patterns": [
 [

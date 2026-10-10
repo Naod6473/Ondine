@@ -254,6 +254,199 @@
         "label": "Le halo suit la musique",
         "default": false,
         "help": "Pendant la lecture, le halo pulse avec le son qui sort des haut-parleurs (seulement son niveau)."
+      },
+      {
+        "key": "liquid",
+        "type": "boolean",
+        "label": "Animations à l'intérieur de l'île",
+        "default": true,
+        "help": "Un liquide remplit l'île derrière son contenu (minuteurs, fichiers, batterie…), avec des bulles et des vagues ; il penche quand vous déplacez l'île. Le texte reste lisible. Figé si Windows réduit les animations, ou avec le réglage Calme de la mascotte."
+      },
+      {
+        "key": "liquidMatter",
+        "type": "select",
+        "label": "Matière du liquide",
+        "default": "water",
+        "options": [
+          {
+            "value": "water",
+            "label": "Eau"
+          },
+          {
+            "value": "jelly",
+            "label": "Gelée"
+          },
+          {
+            "value": "light",
+            "label": "Lumière"
+          },
+          {
+            "value": "sand",
+            "label": "Sable"
+          }
+        ]
+      },
+      {
+        "key": "liquidColor",
+        "type": "select",
+        "label": "Couleur du liquide",
+        "help": "Batterie, disque et agents gardent leur couleur (vert en charge, orange quand elle est faible…).",
+        "default": "island",
+        "options": [
+          {
+            "value": "island",
+            "label": "Celle de l'île"
+          },
+          {
+            "value": "mascot",
+            "label": "Celle de ma mascotte"
+          },
+          {
+            "value": "blue",
+            "label": "Bleu"
+          },
+          {
+            "value": "teal",
+            "label": "Turquoise"
+          },
+          {
+            "value": "green",
+            "label": "Vert"
+          },
+          {
+            "value": "violet",
+            "label": "Violet"
+          },
+          {
+            "value": "pink",
+            "label": "Rose"
+          },
+          {
+            "value": "orange",
+            "label": "Orange"
+          },
+          {
+            "value": "custom",
+            "label": "Personnalisée"
+          }
+        ]
+      },
+      {
+        "key": "liquidCustom",
+        "type": "string",
+        "label": "Couleur personnalisée (#rrggbb)",
+        "help": "Avec « Personnalisée » ci-dessus, par exemple #ff6fb1.",
+        "default": "#3ba4ff",
+        "maxLength": 7
+      },
+      {
+        "key": "liquidOpacity",
+        "type": "number",
+        "label": "Opacité du liquide (%)",
+        "help": "Si besoin, la couleur est assombrie pour que le texte garde un bon contraste.",
+        "default": 50,
+        "min": 10,
+        "max": 80,
+        "step": 5
+      },
+      {
+        "key": "liquidTimer",
+        "type": "boolean",
+        "label": "Minuteurs : l'eau monte avec le temps",
+        "default": true,
+        "help": "Minuteur et Pomodoro : l'eau monte (elle descend pendant une pause), s'agite dans les 10 dernières secondes et déborde doucement à la fin."
+      },
+      {
+        "key": "liquidTimerStyle",
+        "type": "select",
+        "label": "Minuteurs : remplissage et liseré",
+        "default": "both",
+        "options": [
+          {
+            "value": "both",
+            "label": "Avec le liseré"
+          },
+          {
+            "value": "replace",
+            "label": "À la place du liseré"
+          }
+        ]
+      },
+      {
+        "key": "liquidFiles",
+        "type": "boolean",
+        "label": "Fichiers : empreinte, envoi, téléchargement",
+        "default": true,
+        "help": "L'eau monte avec le pourcentage (empreinte SHA-256 de l'Étagère, envoi à un collègue) ; un téléchargement arrivé la fait monter d'un coup."
+      },
+      {
+        "key": "liquidBattery",
+        "type": "boolean",
+        "label": "Batterie : eau verte en charge, orange quand elle est faible",
+        "default": true
+      },
+      {
+        "key": "liquidDisk",
+        "type": "boolean",
+        "label": "Disque presque plein (une eau trouble)",
+        "default": true
+      },
+      {
+        "key": "liquidAgents",
+        "type": "boolean",
+        "label": "Agents IA : un courant pendant le travail, puis une vague",
+        "default": true
+      },
+      {
+        "key": "liquidMusic",
+        "type": "boolean",
+        "label": "Musique : la surface ondule avec le son",
+        "default": false,
+        "help": "Seulement le niveau du son qui sort des haut-parleurs, comme « Le halo suit la musique »."
+      },
+      {
+        "key": "liquidVoice",
+        "type": "boolean",
+        "label": "Parler à Ondine : la surface vibre avec votre voix",
+        "default": true
+      },
+      {
+        "key": "liquidRain",
+        "type": "boolean",
+        "label": "Pluie dehors : des gouttes sur la vitre (avec le module Météo)",
+        "default": true
+      },
+      {
+        "key": "liquidCpu",
+        "type": "boolean",
+        "label": "Processeur très chargé : des bulles d'ébullition",
+        "default": true
+      },
+      {
+        "key": "liquidNight",
+        "type": "boolean",
+        "label": "Nuit : des étoiles se reflètent dans l'eau",
+        "default": false,
+        "help": "De 22 h à 6 h, un fond d'eau calme."
+      },
+      {
+        "key": "liquidNotify",
+        "type": "boolean",
+        "label": "Notification : une goutte tombe dans l'île",
+        "default": true
+      },
+      {
+        "key": "liquidFocus",
+        "type": "boolean",
+        "label": "Concentration : l'eau devient lisse comme un lac",
+        "default": true
+      },
+      {
+        "key": "liquidOndine",
+        "type": "boolean",
+        "label": "Ondine flotte quand l'île est pleine",
+        "default": true,
+        "help": "Elle plonge aussi quand un téléchargement arrive, et met une bouée quand le minuteur déborde."
       }
     ]
   },
@@ -269,7 +462,8 @@
       "halos.volume",
       "halos.wifi",
       "mascot.emote",
-      "island.halo"
+      "island.halo",
+      "island.liquid"
     ],
     "listens": [
       "halos.wake",
@@ -300,7 +494,8 @@
       "agenda.join",
       "agents.github-streak",
       "mascot.dance",
-      "media.changed", "voice.listening", "voice.level"
+      "media.changed", "voice.listening", "voice.level",
+      "shelf.hash-progress", "shelf.hashed", "team.progress", "system.battery-plug", "system.battery-full", "system.battery-low", "system.battery-critical", "agents.progress", "media.tempo", "notify.shown"
     ]
   }
 }

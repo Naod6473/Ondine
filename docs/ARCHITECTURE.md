@@ -366,6 +366,72 @@ le constructeur de `Island`.
   cœur jusqu'au branchement ou « Compris », `panic` (de nouveau toutes les
   45 s), puis `relieved` au branchement.
 
+### Le liquide à l'intérieur de l'île (`src/island/liquid.ts`, `liquid-rules.ts`, `src/modules/halos/liquid-moments.ts`)
+
+Un liquide (eau, gelée, lumière, sable) qui remplit l'île DERRIÈRE son
+contenu : une surface qui ondule, des bulles, une légère physique. Un
+`<canvas>` premier enfant de l'île, `z-index: -1` (l'île crée sa pile avec
+`translate`) : au-dessus de son fond, sous le texte et la mascotte, rogné par
+la découpe de la gelée ; il suit donc les 4 bords et la mini-île. La gravité
+reste celle de l'écran (l'eau monte du bas de l'île). Branché par
+`attachLiquid()` dans le constructeur de `Island`.
+
+- **API** : `showLiquid({ id?, level, endsAt, total, direction: "fill" | "drain",
+  tint, murky, bubbles, current, wobble, vibrate, bpm, overflow, priority,
+  durationMs })` → id ; `updateLiquid(id, {…})` ; `hideLiquid(id)` ;
+  `liquidDrop()` (une goutte et des ronds), `liquidWave()` (une vague
+  traverse), `liquidDive()` (Ondine plonge et ressort) ;
+  `setLiquidAmbience("rain" | "boil" | "stars" | "still", on)` ;
+  `liquidEnabled()`, `liquidAllowed(clé)`. Par le bus : `island.liquid`
+  `{action: "show" | "update" | "hide" | "drop" | "wave" | "dive" | "ambience", …}`
+  (le déclarer dans `emits`). Priorités : la même `HaloStack` que les halos.
+- **Physique** (`liquid-rules.ts`, testé par `tests/front/liquid.test.ts`) :
+  48 colonnes reliées à leurs voisines (`stepSurface`, petits pas de 1/240 s) ;
+  vaguelette au clic (`splash`), bulle qui éclate, goutte qui tombe ; la pente
+  est un ressort poussé par l'accélération de l'île à l'écran
+  (`window.screenX` + boîte de l'île : déplacement, écart d'une fenêtre,
+  étirement de la gelée) ; une accélération verticale soulève la surface.
+  Matières (`FEEL`) : la gelée a des vagues lentes et molles, la lumière
+  s'additionne (`lighter`) avec des étincelles, le sable presque sans vagues
+  ni bulles, avec un grain.
+- **Lisibilité** : `readablePaint` assombrit la couleur (puis baisse
+  l'opacité) juste assez pour que le texte secondaire (`--muted`) garde 4,5:1
+  sur le fond de l'île, vu au pire sur un bureau blanc pour un fond
+  transparent (thème Verre) ; une lumière qui devrait disparaître est posée
+  normalement. Vérifié pour chaque thème et chaque couleur par les tests.
+- **Ondine** : île pleine (≥ 90 %) → `mascot.emote` `calm` une fois et elle
+  flotte (classe `liquid-float` : `translate` / `rotate` en CSS sur
+  `.mascot-canvas`, rien dans le moteur des mascottes) ; débordement d'un
+  minuteur → `surprised` et une bouée dessinée derrière elle ; téléchargement
+  → `liquid-dive` (`hide` puis `proud`).
+- **Performance** : aucune boucle sans liquide, île cachée (ou en trait) ni
+  page cachée ; 60 i/s quand ça bouge (bulles, vagues, pente, agitation),
+  24 i/s quand seule la surface ondule ; moitié en éco. Le lac
+  (concentration) posé : la boucle s'arrête (redessin toutes les secondes s'il
+  suit un minuteur). Réglages et couleurs du thème lus une fois par changement.
+  **Réduire les animations** ou **Calme** : figé (surface plate, sans bulles),
+  redessiné toutes les 5 s s'il suit un minuteur.
+- **Moments** (`liquid-moments.ts`, appelé par le module Animations de
+  l'île) : minuteurs (`timer.progress` : monte, descend en pause Pomodoro,
+  s'agite dans les 10 dernières secondes, déborde ; « off » qui suit « done »
+  ignoré 3,2 s), fichiers (`shelf.hash-progress`, `team.progress`,
+  `shelf.downloaded`), batterie (`system.battery-*` : vert en charge, fond
+  orange ou rouge quand elle est faible), disque (`system.disk-low` : eau
+  trouble), agents (`claude.thinking` : courant ; `agents.progress` : niveau ;
+  fin : vague), musique (commande `levels`, et `media.tempo` / `mascot.dance`
+  `{bpm}` quand le tempo sera publié), voix (`voice.level`), pluie
+  (`weather.updated`), processeur (`system.cpu-busy`), nuit (22 h – 6 h),
+  notification (`notify.shown`, sauf les petits retours du clavier),
+  concentration (`timer.focus`).
+- **Réglages** (module Animations de l'île, sous-menu « À l'intérieur de
+  l'île ») : `liquid` (oui), `liquidMatter` (`water`), `liquidColor`
+  (`island` : l'accent du thème ; ou mascotte, couleurs nommées,
+  `custom` + `liquidCustom`), `liquidOpacity` (50 %), `liquidTimerStyle`
+  (`both` : avec le liseré, ou `replace` : `ringReplaced()` coupe le liseré
+  dans halos/index.ts), une case par moment (`liquidMusic` et `liquidNight`
+  décochées par défaut). Scènes démo : « Minuteur qui se remplit »,
+  « Ambiances dans l'île », « Ondine qui flotte ».
+
 ### La file de notifications (`src/core/notifications.ts`)
 
 Un module **demande** l'attention (`api.notify({...})`), l'île **décide** :
@@ -540,6 +606,8 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `system.battery-plug` `{plugged, percent, charging}` | Système (Rust, à chaque tour) | chargeur branché / débranché (jamais au démarrage, rien sur un PC fixe) : halo vert ou blanc, « En charge · 56 % » |
 | `system.battery-critical` `{percent}` | Système (Rust) | sous `batteryCriticalPct` (10 %), une fois jusqu'au branchement : alerte « Batterie critique », halo rouge, Ondine panique |
 | `island.halo` `{action, id, palette, shape, …}` | tout module (le déclarer dans `emits`) | allume, règle ou éteint un halo (`action: "think"` : Ondine réfléchit), voir « Le halo de l'île » |
+| `island.liquid` `{action, id, level, …}` | tout module (le déclarer dans `emits`) | remplit l'île de liquide, le règle ou le vide ; `drop`, `wave`, `dive`, `ambience` {name, on} : voir « Le liquide à l'intérieur de l'île » |
+| `media.tempo` `{bpm}` | (à venir : analyse du tempo pour les danses) | la surface du liquide pulse au temps de la musique |
 | `halos.wake` `{secs}` / `halos.lock-key` `{key, on}` / `halos.clip` `{action, text?}` / `halos.volume` `{volume, muted}` / `halos.wifi` `{quality}` | Animations de l'île (Rust) | les halos correspondants et une ligne dans l'île (« Verr Maj · Activé », « Copié ») |
 | `capture.gif` `{state: recording / encoding / done / cancelled / error, …}` | Capture (Rust) | notification avec « Arrêter », puis « Création du GIF… », puis « GIF enregistré » (« Montrer dans l'Explorateur ») ; le bouton de l'onglet suit l'état |
 | `voice.listening` `{on, look}` | Parler à Ondine (Rust) | début / fin de l'écoute à voix haute : le halo de l'île (zone halos) et la mascotte peuvent s'y brancher |

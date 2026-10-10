@@ -28,6 +28,7 @@ import { icon } from "./icon";
 import { IslandStateMachine, type IslandState } from "./island-state";
 import { contentHeight, FIT_ATTR, FIT_MAX_W, FIT_MAX_W_SIDE, FIT_W_ATTR, fitHeight, fitMode, fitWidth, naturalWidth, settle } from "./fit";
 import { attachHalo } from "./halo";
+import { attachLiquid } from "./liquid";
 import { enableGestures, grabZone, horizontal, type Edge } from "./gestures";
 import { Jelly } from "./jelly";
 import { elasticityOf } from "./spring";
@@ -176,6 +177,8 @@ export class Island {
     this.root.append(this.shell);
     // Le halo de lumière autour de l'île (halo.ts) : sous elle, sur toute la fenêtre.
     attachHalo(this.root, this.shell, this.bus, () => this.fsm.state);
+    // Le liquide À L'INTÉRIEUR de l'île (liquid.ts) : derrière le contenu.
+    attachLiquid(this.shell, this.bus, () => this.fsm.state);
     this.jelly = new Jelly(this.shell, {
       edge: () => this.edge(),
       align: () => document.body.dataset.align ?? "center",
