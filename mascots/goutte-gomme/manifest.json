@@ -603,6 +603,114 @@
       }
     },
     {
+      "name": "danse-rock",
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "danse-rock"
+      }
+    },
+    {
+      "name": "danse-metal",
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "danse-metal"
+      }
+    },
+    {
+      "name": "danse-rap",
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "danse-rap"
+      }
+    },
+    {
+      "name": "danse-rnb",
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "danse-rnb"
+      }
+    },
+    {
+      "name": "danse-pop",
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "danse-pop"
+      }
+    },
+    {
+      "name": "danse-electro",
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "danse-electro"
+      }
+    },
+    {
+      "name": "danse-reggae",
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "danse-reggae"
+      }
+    },
+    {
+      "name": "danse-jazz",
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "danse-jazz"
+      }
+    },
+    {
+      "name": "danse-hochement",
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "danse-hochement"
+      }
+    },
+    {
       "name": "panique",
       "durationMs": 3000,
       "loop": false,

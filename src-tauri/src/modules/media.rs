@@ -11,6 +11,15 @@
 // message donne un numéro `artwork`, et le front la demande avec la commande
 // "artwork" quand ce numéro change.
 //
+// Le tempo (commande "tempo" {on}, message "media.tempo") : pendant que la
+// mascotte danse, un fil lit le niveau de ce qui sort des haut-parleurs ~100
+// fois par seconde (50 en économie d'énergie ; un seul nombre à chaque fois,
+// jamais le son), en déduit le tempo et la place des temps (media_tempo.rs)
+// et publie une fois par seconde {bpm, phase, confidence, energy} (ou
+// {bpm: null} quand le rythme est perdu). Le front redit « on » toutes les
+// 10 s : sans nouvelle depuis 30 s, ou module coupé, le fil s'arrête. Un
+// nouveau morceau repart de zéro. Rien n'est gardé au-delà de 8 secondes.
+//
 // "media.pause" (bus) met en pause ce qui joue : l'Agenda le demande quand
 // vous rejoignez une réunion. Rien ne repart si c'était déjà en pause.
 //
@@ -18,12 +27,15 @@
 
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use base64::Engine;
 use serde_json::{json, Value};
 use tauri::AppHandle;
 
+use super::media_tempo::TempoTracker;
 use super::{ModuleContext, RustModule};
 use crate::platform::media::{self, Control, NowPlaying};
 use crate::services::bus::BusMessage;
@@ -44,9 +56,21 @@ struct State {
     artwork: Option<String>,
 }
 
+/// Sans nouvelle « on » du front depuis ce délai, le fil du tempo s'arrête.
+const TEMPO_KEEPALIVE: Duration = Duration::from_secs(30);
+
+/// Le fil du tempo : voulu jusqu'à quand, en marche ou non, et le numéro du morceau (pour repartir de zéro).
+#[derive(Default)]
+struct TempoCtl {
+    until: Mutex<Option<Instant>>,
+    running: AtomicBool,
+    track: AtomicU64,
+}
+
 #[derive(Default)]
 pub struct Media {
     state: Arc<Mutex<State>>,
+    tempo: Arc<TempoCtl>,
 }
 
 impl RustModule for Media {
@@ -55,12 +79,24 @@ impl RustModule for Media {
     }
 
     fn start(&self, app: &AppHandle) {
-        let (app, state) = (app.clone(), self.state.clone());
-        std::thread::spawn(move || watch(app, state));
+        let (app, state, tempo) = (app.clone(), self.state.clone(), self.tempo.clone());
+        std::thread::spawn(move || watch(app, state, tempo));
     }
 
-    fn invoke(&self, _ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
+    fn invoke(&self, ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
         match command {
+            // { on: bool } : la mascotte danse (ou plus) ; à redire toutes les 10 s.
+            "tempo" => {
+                // Réglage « Danser au tempo de la musique » décoché : jamais.
+                let allowed = ctx.settings().get("danceTempo").and_then(Value::as_bool).unwrap_or(true);
+                let on = allowed && args.get("on").and_then(Value::as_bool).unwrap_or(false);
+                *self.tempo.until.locked() = on.then(|| Instant::now() + TEMPO_KEEPALIVE);
+                if on && !self.tempo.running.swap(true, Ordering::SeqCst) {
+                    let (app, tempo) = (ctx.app.clone(), self.tempo.clone());
+                    std::thread::spawn(move || listen_tempo(app, tempo));
+                }
+                Ok(Value::Null)
+            }
             "state" => Ok(payload(&self.state.locked())),
             "artwork" => Ok(json!({ "url": self.state.locked().artwork })),
             "toggle" => media::control(Control::TogglePlayPause).map(|_| Value::Null),
@@ -111,7 +147,7 @@ fn payload(state: &State) -> Value {
 
 /// La boucle du thread : une fois par seconde (selon le mode de performance :
 /// services/perf.rs), tant que l'île tourne.
-fn watch(app: AppHandle, state: Arc<Mutex<State>>) {
+fn watch(app: AppHandle, state: Arc<Mutex<State>>, tempo: Arc<TempoCtl>) {
     media::init_thread();
     let mut manager = None;
     let mut last_error = String::new();
@@ -134,7 +170,10 @@ fn watch(app: AppHandle, state: Arc<Mutex<State>>) {
             }
             let m = manager.as_ref().unwrap();
             let now = media::now_playing(m)?;
-            update(&app, &state, m, now);
+            if update(&app, &state, m, now) {
+                // Nouveau morceau : le tempo repart de zéro.
+                tempo.track.fetch_add(1, Ordering::Relaxed);
+            }
             Ok(())
         }));
         let error = match step {
@@ -154,8 +193,8 @@ fn watch(app: AppHandle, state: Arc<Mutex<State>>) {
     }
 }
 
-/// Compare avec l'état précédent et publie si quelque chose a changé.
-fn update(app: &AppHandle, state: &Arc<Mutex<State>>, manager: &media::Manager, now: Option<NowPlaying>) {
+/// Compare avec l'état précédent et publie si quelque chose a changé ; vrai si c'est un nouveau morceau.
+fn update(app: &AppHandle, state: &Arc<Mutex<State>>, manager: &media::Manager, now: Option<NowPlaying>) -> bool {
     let (new_track, publish) = {
         let s = state.locked();
         let new_track = match (&s.current, &now) {
@@ -166,7 +205,7 @@ fn update(app: &AppHandle, state: &Arc<Mutex<State>>, manager: &media::Manager, 
         (new_track, new_track || differs(&s.current, &now))
     };
     if !publish {
-        return;
+        return false;
     }
     // Nouveau morceau : on lit sa pochette (hors du verrou, ça peut prendre un instant).
     let artwork = if new_track && now.is_some() { read_artwork(manager) } else { None };
@@ -178,6 +217,74 @@ fn update(app: &AppHandle, state: &Arc<Mutex<State>>, manager: &media::Manager, 
     }
     s.current = now;
     bus::emit(app, ID, "media.changed", payload(&s));
+    new_track
+}
+
+/// Le fil du tempo : lit le niveau des haut-parleurs, publie le tempo une fois
+/// par seconde, s'arrête quand plus personne ne le demande.
+fn listen_tempo(app: AppHandle, tempo: Arc<TempoCtl>) {
+    /// Remet `running` à faux en partant, même après une panique.
+    struct Done(Arc<TempoCtl>);
+    impl Drop for Done {
+        fn drop(&mut self) {
+            self.0.running.store(false, Ordering::SeqCst);
+        }
+    }
+    let _done = Done(tempo.clone());
+    let eco = |m: perf::Mode| m == perf::Mode::Eco;
+    let mut fs_eco = eco(perf::mode());
+    let mut tracker = TempoTracker::new(if fs_eco { 50.0 } else { 100.0 });
+    let mut meter = crate::platform::halos::Meter::new(crate::platform::halos::Device::Speakers);
+    let mut track = tempo.track.load(Ordering::Relaxed);
+    let mut said = Instant::now();
+    let mut had = false;
+    loop {
+        let wanted = tempo.until.locked().is_some_and(|t| Instant::now() < t);
+        if !wanted || !super::is_active(&app, ID) {
+            break;
+        }
+        // Le mode de performance a changé : on repart au bon rythme.
+        if eco(perf::mode()) != fs_eco {
+            fs_eco = !fs_eco;
+            tracker = TempoTracker::new(if fs_eco { 50.0 } else { 100.0 });
+        }
+        let now_track = tempo.track.load(Ordering::Relaxed);
+        if now_track != track {
+            track = now_track;
+            tracker.reset();
+        }
+        let step = catch_unwind(AssertUnwindSafe(|| {
+            tracker.push(meter.read().unwrap_or(0.0));
+            if said.elapsed() >= Duration::from_secs(1) {
+                said = Instant::now();
+                match tracker.update() {
+                    Some(t) => {
+                        had = true;
+                        let round = |v: f32, k: f32| (v * k).round() / k;
+                        bus::emit(
+                            &app,
+                            ID,
+                            "media.tempo",
+                            json!({ "bpm": round(t.bpm, 10.0), "phase": round(t.phase, 1000.0), "confidence": round(t.confidence, 100.0), "energy": round(t.energy, 100.0) }),
+                        );
+                    }
+                    None if had => {
+                        had = false;
+                        bus::emit(&app, ID, "media.tempo", json!({ "bpm": null }));
+                    }
+                    None => {}
+                }
+            }
+        }));
+        if step.is_err() {
+            log::warn("musique : erreur inattendue dans le tempo, on repart de zéro");
+            tracker.reset();
+        }
+        std::thread::sleep(Duration::from_millis(if fs_eco { 20 } else { 10 }));
+    }
+    if had {
+        bus::emit(&app, ID, "media.tempo", json!({ "bpm": null }));
+    }
 }
 
 /// Même morceau : y a-t-il un changement qui mérite un message ?
@@ -228,6 +335,7 @@ mod tests {
             title: "Titre".into(),
             artist: "Artiste".into(),
             album: "Album".into(),
+            genre: String::new(),
             status,
             position_ms: Some(pos),
             duration_ms: Some(200_000),

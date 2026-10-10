@@ -7,6 +7,7 @@
 import type { Mood, Overlay } from "../types";
 import { FACE_BASE, type EyeKind, type Face, type GumTint, type Hand, type Props, type WeatherFx } from "./gum-draw";
 import { halfWidthAt, N, type GumShape, type ShapeId } from "./gum-shapes";
+import { DANCES, type DanceHandPose } from "./gum-dances";
 
 const TAU = Math.PI * 2;
 
@@ -76,8 +77,8 @@ export type Frame = {
   face?: Partial<Face>;
   /** Yeux spéciaux (étoiles, plissés…). */
   kind?: EyeKind;
-  /** La pose des mains (sinon celle de HAND_FOR). */
-  hands?: HandPose;
+  /** La pose des mains (sinon celle de HAND_FOR) ; les danses ont les leurs (gum-dances.ts). */
+  hands?: HandPose | DanceHandPose;
   /** La pointe qui se plie (0 à 1). */
   tip?: number;
   /** Ce qu'elle sort le temps du geste (lunettes, écharpe, pile vide, jambes…), en fondu. */
@@ -227,8 +228,9 @@ export const ANIMS: Record<string, (t: number, p: number, mood: Mood) => Frame> 
   emue: (t) => ({ face: { eyeSize: 1.22, pupil: 1.3, teary: 1, mouthW: 0.7, mouthC: 0.3 + Math.sin(t * 9) * 0.12, browA: 1, browTilt: -0.55, blush: 1 }, hands: "mouth", squash: 1 + Math.sin(t * 7) * 0.012 }),
   // Gênée : elle rougit, se cache les joues, une goutte de sueur.
   genee: (t) => ({ face: { eyeOpen: 0, eyeCurve: 1, blush: 1.6, lines: 1, mouthW: 0.7, mouthC: 0.4 }, hands: "cheeks", extra: "sweat", rot: Math.sin(t * 2.4) * 0.09, squash: breathe(t, 2, 0.02) }),
-  // Danse (de la musique en mini-île, src/eggs/) : elle rebondit à 120 battements
-  // par minute, se balance, et lève les moufles un coup sur deux.
+  // Danse (sans style : une règle « la mascotte danse », une mascotte sans les
+  // danses par style) : elle rebondit sur les temps (t = temps de la musique / 2,
+  // voir gum-dances.ts), se balance, et lève les moufles un coup sur deux.
   danse: (t) => {
     const beat = t * Math.PI * 4;
     const hop = Math.abs(Math.sin(beat / 2));
@@ -242,6 +244,8 @@ export const ANIMS: Record<string, (t: number, p: number, mood: Mood) => Frame> 
       blink: false,
     };
   },
+  // Les danses par style (rock, metal, rap…), calées sur le tempo de la musique.
+  ...DANCES,
   // Bâille : elle s'étire bras en l'air et ouvre grand la bouche.
   baille: (_t, p) => {
     const y = Math.sin(ramp(p, 0.15, 0.75) * Math.PI);

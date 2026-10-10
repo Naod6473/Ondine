@@ -25,8 +25,11 @@
 //   mascot.clicked ×3 rapides → annoyed, ×6 → dizzy           mascot.hover-long → love
 //   inactivité → bored puis sleep  activité pendant sleep → wake
 //   mascot.play {animation} → joue cette animation (tests depuis les réglages)
-//   mascot.dance {on} → elle danse en boucle (musique + mini-île, src/eggs/) :
-//     les autres réactions passent, puis elle reprend la danse
+//   mascot.dance {on, style?, bpm?, phase?} → elle danse en boucle (musique +
+//     mini-île, src/eggs/dance.ts) : la danse du style (« danse-rock »… si la
+//     mascotte l'a, sinon « danse »), calée sur le temps (renderer.setBeat) ;
+//     redit à chaque nouvelle mesure du tempo. Les autres réactions passent,
+//     puis elle reprend la danse
 //   Humeur suivant le PC (réglage « ondineMood » du module Système) :
 //   system.cpu-busy {on} → worried (elle transpire), humeur grognon tant que ça dure
 //   system.battery-low → sad, paupières lourdes ; system.battery-full → happy
@@ -50,6 +53,7 @@
 //     un clic sur elle ouvre alors l'onglet Agents IA, voir island.ts)
 //   Réglage « Calme » (mascot.calm) : voir calmMode() et docs/ARCHITECTURE.md.
 
+import { beatFrom, DANCE_ANIM, type DanceStyle } from "./beat";
 import type { Bus } from "../core/bus";
 import { settingsStore } from "../core/settings-store";
 import { pacedInterval } from "../core/perf";
@@ -82,7 +86,7 @@ function moodFollowsPc(): boolean {
  * (elle passe du repos au sommeil, sans bâiller), la bouderie au réveil, les
  * réactions aux notifications et aux modules, les moufles sur les oreilles et
  * le parapluie, les émotions qui suivent le PC (processeur, batterie ; l'humeur
- * de fond reste), et ailleurs la danse, le goûter (src/eggs/eggs.ts) et les
+ * de fond reste), et ailleurs la danse (un simple hochement à la place), le goûter (src/eggs/eggs.ts) et les
  * visites au bord de l'écran (island.ts). Gardé : réveil, sommeil, travail,
  * réflexion, succès, erreur, question et pancarte « ? », alerte, repas (dépôt
  * de fichiers), les réponses aux clics et au survol.
@@ -126,6 +130,8 @@ export class MascotController {
   private lastReaction = 0;
   /** Elle danse (message mascot.dance) : la danse remplace le repos. */
   private dance = false;
+  /** L'animation de la danse en cours (« danse-rock »…, ou « danse »). */
+  private danceAnim = "danse";
   /** Le processeur est à fond (message system.cpu-busy). */
   private cpuBusy = false;
   /** Quand la première tâche en cours a commencé (pour une longue tâche → émue). */
@@ -200,7 +206,7 @@ export class MascotController {
     // l'arrête pas : elle reprend la danse. Seuls le travail et la réflexion
     // passent devant ; les réactions ponctuelles jouent, puis la danse revient.
     if (this.dance && anim.loop && this.tasks === 0 && !this.thinking && state !== "sleep") {
-      if (this.current?.name !== "danse") this.playAnimation("danse");
+      if (this.current?.name !== this.danceAnim) this.playAnimation(this.danceAnim);
       return true;
     }
     this.state = state;
@@ -265,7 +271,7 @@ export class MascotController {
         return;
       }
     }
-    if (this.dance && this.tasks === 0 && !this.thinking) return this.playAnimation("danse");
+    if (this.dance && this.tasks === 0 && !this.thinking) return this.playAnimation(this.danceAnim);
     this.request(this.baseState(), true);
   }
 
@@ -415,12 +421,21 @@ export class MascotController {
       this.pushExtras();
     });
     on("mascot.play", (p: { animation?: string }) => p?.animation && this.playAnimation(p.animation));
-    on("mascot.dance", (p: { on?: boolean } | null) => {
-      const want = !!p?.on && this.manifest.animations.some((a) => a.name === "danse");
-      if (want === this.dance) return;
+    on("mascot.dance", (p: { on?: boolean; style?: string; bpm?: number | null; phase?: number } | null) => {
+      const has = (name: string) => this.manifest.animations.some((a) => a.name === name);
+      const styled = p?.style ? DANCE_ANIM[p.style as DanceStyle] : undefined;
+      const anim = styled && has(styled) ? styled : "danse";
+      const want = !!p?.on && has(anim);
+      // Le temps de la musique (null : le tempo typique du style).
+      this.renderer.setBeat?.(want ? beatFrom(p?.bpm, p?.phase, performance.now()) : null);
+      if (want === this.dance && anim === this.danceAnim) return;
+      const was = this.dance;
       this.dance = want;
-      if (want) this.playAnimation("danse");
-      else this.request(this.baseState(), true);
+      this.danceAnim = anim;
+      if (want) {
+        // Un nouveau style pendant la danse : seulement si elle dansait (pas au milieu d'une réaction).
+        if (!was || this.current?.name?.startsWith("danse")) this.playAnimation(anim);
+      } else if (was) this.request(this.baseState(), true);
     });
   }
 

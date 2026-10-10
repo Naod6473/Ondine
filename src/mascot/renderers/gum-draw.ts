@@ -214,6 +214,8 @@ export interface Hand {
   s: number;
   /** Pouce levé (le coucou). */
   thumb: number;
+  /** Les cornes du metal : l'index et l'auriculaire levés (0 à 1). */
+  horns?: number;
 }
 
 export type HeadWear = "none" | "cap" | "straw" | "tophat" | "beanie" | "crown" | "bow";
@@ -232,7 +234,9 @@ export type WeatherFx = "none" | "rain" | "snow" | "storm";
  * Ce qu'une animation sort le temps d'un geste (chacun de 0 à 1, en fondu) :
  * les lunettes de soleil qui descendent du front, l'écharpe, la pile vide qui
  * clignote (panique), les petites jambes (assise) et leur balancement, les
- * tapotements sur la vitre (des ronds qui s'élargissent sous la moufle).
+ * tapotements sur la vitre (des ronds qui s'élargissent sous la moufle) ;
+ * pour les danses (gum-dances.ts) : la casquette du rap, la guitare de l'air
+ * guitar, l'éclat d'un claquement de doigts, celui d'un clap.
  */
 export interface Props {
   glasses: number;
@@ -241,9 +245,13 @@ export interface Props {
   legs: number;
   swing: number;
   taps: number;
+  cap: number;
+  guitar: number;
+  snap: number;
+  clap: number;
 }
 
-export const NO_PROPS: Props = { glasses: 0, scarf: 0, battery: 0, legs: 0, swing: 0, taps: 0 };
+export const NO_PROPS: Props = { glasses: 0, scarf: 0, battery: 0, legs: 0, swing: 0, taps: 0, cap: 0, guitar: 0, snap: 0, clap: 0 };
 export const PROP_KEYS = Object.keys(NO_PROPS) as (keyof Props)[];
 
 // ── La scène complète d'une image ───────────────────────────────────────────
@@ -485,17 +493,24 @@ export function drawGum(ctx: CanvasRenderingContext2D, w: number, h: number, sc:
   // Les lunettes de soleil d'un geste descendent du front.
   if (sc.props.glasses > 0.02) wearEyes(ctx, sc, R, fx, fy, "sun", Math.min(1, sc.props.glasses * 1.5), -(1 - sc.props.glasses) * R * 0.5);
   wearHead(ctx, sc, R);
+  // La casquette du rap (en fondu), seulement sans autre chapeau.
+  if (sc.props.cap > 0.02 && sc.wear.head === "none") wearHead(ctx, sc, R, "cap", sc.props.cap);
   if (sc.umbrella > 0.02) drawUmbrella(ctx, sc, R);
   ctx.restore(); // fin de l'étirement
 
   // Les mains devant le corps.
   if (sc.hands && sc.handsAlpha > 0.02) {
+    // La guitare de l'air guitar passe sous les deux moufles.
+    if (sc.props.guitar > 0.02) drawGuitar(ctx, sc.hands, sx, sy, R, sc.handsAlpha * sc.props.guitar);
     drawMitt(ctx, sc.hands[0], sx, sy, R, -1, c, sc.handsAlpha);
     // La pancarte est derrière la moufle droite, qui tient son manche (la pile vide aussi).
     if (sc.handItem === "sign") drawSign(ctx, sc.hands[1], sx, sy, R, sc.handsAlpha, t);
     if (sc.handItem === "battery" && sc.props.battery > 0.02) drawBattery(ctx, sc.hands[1], sx, sy, R, sc.handsAlpha * sc.props.battery, t);
     if (!sc.leftFront) drawMitt(ctx, sc.hands[1], sx, sy, R, 1, c, sc.handsAlpha);
     if (sc.props.taps > 0.02) drawTaps(ctx, sc.hands[1], sx, sy, R, sc.props.taps, t);
+    // Un claquement de doigts (à la main qui claque : celle au pouce levé), un clap (entre les deux mains).
+    if (sc.props.snap > 0.05) drawBurst(ctx, sc.hands[sc.hands[0].thumb > sc.hands[1].thumb ? 0 : 1], sx, sy, R, sc.props.snap, -0.6);
+    if (sc.props.clap > 0.05) drawBurst(ctx, { ...sc.hands[0], x: (sc.hands[0].x + sc.hands[1].x) / 2, y: (sc.hands[0].y + sc.hands[1].y) / 2 - 0.12 }, sx, sy, R, sc.props.clap, 0);
     if (sc.handItem === "heart") {
       const a = sc.hands[0];
       const b = sc.hands[1];
@@ -1063,6 +1078,23 @@ function drawMitt(ctx: CanvasRenderingContext2D, H: Hand, sx: number, sy: number
   ctx.strokeStyle = css(c[3]);
   ctx.stroke();
   ctx.restore();
+  // les cornes du metal : l'index et l'auriculaire levés, derrière la paume
+  const horns = H.horns ?? 0;
+  if (horns > 0.02) {
+    for (const fx of [-0.45, 0.45]) {
+      ctx.save();
+      ctx.translate(W * fx, -Hh * (0.6 + 0.55 * horns));
+      ctx.rotate(fx * 0.5);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, W * 0.2, Hh * 0.62 * horns, 0, 0, TAU);
+      ctx.fillStyle = g;
+      ctx.fill();
+      ctx.lineWidth = R * 0.03;
+      ctx.strokeStyle = css(c[3]);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
   // la paume
   ctx.beginPath();
   ctx.ellipse(0, 0, W, Hh, 0, 0, TAU);
@@ -1198,8 +1230,7 @@ function gloss(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number, 
 }
 
 /** Chapeau, casquette, bonnet, couronne ou nœud, posés sur le haut de la tête. */
-function wearHead(ctx: CanvasRenderingContext2D, sc: GumScene, R: number) {
-  const kind = sc.wear.head;
+function wearHead(ctx: CanvasRenderingContext2D, sc: GumScene, R: number, kind: HeadWear = sc.wear.head, alpha = 1) {
   if (kind === "none") return;
   const top = topAt(sc.pts, sc.shape.faceX * 0.6);
   const x = top.x * R;
@@ -1208,6 +1239,7 @@ function wearHead(ctx: CanvasRenderingContext2D, sc: GumScene, R: number) {
   ctx.translate(x, y);
   ctx.rotate(sc.tip * 0.6 - 0.12);
   ctx.lineJoin = "round";
+  ctx.globalAlpha = alpha;
   ctx.lineCap = "round";
   const line = R * 0.035;
   switch (kind) {
@@ -1610,6 +1642,96 @@ function drawTaps(ctx: CanvasRenderingContext2D, H: Hand, sx: number, sy: number
     ctx.strokeStyle = `rgba(200, 235, 255, ${0.65 * (1 - ph) * amount})`;
     ctx.beginPath();
     ctx.ellipse(0, 0, R * (0.18 + ph * 0.45), R * (0.14 + ph * 0.35), 0, 0, TAU);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/**
+ * La guitare de l'air guitar : la caisse sous la main qui gratte (la droite),
+ * le manche jusqu'à la main qui tient les accords (la gauche).
+ */
+function drawGuitar(ctx: CanvasRenderingContext2D, hands: [Hand, Hand], sx: number, sy: number, R: number, alpha: number) {
+  const [fret, strum] = hands;
+  const bx = strum.x * R * sx;
+  const by = (strum.y + 0.06) * R * sy;
+  const nx = fret.x * R * sx;
+  const ny = fret.y * R * sy;
+  const ang = Math.atan2(ny - by, nx - bx);
+  const len = Math.hypot(nx - bx, ny - by);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(bx, by);
+  ctx.rotate(ang);
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  // le manche et la tête
+  ctx.fillStyle = "#7a4a22";
+  ctx.strokeStyle = "#3d230e";
+  ctx.lineWidth = R * 0.03;
+  ctx.beginPath();
+  ctx.rect(R * 0.1, -R * 0.045, len + R * 0.06, R * 0.09);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(len + R * 0.2, 0, R * 0.1, R * 0.07, 0, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  // la caisse (plus grande que la moufle) : deux rondeurs, la main qui gratte sur la rosace
+  ctx.save();
+  ctx.scale(1.5, 1.5);
+  ctx.lineWidth = R * 0.02;
+  ctx.fillStyle = "#e5483f";
+  ctx.strokeStyle = "#7d1a17";
+  ctx.beginPath();
+  ctx.ellipse(-R * 0.2, 0, R * 0.34, R * 0.29, 0, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(R * 0.1, 0, R * 0.24, R * 0.21, 0, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  // la jointure des deux rondeurs, sans trait au milieu
+  ctx.beginPath();
+  ctx.ellipse(-R * 0.06, 0, R * 0.2, R * 0.2, 0, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = "#f5efe6";
+  ctx.beginPath();
+  ctx.ellipse(-R * 0.28, R * 0.1, R * 0.12, R * 0.07, 0.4, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = "#2a1408";
+  ctx.beginPath();
+  ctx.arc(R * 0.04, 0, R * 0.07, 0, TAU);
+  ctx.fill();
+  ctx.restore();
+  // les cordes
+  ctx.strokeStyle = "rgba(255, 245, 220, 0.8)";
+  ctx.lineWidth = R * 0.008;
+  for (const dy of [-0.025, 0, 0.025]) {
+    ctx.beginPath();
+    ctx.moveTo(-R * 0.45, dy * R);
+    ctx.lineTo(len + R * 0.14, dy * R);
+    ctx.stroke();
+  }
+  gloss(ctx, -R * 0.48, -R * 0.2, R * 0.14, R * 0.05);
+  ctx.restore();
+}
+
+/** Un petit éclat (claquement de doigts, clap) : des traits qui partent de la main. */
+function drawBurst(ctx: CanvasRenderingContext2D, H: Hand, sx: number, sy: number, R: number, amount: number, tilt: number) {
+  ctx.save();
+  ctx.translate(H.x * R * sx, H.y * R * sy);
+  ctx.rotate(tilt);
+  ctx.lineCap = "round";
+  ctx.lineWidth = R * 0.035;
+  ctx.strokeStyle = `rgba(255, 236, 150, ${Math.min(1, amount) * 0.95})`;
+  const out = 0.22 + (1 - Math.min(1, amount)) * 0.12;
+  for (const a of [-1.2, -0.6, 0, 0.6, 1.2]) {
+    const ux = Math.sin(a);
+    const uy = -Math.cos(a);
+    ctx.beginPath();
+    ctx.moveTo(ux * R * out, uy * R * out);
+    ctx.lineTo(ux * R * (out + 0.13), uy * R * (out + 0.13));
     ctx.stroke();
   }
   ctx.restore();

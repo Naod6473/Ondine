@@ -1067,6 +1067,7 @@ function demoGroup(): HTMLElement {
                 scene("ai-outage", "Panne d'un service IA"),
                 scene("island-dodge", "L'île s'écarte"),
                 scene("setup", "Premier lancement"),
+                scene("dances", "Danses selon la musique"),
               ),
               "La notification arrive dans l'île : lancez l'enregistrement avant de cliquer.",
             ),
@@ -1555,7 +1556,7 @@ function mascot(main: HTMLElement) {
       row(
         "Calme : moins de gestes spontanés",
         toggle(s.mascot.calm ?? false, (v) => save((d) => (d.mascot.calm = v)), "Calme : moins de gestes spontanés"),
-        "Plus d'ennui, de goûter, de visites au bord de l'écran, de danse ni de réactions aux modules. Elle réagit toujours aux agents IA (attente, question), aux erreurs, aux réussites, aux alertes, et elle dort.",
+        "Plus d'ennui, de goûter, de visites au bord de l'écran ni de réactions aux modules ; en musique, un simple hochement de tête au lieu de la danse. Elle réagit toujours aux agents IA (attente, question), aux erreurs, aux réussites, aux alertes, et elle dort.",
       ),
     ])),
     inSub("desk", petGroup()),

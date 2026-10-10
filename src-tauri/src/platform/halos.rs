@@ -7,6 +7,9 @@
 //   Paramètres de son. On n'ouvre AUCUN flux audio : on ne reçoit jamais le son
 //   lui-même, seulement un nombre, et seulement quand une appli s'en sert déjà
 //   (sinon Windows répond 0).
+// - `Meter` : le même indicateur, gardé ouvert pour être lu souvent (~100 fois
+//   par seconde) : le tempo de la musique (modules/media_tempo.rs) pour la
+//   danse de la mascotte. Toujours un seul nombre, jamais le son.
 // - `wifi_quality` : la qualité du signal Wi-Fi (0 à 100), par l'API Native
 //   Wifi. ATTENTION : depuis Windows 11 24H2, Windows ne la donne qu'aux applis
 //   autorisées à utiliser la localisation (comme le nom du Wi-Fi, voir wifi.rs) ;
@@ -37,6 +40,21 @@ pub fn peak(device: Device) -> Option<f32> {
 
 pub fn wifi_quality() -> Option<u8> {
     imp::wifi_quality()
+}
+
+/// L'indicateur de niveau gardé ouvert, à lire souvent depuis UN fil (il
+/// n'en sort pas : COM est préparé pour ce fil). Il suit le périphérique par
+/// défaut (relu toutes les 3 s : un casque branché entre-temps).
+pub struct Meter(imp::Meter);
+
+impl Meter {
+    pub fn new(device: Device) -> Self {
+        Meter(imp::Meter::new(device))
+    }
+    /// Le niveau (0 à 1), ou None si Windows ne le donne pas.
+    pub fn read(&mut self) -> Option<f32> {
+        self.0.read()
+    }
 }
 
 /// (Verr Maj, Verr Num).
@@ -74,6 +92,57 @@ mod imp {
             let meter = dev.Activate::<IAudioMeterInformation>(CLSCTX_ALL, None).ok()?;
             meter.GetPeakValue().ok().map(|v| v.clamp(0.0, 1.0))
         })
+    }
+
+    /// L'indicateur gardé ouvert (voir `super::Meter`).
+    pub struct Meter {
+        device: Device,
+        meter: Option<IAudioMeterInformation>,
+        since: std::time::Instant,
+        /// COM préparé par nous (à défaire en partant).
+        com: bool,
+    }
+
+    impl Meter {
+        pub fn new(device: Device) -> Self {
+            use ::windows::Win32::System::Com::{CoInitializeEx, COINIT_MULTITHREADED};
+            let com = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) }.is_ok();
+            Meter { device, meter: None, since: std::time::Instant::now(), com }
+        }
+
+        pub fn read(&mut self) -> Option<f32> {
+            // Relu toutes les 3 s : le périphérique par défaut a pu changer.
+            if self.meter.is_none() || self.since.elapsed() >= std::time::Duration::from_secs(3) {
+                self.since = std::time::Instant::now();
+                let flow = match self.device {
+                    Device::Speakers => eRender,
+                    Device::Microphone => eCapture,
+                };
+                self.meter = unsafe {
+                    CoCreateInstance::<_, IMMDeviceEnumerator>(&MMDeviceEnumerator, None, CLSCTX_ALL)
+                        .and_then(|devices| devices.GetDefaultAudioEndpoint(flow, eConsole))
+                        .and_then(|dev| dev.Activate::<IAudioMeterInformation>(CLSCTX_ALL, None))
+                        .ok()
+                };
+            }
+            let value = unsafe { self.meter.as_ref()?.GetPeakValue() };
+            match value {
+                Ok(v) => Some(v.clamp(0.0, 1.0)),
+                Err(_) => {
+                    self.meter = None;
+                    None
+                }
+            }
+        }
+    }
+
+    impl Drop for Meter {
+        fn drop(&mut self) {
+            self.meter = None;
+            if self.com {
+                unsafe { ::windows::Win32::System::Com::CoUninitialize() };
+            }
+        }
     }
 
     pub fn wifi_quality() -> Option<u8> {
@@ -141,6 +210,15 @@ mod imp {
 
     pub fn peak(_device: Device) -> Option<f32> {
         None
+    }
+    pub struct Meter;
+    impl Meter {
+        pub fn new(_device: Device) -> Self {
+            Meter
+        }
+        pub fn read(&mut self) -> Option<f32> {
+            None
+        }
     }
     pub fn wifi_quality() -> Option<u8> {
         None

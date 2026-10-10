@@ -215,6 +215,18 @@ export function pulse(r: Rhythm | undefined, t: number): number {
   return 0.5 - 0.5 * Math.cos(ph * Math.PI * 2);
 }
 
+/**
+ * La pulsation (0 à 1) d'un halo qui bat sur la musique (la danse de la
+ * mascotte) : elle s'allume d'un coup sur le temps et retombe ; « flash »
+ * (l'électro) : plus vif et plus court. `sinceBeat` : ms depuis un temps ;
+ * `periodMs` : déjà ramenée à MIN_PERIOD_MS au moins (haloBeatMs, src/mascot/beat.ts).
+ */
+export function beatPulse(sinceBeat: number, periodMs: number, flash = false): number {
+  const period = Math.max(MIN_PERIOD_MS, periodMs);
+  const ph = (((sinceBeat / period) % 1) + 1) % 1;
+  return flash ? Math.exp(-ph * 9) : 0.12 + 0.88 * Math.exp(-ph * 4);
+}
+
 // ── Intensité ────────────────────────────────────────────────────────────────
 
 /** Réglage « Intensité » : Discret, Normal, Vif. */

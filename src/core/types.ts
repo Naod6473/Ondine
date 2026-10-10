@@ -102,7 +102,7 @@ export interface Settings {
     customColor: string;
     /** La taille de la mascotte dans l'île ouverte et l'aperçu ("small", "normal", "large") ; la mini-île garde la sienne. */
     size: "small" | "normal" | "large";
-    /** Calme : moins de gestes spontanés (pas d'ennui, de goûter, de visites, de danse ni de réactions aux modules). */
+    /** Calme : moins de gestes spontanés (pas d'ennui, de goûter, de visites ni de réactions aux modules ; en musique, un simple hochement au lieu de la danse). */
     calm: boolean;
     /** Ondine sur le bureau : la gomme sort de l'île et vit où on la pose (src/pet/). */
     pet: boolean;

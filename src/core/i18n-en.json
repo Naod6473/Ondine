@@ -1503,7 +1503,6 @@
 "Normale": "Normal",
 "Grande": "Large",
 "Calme : moins de gestes spontanés": "Calm: fewer spontaneous gestures",
-"Plus d'ennui, de goûter, de visites au bord de l'écran, de danse ni de réactions aux modules. Elle réagit toujours aux agents IA (attente, question), aux erreurs, aux réussites, aux alertes, et elle dort.": "No more boredom, snack, visits at the screen edge, dancing or reactions to modules. She still reacts to AI agents (waiting, question), errors, successes, alerts, and she sleeps.",
 "Roue de couleur": "Color wheel",
 "La teinte tourne autour du disque, la saturation va du centre au bord. Au clavier : flèches gauche et droite pour la teinte, haut et bas pour la saturation.": "Hue goes around the disc, saturation from the center to the edge. Keyboard: left and right arrows for the hue, up and down for the saturation.",
 "Teinte et saturation": "Hue and saturation",
@@ -2304,7 +2303,21 @@
 "personne n'a reçu le message (collègues injoignables)": "nobody received the message (teammates unreachable)",
 "message introuvable": "message not found",
 "glissez le fichier dans une conversation à deux": "drop the file into a one-to-one conversation",
-"lien refusé (seulement http ou https, tel qu'il est dans la conversation)": "link refused (http or https only, exactly as in the conversation)"
+"lien refusé (seulement http ou https, tel qu'il est dans la conversation)": "link refused (http or https only, exactly as in the conversation)",
+"Plus d'ennui, de goûter, de visites au bord de l'écran ni de réactions aux modules ; en musique, un simple hochement de tête au lieu de la danse. Elle réagit toujours aux agents IA (attente, question), aux erreurs, aux réussites, aux alertes, et elle dort.": "No more boredom, snack, visits at the screen edge or reactions to modules; with music, a simple nod instead of the dance. She still reacts to AI agents (waiting, question), errors, successes, alerts, and she sleeps.",
+"La mascotte danse au tempo de la musique": "The mascot dances to the beat of the music",
+"Ondine écoute seulement le niveau du son qui sort des haut-parleurs (un nombre, jamais le son lui-même) pour trouver le rythme. Tout se fait sur l'ordinateur : rien n'est enregistré ni envoyé.": "Ondine only listens to the level of the sound coming out of the speakers (a number, never the sound itself) to find the beat. Everything happens on the computer: nothing is recorded or sent.",
+"Style de danse": "Dance style",
+"Automatique : le genre donné par le lecteur s'il le donne, sinon d'après le tempo et l'énergie du son.": "Automatic: the genre given by the player if it gives one, otherwise from the tempo and the energy of the sound.",
+"Rock": "Rock",
+"Metal": "Metal",
+"Rap": "Rap",
+"RnB": "R&B",
+"Pop": "Pop",
+"Électro": "Electro",
+"Reggae": "Reggae",
+"Jazz et chill": "Jazz and chill",
+"Danses selon la musique": "Dances to the music"
 },
 "patterns": [
 [

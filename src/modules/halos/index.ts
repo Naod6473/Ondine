@@ -22,8 +22,9 @@ import manifest from "./manifest.json";
 import { Bridge } from "../../core/bridge";
 import { pacedInterval } from "../../core/perf";
 import type { IslandModule, ModuleManifest } from "../../core/module-types";
-import { hideHalo, mascotPalette, showHalo, updateHalo, type HaloOptions } from "../../island/halo";
-import { skyPalette } from "../../island/halo-palettes";
+import { haloShown, hideHalo, mascotPalette, showHalo, updateHalo, type HaloOptions } from "../../island/halo";
+import { MIN_PERIOD_MS, skyPalette } from "../../island/halo-palettes";
+import { beatFrom, haloBeatMs, sameBeat, type Beat } from "../../mascot/beat";
 import { calmMode } from "../../mascot/mascot-state";
 import { dayKey, leaveDue, levelFromPeak, mediaPlaying, meetingCometMs, morningDue, parseTime, sessionProgress, timerHaloPlan, weatherKind, type TimerProgress } from "./halo-rules";
 import { settingsStore } from "../../core/settings-store";
@@ -204,17 +205,45 @@ export const halos: IslandModule = {
       halo("streak", { id: "streak", palette: "rainbow", shape: "burst", durationMs: 3200 });
     });
     // La danse vient de la musique (src/eggs/ : musique + mini-île) : elle
-    // obéit aussi à « Le halo suit la musique », et laisse la place au halo qui
-    // suit vraiment le son quand il tourne (plus bas, syncLevels).
+    // obéit aussi à « Le halo suit la musique ». Sans tempo mesuré, elle laisse
+    // la place au halo qui suit vraiment le son quand il tourne (plus bas,
+    // syncLevels). Avec le tempo (mascot.dance {bpm, phase}, src/eggs/dance.ts),
+    // c'est elle qui se montre : le halo bat sur les mêmes temps que la
+    // mascotte (un temps, ou deux au-delà de ~133 BPM : jamais plus de ~2
+    // éclats par seconde), un éclat vif pour l'électro.
     let dancing = false;
+    let danceBeat: Beat | null = null;
+    let danceFlash = false;
+    let danceShown: Beat | null = null;
     let levelsOn: "voice" | "music" | null = null;
+    /** La danse a un vrai tempo, et le halo de la danse est permis : il passe devant celui du son. */
+    const beatDance = () => dancing && danceBeat !== null && on("dance") && on("music");
     const syncDance = () => {
-      if (dancing && on("dance") && on("music") && levelsOn !== "music") showHalo({ id: "dance", palette: mascotPalette(), shape: "breathe", rhythm: 520, priority: "low" });
-      else hideHalo("dance");
+      if (dancing && on("dance") && on("music") && (danceBeat || levelsOn !== "music")) {
+        const now = performance.now();
+        // Une mesure presque pareille à la précédente : on ne touche à rien (pas de saut de la lueur).
+        if (danceBeat && danceShown && sameBeat(danceShown, danceBeat, now) && haloShown("dance")) return;
+        danceShown = danceBeat;
+        showHalo({
+          id: "dance",
+          palette: mascotPalette(),
+          shape: "breathe",
+          rhythm: danceBeat ? haloBeatMs(danceBeat.bpm, MIN_PERIOD_MS) : 520,
+          beatAt: danceBeat?.at ?? null,
+          flash: danceBeat !== null && danceFlash,
+          priority: "low",
+        });
+      } else {
+        danceShown = null;
+        hideHalo("dance");
+      }
     };
     listen("mascot.dance", (p) => {
       dancing = p.on === true;
-      syncDance();
+      danceBeat = dancing ? beatFrom(p.bpm, p.phase, performance.now()) : null;
+      danceFlash = p.style === "electro";
+      // Le tempo arrive ou se perd : le halo du son laisse la place, ou la reprend.
+      syncLevels();
     });
 
     // ── Petits événements du clavier et du presse-papiers ──────────────────
@@ -245,7 +274,7 @@ export const halos: IslandModule = {
     let stopLevels: (() => void) | null = null;
     const syncLevels = () => {
       const mic = micInUse && on("voice");
-      const out = !mic && playing && on("music");
+      const out = !mic && playing && on("music") && !beatDance();
       const want = mic ? "voice" : out ? "music" : null;
       // Rien n'a changé (un réglage d'un autre moment) : on ne relance pas la lecture du niveau.
       if (want === levelsOn && (want === null || stopLevels)) return syncDance();

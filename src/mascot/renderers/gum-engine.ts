@@ -48,6 +48,8 @@
 
 import type { MascotExpression, MascotReaction, MascotRenderer, TalkMark } from "../renderer";
 import { NO_EXTRAS, type AnimationSpec, type MascotExtras, type MascotManifest, type MascotState, type Mood } from "../types";
+import { BeatFollower, isDanceAnim, STYLE_BPM, styleOfAnim, type Beat } from "../beat";
+import { DANCE_HANDS, type DanceHandPose } from "./gum-dances";
 import { ANIMS, BLINK, blinkCurve, faceOf, HAND_FOR, HANDS, IDLE_ACT_SECS, IDLE_ACTS, idleAct, JellyRim, LANDING, landingSquash, skyShape, weatherLook, type DynamicShape, type Frame, type HandPose, type IdleAct } from "./gum-anims";
 import {
   DEFAULT_CUSTOM,
@@ -248,6 +250,10 @@ export class GumEngine implements MascotRenderer {
   private umbrella = 0;
   /** Une couleur imposée (le podium des Réglages : une couleur par mascotte), à la place du réglage. */
   private tintOverride: GumTint | null = null;
+  /** Le temps de la musique (mascot.dance, src/mascot/beat.ts) ; null : le tempo typique du style. */
+  private beat: Beat | null = null;
+  /** Le compte des temps de la danse, qui rattrape en douceur celui de la musique. */
+  private follower = new BeatFollower();
 
   constructor(
     manifest: MascotManifest | undefined,
@@ -381,6 +387,15 @@ export class GumEngine implements MascotRenderer {
 
   setExtras(extras: MascotExtras) {
     this.extras = extras;
+  }
+
+  /**
+   * Le temps de la musique pour les danses (bpm, et l'instant d'un temps en
+   * performance.now()) ; null : chaque danse prend le tempo typique de son
+   * style (aperçu des réglages, démo, tempo pas encore trouvé).
+   */
+  setBeat(beat: Beat | null) {
+    this.beat = beat;
   }
 
   /**
@@ -554,6 +569,14 @@ export class GumEngine implements MascotRenderer {
     }
     const name = anim?.source.function ?? anim?.name ?? "idle";
     const fn = ANIMS[name] ?? ANIMS.idle;
+    // Une danse : son temps est celui de la musique (t = temps / 2, voir
+    // gum-dances.ts), rattrapé en douceur quand le tempo mesuré arrive ou change.
+    if (anim && isDanceAnim(name)) {
+      const target = this.beat ?? { bpm: STYLE_BPM[styleOfAnim(name) ?? "pop"], at: this.animStart };
+      const beats = this.follower.step(dt, now, target);
+      t = beats / 2;
+      p = (beats / 4) % 1;
+    } else this.follower.reset();
     // « Réduire les animations » : chaque animation est une image fixe (le
     // milieu d'un geste, un instant du repos).
     if (calm) {
@@ -725,7 +748,9 @@ export class GumEngine implements MascotRenderer {
 
     // Ce qu'elle sort le temps du geste (lunettes, écharpe, pile, jambes) : en fondu.
     const kp = calm ? 1 : 1 - Math.exp(-dt * 8);
-    for (const key of PROP_KEYS) this.props[key] += ((f.prop?.[key] ?? 0) - this.props[key]) * kp;
+    // (Les éclats d'un claquement de doigts ou d'un clap, eux, suivent le temps de près.)
+    const kpFast = calm ? 1 : 1 - Math.exp(-dt * 30);
+    for (const key of PROP_KEYS) this.props[key] += ((f.prop?.[key] ?? 0) - this.props[key]) * (key === "snap" || key === "clap" ? kpFast : kp);
 
     // 3. Clignement : toutes les 2,2 à 5,4 s ; la paupière se ferme en 70 ms
     // (en accélérant) et se rouvre en 130 ms (en ralentissant), une fois sur
@@ -887,7 +912,7 @@ export class GumEngine implements MascotRenderer {
     // (repos, danse, travail…) et des poses tranquilles ; un geste ponctuel
     // (coucou, bravo) la pose le temps du geste. Les moufles sur les oreilles
     // pendant la concentration ne remplacent que le repos.
-    let pose: HandPose = f.hands ?? HAND_FOR[name] ?? "rest";
+    let pose: HandPose | DanceHandPose = f.hands ?? HAND_FOR[name] ?? "rest";
     const quietPose = pose === "rest" || pose === "think" || pose === "clasp";
     if (this.extras.sign && (quietPose || (anim?.loop ?? true))) pose = "sign";
     else if (this.extras.ears && pose === "rest") pose = "ears";
@@ -896,12 +921,12 @@ export class GumEngine implements MascotRenderer {
     const showHands = mode === "always" || pose === "sign" || pose === "panic" || (mode === "gestures" && pose !== "rest");
     this.umbrella += ((this.extras.umbrella ? 1 : 0) - this.umbrella) * (calm ? 1 : 1 - Math.exp(-dt * 6));
     this.handsAlpha += ((showHands ? 1 : 0) - this.handsAlpha) * (calm ? 1 : 1 - Math.exp(-dt * 10));
-    let goals = HANDS[pose](t, p, S);
+    let goals = pose in HANDS ? HANDS[pose as HandPose](t, p, S) : DANCE_HANDS[pose as DanceHandPose](t, p, S);
     // Le geste de l'autre côté : les mains changent de côté.
     if (this.mirror) goals = [goals[1], goals[0]].map((g) => ({ ...g, x: -(g.x ?? 0), r: -(g.r ?? 0) })) as typeof goals;
     for (let i = 0; i < 2; i++) {
       const H = this.hands[i];
-      const g = { x: 0, y: 0, r: 0, s: 1, thumb: 0, ...goals[i] };
+      const g = { x: 0, y: 0, r: 0, s: 1, thumb: 0, horns: 0, ...goals[i] };
       if (calm) {
         Object.assign(H, g);
       } else {
@@ -913,6 +938,7 @@ export class GumEngine implements MascotRenderer {
         H.r += H.vr * dt;
         H.s += (g.s - H.s) * kf;
         H.thumb += (g.thumb - H.thumb) * kf;
+        H.horns = (H.horns ?? 0) + (g.horns - (H.horns ?? 0)) * kf;
       }
     }
     // De l'autre côté, la moufle qui tient la pile ou qui toque est passée en second (gum-draw.ts dessine l'objet à la seconde).
