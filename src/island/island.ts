@@ -15,6 +15,7 @@ import type { ModuleRegistry } from "../core/module-registry";
 import { isAlert, type IslandNotification, type NotificationQueue } from "../core/notifications";
 import { settingsStore } from "../core/settings-store";
 import { noteTabOpen } from "../core/suggestions";
+import { homeOnOpen } from "../core/home-cards";
 import { applyTabOrder, mergeOrder } from "../core/tab-order";
 import type { Settings } from "../core/types";
 import { EasterEggs } from "../eggs/eggs";
@@ -125,6 +126,8 @@ export class Island {
   private unmountView: () => void = () => {};
   /** Onglet (id de module) ouvert dans la vue agrandie. */
   private activeTab: string | null = null;
+  /** Un onglet précis vient d'être demandé (openIsland) : l'ouverture ne repasse pas par l'Accueil. */
+  private tabAsked = false;
   /** La vue agrandie affichée : ses onglets, leur pastille et la zone du contenu. */
   private expandedUi: { tabs: Map<string, HTMLElement>; pill: TabPill; stage: HTMLElement; body: HTMLElement } | null = null;
   /** Dernier état dessiné, pour animer l'arrivée du contenu quand il change. */
@@ -260,8 +263,12 @@ export class Island {
     this.registry.onCompactChange = () => this.render();
     this.registry.onCloseRequest = () => this.fsm.close();
     this.registry.onOpenRequest = (tab) => {
-      if (tab && this.orderedTabs().some((t) => t.module.manifest.id === tab)) this.activeTab = tab;
+      if (tab && this.orderedTabs().some((t) => t.module.manifest.id === tab)) {
+        this.activeTab = tab;
+        this.tabAsked = true;
+      }
       this.fsm.open();
+      this.tabAsked = false;
       this.render(true);
     };
     settingsStore.onChange((s) => this.applySettings(s));
@@ -394,6 +401,10 @@ export class Island {
     // L'astuce d'un onglet ne vit que dans l'île ouverte (jamais par-dessus une alerte).
     if (from === "expanded") this.tips.hide();
     if (to !== "hidden") this.mascot?.activity();
+    // L'île se rouvre sur l'Accueil (réglage du module home), sauf onglet demandé.
+    if (to === "expanded" && (from === "hidden" || from === "peek" || from === "compact") && !this.tabAsked && homeOnOpen(settingsStore.current, settingsStore.moduleEnabled("home"))) {
+      this.activeTab = "home";
+    }
     // Petits sons : une bulle qui monte à l'ouverture, qui redescend à la fermeture.
     if (to === "expanded") sounds.open();
     else if (from === "expanded") sounds.close();

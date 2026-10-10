@@ -86,6 +86,16 @@ export const weather: IslandModule = {
       seen = key;
     });
     void refresh(api);
+    // L'Accueil : la température et le temps qu'il fait (rien tant que la météo est éteinte).
+    api.homeCard({
+      title: "Météo",
+      icon: "🌤️",
+      moments: { morning: 80, day: 35, evening: 40 },
+      view: () =>
+        now && wanted(api)
+          ? { value: `${now.icon} ${deg(now.temp)}`, sub: now.label, rows: [{ label: now.place, value: weatherDetail(now) }], phrase: `${Math.round(now.temp)}° dehors` }
+          : null,
+    });
     return () => {
       off();
       offSettings();

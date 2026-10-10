@@ -253,6 +253,38 @@ export const agents: IslandModule = {
         actions: actions.length ? actions : undefined,
       });
     });
+    // L'Accueil : les sessions en cours (relues toutes les 5 s pendant qu'il est affiché), et la dernière pour « Reprendre ».
+    let home: { events: AgentEvent[]; sessions: Session[]; asks: Ask[] } = { events: [], sessions: [], asks: [] };
+    api.homeCard({
+      title: "Agents IA",
+      icon: "🤖",
+      moments: { morning: 45, day: 85, evening: 50 },
+      refreshMs: 5_000,
+      load: async () => {
+        home = await api.invoke<typeof home>("history").catch(() => home);
+      },
+      view: () => {
+        const who = (x: { source: string }) => SOURCE_NAMES[x.source] ?? sourceName(x.source);
+        const waiting = home.sessions.filter((x) => x.state === "waiting");
+        const working = home.sessions.filter((x) => x.state === "working");
+        const done = home.events.find((e) => e.kind === "done" && Date.now() - e.at < 30 * 60_000);
+        const lead = waiting[0] ?? working[0];
+        if (!lead && !done && !home.asks.length) return null;
+        const state = { working: "au travail", waiting: "vous attend", done: "a fini", idle: "" };
+        return {
+          value: lead ? who(lead) : done ? who(done) : "Question",
+          sub: lead ? `${state[lead.state]} · ${duration(lead.since)}` : done ? (done.project || "a fini") : "",
+          rows: home.sessions.slice(0, 4).map((x) => ({ label: `${who(x)} · ${x.project || "—"}`, value: state[x.state] })),
+          urgent: waiting.length > 0 || home.asks.length > 0,
+          phrase: waiting[0] ? `${who(waiting[0])} vous attend` : working[0] ? `${who(working[0])} travaille` : done ? `${who(done)} a fini` : null,
+        };
+      },
+      resume: () => {
+        const e = home.events.find((x) => x.session);
+        if (!e) return null;
+        return { icon: "🤖", label: e.project || e.title, detail: SOURCE_NAMES[e.source] ?? sourceName(e.source), at: e.at, open: () => goTo(api, e.session) };
+      },
+    });
     // Un agent te pose une question (MCP) : elle reste affichée jusqu'à ton clic.
     api.on("agents.ask", (msg) => {
       const q = msg.payload as Ask | null;

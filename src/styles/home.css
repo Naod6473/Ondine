@@ -1,0 +1,431 @@
+/* L'Accueil de l'île (src/modules/home/) : la phrase d'Ondine, les cartes, les
+   actions rapides. Verre sombre dans le style classique ; dans le style bouche
+   (island.style = "mouth", classe .home-gum), les cartes prennent la matière
+   de la goutte gomme (palette de src/mascot/renderers/gum-draw.ts) : un léger
+   relief, un reflet en haut, une ombre douce dessous. */
+
+.home {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 2px 2px;
+  --card-r: 16px;
+  --card-bg: color-mix(in srgb, var(--island-fg) 7%, transparent);
+  --card-line: color-mix(in srgb, var(--island-fg) 7%, transparent);
+}
+
+/* ── La phrase d'Ondine ─────────────────────────────────────────────────── */
+
+.home-phrase {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  font-size: 13.5px;
+  line-height: 1.3;
+}
+.home-phrase[hidden] {
+  display: none;
+}
+.home-greet {
+  font-weight: 600;
+}
+.home-parts {
+  color: var(--muted);
+}
+/* Le premier morceau prend une majuscule à l'affichage (le texte, lui, reste
+   en minuscules : il est traduit tel quel). */
+.home-part:first-child {
+  display: inline-block;
+}
+.home-part:first-child::first-letter {
+  text-transform: uppercase;
+}
+.home-empty {
+  margin: 4px 0;
+  font-size: 12px;
+}
+
+/* ── Les cartes ─────────────────────────────────────────────────────────── */
+
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  grid-auto-flow: dense;
+  gap: 8px;
+}
+.home-card {
+  position: relative;
+  min-width: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 11px 10px;
+  border-radius: var(--card-r);
+  background: var(--card-bg);
+  border: 1px solid var(--card-line);
+  overflow: hidden;
+  outline: none;
+  cursor: default;
+  /* Le glisser est fait à la main (home/index.ts) : pas de défilement tactile. */
+  touch-action: none;
+  transition:
+    background 220ms ease,
+    box-shadow 320ms var(--ease-out);
+}
+.home-card > * {
+  position: relative;
+  z-index: 1;
+}
+.home-card.large {
+  grid-column: span 2;
+}
+.home-card.expandable,
+.home-card[data-key="home.resume"] .home-row {
+  cursor: pointer;
+}
+.home-card:hover {
+  background: color-mix(in srgb, var(--island-fg) 10%, transparent);
+}
+.home-card:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.home-card-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.home-card-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-card-icon {
+  font-size: 12px;
+  letter-spacing: 0;
+}
+.home-card-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.home-card-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.home-card-cover {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.35);
+}
+.home-card-cover[hidden],
+.home-card-bar[hidden],
+.home-card-actions[hidden],
+.home-card-value[hidden],
+.home-card-sub[hidden] {
+  display: none;
+}
+.home-card-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.home-card-value {
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Avec une pochette, le grand texte est un titre de morceau : plus petit. */
+.home-card:has(.home-card-cover:not([hidden])) .home-card-value {
+  font-size: 14px;
+  font-weight: 600;
+}
+.home-card-sub {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.home-card-rows {
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+}
+.home-card:not(.large):not([data-key="home.resume"]) .home-card-rows {
+  display: none;
+}
+.home-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  white-space: nowrap;
+  border-radius: 6px;
+}
+.home-row span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.home-row span:last-child {
+  flex: none;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.home-card[data-key="home.resume"] .home-row:hover {
+  background: color-mix(in srgb, var(--island-fg) 8%, transparent);
+}
+.home-card-bar {
+  height: 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--island-fg) 15%, transparent);
+  overflow: hidden;
+}
+.home-card-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--island-fg);
+  transition: width 900ms linear;
+}
+.home-card-actions {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+}
+.home-card-btn {
+  padding: 2px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--island-fg);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.home-card-btn:hover,
+.home-card-btn:focus-visible {
+  background: color-mix(in srgb, var(--island-fg) 12%, transparent);
+}
+
+/* La carte importante : un liseré qui respire (Ondine la regarde aussi). */
+.home-card.urgent {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 65%, transparent),
+    0 0 18px -4px color-mix(in srgb, var(--accent) 75%, transparent);
+  animation: home-breathe 2.4s ease-in-out infinite;
+}
+@keyframes home-breathe {
+  50% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent),
+      0 0 10px -4px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+}
+
+/* La carte musique, teintée aux couleurs de la pochette (--tint-rgb : « r g b »). */
+.home-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(135deg, rgb(var(--tint-rgb, 92 200 255) / 0.5), rgb(var(--tint-rgb, 92 200 255) / 0.1) 75%);
+  transition: opacity 700ms ease;
+}
+.home-card.tinted::before {
+  opacity: 1;
+}
+
+/* ── Glisser pour ranger ────────────────────────────────────────────────── */
+
+.home-card.dragged {
+  z-index: 5;
+  cursor: grabbing;
+  box-shadow: 0 14px 30px rgb(0 0 0 / 0.45);
+  transition: none;
+}
+.home.dragging .home-card {
+  cursor: grabbing;
+}
+
+/* ── La carte ouverte sur place ─────────────────────────────────────────── */
+
+.home-focus .home-card:not(.open),
+.home-focus .home-phrase,
+.home-focus .home-quick,
+.home-focus .home-empty {
+  display: none;
+}
+.home-card.open {
+  grid-column: 1 / -1;
+  padding: 8px 10px 10px;
+  cursor: default;
+  background: color-mix(in srgb, var(--island-fg) 5%, transparent);
+}
+.home-card.open .home-card-mini {
+  display: none;
+}
+.home-card.open .home-card-head {
+  cursor: pointer;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+}
+.home-card.open .home-card-head::after {
+  content: "▴";
+  margin-left: auto;
+  font-size: 12px;
+}
+.home-card-full {
+  min-width: 0;
+  /* Les vues des modules sont faites pour l'onglet : on leur rend sa marge du haut. */
+  padding-top: 4px;
+  cursor: auto;
+}
+
+/* ── Les actions rapides ────────────────────────────────────────────────── */
+
+.home-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.home-quick[hidden] {
+  display: none;
+}
+.home-quick-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--island-fg) 5%, transparent);
+  color: var(--island-fg);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 200ms ease;
+}
+.home-quick-btn:hover,
+.home-quick-btn:focus-visible {
+  background: color-mix(in srgb, var(--island-fg) 12%, transparent);
+}
+
+/* ── Le menu du clic droit ──────────────────────────────────────────────── */
+
+.home-menu {
+  position: absolute;
+  z-index: 10;
+  min-width: 190px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--island-bg) 90%, var(--island-fg));
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.5);
+  transform-origin: top left;
+}
+.home-menu[hidden] {
+  display: none;
+}
+.home-menu-item {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--island-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.home-menu-item:hover,
+.home-menu-item:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--island-fg) 12%, transparent);
+}
+
+/* ── Style bouche : les cartes en gomme ─────────────────────────────────── */
+
+.home-gum .home-card {
+  border-color: transparent;
+  background:
+    radial-gradient(120% 90% at 18% 0%, rgb(201 240 255 / 0.2), transparent 55%),
+    linear-gradient(160deg, rgb(92 200 255 / 0.17), rgb(31 134 224 / 0.14) 55%, rgb(20 90 158 / 0.28));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.24),
+    inset 0 -8px 14px -6px rgb(10 40 80 / 0.55),
+    0 4px 10px -2px rgb(0 0 0 / 0.35);
+}
+.home-gum .home-card:hover {
+  background:
+    radial-gradient(120% 90% at 18% 0%, rgb(201 240 255 / 0.26), transparent 55%),
+    linear-gradient(160deg, rgb(92 200 255 / 0.22), rgb(31 134 224 / 0.18) 55%, rgb(20 90 158 / 0.32));
+}
+/* Le reflet, comme sur la goutte. */
+.home-gum .home-card::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: 4px;
+  left: 12%;
+  right: 38%;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(rgb(255 255 255 / 0.34), rgb(255 255 255 / 0));
+  pointer-events: none;
+}
+.home-gum .home-card.open::after {
+  display: none;
+}
+.home-gum .home-card.urgent {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.24),
+    inset 0 -8px 14px -6px rgb(10 40 80 / 0.55),
+    0 0 0 1px rgb(92 200 255 / 0.7),
+    0 0 18px -4px rgb(92 200 255 / 0.8);
+  animation: none;
+}
+.home-gum .home-quick-btn {
+  border-color: transparent;
+  background: linear-gradient(180deg, rgb(92 200 255 / 0.2), rgb(20 90 158 / 0.24));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.22),
+    inset 0 -4px 8px -4px rgb(10 40 80 / 0.5);
+}
+
+/* « Réduire les animations » : rien ne respire ni ne glisse (les arrivées sont en fondu, home/index.ts). */
+@media (prefers-reduced-motion: reduce) {
+  .home-card,
+  .home-card::before,
+  .home-card-bar i,
+  .home-quick-btn {
+    transition: none;
+  }
+  .home-card.urgent {
+    animation: none;
+  }
+}

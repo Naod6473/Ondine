@@ -278,6 +278,40 @@ export const agenda: IslandModule = {
         });
       })();
     });
+    // L'Accueil : le prochain rendez-vous (le soir : ceux de demain, comme le récap).
+    api.homeCard({
+      title: "Agenda",
+      icon: "📅",
+      moments: { morning: 90, day: 60, evening: 65 },
+      view: ({ moment }) => {
+        const now = Date.now();
+        const tomorrow = dayStart(now) + 24 * 60 * MINUTE;
+        if (moment === "evening" && new Date(now).getHours() >= 18) {
+          const list = listing.events.filter((e) => e.start >= tomorrow && e.start < tomorrow + 24 * 60 * MINUTE);
+          const first = list.find((e) => !e.allDay) ?? list[0];
+          if (!first) return null;
+          return {
+            title: "Demain",
+            value: first.allDay ? "Toute la journée" : hhmm(first.start),
+            sub: first.title,
+            rows: list.slice(1, 4).map((e) => ({ label: e.title, value: e.allDay ? "Toute la journée" : hhmm(e.start) })),
+            phrase: `${list.length} rendez-vous demain`,
+          };
+        }
+        const today = listing.events.filter((e) => e.end > now && e.start < tomorrow);
+        const next = today.find((e) => !e.allDay) ?? today[0];
+        if (!next) return null;
+        const urgent = !next.allDay && (ongoing(next, now) ? now - next.start < 5 * MINUTE : next.start - now <= 15 * MINUTE);
+        return {
+          value: next.allDay ? "Aujourd'hui" : ongoing(next, now) ? "En cours" : hhmm(next.start),
+          sub: next.title,
+          rows: today.filter((e) => e !== next).slice(0, 3).map((e) => ({ label: e.title, value: e.allDay ? "Toute la journée" : hhmm(e.start) })),
+          urgent,
+          actions: next.link && urgent ? [{ icon: "🎥", label: LINK_LABELS[next.link], run: () => join(api, next) }] : [],
+          phrase: urgent && !ongoing(next, now) ? `réunion dans ${Math.max(1, Math.ceil((next.start - now) / MINUTE))} min` : `${today.length} rendez-vous aujourd'hui`,
+        };
+      },
+    });
     // Calendriers changés dans les réglages : on relit ce qui a changé, tout de suite.
     const off = api.onSettingsChange(() => void refresh(api, "reload", { force: false }));
 

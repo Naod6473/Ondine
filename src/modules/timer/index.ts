@@ -350,6 +350,23 @@ export const timerModule: IslandModule = {
       pane = "timer";
       api.refreshCompact();
     });
+    // L'Accueil : le compte à rebours qui tourne (ou en pause), sinon le chrono.
+    api.homeCard({
+      title: "Minuteur",
+      icon: "⏱️",
+      moments: { morning: 45, day: 75, evening: 45 },
+      view: () => {
+        const paused = (c: Countdown) => !running(c) && c.left > 0 && c.left < c.total;
+        if (running(timer) || paused(timer)) {
+          return { value: countdownText(timer), sub: running(timer) ? "Minuteur" : "En pause", progress: 1 - remaining(timer) / timer.total, phrase: running(timer) ? `encore ${Math.ceil(remaining(timer) / 60_000)} min de minuteur` : null };
+        }
+        if (running(pomodoro.clock) || paused(pomodoro.clock)) {
+          return { title: "Pomodoro", value: countdownText(pomodoro.clock), sub: running(pomodoro.clock) ? PHASE_LABEL[pomodoro.phase] : "En pause", progress: 1 - remaining(pomodoro.clock) / pomodoro.clock.total };
+        }
+        if (stopwatch.startedAt !== null) return { title: "Chrono", value: clock(elapsed()) };
+        return null;
+      },
+    });
     // Durée de travail changée dans les réglages : prise en compte si la séance n'a pas commencé.
     const off = api.onSettingsChange(() => {
       if (!pomodoro.started) reset(pomodoro.clock, phaseMs(api, pomodoro.phase));

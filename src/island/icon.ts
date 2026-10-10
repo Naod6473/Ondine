@@ -35,6 +35,8 @@ const lineByName = (name: string) => lineFiles[`../assets/icons-line/${name}.svg
 /** L'emoji d'origine → le nom de son image (icônes dessinées pour l'île). */
 const BY_EMOJI: Record<string, string> = {
   "📅": "agenda",
+  // L'Accueil (1.2.3) : au trait seulement, l'emoji en couleur.
+  "🏠": "house",
   "🎚️": "controls",
   "🤖": "agents",
   "💬": "askclaude",

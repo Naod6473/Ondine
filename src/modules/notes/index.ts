@@ -113,6 +113,37 @@ export const notes: IslandModule = {
       pane = wanted.kind === "todo" ? "todo" : "notes";
       jump?.(); // l'onglet était déjà affiché
     });
+    // L'Accueil : les tâches à faire, et la dernière note pour « Reprendre ».
+    api.homeCard({
+      title: "À faire",
+      icon: "✅",
+      moments: { morning: 70, day: 50, evening: 30 },
+      view: () => {
+        const open = data.todos.filter((t) => !t.done);
+        if (!open.length) return null;
+        return {
+          value: String(open.length),
+          sub: open.length > 1 ? "tâches à faire" : "tâche à faire",
+          rows: open.slice(0, 4).map((t) => ({ label: t.text, value: "" })),
+          phrase: open.length > 1 ? `${open.length} tâches à faire` : "1 tâche à faire",
+        };
+      },
+      resume: () => {
+        const last = [...data.notes].sort((a, b) => b.updated - a.updated)[0];
+        if (!last) return null;
+        return {
+          icon: "📝",
+          label: last.text.split("\n")[0].slice(0, 60) || "Note",
+          detail: "Note",
+          at: last.updated,
+          open: () => {
+            wanted = { kind: "note", id: last.id };
+            pane = "notes";
+            api.openIsland("notes");
+          },
+        };
+      },
+    });
     void refresh(api).then(() => {
       const open = data.todos.filter((t) => !t.done).length;
       if (api.settings().showTodoCount && open) {
