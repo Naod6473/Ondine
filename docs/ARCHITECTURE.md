@@ -2087,6 +2087,64 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
 - Réglages → Onglets → Astuces : `island.tips` (oui) et « Revoir les
   astuces » (vide `tipsSeen`).
 
+## Premier lancement (`src/core/setup.ts`, `setup-plan.ts`, `suggestions.ts`, `src/island/setup-panel.ts`)
+
+- **L'assistant** remplace l'ancien mot de bienvenue : au premier démarrage
+  (`general.welcomed` faux, vraie appli, hors démo), une alerte qui reste
+  (« high », sticky, clé `setup`) dont le contenu (`content`) est le panneau
+  de l'assistant, DANS l'île. Cinq étapes passables (Passer ; × ou Échap
+  passent tout, via le nouveau `onDismiss` des notifications) : prénom +
+  langue + Vous/Tu (ou « Reprendre la configuration de mon autre PC » :
+  `settings_import_pick`, boîte « Ouvrir » puis import comme Réglages →
+  Sauvegarde, `check_path` compris) ; les cartes « Vous faites quoi sur ce
+  PC ? » ; la mascotte (le carrousel de `whats-new-panel.ts`, option
+  `hint`) ; le bord de l'île et le style des icônes (en direct) ; la clé de
+  l'API (`credential_set` « anthropic-api-key », jamais dans les réglages).
+  Puis « C'est prêt, Simon ! » et « Ouvrir l'île ». `welcomed` passe à vrai à
+  l'arrivée sur « C'est prêt » ou à la fermeture ; une installation déjà
+  accueillie ne le voit pas. Réglages → Général → « Refaire l'assistant »
+  publie `app.setup`. Scène démo « Premier lancement » : même panneau, rien
+  n'est enregistré, faux logiciels.
+- **Les cartes** (`SETUP_CARDS`, setup-plan.ts) : Bureautique, Développement
+  et agents IA, IT et support, Réunions et visio, Musique et création, Études.
+  Chacune allume ses onglets ; `planFromCards` écrit `modules.<id>.enabled`
+  (tous les modules à onglet, sauf Équipe, jamais touché) et un
+  `island.tabOrder` complet (Parler à Ondine, puis les onglets dans l'ordre
+  des cartes cochées). Aucune carte + Continuer : l'île minimale (Parler à
+  Ondine, Étagère, Notes). Les modules sans onglet ne sont pas touchés.
+  Plusieurs cartes : un profil par carte (Travail, Développement…, sans
+  règle, `profilesFromCards`), sauf nom déjà pris.
+- **Détection locale** (`services/apps.rs`, commande `apps_detect`) : noms des
+  raccourcis des deux menus Démarrer, DisplayName des clés Uninstall (HKLM,
+  HKCU, WOW6432Node), et quelques exécutables dans le PATH (le fichier existe ?
+  rien n'est lancé). Seuls les ids d'une liste fixe (`APPS`) sortent du Rust ;
+  `APP_CARDS` les relie aux cartes, pré-cochées tant qu'on n'y a pas touché.
+- **Le prénom** (`general.firstName`, 40 caractères, nettoyé des deux côtés) :
+  « Bonjour Simon ! » du matin (Animations de l'île), le titre du bilan de la
+  semaine, le premier mot de Parler à Ondine, et la bulle du bureau (une fois
+  par jour). Réglages → Général → Prénom.
+- **Les propositions** (`suggestions.ts`, règles pures dans setup-plan.ts,
+  réglage `island.suggestions`, oui) : jamais rien de fait tout seul, une fois
+  par cas (`island.suggested`). Le bon moment : premier fichier glissé sur
+  l'île (`island.state` → drop) → Étagère ; première clé USB ou première visio
+  → Contrôles. Ces deux-là viennent du Rust (`services/hints.rs`, un fil de
+  ~6 s, seulement si Contrôles est éteint et le cas pas encore proposé :
+  lecteurs amovibles, micro/caméra pris par une autre appli qu'Ondine →
+  événement `island-hint`). L'onglet oublié : `island.tabSeenAt` (jour de la
+  dernière ouverture, noté par island.ts une fois par jour), `usageSince` (fin
+  de l'assistant, ou premier démarrage en 1.2.2) ; 21 jours sans ouverture →
+  « Masquer l'onglet … ? », au plus une par regard (6 h), jamais s'il reste
+  3 onglets. « Revoir les propositions » (Réglages → Onglets) vide la liste.
+- **Animations** : la hauteur de l'alerte suit l'étape (`data-step`,
+  island.css), donc la gelée de l'île s'y ajuste au ressort ; points d'étape
+  avec la pastille à ressorts de `tab-pill.ts` ; l'étape sort comme un
+  onglet (`tabOut`) et la suivante arrive en cascade (`staggerIn`) ; les
+  icônes d'onglets de l'aperçu arrivent avec un rebond. Réduire les
+  animations ou Calme : tout change d'un coup.
+- Tests : `tests/front/setup.test.ts` (cartes ↔ vrais modules, ids du Rust ↔
+  `APP_CARDS`, plan, profils, prénom, propositions) ; Rust : `services::apps`,
+  `services::hints`, `settings::first_name_and_suggestions_are_checked`.
+
 ## Parler à Ondine (`src/modules/askclaude/`, `src-tauri/src/modules/askclaude.rs`, `askclaude_providers.rs`, `askclaude_tools.rs`, `askclaude_pc.rs`)
 
 Une conversation avec Ondine (l'ancien « Demander à Claude » : l'identifiant
@@ -2405,7 +2463,7 @@ fichier vers l'Explorateur).
   pouvait pas toucher : Bilan de la semaine) ; l'en-tête de la page (Activé,
   Permissions, À propos) reste. Pour les pages de l'île, `ISLAND_ESSENTIALS`
   (clé = le `data-key` de la ligne, c'est-à-dire son libellé) : Général (Langue,
-  S'adresser à moi, Lancer avec Windows, Bord de l'écran, Mises à jour
+  S'adresser à moi, Prénom, Premiers pas, Lancer avec Windows, Bord de l'écran, Mises à jour
   automatiques), Apparence (Thème, Style des icônes), Onglets (la liste des
   modules, marquée `data-essential` dans le DOM), Mascotte (Afficher la
   mascotte, Mascotte, Couleur, Ondine vit sur le bureau), Profils (Profil actif). Règles et les trois

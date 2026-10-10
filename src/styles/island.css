@@ -518,7 +518,10 @@ body {
 }
 .island[data-state="alert"]:has(.setup) {
   width: 640px;
-  height: 212px;
+  height: 224px;
+}
+.island[data-state="alert"]:has(.setup[data-step="hello"]) {
+  height: 252px;
 }
 .island[data-state="alert"]:has(.setup[data-step="cards"]),
 .island[data-state="alert"]:has(.setup[data-step="mascot"]) {
@@ -528,7 +531,7 @@ body {
   height: 236px;
 }
 .island[data-state="alert"]:has(.setup[data-step="done"]) {
-  height: 196px;
+  height: 214px;
 }
 .setup {
   display: grid;

@@ -261,7 +261,8 @@
 "Une clé USB ! Voulez-vous l'onglet Contrôles ?": "Une clé USB ! Tu veux l'onglet Contrôles ?",
 "Voulez-vous l'Étagère ?": "Tu veux l'Étagère ?",
 "Vous ne l'avez pas ouvert depuis 3 semaines. Vous pourrez le rallumer dans Réglages → Onglets.": "Tu ne l'as pas ouvert depuis 3 semaines. Tu pourras le rallumer dans Réglages → Onglets.",
-"Votre prénom, ce que vous faites sur ce PC (les onglets), la mascotte, la place de l'île et la clé de Parler à Ondine.": "Ton prénom, ce que tu fais sur ce PC (les onglets), la mascotte, la place de l'île et la clé de Parler à Ondine."
+"Votre prénom, ce que vous faites sur ce PC (les onglets), la mascotte, la place de l'île et la clé de Parler à Ondine.": "Ton prénom, ce que tu fais sur ce PC (les onglets), la mascotte, la place de l'île et la clé de Parler à Ondine.",
+"Aucune carte : une île minimale de 3 onglets, qui s'enrichira avec vos réponses.": "Aucune carte : une île minimale de 3 onglets, qui s'enrichira avec tes réponses."
 },
 "patterns": [
 ["^L'audio de votre voix partira vers (.+), avec votre clé\\.$", "L'audio de ta voix partira vers $1, avec ta clé."],

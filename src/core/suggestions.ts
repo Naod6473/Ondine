@@ -124,6 +124,11 @@ export function startSuggestions(bus: Bus, notifications: NotificationQueue, reg
       ],
     });
   };
+  // Une installation d'avant l'assistant (déjà accueillie) : le compte des onglets commence aujourd'hui.
+  if (!quietNow() && settingsStore.current.general.welcomed && !settingsStore.current.island.usageSince) {
+    const today = dayNumber(Date.now());
+    void settingsStore.update((d) => (d.island.usageSince = today));
+  }
   window.setTimeout(look, FIRST_LOOK_MS);
   window.setInterval(look, LOOK_EVERY_MS);
 }

@@ -2255,7 +2255,8 @@
 "Revoir les propositions": "Show suggestions again",
 "Ondine pourra refaire ses propositions.": "Ondine may make her suggestions again.",
 "Premier lancement": "First launch",
-"Pour m'ouvrir : la souris sur l'île. Mon icône est près de l'horloge (clic droit : Réglages, Quitter).": "To open me: hover the island. My icon is near the clock (right-click: Settings, Quit)."
+"Pour m'ouvrir : la souris sur l'île. Mon icône est près de l'horloge (clic droit : Réglages, Quitter).": "To open me: hover the island. My icon is near the clock (right-click: Settings, Quit).",
+"Aucune carte : une île minimale de 3 onglets, qui s'enrichira avec vos réponses.": "No card: a minimal island with 3 tabs, which will grow with your answers."
 },
 "patterns": [
 ["^L'audio de votre voix partira vers (.+), avec votre clé\\.$", "The audio of your voice will go to $1, with your key."],

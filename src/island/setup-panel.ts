@@ -89,9 +89,9 @@ export function mountSetupPanel(host: HTMLElement, ctrl: SetupController): () =>
   const pill = new TabPill(dots);
   const counter = el("span", { class: "setup-count" });
   const stage = el("div", { class: "setup-stage" });
-  const back = el("button", { class: "btn small ghost", onclick: () => go(-1, false) }, "Retour");
-  const skip = el("button", { class: "btn small ghost", onclick: () => go(1, false) }, "Passer");
-  const next = el("button", { class: "btn small primary", onclick: () => go(1, true) }, "Continuer");
+  const back = el("button", { class: "btn small ghost", onclick: () => void go(-1, false) }, "Retour");
+  const skip = el("button", { class: "btn small ghost", onclick: () => void go(1, false) }, "Passer");
+  const next = el("button", { class: "btn small primary", onclick: () => void go(1, true) }, "Continuer");
   const foot = el("div", { class: "setup-foot" }, el("span", { class: "spacer" }), back, skip, next);
   const panel = el("div", { class: "setup" }, el("div", { class: "setup-head" }, dots, counter), stage, foot);
   // Un clic dans le panneau ne doit ni refermer ni ouvrir l'île.
@@ -102,9 +102,12 @@ export function mountSetupPanel(host: HTMLElement, ctrl: SetupController): () =>
   let undoStep: () => void = () => {};
   /** Le panneau a pris le focus clavier de l'île (à rendre en partant). */
   let focused = false;
+  /** Ce que l'étape doit finir avant « Continuer » (la clé collée mais pas enregistrée). */
+  let beforeNext: (() => Promise<boolean>) | null = null;
 
   /** Avance (1) ou recule (−1) ; `apply` : enregistrer le choix de l'étape (« Continuer »). */
-  function go(dir: number, apply: boolean) {
+  async function go(dir: number, apply: boolean) {
+    if (dir > 0 && apply && beforeNext && !(await beforeNext())) return;
     if (dir > 0) ctrl.next(apply);
     else ctrl.back();
     draw(dir);
@@ -129,6 +132,7 @@ export function mountSetupPanel(host: HTMLElement, ctrl: SetupController): () =>
 
     undoStep();
     undoStep = () => {};
+    beforeNext = null;
     const old = body;
     body = el("div", { class: `setup-step step-${step}` });
     undoStep = STEP_VIEWS[step](body) ?? (() => {});
@@ -170,7 +174,7 @@ export function mountSetupPanel(host: HTMLElement, ctrl: SetupController): () =>
       input.addEventListener("input", () => (st.name = input.value));
       input.addEventListener("focus", () => ctrl.emote("listening"));
       input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") go(1, true);
+        if (e.key === "Enter") void go(1, true);
       });
       const address = el(
         "div",
@@ -241,16 +245,22 @@ export function mountSetupPanel(host: HTMLElement, ctrl: SetupController): () =>
           );
           grid.append(b);
         }
+        tabsPreview();
+      };
+      // La ligne du bas suit les cartes cochées.
+      const explain = () => {
         note.textContent =
           st.detected === null
             ? "Je regarde les logiciels de ce PC…"
-            : st.detected.length
-              ? "Pré-cochées d'après les logiciels de ce PC : rien n'est envoyé."
-              : "Cochez ce qui vous ressemble. Le reste se rallume dans Réglages → Onglets.";
-        tabsPreview();
+            : !st.cards.length
+              ? "Aucune carte : une île minimale de 3 onglets, qui s'enrichira avec vos réponses."
+              : st.detected.length && !st.touched
+                ? "Pré-cochées d'après les logiciels de ce PC : rien n'est envoyé."
+                : "Cochez ce qui vous ressemble. Le reste se rallume dans Réglages → Onglets.";
       };
       // Les onglets qu'aura l'île (ceux des cartes, ou les 3 de l'île minimale).
       const tabsPreview = () => {
+        explain();
         const ids = tabsForCards(st.cards, ctrl.tabs.map((t) => t.id));
         preview.replaceChildren(el("span", { class: "setup-label" }, `${ids.length} onglets`));
         ids.forEach((id, i) => {
@@ -308,12 +318,15 @@ export function mountSetupPanel(host: HTMLElement, ctrl: SetupController): () =>
     key(root) {
       const input = el("input", { type: "password", class: "setup-name", placeholder: "sk-ant-…", "aria-label": "Clé de l'API de Claude", autocomplete: "off", spellcheck: "false" }) as HTMLInputElement;
       const status = el("div", { class: "setup-note", "aria-live": "polite" }, st.keySaved ? "Une clé est déjà enregistrée sur ce PC." : "");
-      const save = async () => {
+      const save = async (): Promise<boolean> => {
         const err = await ctrl.saveKey(input.value);
-        input.value = "";
+        if (!err) input.value = "";
         status.textContent = err ?? "Clé enregistrée dans le Gestionnaire d'identifiants de Windows.";
         if (!err) ctrl.emote("success");
+        return !err;
       };
+      // « Continuer » avec une clé collée : elle est enregistrée d'abord.
+      beforeNext = () => (input.value.trim() ? save() : Promise.resolve(true));
       input.addEventListener("keydown", (e) => {
         if (e.key === "Enter") void save();
       });
