@@ -46,6 +46,7 @@ import { perfGroup } from "./perf-group";
 import { startPerf } from "../core/perf";
 import { applyMode, hiddenByMode, modeSwitch } from "./mode";
 import { isHidden, modeOf, moduleEssentialKeys, pageEssentials, WHOLE_PAGE, type SettingsMode } from "./visibility";
+import { SCENE_IDS, SCENES } from "../island/scenes/scene-rules";
 import { allKey, ANIMATION_SUBS, FORMER_NAMES, MODULE_CATEGORIES, MODULES_ELSEWHERE, MOVED_FIELDS, resolvePlace, type NavGroup } from "./layout";
 
 const PERMISSION_LABELS: Record<string, string> = {
@@ -1215,8 +1216,19 @@ function demoGroup(): HTMLElement {
                 scene("island-dodge", "L'île s'écarte"),
                 scene("setup", "Premier lancement"),
                 scene("dances", "Danses selon la musique"),
+                scene("ondine-walk", "Ondine se déplace (toutes les scènes)"),
               ),
               "La notification arrive dans l'île : lancez l'enregistrement avant de cliquer.",
+            ),
+            // Ondine se déplace dans l'île (src/island/scenes/) : une scène à la fois.
+            row(
+              "Une scène d'Ondine",
+              choice(
+                "",
+                [["", "Choisir…"], ...SCENE_IDS.map((id): [string, string] => [id, `${SCENES[id].n}. ${SCENES[id].label}`])],
+                (v) => v && bus.emit("demo.scene", { scene: `ondine:${v}` }, "settings"),
+              ),
+              "Ondine quitte sa case, va jusqu'à l'élément de l'île et agit. Le dépôt de fichier demande un vrai glisser.",
             ),
           ]
         : []),

@@ -5480,3 +5480,110 @@ body.retro .island .btn {
     transition: opacity 0.3s linear;
   }
 }
+
+/* ── Ondine se déplace dans l'île (src/island/scenes/) ────────────────────
+   Sa case reste dans la grille : walker.ts la décale (translate) et l'écrase
+   (scale, attaché en bas). En route elle passe DERRIÈRE le contenu (on ne
+   cache jamais le texte qu'on lit) ; « ondine-front » quand sa place est libre. */
+.mascot-slot.ondine-away {
+  transform-origin: 50% 100%;
+  z-index: 1;
+}
+.island.ondine-walking .island-content {
+  z-index: 2;
+}
+.mascot-slot.ondine-away.ondine-front {
+  z-index: 3;
+}
+/* Les objets qu'elle tient, les fantômes des lignes qu'elle pousse, le flash, le soir. */
+.ondine-scene-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.ondine-ghost {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+.ondine-prop {
+  position: absolute;
+  translate: -50% -50%;
+  font-size: 15px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
+.ondine-prop.swing {
+  transform-origin: 50% 10%;
+  animation: ondine-swing 420ms ease-in-out infinite alternate;
+}
+.ondine-prop.spin {
+  animation: ondine-spin 900ms linear infinite;
+}
+.ondine-prop.wobble {
+  animation: ondine-swing 600ms ease-in-out infinite alternate;
+}
+.ondine-prop.sweep {
+  transform-origin: 50% 0;
+  animation: ondine-swing 260ms ease-in-out infinite alternate;
+}
+.ondine-prop.drag {
+  rotate: -14deg;
+}
+/* Le tampon de la note enregistrée et l'interrupteur du soir : placés par transform (animés). */
+.ondine-prop.stamp,
+.ondine-prop.switch {
+  translate: none;
+  transform: translate(-50%, -50%);
+}
+.ondine-prop.stamp {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 13px;
+  filter: none;
+}
+.ondine-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+}
+.ondine-dusk {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 6, 20, 0.5);
+  opacity: 0;
+}
+@keyframes ondine-swing {
+  from {
+    rotate: -16deg;
+  }
+  to {
+    rotate: 16deg;
+  }
+}
+@keyframes ondine-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ondine-scene-layer {
+    display: none;
+  }
+}

@@ -217,7 +217,7 @@ export const notes: IslandModule = {
           text.addEventListener("dblclick", () => edit(t.id, text));
           const del = el(
             "button",
-            { class: "icon-btn todo-del", title: "Supprimer", onclick: api.handler(() => attempt(api, () => api.invoke("todo_delete", { id: t.id }))) },
+            { class: "icon-btn todo-del", title: "Supprimer", "data-scene": "note-delete", onclick: api.handler(() => attempt(api, () => api.invoke("todo_delete", { id: t.id }))) },
             "×",
           );
           const li = el("li", { class: "todo-item", "data-id": String(t.id) }, check, text, del);
@@ -363,6 +363,8 @@ export const notes: IslandModule = {
             await save();
             openNote = null;
             draw();
+            // Ondine tamponne la note enregistrée (src/island/scenes/).
+            if (savedId !== null && area.value.trim()) api.emit("mascot.scene", { scene: "note-save" });
           };
           host.replaceChildren(
             el(
@@ -377,6 +379,7 @@ export const notes: IslandModule = {
                     {
                       class: "btn small",
                       title: "Supprimer la note (annulable)",
+                      "data-scene": "note-delete",
                       onclick: api.handler(async () => {
                         window.clearTimeout(timer);
                         if (savedId !== null) await attempt(api, () => api.invoke("note_delete", { id: savedId }));

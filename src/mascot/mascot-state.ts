@@ -160,6 +160,8 @@ export class MascotController {
   private rainy = false;
   /** Ce qu'elle porte en ce moment (renderer.setExtras), pour ne pousser que les changements. */
   private extras: MascotExtras = NO_EXTRAS;
+  /** Ce qu'une scène de l'île lui fait porter en plus (parapluie, mains sur les oreilles : src/island/scenes/). */
+  private sceneExtras: Partial<MascotExtras> | null = null;
   /** Le dernier message de mascot.talk (l'état « talk » revient au repos après un silence). */
   private lastTalk = 0;
   /** Quand le minuteur a sonné (son task.finished arrive juste après : la fête est déjà là). */
@@ -245,6 +247,26 @@ export class MascotController {
     this.renderer.play(anim);
     this.bus.emit("mascot.state", { state, animation: anim.name }, "mascot");
     return true;
+  }
+
+  /**
+   * Les scènes de l'île (src/island/scenes/) : une émotion comme mascot.emote,
+   * sans passer par le bus (rien ne part vers le Rust ni les autres fenêtres).
+   */
+  emoteNow(p: EmotePayload) {
+    this.emote(p);
+  }
+
+  /** Fin d'une scène : retour à l'état de fond (repos, travail, réflexion ou danse). */
+  settle() {
+    if (this.dance && this.tasks === 0 && !this.thinking) this.playAnimation(this.danceAnim);
+    else this.request(this.baseState(), true);
+  }
+
+  /** Ce qu'une scène lui fait porter (null : plus rien), par-dessus le reste. */
+  setSceneExtras(extras: Partial<MascotExtras> | null) {
+    this.sceneExtras = extras;
+    this.pushExtras();
   }
 
   /** Joue une animation par son nom (écran de test des réglages). */
@@ -345,7 +367,7 @@ export class MascotController {
     const calm = calmMode();
     // La pancarte « ? » d'une question d'agent passe avant un mot (elle attend une réponse).
     const ask = this.asks.size > 0;
-    const next: MascotExtras = { ears: this.quiet && !calm, sign: ask || this.signWord !== "", signText: ask ? "" : this.signWord, umbrella: this.rainy && !calm };
+    const next: MascotExtras = { ears: this.quiet && !calm, sign: ask || this.signWord !== "", signText: ask ? "" : this.signWord, umbrella: this.rainy && !calm, ...this.sceneExtras };
     const same = (Object.keys(next) as (keyof MascotExtras)[]).every((k) => next[k] === this.extras[k]);
     if (same) return;
     this.extras = next;

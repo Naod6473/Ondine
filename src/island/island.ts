@@ -39,6 +39,7 @@ import { enableTabDrag, flip } from "./tab-drag";
 import { applyIslandTheme } from "./light-island";
 import { attachWheelVolume } from "./volume-wheel";
 import { ACTION_MODULE, CONFIRM_MS, DoubleClick, doubleClickActionOf } from "./mascot-double-click";
+import { attachScenes, type Scenes } from "./scenes/scenes";
 import { reducedMotion, TabPill } from "./tab-pill";
 import { Tips } from "./tips";
 
@@ -176,6 +177,8 @@ export class Island {
   private eggs: EasterEggs;
   /** La bulle d'astuce à la première ouverture d'un onglet (tips.ts). */
   private tips = new Tips();
+  /** Ondine se déplace dans l'île (scenes/scenes.ts). */
+  private scenes: Scenes;
 
   constructor(
     private readonly root: HTMLElement,
@@ -228,6 +231,17 @@ export class Island {
       this.bus,
       this.notifications,
     );
+    // Ondine quitte sa case pour agir dans l'île (les 22 scènes, scenes/).
+    this.scenes = attachScenes({
+      shell: this.shell,
+      slot: this.mascotSlot,
+      content: this.content,
+      bus: this.bus,
+      state: () => this.fsm.state,
+      mascot: () => this.mascot,
+      react: (kind, data) => this.react(kind, data),
+      open: (tab) => this.registry.onOpenRequest(tab),
+    });
     pacedInterval(() => void this.maybePeek(), "peekCheck");
     pacedInterval(() => void this.checkPresentation(), "presentationCheck");
     // Économie d'énergie : pas d'effets « Studio » (flous coûteux), ils reviennent ensuite.
@@ -240,6 +254,7 @@ export class Island {
         ondinePeek: () => this.hanger.show(),
         ondineBus: this.bus,
         ondineEggs: this.eggs,
+        ondineScenes: this.scenes,
         ondineNotify: (n: Parameters<NotificationQueue["push"]>[0]) => this.notifications.push(n),
       });
     }
@@ -1042,7 +1057,9 @@ export class Island {
 
     if (!this.mascot) return;
     const m = this.mascotSlot.getBoundingClientRect();
-    this.mascot.lookAt(x - (m.left + m.width / 2), y - (m.top + m.height / 2));
+    // Une scène (ou mascot.look-at) lui fait regarder ailleurs un instant.
+    if (inside) this.scenes.pointer(x, y);
+    if (!this.scenes.gazeHeld()) this.mascot.lookAt(x - (m.left + m.width / 2), y - (m.top + m.height / 2));
     this.eggs.pointer(x, y);
     if (inside) this.mascot.activity();
 

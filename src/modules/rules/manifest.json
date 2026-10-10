@@ -9,7 +9,7 @@
   "views": ["expanded"],
   "commands": ["list", "save", "delete", "toggle", "pause", "preview"],
   "events": {
-    "emits": ["rules.edit", "rules.changed", "rules.notify", "rules.open-island", "shelf.add", "terminal.open", "timer.start", "clipboard.paste-plain", "notes.add", "mascot.emote", "mascot.dance", "mascot.sign", "rules.quiet"],
+    "emits": ["rules.edit", "rules.changed", "rules.notify", "rules.open-island", "shelf.add", "terminal.open", "timer.start", "clipboard.paste-plain", "notes.add", "mascot.emote", "mascot.dance", "mascot.sign", "rules.quiet", "mascot.scene"],
     "listens": ["rules.changed", "rules.notify", "rules.open-island", "capture.done", "timer.done", "agenda.reminder", "task.finished", "agents.event", "media.changed", "mascot.sign"]
   }
 }

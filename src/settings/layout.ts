@@ -58,7 +58,15 @@ export interface AnimationSub {
  * d'ici (ajouté plus tard) tombe dans Style ; le test vérifie qu'il n'y en a pas.
  */
 export const ANIMATION_SUBS: AnimationSub[] = [
-  { id: "style", label: "Style", blocks: [{ title: "Le halo", module: "halos", keys: ["intensity", "colors", "place"] }] },
+  {
+    id: "style",
+    label: "Style",
+    blocks: [
+      { title: "Le halo", module: "halos", keys: ["intensity", "colors", "place"] },
+      // Ondine quitte sa case pour agir dans l'île (src/island/scenes/).
+      { title: "Ondine", module: "halos", keys: ["ondineWalk"] },
+    ],
+  },
   {
     id: "pc",
     label: "Le PC",

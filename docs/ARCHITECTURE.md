@@ -45,6 +45,7 @@ ondine/
 │  │  ├─ island-state.ts      machine à états de l'île (sans DOM)
 │  │  ├─ island.ts            dessin, souris, clavier, glisser-déposer
 │  │  ├─ tips.ts              la bulle d'astuce à la première ouverture d'un onglet (règles : tip-state.ts)
+│  │  ├─ scenes/              Ondine se déplace dans l'île (les 22 scènes, moteur de sauts)
 │  │  └─ dom.ts               petite aide `el()` pour créer du HTML sans framework
 │  ├─ mascot/
 │  │  ├─ renderer.ts          contrat MascotRenderer + liste des moteurs
@@ -720,6 +721,9 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `mascot.talk` `{open, mark?}` | voix (Parler à Ondine) | la bouche suit la voix : `open` de 0 à 1 au rythme des syllabes (sans message pendant 180 ms, elle se referme) ; `mark` `"?"` ou `"!"` : les sourcils montent. Au repos ou attentive, elle passe en `talk`, puis revient au repos 1,5 s après le dernier message |
 | `agents.ask`, `agents.event` « waiting » | Agents IA | question (la goutte violette et son « ? ») |
 | `mascot.state` | mascotte | |
+| `mascot.look-at` `{x, y}` | tout module (l'Accueil…) | elle regarde ce point (px de la fenêtre de l'île) pendant 1,5 s ; la souris ne la fait pas regarder ailleurs entre-temps (src/island/scenes/) |
+| `mascot.walk` `{active}` | île (src/island/scenes/) | elle quitte sa case (`true`) ou y revient (`false`) pendant une scène |
+| `mascot.scene` `{scene, name?, demo?}` | Notes, Règles, mode démo | joue une scène d'Ondine qui se déplace (`note-save`, `rules-run` {name}…) ; `demo: true` : sur le premier élément venu, l'onglet s'ouvre d'abord |
 | `mascot.dance` `{on}` | surprises (src/eggs/) | elle danse en boucle (musique + mini-île) ; les autres réactions passent puis la danse reprend |
 | `shelf.downloaded`, `timer.done`, `clipboard.link-cleaned`, `capture.done`, `controls.usb-ejected`, `system.disk-low` | modules | une courte réaction de la mascotte (voir « La famille gomme ») |
 | `agents.ask` / `agents.ask.closed` | Agents IA | la pancarte « ? » tant qu'une question est ouverte |
@@ -1045,6 +1049,101 @@ repos en boucle à 30 images/s au plus, en pause hors de l'écran
 JavaScript, l'image fixe `site/media/mascottes/<id>.png` (256 px, fond
 transparent, générée avec Playwright depuis le script construit) reste
 affichée. Le site est en français et tutoie.
+
+### Ondine se déplace dans l'île (`src/island/scenes/`)
+
+Pour certaines actions, Ondine quitte sa case (`mascot-slot`), va jusqu'à
+l'élément de l'île en petits sauts de gomme, agit, puis revient (les 22 scènes
+de `animations-ile/ondine-se-deplace.md`, toutes retenues par Simon).
+
+- **Fichiers** : `scene-path.ts` (sans DOM : découpe en sauts `planHops`,
+  instant d'un saut `hopAt` = élan tassé, vol en arc étiré, atterrissage écrasé
+  avec un petit rebond, volume gardé ; la place près d'un élément `pickSpot` ;
+  traversée `crossing` ; pied d'une progression `progressFoot`),
+  `scene-rules.ts` (sans DOM : la liste `SCENES` avec numéro, nom, geste de
+  repli, états où marcher, délai entre deux fois ; `sceneMode` ; petits
+  calculs : progression, volume fort, météo, heure du soir), `walker.ts` (le
+  moteur), `scenes.ts` (les scènes et leurs déclencheurs). Tests :
+  `tests/front/scenes.test.ts`. Branché par `attachScenes()` dans le
+  constructeur de `Island`.
+- **Le moteur** (`Walker`) raisonne sur le « pied » d'Ondine (milieu du bas de
+  sa case, coordonnées de la fenêtre). La case garde sa place dans la grille
+  de l'île : on la décale avec `translate` et on l'écrase avec `scale`
+  (attaché en bas, classe `ondine-away`) ; jamais `translate` de `.island`.
+  Elle voyage à 62 % de sa taille (`WALK_SCALE`). Le dessin reste celui du
+  moteur de la mascotte : à chaque atterrissage, `MascotRenderer.react("release")`
+  fait rebondir la gelée de la gomme et trembler ses bulles ; les gestes sont
+  ceux de gum-anims.ts, demandés par `MascotController.emoteNow` (pousse,
+  assise au bord, grimpe, tapote la vitre, coucou, étirement, bâillement,
+  sommeil, danse par `playAnimation("danse")`) et `setSceneExtras` (parapluie,
+  moufles sur les oreilles) ; `settle()` la remet au repos après une pose en
+  boucle. Les objets tenus (emoji : loupe, lettre, balai, cloche, manivelle,
+  appareil photo, ampoule) et les « fantômes » des lignes retirées vivent dans
+  un calque `.ondine-scene-layer` posé dans l'île, sans souris.
+- **Interruptible** : chaque scène reçoit un `Run` ; un appui dans l'île (sauf
+  sur un déclencheur), un clic sur elle (`mascot.clicked`), une autre scène ou
+  un changement d'état de l'île l'annule à l'image suivante. Elle revient en
+  sautant (une scène remplacée : elle repart d'où elle est), ou d'un coup quand
+  l'île change d'état (`snapHome`, plus aucun style en ligne). Le retour vise
+  de nouveau sa case si l'île a changé de taille en route.
+- **Jamais devant le texte qu'on lit** : en route, l'île porte la classe
+  `ondine-walking` et le contenu passe au-dessus d'elle (`z-index` des
+  éléments de la grille). Arrivée, `pickSpot` essaie les places (à gauche, à
+  droite, sur l'élément, dessous, sur son bord) et garde la première qui ne
+  touche aucun rectangle de texte (`Range.getClientRects` des nœuds texte, et
+  champs, images) ; elle passe alors devant (`ondine-front`), sinon elle reste
+  derrière.
+- **Règles** (`sceneMode`) : rien avec « Réduire les animations », sans
+  mascotte dans l'île (Ondine sur le bureau), île cachée ; un simple geste dans
+  sa case avec « Calme », le réglage coupé ou en économie d'énergie, et en
+  mini-île (pas la place de marcher) ; les scènes spontanées (13, 18, 20, 21,
+  22) disparaissent en Calme. Île-bouche (`island.style` = "mouth", lu
+  prudemment : absent = classique) : rien, sauf la scène 1 où le fichier retiré
+  file vers elle et disparaît (« crunch »).
+- **Réglage** : `modules.halos.values.ondineWalk` (activé par défaut),
+  Réglages → Animations et halos → Style → bloc « Ondine » (layout.ts).
+- **Déclencheurs** : les nouvelles du bus (`shelf.changed`, `clipboard.changed`
+  et `halos.clip`, `timer.progress` / `timer.done`, `media.changed`,
+  `halos.volume`, `agents.event`, `capture.done`, `team.event`,
+  `shelf.hash-progress` / `team.progress` / `agents.progress`,
+  `weather.updated`, `island.state`) ; un attribut `data-scene` sur un bouton
+  de module (× de l'Étagère, × d'une tâche et « Supprimer » d'une note : la
+  ligne est photographiée au clic, avant de disparaître) et
+  `data-scene-target="media-next"` (bouton suivant de la Musique) ;
+  `mascot.scene` publié par Notes (retour à la liste après une note
+  enregistrée) et Règles (une règle vient de s'exécuter, d'après l'historique) ;
+  l'île elle-même (clic sur un onglet, cible de dépôt survolée, classe
+  `liquid-float`, souris immobile 25 s, ouverture le soir une fois par jour,
+  retenue dans `localStorage`).
+- **Les scènes** : 1 retirer de l'étagère (elle pousse la ligne, qui tombe) et
+  fichier qui arrive (rattrapé) ; 2 tâche ou note supprimée (froissée en
+  boule, lancée) et note enregistrée (tampon ✓) ; 3 assise sur le bord de
+  l'anneau du minuteur tant qu'il tourne, cloche à la fin ; 4 pied sur
+  « suivant » puis danse sur la pochette ; 5 la nouvelle copie poussée en
+  haut ; 6 grimpe à côté du volume, moufles au-delà de 80 % ; 7 tape la carte
+  de l'agent qui a fini, coucou à côté de celui qui attend ; 8 loupe près du
+  premier résultat du Lanceur, puis elle le pousse ; 9 appareil photo et
+  flash ; 10 lettre portée au collègue, fichier reçu traîné jusqu'à sa case ;
+  11 d'icône en icône jusqu'au nouvel onglet ; 12 manivelle à côté de la
+  règle ; 13 elle pousse les bords de l'île qui s'ouvre (au plus toutes les
+  2 min) ; 14 sa course le long du bas est la progression ; 15 bras ouverts
+  à côté de la cible de dépôt survolée ; 16 balai sur toute la largeur
+  (étagère ou presse-papiers vidés) ; 17 elle tire la bannière d'une alerte
+  depuis le bord droit (clip-path qui se déroule derrière elle) ; 18 promenade
+  au repos ; 19 étirements d'un bord à l'autre pendant la pause du Pomodoro ;
+  20 nage tant que l'île est pleine de liquide ; 21 parapluie ou coup de
+  chaud, à l'ouverture après un changement de temps ; 22 interrupteur, voile
+  sombre, sommeil dans le coin. Une scène ne se joue que si son élément est
+  visible dans l'onglet ouvert.
+- **`mascot.look-at {x, y}`** : elle regarde ce point pendant 1,5 s
+  (`Scenes.gazeHeld()` : island.ts ne lui fait pas suivre la souris
+  entre-temps). **`mascot.walk {active}`** : publié au départ et au retour.
+- **Mode démo** : `mascot.scene {scene, demo: true}` ouvre l'onglet de la
+  scène (`DEMO_TAB`) puis la joue sur le premier élément venu (la ligne
+  « retirée » est seulement cachée le temps de la scène) ; demo.ts a le tour
+  `ondine-walk` (toutes les scènes, sauf le dépôt qui demande un vrai glisser)
+  et `ondine:<scène>` ; Réglages → Captures d'écran : un bouton et une liste.
+  Dans un navigateur, `window.ondineScenes` donne le moteur.
 
 ### Ondine sur le bureau (`src-tauri/src/pet.rs`, `src/pet/`, `pet.html`)
 
