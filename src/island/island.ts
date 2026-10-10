@@ -246,11 +246,10 @@ export class Island {
       this.fsm.hold(!!n && !alert);
       this.render();
       // Une alerte arrive (ou en remplace une autre) : l'île encaisse le choc,
-      // un creux puis une onde (jelly.ts), après render() qui a lu sa nouvelle taille,
-      // et fait un petit saut (une notification normale en mini-île, un plus petit).
+      // un creux puis une onde (jelly.ts), après render() qui a lu sa nouvelle taille ;
+      // une notification normale en mini-île : un petit saut, sans quitter sa place.
       if (alert && isNew) {
         this.jelly.shock();
-        this.hop(1);
       } else if (n && isNew && this.fsm.state === "compact") this.hop(0.5);
     };
 
@@ -724,35 +723,14 @@ export class Island {
 
   /** Le bord de l'écran où se trouve l'île (posé sur <body> par applySettings). */
   /**
-   * Un petit saut de l'île (une alerte qui arrive, une notification en
-   * mini-île) : elle décolle du bord puis se repose, avec un rebond. `amount`
-   * module la hauteur (1 = une alerte). Pas avec « Réduire les animations »
-   * ni en économie d'énergie ; la propriété `translate` ne gêne pas les
-   * transformations de la gelée (jelly.ts).
-   *
-   * `composite: "add"` : le saut s'AJOUTE au `translate` posé par la feuille
-   * de style (-50 % pour l'île centrée, island.css). Sans lui, l'animation le
-   * remplaçait par « 0 0 » et l'île sautait d'une demi-largeur sur le côté
-   * le temps du saut (Verr Maj, Collé…).
+   * Un petit saut de l'île (une notification en mini-île) : elle gonfle vers
+   * le centre de l'écran puis revient, avec un rebond, SANS se décoller du
+   * bord ni bouger de sa place (jelly.ts, bump). `amount` module la hauteur.
+   * Pas avec « Réduire les animations » ni en économie d'énergie.
    */
   private hop(amount: number) {
     if (reducedMotion() || perfMode() === "eco" || !motionOn()) return;
-    const edge = this.edge();
-    const px = Math.round(7 * amount);
-    // Vers le centre de l'écran (« away »), puis un petit dépassement de l'autre côté.
-    const dir = { top: [0, 1], bottom: [0, -1], left: [1, 0], right: [-1, 0] }[edge];
-    const at = (k: number) => `${Math.round(dir[0] * k)}px ${Math.round(dir[1] * k)}px`;
-    const away = at(px);
-    const back = at(-px * 0.35);
-    this.shell.animate(
-      [
-        { translate: "0 0", offset: 0 },
-        { translate: away, offset: 0.3, easing: "cubic-bezier(0.2, 0.8, 0.3, 1)" },
-        { translate: back, offset: 0.7, easing: "ease-in-out" },
-        { translate: "0 0", offset: 1 },
-      ],
-      { duration: 420, easing: "ease-out", composite: "add" },
-    );
+    this.jelly.bump(amount);
   }
 
   private edge(): Edge {
