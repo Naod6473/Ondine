@@ -10,7 +10,11 @@
 //     propres données (sa commande "search", appelée ici par `modules::invoke`,
 //     qui vérifie qu'il est activé) et renvoie 5 résultats au plus ;
 //   - les calculs et les GUID (trouvés par le front, src/modules/launcher/calc.ts) :
-//     ici, seulement la copie du résultat (commande "copy", permission clipboard).
+//     ici, seulement la copie du résultat (commande "copy", permission clipboard) ;
+//   - « Rechercher « … » sur Google » (dernière ligne) : `web_search` ouvre la
+//     page de résultats du moteur choisi (réglage « searchEngine ») dans le
+//     navigateur par défaut. Rien ne part avant Entrée ou le clic ; l'adresse
+//     est construite ici (texte encodé, `search_url`) et revalidée par `web_url`.
 //
 // Sécurité : le front ne donne jamais de chemin, seulement le numéro d'une
 // entrée que le Rust a trouvée lui-même. Un fichier récent est revalidé au
@@ -47,6 +51,18 @@ const SOURCES: [&str; 4] = ["notes", "clipboard", "shelf", "capture"];
 const MAX_COPY: usize = 4000;
 /// Les raccourcis qu'on propose dans les réglages. Toute autre valeur est refusée.
 const HOTKEYS: &[&str] = &["Alt+Space", "Ctrl+Space", "Ctrl+Alt+Space", "Ctrl+Shift+Space", "Super+Shift+Space"];
+
+/// Les moteurs de recherche proposés : identifiant du réglage, nom affiché,
+/// début de l'adresse de la page de résultats (le texte encodé suit).
+pub const ENGINES: &[(&str, &str, &str)] = &[
+    ("google", "Google", "https://www.google.com/search?q="),
+    ("duckduckgo", "DuckDuckGo", "https://duckduckgo.com/?q="),
+    ("bing", "Bing", "https://www.bing.com/search?q="),
+    ("qwant", "Qwant", "https://www.qwant.com/?q="),
+    ("ecosia", "Ecosia", "https://www.ecosia.org/search?q="),
+];
+/// Une recherche web fait au plus ça (au-delà, on coupe).
+const MAX_WEB_QUERY: usize = 500;
 
 /// Extensions jamais proposées dans « récents » : les ouvrir LANCERAIT un programme.
 const EXECUTABLE: &[&str] = &[
@@ -222,6 +238,17 @@ impl RustModule for Launcher {
                 files::copy_text(text)?;
                 Ok(Value::Null)
             }
+            // { query } : « Rechercher « … » sur Google » (Entrée ou clic) :
+            // la page de résultats s'ouvre dans le navigateur par défaut.
+            "web_search" => {
+                let engine = engine_of(&ctx.settings());
+                let url = search_url(engine, args.get("query").and_then(Value::as_str).unwrap_or("")).ok_or("rien à chercher")?;
+                platform::forget_previous_foreground();
+                platform::shell_open(&url)?;
+                // Le journal ne dit que le moteur, jamais ce qui est cherché.
+                log::info(format!("lanceur : recherche web ouverte ({engine})"));
+                Ok(Value::Null)
+            }
             // Avant une action de l'île qui ouvre une fenêtre (terminal…) :
             // l'île ne rendra pas le focus à la fenêtre d'avant.
             "forget_focus" => {
@@ -231,6 +258,50 @@ impl RustModule for Launcher {
             other => Err(format!("commande inconnue : {other}")),
         }
     }
+}
+
+// ── La recherche web ─────────────────────────────────────────────────────────
+
+/// Le moteur choisi dans les réglages du Lanceur (Google si rien ou inconnu).
+pub fn engine_of(settings: &serde_json::Map<String, Value>) -> &'static str {
+    let wanted = settings.get("searchEngine").and_then(Value::as_str).unwrap_or("");
+    ENGINES.iter().find(|(id, _, _)| *id == wanted).map_or(ENGINES[0].0, |(id, _, _)| id)
+}
+
+/// Le moteur du Lanceur, lu depuis un autre module (Parler à Ondine).
+pub fn engine(app: &AppHandle) -> &'static str {
+    super::with_context(app, ID, |ctx| engine_of(&ctx.settings())).unwrap_or(ENGINES[0].0)
+}
+
+/// Le nom affiché d'un moteur (« DuckDuckGo »).
+pub fn engine_name(engine: &str) -> &'static str {
+    ENGINES.iter().find(|(id, _, _)| *id == engine).map_or(ENGINES[0].1, |(_, name, _)| name)
+}
+
+/// L'adresse de la page de résultats : le texte (coupé à MAX_WEB_QUERY,
+/// blancs regroupés) encodé pour l'adresse, puis revalidé par `web_url`.
+/// None si le texte est vide.
+pub fn search_url(engine: &str, query: &str) -> Option<String> {
+    let text: String = query.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(MAX_WEB_QUERY).collect();
+    if text.is_empty() {
+        return None;
+    }
+    let base = ENGINES.iter().find(|(id, _, _)| *id == engine).map_or(ENGINES[0].2, |(_, _, b)| b);
+    super::agents_mcp_extra::web_url(&format!("{base}{}", encode_query(&text)))
+}
+
+/// Encode un texte pour une adresse : lettres, chiffres et `- _ . ~` gardés,
+/// l'espace devient `+`, tout le reste `%XX` (octets UTF-8).
+fn encode_query(text: &str) -> String {
+    let mut out = String::with_capacity(text.len() * 3);
+    for b in text.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => out.push(b as char),
+            b' ' => out.push('+'),
+            _ => out.push_str(&format!("%{b:02X}")),
+        }
+    }
+    out
 }
 
 // ── Le raccourci global ──────────────────────────────────────────────────────
@@ -473,6 +544,23 @@ mod tests {
         let has = |key: &str, v: &str| m[key].as_array().unwrap().iter().any(|x| x == v);
         assert!(has("commands", "copy"));
         assert!(has("permissions", "clipboard"));
+    }
+
+    #[test]
+    fn web_search_urls_are_encoded() {
+        assert_eq!(search_url("google", "  météo   Lyon "), Some("https://www.google.com/search?q=m%C3%A9t%C3%A9o+Lyon".into()));
+        assert_eq!(search_url("duckduckgo", "a&b=c#d"), Some("https://duckduckgo.com/?q=a%26b%3Dc%23d".into()));
+        assert_eq!(search_url("qwant", "x"), Some("https://www.qwant.com/?q=x".into()));
+        // Un moteur inconnu : Google. Un texte vide : rien.
+        assert!(search_url("inconnu", "x").unwrap().starts_with("https://www.google.com/"));
+        assert_eq!(search_url("bing", "   "), None);
+        // Jamais de blanc ni de caractère de contrôle dans l'adresse.
+        let url = search_url("ecosia", "a\tb\nc\u{7}").unwrap();
+        assert!(url.chars().all(|c| c.is_ascii_graphic()), "{url}");
+        let mut settings = serde_json::Map::new();
+        assert_eq!(engine_of(&settings), "google");
+        settings.insert("searchEngine".into(), json!("ecosia"));
+        assert_eq!((engine_of(&settings), engine_name("ecosia")), ("ecosia", "Ecosia"));
     }
 
     #[test]

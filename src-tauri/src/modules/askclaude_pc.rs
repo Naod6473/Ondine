@@ -9,8 +9,9 @@
 //     clic) : volume, son coupé, luminosité, mode sombre, musique, minuteur,
 //     note, expression de la mascotte ;
 //   - agir APRÈS votre accord (askclaude.rs, `pending`) : ouvrir une
-//     application ou un site, poser un fichier sur l'Étagère, allumer ou
-//     couper le Wi-Fi ou le Bluetooth (couper le Wi-Fi coupe aussi Ondine).
+//     application, un site ou une recherche web (moteur du Lanceur), poser un
+//     fichier sur l'Étagère, allumer ou couper le Wi-Fi ou le Bluetooth
+//     (couper le Wi-Fi coupe aussi Ondine).
 //
 // Jamais : supprimer, lancer une commande, ouvrir le terminal. Chaque action
 // passe par la commande du module concerné (`modules::invoke`, qui vérifie
@@ -102,6 +103,11 @@ pub fn tools() -> Vec<Tool> {
         ),
         tool("ouvrir_application", "Ouvre une application du menu Démarrer ou un outil de Windows, par son nom. La personne doit accepter.", one("nom", "string", "Le nom de l'application, par exemple « Calculatrice » ou « Spotify ».")),
         tool("ouvrir_site", "Ouvre une adresse web (http ou https) dans le navigateur. La personne doit accepter.", one("adresse", "string", "L'adresse complète, par exemple https://www.meteo.fr.")),
+        tool(
+            "chercher_web",
+            "Ouvre une recherche web dans le navigateur de la personne, avec son moteur de recherche. La personne doit accepter. Vous ne voyez pas les résultats.",
+            one("requete", "string", "Les mots à chercher."),
+        ),
         tool("poser_sur_etagere", "Pose sur l'Étagère de l'île un fichier trouvé par chercher_fichiers. La personne doit accepter.", one("numero", "integer", "Le numéro du fichier.")),
         tool(
             "regler_radio",
@@ -255,6 +261,12 @@ fn run(ctx: &ModuleContext, call: &Call, found: &Found) -> Result<Step, String> 
         "ouvrir_site" => {
             let url = web_url(call.args.get("adresse").and_then(Value::as_str).unwrap_or("")).ok_or("adresse refusée : http:// ou https:// seulement")?;
             Step::Ask(Act { what: "site", value: url.clone(), op: Op::Site(url) })
+        }
+        "chercher_web" => {
+            let query = call.args.get("requete").and_then(Value::as_str).unwrap_or("").trim();
+            let url = super::launcher::search_url(super::launcher::engine(ctx.app), query).ok_or("il faut des mots à chercher")?;
+            let shown: String = query.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();
+            Step::Ask(Act { what: "search", value: shown, op: Op::Site(url) })
         }
         "poser_sur_etagere" => {
             let numero = call.args.get("numero").and_then(Value::as_u64).unwrap_or(0);

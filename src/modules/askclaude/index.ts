@@ -264,6 +264,8 @@ function doneText(what: string, value: string): string {
       return `A ouvert « ${value} »`;
     case "site":
       return `A ouvert ${value}`;
+    case "search":
+      return `A cherché « ${value} » sur le web`;
     case "shelf":
       return `A posé « ${value} » sur l'Étagère`;
     case "wifi-on":
@@ -286,6 +288,8 @@ function askText(what: string, value: string): string {
       return `ouvrir l'application « ${value} »`;
     case "site":
       return `ouvrir ${value}`;
+    case "search":
+      return `chercher « ${value} » sur le web`;
     case "shelf":
       return `poser « ${value} » sur l'Étagère`;
     case "wifi-on":

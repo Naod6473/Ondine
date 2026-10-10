@@ -1158,6 +1158,13 @@ qui surveille dossiers et lecteurs).
   « Copié ».
 - « guid » / « uuid » : « Nouveau GUID » (`crypto.randomUUID`) et sa version
   Windows `{MAJUSCULES}`, copiés de la même façon.
+- **Recherche web** (1.2.2) : la dernière ligne, dès qu'on tape quelque chose,
+  est « Rechercher « … » sur Google » (réglage `searchEngine` : Google par
+  défaut, DuckDuckGo, Bing, Qwant, Ecosia ; `launcher::ENGINES`). Entrée ou
+  clic → commande `web_search {query}` : le Rust construit l'adresse
+  (`search_url` : blancs regroupés, 500 caractères, encodage `%XX`, espace
+  = `+`), la revalide par `web_url` et l'ouvre dans le navigateur par défaut
+  (`shell_open`). Rien ne part avant ; le journal ne note que le moteur.
 
 ### `api.openIsland(tab?)`
 
@@ -1899,6 +1906,8 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
   - agir après accord (`Action::Pc`, carte « Faire / Annuler ») :
     `ouvrir_application` (entrées « app » et « tool » du Lanceur, puis
     launcher.launch), `ouvrir_site` (`web_url` : http(s) seulement),
+    `chercher_web` (adresse de `launcher::search_url` avec le moteur du
+    Lanceur, puis comme `ouvrir_site` ; Ondine ne voit pas les résultats),
     `poser_sur_etagere` (un fichier numéroté, `check_path`, bus `shelf.add`),
     `regler_radio` (Wi-Fi, Bluetooth).
   Aucun outil ne supprime, ne lance de commande ni n'ouvre le terminal. La
