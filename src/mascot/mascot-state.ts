@@ -55,7 +55,7 @@ import { settingsStore } from "../core/settings-store";
 import { pacedInterval } from "../core/perf";
 import { isRainy, type WeatherLike } from "../eggs/calendar";
 import type { MascotRenderer } from "./renderer";
-import { MASCOT_STATES, NO_EXTRAS, type AnimationSpec, type MascotExtras, type MascotManifest, type MascotState, type Mood } from "./types";
+import { EMOTE_NEAR, MASCOT_STATES, NO_EXTRAS, type AnimationSpec, type MascotExtras, type MascotManifest, type MascotState, type Mood } from "./types";
 
 /**
  * Comment Ondine réagit à une notification : d'abord selon le module qui
@@ -72,35 +72,6 @@ const REACTIONS_BY_ICON: Record<string, MascotState> = {
   "🧺": "happy",
   "💬": "info",
 };
-/**
- * L'expression proche d'une émotion demandée par mascot.emote, pour une
- * mascotte qui ne l'a pas (le contrat entre les parties de l'appli : les ids
- * peuvent être émis avant que toutes les mascottes ne les sachent).
- */
-export const EMOTE_NEAR: Record<string, MascotState> = {
-  panic: "worried",
-  scared: "worried",
-  relieved: "calm",
-  stretch: "wake",
-  surprised: "surprise",
-  listening: "info",
-  sunglasses: "proud",
-  scarf: "wave",
-  goodbye: "wave",
-  push: "annoyed",
-  "sit-edge": "idle",
-  hide: "shy",
-  "tap-glass": "question",
-  climb: "happy",
-  talk: "info",
-  yawn: "bored",
-  laugh: "happy",
-  surprise: "alert",
-  wave: "happy",
-  proud: "happy",
-  worried: "sad",
-};
-
 /** L'humeur suit-elle le PC ? (réglage du module Système, activé par défaut) */
 function moodFollowsPc(): boolean {
   return settingsStore.current.modules?.system?.values?.ondineMood !== false;

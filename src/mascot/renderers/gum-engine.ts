@@ -48,7 +48,7 @@
 
 import type { MascotExpression, MascotReaction, MascotRenderer, TalkMark } from "../renderer";
 import { NO_EXTRAS, type AnimationSpec, type MascotExtras, type MascotManifest, type MascotState, type Mood } from "../types";
-import { ANIMS, faceOf, HAND_FOR, HANDS, JellyRim, skyShape, weatherLook, type DynamicShape, type Frame, type HandPose } from "./gum-anims";
+import { ANIMS, BLINK, blinkCurve, faceOf, HAND_FOR, HANDS, IDLE_ACT_SECS, IDLE_ACTS, idleAct, JellyRim, LANDING, landingSquash, skyShape, weatherLook, type DynamicShape, type Frame, type HandPose, type IdleAct } from "./gum-anims";
 import {
   DEFAULT_CUSTOM,
   drawGum,
@@ -121,87 +121,6 @@ const ANTICIPATION_MS = 110;
  * et les larmes lentement (elles « retombent » après l'expression).
  */
 const FACE_RATE: Partial<Record<keyof Face, number>> = { pupil: 6, blush: 4, lines: 4, tears: 3, teary: 3, puff: 6, browA: 8, browTilt: 7, browAsym: 7 };
-
-/** Le clignement : fermeture 70 ms, ouverture 130 ms, toutes les 2,2 à 5,4 s, deux fois de suite une fois sur cinq environ. */
-export const BLINK = { closeMs: 70, openMs: 130, minGapMs: 2200, maxGapMs: 5400, double: 0.22 };
-
-/**
- * L'ouverture de la paupière pendant un clignement (1 = ouverte, 0 = fermée),
- * `ms` depuis son début : une courbe qui accélère en fermant, ralentit en
- * rouvrant ; null quand le clignement est fini.
- */
-export function blinkCurve(ms: number): number | null {
-  const { closeMs, openMs } = BLINK;
-  if (ms < 0) return 1;
-  if (ms < closeMs) {
-    const k = ms / closeMs;
-    return 1 - k * k;
-  }
-  if (ms < closeMs + openMs) {
-    const k = (ms - closeMs) / openMs;
-    return 1 - (1 - k) ** 3;
-  }
-  return null;
-}
-
-/**
- * L'écrasement à l'atterrissage, en images clés (secondes depuis le contact →
- * écart d'étirement) : écrasée, rebond étiré, un peu écrasée, posée. Entre
- * deux clés, une courbe douce.
- */
-export const LANDING: [number, number][] = [
-  [0, 0],
-  [0.045, -0.17],
-  [0.15, 0.07],
-  [0.26, -0.025],
-  [0.38, 0],
-];
-
-export function landingSquash(s: number): number {
-  if (s <= 0 || s >= LANDING[LANDING.length - 1][0]) return 0;
-  for (let i = 1; i < LANDING.length; i++) {
-    const [t1, v1] = LANDING[i];
-    if (s <= t1) {
-      const [t0, v0] = LANDING[i - 1];
-      const k = (s - t0) / (t1 - t0);
-      return v0 + (v1 - v0) * k * k * (3 - 2 * k);
-    }
-  }
-  return 0;
-}
-
-/** Les petits gestes du repos (voir idleAct). */
-type IdleAct = "shift" | "sigh" | "pout" | "look" | "hum";
-const IDLE_ACTS: IdleAct[] = ["shift", "sigh", "pout", "look", "hum"];
-const IDLE_ACT_SECS: Record<IdleAct, number> = { shift: 2.6, sigh: 2.4, pout: 1.8, look: 1.6, hum: 2.2 };
-
-/**
- * Un petit geste du repos à l'instant `k` (0 à 1 de sa durée) : ce qu'il
- * change au visage et au corps, et sa force (entrée et sortie en douceur).
- */
-export function idleAct(act: IdleAct, k: number, side: number): { w: number; face: Partial<Face>; squash: number; rot: number; dx: number; gaze: { x: number; y: number } | null } {
-  const e = Math.min(1, k / 0.25, (1 - k) / 0.25);
-  const w = Math.max(0, e * e * (3 - 2 * e));
-  switch (act) {
-    case "shift":
-      // Elle déplace son poids sur un côté.
-      return { w, face: {}, squash: -0.015, rot: 0.06 * side, dx: 0.05 * side, gaze: null };
-    case "sigh": {
-      // Un soupir : elle gonfle, puis se dégonfle, paupières lourdes.
-      const b = Math.sin(k * Math.PI);
-      return { w, face: { lid: 0.4, mouthO: 0.25 * b, mouthW: 0.5, mouthC: 0.1 }, squash: k < 0.45 ? 0.05 * b : -0.035 * b, rot: 0, dx: 0, gaze: { x: 0, y: 0.35 } };
-    }
-    case "pout":
-      // Une petite moue, le regard de côté.
-      return { w, face: { mouthC: -0.25, mouthW: 0.55, skew: 0.4 * side, puff: 0.35 }, squash: 0, rot: -0.03 * side, dx: 0, gaze: { x: -0.6 * side, y: 0.1 } };
-    case "look":
-      // Elle regarde ailleurs, la tête suit.
-      return { w, face: { browA: 0.4, browRaise: 0.3 }, squash: 0.01, rot: 0.04 * side, dx: 0, gaze: { x: 0.75 * side, y: -0.35 } };
-    case "hum":
-      // Elle fredonne, yeux fermés, en se balançant.
-      return { w, face: { eyeOpen: 0, eyeCurve: 0.9, mouthC: 0.75, blush: 0.8 }, squash: 0, rot: Math.sin(k * TAU * 2) * 0.05, dx: 0, gaze: null };
-  }
-}
 
 /** Mélange deux descriptions d'image (0 = a, 1 = b) : le corps, les accessoires, la pose dominante. */
 function blendFrames(a: Frame, b: Frame, k: number): Frame {

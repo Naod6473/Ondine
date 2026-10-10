@@ -42,7 +42,7 @@ export const MASCOT_STATES = [
   "cheer",
   // Les expressions demandées par les autres parties de l'appli (1.2.2 : halos,
   // fenêtres, voix…) avec mascot.emote ; une mascotte qui ne les a pas montre
-  // une expression proche (EMOTE_NEAR dans mascot-state.ts).
+  // une expression proche (EMOTE_NEAR ci-dessous).
   "panic",
   "scared",
   "relieved",
@@ -61,6 +61,36 @@ export const MASCOT_STATES = [
 ] as const;
 
 export type MascotState = (typeof MASCOT_STATES)[number];
+
+/**
+ * L'expression proche d'une émotion demandée par mascot.emote, pour une
+ * mascotte qui ne l'a pas (le contrat entre les parties de l'appli : les ids
+ * peuvent être émis avant que toutes les mascottes ne les sachent).
+ */
+export const EMOTE_NEAR: Record<string, MascotState> = {
+  panic: "worried",
+  scared: "worried",
+  relieved: "calm",
+  stretch: "wake",
+  surprised: "surprise",
+  listening: "info",
+  sunglasses: "proud",
+  scarf: "wave",
+  goodbye: "wave",
+  push: "annoyed",
+  "sit-edge": "idle",
+  hide: "shy",
+  "tap-glass": "question",
+  climb: "happy",
+  talk: "info",
+  yawn: "bored",
+  laugh: "happy",
+  surprise: "alert",
+  wave: "happy",
+  proud: "happy",
+  worried: "sad",
+};
+
 
 /** L'humeur colore l'animation de repos (sourire, sourcils froncés, paupières lourdes…). */
 export type Mood = "neutral" | "happy" | "grumpy" | "tired";

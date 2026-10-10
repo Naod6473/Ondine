@@ -182,9 +182,9 @@ export const ANIMS: Record<string, (t: number, p: number, mood: Mood) => Frame> 
     blink: false,
   }),
   warning: (t) => ({ tint: "yellow", eyes: "wide", brows: "worried", mouth: "flat", extra: "bang", squash: 1 + Math.abs(Math.sin(t * 5)) * 0.05, blink: false }),
-  info: (_t, p) => ({ dy: hops(p, 1, 0.1), mouth: "smile", brows: "raised", gaze: { x: 0.3, y: -0.2 } }),
+  info: (_t, p) => ({ dy: hops(p, 1, 0.1), mouth: "smile", brows: "raised", gaze: { x: 0.3, y: -0.2 }, face: { pupil: 1.1 } }),
   sad: (_t, p) => ({ brows: "worried", eyes: p > 0.3 ? "closed" : "open", mouth: p > 0.3 ? "open" : "frown", mouthOpen: 0.3, tears: ramp(p, 0.3, 0.9), squash: 0.95 - Math.sin(p * Math.PI * 6) * 0.02 * ramp(p, 0.3, 1), blink: false }),
-  worried: (t) => ({ brows: "worried", mouth: "wavy", rot: Math.sin(t * 2.2) * 0.06, extra: "sweat", gaze: { x: -0.3, y: 0.2 } }),
+  worried: (t) => ({ brows: "worried", mouth: "wavy", rot: Math.sin(t * 2.2) * 0.06, extra: "sweat", gaze: { x: -0.3, y: 0.2 }, face: { pupil: 0.8 } }),
   // Surprise : choc électrique, elle s'étire d'un coup et vire au jaune par flashs.
   surprise: (t, p) => ({
     tint: Math.sin(t * 14) > 0.2 && p < 0.6 ? "yellow" : undefined,
@@ -198,7 +198,7 @@ export const ANIMS: Record<string, (t: number, p: number, mood: Mood) => Frame> 
   }),
   shy: (t) => ({ eyes: "happy", blush: 1.4, mouth: "smile", rot: Math.sin(t * 2) * 0.05, gaze: { x: -0.5, y: 0.5 } }),
   calm: (t) => ({ eyes: "closed", mouth: "smile", squash: breathe(t, 4.5, 0.035), blink: false }),
-  wink: (_t, p) => ({ wink: p > 0.15 && p < 0.85, dy: hops(p, 1, 0.08), mouth: "smile", blush: 1, extra: "stars" }),
+  wink: (_t, p) => ({ wink: p > 0.15 && p < 0.85, dy: hops(p, 1, 0.08), mouth: "smile", blush: 1, extra: "stars", face: { pupil: 1.15 } }),
   fatigue: (t, p) => ({ eyes: "half", mouth: "flat", squash: 0.97 - Math.max(0, Math.sin(p * TAU)) * 0.05 + (breathe(t) - 1), gaze: { x: 0, y: 0.4 } }),
   "agacee-colere": (t, p) => ({ tintTo: "red", tintK: ramp(p, 0.3, 0.6), brows: "angry", eyes: "half", mouth: p < 0.4 ? "flat" : "frown", dx: shake(t, p, 0.04), extra: "steam" }),
   etourdie: (t) => ({ eyes: "spiral", rot: Math.sin(t * 5) * 0.22, mouth: "wavy", extra: "stars", blink: false }),
@@ -210,7 +210,7 @@ export const ANIMS: Record<string, (t: number, p: number, mood: Mood) => Frame> 
 
   // ── Les nouvelles expressions ──
   // Coucou : un clin d'œil et une main qui salue.
-  coucou: (t, p) => ({ face: { mouthO: 0.45, mouthC: 0.8, blush: 0.9, winkR: p > 0.2 && p < 0.7 ? 1 : 0 }, hands: "wave", squash: breathe(t), rot: Math.sin(t * 3) * 0.05 }),
+  coucou: (t, p) => ({ face: { mouthO: 0.45, mouthC: 0.8, blush: 0.9, pupil: 1.2, winkR: p > 0.2 && p < 0.7 ? 1 : 0 }, hands: "wave", squash: breathe(t), rot: Math.sin(t * 3) * 0.05 }),
   // Rire aux larmes : yeux plissés, larmes qui volent, elle se tient le ventre.
   rire: (t) => ({ kind: "squint", face: { mouthO: 1, mouthW: 1.3, mouthC: 0.9, blush: 1.2, flyTears: 1 }, hands: "belly", squash: 1 + Math.sin(t * 18) * 0.035, rot: Math.sin(t * 9) * 0.05, dy: -Math.abs(Math.sin(t * 9)) * 0.03, blink: false }),
   // Fière : yeux fermés, menton levé, sourire en coin, mains sur les hanches.
@@ -220,11 +220,11 @@ export const ANIMS: Record<string, (t: number, p: number, mood: Mood) => Frame> 
   // Étoiles plein les yeux : mains jointes, elle flotte un peu.
   etoiles: (t) => ({ kind: "star", face: { mouthO: 0.6, mouthC: 0.7, mouthW: 0.9, blush: 1 }, hands: "clasp", extra: "sparkles", dy: -0.05 - Math.sin(t * 2.4) * 0.04, squash: breathe(t, 1.2, 0.02), blink: false }),
   // Malicieuse : un sourcil levé, bouche en « ω », elle se frotte les mains.
-  malice: (t) => ({ face: { eyeOpen: 0.6, lid: 0.35, cat: 1, browA: 1, browAsym: 1, blush: 0.7 }, gaze: { x: 0.7, y: 0 }, hands: "rub", squash: breathe(t, 2, 0.02), rot: 0.06 + Math.sin(t * 1.4) * 0.03 }),
+  malice: (t) => ({ face: { eyeOpen: 0.6, lid: 0.35, pupil: 0.85, cat: 1, browA: 1, browAsym: 1, blush: 0.7 }, gaze: { x: 0.7, y: 0 }, hands: "rub", squash: breathe(t, 2, 0.02), rot: 0.06 + Math.sin(t * 1.4) * 0.03 }),
   // Concentrée : la langue au coin des lèvres, au clavier.
   concentree: (t) => ({ face: { eyeOpen: 0.75, mouthW: 0.75, mouthC: 0.1, tongueSide: 1, browA: 1, browTilt: 0.3 }, gaze: { x: 0, y: 0.75 }, hands: "type", dy: -Math.abs(Math.sin(t * 7.5)) * 0.02 }),
   // Émue : grands yeux brillants qui se mouillent, une main devant la bouche.
-  emue: (t) => ({ face: { eyeSize: 1.22, teary: 1, mouthW: 0.7, mouthC: 0.3 + Math.sin(t * 9) * 0.12, browA: 1, browTilt: -0.55, blush: 1 }, hands: "mouth", squash: 1 + Math.sin(t * 7) * 0.012 }),
+  emue: (t) => ({ face: { eyeSize: 1.22, pupil: 1.3, teary: 1, mouthW: 0.7, mouthC: 0.3 + Math.sin(t * 9) * 0.12, browA: 1, browTilt: -0.55, blush: 1 }, hands: "mouth", squash: 1 + Math.sin(t * 7) * 0.012 }),
   // Gênée : elle rougit, se cache les joues, une goutte de sueur.
   genee: (t) => ({ face: { eyeOpen: 0, eyeCurve: 1, blush: 1.6, lines: 1, mouthW: 0.7, mouthC: 0.4 }, hands: "cheeks", extra: "sweat", rot: Math.sin(t * 2.4) * 0.09, squash: breathe(t, 2, 0.02) }),
   // Danse (de la musique en mini-île, src/eggs/) : elle rebondit à 120 battements
@@ -233,7 +233,7 @@ export const ANIMS: Record<string, (t: number, p: number, mood: Mood) => Frame> 
     const beat = t * Math.PI * 4;
     const hop = Math.abs(Math.sin(beat / 2));
     return {
-      face: { mouthO: 0.3, mouthW: 1.1, mouthC: 0.9, eyeOpen: 0.85, blush: 0.8 },
+      face: { mouthO: 0.3, mouthW: 1.1, mouthC: 0.9, eyeOpen: 0.85, blush: 0.8, pupil: 1.15 },
       hands: Math.sin(beat / 4) > 0 ? "cheer" : "flail",
       squash: 1 - hop * 0.08,
       dy: -hop * 0.06,
@@ -695,6 +695,89 @@ export function faceOf(f: Frame): { face: Face; kind: EyeKind } {
   if (f.wink) face.winkR = 1;
   if (f.face) Object.assign(face, f.face);
   return { face, kind };
+}
+
+// ── Les petits calculs de la fluidité (utilisés par gum-engine.ts) ──
+
+/** Le clignement : fermeture 70 ms, ouverture 130 ms, toutes les 2,2 à 5,4 s, deux fois de suite une fois sur cinq environ. */
+export const BLINK = { closeMs: 70, openMs: 130, minGapMs: 2200, maxGapMs: 5400, double: 0.22 };
+
+/**
+ * L'ouverture de la paupière pendant un clignement (1 = ouverte, 0 = fermée),
+ * `ms` depuis son début : une courbe qui accélère en fermant, ralentit en
+ * rouvrant ; null quand le clignement est fini.
+ */
+export function blinkCurve(ms: number): number | null {
+  const { closeMs, openMs } = BLINK;
+  if (ms < 0) return 1;
+  if (ms < closeMs) {
+    const k = ms / closeMs;
+    return 1 - k * k;
+  }
+  if (ms < closeMs + openMs) {
+    const k = (ms - closeMs) / openMs;
+    return 1 - (1 - k) ** 3;
+  }
+  return null;
+}
+
+/**
+ * L'écrasement à l'atterrissage, en images clés (secondes depuis le contact →
+ * écart d'étirement) : écrasée, rebond étiré, un peu écrasée, posée. Entre
+ * deux clés, une courbe douce.
+ */
+export const LANDING: [number, number][] = [
+  [0, 0],
+  [0.045, -0.17],
+  [0.15, 0.07],
+  [0.26, -0.025],
+  [0.38, 0],
+];
+
+export function landingSquash(s: number): number {
+  if (s <= 0 || s >= LANDING[LANDING.length - 1][0]) return 0;
+  for (let i = 1; i < LANDING.length; i++) {
+    const [t1, v1] = LANDING[i];
+    if (s <= t1) {
+      const [t0, v0] = LANDING[i - 1];
+      const k = (s - t0) / (t1 - t0);
+      return v0 + (v1 - v0) * k * k * (3 - 2 * k);
+    }
+  }
+  return 0;
+}
+
+/** Les petits gestes du repos (voir idleAct). */
+export type IdleAct = "shift" | "sigh" | "pout" | "look" | "hum";
+export const IDLE_ACTS: IdleAct[] = ["shift", "sigh", "pout", "look", "hum"];
+export const IDLE_ACT_SECS: Record<IdleAct, number> = { shift: 2.6, sigh: 2.4, pout: 1.8, look: 1.6, hum: 2.2 };
+
+/**
+ * Un petit geste du repos à l'instant `k` (0 à 1 de sa durée) : ce qu'il
+ * change au visage et au corps, et sa force (entrée et sortie en douceur).
+ */
+export function idleAct(act: IdleAct, k: number, side: number): { w: number; face: Partial<Face>; squash: number; rot: number; dx: number; gaze: { x: number; y: number } | null } {
+  const e = Math.min(1, k / 0.25, (1 - k) / 0.25);
+  const w = Math.max(0, e * e * (3 - 2 * e));
+  switch (act) {
+    case "shift":
+      // Elle déplace son poids sur un côté.
+      return { w, face: {}, squash: -0.015, rot: 0.06 * side, dx: 0.05 * side, gaze: null };
+    case "sigh": {
+      // Un soupir : elle gonfle, puis se dégonfle, paupières lourdes.
+      const b = Math.sin(k * Math.PI);
+      return { w, face: { lid: 0.4, mouthO: 0.25 * b, mouthW: 0.5, mouthC: 0.1 }, squash: k < 0.45 ? 0.05 * b : -0.035 * b, rot: 0, dx: 0, gaze: { x: 0, y: 0.35 } };
+    }
+    case "pout":
+      // Une petite moue, le regard de côté.
+      return { w, face: { mouthC: -0.25, mouthW: 0.55, skew: 0.4 * side, puff: 0.35 }, squash: 0, rot: -0.03 * side, dx: 0, gaze: { x: -0.6 * side, y: 0.1 } };
+    case "look":
+      // Elle regarde ailleurs, la tête suit.
+      return { w, face: { browA: 0.4, browRaise: 0.3 }, squash: 0.01, rot: 0.04 * side, dx: 0, gaze: { x: 0.75 * side, y: -0.35 } };
+    case "hum":
+      // Elle fredonne, yeux fermés, en se balançant.
+      return { w, face: { eyeOpen: 0, eyeCurve: 0.9, mouthC: 0.75, blush: 0.8 }, squash: 0, rot: Math.sin(k * TAU * 2) * 0.05, dx: 0, gaze: null };
+  }
 }
 
 /** Le contour qui ondule : les points, leurs écarts au contour de repos et leurs vitesses. */
