@@ -17,7 +17,7 @@ export type Trigger =
   | { type: "clipboard"; kind: ClipKind; text?: string }
   | { type: "music" };
 
-export type NetChange = "internetDown" | "internetUp" | "vpnUp" | "vpnDown";
+export type NetChange = "internetDown" | "internetUp" | "vpnUp" | "vpnDown" | "newDevice";
 export type ClipKind = "link" | "email" | "code" | "text";
 export type Gesture = "dance" | "emote" | "sign";
 
@@ -111,6 +111,7 @@ export const NET_LABELS: Record<NetChange, string> = {
   internetUp: "Internet revient",
   vpnUp: "un VPN se branche",
   vpnDown: "un VPN se coupe",
+  newDevice: "un nouvel appareil apparaît sur le réseau local",
 };
 
 export const CLIP_LABELS: Record<ClipKind, string> = {

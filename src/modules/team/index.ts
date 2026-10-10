@@ -24,6 +24,8 @@ import { el } from "../../island/dom";
 import { sizeText } from "../shelf/phone-text";
 import { ANSWER_LABEL, codeText, diskLow, isLink, isPrivateIp, lookColor, PINGS, pingText, pollChoices, sortPeers, STATUS_LABEL, type PeerView, type Status } from "./logic";
 import { mountVisit } from "./visit";
+import { playFileBridge } from "./bridge";
+import { statusSign } from "../../mascot/sign-text";
 import { chatButton, chatDropTarget, chatPane, chatSetup, onChatChange, setChatOpener, takePendingRoom, type ChatContext, type ChatPane } from "./chat";
 
 interface Me {
@@ -180,6 +182,7 @@ function listen(api: ModuleApi) {
         incoming(api, e, who);
         break;
       case "received":
+        playFileBridge(-1, from?.color);
         api.notify({
           title: "Fichier reçu",
           body: `${who} · ${String(e.name)}`,
@@ -325,7 +328,10 @@ function dropTargets(): DropTarget[] {
       icon: "🤝",
       onDrop: async (paths, api) => {
         const r = await run<{ name: string }>(api, "send_files", { id: p.id, paths });
-        if (r) api.notify({ title: "Proposé", body: `${p.name} · ${r.name}`, icon: "📤", priority: "low", key: `team-file-${p.id}` });
+        if (!r) return;
+        // Le pont : la feuille traverse l'île vers le collègue (il doit encore accepter).
+        playFileBridge(1, p.color);
+        api.notify({ title: "Proposé", body: `${p.name} · ${r.name}`, icon: "📤", priority: "low", key: `team-file-${p.id}` });
       },
     }));
   return chat ? [chat, ...peers] : peers;
@@ -374,7 +380,17 @@ function expanded(root: HTMLElement, api: ModuleApi): () => void {
     select.value = s.me.auto ? "" : s.me.status;
     select.addEventListener(
       "change",
-      api.handler(() => run(api, "set_status", { status: select.value || null, text: "" }).then(() => refresh(api))),
+      api.handler(async () => {
+        try {
+          await api.invoke("set_status", { status: select.value || null, text: "" });
+          // Ondine lève la pancarte du nouveau statut quelques secondes (« Occupé », « En réunion », « Pause »).
+          const word = statusSign(select.value);
+          if (word) api.emit("mascot.sign", { text: word, secs: 6 });
+        } catch (err) {
+          fail(api, err);
+        }
+        await refresh(api);
+      }),
     );
     const visible = el(
       "button",

@@ -139,6 +139,8 @@ interface VoiceMsg {
   fix?: string | null;
   /** La dictée de Windows a échoué et une clé OpenAI ou Gemini est rangée : où partirait l'audio. */
   apiTo?: string | null;
+  /** La dictée de Windows a échoué et le moteur hors ligne est installé (1.2.3). */
+  offline?: boolean;
 }
 
 /** Un message affiché. Les réponses gardent leurs jetons pour la petite ligne du bas. */
@@ -169,7 +171,7 @@ const state: {
   /** Le message en cours venait de la voix (mains libres après la réponse). */
   spoken: boolean;
   /** Après un échec de l'écoute (`error` : son message, les boutons ne vont qu'avec lui) : la page des Paramètres Windows à ouvrir, et la transcription par l'API à proposer. */
-  voiceHelp: { fix: string | null; apiTo: string | null; error: string } | null;
+  voiceHelp: { fix: string | null; apiTo: string | null; offline: boolean; error: string } | null;
 } = {
   draft: "",
   attachment: null,
@@ -417,7 +419,7 @@ function wireVoice(api: ModuleApi, owner: () => boolean) {
       case "error":
         state.voice = { ...v, on: false, transcribing: false, partial: "" };
         state.error = p.message ?? "écoute impossible";
-        state.voiceHelp = p.fix || p.apiTo ? { fix: p.fix ?? null, apiTo: p.apiTo ?? null, error: state.error } : null;
+        state.voiceHelp = p.fix || p.apiTo || p.offline ? { fix: p.fix ?? null, apiTo: p.apiTo ?? null, offline: !!p.offline, error: state.error } : null;
         if (mine) api.notify({ title: state.error, icon: "🎙️", priority: "normal", key: "askclaude-voice" });
         break;
     }
@@ -430,7 +432,24 @@ function wireVoice(api: ModuleApi, owner: () => boolean) {
  * si une clé OpenAI ou Gemini est rangée, passer à la transcription par l'API
  * (le réglage change, puis l'écoute reprend : l'audio ne part qu'à ce clic).
  */
-function voiceHelpRow(api: ModuleApi, help: { fix: string | null; apiTo: string | null }): HTMLElement {
+function voiceHelpRow(api: ModuleApi, help: { fix: string | null; apiTo: string | null; offline?: boolean }): HTMLElement {
+  /** Change de reconnaissance, puis réécoute (rien ne part avant ce clic). */
+  const switchTo = (engine: "api" | "offline") =>
+    api.handler(async () => {
+      await settingsStore.update((d) => {
+        const entry = (d.modules.askclaude ??= { enabled: true, values: {} });
+        entry.values.voiceEngine = engine;
+      });
+      state.error = "";
+      state.voiceHelp = null;
+      redraw();
+      try {
+        await api.invoke("listen", {});
+      } catch (err) {
+        state.error = errorText(err);
+        redraw();
+      }
+    });
   return el(
     "div",
     { class: "btn-row ask-voice-help" },
@@ -451,28 +470,14 @@ function voiceHelpRow(api: ModuleApi, help: { fix: string | null; apiTo: string 
           "⚙️ Ouvrir les paramètres Windows",
         )
       : null,
+    // Hors ligne d'abord : rien ne quitte le PC.
+    help.offline
+      ? el("button", { class: "btn small", title: "Rien ne quitte le PC.", onclick: switchTo("offline") }, "🔒 Passer à la dictée hors ligne")
+      : null,
     help.apiTo
       ? el(
           "button",
-          {
-            class: "btn small",
-            title: `L'audio de votre voix partira vers ${help.apiTo}, avec votre clé.`,
-            onclick: api.handler(async () => {
-              await settingsStore.update((d) => {
-                const entry = (d.modules.askclaude ??= { enabled: true, values: {} });
-                entry.values.voiceEngine = "api";
-              });
-              state.error = "";
-              state.voiceHelp = null;
-              redraw();
-              try {
-                await api.invoke("listen", {});
-              } catch (err) {
-                state.error = errorText(err);
-                redraw();
-              }
-            }),
-          },
+          { class: "btn small", title: `L'audio de votre voix partira vers ${help.apiTo}, avec votre clé.`, onclick: switchTo("api") },
           "🎙️ Passer à la transcription par l'API",
         )
       : null,

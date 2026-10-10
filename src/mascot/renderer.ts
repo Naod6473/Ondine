@@ -34,6 +34,8 @@ export interface MascotRenderer {
    * question d'agent ouverte), le parapluie (la Météo annonce la pluie).
    */
   setExtras?(extras: MascotExtras): void;
+  /** Ce moteur écrit le mot de la pancarte (`MascotExtras.signText`) ; sinon il montre « ? ». */
+  readonly drawsSignText?: boolean;
   /**
    * Facultatif : le temps de la musique pour les danses (bpm et l'instant
    * d'un temps, performance.now()) ; null : le tempo typique du style (src/mascot/beat.ts).

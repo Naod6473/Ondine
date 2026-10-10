@@ -224,7 +224,9 @@ export interface MascotManifest {
 export interface MascotExtras {
   ears: boolean;
   sign: boolean;
+  /** Le mot écrit sur la pancarte (« Occupé »…, message mascot.sign) ; "" : le « ? ». */
+  signText: string;
   umbrella: boolean;
 }
 
-export const NO_EXTRAS: MascotExtras = { ears: false, sign: false, umbrella: false };
+export const NO_EXTRAS: MascotExtras = { ears: false, sign: false, signText: "", umbrella: false };

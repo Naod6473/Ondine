@@ -26,6 +26,7 @@ import { el } from "../../island/dom";
 import { reducedMotion } from "../../island/tab-pill";
 import { discreet, GROUP, lastReadIndex, linkParts, MAX_CHAT, preview, reactionCounts, reactionEmotion, REACTIONS, roomOrder, timeLabel, typingLabel, unreadTotal, type ChatLine, type RoomView } from "./chat-logic";
 import { STATUS_LABEL, type PeerView, type Status } from "./logic";
+import { playFileBridge } from "./bridge";
 
 /** Ce que le chat demande au reste du module (index.ts). */
 export interface ChatContext {
@@ -217,6 +218,7 @@ export function chatDropTarget(ctx: ChatContext): DropTarget | null {
     onDrop: async (paths, api) => {
       try {
         const r = await api.invoke<{ name: string }>("chat_files", { room, paths });
+        playFileBridge(1, p.color);
         api.notify({ title: "Proposé", body: `${p.name} · ${r.name}`, icon: "📤", priority: "low", key: `team-file-${p.id}` });
         void refreshRooms(api);
       } catch (err) {

@@ -11,10 +11,11 @@
 //     une règle « presse-papiers » existe, et jamais une copie marquée
 //     « sensible » par un gestionnaire de mots de passe).
 //
+//   - un nouvel appareil sur le réseau local (1.2.3) : un fil à part,
+//     newdevice.rs (balayage doux du /24 local, table ARP), démarré tant
+//     qu'une règle active le demande, arrêté sinon.
+//
 // Chaque capteur ne travaille que si une règle active l'utilise.
-// Point d'extension : « un nouvel appareil sur le réseau » se branchera ici
-// quand le scanner du module Réseau existera (il publiera un événement, comme
-// nettools.internet ; il suffira d'un NetChange de plus).
 
 use std::collections::{BTreeSet, HashMap};
 use std::path::PathBuf;
@@ -23,6 +24,7 @@ use std::time::{Duration, Instant};
 use tauri::AppHandle;
 
 use super::model::{self, NetChange, Rule, Subject, Trigger};
+use super::newdevice;
 use super::{Shared, ID};
 use crate::platform;
 
@@ -43,6 +45,8 @@ pub struct Senses {
     clip_seq: Option<u32>,
     /// Règle horaire → le jour où elle est partie ("2026-10-10").
     done_on: HashMap<u64, String>,
+    /// Le balayage du réseau local (règle « nouvel appareil ») ; lâché = arrêté.
+    devices: Option<newdevice::Watcher>,
 }
 
 impl Senses {
@@ -107,6 +111,16 @@ pub fn tick(app: &AppHandle, state: &Shared, senses: &mut Senses) {
         }
     } else {
         senses.clip_seq = None;
+    }
+
+    // ── Un nouvel appareil sur le réseau local (fil à part) ──
+    if has(|t| *t == Trigger::Network { change: NetChange::NewDevice }) {
+        let watcher = senses.devices.get_or_insert_with(newdevice::start);
+        while let Ok(label) = watcher.found.try_recv() {
+            fire_all(app, state, &rules, |t| *t == Trigger::Network { change: NetChange::NewDevice }, &label);
+        }
+    } else {
+        senses.devices = None;
     }
 
     // ── Réseau, batterie, secteur (plus rarement) ──

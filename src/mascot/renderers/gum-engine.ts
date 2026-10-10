@@ -385,6 +385,9 @@ export class GumEngine implements MascotRenderer {
     this.nextShapeCheck = 0;
   }
 
+  /** La famille gomme écrit le mot de la pancarte (gum-draw.ts, drawSign). */
+  readonly drawsSignText = true;
+
   setExtras(extras: MascotExtras) {
     this.extras = extras;
   }
@@ -612,6 +615,7 @@ export class GumEngine implements MascotRenderer {
         this.mirror,
         this.extras.ears,
         this.extras.sign,
+        this.extras.signText,
         this.extras.umbrella,
         this.lookTarget ? `${this.lookTarget.x.toFixed(2)},${this.lookTarget.y.toFixed(2)}` : "-",
         this.talkWant > 0 && now - this.talkAt < 180 ? this.talkWant.toFixed(1) : "0",
@@ -972,6 +976,7 @@ export class GumEngine implements MascotRenderer {
       hands: this.handsAlpha > 0.02 ? (swapHands ? [this.hands[1], this.hands[0]] : this.hands) : null,
       handsAlpha: this.handsAlpha,
       handItem: pose === "heart" ? "heart" : pose === "sign" ? "sign" : pose === "panic" ? "battery" : null,
+      signText: this.extras.signText,
       leftFront: pose === "crossed",
       wear: this.prefs.wear,
       umbrella: this.umbrella,

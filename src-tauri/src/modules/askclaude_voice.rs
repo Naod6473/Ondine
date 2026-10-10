@@ -12,6 +12,11 @@
 // La reconnaissance (réglage « voiceEngine ») :
 //   - « windows » (par défaut) : la dictée de Windows (platform/voice.rs).
 //     Sous-titres en direct. Windows passe par son service en ligne ;
+//   - « offline » (1.2.3) : la dictée 100 % hors ligne, par le moteur de
+//     bureau de Windows (SAPI, platform/voice.rs `dictate_offline`). Rien ne
+//     quitte le PC. Il faut la reconnaissance vocale de la langue installée
+//     dans Windows ; sinon l'erreur le dit, avec la page des Paramètres. En
+//     hors ligne, on ne propose jamais de passer à l'API ;
 //   - « api » : le micro est capté en mémoire (WASAPI), puis l'audio part
 //     vers OpenAI (audio/transcriptions) ou Gemini (audio en entrée), avec la
 //     clé déjà rangée. Claude n'écoute pas l'audio : avec Claude, on prend la
@@ -35,7 +40,8 @@
 //     page des Paramètres Windows qui règle le problème (commande `voice_fix`) ;
 //     `apiTo`, la destination de la transcription par l'API, proposée en un
 //     clic quand la dictée de Windows échoue et qu'une clé OpenAI ou Gemini
-//     est rangée.
+//     est rangée ; `offline` (vrai), le moteur hors ligne est installé : le
+//     bouton « Passer à la dictée hors ligne » est proposé à la place.
 
 use crate::sync::LockExt;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
@@ -302,9 +308,13 @@ pub fn listen(app: &AppHandle, opts: Options) -> Result<(), String> {
                 }
                 // La dictée de Windows a échoué : proposer la transcription par
                 // l'API si une clé OpenAI ou Gemini est rangée (rien ne part sans le clic).
-                let windows_failed = !f.detail.is_empty() && settings(&app2).get("voiceEngine").and_then(Value::as_str) != Some("api");
+                // En hors ligne, jamais : la personne a choisi que rien ne parte.
+                let engine = VoiceEngine::of(&settings(&app2));
+                let windows_failed = !f.detail.is_empty() && engine == VoiceEngine::Windows;
                 let api_to = if windows_failed { api_offer(&app2) } else { None };
-                voice_event(&app2, "error", json!({ "message": f.message, "fix": f.fix.map(voice::Fix::id), "apiTo": api_to, "id": id }));
+                // Le moteur hors ligne est là : le proposer aussi (rien ne part).
+                let offline = windows_failed && voice::offline_engine(dictation_tag(&app2)).is_some();
+                voice_event(&app2, "error", json!({ "message": f.message, "fix": f.fix.map(voice::Fix::id), "apiTo": api_to, "offline": offline, "id": id }));
             }
             Err(_) => voice_event(&app2, "error", json!({ "message": "erreur inattendue pendant l'écoute", "id": id })),
         }
@@ -326,16 +336,60 @@ fn set_escape(app: &AppHandle, on: bool) {
     }
 }
 
-/// L'écoute elle-même : renvoie le texte dit ("" si rien).
-fn run(app: &AppHandle, s: &Session, opts: Options) -> Result<String, voice::Failure> {
-    let settings = settings(app);
-    let lang = super::with_context(app, ID, |ctx| {
+/// La reconnaissance choisie (réglage « voiceEngine »).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum VoiceEngine {
+    /// La dictée de Windows (service en ligne de Microsoft).
+    Windows,
+    /// Le moteur de bureau de Windows, 100 % hors ligne.
+    Offline,
+    /// L'audio part vers OpenAI ou Gemini.
+    Api,
+}
+
+impl VoiceEngine {
+    pub fn of(settings: &serde_json::Map<String, Value>) -> VoiceEngine {
+        match settings.get("voiceEngine").and_then(Value::as_str) {
+            Some("api") => VoiceEngine::Api,
+            Some("offline") => VoiceEngine::Offline,
+            _ => VoiceEngine::Windows,
+        }
+    }
+
+    pub fn id(self) -> &'static str {
+        match self {
+            VoiceEngine::Windows => "windows",
+            VoiceEngine::Offline => "offline",
+            VoiceEngine::Api => "api",
+        }
+    }
+}
+
+/// La langue de l'appli ("fr" ou "en").
+fn app_lang(app: &AppHandle) -> &'static str {
+    super::with_context(app, ID, |ctx| {
         use tauri::Manager;
         let shared = ctx.app.state::<crate::Shared>();
         let st = shared.settings.locked();
         crate::app_language(&st)
     })
-    .unwrap_or("fr");
+    .unwrap_or("fr")
+}
+
+/// La langue de la dictée, en étiquette complète.
+pub fn dictation_tag(app: &AppHandle) -> &'static str {
+    if app_lang(app) == "en" {
+        "en-US"
+    } else {
+        "fr-FR"
+    }
+}
+
+/// L'écoute elle-même : renvoie le texte dit ("" si rien).
+fn run(app: &AppHandle, s: &Session, opts: Options) -> Result<String, voice::Failure> {
+    let settings = settings(app);
+    let lang = app_lang(app);
+    let engine = VoiceEngine::of(&settings);
     let mut last_level = Instant::now() - LEVEL_EVERY;
     let mut level = |l: f32| {
         if last_level.elapsed() >= LEVEL_EVERY {
@@ -347,7 +401,7 @@ fn run(app: &AppHandle, s: &Session, opts: Options) -> Result<String, voice::Fai
     let max = if opts.hold { MAX_HOLD } else { MAX_ONCE };
     // Un garde-fou : au-delà de la durée maximale, on termine.
     let started = Instant::now();
-    if settings.get("voiceEngine").and_then(Value::as_str) == Some("api") {
+    if engine == VoiceEngine::Api {
         let (provider, key, model) = stt_key(app, &settings)?;
         let mut gate = SilenceGate::new(opts.hold, silence as u64);
         let pcm = voice::record(&s.stop, &mut |chunk, rate| {
@@ -387,8 +441,12 @@ fn run(app: &AppHandle, s: &Session, opts: Options) -> Result<String, voice::Fai
         watchdog();
         level(l);
     };
-    let tag = if lang == "en" { "en-US" } else { "fr-FR" };
-    voice::dictate(tag, opts.hold, silence, voice::Listen { stop: &s.stop, partial: &mut partial, level: &mut level_and_watch })
+    let tag = dictation_tag(app);
+    let cb = voice::Listen { stop: &s.stop, partial: &mut partial, level: &mut level_and_watch };
+    if engine == VoiceEngine::Offline {
+        return voice::dictate_offline(tag, opts.hold, silence, cb);
+    }
+    voice::dictate(tag, opts.hold, silence, cb)
 }
 
 // ── La transcription par l'API ───────────────────────────────────────────────

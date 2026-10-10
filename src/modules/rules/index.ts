@@ -14,6 +14,7 @@ import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
 import { reducedMotion } from "../../island/tab-pill";
+import { signTextDrawn } from "../../mascot/mascot-state";
 import { countText, summary, type Listing } from "./shared";
 
 let listing: Listing = { rules: [], paused: false, history: [], errors: {}, topics: [] };
@@ -59,12 +60,12 @@ export const rules: IslandModule = {
       const p = (msg.payload ?? {}) as { title?: string; body?: string };
       api.notify({ title: p.title || "Règle", body: p.body || undefined, icon: "⚡", priority: "normal", key: `rules-${p.title}` });
     });
-    // Pancarte de la mascotte (action « Mascotte → pancarte ») : tant que la
-    // mascotte ne sait pas écrire sur sa pancarte, le texte s'affiche en
-    // notification à côté d'elle.
+    // Pancarte de la mascotte (action « Mascotte → pancarte ») : la famille
+    // gomme l'écrit sur sa pancarte (mascot-state.ts) ; une autre mascotte ne
+    // sait montrer que « ? » : le texte s'affiche alors en notification.
     api.on("mascot.sign", (msg) => {
       const p = (msg.payload ?? {}) as { text?: string };
-      if (p.text) api.notify({ title: p.text, icon: "🪧", priority: "normal", key: "rules-sign" });
+      if (p.text && !signTextDrawn()) api.notify({ title: p.text, icon: "🪧", priority: "normal", key: "rules-sign" });
     });
     api.on("rules.open-island", (msg) => {
       const p = (msg.payload ?? {}) as { tab?: string };

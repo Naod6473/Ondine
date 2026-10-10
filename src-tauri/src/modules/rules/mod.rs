@@ -23,6 +23,7 @@
 // (agents.event, media.changed).
 
 mod model;
+mod newdevice;
 mod sense;
 mod unzip;
 mod watch;
