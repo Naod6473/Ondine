@@ -1901,8 +1901,8 @@ aucun compte, rien sur Internet. **Désactivé par défaut**
   une clé sans l'envoyer (un intrus au milieu n'a qu'un essai, pas d'attaque
   hors ligne), puis Noise `XXpsk3` (crate `snow`) avec cette clé : chacun
   apprend la clé publique X25519 de l'autre, puis sa fiche (nom, couleur,
-  mascotte, « mon PC »), chiffrée. Pas de QR : un PC ne lit pas facilement
-  un QR affiché sur un autre.
+  mascotte, « mon PC »), chiffrée. Depuis 1.2.3, le code est aussi montré
+  en QR code (voir « Fonctions 1.2.3 » plus bas).
 - **Échanges** : une connexion TCP par message ; poignée de main Noise `IK`
   (l'appelant connaît la clé de l'autre et prouve la sienne ; l'appelé refuse
   toute clé hors de « Mes collègues »), puis ChaCha20-Poly1305, clé neuve à
@@ -3105,4 +3105,109 @@ réseau change → « un nouvel appareil apparaît sur le réseau local ») ;
   l'identique pour que la fusion de #62 reste simple).
 - Tests : `newdevice.rs` (le /24 privé seulement, apprendre avant de
   prévenir, fichier relu y compris celui de #62, le tour, les textes).
+
+## Fonctions 1.2.3 : ambiance, « … écoute », QR code, écran de veille, débit
+
+Cinq ajouts indépendants, chacun éteint par défaut ou lancé d'un clic.
+
+### Sons d'ambiance (`src/modules/timer/ambient*.ts`, sous-onglet « 🌧️ Ambiance » du Minuteur)
+
+- `ambient-logic.ts` (pur, testé par `tests/front/ambient.test.ts`) : la liste
+  des sons, le volume (courbe au carré), le plan du liquide
+  (`ambientLiquidPlan`) et l'heure de la prochaine crête (`nextCrestIn`).
+- `ambient.ts` : le moteur WebAudio. **Aucun fichier** : pluie (bruit rose
+  filtré + gouttes semées dans une boucle de 12 s + grondement brun), vagues
+  (bruit brun dont volume et clarté suivent un LFO de 9 s qui part de zéro :
+  la crête tombe à `startedAt + période/4`), bruit doux (brun filtré). Fondus
+  d'entrée et de sortie interruptibles, un analyseur pour le niveau.
+- **Place pour les enregistrements** : tout fichier `mp3/ogg/wav/m4a` déposé
+  dans `src/assets/ambient/` est trouvé au build (`import.meta.glob`) et
+  s'ajoute à la liste (noms connus dans `FILE_LABELS` : `cafe`, `foret`,
+  `feu`…). Le dossier est vide (`.gitkeep`) : n'y mettre que des
+  enregistrements CC0 dont la source est notée.
+- `ambient-pane.ts` : le sous-onglet (choix, lancer/arrêter, volume, « Lancer
+  avec le Pomodoro »). Publie `timer.ambient` `{on, sound, kind, volume,
+  level, startedAt, periodMs}` au lancement, à l'arrêt, et le niveau 4 fois
+  par seconde quand il bouge. Réglages du Minuteur : `ambientVolume` (40),
+  `ambientWithPomodoro` (non). Le choix du son reste dans `localStorage`.
+- `halos/liquid-moments.ts` écoute `timer.ambient` (réglage `liquidAmbient`
+  des Animations de l'île, oui par défaut) : liquide « liquid-ambient » dont
+  le niveau et l'agitation suivent le son, gouttes sur la vitre pour la pluie,
+  une `liquidWave` à chaque crête des vagues ; le lac de concentration du
+  Pomodoro se tait pendant ce temps. Calme et « Réduire les animations »
+  passent par les règles habituelles du liquide.
+
+### « Alex écoute… » (Équipe : `team_listen.rs`, `team_proto.rs`, `team/index.ts`)
+
+- Réglage `shareListening` (non par défaut). Quand il est allumé, le module
+  Équipe écoute `media.changed` (module Musique) ; `track_from_media` ne
+  garde que titre, artiste et service reconnu, seulement en lecture, nettoyés
+  des caractères de contrôle. Toutes les 2 boucles de ménage, `sync` envoie
+  `Msg::Listening {title, artist, app}` aux collègues en ligne… **qui
+  l'annoncent**.
+- **Compatibilité** : `Hello` gagne `features: ["listening"]` (absent = vide,
+  `serde(default)`, pas écrit s'il est vide). Une ancienne version ignore ce
+  champ inconnu et ne reçoit jamais `listening` (elle ne connaît pas ce « t »
+  et couperait la connexion). Test `listening_stays_compatible_with_older_versions`.
+- Chez le collègue : une ligne « ♪ Alex écoute « Titre » · Artiste » (liste et
+  fiche) ; le clic appelle `listen_open`, qui ouvre dans le navigateur une
+  **page de recherche publique** (`search_url` : Spotify, Deezer, Apple Music,
+  Tidal ou YouTube Music ; réglage `listenOpen`, « le même service que lui »
+  par défaut). Aucun compte, aucune API.
+
+### QR code d'appairage (`team_qr.rs`, `team/qr.ts`)
+
+- « 🔢 Mon code » montre aussi un QR (`clipboard_qr::make`, déjà là) qui
+  contient `ondine://pair?v=1&ip=…&code=…&fp=…&mine=0|1` : adresse, code,
+  **empreinte** de la clé (16 hex) et « mon PC ». `parse` est strict (IP
+  locale seulement, 6 chiffres, `v=1`).
+- Lecture sur l'autre PC, décodage hors ligne avec la crate pure Rust `rqrr` :
+  1. **« Lire mon écran »** (`qr_scan {source: "screen"}`) : capture de tout
+     le bureau (`platform::record::desktop_area`) — le QR est visible par un
+     partage d'écran Teams, le Bureau à distance, une VM, une photo ouverte ;
+  2. **« Coller l'image »** : une capture copiée (refusée si le presse-papiers
+     est marqué sensible) ;
+  3. **« Webcam »** : `getUserMedia` dans la page, une image en gris toutes les
+     400 ms (640 px de large au plus) vers `qr_frame`, arrêt au bout d'une
+     minute ; rien n'est enregistré.
+  Notre propre QR est ignoré (même empreinte).
+- Le QR remplit le formulaire ; « Ajouter » fait l'appairage SPAKE2 habituel,
+  puis `pair_with(…, expected)` **refuse** si l'empreinte reçue n'est pas celle
+  du QR. Le code à 6 chiffres reste possible sans QR.
+
+### Écran de veille (`src-tauri/src/modules/screensaver.rs`, `src/screensaver/`, `screensaver.html`)
+
+- Module `screensaver` (🌙), dans `MODULES_OFF_BY_DEFAULT` (Rust et front).
+  Réglages : `delay` (10 min, 1 à 120), `clock`, `walk`.
+- Un fil lit `platform::idle_ms()` (GetLastInputInfo) toutes les 2 s. Au-delà
+  du délai, et si rien ne l'interdit (`busy()` : présentation
+  SHQueryUserNotificationState, fenêtre au premier plan en plein écran hors
+  bureau, micro ou caméra utilisés, session verrouillée), il place la fenêtre
+  `screensaver` (créée cachée une fois, non activante, toujours au-dessus) sur
+  l'écran de l'île et envoie `screensaver {on, clock, walk}`. Affiché, il lit
+  l'inactivité 6 fois par seconde : dès qu'elle repart en arrière (souris,
+  clavier), `{on: false}`, fondu de 280 ms, fenêtre cachée.
+- Ondine n'appelle jamais `SetThreadExecutionState` : Windows verrouille et
+  éteint l'écran à l'heure prévue, par-dessus.
+- La page (`main.ts`) dessine trois couches d'eau aux couleurs de la goutte
+  gomme, l'heure et la date (qui dérivent lentement, pour les écrans OLED) et
+  la mascotte réglée (son propre `MascotController` sur un bus local, jamais
+  relié au Rust) qui se promène (`walk.ts`, pur, testé par
+  `tests/front/screensaver.test.ts`). 30 images/s (20 en économie), rien quand
+  elle est cachée ; « Réduire les animations » : tout est figé sauf l'heure.
+
+### Test de débit (`src-tauri/src/modules/nettools_speed.rs`, `nettools/speed-logic.ts`)
+
+- Bouton « ⚡ Débit » de l'onglet Réseau, **seulement sur clic** : commandes
+  `speed_start` / `speed_stop`. Serveur documenté : `speed.cloudflare.com`
+  (`/__down?bytes=N`, `/__up`), sans compte, avec `ureq` (déjà là).
+- Phases : latence (5 requêtes vides, médiane), réception (4 flux, 8 s,
+  250 Mo au plus), envoi (2 flux, 6 s, 60 Mo au plus). Toutes les 250 ms :
+  `nettools.speed {phase, mbps, ping, progress}`, puis `done {down, up, ping,
+  server}`, `error` ou `stopped`.
+- Pendant le test, le halo `net-speed` (forme `speed` de `halo.ts`) : une
+  comète fait le tour du liseré et la lueur pulse, d'autant plus vite que le
+  débit monte (`speedLevel` logarithmique → `speedLapMs` 3,2 s → 0,7 s,
+  `speedBeatMs` 1,6 s → `MIN_PERIOD_MS`). Immobile avec « Réduire les
+  animations » ou le réglage Calme.
 

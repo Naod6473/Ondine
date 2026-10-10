@@ -449,6 +449,13 @@
         "default": true
       },
       {
+        "key": "liquidAmbient",
+        "type": "boolean",
+        "label": "Sons d'ambiance : le liquide suit la pluie, les vagues…",
+        "default": true,
+        "help": "Avec l'onglet « Ambiance » du Minuteur : gouttes sur la vitre pour la pluie, une vague à chaque vague, la surface ondule avec le son."
+      },
+      {
         "key": "liquidOndine",
         "type": "boolean",
         "label": "Ondine flotte quand l'île est pleine",
@@ -502,7 +509,7 @@
       "agents.github-streak",
       "mascot.dance",
       "media.changed", "voice.listening", "voice.level",
-      "shelf.hash-progress", "shelf.hashed", "team.progress", "system.battery-plug", "system.battery-full", "system.battery-low", "system.battery-critical", "agents.progress", "media.tempo", "notify.shown"
+      "shelf.hash-progress", "shelf.hashed", "team.progress", "system.battery-plug", "system.battery-full", "system.battery-low", "system.battery-critical", "agents.progress", "media.tempo", "notify.shown", "timer.ambient"
     ]
   }
 }

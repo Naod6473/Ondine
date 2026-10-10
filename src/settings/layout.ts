@@ -21,7 +21,7 @@ export const MODULE_CATEGORIES: { id: string; label: string; modules: string[] }
   { id: "files", label: "Fichiers", modules: ["shelf", "clipboard", "capture", "launcher"] },
   { id: "organize", label: "Organisation", modules: ["timer", "notes", "agenda", "pauses", "weekly"] },
   { id: "it", label: "Outils IT", modules: ["terminal", "system", "remote", "nettools", "team"] },
-  { id: "daily", label: "Le PC au quotidien", modules: ["home", "media", "controls", "weather"] },
+  { id: "daily", label: "Le PC au quotidien", modules: ["home", "media", "controls", "weather", "screensaver"] },
   { id: "other", label: "Autres modules", modules: [] },
 ];
 
@@ -79,7 +79,7 @@ export const ANIMATION_SUBS: AnimationSub[] = [
       {
         title: "Moments",
         module: "halos",
-        keys: ["liquidTimer", "liquidTimerStyle", "liquidFiles", "liquidBattery", "liquidDisk", "liquidAgents", "liquidMusic", "liquidVoice", "liquidRain", "liquidCpu", "liquidNight", "liquidNotify", "liquidFocus", "liquidOndine"],
+        keys: ["liquidTimer", "liquidTimerStyle", "liquidFiles", "liquidBattery", "liquidDisk", "liquidAgents", "liquidMusic", "liquidVoice", "liquidRain", "liquidCpu", "liquidNight", "liquidNotify", "liquidFocus", "liquidAmbient", "liquidOndine"],
       },
     ],
   },

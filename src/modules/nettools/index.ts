@@ -11,6 +11,8 @@ import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-
 import { el } from "../../island/dom";
 import { setLabel } from "../../island/icon";
 import { aiCard, wireAi } from "./ai";
+import { hideHalo, showHalo, updateHalo } from "../../island/halo";
+import { mbpsText, PHASE_LABEL, speedLevel, speedRunning, speedVerdict, type SpeedNews } from "./speed-logic";
 
 interface PingReply {
   ip: string;
@@ -29,6 +31,26 @@ const PORTS: [number, string][] = [
 ];
 const PING_EVERY_MS = 1000;
 const BARS = 40;
+/** Le liseré de l'île pendant le test de débit (forme "speed" de halo.ts). */
+const SPEED_HALO = "net-speed";
+
+// ── Test de débit (1.2.3) : la dernière nouvelle, gardée si l'onglet se ferme ──
+let speed: SpeedNews | null = null;
+const speedViews = new Set<() => void>();
+
+/** Une nouvelle du test : le liseré de l'île suit le débit, l'onglet se redessine. */
+function onSpeed(n: SpeedNews) {
+  speed = n;
+  if (speedRunning(n)) {
+    const level = n.phase === "ping" ? 0.08 : speedLevel(n.mbps);
+    if (n.phase === "ping" && (n.progress ?? 0) <= 0.03) showHalo({ id: SPEED_HALO, palette: "drop", shape: "speed", level, priority: "high" });
+    else updateHalo(SPEED_HALO, { level });
+  } else {
+    hideHalo(SPEED_HALO);
+    if (n.phase === "done") showHalo({ palette: "done", shape: "burst", durationMs: 1400, priority: "high" });
+  }
+  for (const v of speedViews) v();
+}
 
 export const nettools: IslandModule = {
   manifest: manifest as ModuleManifest,
@@ -66,6 +88,8 @@ export const nettools: IslandModule = {
       }),
       // Services IA (ai.ts) : un service tombe ou revient, et la note pendant un incident.
       wireAi(api),
+      // Test de débit (Rust nettools_speed.rs) : chaque nouvelle.
+      api.on("nettools.speed", (msg) => onSpeed((msg.payload ?? { phase: "error" }) as SpeedNews)),
     ];
     return () => offs.forEach((off) => off());
   },
@@ -84,6 +108,7 @@ export const nettools: IslandModule = {
       const pingBtn = el("button", { class: "btn small", title: "Ping chaque seconde (Entrée)" }, "📶 Ping");
       const portBtn = el("button", { class: "btn small", title: "Le port répond-il ?" }, "🔌 Port");
       const dnsBtn = el("button", { class: "btn small", title: "Nom → adresses, ou adresse IPv4 → nom" }, "🔎 DNS");
+      const speedBtn = el("button", { class: "btn small", title: "Test de débit Internet (speed.cloudflare.com, environ 20 s)" }, "⚡ Débit");
       const chips = el(
         "div",
         { class: "net-chips" },
@@ -96,7 +121,7 @@ export const nettools: IslandModule = {
       const status = el("div", { class: "net-status muted" });
       // Services IA (réglage aiStatus) : une pastille par service, et les pannes de la semaine.
       const ai = aiCard(api);
-      root.append(el("div", { class: "net" }, el("div", { class: "net-head" }, host, port, pingBtn, portBtn, dnsBtn), chips, status, ai.node, out));
+      root.append(el("div", { class: "net" }, el("div", { class: "net-head" }, host, port, pingBtn, portBtn, dnsBtn, speedBtn), chips, status, ai.node, out));
       api
         .invoke<{ internet: boolean | null; vpns: string[]; publicIp: string | null }>("status")
         .then((st) => {
@@ -120,6 +145,7 @@ export const nettools: IslandModule = {
       let pingTimer = 0;
       let busy = false;
       const stopPing = () => {
+        speedShown = false; // une autre mesure prend la place du test de débit
         window.clearInterval(pingTimer);
         pingTimer = 0;
         setLabel(pingBtn, "📶 Ping");
@@ -128,6 +154,7 @@ export const nettools: IslandModule = {
       const startPing = () => {
         if (pingTimer) return stopPing();
         if (!needHost()) return;
+        speedShown = false;
         const name = target();
         const times: (number | null)[] = [];
         const big = el("b", { class: "net-big" }, "…");
@@ -197,6 +224,65 @@ export const nettools: IslandModule = {
         }
       };
 
+      // ── Test de débit : seulement au clic ─────────────────────────────────
+      let speedShown = false;
+      const drawSpeed = () => {
+        const running = speedRunning(speed);
+        setLabel(speedBtn, running ? "⏹ Arrêter" : "⚡ Débit");
+        speedBtn.classList.toggle("primary", running);
+        if (!speedShown || !speed) return;
+        const n = speed;
+        const bar = el("div", { class: "net-speed-bar" }, el("i", {}));
+        (bar.firstElementChild as HTMLElement).style.width = `${Math.round((n.progress ?? (running ? 0 : 1)) * 100)}%`;
+        let body: (HTMLElement | null)[];
+        if (running) {
+          body = [
+            el("div", { class: "net-ping-top" }, el("b", { class: "net-big", "data-no-i18n": true }, n.phase === "ping" ? "…" : mbpsText(n.mbps)), el("span", { class: "muted" }, PHASE_LABEL[n.phase] ?? "")),
+            bar,
+            n.ping ? el("small", { class: "muted", "data-no-i18n": true }, `ping ${n.ping} ms`) : null,
+          ];
+        } else if (n.phase === "done") {
+          body = [
+            el(
+              "div",
+              { class: "net-speed-result" },
+              el("span", {}, el("small", { class: "muted" }, "Réception"), el("b", { class: "net-big", "data-no-i18n": true }, `↓ ${mbpsText(n.down)}`)),
+              el("span", {}, el("small", { class: "muted" }, "Envoi"), el("b", { class: "net-big", "data-no-i18n": true }, `↑ ${mbpsText(n.up)}`)),
+              el("span", {}, el("small", { class: "muted" }, "Latence"), el("b", { class: "net-big", "data-no-i18n": true }, `${n.ping ?? 0} ms`)),
+            ),
+            el("p", { class: "muted" }, speedVerdict(n.down)),
+            el("small", { class: "muted" }, "Mesuré avec les serveurs publics de Cloudflare (speed.cloudflare.com), le plus proche de vous."),
+          ];
+        } else if (n.phase === "stopped") {
+          body = [el("p", { class: "muted" }, "Test de débit arrêté.")];
+        } else {
+          body = [el("p", { class: "net-bad" }, `⚠️ ${n.error ?? "Le test de débit n'a pas pu se faire."}`)];
+        }
+        out.replaceChildren(el("div", { class: "net-speed" }, ...body));
+      };
+      speedViews.add(drawSpeed);
+      const toggleSpeed = async () => {
+        stopPing();
+        if (speedRunning(speed)) {
+          await api.invoke("speed_stop").catch(() => undefined);
+          return;
+        }
+        speedShown = true;
+        speed = { phase: "ping", progress: 0 };
+        drawSpeed();
+        try {
+          await api.invoke("speed_start");
+        } catch (err) {
+          onSpeed({ phase: "error", error: errorText(err) });
+        }
+      };
+      speedBtn.addEventListener("click", api.handler(toggleSpeed));
+      // Un test lancé avant d'ouvrir l'onglet : on le montre.
+      if (speedRunning(speed)) {
+        speedShown = true;
+        queueMicrotask(drawSpeed);
+      }
+
       pingBtn.addEventListener("click", api.handler(startPing));
       portBtn.addEventListener("click", api.handler(testPort));
       dnsBtn.addEventListener("click", api.handler(lookup));
@@ -216,6 +302,7 @@ export const nettools: IslandModule = {
       return () => {
         stopPing();
         ai.stop();
+        speedViews.delete(drawSpeed);
       };
     },
   },

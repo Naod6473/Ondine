@@ -21,6 +21,23 @@ export interface PeerView {
   battery: { percent: number; charging: boolean } | null;
   fingerprint: string;
   report?: { at: number; data: Report };
+  /** « Alex écoute… » (1.2.3) : le morceau qu'il partage, s'il est en ligne. */
+  listening?: Track | null;
+}
+
+/** Un morceau partagé par un collègue (titre, artiste, service reconnu). */
+export interface Track {
+  title: string;
+  artist: string;
+  app: string;
+}
+
+/** Ce que lit un QR code d'appairage (team_qr.rs). */
+export interface PairQr {
+  addr: string;
+  code: string;
+  fp: string;
+  mine: boolean;
 }
 
 export interface Report {
@@ -108,4 +125,53 @@ export function isPrivateIp(text: string): boolean {
   const [a, b, c, d] = m.slice(1).map(Number);
   if ([a, b, c, d].some((n) => n > 255)) return false;
   return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254);
+}
+
+// ── « Alex écoute… » (1.2.3) ─────────────────────────────────────────────────
+
+/** Les noms des services, pour l'infobulle « Ouvrir sur Spotify ». */
+export const SERVICE_LABEL: Record<string, string> = {
+  spotify: "Spotify",
+  deezer: "Deezer",
+  applemusic: "Apple Music",
+  tidal: "Tidal",
+  youtube: "YouTube Music",
+};
+
+/** « « Clair de lune » · Debussy » : le morceau en une ligne (texte du collègue, jamais traduit). */
+export function trackText(t: Track): string {
+  return t.artist ? `« ${t.title} » · ${t.artist}` : `« ${t.title} »`;
+}
+
+/** Où le clic ouvrira la recherche (même logique que team_listen::search_url). */
+export function openTarget(t: Track, openWith: string): string {
+  const service = openWith !== "same" && SERVICE_LABEL[openWith] ? openWith : SERVICE_LABEL[t.app] ? t.app : "youtube";
+  return SERVICE_LABEL[service];
+}
+
+// ── QR code d'appairage par la webcam (1.2.3) ────────────────────────────────
+
+/** Une image RGBA (canvas) → niveaux de gris, un octet par pixel (ce que lit team_qr.rs). */
+export function toGray(rgba: ArrayLike<number>, w: number, h: number): Uint8Array {
+  const n = Math.min(w * h, Math.floor(rgba.length / 4));
+  const out = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    const j = i * 4;
+    out[i] = (rgba[j] * 299 + rgba[j + 1] * 587 + rgba[j + 2] * 114) / 1000;
+  }
+  return out;
+}
+
+/** Des octets → Base64 (par morceaux : une grande image ne déborde pas la pile). */
+export function bytesToBase64(bytes: Uint8Array): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+/** La taille des images envoyées depuis la webcam : 640 px de large au plus, mêmes proportions. */
+export function frameSize(w: number, h: number, max = 640): { w: number; h: number } {
+  if (!w || !h) return { w: 0, h: 0 };
+  const k = Math.min(1, max / w);
+  return { w: Math.round(w * k), h: Math.round(h * k) };
 }

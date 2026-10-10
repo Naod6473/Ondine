@@ -1,0 +1,19 @@
+{
+  "id": "screensaver",
+  "name": "Écran de veille",
+  "icon": "🌙",
+  "description": "Quand personne ne touche le PC, un fond sombre couvre l'écran de l'île : Ondine s'y promène au bord d'une eau qui ondule, l'heure au centre. Il se ferme dès que vous bougez la souris ou touchez le clavier. Jamais pendant une présentation, une appli en plein écran ou un appel. Windows se verrouille et éteint l'écran à l'heure prévue, comme d'habitude.",
+  "version": "0.1.0",
+  "permissions": [],
+  "settings": {
+    "version": 1,
+    "fields": [
+      { "key": "delay", "essential": true, "type": "number", "label": "Apparaît après (minutes sans activité)", "default": 10, "min": 1, "max": 120, "step": 1 },
+      { "key": "clock", "essential": true, "type": "boolean", "label": "Afficher l'heure", "default": true },
+      { "key": "walk", "type": "boolean", "label": "Ondine se promène", "help": "Sinon, elle reste assise au bord de l'eau. Toujours immobile si Windows réduit les animations.", "default": true }
+    ]
+  },
+  "views": [],
+  "commands": [],
+  "events": { "emits": [], "listens": [] }
+}

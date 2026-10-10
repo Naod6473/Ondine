@@ -5,7 +5,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { ANSWER_LABEL, codeText, diskLow, isLink, isPrivateIp, lookColor, PINGS, pingText, pollChoices, sortPeers, STATUS_LABEL, type PeerView } from "../../src/modules/team/logic";
+import { ANSWER_LABEL, bytesToBase64, codeText, frameSize, openTarget, toGray, trackText, diskLow, isLink, isPrivateIp, lookColor, PINGS, pingText, pollChoices, sortPeers, STATUS_LABEL, type PeerView } from "../../src/modules/team/logic";
 
 const DICT = JSON.parse(readFileSync("src/core/i18n-en.json", "utf8")) as { exact: Record<string, string>; patterns: [string, string][] };
 
@@ -65,5 +65,37 @@ describe("équipe : traduction anglaise", () => {
     assert.equal(en("☕ Café · 5 min"), "☕ Coffee · 5 min");
     assert.equal(en("Bob ne répond pas (PC éteint, autre réseau, ou pare-feu de Windows qui bloque Ondine)"), "Bob isn't answering (PC off, other network, or Windows Firewall blocking Ondine)");
     assert.equal(en("fichier trop gros (2048 Mo au plus)"), "file too big (2048 MB at most)");
+  });
+});
+
+describe("« Alex écoute… » et QR code (1.2.3)", () => {
+  test("le morceau en une ligne", () => {
+    assert.equal(trackText({ title: "Clair de lune", artist: "Debussy", app: "" }), "« Clair de lune » · Debussy");
+    assert.equal(trackText({ title: "Sans nom", artist: "", app: "" }), "« Sans nom »");
+  });
+
+  test("le clic ouvre le service choisi, sinon celui du collègue, sinon YouTube Music", () => {
+    const t = { title: "x", artist: "", app: "spotify" };
+    assert.equal(openTarget(t, "same"), "Spotify");
+    assert.equal(openTarget(t, "deezer"), "Deezer");
+    assert.equal(openTarget({ ...t, app: "" }, "same"), "YouTube Music");
+    assert.equal(openTarget({ ...t, app: "vlc" }, "inconnu"), "YouTube Music");
+    assert.equal(en("Ouvrir ce morceau sur Apple Music"), "Open this track on Apple Music");
+  });
+
+  test("image de la webcam : niveaux de gris, taille réduite, Base64", () => {
+    const rgba = [255, 255, 255, 255, 0, 0, 0, 255, 255, 0, 0, 255];
+    assert.deepEqual([...toGray(rgba, 3, 1)], [255, 0, 76]);
+    assert.equal(toGray(rgba, 10, 10).length, 3, "jamais plus loin que l'image");
+    assert.deepEqual(frameSize(1280, 720), { w: 640, h: 360 });
+    assert.deepEqual(frameSize(320, 240), { w: 320, h: 240 });
+    assert.deepEqual(frameSize(0, 240), { w: 0, h: 0 });
+    assert.equal(bytesToBase64(new Uint8Array([79, 110, 100])), "T25k");
+    const big = new Uint8Array(100_000).fill(7);
+    assert.equal(atob(bytesToBase64(big)).length, 100_000);
+  });
+
+  test("traduction des messages du QR code", () => {
+    assert.equal(en("QR code lu : 192.168.1.20. Cliquez sur « Ajouter »."), "QR code read: 192.168.1.20. Click “Add”.");
   });
 });

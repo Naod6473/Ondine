@@ -1,0 +1,152 @@
+/* Les fonctions de la 1.2.3 (importé en tête de island.css) : test de débit
+   (Réseau), sons d'ambiance (Minuteur), « … écoute » et QR d'appairage
+   (Équipe). Les animations suivent --ease et s'arrêtent avec « Réduire les
+   animations ». */
+
+/* ── Réseau : test de débit ─────────────────────────────────────────────── */
+.net-speed {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.net-speed-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+.net-speed-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #5cc8ff, #1f86e0);
+  transition: width 260ms var(--ease-out);
+}
+.net-speed-result {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.net-speed-result span {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Équipe : « Alex écoute… » ──────────────────────────────────────────── */
+/* La ligne passe sous la fiche du collègue (la rangée se replie). */
+.team-peer:has(.team-listen) {
+  flex-wrap: wrap;
+}
+.team-listen {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-basis: 100%;
+  min-width: 0;
+  margin: -2px 0 2px 26px;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 200ms var(--ease-out), color 200ms var(--ease-out);
+}
+.team-listen:hover,
+.team-listen:focus-visible {
+  background: rgba(124, 196, 255, 0.12);
+  color: var(--island-fg);
+}
+.team-listen-track {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.team-listen-note {
+  color: var(--accent);
+  animation: team-listen-bob 1.6s ease-in-out infinite;
+}
+@keyframes team-listen-bob {
+  50% {
+    transform: translateY(-2px);
+  }
+}
+.team-sheet > .team-listen {
+  margin: 0;
+}
+
+/* ── Équipe : QR code d'appairage ───────────────────────────────────────── */
+.team-code-qr {
+  width: 132px;
+  height: 132px;
+  border-radius: 8px;
+  background: #fff;
+  image-rendering: pixelated;
+}
+.team-qr {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.team-qr-cam {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.team-qr-video {
+  width: min(260px, 100%);
+  border-radius: 10px;
+  background: #000;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .team-listen-note {
+    animation: none;
+  }
+  .net-speed-bar i,
+  .team-listen {
+    transition: none;
+  }
+}
+
+/* ── Minuteur : sons d'ambiance ─────────────────────────────────────────── */
+.ambient {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 2px;
+}
+.ambient-chip.active {
+  background: rgba(92, 200, 255, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(92, 200, 255, 0.55);
+}
+/* Le son qui joue : une petite respiration de gomme. */
+.ambient-chip.playing {
+  animation: ambient-breathe 3.2s var(--ease-out) infinite;
+}
+@keyframes ambient-breathe {
+  50% {
+    box-shadow: inset 0 0 0 1px rgba(92, 200, 255, 0.9), 0 0 12px rgba(92, 200, 255, 0.35);
+  }
+}
+.ambient-row {
+  align-items: center;
+}
+.ambient-volume {
+  flex: 1;
+  min-width: 80px;
+  accent-color: #5cc8ff;
+}
+.ambient-vol-text {
+  min-width: 3.2em;
+  font-variant-numeric: tabular-nums;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ambient-chip.playing {
+    animation: none;
+  }
+}

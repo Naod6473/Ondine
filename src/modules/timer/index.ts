@@ -33,12 +33,19 @@
 // On ne touche donc pas à Windows : seule l'île se tait. Pour couper aussi les
 // bannières de Windows, une séance « Focus » de l'appli Horloge active « Ne pas
 // déranger » (Windows 11).
+//
+// Sons d'ambiance (1.2.3, sous-onglet « Ambiance ») : pluie, vagues et bruit
+// doux fabriqués en WebAudio (ambient.ts), enregistrements déposés dans
+// src/assets/ambient/ (ambient-logic.ts), et le liquide de l'île qui suit le
+// son (ambient-pane.ts publie « timer.ambient »).
 
 import manifest from "./manifest.json";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
 import { frameLoop, pacedInterval, setText } from "../../core/perf";
 import { reducedMotion, TabPill } from "../../island/tab-pill";
+import { ambientFollowPomodoro, ambientTeardown, drawAmbient } from "./ambient-pane";
+import { unlockAmbient } from "./ambient";
 
 // ── Les trois compteurs ──────────────────────────────────────────────────────
 
@@ -70,7 +77,7 @@ const stopwatch = {
   laps: [] as number[],
 };
 
-type Pane = "timer" | "pomodoro" | "stopwatch";
+type Pane = "timer" | "pomodoro" | "stopwatch" | "ambient";
 let pane: Pane = "timer";
 
 const PHASE_LABEL: Record<PomodoroPhase, string> = { work: "Travail", short: "Pause courte", long: "Pause longue" };
@@ -270,6 +277,8 @@ function tick(api: ModuleApi) {
   trackWork(api);
   syncFocus(api);
   syncProgress(api);
+  // Sons d'ambiance « avec le Pomodoro » : pendant les séances de travail.
+  ambientFollowPomodoro(api, running(pomodoro.clock) && pomodoro.phase === "work");
   // La pilule n'a besoin d'être changée que quand ça démarre ou s'arrête.
   const active = anyActive();
   if (active !== wasActive) {
@@ -380,6 +389,8 @@ export const timerModule: IslandModule = {
       endWork(api, false);
       // Et les notifications de l'île reprennent.
       syncFocus(api, false);
+      // Le son d'ambiance s'arrête.
+      ambientTeardown(api);
       // Le liseré s'éteint.
       for (const id of ["timer", "pomodoro"] as const) {
         if (lastProgress[id] && lastProgress[id] !== "off") api.emit("timer.progress", { id, phase: "", state: "off", endsAt: null, total: 0, left: 0 });
@@ -432,6 +443,7 @@ export const timerModule: IslandModule = {
         { id: "timer", label: "⏱️ Minuteur" },
         { id: "pomodoro", label: "🍅 Pomodoro" },
         { id: "stopwatch", label: "⏲️ Chrono" },
+        { id: "ambient", label: "🌧️ Ambiance" },
       ];
       const segButtons = new Map<Pane, HTMLElement>();
       const seg = el("div", { class: "segmented" });
@@ -451,7 +463,7 @@ export const timerModule: IslandModule = {
         for (const [pid, b] of segButtons) b.classList.toggle("active", pid === id);
         if (animate) pill.moveTo(segButtons.get(id)!);
         body.replaceChildren();
-        update = { timer: drawTimer, pomodoro: drawPomodoro, stopwatch: drawStopwatch }[id]();
+        update = { timer: drawTimer, pomodoro: drawPomodoro, stopwatch: drawStopwatch, ambient: () => drawAmbient(api, body) }[id]();
         if (animate && !reducedMotion()) {
           body.animate([{ opacity: 0, transform: "translateY(4px)" }, { opacity: 1, transform: "none" }], {
             duration: 260,
@@ -461,7 +473,7 @@ export const timerModule: IslandModule = {
       };
 
       const button = (label: string, title: string, run: () => void, cls = "btn small") =>
-        el("button", { class: cls, title, onclick: api.handler(() => { unlockAudio(); run(); update(); }) }, label);
+        el("button", { class: cls, title, onclick: api.handler(() => { unlockAudio(); unlockAmbient(); run(); update(); }) }, label);
 
       // ── Minuteur ──
       const drawTimer = () => {

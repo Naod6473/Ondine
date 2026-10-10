@@ -68,6 +68,8 @@ const BY_EMOJI: Record<string, string> = {
   // Pas encore d'image en couleur : l'emoji reste affiché dans ce pack.
   "🌤️": "weather",
   "🧭": "profiles",
+  // Écran de veille (1.2.3) : la lune au trait, l'emoji en couleur.
+  "🌙": "moon",
 };
 
 /**

@@ -325,3 +325,21 @@ export function progressWarn(now: number, endsAt: number | null, total: number):
   const left = endsAt - now;
   return left >= warn ? 0 : clamp(1 - left / warn);
 }
+
+// ── Test de débit (1.2.3, forme "speed" de halo.ts) ──────────────────────────
+
+/**
+ * Un tour de la comète, selon le débit (`level` 0 à 1, voir speedLevel dans
+ * src/modules/nettools/speed-logic.ts) : 3,2 s pour une petite connexion,
+ * 0,7 s pour la fibre la plus rapide.
+ */
+export function speedLapMs(level: number): number {
+  const l = Math.max(0, Math.min(1, Number.isFinite(level) ? level : 0));
+  return 3200 - 2500 * l;
+}
+
+/** La pulsation de la lueur : de 1,6 s à MIN_PERIOD_MS (jamais un clignotement). */
+export function speedBeatMs(level: number): number {
+  const l = Math.max(0, Math.min(1, Number.isFinite(level) ? level : 0));
+  return Math.max(MIN_PERIOD_MS, 1600 - 1150 * l);
+}
