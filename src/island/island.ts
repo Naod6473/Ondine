@@ -26,6 +26,7 @@ import { clear, el } from "./dom";
 import { icon } from "./icon";
 import { IslandStateMachine, type IslandState } from "./island-state";
 import { contentHeight, FIT_ATTR, fitHeight } from "./fit";
+import { attachHalo } from "./halo";
 import { enableGestures, grabZone, type Edge } from "./gestures";
 import { Jelly } from "./jelly";
 import { elasticityOf } from "./spring";
@@ -159,6 +160,8 @@ export class Island {
     this.fsm.onTransition = (from, to) => this.onTransition(from, to);
     this.shell.append(this.mascotSlot, this.content, this.privacyDot);
     this.root.append(this.shell);
+    // Le halo de lumière autour de l'île (halo.ts) : sous elle, sur toute la fenêtre.
+    attachHalo(this.root, this.shell, this.bus, () => this.fsm.state);
     this.jelly = new Jelly(this.shell, {
       edge: () => this.edge(),
       align: () => document.body.dataset.align ?? "center",
