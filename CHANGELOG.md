@@ -45,6 +45,81 @@
 - L'île ouverte suit le texte en douceur, en hauteur et en largeur (Parler à
   Ondine). · The open island smoothly follows text, in height and width (Talk
   to Ondine).
+- Premier lancement : Ondine se présente dans l'île et configure tout en 5
+  étapes passables (prénom, langue et vous/tu, ce que vous faites sur ce PC,
+  mascotte, place de l'île et style des icônes, clé de Parler à Ondine). Les
+  cartes sont pré-cochées d'après les logiciels installés, détectés sur le PC
+  sans rien envoyer. · First launch: Ondine introduces herself in the island
+  and sets everything up in 5 skippable steps (name, language, what you do on
+  this PC, mascot, island position and icon style, Talk to Ondine key). Cards
+  are pre-checked from installed software, detected locally with nothing sent.
+- Une île qui commence petite : les cartes allument seulement les onglets
+  utiles et créent les profils qui vont avec. Ondine propose ensuite le bon
+  onglet au bon moment (première clé USB, première visio, premier fichier
+  glissé) et de masquer un onglet oublié depuis 3 semaines, jamais sans vous
+  demander. « Reprendre la configuration de mon autre PC », « Refaire
+  l'assistant », et Ondine vous appelle par votre prénom. · An island that
+  starts small: cards turn on only the useful tabs and create matching
+  profiles. Ondine then suggests the right tab at the right moment (first USB
+  drive, first video call, first dropped file) and offers to hide a tab unused
+  for 3 weeks, never without asking. "Bring over the setup from my other PC",
+  "Run the setup again", and Ondine calls you by your first name.
+- Équipe : un vrai chat. L'icône 💬 ouvre les conversations à deux et le salon
+  « Toute l'équipe ». Les messages des collègues arrivent directement (un lien
+  ne s'ouvre jamais tout seul), on répond depuis la notification de l'île, on
+  voit « … écrit » et « Lu », et la mascotte joue les réactions 👍 😂 ❤️.
+  Chiffré de bout en bout, sans serveur ; l'historique reste en mémoire, ou 7
+  jours chiffré sur le disque en option. · Team: a real chat. The 💬 icon opens
+  one-to-one conversations and a "Whole team" room. Teammates' messages arrive
+  directly (links never open by themselves), you can reply from the island
+  notification, see "… is typing" and "Read", and the mascot plays 👍 😂 ❤️
+  reactions. End-to-end encrypted, no server; history stays in memory, or
+  optionally 7 days encrypted on disk.
+- La mascotte danse selon la musique : Ondine trouve le tempo à partir du
+  niveau du son (sur votre PC, rien n'est enregistré ni envoyé) et danse dans
+  le style du morceau (rock, metal, rap, RnB, pop, électro, reggae, jazz et
+  chill), pour les 15 mascottes ; le halo bat sur les mêmes temps. En Calme,
+  un simple hochement de tête. · The mascot dances to the music: Ondine finds
+  the tempo from the sound level (on your PC, nothing is recorded or sent) and
+  dances in the style of the track (rock, metal, rap, R&B, pop, electro,
+  reggae, jazz and chill), for all 15 mascots; the halo pulses on the same
+  beats. In Calm mode, a simple nod.
+- Animations à l'intérieur de l'île : un liquide (eau, gelée, lumière ou
+  sable) remplit l'île derrière son contenu. Il monte avec un minuteur (agité
+  à la fin, puis il déborde), un envoi de fichier ou la charge de la batterie,
+  et ondule avec la musique ou la voix. Pluie sur la vitre, bulles quand le
+  processeur chauffe, une goutte à chaque notification, un lac pendant la
+  concentration. Il penche quand on déplace l'île ; Ondine flotte quand l'île
+  est pleine. · Animations inside the island: a liquid (water, jelly, light or
+  sand) fills the island behind its content. It rises with a timer (stirring
+  at the end, then overflowing), a file transfer or battery charging, and
+  ripples with music or your voice. Rain on the glass, bubbles when the CPU is
+  busy, a drop for each notification, a calm lake during focus. It tilts when
+  you move the island; Ondine floats when the island is full.
+- Minuteurs : un liseré de lumière fait le tour de l'île (mini-île comprise)
+  et se vide au fil du temps, pour le Minuteur, le Pomodoro et les minuteurs
+  lancés par le Lanceur ou par Ondine ; il rougit dans les dernières secondes
+  et reste figé en pause. · Timers: a line of light runs around the island
+  (mini island included) and empties as time passes, for the Timer, Pomodoro
+  and timers started from the Launcher or by Ondine; it turns red in the last
+  seconds and freezes while paused.
+- Halos plus fins et plus discrets, et nouveau réglage « Où dessiner le halo »
+  : à l'intérieur de l'île, sur le contour (par défaut) ou à l'extérieur, avec
+  un aperçu en direct. · Thinner, subtler halos, and a new "Where to draw the
+  halo" setting: inside the island, on the outline (default) or outside, with
+  a live preview.
+- Île : la barre de défilement Windows laisse place à une fine pastille grise
+  translucide, visible seulement au survol ou pendant le défilement. · Island:
+  the Windows scrollbar is replaced by a thin translucent grey thumb, shown
+  only on hover or while scrolling.
+- Ondine sur le bureau : les onglets de sa bulle sont des icônes (le nom en
+  infobulle), et la bulle s'adapte à son contenu en largeur et en hauteur. ·
+  Ondine on the desktop: her bubble's tabs are icons (name in tooltip), and
+  the bubble fits its content in width and height.
+- Icônes : Équipe, Animations de l'île et Ondine et les fenêtres ont leur
+  image en couleur et une vraie icône au trait dans le style épuré. · Icons:
+  Team, Island animations and Ondine & windows now have a colour image and a
+  proper line icon in the clean style.
 - Les 15 mascottes ont 15 nouvelles expressions (panique avec pile vide, peur,
   soulagement, étirement, sursaut, écoute, lunettes de soleil, écharpe, au
   revoir, pousser, assise jambes dans le vide, se cacher, tapoter la vitre,
@@ -126,6 +201,20 @@
 - Système : nouveau seuil « Batterie critique » (10 %) et réglages des halos
   de batterie. · System: new "Critical battery" threshold (10%) and battery
   halo settings.
+- Correction : si la dictée de Windows échoue, un message clair dit quoi
+  régler (reconnaissance vocale en ligne, micro, langue), avec un bouton vers
+  la bonne page des Paramètres et, si une clé OpenAI ou Gemini est
+  enregistrée, un bouton pour passer à la transcription par l'API. · Fix: when
+  Windows dictation fails, a clear message says what to change (online speech
+  recognition, microphone, language), with a button to the right Settings page
+  and, if an OpenAI or Gemini key is saved, a button to switch to API
+  transcription.
+- Correction : « Le halo suit la musique » fonctionne (décoché, plus aucun
+  halo pendant la musique). Le Lanceur dit « Recherche web : « … » sur
+  Google ». Île en bas de l'écran : plus de trait le long du bord. · Fix: "The
+  halo follows the music" works (unchecked, no halo while music plays). The
+  Launcher says "Web search: « … » on Google". Island at the bottom: no more
+  line along the screen edge.
 - Correction : enregistrer un réglage d'un module jamais ouvert ne l'active
   plus tout seul. · Fix: saving a setting of a module never opened no longer
   turns it on by itself.

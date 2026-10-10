@@ -64,6 +64,16 @@ New in version 1.2.2 (the full list is in the
 - **Team** (off by default): Ondines on the same local network talk to each
   other with no server, end-to-end encrypted: teammates' presence, hellos,
   files to accept, coffee, polls, team Pomodoro, IT help with consent.
+- **First launch**: Ondine asks your name and what you do on this PC, then
+  turns on only the useful tabs. Later she suggests the right tab at the right
+  moment.
+- **Animations inside the island**: a liquid (water, jelly, light, sand) that
+  fills up with a timer, the battery or a transfer, and ripples with music; a
+  line of light also runs around the island for timers.
+- **Ondine dances to the music**: tempo measured on the PC, 9 styles (rock,
+  metal, rap, R&B, pop, electro, reggae, jazz…).
+- **Team chat**: talk with the other Ondines on the local network, one-to-one
+  or in the team room, end-to-end encrypted.
 - **And also**: 17 new things in Rules, Bluetooth batteries, "Clean desktop",
   phone remote, Claude, ChatGPT and Gemini status, web search in the Launcher,
   a cleaner Talk to Ondine island.

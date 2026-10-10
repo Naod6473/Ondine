@@ -66,6 +66,16 @@ Les nouveautés de la version 1.2.2 (la liste complète est dans le
   parlent sans serveur, chiffré de bout en bout : présence des collègues,
   coucous, fichiers à accepter, café, sondage, Pomodoro d'équipe, aide de l'IT
   avec accord.
+- **Premier lancement** : Ondine demande votre prénom et ce que vous faites
+  sur ce PC, puis n'allume que les onglets utiles. Elle propose ensuite le bon
+  onglet au bon moment.
+- **Animations dans l'île** : un liquide (eau, gelée, lumière, sable) qui se
+  remplit avec un minuteur, la batterie ou un envoi, et ondule avec la musique
+  ; un liseré fait aussi le tour de l'île pour les minuteurs.
+- **Ondine danse selon la musique** : tempo mesuré sur le PC, 9 styles (rock,
+  metal, rap, RnB, pop, électro, reggae, jazz…).
+- **Chat Équipe** : discuter avec les autres Ondine du réseau local, à deux ou
+  dans le salon de l'équipe, chiffré de bout en bout.
 - **Et aussi** : 17 nouveautés dans les Règles, batteries Bluetooth, « Bureau
   propre », télécommande sur le téléphone, surveillance de Claude, ChatGPT et
   Gemini, recherche web dans le Lanceur, île de Parler à Ondine épurée.
