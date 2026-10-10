@@ -22,7 +22,7 @@ export function demoOn(): boolean {
 }
 
 /** Les scènes que la fenêtre de réglages peut demander (sujet « demo.scene »). */
-export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new"] as const;
+export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "island-dodge"] as const;
 export type DemoScene = (typeof DEMO_SCENES)[number];
 
 /**
@@ -818,6 +818,13 @@ function playScene(bus: Bus, scene: string) {
     case "whats-new":
       // Le panneau « Quoi de neuf » de la version installée (core/whats-new.ts).
       bus.inject("app.whats-new", null, "demo");
+      break;
+    case "island-dodge":
+      // L'île s'écarte de la fenêtre de réglages (forme et peur d'Ondine ; la
+      // fenêtre, elle, ne bouge pas dans un navigateur), puis rentre chez elle.
+      bus.inject("island.dodge-demo", { edge: "top", align: "end", phase: "flee" }, "demo");
+      window.setTimeout(() => bus.inject("island.dodge-demo", { edge: "top", align: "end", phase: "cornered" }, "demo"), 1800);
+      window.setTimeout(() => bus.inject("island.dodge-demo", { edge: "top", align: "center", phase: "home" }, "demo"), 4200);
       break;
   }
 }

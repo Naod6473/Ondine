@@ -65,6 +65,8 @@ export interface Settings {
     tips: boolean;
     /** Les onglets (ids de modules) dont l'astuce a déjà été vue. */
     tipsSeen: string[];
+    /** L'île s'écarte de la fenêtre de réglages (src-tauri/src/island/dodge.rs). */
+    avoidSettings?: boolean;
   };
   mascot: {
     enabled: boolean;
@@ -176,6 +178,7 @@ export function defaultSettings(): Settings {
       elasticity: "normal",
       tips: true,
       tipsSeen: [],
+      avoidSettings: true,
     },
     mascot: { enabled: true, id: "goutte-gomme", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5, surprises: "all", treasures: [], color: "auto", hands: "always", wearHead: "none", wearEyes: "none", wearNeck: "none", customColor: "#4da3ff", size: "normal", calm: false, pet: false, petX: -1, petY: -1, petOnTop: true, petTabs: ["askclaude", "launcher", "agents"], petHotkey: "Ctrl+Alt+B", petWander: true },
     privacy: { excludedFolders: [] },

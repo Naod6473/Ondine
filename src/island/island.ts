@@ -49,6 +49,8 @@ type MascotReaction = Parameters<NonNullable<MascotRenderer["react"]>>[0];
 const SETTLE_FALLBACK_MS = 1500;
 /** Zone au bord de l'écran qui compte comme « survol » même si l'île est minuscule. */
 const EDGE_ZONE = { len: 240, depth: 14 };
+/** L'île qui s'écarte d'une fenêtre : la peur d'Ondine au plus toutes les… (ms). */
+const FRIGHT_EVERY_MS = 4000;
 /** Survol prolongé de la mascotte → `love`. */
 const LONG_HOVER_MS = 2500;
 
@@ -142,6 +144,10 @@ export class Island {
   private lastPeek = Date.now();
   /** Une présentation ou une appli plein écran est en cours : l'île se fait oublier. */
   private presenting = false;
+  /** La place provisoire donnée par le Rust quand l'île s'écarte d'une fenêtre
+      (island/dodge.rs) : elle remplace le bord et la place réglés. */
+  private dodgePlace: { edge: Edge; align: string } | null = null;
+  private lastFright = 0;
   /** Ouverte au clavier (raccourci) : le focus va sur l'onglet actif. */
   private focusTabsOnOpen = false;
   /** Les surprises cachées (src/eggs/). */
@@ -277,8 +283,9 @@ export class Island {
     // Réglages → Apparence → Élasticité : raideur, rebond, amplitude des déformations.
     this.jelly.setElasticity(elasticityOf(s.island.elasticity));
     // Le bord et la place de l'île : la forme s'adapte en CSS (island.css).
-    document.body.dataset.edge = s.island.edge ?? "top";
-    document.body.dataset.align = s.island.align ?? "center";
+    // (Sauf si elle s'écarte en ce moment d'une fenêtre : sa place provisoire.)
+    document.body.dataset.edge = this.dodgePlace?.edge ?? s.island.edge ?? "top";
+    document.body.dataset.align = this.dodgePlace?.align ?? s.island.align ?? "center";
     applyTheme(s.island.theme ?? "nuit", s.island.color ?? "");
     setSoundPrefs(s.island.sounds ?? true, s.island.soundVolume ?? 0.5);
     this.reorderTabs();
@@ -487,6 +494,10 @@ export class Island {
     });
     void onTauriEvent<string>("hotkey-error", (text) => this.notifications.push({ moduleId: "island", title: text, icon: "⌨️", priority: "normal" }));
     void onTauriEvent("screen-changed", () => void Bridge.islandReposition());
+    // L'île s'écarte d'une fenêtre (les réglages…), acculée, ou rentre chez elle.
+    void onTauriEvent<{ edge: Edge; align: string; phase: "flee" | "cornered" | "home" }>("island-placement", (p) => this.onDodge(p));
+    // Mode démo (scène « L'île s'écarte », core/demo.ts).
+    this.bus.on("island.dodge-demo", (msg) => this.onDodge(msg.payload as { edge: Edge; align: string; phase: "flee" | "cornered" | "home" }));
     // Fin d'un déplacement : l'île s'est posée sur un bord.
     void onTauriEvent("island-drag-end", () => {
       this.shell.classList.remove("moving");
@@ -694,8 +705,37 @@ export class Island {
     return y <= EDGE_ZONE.depth && span(W, x);
   }
 
+  /**
+   * Le Rust déplace l'île pour qu'elle ne cache pas une fenêtre (island/dodge.rs) :
+   * sa forme prend le nouveau bord, et Ondine a peur (acculée : panique) ; de
+   * retour chez elle, elle soupire de soulagement. La peur n'est pas rejouée à
+   * chaque pas quand on pousse la fenêtre vers elle.
+   */
+  private onDodge(p: { edge: Edge; align: string; phase: "flee" | "cornered" | "home" }) {
+    const s = settingsStore.current;
+    if (p.phase === "home") {
+      if (!this.dodgePlace) return;
+      this.dodgePlace = null;
+      document.body.dataset.edge = s.island.edge ?? "top";
+      document.body.dataset.align = s.island.align ?? "center";
+      this.bus.emit("mascot.emote", { emotion: "relieved" });
+      return;
+    }
+    const first = !this.dodgePlace;
+    this.dodgePlace = { edge: p.edge, align: p.align };
+    document.body.dataset.edge = p.edge;
+    document.body.dataset.align = p.align;
+    const now = Date.now();
+    if (first || p.phase === "cornered" || now - this.lastFright > FRIGHT_EVERY_MS) {
+      this.lastFright = now;
+      this.bus.emit("mascot.emote", { emotion: p.phase === "cornered" ? "panic" : "scared" });
+    }
+  }
+
   /** On a attrapé l'île par son bord extérieur : le Rust déplace la fenêtre. */
   private startMove() {
+    // Le Rust oublie la place provisoire : c'est la main qui décide.
+    this.dodgePlace = null;
     this.jelly.release();
     this.shell.classList.add("moving");
     void Bridge.islandDragStart();

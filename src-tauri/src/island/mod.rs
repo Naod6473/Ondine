@@ -24,6 +24,9 @@
 // côté Rust et on bascule ce réglage quand elle entre ou sort de la forme de l'île.
 // Technique reprise de Coucou (github.com/Louis-CFM/coucou, MIT).
 
+pub mod avoid;
+pub mod dodge;
+
 use crate::sync::LockExt;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -75,6 +78,13 @@ impl Placement {
             }
             None => Placement { edge: "top".into(), align: "center".into(), offset: 0.5 },
         }
+    }
+
+    /// La place où doit être l'île maintenant : la place provisoire si elle
+    /// s'écarte d'une fenêtre (dodge.rs), sinon la place réglée.
+    fn current(app: &AppHandle) -> Placement {
+        let provisional = app.try_state::<crate::Shared>().and_then(|s| s.gate.dodge.place());
+        provisional.unwrap_or_else(|| Placement::from_settings(app))
     }
 
     fn side(&self) -> bool {
@@ -254,6 +264,8 @@ pub struct PollGate {
     /// souris SUR l'île visible. Les agents s'en servent pour n'accepter
     /// « Oui, autoriser » qu'après un geste réel (voir modules/agents.rs).
     last_click: Mutex<Option<Instant>>,
+    /// L'île qui s'écarte des fenêtres (place provisoire, ressort).
+    pub dodge: dodge::Dodge,
 }
 
 impl PollGate {
@@ -270,6 +282,7 @@ impl PollGate {
             frame: Mutex::new(None),
             frame_gen: AtomicU64::new(0),
             last_click: Mutex::new(None),
+            dodge: dodge::Dodge::default(),
         }
     }
 
@@ -430,13 +443,23 @@ pub fn frame_in(a: &Area, scale: f64, place: &Placement, collapsed: bool, tall: 
 pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let Some(win) = window(app) else { return };
     let Some(m) = target_monitor(app, pref) else { return };
-    let place = Placement::from_settings(app);
+    let place = Placement::current(app);
     let tall = app.try_state::<crate::Shared>().is_some_and(|s| s.gate.tall.load(Ordering::Relaxed));
     if let Some(shared) = app.try_state::<crate::Shared>() {
         *shared.gate.panel.locked() = place.window_size(false, tall);
     }
     let (pw, ph, x, y) = target_frame(&m, &place, collapsed, tall);
 
+    // L'île est en train de s'écarter d'une fenêtre (ressort de dodge.rs) : la
+    // taille tout de suite, la position reste au ressort (nouvelle cible).
+    if let Some(shared) = app.try_state::<crate::Shared>() {
+        if shared.gate.dodge.moving() {
+            let _ = win.set_size(PhysicalSize::new(pw, ph));
+            shared.gate.dodge.retarget(x, y);
+            shared.gate.invalidate_frame();
+            return;
+        }
+    }
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_position(PhysicalPosition::new(x, y));
     // Passer d'un écran à l'autre peut changer l'échelle : on réimpose la taille.
@@ -452,6 +475,8 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
 pub fn drag_start(app: &AppHandle, gate: &PollGate) {
     let Some(win) = window(app) else { return };
     let (Ok(origin), Some((cx, cy))) = (win.outer_position(), platform::cursor_physical()) else { return };
+    // Elle s'écartait d'une fenêtre : la main reprend la main (le ressort s'arrête).
+    gate.dodge.forget();
     *gate.drag.locked() = Some((cx - origin.x as f64, cy - origin.y as f64));
 }
 
@@ -509,6 +534,8 @@ fn drag_end(app: &AppHandle, gate: &PollGate) {
     let _ = win.set_position(PhysicalPosition::new(x, y));
     gate.invalidate_frame();
     let _ = app.emit_to(WINDOW_LABEL, "island-drag-end", ());
+    // Posée là où une fenêtre (les réglages…) gêne : elle s'en écarte.
+    dodge::recompute(app);
 }
 
 /// Après un changement de taille : la fenêtre reprend la souris, et le prochain

@@ -113,6 +113,9 @@ pub struct IslandPrefs {
     pub tips: bool,
     /// Les onglets (ids de modules) dont l'astuce a déjà été vue.
     pub tips_seen: Vec<String>,
+    /// L'île s'écarte de la fenêtre de réglages quand elle la cacherait
+    /// (island/dodge.rs), puis revient à sa place à la fermeture.
+    pub avoid_settings: bool,
 }
 
 fn default_motion() -> String {
@@ -225,6 +228,7 @@ impl Default for IslandPrefs {
             elasticity: default_elasticity(),
             tips: true,
             tips_seen: Vec::new(),
+            avoid_settings: true,
         }
     }
 }

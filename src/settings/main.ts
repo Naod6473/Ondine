@@ -913,6 +913,11 @@ function general(main: HTMLElement) {
         "Vous pouvez aussi attraper l'île par son bord collé à l'écran et la poser ailleurs : elle s'aimante aux bords, aux coins et au centre.",
       ),
       row(
+        "Ondine évite la fenêtre de réglages",
+        toggle(s.island.avoidSettings ?? true, (v) => save((d) => (d.island.avoidSettings = v)), "Ondine évite la fenêtre de réglages"),
+        "Si cette fenêtre la cache, l'île glisse le long du bord pour lui laisser la place, puis revient à sa place quand vous la fermez.",
+      ),
+      row(
         "Mode présentation",
         toggle(s.island.presentationQuiet ?? true, (v) => save((d) => (d.island.presentationQuiet = v)), "Mode présentation"),
         "Pendant un diaporama, une vidéo ou un jeu en plein écran, l'île se cache et garde les notifications pour la fin.",
@@ -1030,6 +1035,7 @@ function demoGroup(): HTMLElement {
                 scene("download", "Fichier téléchargé"),
                 scene("next-track", "Morceau suivant"),
                 scene("whats-new", "Quoi de neuf"),
+                scene("island-dodge", "L'île s'écarte"),
               ),
               "La notification arrive dans l'île : lancez l'enregistrement avant de cliquer.",
             ),

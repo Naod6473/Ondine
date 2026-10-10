@@ -36,6 +36,8 @@ pub mod theme;
 pub mod nightlight;
 // Capture → GIF animé : choisir une zone de l'écran, la copier dix fois par seconde. Contient sa propre version Linux.
 pub mod record;
+// Les autres fenêtres (premier plan, bulles, verrouillage) pour « Ondine et les fenêtres ». Contient sa propre version Linux.
+pub mod winlife;
 
 #[cfg(windows)]
 mod drop_target;

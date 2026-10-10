@@ -106,6 +106,8 @@ pub(crate) fn apply_settings(app: &AppHandle, shared: &Shared, new: Settings) ->
     pet::apply(app);
     // Le mode de performance a peut-être changé : les boucles le lisent au tour suivant.
     services::perf::refresh(app);
+    // La place réglée ou « éviter les réglages » a pu changer : l'île revérifie.
+    island::dodge::recompute(app);
     Ok(())
 }
 
@@ -434,6 +436,10 @@ fn create_hidden_window(app: &AppHandle, label: &str, page: &str, title: &str, s
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
                     let _ = hidden.hide();
+                    // Les réglages fermés : l'île rentre chez elle (island/dodge.rs).
+                    if hidden.label() == island::dodge::SETTINGS_LABEL {
+                        island::dodge::settings_window_changed(hidden.app_handle());
+                    }
                 }
             });
         }
@@ -470,6 +476,10 @@ pub fn show_window(app: &AppHandle, label: &str) {
     let _ = win.unminimize();
     let _ = win.show();
     let _ = win.set_focus();
+    // Les réglages s'ouvrent : l'île s'écarte s'ils la cachent (island/dodge.rs).
+    if label == island::dodge::SETTINGS_LABEL {
+        island::dodge::settings_window_changed(app);
+    }
 }
 
 pub fn show_settings_window(app: &AppHandle) {
@@ -480,6 +490,9 @@ pub fn show_settings_window(app: &AppHandle) {
 #[tauri::command]
 fn window_hide(window: tauri::Window) {
     let _ = window.hide();
+    if window.label() == island::dodge::SETTINGS_LABEL {
+        island::dodge::settings_window_changed(window.app_handle());
+    }
 }
 
 #[tauri::command]
@@ -590,6 +603,7 @@ pub fn run() {
             create_hidden_window(&handle, "settings", "settings.html", "Réglages — Ondine", (760.0, 720.0), (560.0, 480.0), true);
             create_hidden_window(&handle, "annotate", "annotate.html", "Annoter — Ondine", (1100.0, 760.0), (640.0, 420.0), false);
             create_pet_window(&handle);
+            island::dodge::watch_settings_window(&handle);
 
             if let Some(win) = island::window(&handle) {
                 platform::make_non_activating(&win);
