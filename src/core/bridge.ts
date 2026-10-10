@@ -77,6 +77,10 @@ export const Bridge = {
   settingsSave: (settings: Settings) => callOrThrow<void>("settings_save", { settings }),
   settingsExport: () => callOrThrow<string>("settings_export"),
   settingsImport: (text: string) => callOrThrow<void>("settings_import", { text }),
+  /** Assistant de premier lancement : choisir un fichier de réglages exporté et l'importer (false si on annule). */
+  settingsImportPick: (title: string) => callOrThrow<boolean>("settings_import_pick", { title }),
+  /** Les logiciels connus installés (ids d'une liste fixe), lus sur le PC sans rien envoyer. */
+  appsDetect: () => call<string[]>("apps_detect"),
   privacyCheckFolder: (path: string) => callOrThrow<string>("privacy_check_folder", { path }),
   /** Boîte « Choisir un dossier » de Windows. null si on annule (ou hors de l'appli). */
   pickFolder: (title?: string) => call<string | null>("dialog_pick_folder", { title: title ?? null }),

@@ -244,7 +244,25 @@
 "choisissez de 1 à 100 éléments": "choisis de 1 à 100 éléments",
 "clé du collègue abîmée : retirez-le puis ajoutez-le de nouveau": "clé du collègue abîmée : retire-le puis ajoute-le de nouveau",
 "dossier trop gros (200 Mo au plus) : envoyez plutôt une archive faite à la main": "dossier trop gros (200 Mo au plus) : envoie plutôt une archive faite à la main",
-"la dictée de Windows n'a pas marché sans dire pourquoi : vérifiez dans Paramètres Windows que « Reconnaissance vocale en ligne » est activée (Confidentialité → Voix), que le micro est permis aux applications de bureau (Confidentialité → Microphone) et que la voix de votre langue est installée (Heure et langue → Voix)": "la dictée de Windows n'a pas marché sans dire pourquoi : vérifie dans Paramètres Windows que « Reconnaissance vocale en ligne » est activée (Confidentialité → Voix), que le micro est permis aux applications de bureau (Confidentialité → Microphone) et que la voix de ta langue est installée (Heure et langue → Voix)"
+"la dictée de Windows n'a pas marché sans dire pourquoi : vérifiez dans Paramètres Windows que « Reconnaissance vocale en ligne » est activée (Confidentialité → Voix), que le micro est permis aux applications de bureau (Confidentialité → Microphone) et que la voix de votre langue est installée (Heure et langue → Voix)": "la dictée de Windows n'a pas marché sans dire pourquoi : vérifie dans Paramètres Windows que « Reconnaissance vocale en ligne » est activée (Confidentialité → Voix), que le micro est permis aux applications de bureau (Confidentialité → Microphone) et que la voix de ta langue est installée (Heure et langue → Voix)",
+"Votre prénom": "Ton prénom",
+"Je vous parle": "Je te parle",
+"en vous vouvoyant": "en te vouvoyant",
+"en vous tutoyant": "en te tutoyant",
+"Bonjour, je suis Ondine. Et vous ?": "Bonjour, je suis Ondine. Et toi ?",
+"Cochez ce qui vous ressemble. Le reste se rallume dans Réglages → Onglets.": "Coche ce qui te ressemble. Le reste se rallume dans Réglages → Onglets.",
+"Vous faites quoi sur ce PC ?": "Tu fais quoi sur ce PC ?",
+"Cliquez sur une mascotte, puis « Adopter ». Vous la changerez quand vous voudrez dans Réglages → Mascotte.": "Clique sur une mascotte, puis « Adopter ». Tu la changeras quand tu voudras dans Réglages → Mascotte.",
+"Vous pourrez aussi attraper l'île par son bord et la poser ailleurs.": "Tu pourras aussi attraper l'île par son bord et la poser ailleurs.",
+"Ondine répond grâce à l'API de Claude. Collez votre clé maintenant, ou plus tard dans Réglages → Parler à Ondine.": "Ondine répond grâce à l'API de Claude. Colle ta clé maintenant, ou plus tard dans Réglages → Parler à Ondine.",
+"Vos réglages de l'autre PC sont là.": "Tes réglages de l'autre PC sont là.",
+"Ondine vous proposera d'autres onglets au bon moment, jamais sans vous demander.": "Ondine te proposera d'autres onglets au bon moment, jamais sans te demander.",
+"Collez d'abord la clé.": "Colle d'abord la clé.",
+"Une clé USB ! Voulez-vous l'onglet Contrôles ?": "Une clé USB ! Tu veux l'onglet Contrôles ?",
+"Voulez-vous l'Étagère ?": "Tu veux l'Étagère ?",
+"Vous ne l'avez pas ouvert depuis 3 semaines. Vous pourrez le rallumer dans Réglages → Onglets.": "Tu ne l'as pas ouvert depuis 3 semaines. Tu pourras le rallumer dans Réglages → Onglets.",
+"Votre prénom, ce que vous faites sur ce PC (les onglets), la mascotte, la place de l'île et la clé de Parler à Ondine.": "Ton prénom, ce que tu fais sur ce PC (les onglets), la mascotte, la place de l'île et la clé de Parler à Ondine.",
+"Aucune carte : une île minimale de 3 onglets, qui s'enrichira avec vos réponses.": "Aucune carte : une île minimale de 3 onglets, qui s'enrichira avec tes réponses."
 },
 "patterns": [
 ["^L'audio de votre voix partira vers (.+), avec votre clé\\.$", "L'audio de ta voix partira vers $1, avec ta clé."],
@@ -316,10 +334,6 @@
 [
 "^(.+?)\\ vous\\ demande$",
 "$1 te demande"
-],
-[
-"^Je vis en haut de l'écran : passez la souris tout en haut, ou (.+)\\. Mon icône est près de l'horloge \\(clic droit : Réglages, Quitter\\)\\.$",
-"Je vis en haut de l'écran : passe la souris tout en haut, ou $1. Mon icône est près de l'horloge (clic droit : Réglages, Quitter)."
 ],
 [
 "^(.+?)\\ notifications\\ pendant\\ votre\\ concentration$",
@@ -400,6 +414,14 @@
 [
 "^adresse de (.+) inconnue : il doit être allumé et visible, ou ajoutez-le par son adresse IP$",
 "adresse de $1 inconnue : il doit être allumé et visible, ou ajoute-le par son adresse IP"
+],
+[
+"^Le bilan de votre semaine, (.+)$",
+"Le bilan de ta semaine, $1"
+],
+[
+"^Bonjour (.+) ! Je suis Ondine\\. Posez-moi une question sur votre PC, collez une erreur, ou montrez-moi un fichier : je vous aide\\.$",
+"Bonjour $1 ! Je suis Ondine. Pose-moi une question sur ton PC, colle une erreur, ou montre-moi un fichier : je t'aide."
 ]
 ]
 }

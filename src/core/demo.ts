@@ -22,7 +22,7 @@ export function demoOn(): boolean {
 }
 
 /** Les scènes que la fenêtre de réglages peut demander (sujet « demo.scene »). */
-export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "timer-ring", "voice", "voice-error", "mascot-talk", "ai-outage", "team-visit", "island-dodge"] as const;
+export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "timer-ring", "voice", "voice-error", "mascot-talk", "ai-outage", "team-visit", "island-dodge", "setup"] as const;
 export type DemoScene = (typeof DEMO_SCENES)[number];
 
 /**
@@ -911,6 +911,11 @@ function playScene(bus: Bus, scene: string) {
     case "team-visit":
       // La mascotte d'une collègue traverse l'île (module Équipe).
       bus.inject("team.event", { kind: "visit", from: TEAM_PEERS[0], note: "Le café est prêt !" }, "demo");
+      break;
+    case "setup":
+      // L'assistant de premier lancement, dans l'île (core/setup.ts) : en démo,
+      // les cartes se pré-cochent d'après de faux logiciels et rien n'est enregistré.
+      bus.inject("app.setup", null, "demo");
       break;
     case "island-dodge":
       // L'île s'écarte de la fenêtre de réglages (forme et peur d'Ondine ; la

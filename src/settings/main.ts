@@ -18,6 +18,7 @@ import { errorText } from "../core/log";
 import type { ModuleManifest } from "../core/module-types";
 import { settingsStore } from "../core/settings-store";
 import { applyTabOrder, mergeOrder } from "../core/tab-order";
+import { cleanFirstName } from "../core/setup-plan";
 import type { Settings } from "../core/types";
 import { el } from "../island/dom";
 import { icon as iconNode } from "../island/icon";
@@ -167,7 +168,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "⚙️",
     label: "Général",
     sub: "L'écran, le repli de l'île, les notifications et le journal.",
-    keywords: ["Langue", "Language", "Lancer avec Windows", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Mises à jour automatiques", "Version installée", "Niveau du journal", "Dossier du journal", "Signaler un problème", "Nouveautés", "Version", "Ressources utilisées", "Performances", "Économie d'énergie automatique sur batterie", "Mode utilisé", "S'adresser à moi", "Tutoiement", "Vouvoiement", "Mode démo"],
+    keywords: ["Langue", "Language", "Lancer avec Windows", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Mises à jour automatiques", "Version installée", "Niveau du journal", "Dossier du journal", "Signaler un problème", "Nouveautés", "Version", "Ressources utilisées", "Performances", "Économie d'énergie automatique sur batterie", "Mode utilisé", "S'adresser à moi", "Tutoiement", "Vouvoiement", "Mode démo", "Prénom", "Premiers pas", "Refaire l'assistant"],
     render: general,
     subs: () => [
       { id: "start", label: "Langue et démarrage" },
@@ -192,12 +193,13 @@ const ISLAND_PAGES: Page[] = [
     icon: "🗂️",
     label: "Onglets",
     sub: "Les modules actifs et l'ordre de leurs onglets dans l'île.",
-    keywords: ["Ordre des onglets", "Activer un module", "Désactiver un module", "Ordre d'origine", "Astuces à la première ouverture d'un onglet", "Revoir les astuces"],
+    keywords: ["Ordre des onglets", "Activer un module", "Désactiver un module", "Ordre d'origine", "Astuces à la première ouverture d'un onglet", "Revoir les astuces", "Propositions d'Ondine", "Revoir les propositions"],
     render: tabs,
     subs: () => [
       { id: "order", label: "Ordre des onglets" },
       ...(ALL_MODULES.some((m) => !m.views?.expanded) ? [{ id: "notab", label: "Modules sans onglet" }] : []),
       { id: "tips", label: "Astuces" },
+      { id: "suggest", label: "Propositions" },
     ],
   },
   {
@@ -885,6 +887,7 @@ function general(main: HTMLElement) {
         "Automatique : la langue choisie à l'installation, sinon celle de Windows. Les fenêtres se rechargent.",
       ),
       addressRow(s),
+      ...firstRunRows(s),
       row(
         "Lancer avec Windows",
         toggle(s.general.autostart !== false, (v) => save((d) => (d.general.autostart = v)), "Lancer avec Windows"),
@@ -1060,6 +1063,7 @@ function demoGroup(): HTMLElement {
                 scene("team-visit", "Visite d'une collègue"),
                 scene("ai-outage", "Panne d'un service IA"),
                 scene("island-dodge", "L'île s'écarte"),
+                scene("setup", "Premier lancement"),
               ),
               "La notification arrive dans l'île : lancez l'enregistrement avant de cliquer.",
             ),
@@ -1243,6 +1247,7 @@ function tabs(main: HTMLElement) {
     main.append(inSub("notab", sans));
   }
   main.append(inSub("tips", tipsGroup()));
+  main.append(inSub("suggest", suggestionsGroup()));
 }
 
 /**
@@ -1270,6 +1275,63 @@ function tipsGroup(): HTMLElement {
       "La première fois que vous ouvrez un onglet, une petite bulle d'Ondine explique son geste principal.",
     ),
     row("Revoir les astuces", el("div", { class: "chips" }, again, status)),
+  ]);
+}
+
+// ── Premier lancement (src/core/setup.ts, src/core/suggestions.ts) ───────────
+
+/**
+ * Général : le prénom donné à l'assistant de premier lancement (« Bonjour
+ * Simon ! », le bilan, la bulle du bureau), et « Refaire l'assistant », qui
+ * le rouvre dans l'île (sujet « app.setup »).
+ */
+function firstRunRows(s: Settings): HTMLElement[] {
+  const name = el("input", { type: "text", class: "text", maxlength: 40, placeholder: "Votre prénom", "aria-label": "Prénom", autocomplete: "given-name" }) as HTMLInputElement;
+  name.value = s.general.firstName ?? "";
+  name.addEventListener("change", () => save((d) => (d.general.firstName = cleanFirstName(name.value))));
+  const status = el("span", { class: "muted", "aria-live": "polite" }, "");
+  const again = el(
+    "button",
+    {
+      class: "btn small",
+      onclick: () => {
+        bus.emit("app.setup", null, "settings");
+        status.textContent = "L'assistant s'ouvre dans l'île.";
+      },
+    },
+    "Refaire l'assistant",
+  );
+  return [
+    row("Prénom", name, "Ondine dit bonjour avec, dans l'île, le bilan de la semaine et la bulle du bureau. Il reste sur ce PC."),
+    row("Premiers pas", el("div", { class: "chips" }, again, status), "Votre prénom, ce que vous faites sur ce PC (les onglets), la mascotte, la place de l'île et la clé de Parler à Ondine."),
+  ];
+}
+
+/**
+ * Onglets : les propositions d'Ondine (le bon onglet au bon moment, masquer
+ * un onglet oublié), jamais faites toutes seules, une fois chacune.
+ */
+function suggestionsGroup(): HTMLElement {
+  const s = settingsStore.current;
+  const status = el("span", { class: "muted", "aria-live": "polite" }, "");
+  const again = el(
+    "button",
+    {
+      class: "btn small",
+      onclick: () => {
+        save((d) => (d.island.suggested = []));
+        status.textContent = "Ondine pourra refaire ses propositions.";
+      },
+    },
+    "Revoir les propositions",
+  );
+  return group("Propositions", [
+    row(
+      "Propositions d'Ondine",
+      toggle(s.island.suggestions !== false, (v) => save((d) => (d.island.suggestions = v)), "Propositions d'Ondine"),
+      "À la première clé USB, la première visio ou le premier fichier glissé sur l'île, Ondine propose l'onglet qui va avec. Un onglet jamais ouvert depuis 3 semaines : elle propose de le masquer. Toujours à accepter, une seule fois chacune, compté sur ce PC.",
+    ),
+    row("Revoir les propositions", el("div", { class: "chips" }, again, status)),
   ]);
 }
 

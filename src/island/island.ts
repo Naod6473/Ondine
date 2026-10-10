@@ -14,6 +14,7 @@ import { onPerfChange, pacedInterval, perfMode } from "../core/perf";
 import type { ModuleRegistry } from "../core/module-registry";
 import { isAlert, type IslandNotification, type NotificationQueue } from "../core/notifications";
 import { settingsStore } from "../core/settings-store";
+import { noteTabOpen } from "../core/suggestions";
 import { applyTabOrder, mergeOrder } from "../core/tab-order";
 import type { Settings } from "../core/types";
 import { EasterEggs } from "../eggs/eggs";
@@ -1252,6 +1253,8 @@ export class Island {
     if (this.activeTab) {
       this.unmountView = this.registry.mountView(this.activeTab, "expanded", body);
       this.tips.show(this.activeTab, this.tipOf(this.activeTab), this.content);
+      // Le jour où cet onglet a été ouvert (proposition de masquer un onglet oublié).
+      noteTabOpen(this.activeTab);
     } else {
       const benched = this.registry.benchedNames();
       body.append(
@@ -1345,6 +1348,7 @@ export class Island {
     this.renderedKey = ["expanded", id, "", ""].join("|");
     this.unmountView = this.registry.mountView(id, "expanded", body);
     this.tips.show(id, this.tipOf(id), this.content);
+    noteTabOpen(id);
 
     if (reducedMotion()) {
       old.remove();

@@ -153,6 +153,43 @@ fn settings_import(app: AppHandle, shared: State<Shared>, text: String) -> Resul
     Ok(())
 }
 
+/// « Reprendre la configuration de mon autre PC » (assistant de premier
+/// lancement, dans l'île) : la boîte « Ouvrir » de Windows, puis le fichier de
+/// réglages exporté est lu et importé comme par la fenêtre de réglages.
+/// `Ok(false)` si on annule.
+#[tauri::command]
+async fn settings_import_pick(app: AppHandle, window: Window, title: Option<String>) -> Result<bool, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = window
+        .dialog()
+        .file()
+        .set_parent(&window)
+        .set_title(title.unwrap_or_else(|| "Choisir un fichier de réglages".into()))
+        .add_filter("Réglages d'Ondine", &["json"])
+        .blocking_pick_file();
+    let Some(path) = picked.and_then(|p| p.into_path().ok()) else { return Ok(false) };
+    let shared = app.state::<Shared>();
+    // Les dossiers exclus (Confidentialité) restent intouchables, même ici.
+    let path = privacy::check_path(&shared.settings.locked().clone(), &path.to_string_lossy())?;
+    let meta = std::fs::metadata(&path).map_err(|e| e.to_string())?;
+    if meta.len() > 1_000_000 {
+        return Err("fichier trop gros pour être un fichier de réglages".into());
+    }
+    let text = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let imported = settings::parse(&text)?;
+    apply_settings(&app, &shared, imported)?;
+    log::info("réglages importés (assistant de premier lancement)");
+    Ok(true)
+}
+
+/// Les logiciels connus installés sur ce PC (ids d'une liste fixe : « vscode »,
+/// « spotify »…), pour pré-cocher les cartes de l'assistant. Tout reste sur le
+/// PC (services/apps.rs). Lu hors du fil principal (registre, menu Démarrer).
+#[tauri::command]
+async fn apps_detect() -> Vec<String> {
+    tauri::async_runtime::spawn_blocking(services::apps::detect).await.unwrap_or_default()
+}
+
 /// Vérifie un dossier à exclure avant de l'ajouter à la liste.
 #[tauri::command]
 fn privacy_check_folder(path: String) -> Result<String, String> {
@@ -567,6 +604,8 @@ pub fn run() {
             settings_save,
             settings_export,
             settings_import,
+            settings_import_pick,
+            apps_detect,
             privacy_check_folder,
             dialog_pick_folder,
             dialog_pick_file,
@@ -637,6 +676,8 @@ pub fn run() {
             // Profils : le menu de l'icône, et le changement automatique (heure, Wi-Fi).
             tray::sync_profiles(&handle, &loaded.profiles);
             services::profiles::spawn_auto(handle.clone());
+            // Les bons moments pour proposer un onglet (première clé USB, première visio).
+            services::hints::spawn_watch(handle.clone());
 
             log::info(format!("--- Ondine {} démarrée ---", env!("CARGO_PKG_VERSION")));
             if platform::is_elevated() {

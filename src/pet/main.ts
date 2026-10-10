@@ -36,6 +36,7 @@ import { NotificationQueue, type IslandNotification } from "../core/notification
 import { startPerf } from "../core/perf";
 import { startScrollbars } from "../island/scrollbars";
 import { settingsStore } from "../core/settings-store";
+import { helloText } from "../core/setup-plan";
 import type { Settings } from "../core/types";
 import { el } from "../island/dom";
 import { settle } from "../island/fit";
@@ -81,6 +82,8 @@ class Pet {
   private mascotId = "";
   private activeTab = "";
   private unmount: () => void = () => {};
+  /** Le jour du dernier « Bonjour Simon ! » de la bulle (une fois par jour). */
+  private helloDay = "";
   private shownTabs = "";
   private press: { x: number; y: number; dragging: boolean } | null = null;
   private hoverTimer = 0;
@@ -336,6 +339,7 @@ class Pet {
         void Bridge.petBubble(fitted.w, fitted.h);
       }
       this.mascot?.activity();
+      this.sayHello();
       // Le champ de l'onglet (Parler à Ondine, Lanceur) prend le clavier.
       requestAnimationFrame(() => this.bubble.querySelector<HTMLElement>(".view-expanded input, .view-expanded textarea")?.focus());
     } else {
@@ -345,6 +349,19 @@ class Pet {
       this.shownTabs = "";
       this.resetSize();
     }
+  }
+
+  /**
+   * La première ouverture de la bulle dans la journée : « Bonjour Simon ! » en
+   * haut de la bulle, avec le prénom donné à l'assistant de premier lancement
+   * (rien sans prénom).
+   */
+  private sayHello() {
+    const name = settingsStore.current.general.firstName ?? "";
+    const today = new Date().toDateString();
+    if (!name.trim() || this.helloDay === today || this.notifications.current()) return;
+    this.helloDay = today;
+    this.notifications.push({ moduleId: "pet", title: helloText(name), icon: "👋", priority: "low", durationMs: 3500, key: "pet-hello" });
   }
 
   /** Le côté de la bulle (décidé par le Rust d'après la place sur l'écran). */

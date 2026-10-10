@@ -49,6 +49,11 @@ export interface NotificationRequest {
    * disparaît). Le panneau « Quoi de neuf » et ses mascottes animées.
    */
   content?: (host: HTMLElement) => () => void;
+  /**
+   * Appelé quand on la ferme (×, Échap, ou `dismiss`), pas quand une autre de
+   * même `key` la remplace. L'assistant de premier lancement : fermer = passer.
+   */
+  onDismiss?: () => void;
 }
 
 export interface IslandNotification extends NotificationRequest {
@@ -141,11 +146,17 @@ export class NotificationQueue {
 
   /** Ferme une notification (affichée ou en attente). */
   dismiss(id: number) {
+    const gone = this.shown?.id === id ? this.shown : this.queue.find((q) => q.id === id);
     this.queue = this.queue.filter((q) => q.id !== id);
     if (this.shown?.id === id) {
       this.shown = null;
       this.clearTimer();
       this.showNext();
+    }
+    try {
+      gone?.onDismiss?.();
+    } catch (err) {
+      console.error("[notifications] onDismiss en erreur", err);
     }
   }
 

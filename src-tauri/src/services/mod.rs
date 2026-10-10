@@ -13,6 +13,8 @@
 // - ics_calendars : la liste des calendriers de l'Agenda, sa migration, la fusion
 // - perf        : les modes de performance (haute, équilibrée, éco) et le rythme des boucles
 // - lan         : le réseau local (cartes IPv4, adresses de diffusion, adresse privée du PC)
+// - apps        : les logiciels connus installés (assistant de premier lancement), sans rien envoyer
+// - hints       : les bons moments pour proposer un onglet (première clé USB, première visio)
 
 pub mod bus;
 pub mod credentials;
@@ -27,3 +29,5 @@ pub mod search;
 pub mod profiles;
 pub mod perf;
 pub mod lan;
+pub mod apps;
+pub mod hints;

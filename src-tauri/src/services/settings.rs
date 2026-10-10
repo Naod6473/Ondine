@@ -67,6 +67,10 @@ pub struct General {
     /// aussi pour un fichier d'avant ce réglage) ou "full" (tout). Le front
     /// décide de ce qui est essentiel (src/settings/visibility.ts).
     pub settings_mode: String,
+    /// Le prénom donné à l'assistant de premier lancement (src/core/setup.ts) :
+    /// « Bonjour Simon ! », le bilan de la semaine, la bulle du bureau. Vide =
+    /// pas de prénom. Reste sur le PC, jamais envoyé.
+    pub first_name: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -116,6 +120,18 @@ pub struct IslandPrefs {
     /// L'île s'écarte de la fenêtre de réglages quand elle la cacherait
     /// (island/dodge.rs), puis revient à sa place à la fermeture.
     pub avoid_settings: bool,
+    /// Ondine propose d'ajouter le bon onglet au bon moment (première clé USB,
+    /// première visio, premier fichier glissé) et de masquer un onglet jamais
+    /// ouvert depuis 3 semaines (src/core/suggestions.ts). Jamais tout seul.
+    pub suggestions: bool,
+    /// Les propositions déjà faites, une fois chacune : "usb", "visio", "drop",
+    /// "hide-<onglet>".
+    pub suggested: Vec<String>,
+    /// Le dernier jour (jours depuis le 1er janvier 1970) où chaque onglet a été
+    /// ouvert. Compteur local, pour la proposition de masquer un onglet.
+    pub tab_seen_at: BTreeMap<String, u32>,
+    /// Le jour où ce compte a commencé (fin de l'assistant) ; 0 = pas encore.
+    pub usage_since: u32,
 }
 
 fn default_motion() -> String {
@@ -203,7 +219,7 @@ impl Default for Settings {
 
 impl Default for General {
     fn default() -> Self {
-        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into(), welcomed: false, demo: false, auto_update: true, autostart: true, perf_mode: "balanced".into(), eco_on_battery: true, address: "vous".into(), last_seen_version: String::new(), settings_mode: "simple".into() }
+        Self { screen: "primary".into(), log_level: "info".into(), language: "auto".into(), welcomed: false, demo: false, auto_update: true, autostart: true, perf_mode: "balanced".into(), eco_on_battery: true, address: "vous".into(), last_seen_version: String::new(), settings_mode: "simple".into(), first_name: String::new() }
     }
 }
 
@@ -229,6 +245,10 @@ impl Default for IslandPrefs {
             tips: true,
             tips_seen: Vec::new(),
             avoid_settings: true,
+            suggestions: true,
+            suggested: Vec::new(),
+            tab_seen_at: BTreeMap::new(),
+            usage_since: 0,
         }
     }
 }
@@ -316,6 +336,14 @@ impl Settings {
         m.treasures.retain(|t| t.len() <= 32 && !t.is_empty() && t.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-') && seen.insert(t.clone()));
         m.treasures.truncate(64);
         clean_ids(&mut self.island.tips_seen, 64);
+        clean_ids(&mut self.island.suggested, 64);
+        let seen_at = &mut self.island.tab_seen_at;
+        seen_at.retain(|id, _| id.len() <= 32 && !id.is_empty() && id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-'));
+        while seen_at.len() > 64 {
+            let Some(first) = seen_at.keys().next().cloned() else { break };
+            seen_at.remove(&first);
+        }
+        self.general.first_name = clean_first_name(&self.general.first_name);
         clean_ids(&mut self.mascot.pet_tabs, 16);
         if !crate::pet::HOTKEYS.contains(&self.mascot.pet_hotkey.as_str()) {
             self.mascot.pet_hotkey.clear();
@@ -350,6 +378,11 @@ fn is_hex_color(s: &str) -> bool {
 
 /// Une liste d'ids courts ([a-z0-9-], 32 caractères au plus), sans doublon ni
 /// vide, `max` au plus : un réglage-liste ne grossit jamais sans fin.
+/// Un prénom : sans caractère de contrôle, 40 caractères au plus, sans espaces autour.
+pub fn clean_first_name(name: &str) -> String {
+    name.chars().filter(|c| !c.is_control()).take(40).collect::<String>().trim().to_string()
+}
+
 fn clean_ids(list: &mut Vec<String>, max: usize) {
     let mut seen = std::collections::HashSet::new();
     list.retain(|t| t.len() <= 32 && !t.is_empty() && t.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-') && seen.insert(t.clone()));
@@ -493,6 +526,23 @@ mod tests {
         assert_eq!(s.mascot.surprises, "all");
         assert_eq!(s.mascot.treasures, ["split", "code-rain"]);
         assert_eq!(parse(r#"{ "version": 2, "mascot": { "surprises": "none" } }"#).unwrap().mascot.surprises, "none");
+    }
+
+    #[test]
+    fn first_name_and_suggestions_are_checked() {
+        let s = parse(r#"{ "version": 2 }"#).unwrap();
+        assert_eq!(s.general.first_name, "");
+        assert!(s.island.suggestions);
+        assert!(s.island.suggested.is_empty() && s.island.tab_seen_at.is_empty());
+        assert_eq!(s.island.usage_since, 0);
+        let long = "x".repeat(80);
+        let s = parse(&format!(r#"{{ "version": 2, "general": {{ "firstName": "  Si\u0007mon  " }}, "island": {{ "suggested": ["usb", "hide-notes", "Bad!", "usb"], "tabSeenAt": {{ "notes": 20500, "Bad Id": 3, "{long}": 1 }}, "usageSince": 20400 }} }}"#)).unwrap();
+        assert_eq!(s.general.first_name, "Simon");
+        assert_eq!(s.island.suggested, ["usb", "hide-notes"]);
+        assert_eq!(s.island.tab_seen_at.len(), 1);
+        assert_eq!(s.island.tab_seen_at["notes"], 20500);
+        assert_eq!(s.island.usage_since, 20400);
+        assert_eq!(clean_first_name(&"é".repeat(60)).chars().count(), 40);
     }
 
     #[test]

@@ -545,6 +545,245 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* ── L'assistant de premier lancement (src/island/setup-panel.ts) ────────────
+   Dans l'alerte de l'île : le titre de la carte s'efface (chaque étape a le
+   sien), et l'île prend la hauteur de l'étape (data-step) avec ses ressorts. */
+.notif.custom:has(.setup) > .notif-icon,
+.notif.custom:has(.setup) .notif-title {
+  display: none;
+}
+.notif.custom:has(.setup) .notif-text {
+  flex-basis: calc(100% - 30px);
+}
+.notif.custom:has(.setup) .notif-actions {
+  flex-basis: auto;
+  align-self: flex-start;
+}
+.island[data-state="alert"]:has(.setup) {
+  width: 640px;
+  height: 224px;
+}
+.island[data-state="alert"]:has(.setup[data-step="hello"]) {
+  height: 252px;
+}
+.island[data-state="alert"]:has(.setup[data-step="cards"]),
+.island[data-state="alert"]:has(.setup[data-step="mascot"]) {
+  height: 292px;
+}
+.island[data-state="alert"]:has(.setup[data-step="place"]) {
+  height: 236px;
+}
+.island[data-state="alert"]:has(.setup[data-step="done"]) {
+  height: 214px;
+}
+.setup {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 6px;
+  min-height: 0;
+}
+.setup-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.setup-dots {
+  position: relative;
+  display: inline-flex;
+  gap: 6px;
+  padding: 3px;
+}
+.setup-dots[hidden] {
+  display: none;
+}
+.setup-dots .tab-pill {
+  background: var(--accent);
+  box-shadow: none;
+  opacity: 0.9;
+}
+.setup-dot {
+  position: relative;
+  z-index: 1;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  transition: background 250ms ease;
+}
+.setup-dot.on {
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.setup-count {
+  color: var(--muted);
+  font-size: 11px;
+}
+.setup-stage {
+  display: grid;
+  min-height: 0;
+}
+.setup-stage > .setup-step {
+  grid-area: 1 / 1;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+}
+.setup-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+.setup-text {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.setup-note {
+  color: var(--muted);
+  font-size: 11px;
+  min-height: 1em;
+}
+.setup-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.setup-row.end {
+  justify-content: flex-end;
+}
+.setup-label {
+  color: var(--muted);
+  font-size: 12px;
+  min-width: 96px;
+}
+.setup .segmented {
+  margin-bottom: 0;
+}
+.setup-name {
+  flex: 1;
+  min-width: 0;
+  max-width: 320px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--island-fg);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 200ms ease, background 200ms ease;
+}
+.setup-name:focus {
+  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  background: rgba(255, 255, 255, 0.09);
+}
+.setup .link-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.setup .link-btn:hover {
+  text-decoration: underline;
+}
+.setup .btn.ghost {
+  background: transparent;
+}
+.setup-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.setup-foot .spacer {
+  flex: 1;
+}
+.setup-foot [hidden] {
+  display: none;
+}
+.setup-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.setup-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease;
+}
+.setup-card:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+.setup-card.on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.setup-card-icon {
+  flex: none;
+  font-size: 18px;
+}
+.setup-card-text {
+  display: grid;
+  min-width: 0;
+}
+.setup-card-label {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.setup-card-desc {
+  color: var(--muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.setup-found {
+  position: absolute;
+  top: 3px;
+  right: 6px;
+  color: var(--accent);
+  font-size: 10px;
+}
+.setup-preview {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  min-height: 24px;
+}
+.setup-tab {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 14px;
+}
+.setup-tab .icon-img {
+  width: 16px;
+  height: 16px;
+}
+.setup-mascots .wn-panel {
+  margin-top: 0;
+}
+
 .notif.prio-critical .notif-title {
   color: #ff8a8a;
 }

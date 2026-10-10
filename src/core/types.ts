@@ -30,6 +30,8 @@ export interface Settings {
     lastSeenVersion?: string;
     /** Fenêtre de réglages : "simple" (l'essentiel) ou "full" (tout), voir src/settings/visibility.ts. */
     settingsMode?: "simple" | "full";
+    /** Le prénom donné à l'assistant de premier lancement (src/core/setup.ts) ; vide = aucun. */
+    firstName?: string;
   };
   island: {
     /** Replier l'île quand la souris n'est plus dessus depuis ce nombre de secondes. */
@@ -67,6 +69,14 @@ export interface Settings {
     tipsSeen: string[];
     /** L'île s'écarte de la fenêtre de réglages (src-tauri/src/island/dodge.rs). */
     avoidSettings?: boolean;
+    /** Ondine propose le bon onglet au bon moment, et de masquer un onglet oublié (src/core/suggestions.ts). */
+    suggestions?: boolean;
+    /** Les propositions déjà faites (une fois chacune) : "usb", "visio", "drop", "hide-<onglet>". */
+    suggested?: string[];
+    /** Le dernier jour (jours depuis 1970) où chaque onglet a été ouvert : compteur local. */
+    tabSeenAt?: Record<string, number>;
+    /** Le jour où ce compte a commencé (fin de l'assistant) ; 0 = pas encore. */
+    usageSince?: number;
   };
   mascot: {
     enabled: boolean;
@@ -158,7 +168,7 @@ export interface Profiles {
 export function defaultSettings(): Settings {
   return {
     version: 2,
-    general: { screen: "primary", logLevel: "info", language: "auto", welcomed: false, demo: false, autoUpdate: true, autostart: true, perfMode: "balanced", ecoOnBattery: true, address: "vous", lastSeenVersion: "", settingsMode: "simple" },
+    general: { screen: "primary", logLevel: "info", language: "auto", welcomed: false, demo: false, autoUpdate: true, autostart: true, perfMode: "balanced", ecoOnBattery: true, address: "vous", lastSeenVersion: "", settingsMode: "simple", firstName: "" },
     island: {
       collapseSecs: 1.5,
       notificationSecs: 6,
@@ -179,6 +189,10 @@ export function defaultSettings(): Settings {
       tips: true,
       tipsSeen: [],
       avoidSettings: true,
+      suggestions: true,
+      suggested: [],
+      tabSeenAt: {},
+      usageSince: 0,
     },
     mascot: { enabled: true, id: "goutte-gomme", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5, surprises: "all", treasures: [], color: "auto", hands: "always", wearHead: "none", wearEyes: "none", wearNeck: "none", customColor: "#4da3ff", size: "normal", calm: false, pet: false, petX: -1, petY: -1, petOnTop: true, petTabs: ["askclaude", "launcher", "agents"], petHotkey: "Ctrl+Alt+B", petWander: true },
     privacy: { excludedFolders: [] },
