@@ -69,6 +69,19 @@ md-5 = "0.10"
 # crate image (aucun code en plus), appelé directement pour n'écrire que la
 # partie de l'image qui a changé d'une image à l'autre (fichier bien plus léger).
 gif = "0.14"
+# Module Équipe (Ondine ↔ Ondine sur le réseau local) : le chiffrement.
+#   - snow : le protocole Noise (celui de WireGuard, WhatsApp, Lightning),
+#     ici « IK » entre collègues appairés (authentifiés par leurs clés X25519,
+#     secret de transfert) et « XXpsk3 » pendant l'appairage. Pur Rust,
+#     primitives RustCrypto (X25519 de curve25519-dalek, ChaCha20-Poly1305,
+#     BLAKE2s). On n'invente aucune cryptographie.
+#   - spake2 (RustCrypto) : transforme le code à 6 chiffres de l'appairage en
+#     clé commune sans jamais l'envoyer ; un intrus n'a qu'UN essai par code
+#     (pas d'attaque hors ligne possible, comme dans magic-wormhole).
+snow = { version = "0.10", default-features = false, features = ["std", "use-chacha20poly1305", "use-blake2", "use-curve25519", "use-getrandom"] }
+spake2 = "0.4"
+# La clé publique X25519 recalculée depuis la clé privée gardée (déjà compilée pour snow).
+curve25519-dalek = "4"
 
 [target.'cfg(windows)'.dependencies]
 # Gestionnaire d'identifiants Windows. Version 3 volontairement : la 4 a changé d'API.

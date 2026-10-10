@@ -39,6 +39,10 @@ mod shelf_phone;
 mod shelf_hash;
 mod shelf_tools;
 mod system;
+// Équipe : les Ondine du réseau local se parlent (découverte, appairage, échanges chiffrés).
+mod team;
+// Son protocole (messages, chiffrement, appairage), en code pur testé.
+mod team_proto;
 mod terminal;
 mod clipboard_qr;
 mod weather;
