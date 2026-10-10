@@ -4,6 +4,7 @@
 // de recopier quinze fois le même manifeste, le catalogue (catalog.ts) les
 // fabrique à partir de cette liste.
 
+import type { GumTint } from "./renderers/gum-draw";
 import type { MascotManifest } from "./types";
 
 export interface GumCousin {
@@ -34,3 +35,27 @@ export const GUM_FAMILY: GumCousin[] = [
 export function cousinManifest(base: MascotManifest, c: GumCousin): MascotManifest {
   return { ...base, id: c.id, name: c.name, gum: { shape: c.shape } };
 }
+
+/**
+ * La couleur de chaque mascotte sur le podium des Réglages : toutes
+ * différentes (sinon Soleil, Ciel et Météo, ou Cœur et Champignon, se
+ * confondent ; et une couleur choisie les rendrait toutes pareilles). Celle
+ * de la première marche, qui vit dans l'île, garde la couleur des réglages.
+ */
+export const PODIUM_TINT: Record<string, GumTint> = {
+  "goutte-gomme": "blue",
+  "gomme-guimauve": "mint",
+  "gomme-dragee": "pink",
+  "gomme-berlingot": "violet",
+  "gomme-etoile": "gold",
+  "gomme-soleil": "sun",
+  "gomme-lune": "moon",
+  "gomme-nuage": "cloud",
+  "gomme-coeur": "red",
+  "gomme-fleur": "lilac",
+  "gomme-champignon": "coral",
+  "gomme-fantome": "ghost",
+  "gomme-flamme": "orange",
+  "gomme-ciel": "night",
+  "gomme-meteo": "green",
+};

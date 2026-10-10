@@ -2,7 +2,7 @@
 // les clics traversants et la lecture de la souris.
 //
 // Un PC n'a pas d'encoche : l'île est une forme noire dessinée au bord de
-// l'écran (en haut, à gauche ou à droite, voir `Placement`), dans une fenêtre
+// l'écran (en haut, en bas, à gauche ou à droite, voir `Placement`), dans une fenêtre
 // sans bordure, transparente, toujours au premier plan, qui ne prend pas le
 // focus. La fenêtre a deux tailles :
 //   - « bande » (240 × 6, ou 6 × 240 sur un côté) quand l'île est cachée : une
@@ -16,13 +16,16 @@
 //
 // On déplace l'île en l'attrapant par son bord extérieur (island.ts appelle
 // `drag_start`) : la fenêtre suit la souris, puis au lâcher elle s'aimante au
-// bord le plus proche (haut, gauche ou droite), et dans un coin ou au centre
+// bord le plus proche (haut, bas, gauche ou droite), et dans un coin ou au centre
 // si on la lâche près d'eux.
 //
 // Clics traversants : Tauri 2 ne sait rendre transparente aux clics que la fenêtre
 // ENTIÈRE (set_ignore_cursor_events). On lit donc la souris ~60 fois par seconde
 // côté Rust et on bascule ce réglage quand elle entre ou sort de la forme de l'île.
 // Technique reprise de Coucou (github.com/Louis-CFM/coucou, MIT).
+
+pub mod avoid;
+pub mod dodge;
 
 use crate::sync::LockExt;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -77,6 +80,13 @@ impl Placement {
         }
     }
 
+    /// La place où doit être l'île maintenant : la place provisoire si elle
+    /// s'écarte d'une fenêtre (dodge.rs), sinon la place réglée.
+    fn current(app: &AppHandle) -> Placement {
+        let provisional = app.try_state::<crate::Shared>().and_then(|s| s.gate.dodge.place());
+        provisional.unwrap_or_else(|| Placement::from_settings(app))
+    }
+
     fn side(&self) -> bool {
         self.edge == "left" || self.edge == "right"
     }
@@ -97,11 +107,15 @@ impl Placement {
 /// Le choix du bord et de la place au lâcher, d'après le centre de l'île
 /// (`cx`, `cy` en px logiques, depuis le coin haut gauche de l'écran `w` × `h`).
 pub fn snap(cx: f64, cy: f64, w: f64, h: f64) -> Placement {
-    // Le bord le plus proche : en haut, à gauche ou à droite (pas en bas : la
-    // barre des tâches y est souvent).
-    let (edge, pos, len) = if cy <= cx && cy <= w - cx {
+    // Le bord le plus proche : en haut, en bas, à gauche ou à droite. En bas,
+    // l'île se pose au-dessus de la barre des tâches (voir `target_frame`).
+    let (top, bottom, left, right) = (cy, h - cy, cx, w - cx);
+    let nearest = top.min(bottom).min(left).min(right);
+    let (edge, pos, len) = if top == nearest {
         ("top", cx, w)
-    } else if cx <= w - cx {
+    } else if bottom == nearest {
+        ("bottom", cx, w)
+    } else if left == nearest {
         ("left", cy, h)
     } else {
         ("right", cy, h)
@@ -250,6 +264,13 @@ pub struct PollGate {
     /// souris SUR l'île visible. Les agents s'en servent pour n'accepter
     /// « Oui, autoriser » qu'après un geste réel (voir modules/agents.rs).
     last_click: Mutex<Option<Instant>>,
+    /// L'île qui s'écarte des fenêtres (place provisoire, ressort).
+    pub dodge: dodge::Dodge,
+    /// Pendant un déplacement : les dernières positions de la souris (px
+    /// physiques, instant), pour reconnaître un lancer (module Ondine et les
+    /// fenêtres), et la fenêtre au premier plan quand on a attrapé l'île.
+    drag_trail: Mutex<Vec<(f64, f64, Instant)>>,
+    drag_fg: Mutex<Option<isize>>,
 }
 
 impl PollGate {
@@ -266,6 +287,9 @@ impl PollGate {
             frame: Mutex::new(None),
             frame_gen: AtomicU64::new(0),
             last_click: Mutex::new(None),
+            dodge: dodge::Dodge::default(),
+            drag_trail: Mutex::new(Vec::new()),
+            drag_fg: Mutex::new(None),
         }
     }
 
@@ -330,6 +354,25 @@ pub fn screen_point_on_island(app: &AppHandle, gate: &PollGate, px: f64, py: f64
     on_shape(&gate.rect.locked(), x, y, 24.0)
 }
 
+/// Le rectangle de l'île à l'écran (px physiques : gauche, haut, droite, bas),
+/// la bande de réveil quand elle est cachée ; None si inconnu.
+pub fn island_screen_rect(app: &AppHandle) -> Option<(f64, f64, f64, f64)> {
+    let shared = app.try_state::<crate::Shared>()?;
+    let gate = &shared.gate;
+    let f = gate.frame(&window(app)?)?;
+    let (x, y, s) = (f.x as f64, f.y as f64, f.scale);
+    if gate.collapsed.load(Ordering::Relaxed) {
+        return Some((x, y, x + f.w as f64, y + f.h as f64));
+    }
+    let r = *gate.rect.locked();
+    (r.w > 0.0).then_some((x + r.x * s, y + r.y * s, x + (r.x + r.w) * s, y + (r.y + r.h) * s))
+}
+
+/// Le bord où se trouve l'île maintenant (place provisoire comprise).
+pub fn current_edge(app: &AppHandle) -> String {
+    Placement::current(app).edge
+}
+
 fn monitor_contains(m: &Monitor, x: f64, y: f64) -> bool {
     let p = m.position();
     let s = m.size();
@@ -369,9 +412,33 @@ pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
 
 /// Où mettre la fenêtre (px physiques) : sa taille et son coin haut gauche.
 fn target_frame(m: &Monitor, place: &Placement, collapsed: bool, tall: bool) -> (u32, u32, i32, i32) {
-    let scale = m.scale_factor();
-    let mp = *m.position();
-    let ms = *m.size();
+    let wa = m.work_area();
+    let screen = Area {
+        x: m.position().x,
+        y: m.position().y,
+        w: m.size().width,
+        h: m.size().height,
+        work_bottom: wa.position.y + wa.size.height as i32,
+    };
+    frame_in(&screen, m.scale_factor(), place, collapsed, tall)
+}
+
+/// Un écran pour le calcul du placement (px physiques) : sa position, sa
+/// taille, et le bas de sa zone de travail (au-dessus de la barre des tâches).
+#[derive(Clone, Copy, Debug)]
+pub struct Area {
+    pub x: i32,
+    pub y: i32,
+    pub w: u32,
+    pub h: u32,
+    pub work_bottom: i32,
+}
+
+/// Le calcul de `target_frame`, sans Tauri (testé) : taille et coin haut gauche
+/// de la fenêtre (px physiques) pour ce placement sur cet écran.
+pub fn frame_in(a: &Area, scale: f64, place: &Placement, collapsed: bool, tall: bool) -> (u32, u32, i32, i32) {
+    let mp = PhysicalPosition::new(a.x, a.y);
+    let ms = PhysicalSize::new(a.w, a.h);
     let (lw, lh) = place.window_size(collapsed, tall);
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
@@ -389,9 +456,18 @@ fn target_frame(m: &Monitor, place: &Placement, collapsed: bool, tall: bool) -> 
     let (x, y) = match place.edge.as_str() {
         "left" => (mp.x, along(mp.y, ms.height, ph)),
         "right" => (mp.x + ms.width as i32 - pw as i32, along(mp.y, ms.height, ph)),
+        // En bas : posée sur la barre des tâches (le bas de la zone de travail),
+        // pour ne pas la recouvrir. Sans barre en bas, c'est le bas de l'écran.
+        "bottom" => (along(mp.x, ms.width, pw), a.work_bottom.min(mp.y + ms.height as i32) - ph as i32),
         _ => (along(mp.x, ms.width, pw), mp.y),
     };
     (pw, ph, x, y)
+}
+
+/// `target_frame`, perchée sur une barre de titre si besoin (dodge.rs).
+fn frame_for(m: &Monitor, place: &Placement, collapsed: bool, tall: bool, perch: Option<(i32, i32)>) -> (u32, u32, i32, i32) {
+    let screen = (m.position().x, m.position().y, m.size().width, m.size().height);
+    dodge::perched_frame(target_frame(m, place, collapsed, tall), perch, &place.edge, screen)
 }
 
 /// Place et dimensionne la fenêtre, en pixels physiques : taille logique × échelle
@@ -399,13 +475,24 @@ fn target_frame(m: &Monitor, place: &Placement, collapsed: bool, tall: bool) -> 
 pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
     let Some(win) = window(app) else { return };
     let Some(m) = target_monitor(app, pref) else { return };
-    let place = Placement::from_settings(app);
+    let place = Placement::current(app);
     let tall = app.try_state::<crate::Shared>().is_some_and(|s| s.gate.tall.load(Ordering::Relaxed));
     if let Some(shared) = app.try_state::<crate::Shared>() {
         *shared.gate.panel.locked() = place.window_size(false, tall);
     }
-    let (pw, ph, x, y) = target_frame(&m, &place, collapsed, tall);
+    let perch = app.try_state::<crate::Shared>().and_then(|s| s.gate.dodge.perch());
+    let (pw, ph, x, y) = frame_for(&m, &place, collapsed, tall, perch);
 
+    // L'île est en train de s'écarter d'une fenêtre (ressort de dodge.rs) : la
+    // taille tout de suite, la position reste au ressort (nouvelle cible).
+    if let Some(shared) = app.try_state::<crate::Shared>() {
+        if shared.gate.dodge.moving() {
+            let _ = win.set_size(PhysicalSize::new(pw, ph));
+            shared.gate.dodge.retarget(x, y);
+            shared.gate.invalidate_frame();
+            return;
+        }
+    }
     let _ = win.set_size(PhysicalSize::new(pw, ph));
     let _ = win.set_position(PhysicalPosition::new(x, y));
     // Passer d'un écran à l'autre peut changer l'échelle : on réimpose la taille.
@@ -421,6 +508,11 @@ pub fn apply_geometry(app: &AppHandle, pref: &str, collapsed: bool) {
 pub fn drag_start(app: &AppHandle, gate: &PollGate) {
     let Some(win) = window(app) else { return };
     let (Ok(origin), Some((cx, cy))) = (win.outer_position(), platform::cursor_physical()) else { return };
+    // Elle s'écartait d'une fenêtre : la main reprend la main (le ressort s'arrête).
+    gate.dodge.forget();
+    gate.drag_trail.locked().clear();
+    // L'île ne prend pas le focus : la fenêtre au premier plan est celle de la personne.
+    *gate.drag_fg.locked() = platform::winlife::foreground().filter(|w| !w.own).map(|w| w.hwnd);
     *gate.drag.locked() = Some((cx - origin.x as f64, cy - origin.y as f64));
 }
 
@@ -440,23 +532,35 @@ fn drag_end(app: &AppHandle, gate: &PollGate) {
     let ms = *m.size();
     let cx = ((origin.x - mp.x) as f64 + (r.x + r.w / 2.0) * scale) / scale;
     let cy = ((origin.y - mp.y) as f64 + (r.y + r.h / 2.0) * scale) / scale;
-    let place = snap(cx, cy, ms.width as f64 / scale, ms.height as f64 / scale);
-    log::info(format!("île déplacée : bord {}, place {}", place.edge, place.align));
 
-    // Enregistrer, et prévenir les fenêtres (l'île change de forme selon le bord).
-    // Enregistré sous le verrou des réglages, comme apply_settings (lib.rs) :
-    // une sauvegarde venue de la page ne peut pas se glisser entre les deux.
-    let new = {
-        let mut s = shared.settings.locked();
-        s.island.edge = place.edge.clone();
-        s.island.align = place.align.clone();
-        s.island.offset = place.offset;
-        if let Err(e) = crate::services::settings::save(&s) {
-            log::warn(format!("réglages non enregistrés : {e}"));
-        }
-        s.clone()
+    // Lancée d'un geste vif vers un bord (module Ondine et les fenêtres) : c'est
+    // la fenêtre au premier plan qui va se coller à ce bord ; l'île, elle,
+    // revient à sa place.
+    let trail: Vec<(f64, f64, Instant)> = std::mem::take(&mut *gate.drag_trail.locked());
+    let fg = gate.drag_fg.locked().take();
+    let thrown = fg.and_then(|hwnd| crate::modules::windowlife::throw_window(app, hwnd, &trail, scale));
+    let place = if thrown.is_some() {
+        Placement::current(app)
+    } else {
+        let place = snap(cx, cy, ms.width as f64 / scale, ms.height as f64 / scale);
+        log::info(format!("île déplacée : bord {}, place {}", place.edge, place.align));
+
+        // Enregistrer, et prévenir les fenêtres (l'île change de forme selon le bord).
+        // Enregistré sous le verrou des réglages, comme apply_settings (lib.rs) :
+        // une sauvegarde venue de la page ne peut pas se glisser entre les deux.
+        let new = {
+            let mut s = shared.settings.locked();
+            s.island.edge = place.edge.clone();
+            s.island.align = place.align.clone();
+            s.island.offset = place.offset;
+            if let Err(e) = crate::services::settings::save(&s) {
+                log::warn(format!("réglages non enregistrés : {e}"));
+            }
+            s.clone()
+        };
+        let _ = app.emit("settings-changed", new);
+        place
     };
-    let _ = app.emit("settings-changed", new);
 
     // La fenêtre glisse jusqu'à sa place (quelques images, en ralentissant),
     // puis prend la taille du panneau de ce bord.
@@ -478,6 +582,8 @@ fn drag_end(app: &AppHandle, gate: &PollGate) {
     let _ = win.set_position(PhysicalPosition::new(x, y));
     gate.invalidate_frame();
     let _ = app.emit_to(WINDOW_LABEL, "island-drag-end", ());
+    // Posée là où une fenêtre (les réglages…) gêne : elle s'en écarte.
+    dodge::recompute(app);
 }
 
 /// Après un changement de taille : la fenêtre reprend la souris, et le prochain
@@ -575,6 +681,12 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
             if let Some((gx, gy)) = grab {
                 if down {
                     let _ = win.set_position(PhysicalPosition::new((cx - gx).round() as i32, (cy - gy).round() as i32));
+                    // Les dernières positions : la vitesse au lâcher dira si c'est un lancer.
+                    let mut trail = gate.drag_trail.locked();
+                    trail.push((cx, cy, Instant::now()));
+                    if trail.len() > 8 {
+                        trail.remove(0);
+                    }
                     continue;
                 }
                 *gate.drag.locked() = None;
@@ -706,7 +818,7 @@ pub fn apply_hotkey(app: &AppHandle, wanted: &str) {
 
 #[cfg(test)]
 mod tests {
-    use super::{snap, Placement, PANEL_H, PANEL_W, SIDE_PANEL_H, STRIP_H, STRIP_W, TALL_PANEL_H};
+    use super::{frame_in, snap, Area, Placement, PANEL_H, PANEL_W, SIDE_PANEL_H, STRIP_H, STRIP_W, TALL_PANEL_H};
     use super::{distance_outside, frame_is_fresh, on_shape, poll_interval, IslandRect};
     use crate::services::perf::Mode;
     use std::time::Duration;
@@ -786,10 +898,40 @@ mod tests {
         assert_eq!((p.edge.as_str(), p.align.as_str()), ("left", "center"));
         let p = snap(1900.0, 1000.0, 1920.0, 1080.0);
         assert_eq!((p.edge.as_str(), p.align.as_str()), ("right", "end"));
+        // Le bas : au centre, dans un coin, ou ailleurs le long du bord.
+        let p = snap(970.0, 1060.0, 1920.0, 1080.0);
+        assert_eq!((p.edge.as_str(), p.align.as_str(), p.offset), ("bottom", "center", 0.5));
+        let p = snap(1850.0, 1075.0, 1920.0, 1080.0);
+        assert_eq!((p.edge.as_str(), p.align.as_str()), ("bottom", "end"));
+        let p = snap(500.0, 1050.0, 1920.0, 1080.0);
+        assert_eq!(p.edge, "bottom");
+        assert!((p.offset - 500.0 / 1920.0).abs() < 1e-9);
+        // Plus près du côté que du bas : le côté.
+        assert_eq!(snap(20.0, 1000.0, 1920.0, 1080.0).edge, "left");
         // Ni coin ni centre : la place exacte est gardée.
         let p = snap(1400.0, 10.0, 1920.0, 1080.0);
         assert_eq!(p.align, "center");
         assert!((p.offset - 1400.0 / 1920.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn bottom_edge_sits_on_the_taskbar() {
+        // 1920 × 1080 à 100 %, barre des tâches de 48 px en bas.
+        let a = Area { x: 0, y: 0, w: 1920, h: 1080, work_bottom: 1032 };
+        let bottom = Placement { edge: "bottom".into(), align: "center".into(), offset: 0.5 };
+        // Panneau : 720 × 320, centré, posé sur la barre.
+        assert_eq!(frame_in(&a, 1.0, &bottom, false, false), (720, 320, 600, 1032 - 320));
+        // Bande de réveil : 240 × 6 juste au-dessus de la barre.
+        assert_eq!(frame_in(&a, 1.0, &bottom, true, false), (240, 6, 840, 1026));
+        // Coin bas droit, à 150 %, sur un deuxième écran à droite, sans barre en bas.
+        let b = Area { x: 1920, y: 0, w: 2880, h: 1620, work_bottom: 1620 };
+        let end = Placement { edge: "bottom".into(), align: "end".into(), offset: 1.0 };
+        assert_eq!(frame_in(&b, 1.5, &end, false, false), (1080, 480, 1920 + 2880 - 1080, 1620 - 480));
+        // Le haut, lui, reste collé en haut de l'écran.
+        let top = Placement { edge: "top".into(), align: "start".into(), offset: 0.0 };
+        assert_eq!(frame_in(&a, 1.0, &top, false, false), (720, 320, 0, 0));
+        // Le bas n'est pas un côté : même panneau qu'en haut.
+        assert_eq!(bottom.window_size(false, false), (PANEL_W, PANEL_H));
     }
 
     #[test]

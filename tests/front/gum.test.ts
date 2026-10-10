@@ -7,10 +7,11 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { N, SHAPES, SHAPE_IDS, signedArea, mixPts, halfWidthAt } from "../../src/mascot/renderers/gum-shapes";
 import { FACE_BASE, hslToHex, isHexColor, palette, paletteFromHex, rgbToHsl, TINT_NAMES } from "../../src/mascot/renderers/gum-draw";
-import { faceOf, HANDS, JellyRim, skyShape, weatherLook, ANIMS, type HandPose } from "../../src/mascot/renderers/gum-anims";
-import { GUM_FAMILY, cousinManifest } from "../../src/mascot/gum-family";
+import { faceOf, HANDS, JellyRim, skyShape, weatherLook, ANIMS, BLINK, blinkCurve, idleAct, landingSquash, type HandPose } from "../../src/mascot/renderers/gum-anims";
+import { GUM_FAMILY, PODIUM_TINT, cousinManifest } from "../../src/mascot/gum-family";
 import { validateManifest } from "../../src/mascot/manifest-check";
-import { MASCOT_STATES, type MascotManifest } from "../../src/mascot/types";
+import { EMOTE_NEAR, MASCOT_STATES, type MascotManifest } from "../../src/mascot/types";
+import { averageColor } from "../../src/mascot/env-tint";
 
 describe("formes gomme", () => {
   for (const id of SHAPE_IDS) {
@@ -200,5 +201,98 @@ describe("manifeste de la goutte gomme et cousines", () => {
       assert.equal(m.gum?.shape, c.shape);
       assert.deepEqual(validateManifest(m), []);
     }
+  });
+});
+
+// ── 1.2.2 : expressions du contrat, fluidité, réalisme ──────────────────────
+
+/** Les ids que les autres parties de l'appli émettent avec mascot.emote (contrat 1.2.2). */
+const CONTRACT = ["panic", "scared", "relieved", "stretch", "yawn", "surprised", "listening", "sunglasses", "scarf", "goodbye", "push", "sit-edge", "laugh", "hide", "tap-glass", "climb", "talk"];
+
+describe("expressions du contrat (mascot.emote)", () => {
+  const base = JSON.parse(readFileSync("mascots/goutte-gomme/manifest.json", "utf8")) as MascotManifest;
+
+  test("chaque id est un état connu, et la goutte gomme (donc les 15) a son animation", () => {
+    for (const id of CONTRACT) {
+      assert.ok((MASCOT_STATES as readonly string[]).includes(id), `${id} : état inconnu`);
+      const anim = base.states[id as keyof typeof base.states];
+      assert.ok(anim && ANIMS[anim], `${id} : pas d'animation`);
+    }
+  });
+
+  test("une mascotte qui ne les a pas retombe sur une expression d'avant la 1.2.2", () => {
+    const old = MASCOT_STATES.slice(0, MASCOT_STATES.indexOf("panic")) as readonly string[];
+    for (const id of CONTRACT) {
+      let s: string | undefined = id;
+      for (let i = 0; i < 3 && s && !old.includes(s); i++) s = EMOTE_NEAR[s];
+      assert.ok(s && old.includes(s), `${id} : pas d'expression proche`);
+    }
+  });
+
+  test("ce qu'elles sortent (lunettes, écharpe, pile, jambes…) reste entre 0 et 1", () => {
+    for (const [name, fn] of Object.entries(ANIMS)) {
+      for (const p of [0, 0.3, 0.6, 0.95]) {
+        for (const v of Object.values(fn(p * 3, p, "neutral").prop ?? {})) assert.ok(Number.isFinite(v) && v >= 0 && v <= 1, `${name} : ${v}`);
+      }
+    }
+    assert.equal(ANIMS.lunettes(1.8, 0.5, "neutral").prop?.glasses, 1);
+    assert.equal(ANIMS.panique(1, 0.4, "neutral").hands, "panic");
+    assert.equal(ANIMS["assise-bord"](1, 0.3, "neutral").prop?.legs, 1);
+  });
+
+  test("les pupilles : serrées de surprise, ouvertes de contentement", () => {
+    assert.ok(faceOf(ANIMS.sursaut(0.2, 0.2, "neutral")).face.pupil < 0.7);
+    assert.ok(faceOf(ANIMS.surprise(0.2, 0.2, "neutral")).face.pupil < 0.7);
+    assert.ok(faceOf(ANIMS.coucou(0.5, 0.3, "neutral")).face.pupil > 1);
+    assert.equal(faceOf(ANIMS.idle(1, 0.2, "neutral")).face.pupil, 1);
+  });
+});
+
+describe("fluidité", () => {
+  test("clignement : se ferme en 70 ms, se rouvre en 130 ms", () => {
+    assert.equal(blinkCurve(0), 1);
+    assert.ok(Math.abs(blinkCurve(BLINK.closeMs)!) < 1e-9);
+    assert.ok(blinkCurve(35)! > blinkCurve(60)!, "la paupière descend");
+    assert.ok(blinkCurve(120)! < blinkCurve(180)!, "puis remonte");
+    assert.equal(blinkCurve(BLINK.closeMs + BLINK.openMs + 1), null);
+    assert.ok(BLINK.minGapMs === 2200 && BLINK.maxGapMs === 5400 && BLINK.double > 0.2 && BLINK.double < 0.25);
+  });
+
+  test("atterrissage : écrasée, étirée, posée", () => {
+    assert.equal(landingSquash(0), 0);
+    assert.ok(landingSquash(0.045) < -0.15);
+    assert.ok(landingSquash(0.15) > 0.05);
+    assert.equal(landingSquash(1), 0);
+    for (let s = 0; s < 0.4; s += 0.01) assert.ok(Math.abs(landingSquash(s)) <= 0.17 + 1e-9);
+  });
+
+  test("les petits gestes du repos commencent et finissent en douceur", () => {
+    for (const act of ["shift", "sigh", "pout", "look", "hum"] as const) {
+      assert.equal(idleAct(act, 0, 1).w, 0);
+      assert.equal(idleAct(act, 1, 1).w, 0);
+      assert.ok(idleAct(act, 0.5, -1).w > 0.99);
+      for (const v of Object.values(idleAct(act, 0.4, 1).face)) assert.ok(Number.isFinite(v));
+    }
+  });
+});
+
+describe("la teinte de la pochette", () => {
+  test("une pochette rouge donne du rouge ; une grise ne donne rien", () => {
+    const px = (r: number, g: number, b: number, n = 16) => Array.from({ length: n }, () => [r, g, b, 255]).flat();
+    const red = averageColor(px(220, 30, 40))!;
+    assert.ok(red[0] > 200 && red[1] < 50);
+    assert.equal(averageColor(px(128, 128, 128)), null);
+    // Le gris autour compte peu : la couleur vive l'emporte.
+    const mixed = averageColor([...px(120, 120, 120, 40), ...px(40, 90, 230, 8)])!;
+    assert.ok(mixed[2] > 200 && mixed[0] < 60);
+  });
+});
+
+describe("podium", () => {
+  test("une couleur différente pour chacune des 15 mascottes", () => {
+    const ids = ["goutte-gomme", ...GUM_FAMILY.map((c) => c.id)];
+    const tints = ids.map((id) => PODIUM_TINT[id]);
+    for (const [i, t] of tints.entries()) assert.ok(t && (TINT_NAMES as string[]).includes(t), `${ids[i]} : ${t}`);
+    assert.equal(new Set(tints).size, ids.length);
   });
 });

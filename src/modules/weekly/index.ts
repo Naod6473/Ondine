@@ -22,6 +22,8 @@ import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-
 import { agentsParts, summaryParts, type WeekTally } from "./summary";
 import { costOfRows, costText, parsePrices } from "../agents/cost";
 import { sumTokens, tokensShort, totalTokens } from "../agents/texts";
+import { cleanFirstName } from "../../core/setup-plan";
+import { settingsStore } from "../../core/settings-store";
 
 /** Le premier coup d'œil après le démarrage (le reste : "weeklyCheck" de src/core/perf.ts). */
 const FIRST_CHECK_MS = 20_000;
@@ -58,7 +60,9 @@ export const weekly: IslandModule = {
       try {
         const due = await api.invoke<WeekTally | null>("due");
         if (!due || (!summaryParts(due).length && !due.agents)) return;
-        notify(api, "Le bilan de votre semaine", due);
+        // Avec le prénom donné à l'assistant de premier lancement.
+        const name = cleanFirstName(settingsStore.current.general.firstName ?? "");
+        notify(api, name ? `Le bilan de votre semaine, ${name}` : "Le bilan de votre semaine", due);
         // Après l'alerte, qui met la goutte en « alerte » : elle fait la fête.
         api.emit("mascot.emote", { emotion: "celebrate" });
       } catch (e) {

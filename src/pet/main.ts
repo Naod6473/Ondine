@@ -6,6 +6,12 @@
 // Réglages → Mascotte (`mascot.petTabs`, par défaut Parler à Ondine, Lanceur,
 // Agents IA).
 //
+// La bulle montre ses onglets en icônes seules (le nom en infobulle) et prend
+// la taille de son contenu, en largeur et en hauteur (bubble-size.ts), avec
+// la même glisse amortie que l'île qui suit son contenu (jelly.ts, GLIDE) ;
+// la fenêtre (pet.rs) s'agrandit avant que la bulle grandisse et ne se
+// resserre qu'une fois la bulle posée.
+//
 // Les onglets sont les vues des modules de l'île, montées par un second
 // registre en mode « satellite » : le travail de fond (notifications,
 // surveillance) reste dans l'île, cette fenêtre ne fait qu'afficher. Les
@@ -28,15 +34,22 @@ import { errorText, logger } from "../core/log";
 import { ModuleRegistry } from "../core/module-registry";
 import { NotificationQueue, type IslandNotification } from "../core/notifications";
 import { startPerf } from "../core/perf";
+import { startScrollbars } from "../island/scrollbars";
 import { settingsStore } from "../core/settings-store";
+import { helloText } from "../core/setup-plan";
 import type { Settings } from "../core/types";
 import { el } from "../island/dom";
+import { settle } from "../island/fit";
 import { icon } from "../island/icon";
+import { GLIDE } from "../island/jelly";
+import { springAtRest, stepSpring, type Spring } from "../island/spring";
+import { reducedMotion } from "../island/tab-pill";
 import { applyTheme } from "../island/themes";
 import { findMascot } from "../mascot/catalog";
 import { MascotController } from "../mascot/mascot-state";
 import { createRenderer, type MascotRenderer } from "../mascot/renderer";
 import { ALL_MODULES } from "../modules";
+import { BUBBLE_MAX_H, BUBBLE_MAX_W, clampBubble, roomFor, sameSize, type Size } from "./bubble-size";
 
 const log = logger("pet");
 
@@ -69,9 +82,20 @@ class Pet {
   private mascotId = "";
   private activeTab = "";
   private unmount: () => void = () => {};
+  /** Le jour du dernier « Bonjour Simon ! » de la bulle (une fois par jour). */
+  private helloDay = "";
   private shownTabs = "";
   private press: { x: number; y: number; dragging: boolean } | null = null;
   private hoverTimer = 0;
+  /** La taille de la bulle : montrée (ressorts), voulue, et la place que la fenêtre lui garde. */
+  private readonly sw: Spring = { x: 0, v: 0 };
+  private readonly sh: Spring = { x: 0, v: 0 };
+  private want: Size | null = null;
+  private room: Size | null = null;
+  private fitRaf = 0;
+  private glideRaf = 0;
+  private lastFrame = 0;
+  private lastHit = "";
 
   constructor(
     root: HTMLElement,
@@ -116,6 +140,11 @@ class Pet {
       if (e.key === "Escape" && this.layout.open) void this.setOpen(false);
     });
     new ResizeObserver(() => this.pushHit()).observe(this.bubble);
+    // Le contenu change (autre onglet, réponse qui s'écrit, liste qui
+    // s'allonge, image chargée) : la bulle suit.
+    new MutationObserver(() => this.scheduleFit()).observe(this.bubble, { childList: true, subtree: true, characterData: true });
+    this.bubble.addEventListener("load", () => this.scheduleFit(), true);
+    this.bubble.addEventListener("transitionend", () => this.scheduleFit());
 
     settingsStore.onChange((s) => this.applySettings(s));
     this.applySettings(settingsStore.current);
@@ -292,11 +321,25 @@ class Pet {
 
   private async setOpen(open: boolean) {
     if (open === this.layout.open) return;
-    if (open) this.renderBubble(true);
-    const l = (await Bridge.petOpen(open)) ?? { open, right: true, up: true };
+    let size: Size | undefined;
+    if (open) {
+      this.renderBubble(true);
+      // Mesurée avant de s'ouvrir : la fenêtre prend tout de suite la bonne taille.
+      size = this.measure();
+      this.snapSize(size);
+    }
+    const l = (await Bridge.petOpen(open, size)) ?? { open, right: true, up: true };
     this.applyLayout(l);
     if (open) {
+      // Bornée à la place que l'écran laisse de ce côté.
+      const fitted = this.measure();
+      this.snapSize(fitted);
+      if (!sameSize(fitted, this.room)) {
+        this.room = fitted;
+        void Bridge.petBubble(fitted.w, fitted.h);
+      }
       this.mascot?.activity();
+      this.sayHello();
       // Le champ de l'onglet (Parler à Ondine, Lanceur) prend le clavier.
       requestAnimationFrame(() => this.bubble.querySelector<HTMLElement>(".view-expanded input, .view-expanded textarea")?.focus());
     } else {
@@ -304,7 +347,21 @@ class Pet {
       this.unmount = () => {};
       this.bubble.replaceChildren();
       this.shownTabs = "";
+      this.resetSize();
     }
+  }
+
+  /**
+   * La première ouverture de la bulle dans la journée : « Bonjour Simon ! » en
+   * haut de la bulle, avec le prénom donné à l'assistant de premier lancement
+   * (rien sans prénom).
+   */
+  private sayHello() {
+    const name = settingsStore.current.general.firstName ?? "";
+    const today = new Date().toDateString();
+    if (!name.trim() || this.helloDay === today || this.notifications.current()) return;
+    this.helloDay = today;
+    this.notifications.push({ moduleId: "pet", title: helloText(name), icon: "👋", priority: "low", durationMs: 3500, key: "pet-hello" });
   }
 
   /** Le côté de la bulle (décidé par le Rust d'après la place sur l'écran). */
@@ -314,6 +371,133 @@ class Pet {
     this.box.dataset.side = l.right ? "right" : "left";
     this.box.dataset.toward = l.up ? "up" : "down";
     this.pushHit();
+    // Déplacée (autre côté, autre place) : la bulle se borne à la nouvelle place.
+    if (l.open) this.scheduleFit();
+    else this.resetSize();
+  }
+
+  // ── La taille de la bulle ──────────────────────────────────────────────────
+
+  /** La place que l'écran laisse à la bulle (px logiques). */
+  private maxSize(): Size {
+    if (this.layout.maxW && this.layout.maxH) return { w: this.layout.maxW, h: this.layout.maxH };
+    // Hors de l'appli (navigateur, mode démo) : la page fait office d'écran.
+    if (!IS_TAURI) return { w: window.innerWidth - PET_BOX - 8, h: window.innerHeight - 8 };
+    return { w: BUBBLE_MAX_W, h: BUBBLE_MAX_H };
+  }
+
+  /**
+   * La taille que demande le contenu, bornée. Mesurée en enlevant un instant
+   * nos styles en ligne (largeur « max-content », puis hauteur pour cette
+   * largeur) : rien n'est dessiné entre les deux, et la mesure ne dépend pas
+   * de la taille montrée (pas d'aller-retour pendant la glisse).
+   */
+  private measure(): Size {
+    const b = this.bubble;
+    const st = b.style;
+    const saved = [st.width, st.height, st.display, st.visibility];
+    if (getComputedStyle(b).display === "none") {
+      st.display = "flex";
+      st.visibility = "hidden";
+    }
+    const max = this.maxSize();
+    st.height = "auto";
+    st.width = "max-content";
+    const w = clampBubble({ w: b.offsetWidth, h: 0 }, max).w;
+    st.width = `${w}px`;
+    const h = b.offsetHeight;
+    [st.width, st.height, st.display, st.visibility] = saved;
+    return clampBubble({ w, h }, max);
+  }
+
+  private scheduleFit() {
+    if (this.fitRaf || !this.layout.open) return;
+    this.fitRaf = requestAnimationFrame(() => {
+      this.fitRaf = 0;
+      void this.fit();
+    });
+  }
+
+  /** Le contenu a peut-être changé : nouvelle cible, la fenêtre d'abord, puis la glisse. */
+  private async fit() {
+    if (!this.layout.open || !this.want) return;
+    const m = this.measure();
+    // Sans va-et-vient : elle grandit tout de suite, ne rétrécit que nettement.
+    const next = clampBubble({ w: settle(this.want.w, m.w) ?? m.w, h: settle(this.want.h, m.h) ?? m.h }, this.maxSize());
+    if (sameSize(next, this.want)) return;
+    this.want = next;
+    // La fenêtre doit déjà tenir la bulle pendant tout le trajet.
+    const need = roomFor(this.room ?? next, roomFor({ w: this.sw.x, h: this.sh.x }, next));
+    if (!sameSize(need, this.room)) {
+      this.room = need;
+      await Bridge.petBubble(need.w, need.h);
+    }
+    this.glide();
+  }
+
+  /** La bulle va vers sa taille voulue, en ressort amorti (sans rebond). */
+  private glide() {
+    if (this.glideRaf) return;
+    if (reducedMotion() || settingsStore.current.mascot.calm) {
+      if (this.want) this.snapSize(this.want);
+      this.settled();
+      return;
+    }
+    this.lastFrame = performance.now();
+    const frame = (now: number) => {
+      const want = this.want;
+      if (!want) {
+        this.glideRaf = 0;
+        return;
+      }
+      const dt = (now - this.lastFrame) / 1000;
+      this.lastFrame = now;
+      stepSpring(this.sw, want.w, GLIDE, dt);
+      stepSpring(this.sh, want.h, GLIDE, dt);
+      if (springAtRest(this.sw, want.w) && springAtRest(this.sh, want.h)) {
+        this.glideRaf = 0;
+        this.snapSize(want);
+        this.settled();
+        return;
+      }
+      this.paintSize();
+      this.glideRaf = requestAnimationFrame(frame);
+    };
+    this.glideRaf = requestAnimationFrame(frame);
+  }
+
+  /** Posée : la fenêtre se resserre autour d'elle. */
+  private settled() {
+    const want = this.want;
+    if (!want || !this.layout.open || sameSize(want, this.room)) return;
+    this.room = want;
+    void Bridge.petBubble(want.w, want.h);
+  }
+
+  /** Cette taille tout de suite, sans animation. */
+  private snapSize(size: Size) {
+    cancelAnimationFrame(this.glideRaf);
+    this.glideRaf = 0;
+    this.want = size;
+    this.sw.x = size.w;
+    this.sh.x = size.h;
+    this.sw.v = this.sh.v = 0;
+    this.room ??= size;
+    this.paintSize();
+  }
+
+  private paintSize() {
+    this.bubble.style.width = `${Math.round(this.sw.x)}px`;
+    this.bubble.style.height = `${Math.round(this.sh.x)}px`;
+  }
+
+  private resetSize() {
+    cancelAnimationFrame(this.glideRaf);
+    cancelAnimationFrame(this.fitRaf);
+    this.glideRaf = this.fitRaf = 0;
+    this.want = this.room = null;
+    this.bubble.style.removeProperty("width");
+    this.bubble.style.removeProperty("height");
   }
 
   private renderBubble(force = false) {
@@ -324,9 +508,9 @@ class Pet {
     this.unmount();
     this.unmount = () => {};
 
-    const header = el("div", { class: "tabs", role: "tablist", "aria-label": "Modules" });
-    // La bulle est étroite : au-delà de deux onglets, seul l'actif garde son nom.
-    if (tabs.length > 2) header.classList.add("icons-only");
+    // Des icônes seules : le nom de chaque onglet est dans son infobulle (et lu
+    // par les lecteurs d'écran).
+    const header = el("div", { class: "tabs icons-only", role: "tablist", "aria-label": "Modules" });
     for (const id of tabs) {
       const m = this.registry.withView("expanded").find((r) => r.module.manifest.id === id)?.module.manifest;
       if (!m) continue;
@@ -338,6 +522,7 @@ class Pet {
             role: "tab",
             "aria-selected": String(id === this.activeTab),
             title: m.name,
+            "aria-label": m.name,
             onclick: () => {
               if (this.activeTab === id) return;
               this.activeTab = id;
@@ -345,7 +530,6 @@ class Pet {
             },
           },
           el("span", { class: "tab-icon", "aria-hidden": "true" }, icon(m.icon)),
-          el("span", { class: "tab-label" }, m.name),
         ),
       );
     }
@@ -388,8 +572,12 @@ class Pet {
   private pushHit() {
     const rects = [this.slot.parentElement!, ...(this.layout.open ? [this.bubble] : []), ...(this.badge.hidden ? [] : [this.badge])].map((e) => {
       const r = e.getBoundingClientRect();
-      return { x: r.left, y: r.top, w: r.width, h: r.height };
+      return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) };
     });
+    // Pendant la glisse, la bulle change à chaque image : on n'envoie que le nouveau.
+    const key = JSON.stringify(rects);
+    if (key === this.lastHit) return;
+    this.lastHit = key;
     void Bridge.petSetHit(rects);
   }
 }
@@ -399,6 +587,8 @@ async function start() {
   await settingsStore.connect(boot?.settings ?? null);
   await startI18n();
   await startPerf();
+  // Barres de défilement discrètes (island.css, scrollbars.ts).
+  startScrollbars();
 
   const bus = new Bus(windowLabel("pet"));
   bus.accept = (msg) => !hidesRealData(msg);

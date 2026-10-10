@@ -1,6 +1,6 @@
 [package]
 name = "ondine"
-version = "1.2.1"
+version = "1.2.2"
 description = "L'île : une interface intelligente en haut de l'écran Windows"
 edition = "2021"
 license = "MIT"
@@ -69,6 +69,23 @@ md-5 = "0.10"
 # crate image (aucun code en plus), appelé directement pour n'écrire que la
 # partie de l'image qui a changé d'une image à l'autre (fichier bien plus léger).
 gif = "0.14"
+# Module Équipe (Ondine ↔ Ondine sur le réseau local) : le chiffrement.
+#   - snow : le protocole Noise (celui de WireGuard, WhatsApp, Lightning),
+#     ici « IK » entre collègues appairés (authentifiés par leurs clés X25519,
+#     secret de transfert) et « XXpsk3 » pendant l'appairage. Pur Rust,
+#     primitives RustCrypto (X25519 de curve25519-dalek, ChaCha20-Poly1305,
+#     BLAKE2s). On n'invente aucune cryptographie. Sans la fonction « std »
+#     de snow : elle ajouterait la crate ring (du code C et assembleur).
+#   - spake2 (RustCrypto) : transforme le code à 6 chiffres de l'appairage en
+#     clé commune sans jamais l'envoyer ; un intrus n'a qu'UN essai par code
+#     (pas d'attaque hors ligne possible, comme dans magic-wormhole).
+snow = { version = "0.10", default-features = false, features = ["use-chacha20poly1305", "use-blake2", "use-curve25519", "use-getrandom"] }
+spake2 = "0.4"
+# La clé publique X25519 recalculée depuis la clé privée gardée (déjà compilée pour snow).
+curve25519-dalek = "4"
+# Le chat Équipe gardé 7 jours (réglage chatKeep) : l'historique chiffré sur le
+# disque avec ChaCha20-Poly1305 (déjà compilé pour snow, RustCrypto, sans code C).
+chacha20poly1305 = { version = "0.10", default-features = false, features = ["alloc"] }
 
 [target.'cfg(windows)'.dependencies]
 # Gestionnaire d'identifiants Windows. Version 3 volontairement : la 4 a changé d'API.
@@ -147,6 +164,16 @@ windows = { version = "0.61", features = [
   "Win32_System_Ioctl",
   "Win32_Devices_DeviceAndDriverInstallation",
   "Win32_System_EventLog",
+  # Parler à Ondine à voix haute : la reconnaissance vocale de Windows (platform/voice.rs).
+  "Media_SpeechRecognition",
+  # Règles : la session est-elle verrouillée (WTSQuerySessionInformationW) ?
+  "Win32_System_RemoteDesktop",
+  # Contrôles : batterie des appareils Bluetooth (SetupDiGetDevicePropertyW, DEVPROPTYPE).
+  "Win32_Devices_Properties",
+  # Ondine et les fenêtres : la vraie place des fenêtres (sans bordure
+  # invisible), les fenêtres cachées par Windows, la session verrouillée.
+  "Win32_Graphics_Dwm",
+  "Win32_System_StationsAndDesktops",
 ] }
 
 [profile.release]

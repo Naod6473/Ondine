@@ -11,7 +11,8 @@
 //     posées, dessinées une fois) ;
 //   - tout est défait (moteurs détruits, minuteries arrêtées) dès que la carte
 //     de l'île disparaît : la fonction renvoyée par mountWhatsNewPanel.
-// Monté par core/whats-new.ts dans une notification (champ `content`).
+// Monté par core/whats-new.ts dans une notification (champ `content`), et par
+// l'assistant de premier lancement (island/setup-panel.ts, étape « mascotte »).
 
 import { perfMode } from "../core/perf";
 import { settingsStore } from "../core/settings-store";
@@ -29,6 +30,8 @@ export interface WhatsNewPanelOptions {
   text: string;
   /** Après « Adopter » (l'île a déjà changé de mascotte par les réglages). */
   onAdopt?: (id: string) => void;
+  /** Sans `text` : la phrase sous le carrousel (assistant de premier lancement, src/core/setup.ts). */
+  hint?: string;
 }
 
 /** Les gestes joués à tour de rôle, et leur durée à l'écran (ms). */
@@ -69,7 +72,7 @@ export function mountWhatsNewPanel(host: HTMLElement, opts: WhatsNewPanelOptions
   const next = el("button", { class: "icon-btn", title: "Suivant", onclick: () => page(1) }, "›");
   const adopt = el("button", { class: "btn small", onclick: () => doAdopt() }, "Adopter");
   const lines = el("div", { class: "wn-lines" }, opts.text);
-  const hint = el("div", { class: "wn-lines" }, "De nouvelles mascottes en gomme. Cliquez sur l'une d'elles, puis « Adopter » : l'île change tout de suite.");
+  const hint = el("div", { class: "wn-lines" }, opts.hint ?? "De nouvelles mascottes en gomme. Cliquez sur l'une d'elles, puis « Adopter » : l'île change tout de suite.");
   const panel = el(
     "div",
     { class: "wn-panel" },

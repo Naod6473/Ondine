@@ -106,6 +106,8 @@ pub(crate) fn apply_settings(app: &AppHandle, shared: &Shared, new: Settings) ->
     pet::apply(app);
     // Le mode de performance a peut-être changé : les boucles le lisent au tour suivant.
     services::perf::refresh(app);
+    // La place réglée ou « éviter les réglages » a pu changer : l'île revérifie.
+    island::dodge::recompute(app);
     Ok(())
 }
 
@@ -149,6 +151,43 @@ fn settings_import(app: AppHandle, shared: State<Shared>, text: String) -> Resul
     apply_settings(&app, &shared, imported)?;
     log::info("réglages importés");
     Ok(())
+}
+
+/// « Reprendre la configuration de mon autre PC » (assistant de premier
+/// lancement, dans l'île) : la boîte « Ouvrir » de Windows, puis le fichier de
+/// réglages exporté est lu et importé comme par la fenêtre de réglages.
+/// `Ok(false)` si on annule.
+#[tauri::command]
+async fn settings_import_pick(app: AppHandle, window: Window, title: Option<String>) -> Result<bool, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = window
+        .dialog()
+        .file()
+        .set_parent(&window)
+        .set_title(title.unwrap_or_else(|| "Choisir un fichier de réglages".into()))
+        .add_filter("Réglages d'Ondine", &["json"])
+        .blocking_pick_file();
+    let Some(path) = picked.and_then(|p| p.into_path().ok()) else { return Ok(false) };
+    let shared = app.state::<Shared>();
+    // Les dossiers exclus (Confidentialité) restent intouchables, même ici.
+    let path = privacy::check_path(&shared.settings.locked().clone(), &path.to_string_lossy())?;
+    let meta = std::fs::metadata(&path).map_err(|e| e.to_string())?;
+    if meta.len() > 1_000_000 {
+        return Err("fichier trop gros pour être un fichier de réglages".into());
+    }
+    let text = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let imported = settings::parse(&text)?;
+    apply_settings(&app, &shared, imported)?;
+    log::info("réglages importés (assistant de premier lancement)");
+    Ok(true)
+}
+
+/// Les logiciels connus installés sur ce PC (ids d'une liste fixe : « vscode »,
+/// « spotify »…), pour pré-cocher les cartes de l'assistant. Tout reste sur le
+/// PC (services/apps.rs). Lu hors du fil principal (registre, menu Démarrer).
+#[tauri::command]
+async fn apps_detect() -> Vec<String> {
+    tauri::async_runtime::spawn_blocking(services::apps::detect).await.unwrap_or_default()
 }
 
 /// Vérifie un dossier à exclure avant de l'ajouter à la liste.
@@ -284,9 +323,16 @@ fn island_reposition(app: AppHandle, shared: State<Shared>) {
 // ── Ondine sur le bureau (pet.rs) ────────────────────────────────────────────
 
 /// Ouvre ou ferme la bulle à côté d'elle ; renvoie la disposition choisie.
+/// `w`, `h` : la taille de la bulle mesurée par la page (px logiques).
 #[tauri::command]
-fn pet_open(app: AppHandle, open: bool) -> pet::Layout {
-    pet::set_open(&app, open)
+fn pet_open(app: AppHandle, open: bool, w: Option<f64>, h: Option<f64>) -> pet::Layout {
+    pet::set_open(&app, open, w.zip(h))
+}
+
+/// La bulle a besoin d'une autre taille (son contenu a changé).
+#[tauri::command]
+fn pet_bubble(app: AppHandle, w: f64, h: f64) {
+    pet::set_bubble(&app, w, h);
 }
 
 /// On a attrapé Ondine : elle suit la souris jusqu'au lâcher.
@@ -434,6 +480,10 @@ fn create_hidden_window(app: &AppHandle, label: &str, page: &str, title: &str, s
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
                     let _ = hidden.hide();
+                    // Les réglages fermés : l'île rentre chez elle (island/dodge.rs).
+                    if hidden.label() == island::dodge::SETTINGS_LABEL {
+                        island::dodge::settings_window_changed(hidden.app_handle());
+                    }
                 }
             });
         }
@@ -470,6 +520,10 @@ pub fn show_window(app: &AppHandle, label: &str) {
     let _ = win.unminimize();
     let _ = win.show();
     let _ = win.set_focus();
+    // Les réglages s'ouvrent : l'île s'écarte s'ils la cachent (island/dodge.rs).
+    if label == island::dodge::SETTINGS_LABEL {
+        island::dodge::settings_window_changed(app);
+    }
 }
 
 pub fn show_settings_window(app: &AppHandle) {
@@ -480,6 +534,9 @@ pub fn show_settings_window(app: &AppHandle) {
 #[tauri::command]
 fn window_hide(window: tauri::Window) {
     let _ = window.hide();
+    if window.label() == island::dodge::SETTINGS_LABEL {
+        island::dodge::settings_window_changed(window.app_handle());
+    }
 }
 
 #[tauri::command]
@@ -547,6 +604,8 @@ pub fn run() {
             settings_save,
             settings_export,
             settings_import,
+            settings_import_pick,
+            apps_detect,
             privacy_check_folder,
             dialog_pick_folder,
             dialog_pick_file,
@@ -557,6 +616,7 @@ pub fn run() {
             island_reposition,
             island_drag_start,
             pet_open,
+            pet_bubble,
             pet_drag_start,
             pet_set_hit,
             pet_place,
@@ -590,6 +650,7 @@ pub fn run() {
             create_hidden_window(&handle, "settings", "settings.html", "Réglages — Ondine", (760.0, 720.0), (560.0, 480.0), true);
             create_hidden_window(&handle, "annotate", "annotate.html", "Annoter — Ondine", (1100.0, 760.0), (640.0, 420.0), false);
             create_pet_window(&handle);
+            island::dodge::watch_settings_window(&handle);
 
             if let Some(win) = island::window(&handle) {
                 platform::make_non_activating(&win);
@@ -615,6 +676,8 @@ pub fn run() {
             // Profils : le menu de l'icône, et le changement automatique (heure, Wi-Fi).
             tray::sync_profiles(&handle, &loaded.profiles);
             services::profiles::spawn_auto(handle.clone());
+            // Les bons moments pour proposer un onglet (première clé USB, première visio).
+            services::hints::spawn_watch(handle.clone());
 
             log::info(format!("--- Ondine {} démarrée ---", env!("CARGO_PKG_VERSION")));
             if platform::is_elevated() {

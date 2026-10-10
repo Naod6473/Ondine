@@ -117,6 +117,33 @@ clavier est entouré de la couleur d'accent du thème (`:focus-visible`).
 souris. L'île se replace toute seule quand un écran est branché, débranché ou
 change d'échelle (vérifié deux fois par seconde).
 
+**Les quatre bords.** `island.edge` = `top`, `bottom`, `left` ou `right`
+(`Placement`, `frame_in` testé dans island/mod.rs). En bas, l'île se pose sur
+la barre des tâches (le bas de la zone de travail), et s'ouvre vers le haut
+(island.css `body[data-edge="bottom"]`, jelly.ts : marge de bosse en haut,
+points collés en bas). L'aimant (`snap`) choisit le bord le plus proche des
+quatre.
+
+**L'île s'écarte des fenêtres** (`island/avoid.rs` : le calcul pur, testé ;
+`island/dodge.rs` : le reste). Des sources donnent un rectangle à éviter :
+`settings` (la fenêtre de réglages : ses événements Moved / Resized, montrée
+par `show_window`, cachée par CloseRequested / `window_hide`), `foreground` et
+`toast` (module Ondine et les fenêtres). `escape` : la maison libre → elle y
+reste ; sinon elle glisse le long de son bord (côté le plus proche) ; bord
+couvert → le bord libre le plus proche ; plus rien → le coin le plus loin,
+« acculée ». La place trouvée est **provisoire** (`Placement::current`,
+jamais enregistrée) ; plus rien ne gêne → elle rentre. La fenêtre de l'île y
+va au ressort (thread de ~60 Hz, un peu amorti, interruptible ; acculée : un
+tremblement de 3 px) ; Réduire les animations de Windows
+(`winlife::reduced_motion`) ou mode Calme → directement. Le front reçoit
+`island-placement` {edge, align, phase: flee | cornered | home, soft} : le
+`data-edge` / `data-align` de `<body>` suivent, et Ondine a peur (`scared`,
+`panic` acculée) puis est soulagée (`relieved`). Une source « douce »
+(premier plan, bulle) : marge plus petite, ni peur, ni coin. Réglage
+`island.avoidSettings` (oui). Le module peut aussi la **percher** sur la barre
+de titre de la fenêtre active (`set_perch`, `perched_frame`, île du haut).
+Scène démo « L'île s'écarte ».
+
 ### La machine à états (`src/island/island-state.ts`)
 
 | État       | Ce qu'on voit |
@@ -228,14 +255,181 @@ qu'une fois les ressorts posés (au plus tard après 1,5 s).
   ouverte grandit alors juste assez (jusqu'à 480 px, variable CSS `--fit-h`),
   avec le même ressort, puis reprend sa taille quand il s'en va. La fenêtre
   passe d'abord au panneau haut (`island_set_tall`, 720 × 530).
+  `data-island-fit="both"` : en largeur aussi (`--fit-w`, de 420 px ou la
+  largeur des onglets jusqu'à 700 px), d'après la largeur naturelle
+  (`max-content`) de la partie marquée `data-island-fit-w` (les bulles de
+  Parler à Ondine). La mesure est continue (ResizeObserver sur le contenu
+  marqué, texte observé) ; la gelée passe en « glisse » (`Jelly.setGlide` :
+  ressort amorti sans rebond, qui garde sa vitesse) et `settle` ne la laisse
+  rétrécir que nettement : pas de saut à chaque mot.
 - **Changement d'onglet** (`switchTab`) : on ne redessine pas toute la vue. La
   pastille de l'onglet actif (`src/island/tab-pill.ts`) se déplace avec deux
   ressorts, un par bord : le bord qui mène est raide, celui qui suit est mou,
   donc la pastille s'étire puis se rétracte (effet « verre liquide »).
   L'ancien contenu s'efface d'un côté pendant que le nouveau arrive de l'autre,
   dans la même case de grille (`.view-stage`).
+- **Barres de défilement** (`src/island/scrollbars.ts`, island.css) : pas de
+  barre Windows à flèches dans l'île ni dans la bulle d'Ondine, mais une fine
+  pastille grise translucide (`::-webkit-scrollbar`, 8 px de place toujours
+  réservée : le contenu ne bouge pas). Elle n'apparaît qu'au survol d'une zone
+  qui défile ou pendant le défilement, puis s'efface : une animation Web de la
+  variable `--sb-a` (déclarée par `@property`, lue par la pastille), pas une
+  transition CSS qui écraserait celles des zones. Ne pas mettre
+  `scrollbar-width` / `scrollbar-color` dans ces pages : Chromium ignorerait
+  alors ces règles.
 - **Réduire les animations** (réglage d'accessibilité de Windows) : tout
   devient instantané (`reducedMotion()`, `prefers-reduced-motion`).
+
+### Le halo de l'île (`src/island/halo.ts`, `halo-palettes.ts`, `halo-stack.ts`)
+
+Un liseré de lumière qui court sur le contour de l'île et déborde autour, en
+dégradés animés (jamais une couleur plate), avec des vagues qui partent de
+l'île comme des ronds dans l'eau. Un `<canvas>` transparent sous l'île, de la
+taille de la fenêtre, `pointer-events: none` ; branché par `attachHalo()` dans
+le constructeur de `Island`.
+
+- **API** (pour tous les modules et les autres zones) :
+  `showHalo({ id?, palette, shape, rhythm, durationMs, fill, from, priority, level })`
+  → id ; `updateHalo(id, { level?, fill?, palette? })` ; `hideHalo(id)` ;
+  `haloAllowed(clé)` (module activé et case cochée) ; `ondineThinking(on)`
+  (« Ondine réfléchit », trois gouttes). Par le bus : `island.halo`
+  `{action: "show" | "hide" | "level" | "think", …}` (le module doit déclarer
+  `island.halo` dans `emits`).
+- **Formes** : `aurora`, `breathe`, `comet`, `sweep` (jusqu'à `fill`, depuis
+  `from`), `burst` (flash + étincelles), `ripple` (une goutte tombe : fronts
+  des deux côtés + ronds dans l'eau), `waves`, `drops`, `crackle`,
+  `reservoir` (déborde en gouttes au-delà de 95 %), `rain` (palette `storm` :
+  éclairs), `rise` / `set` (soleil qui monte ou descend), `cocoon`, `level`
+  (suit `updateHalo(id, {level})`), `progress` (liseré d'un minuteur : se
+  vide jusqu'à `endsAt` sur `total` ms, recalculé à chaque image, 12 i/s loin
+  de la fin ; rouge dans les 10 dernières secondes (`progressWarn`) ; sans
+  `endsAt` : figé à `fill`, la boucle s'arrête ; animations réduites / Calme :
+  un pas toutes les 5 s). `fill` < 1 coupe n'importe quelle autre forme
+  (une braise, une jauge).
+- **Palettes** : `PALETTES` dans halo-palettes.ts, à UN seul endroit, écrites
+  pour fond sombre ; sur fond clair (`prefers-color-scheme: light`),
+  `forLightBackground` les fonce, sauf palette avec ses couleurs `light`. Les
+  couleurs s'additionnent (`lighter`) en sombre. Réglages du module
+  « Animations de l'île » : Couleurs (Selon l'état / Arc-en-ciel / Couleur de
+  ma mascotte) et Intensité (Discret / Normal / Vif, `INTENSITY`).
+- **Rythmes** : `slow` 6 s, `calm` 3 s, `medium` 1,5 s, `fast` 0,6 s,
+  `heartbeat` (deux battements puis repos) ou une période en ms, jamais sous
+  `MIN_PERIOD_MS` (450 ms : pas de clignotement fatigant).
+- **Priorités** (`HaloStack`) : une seule demande montrée, la plus prioritaire
+  puis la plus récente ; fondu au ressort (entrée qui dépasse un peu, sortie
+  douce) ; la précédente revient quand elle finit. Même id = remplacement ;
+  même id et même forme = continuité (le volume qu'on monte).
+- **Géométrie** : à chaque image, la boîte de l'île (`getBoundingClientRect`,
+  arrondis lus dans le style calculé, la gelée comprise) échantillonnée par
+  `sampleContour` (contour.ts). Le côté collé au bord de l'écran est retiré des
+  points (`visibleRun`) : une comète passe derrière le bord. Une mini-île a une
+  lueur plus fine. Un appui sur l'île pendant un halo lance une onde de
+  couleur depuis ce point.
+- **Où le dessiner** (réglage `place` du module, 1.2.2, `PLACE` dans
+  halo-palettes.ts) : `inside` (lueur interne, découpée sur l'île, rien ne
+  dépasse ; ondes et étincelles vers le centre), `edge` (défaut : un liseré
+  fin à cheval sur le bord, ~6 px au plus) ou `outside` (lueur fine autour,
+  découpée hors de l'île, ~12 px au plus, `haloReach`). Dedans et sur le
+  contour, le calque passe par-dessus l'île (`z-index: 1`, toujours
+  `pointer-events: none`) et ne trace que la partie visible du contour (pas
+  le côté collé à l'écran) ; les couleurs suivent alors le fond de l'île (un
+  thème clair). Toute forme qui gonfle est tassée (`swell`, 1,3 × au plus) ;
+  un halo qui reste (musique, visio, processeur, réseau…) est plus pâle
+  (`lastingDim`, × 0,7). La fenêtre ne grandit jamais pour un halo : il est
+  dessiné dans le panneau qui existe déjà. Aperçu en direct dans les
+  réglages (`haloPreview`).
+- **Performance** : une boucle `requestAnimationFrame` seulement quand un halo
+  se voit (rien quand l'île est cachée ni sans halo) ; 30 i/s en éco et pour
+  les halos lents (aurore, cocon, niveau, balayage arrivé). **Réduire les
+  animations** ou **Calme** : un halo fixe dessiné une fois, sans vagues ni
+  étincelles.
+- Le module **Animations de l'île** (`src/modules/halos/`, Rust
+  `modules/halos.rs`, `platform/halos.rs`) est l'interrupteur maître : coupé,
+  aucun halo (`halosEnabled()`). Ses moments : sortie de veille (le fil dort
+  1 s, l'horloge a sauté de plus d'une minute → `halos.wake`), Verr Maj /
+  Verr Num (`GetKeyState`), Copié / Coupé / Collé (`GetAsyncKeyState` sur
+  Ctrl, C, X, V seulement, aucun crochet ; Copié / Coupé seulement si le
+  numéro du presse-papiers change dans 1,2 s ; le début du texte, 40
+  caractères, jamais si le presse-papiers est marqué sensible), touches de
+  volume, Wi-Fi sous 35 % (`wlanSignalQuality` : refusé sans la localisation
+  depuis Windows 11 24H2), et `levels` : le niveau instantané du micro ou de
+  la sortie (`IAudioMeterInformation::GetPeakValue`, aucun flux ouvert, rien
+  n'est écouté). Le reste vient du bus (voir le tableau). Logique pure :
+  `halo-rules.ts` (heure de partir en semaine, bonjour du matin, météo,
+  comète des rendez-vous, jauge, niveau), testée par `tests/front/halo.test.ts`.
+- **Batterie** (module Système, `battery-halo.ts`, règles `battery-rules.ts`) :
+  branché = vague verte jusqu'au niveau + « En charge · 56 % », puis halo
+  vert (`chargeHalo` : toujours / quelques secondes / jamais) ; chargée =
+  éclat vert et doré ; débranché = balayage blanc + « Sur batterie · 82 % » ;
+  faible = vagues orange 8 s puis une braise (`fill` 0,14) jusqu'au
+  branchement, `mascot.emote` yawn ; critique = vagues rouges en battement de
+  cœur jusqu'au branchement ou « Compris », `panic` (de nouveau toutes les
+  45 s), puis `relieved` au branchement.
+
+### Le liquide à l'intérieur de l'île (`src/island/liquid.ts`, `liquid-rules.ts`, `src/modules/halos/liquid-moments.ts`)
+
+Un liquide (eau, gelée, lumière, sable) qui remplit l'île DERRIÈRE son
+contenu : une surface qui ondule, des bulles, une légère physique. Un
+`<canvas>` premier enfant de l'île, `z-index: -1` (l'île crée sa pile avec
+`translate`) : au-dessus de son fond, sous le texte et la mascotte, rogné par
+la découpe de la gelée ; il suit donc les 4 bords et la mini-île. La gravité
+reste celle de l'écran (l'eau monte du bas de l'île). Branché par
+`attachLiquid()` dans le constructeur de `Island`.
+
+- **API** : `showLiquid({ id?, level, endsAt, total, direction: "fill" | "drain",
+  tint, murky, bubbles, current, wobble, vibrate, bpm, overflow, priority,
+  durationMs })` → id ; `updateLiquid(id, {…})` ; `hideLiquid(id)` ;
+  `liquidDrop()` (une goutte et des ronds), `liquidWave()` (une vague
+  traverse), `liquidDive()` (Ondine plonge et ressort) ;
+  `setLiquidAmbience("rain" | "boil" | "stars" | "still", on)` ;
+  `liquidEnabled()`, `liquidAllowed(clé)`. Par le bus : `island.liquid`
+  `{action: "show" | "update" | "hide" | "drop" | "wave" | "dive" | "ambience", …}`
+  (le déclarer dans `emits`). Priorités : la même `HaloStack` que les halos.
+- **Physique** (`liquid-rules.ts`, testé par `tests/front/liquid.test.ts`) :
+  48 colonnes reliées à leurs voisines (`stepSurface`, petits pas de 1/240 s) ;
+  vaguelette au clic (`splash`), bulle qui éclate, goutte qui tombe ; la pente
+  est un ressort poussé par l'accélération de l'île à l'écran
+  (`window.screenX` + boîte de l'île : déplacement, écart d'une fenêtre,
+  étirement de la gelée) ; une accélération verticale soulève la surface.
+  Matières (`FEEL`) : la gelée a des vagues lentes et molles, la lumière
+  s'additionne (`lighter`) avec des étincelles, le sable presque sans vagues
+  ni bulles, avec un grain.
+- **Lisibilité** : `readablePaint` assombrit la couleur (puis baisse
+  l'opacité) juste assez pour que le texte secondaire (`--muted`) garde 4,5:1
+  sur le fond de l'île, vu au pire sur un bureau blanc pour un fond
+  transparent (thème Verre) ; une lumière qui devrait disparaître est posée
+  normalement. Vérifié pour chaque thème et chaque couleur par les tests.
+- **Ondine** : île pleine (≥ 90 %) → `mascot.emote` `calm` une fois et elle
+  flotte (classe `liquid-float` : `translate` / `rotate` en CSS sur
+  `.mascot-canvas`, rien dans le moteur des mascottes) ; débordement d'un
+  minuteur → `surprised` et une bouée dessinée derrière elle ; téléchargement
+  → `liquid-dive` (`hide` puis `proud`).
+- **Performance** : aucune boucle sans liquide, île cachée (ou en trait) ni
+  page cachée ; 60 i/s quand ça bouge (bulles, vagues, pente, agitation),
+  24 i/s quand seule la surface ondule ; moitié en éco. Le lac
+  (concentration) posé : la boucle s'arrête (redessin toutes les secondes s'il
+  suit un minuteur). Réglages et couleurs du thème lus une fois par changement.
+  **Réduire les animations** ou **Calme** : figé (surface plate, sans bulles),
+  redessiné toutes les 5 s s'il suit un minuteur.
+- **Moments** (`liquid-moments.ts`, appelé par le module Animations de
+  l'île) : minuteurs (`timer.progress` : monte, descend en pause Pomodoro,
+  s'agite dans les 10 dernières secondes, déborde ; « off » qui suit « done »
+  ignoré 3,2 s), fichiers (`shelf.hash-progress`, `team.progress`,
+  `shelf.downloaded`), batterie (`system.battery-*` : vert en charge, fond
+  orange ou rouge quand elle est faible), disque (`system.disk-low` : eau
+  trouble), agents (`claude.thinking` : courant ; `agents.progress` : niveau ;
+  fin : vague), musique (commande `levels`, et `media.tempo` / `mascot.dance`
+  `{bpm}` quand le tempo sera publié), voix (`voice.level`), pluie
+  (`weather.updated`), processeur (`system.cpu-busy`), nuit (22 h – 6 h),
+  notification (`notify.shown`, sauf les petits retours du clavier),
+  concentration (`timer.focus`).
+- **Réglages** (L'île → Animations et halos, sous-menu « Le liquide ») : `liquid` (oui), `liquidMatter` (`water`), `liquidColor`
+  (`island` : l'accent du thème ; ou mascotte, couleurs nommées,
+  `custom` + `liquidCustom`), `liquidOpacity` (50 %), `liquidTimerStyle`
+  (`both` : avec le liseré, ou `replace` : `ringReplaced()` coupe le liseré
+  dans halos/index.ts), une case par moment (`liquidMusic` et `liquidNight`
+  décochées par défaut). Scènes démo : « Minuteur qui se remplit »,
+  « Ambiances dans l'île », « Ondine qui flotte ».
 
 ### La file de notifications (`src/core/notifications.ts`)
 
@@ -346,7 +540,8 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `agents.quiet` `{on: true}` | agents | calm |
 | `mascot.clicked`, `mascot.hover-long` | île | annoyed, dizzy / love |
 | `mascot.play` `{animation}` | réglages | joue une animation |
-| `mascot.emote` `{emotion}` | tout module | montre cette émotion (un état, ex. `sad`), si la mascotte l'a |
+| `mascot.emote` `{emotion, intensity?, mix?, mixK?, side?}` | tout module | montre cette émotion (un état, ex. `sad`) ; si la mascotte ne l'a pas, une expression proche (`EMOTE_NEAR`, types.ts). `intensity` (0 à 1) la dose, `mix` (un autre id) + `mixK` la mélange, `side: "left"` la joue de l'autre côté. Les ids de la 1.2.2 : panic, scared, relieved, stretch, yawn, surprised, listening, sunglasses, scarf, goodbye, push, sit-edge (en boucle : renvoyer `idle` pour finir), laugh, hide, tap-glass, climb, talk |
+| `mascot.talk` `{open, mark?}` | voix (Parler à Ondine) | la bouche suit la voix : `open` de 0 à 1 au rythme des syllabes (sans message pendant 180 ms, elle se referme) ; `mark` `"?"` ou `"!"` : les sourcils montent. Au repos ou attentive, elle passe en `talk`, puis revient au repos 1,5 s après le dernier message |
 | `agents.ask`, `agents.event` « waiting » | Agents IA | question (la goutte violette et son « ? ») |
 | `mascot.state` | mascotte | |
 | `mascot.dance` `{on}` | surprises (src/eggs/) | elle danse en boucle (musique + mini-île) ; les autres réactions passent puis la danse reprend |
@@ -398,6 +593,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `agenda.join` `{key, minutes}` | Agenda (Rust) | alerte « Réunion dans 2 min : … » avec « Rejoindre » (une fois par réunion en ligne) |
 | `media.pause` | Agenda (Rust, « Rejoindre ») | Musique met en pause ce qui joue (rien si c'est déjà en pause) |
 | `controls.mic-set` `{muted}` | Agenda (front, « Rétablir le micro ») | Contrôles coupe ou rétablit le micro, puis publie `controls.mic-muted` (`source: "request"`) |
+| `timer.progress` `{id, phase, state, endsAt, total, left}` | Minuteur (front) | un compte à rebours change (`id` "timer" ou "pomodoro", `state` running / paused / off / done) : Animations de l'île dessine le liseré qui se vide (réglage `timerRing`), un éclat à `done` |
 | `timer.work-session` `{seconds, completed}` | Minuteur (front) | une séance de travail Pomodoro s'arrête (finie, en pause, passée, remise à zéro, module coupé) : Bilan de la semaine ajoute le temps, et un Pomodoro si `completed` |
 | `notes.todo-toggled` `{done}` | Notes (Rust) | une tâche cochée (`true`) ou décochée : Bilan de la semaine compte (jamais le texte de la tâche) |
 | `weekly.show` | réglages (« Voir le bilan maintenant ») | Bilan de la semaine montre la semaine en cours (`peek`), sans rien consommer |
@@ -406,7 +602,20 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `controls.usb-ejected` `{root, letter, label, removable, ok, veto?, blocker?, error?, code?}` | Contrôles (Rust, fil d'éjection) | notification ✅ « Vous pouvez retirer la clé E: en toute sécurité. », ou ⚠️ avec qui bloque ; la bande USB de l'onglet se met à jour |
 | `shelf.hash-progress` `{job, percent}` | Étagère (Rust, cible « Empreinte ») | la notification « Empreinte SHA-256 : 45 % » (une fois par seconde, au-delà de 64 Mo) |
 | `shelf.hashed` `{job, algo, compared, cancelled, results: [{name, hex, matches} ou {name, error}]}` | Étagère (Rust) | notification « Identique ✓ » / « Différente ✗ » ou l'empreinte, avec « Copier » (`hash_copy {job}`) ; le texte copié n'est jamais dans le message |
+| `system.battery-plug` `{plugged, percent, charging}` | Système (Rust, à chaque tour) | chargeur branché / débranché (jamais au démarrage, rien sur un PC fixe) : halo vert ou blanc, « En charge · 56 % » |
+| `system.battery-critical` `{percent}` | Système (Rust) | sous `batteryCriticalPct` (10 %), une fois jusqu'au branchement : alerte « Batterie critique », halo rouge, Ondine panique |
+| `island.halo` `{action, id, palette, shape, …}` | tout module (le déclarer dans `emits`) | allume, règle ou éteint un halo (`action: "think"` : Ondine réfléchit), voir « Le halo de l'île » |
+| `island.liquid` `{action, id, level, …}` | tout module (le déclarer dans `emits`) | remplit l'île de liquide, le règle ou le vide ; `drop`, `wave`, `dive`, `ambience` {name, on} : voir « Le liquide à l'intérieur de l'île » |
+| `media.tempo` `{bpm}` | (à venir : analyse du tempo pour les danses) | la surface du liquide pulse au temps de la musique |
+| `halos.wake` `{secs}` / `halos.lock-key` `{key, on}` / `halos.clip` `{action, text?}` / `halos.volume` `{volume, muted}` / `halos.wifi` `{quality}` | Animations de l'île (Rust) | les halos correspondants et une ligne dans l'île (« Verr Maj · Activé », « Copié ») |
 | `capture.gif` `{state: recording / encoding / done / cancelled / error, …}` | Capture (Rust) | notification avec « Arrêter », puis « Création du GIF… », puis « GIF enregistré » (« Montrer dans l'Explorateur ») ; le bouton de l'onglet suit l'état |
+| `voice.listening` `{on, look}` | Parler à Ondine (Rust) | début / fin de l'écoute à voix haute : le halo de l'île (zone halos) et la mascotte peuvent s'y brancher |
+| `voice.level` `{level}` | Parler à Ondine (Rust, ~15 fois par seconde pendant l'écoute, 0 à la fin) | niveau du micro 0..1 : le halo tremble avec la voix |
+| `askclaude.voice` `{kind, …}` | Parler à Ondine (Rust) | pour le front du module : `open {look, hold}`, `partial {text}`, `transcribing`, `final {text, look}`, `empty`, `cancel`, `blocked {why: call / presentation / focus}`, `error {message}` |
+| `mascot.talk` `{open, brow?}` | Parler à Ondine (front) | à chaque syllabe de la réponse qui s'écrit : la bouche s'ouvre (0..1) et se referme seule (~120 ms) ; `{open: 0}` à la fin ; `brow` : `"question"` sur « ? », `"exclaim"` sur « ! » (animation : zone mascottes) |
+| `team.changed` | Équipe (Rust) | l'onglet redemande l'état (`state`) : collègues, présence, demandes, voisines |
+| `team.event` `{kind, from, …}` | Équipe (Rust) | ce qui arrive d'un collègue : `ping`, `ask`, `answer`, `visit`, `incoming` (à accepter), `received`, `sent`, `declined`, `invite`, `invite-reply`, `poll`, `vote`, `pomodoro`, `announce`, `status-report`, `rdp-reply`, `paired`, `pair-failed`… → notifications |
+| `team.progress` `{id, name, percent, dir}` | Équipe (Rust) | la notification « Envoi / Réception en cours » remplacée à chaque étape |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -436,7 +645,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
   téléchargement, rien d'exécuté) et déroule les répétitions. Voir « Module
   Agenda ».
 - **Diagnostic** (`src-tauri/src/diagnostics.rs`) : « Signaler un problème »
-  (Réglages → Général → À propos) ouvre dans le navigateur une issue GitHub
+  (Réglages → Sécurité et système → À propos) ouvre dans le navigateur une issue GitHub
   préremplie (`bug.yml` : version, Windows, 40 dernières lignes du journal,
   chemins personnels masqués, adresse de 2000 caractères au plus) ; rien ne part
   sans la personne. Et la mémoire / le processeur d'Ondine et de ses processus
@@ -488,7 +697,7 @@ bus ──▶ MascotController (mascot-state.ts) ──▶ MascotRenderer (rende
   alert, eating, celebrate, love, bored, et les émotions de la goutte v2 :
   success, question, error, warning, info, sad, worried, surprise, shy, calm,
   wink, et ceux de la famille gomme : wave, laugh, proud, pout, starstruck,
-  mischief, focus, moved, embarrassed, yawn, pensive, cheer. Un état que la mascotte n'a pas retombe sur `fallback` (et le contrôleur
+  mischief, focus, moved, embarrassed, yawn, pensive, cheer, et ceux de la 1.2.2 (demandés par mascot.emote) : panic, scared, relieved, stretch, surprised, listening, sunglasses, scarf, goodbye, push, sit-edge, hide, tap-glass, climb, talk. Un état que la mascotte n'a pas retombe sur `fallback` (et le contrôleur
   choisit l'ancien état équivalent quand il y en a un). Humeurs : neutral,
   happy, grumpy, tired.
 - **Déclencheurs** : voir le tableau du bus ; plus l'inactivité (bored après
@@ -554,11 +763,47 @@ moteur `gum` ; le catalogue fabrique les cousines à partir de `GUM_FAMILY`
   l'animation 0,1 s plus loin), s'allonge en l'air et s'écrase en retombant, le
   visage traîne un peu derrière le corps, les mains suivent leur pose avec leur
   propre ressort, la couleur passe en fondu. Sans souris, de petits coups d'œil ;
-  le clignement se ferme vite et se rouvre lentement. `react()` reçoit ce qui
+  le clignement se ferme en 70 ms et se rouvre en 130 ms (toutes les 2,2 à
+  5,4 s, deux fois de suite une fois sur cinq environ). `react()` reçoit ce qui
   arrive à l'île (clic, étirement, lâcher, secousse). Avec « Réduire les
-  animations », tout va directement à sa cible.
+  animations », tout va directement à sa cible, chaque animation est une image
+  fixe, et on ne redessine plus tant que rien ne change.
+  Depuis la 1.2.2 (tout lissé selon le temps écoulé, même rendu à 30 ou 60 i/s) :
+  - *Yeux* : un iris (l'encre teintée par la couleur du bonbon) et une pupille
+    qui se dilate (contente, amoureuse : `Face.pupil` > 1) ou se serre
+    (surprise, peur) ; les pupilles partent avant la tête (`look` rapide, `head`
+    lent : le visage glisse sur le volume) ; le point de lumière reste où est la
+    lampe quand l'œil tourne ; l'œil s'aplatit un peu de côté.
+  - *Lumière* (`GumScene.light`) : vers la souris quand elle bouge près d'elle,
+    sinon l'heure (de gauche à 7 h à droite à 19 h). Le reflet glisse dans le
+    corps, le dégradé, la lueur du bas (à l'opposé de la lampe) et l'ombre
+    suivent. Les reflets prennent un peu la couleur de la pochette en lecture
+    (`src/mascot/env-tint.ts`, que le module Musique nourrit ; rien ne sort).
+  - *Gomme translucide*, par forme (`GumShape.gel`, `bubbles`, `bubbleKind`) :
+    lueur du bas et bord qui s'éclaircit selon `gel` (berlingot 1, dragée 0,2) ;
+    bulles d'air qui remontent et tremblent après un choc (`jolt`), pores de la
+    guimauve, braises du soleil et de la flamme, rien dans le nuage.
+  - *Expressions* : chaque réglage du visage a sa vitesse (`FACE_RATE` : yeux et
+    bouche vite, sourcils en ressort qui dépasse, joues lentes : le
+    rattrapage) ; anticipation de 110 ms avant un geste ponctuel (elle se tasse,
+    le regard part) ; `express()` dose, mélange et retourne ; `talk()` ouvre la
+    bouche et lève les sourcils sur « ? » / « ! » ; au repos, la respiration
+    varie et un petit geste (`idleAct` : poids, soupir, moue, regard, fredonne)
+    passe toutes les 4 à 9 s (10 à 18 s avec « Calme », poids et soupir seulement).
+  - *Corps* : atterrissage en images clés (`LANDING`), traînée de gomme
+    (cisaillement selon la vitesse de côté), ombre qui respire (plus large
+    écrasée, plus floue en l'air), yeux un peu plus grands quand la souris file
+    près d'elle.
+  - *Accessoires d'un geste* (`Frame.prop`, en fondu) : lunettes de soleil qui
+    descendent du front, écharpe, pile vide qui clignote (pose `panic`),
+    petites jambes (assise, `swing` les balance), ronds de tapotement.
+  - Hors de l'écran (IntersectionObserver), rien n'est calculé.
 - `gum-draw.ts` : le dessin (couches de gomme, visage, moufles, accessoires,
   météo) et les teintes (`TINTS`, plus l'arc-en-ciel).
+
+Sur le podium des Réglages (`src/settings/podium.ts`), chaque mascotte a sa
+couleur (`PODIUM_TINT` de gum-family.ts, `GumEngine.setTintOverride`) ; celle
+de la première marche garde la couleur des réglages.
 
 Réglages (Réglages → Mascotte → Style, seulement pour une mascotte gomme) :
 `mascot.color` (`auto` = la couleur de la forme, une teinte de `TINTS`,
@@ -597,7 +842,7 @@ Réglages → Mascotte → Humeur → « Calme : moins de gestes spontanés »
 du repos au sommeil sans bâiller), la bouderie au réveil, les réactions aux
 notifications et aux modules, les moufles sur les oreilles et le parapluie,
 les émotions qui suivent le PC (processeur, batterie ; l'humeur de fond
-reste), la danse et le goûter (src/eggs/eggs.ts), les visites au bord de
+reste), la danse (un simple hochement en musique à la place) et le goûter (src/eggs/eggs.ts), les visites au bord de
 l'écran (island.ts). Gardé : réveil, sommeil, travail, réflexion, succès,
 erreur, question et pancarte « ? », alerte, repas (dépôt de fichiers), les
 réponses aux clics et au survol. Les surprises gardent leur propre réglage
@@ -631,10 +876,25 @@ Une quatrième fenêtre, « pet », créée cachée au démarrage comme les autr
 tâches, au-dessus des fenêtres ou derrière (`mascot.petOnTop`). Elle est
 montrée quand `mascot.enabled && mascot.pet` (`pet::apply`, au démarrage et
 dans `apply_settings`). Deux tailles : la case de la mascotte (112 × 112) ou,
-bulle ouverte, la case dans un coin et la bulle (420 × 480) du côté où l'écran
-a de la place (`choose_layout`) ; la mascotte ne bouge pas à l'écran, seule la
-fenêtre s'agrandit autour d'elle. Le Rust annonce le côté par l'événement
-`pet-layout` avant de changer la fenêtre.
+bulle ouverte, la case dans un coin et la bulle du côté où l'écran a de la
+place (`choose_layout`, d'après la zone de travail) ; la mascotte ne bouge pas
+à l'écran, seule la fenêtre s'agrandit autour d'elle. Le Rust annonce le côté
+par l'événement `pet-layout` avant de changer la fenêtre, avec `maxW`/`maxH` :
+la plus grande bulle qui tient de ce côté.
+
+- **Taille de la bulle** (1.2.2) : comme l'île qui suit son contenu (`fit.ts`),
+  la bulle prend la taille de son contenu, en largeur et en hauteur, entre
+  360 × 120 et 640 × 560 (`src/pet/bubble-size.ts`, mêmes bornes dans
+  `pet.rs`, un test le vérifie). `src/pet/main.ts` la mesure (largeur
+  « max-content », puis hauteur pour cette largeur, sans rien dessiner entre
+  les deux), suit le contenu (MutationObserver) et l'anime avec la glisse de
+  l'île (`GLIDE` de jelly.ts, ressort amorti sans rebond ; d'un coup avec
+  « Réduire les animations » ou « Calme »). La fenêtre suit par `pet_bubble` :
+  elle grandit AVANT la glisse (rien n'est coupé en route) et ne se resserre
+  qu'une fois la bulle posée ; place et taille changent d'un seul appel
+  (`platform::set_bounds`, SetWindowPos), pour qu'une bulle qui grandit vers
+  la gauche ou le haut ne fasse pas sauter la mascotte. Les onglets de la
+  bulle sont des icônes seules (nom en infobulle et `aria-label`).
 
 - **Déplacer** : un appui suivi d'un mouvement sur la mascotte appelle
   `pet_drag_start` ; un thread fait suivre la souris à la fenêtre (bulle
@@ -702,7 +962,7 @@ déclencheurs aux effets ; le réglage `mascot.surprises` (`all`, `seasonal`,
 | « tonneau », « barrel roll » | l'île fait un tour complet |
 | « la réponse » | Ondine réfléchit, puis « 42 » |
 | Mini-île tranquille (au plus toutes les 20 min, une chance sur 4 toutes les 30 s) | « le goûter » : elle traverse la mini-île en mangeant le contenu (`clip-path`), revient, le contenu réapparaît |
-| Musique + mini-île | elle danse tant que ça joue (`mascot.dance`) |
+| Musique + mini-île | elle danse tant que ça joue (`mascot.dance`), dans le style et au tempo de la musique (voir « La danse selon la musique ») ; en « Calme », un simple hochement |
 | Calendrier (`calendar.ts`), à l'ouverture, une fois par jour | 1/1 et 14/7 feux d'artifice, 14/2 cœurs, 1/4 poisson en papier dans le dos (tombe au clic), 21/6 trésor de la danse, 31/10 fantôme, décembre neige qui s'entasse ; Météo : pluie (éclaboussures), canicule (`fondue`) |
 
 - **Réactions au PC** (`context.ts`, permises sauf avec « Surprises : aucune ») :
@@ -725,6 +985,38 @@ déclencheurs aux effets ; le réglage `mascot.surprises` (`all`, `seasonal`,
 - Les animations propres à une surprise (`pluie-glitch`, `esquive`, `fondue`)
   sont lues dans le manifeste de la mascotte ; une mascotte qui ne les a pas
   (la famille gomme) montre une émotion à la place.
+
+### La danse selon la musique (`src/eggs/dance.ts`, `src/mascot/beat.ts`, `src/mascot/renderers/gum-dances.ts`)
+
+- **Quand** : eggs.ts (musique + mini-île ou bureau). **Comment** : `MusicDance`
+  demande le tempo au module Musique (voir plus bas) et choisit le style
+  (`danceStyle`) : Calme ou animations réduites → `nod` (simple hochement) ;
+  sinon le réglage `media.danceStyle` ; sinon le genre du lecteur
+  (`styleFromGenre`, expressions régulières FR/EN) ; sinon le tempo et
+  l'énergie (`guessStyle`) ; sinon pop. Un style deviné ne change qu'après 3
+  mesures de suite (`steadyStyle`). Publie `mascot.dance` {on, style, bpm,
+  phase} à chaque changement et à chaque mesure (phase : où on en est dans le
+  temps à l'envoi ; chaque fenêtre en déduit l'instant d'un temps, `beatFrom`).
+- **Les danses** (manifeste goutte-gomme, partagé par les 15 mascottes) :
+  `danse-rock` (hochements, air guitar), `danse-metal` (headbang, cornes),
+  `danse-rap` (rebond des genoux, bras croisés, casquette), `danse-rnb`
+  (balancement, claquements de doigts sur 2 et 4), `danse-pop` (pas de côté,
+  clap), `danse-electro` (bras en l'air), `danse-reggae` (balancement,
+  contretemps), `danse-jazz` (ondulation, yeux mi-clos), `danse-hochement`.
+  `danse` seule reste pour les règles et les mascottes sans styles. Accessoires :
+  `Props.cap`, `guitar`, `snap`, `clap`, `Hand.horns` (gum-draw.ts).
+- **Le temps** : pour une animation `danse*`, le moteur donne `t = temps / 2`
+  (les temps tombent sur les entiers de `2t` ; à 120 BPM, t = secondes).
+  `BeatFollower` rattrape le temps de la musique sans saut ni recul (±35 % de
+  vitesse au plus) ; sans tempo mesuré (aperçu des réglages, démo, navigateur),
+  le tempo typique du style (`STYLE_BPM`). `MascotRenderer.setBeat`.
+- **Le halo** (`src/modules/halos/`, seulement si `halos.dance` ET
+  `halos.music`) : avec un tempo mesuré, le halo de la danse (forme `breathe`
+  + `beatAt`) bat sur les mêmes temps (un temps, ou deux au-delà de ~133 BPM :
+  `haloBeatMs`, jamais sous `MIN_PERIOD_MS`), un éclat (`flash`) pour l'électro,
+  et passe devant le halo qui suit le niveau du son ; sans tempo, comme avant.
+- **Démo** : `media.tempo` inventé (tempo du morceau de démo), scène
+  « Danses selon la musique » (un genre après l'autre).
 
 ## Module Étagère (phase 2)
 
@@ -826,6 +1118,25 @@ et l'accès à Windows dans `src-tauri/src/platform/media.rs`.
 - **Mettre en pause** (`media.pause`, publié par l'Agenda quand on rejoint
   une réunion) : si quelque chose joue, un fil appelle `TryPauseAsync` sur la
   session SMTC en cours.
+- **Genre** : le champ `genre` de `media.changed` (`Genres` des propriétés
+  SMTC, trois au plus ; souvent vide, beaucoup de lecteurs ne le donnent pas).
+- **Tempo** (1.2.2, la danse de la mascotte) : commande `tempo` {on} (redite
+  toutes les 10 s par `src/eggs/dance.ts` tant qu'elle danse ; sans nouvelle
+  depuis 30 s, ou réglage `danceTempo` décoché, le fil s'arrête). Le fil lit
+  l'indicateur de niveau des haut-parleurs (`platform::halos::Meter`, gardé
+  ouvert, périphérique relu toutes les 3 s) toutes les 10 ms (20 ms en éco) et
+  publie `media.tempo` {bpm, phase, confidence, energy} une fois par seconde,
+  `{bpm: null}` quand le rythme est perdu. L'estimation (`media_tempo.rs`,
+  pure, testée avec des signaux fabriqués) : attaques (montée du niveau en
+  échelle log, lissée sur 20 ms), autocorrélation sur 8 s aux écarts
+  fractionnaires (pas de 0,5 BPM de 60 à 200, penchant doux pour ~120 BPM
+  contre les erreurs d'octave), phase par peigne (les temps récents comptent
+  plus), recalage (même tempo à 4 % : lissé ; double ou moitié : ignoré ; trois
+  mesures ailleurs : nouveau tempo ; 1,5 s de silence ou nouveau morceau :
+  tout repart de zéro). Un seul nombre par lecture, jamais le son ; rien n'est
+  gardé au-delà de 8 s ni envoyé.
+- Réglages : `danceTempo` (activé), `danceStyle` (`auto`, `rock`, `metal`,
+  `rap`, `rnb`, `pop`, `electro`, `reggae`, `jazz`).
 
 ## Module Presse-papiers (phase 4)
 
@@ -980,6 +1291,11 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   rebours a avancé depuis le départ (ou la reprise) : un PC en veille pendant
   la séance ne compte jamais plus que la séance. `completed` seulement à la
   fin naturelle d'une séance de travail (pas « Passer »).
+- Liseré de l'île : `syncProgress` (à chaque tick) publie `timer.progress`
+  seulement quand la signature change (lancé, pause, reprise, +1 min, phase,
+  fin) ; `done` juste avant la remise à zéro. `timer.start` accepte aussi
+  `seconds` (10 à 600), pour la scène de démo « Liseré d'un minuteur ».
+  Avec `timerRing`, pas de cocon de concentration (la séance a déjà sa jauge).
 
 ### Module Notes (`src/modules/notes/`, `src-tauri/src/modules/notes.rs`)
 
@@ -1089,6 +1405,21 @@ qui surveille dossiers et lecteurs).
 - Front : l'onglet de l'île (liste, interrupteurs, pause générale, historique)
   et la section « Règles » de la fenêtre de réglages
   (`src/settings/rules-editor.ts`).
+- 1.2.2 : déclencheurs sans fichier, sondés par `rules/sense.rs` à chaque
+  tour du fil de fond (`schedule` heure + jours, avec balayage facultatif
+  d'un dossier ; `unlock` par `platform/session.rs` ; `clipboard` lien /
+  e-mail / code / texte, presse-papiers marqué sensible ignoré, texte jamais
+  journalisé ; `network` coupure / retour d'Internet et VPN, toutes les
+  10 s, confirmé par deux lectures ; `battery` / `power`) ou reçus du bus
+  (`agent` ← `agents.event`, `music` ← `media.changed`). Conditions `days`,
+  `from` / `to`, `olderThanDays`. Actions `addNote` (`notes.add`, `kind`
+  `todo`), `unzip` (`rules/unzip.rs` : noms protégés, 10 000 entrées et
+  4 Go au plus, jamais d'écrasement, annulable), `copyPath`, `mascot`
+  (`mascot.dance` / `mascot.emote` / `mascot.sign {text, secs}`), `quiet`
+  (`rules.quiet {on}` : l'île met les notifications en pause). Compteur
+  « déclenchée N fois cette semaine » (`fired` dans le fichier des règles).
+  Point d'extension prévu pour « nouvel appareil sur le réseau » (dans
+  `sense.rs`).
 
 ### Module Lanceur (`src/modules/launcher/`, `src-tauri/src/modules/launcher.rs`)
 
@@ -1158,6 +1489,13 @@ qui surveille dossiers et lecteurs).
   « Copié ».
 - « guid » / « uuid » : « Nouveau GUID » (`crypto.randomUUID`) et sa version
   Windows `{MAJUSCULES}`, copiés de la même façon.
+- **Recherche web** (1.2.2) : la dernière ligne, dès qu'on tape quelque chose,
+  est « Recherche web : « … » sur Google » (réglage `searchEngine` : Google par
+  défaut, DuckDuckGo, Bing, Qwant, Ecosia ; `launcher::ENGINES`). Entrée ou
+  clic → commande `web_search {query}` : le Rust construit l'adresse
+  (`search_url` : blancs regroupés, 500 caractères, encodage `%XX`, espace
+  = `+`), la revalide par `web_url` et l'ouvre dans le navigateur par défaut
+  (`shell_open`). Rien ne part avant ; le journal ne note que le moteur.
 
 ### `api.openIsland(tab?)`
 
@@ -1176,6 +1514,12 @@ s'il n'existe pas ou est désactivé).
 - Disque fixe sous le seuil (réglage `diskAlertPct`, 10 % par défaut, 0 =
   jamais) → `system.disk-low`, une seule fois par disque, de nouveau
   seulement si la place est revenue au-dessus du seuil + 2 points.
+- Batterie (lue à chaque tour, `GetSystemPowerStatus`) : `system.battery-low`
+  (`batteryLowPct`, 20 %), `system.battery-critical` (`batteryCriticalPct`,
+  10 %), `system.battery-full` (toujours ; `batteryFullAlert` ne règle plus que
+  la notification), `system.battery-plug` au branchement / débranchement. Les
+  halos (voir « Le halo de l'île ») : `chargeHalo`, `haloPlug`, `haloUnplug`,
+  `haloFull`, `haloLow`, `haloCritical`. Commande légère `battery`.
 - Commandes : `snapshot` (nom du PC, utilisateur, Windows, durée depuis le
   démarrage, processeur, mémoire, disques, cartes réseau avec IP et MAC,
   batterie) et `copy_support` (permission `clipboard`) : le même résumé en
@@ -1262,9 +1606,30 @@ s'il n'existe pas ou est désactivé).
   réponse : éteinte ou pare-feu). Raccourcis : 443, 80, 3389, 22, 445, 53.
 - `dns {host}` : nom → adresses par le résolveur de Windows ; une IPv4 →
   son nom (`GetNameInfoW`, recherche inverse).
+- Services IA (`nettools_ai.rs`, réglage `aiStatus`, **désactivé** par
+  défaut) : toutes les 5 min, lecture des pages d'état publiques de Claude
+  (`status.anthropic.com/api/v2/status.json`), ChatGPT
+  (`status.openai.com/api/v2/status.json`, format Statuspage) et Gemini
+  (`status.cloud.google.com/incidents.json`, incidents en cours dont le
+  produit contient « Gemini »). Vert / orange / rouge, historique des pannes
+  sur 7 jours (`ai-status.json`). En pause pendant la concentration
+  (`timer.focus`), le calme des agents, une présentation ou sans Internet.
+  Bus : `nettools.ai-status {services, change}` (notifications, point rouge
+  de la mini-île, conseil « Claude a un incident en cours » sur les
+  événements d'agents) et `mascot.emote` (inquiet / soulagé).
 
 ### Module Contrôles (`src/modules/controls/`, `src-tauri/src/modules/controls.rs`, `src-tauri/src/platform/audio.rs`)
 
+- 1.2.2 : `bt_batteries` (`platform/bt_battery.rs`, propriété
+  `DEVPKEY_Bluetooth_Battery` des périphériques `BTH*`, aucun appareil
+  contacté) et alerte `controls.bt-battery-low` sous le réglage
+  `btBatteryLow` (15 %), réarmée à +5 % ; `desktop_icons` /
+  `set_desktop_icons` (« Bureau propre », `platform/desktop_icons.rs`) ;
+  télécommande sur le téléphone (`controls_remote.rs`, réglage `phoneRemote`
+  **désactivé** par défaut, permission `network`) : serveur HTTP du réseau
+  local avec jeton de 128 bits, un seul téléphone, actions fixes (musique,
+  volume, minuteur, diapositive par Page suivante / précédente), arrêt après
+  10 min sans action ou 3 h ; publie `controls.remote {state}`.
 - Volume et coupure des haut-parleurs et du micro **par défaut** de Windows,
   par Core Audio (`IMMDeviceEnumerator::GetDefaultAudioEndpoint` →
   `IAudioEndpointVolume`). Aucune permission : rien n'est lu ni envoyé.
@@ -1323,6 +1688,105 @@ s'il n'existe pas ou est désactivé).
   `controls.usb-added` pour chaque nouvelle (pas celles déjà là au
   démarrage), si le réglage `usbNotify` est coché. Le journal ne note jamais
   le nom d'un volume ni d'un programme.
+
+### Module Équipe (`src/modules/team/`, `src-tauri/src/modules/team.rs`, `team_net.rs`, `team_proto.rs`)
+
+Les Ondine d'un même réseau local se parlent directement : aucun serveur,
+aucun compte, rien sur Internet. **Désactivé par défaut**
+(`MODULES_OFF_BY_DEFAULT`, dans services/settings.rs et core/settings-store.ts) :
+éteint, aucun port n'est ouvert.
+
+- **Ports fixes** : UDP **47820** (découverte), TCP **47821** (appairage et
+  échanges). L'écoute TCP est sur toutes les cartes, mais une connexion qui ne
+  vient pas d'une adresse privée / locale au lien est fermée tout de suite
+  (16 à la fois au plus). Comme « Vers le téléphone », on laisse le pare-feu
+  de Windows demander l'autorisation la première fois (réseaux privés).
+- **Découverte** : « je suis là » (nom, couleur, empreinte de la clé) toutes
+  les 30 s sur l'adresse de diffusion de chaque carte, seulement si
+  « Visible » ; « qui est là ? » sur « Chercher ». Rien n'est jamais accepté
+  sur la foi d'une annonce. Repli : l'adresse IP tapée à la main.
+- **Appairage** : B affiche un code à 6 chiffres (3 min, UN essai : le code
+  est consommé dès la connexion). A le tape. SPAKE2 (crate `spake2`) en tire
+  une clé sans l'envoyer (un intrus au milieu n'a qu'un essai, pas d'attaque
+  hors ligne), puis Noise `XXpsk3` (crate `snow`) avec cette clé : chacun
+  apprend la clé publique X25519 de l'autre, puis sa fiche (nom, couleur,
+  mascotte, « mon PC »), chiffrée. Pas de QR : un PC ne lit pas facilement
+  un QR affiché sur un autre.
+- **Échanges** : une connexion TCP par message ; poignée de main Noise `IK`
+  (l'appelant connaît la clé de l'autre et prouve la sienne ; l'appelé refuse
+  toute clé hors de « Mes collègues »), puis ChaCha20-Poly1305, clé neuve à
+  chaque connexion. Trames : 2 octets de longueur + message Noise (≤ 65 535) ;
+  dans le canal, 1 octet (0 = JSON, 1 = morceau de fichier) + le contenu.
+  Chaque message (`Msg`, JSON de 60 Ko au plus) est vérifié champ par champ
+  (`Msg::check`) : longueurs, valeurs connues, pas de caractère de contrôle ni
+  d'inversion de texte. Tests : deux pairs simulés en mémoire
+  (team_proto.rs, en bas).
+- **Clés** : la clé privée X25519 est dans le Gestionnaire d'identifiants
+  (`team-identity-key`, hors de `KNOWN_KEYS` : le front ne peut ni la lire,
+  ni l'écrire, ni demander si elle existe). Les clés publiques des collègues
+  sont dans `%APPDATA%\Ondine\team.json` (avec l'empreinte, vérifiée à la
+  lecture ; un fichier abîmé est mis de côté).
+- **Rien n'est exécuté** : texte, fichier, demande d'aide, demande de l'IT
+  (état du PC, Bureau à distance) attendent « Accepter » (`pending`, 50 au
+  plus, 30 min). Un fichier accepté : c'est le destinataire qui vient le
+  chercher (`Pull`), dans `Téléchargements\Ondine`, sous un nom assaini
+  (`safe_file_name` : pas de chemin, de `:`, de nom réservé), jamais
+  d'écrasement (`unique_dest`), empreinte SHA-256 vérifiée, marque du Web
+  (`Zone.Identifier`) ; un fichier à moitié reçu va à la Corbeille. Taille
+  maximale : réglage `maxMb`. Un dossier est zippé en mémoire (200 Mo au plus,
+  dossiers exclus passés).
+- **Présence** : toutes les 60 s (et dès que le statut change) à chaque
+  collègue connu ; hors ligne après 2 min 30 sans nouvelles. Statut
+  automatique : `timer.focus` → concentration, rendez-vous à heure fixe en
+  cours (`agenda::in_meeting`, plages seulement) → en réunion, 10 min sans
+  activité → absent. Modifiable à la main.
+- **Collègues** : geste (la mascotte de l'île du destinataire fait
+  `mascot.emote`), « Tu es dispo ? », visite (visit.ts : la mascotte du
+  collègue, à sa couleur, traverse la carte de l'alerte avec un ressort ;
+  posée d'emblée avec « Réduire les animations » ou Calme ; une fenêtre de
+  traversée de tout l'écran aurait été trop lourde), texte (montré avant
+  l'envoi, copié à l'acceptation), fichiers (glisser sur l'île : une cible
+  par collègue en ligne), café / déjeuner, sondage (2 à 4 choix), Pomodoro
+  d'équipe (chacun « Rejoint » : `timer.start`), annonce.
+- **IT** : « Demander de l'aide » (le résumé de `system::support_text` et
+  l'image copiée), état du PC et Bureau à distance (`mstsc /v:<IPv4 locale>`)
+  seulement après « Autoriser » à chaque fois, inventaire seulement des PC
+  qui ont allumé `shareInventory` et marqué le demandeur « IT ».
+- **Mes PC** (appairage « mon PC ») : la batterie passe dans la présence ;
+  presse-papiers partagé (`clipboardSync`, texte seulement, jamais un élément
+  marqué sensible, sans écho) ; même mascotte (`mascotSync`).
+- **Pas de file d'attente** : un collègue éteint ne reçoit rien (« ne répond
+  pas »).
+- **Chat** (1.2.2, `team_chat.rs`, front `chat.ts` / `chat-logic.ts`) : icône
+  💬 dans l'en-tête de l'onglet → liste (salon « Toute l'équipe », puis les
+  collègues en ligne avec leur pastille, et ceux qui ont un historique) → fil
+  en bulles (classes `.ask-bubble` de Parler à Ondine). Quatre messages de
+  plus dans le protocole, vérifiés comme les autres : `chat` (4 000
+  caractères au plus, `MAX_CHAT`), `chat-typing` (« … écrit », au plus toutes
+  les 3 s, effacé après 6 s), `chat-read` (« Lu » : le numéro du dernier de MES
+  messages qu'il a reçus ; envoyé une fois par nouveau message) et
+  `chat-react` (👍 😂 ❤️, une par personne, la même l'enlève). Les messages des
+  collègues appairés arrivent **directement** (pas de `pending`) ; rien n'est
+  ouvert ni exécuté : un lien est un bouton, et `chat_open_link` n'ouvre (par
+  `shell_open`) qu'un lien http(s) sans espace ni caractère invisible, présent
+  tel quel dans la conversation. Le salon n'a pas de serveur : le message part
+  à chaque collègue en ligne, chacun le range dans son salon (on n'y voit que
+  ses collègues appairés). Notification dans l'île compacte avec « Répondre »
+  (une alerte avec la zone de saisie, `content`, qui prend le clavier le temps
+  de répondre) et « Ouvrir » ; en concentration ou en réunion, discrète
+  (priorité basse, 4 s). Une réaction reçue fait `mascot.emote` côté front,
+  sauf concentration, réunion, Calme ou animations réduites. Glisser un
+  fichier pendant une conversation à deux : sa cible passe en premier
+  (`chat_files` = `send_files`, toujours à accepter) et une ligne 📤 / 📥 est
+  ajoutée au fil des deux côtés. **Historique** : en mémoire (500 messages par
+  conversation), effacé à la fermeture ; réglage `chatKeep` (éteint par
+  défaut) : `%APPDATA%\Ondine\team-chat.bin`, ChaCha20-Poly1305 (`ONDCHAT1`
+  + nonce + texte chiffré), clé tirée au hasard dans le Gestionnaire
+  d'identifiants (`team-chat-key`, hors de `KNOWN_KEYS`), 7 jours, réécrit au
+  plus toutes les 2 s par l'entretien (`team_chat::tick`). L'éteindre efface
+  la clé puis ce fichier interne. `chatReceipts` (allumé) : « … écrit » et
+  « Lu » dans les deux sens. Mode démo : une conversation avec Léa (elle
+  « écrit… » puis répond) et la scène `team-chat`.
 
 ## Agents IA (`src/modules/agents/`, `src-tauri/src/modules/agents.rs`, `src-tauri/src/cli.rs`)
 
@@ -1783,7 +2247,7 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   mascotte tout de suite, et elle fait coucou. Les puces du CHANGELOG sont
   sous le carrousel. « Plus tard » ou × ferment ; les moteurs sont détruits.
   Classe CSS `custom` sur la carte (île 660 × 268).
-- Rouvrable : Réglages → Général → À propos → « Voir les nouveautés », et en
+- Rouvrable : Réglages → À propos → « Voir les nouveautés », et en
   mode démo la scène « Quoi de neuf » (Réglages → Captures d'écran). Le
   message `app.whats-new` peut porter `{ version }` (dans un navigateur :
   `window.ondineBus.inject("app.whats-new", { version: "1.2.0" })`).
@@ -1792,7 +2256,7 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   commande `release_page_open` (Rust, `update.rs`) : ouvre
   `https://github.com/Naod6473/Ondine/releases/tag/v<version de l'appli>` dans
   le navigateur ; la version vient du Rust, pas de la page. Réglages →
-  Général → À propos → « Voir les nouveautés » publie `app.whats-new`.
+  À propos → « Voir les nouveautés » publie `app.whats-new`.
 
 ## Astuces d'onglet (`src/island/tips.ts`, `src/island/tip-state.ts`)
 
@@ -1807,6 +2271,64 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   animée, sauf avec « réduire les animations ».
 - Réglages → Onglets → Astuces : `island.tips` (oui) et « Revoir les
   astuces » (vide `tipsSeen`).
+
+## Premier lancement (`src/core/setup.ts`, `setup-plan.ts`, `suggestions.ts`, `src/island/setup-panel.ts`)
+
+- **L'assistant** remplace l'ancien mot de bienvenue : au premier démarrage
+  (`general.welcomed` faux, vraie appli, hors démo), une alerte qui reste
+  (« high », sticky, clé `setup`) dont le contenu (`content`) est le panneau
+  de l'assistant, DANS l'île. Cinq étapes passables (Passer ; × ou Échap
+  passent tout, via le nouveau `onDismiss` des notifications) : prénom +
+  langue + Vous/Tu (ou « Reprendre la configuration de mon autre PC » :
+  `settings_import_pick`, boîte « Ouvrir » puis import comme Réglages →
+  Sauvegarde, `check_path` compris) ; les cartes « Vous faites quoi sur ce
+  PC ? » ; la mascotte (le carrousel de `whats-new-panel.ts`, option
+  `hint`) ; le bord de l'île et le style des icônes (en direct) ; la clé de
+  l'API (`credential_set` « anthropic-api-key », jamais dans les réglages).
+  Puis « C'est prêt, Simon ! » et « Ouvrir l'île ». `welcomed` passe à vrai à
+  l'arrivée sur « C'est prêt » ou à la fermeture ; une installation déjà
+  accueillie ne le voit pas. Réglages → Général → « Refaire l'assistant »
+  publie `app.setup`. Scène démo « Premier lancement » : même panneau, rien
+  n'est enregistré, faux logiciels.
+- **Les cartes** (`SETUP_CARDS`, setup-plan.ts) : Bureautique, Développement
+  et agents IA, IT et support, Réunions et visio, Musique et création, Études.
+  Chacune allume ses onglets ; `planFromCards` écrit `modules.<id>.enabled`
+  (tous les modules à onglet, sauf Équipe, jamais touché) et un
+  `island.tabOrder` complet (Parler à Ondine, puis les onglets dans l'ordre
+  des cartes cochées). Aucune carte + Continuer : l'île minimale (Parler à
+  Ondine, Étagère, Notes). Les modules sans onglet ne sont pas touchés.
+  Plusieurs cartes : un profil par carte (Travail, Développement…, sans
+  règle, `profilesFromCards`), sauf nom déjà pris.
+- **Détection locale** (`services/apps.rs`, commande `apps_detect`) : noms des
+  raccourcis des deux menus Démarrer, DisplayName des clés Uninstall (HKLM,
+  HKCU, WOW6432Node), et quelques exécutables dans le PATH (le fichier existe ?
+  rien n'est lancé). Seuls les ids d'une liste fixe (`APPS`) sortent du Rust ;
+  `APP_CARDS` les relie aux cartes, pré-cochées tant qu'on n'y a pas touché.
+- **Le prénom** (`general.firstName`, 40 caractères, nettoyé des deux côtés) :
+  « Bonjour Simon ! » du matin (Animations de l'île), le titre du bilan de la
+  semaine, le premier mot de Parler à Ondine, et la bulle du bureau (une fois
+  par jour). Réglages → Général → Prénom.
+- **Les propositions** (`suggestions.ts`, règles pures dans setup-plan.ts,
+  réglage `island.suggestions`, oui) : jamais rien de fait tout seul, une fois
+  par cas (`island.suggested`). Le bon moment : premier fichier glissé sur
+  l'île (`island.state` → drop) → Étagère ; première clé USB ou première visio
+  → Contrôles. Ces deux-là viennent du Rust (`services/hints.rs`, un fil de
+  ~6 s, seulement si Contrôles est éteint et le cas pas encore proposé :
+  lecteurs amovibles, micro/caméra pris par une autre appli qu'Ondine →
+  événement `island-hint`). L'onglet oublié : `island.tabSeenAt` (jour de la
+  dernière ouverture, noté par island.ts une fois par jour), `usageSince` (fin
+  de l'assistant, ou premier démarrage en 1.2.2) ; 21 jours sans ouverture →
+  « Masquer l'onglet … ? », au plus une par regard (6 h), jamais s'il reste
+  3 onglets. « Revoir les propositions » (Réglages → Onglets) vide la liste.
+- **Animations** : la hauteur de l'alerte suit l'étape (`data-step`,
+  island.css), donc la gelée de l'île s'y ajuste au ressort ; points d'étape
+  avec la pastille à ressorts de `tab-pill.ts` ; l'étape sort comme un
+  onglet (`tabOut`) et la suivante arrive en cascade (`staggerIn`) ; les
+  icônes d'onglets de l'aperçu arrivent avec un rebond. Réduire les
+  animations ou Calme : tout change d'un coup.
+- Tests : `tests/front/setup.test.ts` (cartes ↔ vrais modules, ids du Rust ↔
+  `APP_CARDS`, plan, profils, prénom, propositions) ; Rust : `services::apps`,
+  `services::hints`, `settings::first_name_and_suggestions_are_checked`.
 
 ## Parler à Ondine (`src/modules/askclaude/`, `src-tauri/src/modules/askclaude.rs`, `askclaude_providers.rs`, `askclaude_tools.rs`, `askclaude_pc.rs`)
 
@@ -1855,8 +2377,10 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
   message : un document à lire, pas des instructions.
 - Front : bulles (vous à droite, Ondine à gauche, `data-no-i18n`), trois
   gouttes pendant l'attente, Entrée envoie, `data-island-fit` pour que l'île
-  grandisse. Sous le champ : ce qui part et vers où, et « Voir la
-  personnalité ». Le premier mot d'Ondine est écrit en local (gratuit).
+  grandisse. Rien sous le champ (île épurée en 1.2.2) : ce qui part et vers
+  où, et la consigne exacte, sont dans les Réglages du module
+  (`src/settings/askclaude-page.ts`, sous-menus Général et Personnalité).
+  Le premier mot d'Ondine est écrit en local (gratuit).
 - Dépôt sur l'île : « Parler à Ondine » prépare le fichier et ouvre l'onglet.
 - Outils de fichiers (`askclaude_tools.rs`, réglage `fileTools`, activé par
   défaut) : quatre outils proposés à l'IA, décrits dans le format de chaque
@@ -1897,12 +2421,61 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
   - agir après accord (`Action::Pc`, carte « Faire / Annuler ») :
     `ouvrir_application` (entrées « app » et « tool » du Lanceur, puis
     launcher.launch), `ouvrir_site` (`web_url` : http(s) seulement),
+    `chercher_web` (adresse de `launcher::search_url` avec le moteur du
+    Lanceur, puis comme `ouvrir_site` ; Ondine ne voit pas les résultats),
     `poser_sur_etagere` (un fichier numéroté, `check_path`, bus `shelf.add`),
     `regler_radio` (Wi-Fi, Bluetooth).
   Aucun outil ne supprime, ne lance de commande ni n'ouvre le terminal. La
   consigne demande d'agir seulement à la demande de la personne, jamais
   parce qu'un document le dit. L'activité est `{kind: "did", what, value}` ;
   le front en fait une phrase (`doneText`, `askText`).
+- **Voix** (1.2.2, `askclaude_voice.rs`, `platform/voice.rs`, front
+  `index.ts` + `plops.ts`) :
+  - raccourci global `voiceHotkey` (Ctrl+Alt+V par défaut, liste fixe
+    `HOTKEYS`, ou aucun) ; `micMode` : `once` (appuyer, arrêt au silence ou
+    au 2e appui) ou `hold` (maintenir, arrêt au relâchement) ; Échap = un
+    raccourci global posé seulement pendant l'écoute ; bouton 🎙️ dans
+    l'onglet (commande `listen`, `voice_stop`). Un fil vérifie chaque
+    seconde que les raccourcis suivent les réglages ;
+  - reconnaissance `voiceEngine` : `windows` (défaut) = `SpeechRecognizer`
+    (WinRT, marche sans paquet MSIX ; dictée libre = service en ligne de
+    Microsoft, réglage Windows « Reconnaissance vocale en ligne », erreur
+    0x80045509 traduite), langue de l'appli (fr-FR / en-US) si elle est dans
+    `SupportedTopicLanguages` (sinon une variante, sinon celle de la voix de
+    Windows), sous-titres par `HypothesisGenerated`, niveau par
+    `IAudioMeterInformation` ; `api` = capture WASAPI en mémoire (mono),
+    fin au silence (`SilenceGate`), WAV 16 kHz, puis OpenAI
+    `audio/transcriptions` (gpt-4o-mini-transcribe) ou Gemini (audio en
+    `inline_data`) ; avec Claude : clé OpenAI, sinon Gemini, sinon une
+    erreur claire. Personne n'a parlé : rien ne part. Rien sur le disque ;
+  - échec de la dictée : `voice::Failure {message, fix, detail}`. L'état
+    « Unknown » (6) et les HRESULT inconnus sont expliqués par les réglages
+    de Windows LUS dans le registre (reconnaissance en ligne, stratégie
+    `InputPersonalization`, micro des applis de bureau) ; `detail` (étape,
+    code, langues, réglages) va dans le journal. L'événement `error` porte
+    `fix` (page ms-settings d'une liste fixe, ouverte par `voice_fix`) et
+    `apiTo` (une clé OpenAI ou Gemini est rangée : bouton « Passer à la
+    transcription par l'API », qui change `voiceEngine` puis réécoute) ;
+  - discrétion (`discreet`) : micro pris par une autre appli
+    (`media_use`), `presentation_busy`, `timer.focus` / `agents.quiet` →
+    `blocked`, et `voice_state.discreet` coupe les plops ;
+  - « Regarde ça » (`lookHotkey`, aucun par défaut) : image de la fenêtre
+    active (pas une fenêtre d'Ondine ; `record::Grabber`, 1600 px au plus,
+    PNG en mémoire), reprise par `prepare {look: true}` et montrée comme
+    un fichier joint : elle ne part qu'au clic ;
+  - front : une seule fenêtre « s'en occupe » (`owner` : la bulle d'Ondine
+    sur le bureau si l'onglet y est, sinon l'île) : ouvrir l'onglet,
+    `mascot.emote` surprised puis listening, envoyer le texte. La réponse
+    s'écrit petit à petit (`speak`, ~55 caractères/s, 7 s au plus) avec une
+    goutte par syllabe (Web Audio, timbre par mascotte `TIMBRES`, hauteur
+    `moodShift`), `mascot.emote talk` au début, `mascot.talk` à chaque
+    syllabe, l'humeur à la fin ; animations réduites / Calme : texte d'un
+    coup. Mains libres (`handsFree`) : `listen {handsFree}` après la réponse ;
+  - commandes rapides (`askclaude_quick.rs`, `quick {text}`, réglage
+    `quickCommands`) : minuteur, volume, son, luminosité, musique, note,
+    mode sombre, FR et EN, en `Call` d'outil du PC faits par
+    `askclaude_pc::plan` ; le tour est gardé dans la conversation (« C'est
+    fait ! », note pour l'IA). Une question (« ? ») n'en est jamais une.
 - Boucle des outils (`AskClaude::run`) : la réponse donne ses appels sous une
   seule forme (`calls`) et telle que l'API veut la relire (`native` :
   contenu Claude, sortie OpenAI avec la réflexion chiffrée, contenu Gemini
@@ -1916,7 +2489,7 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
 
 ## Modes de performance (`src-tauri/src/services/perf.rs`, `src/core/perf.ts`)
 
-Réglages → Général → Performances : `general.perfMode` = `high` (Performance
+Réglages → Performances et journal : `general.perfMode` = `high` (Performance
 haute), `balanced` (Équilibrée, par défaut) ou `eco` (Économie d'énergie), et
 `general.ecoOnBattery` (« Économie d'énergie automatique sur batterie »,
 activé par défaut).
@@ -1951,7 +2524,7 @@ Rust (ms ; haute / équilibrée / éco) :
 | Presse-papiers (compteur de copies) | 250 | 400 | 1 000 | |
 | Musique (SMTC) | 500 | 1 000 | 2 000 | la barre avance côté front entre deux lectures |
 | Système : processeur, mémoire | 1 000 | 2 000 | 5 000 | « très occupé » = ≈ 20 s dans tous les modes (`busy_ticks`) |
-| Système : disques, batterie | 30 000 | 30 000 | 60 000 | |
+| Système : disques | 30 000 | 30 000 | 60 000 | la batterie est lue à chaque tour (processeur), c'est très léger |
 | Contrôles : micro / caméra utilisés, micro coupé | 1 000 | 2 000 | 3 000 | le raccourci micro réagit tout de suite (raccourci global) |
 | Étagère : Téléchargements | 2 000 | 3 000 | 6 000 | |
 | Règles : fichiers en attente « stables » | 250 | 500 | 1 000 | sans fichier en attente, le fil dort jusqu'au prochain coup d'œil aux lecteurs |
@@ -1961,6 +2534,8 @@ Rust (ms ; haute / équilibrée / éco) :
 | Lanceur : raccourci réservé | 1 000 | 1 000 | 3 000 | |
 | Profils automatiques | 30 000 | 30 000 | 60 000 | |
 | Météo : « l'heure de redemander ? » | 10 000 | 10 000 | 30 000 | |
+| Animations de l'île : touches (Verr Maj, Ctrl+C/X/V, volume) | 40 | 50 | 100 | seulement si une de ces cases est cochée |
+| Animations de l'île : veille, Wi-Fi (sinon) | 1 000 | 1 000 | 3 000 | le Wi-Fi est lu toutes les 10 s |
 
 Front (ms) :
 
@@ -1979,6 +2554,9 @@ Front (ms) :
 | Bilan de la semaine : l'heure du bilan ? | 60 000 | 60 000 | 120 000 | une première fois 20 s après le démarrage |
 | Dessins continus (mascotte, anneau du minuteur, chrono) | 60 im/s | 60 im/s | 30 im/s | `frameLoop` |
 | Forme de l'île en gelée (pendant une animation seulement) | 60 im/s | 60 im/s | 30 im/s | `jelly.ts`, arrêtée au repos |
+| Halo de l'île (pendant un halo seulement) | 60 im/s | 60 im/s | 30 im/s | `halo.ts` ; 30 im/s pour les halos lents ; arrêté sans halo ou île cachée |
+| Animations de l'île : heure de partir, bonjour, ciel | 30 000 | 30 000 | 60 000 | `halosClock` |
+| Animations de l'île : niveau du micro / de la musique | 66 | 80 | 160 | `halosLevel`, seulement micro utilisé ou musique (réglage) |
 
 En éco, en plus : les effets « Studio » (flou → net) sont remplacés par ceux de
 « Classique », et les cartes de verre des Contrôles perdent leur flou
@@ -1999,18 +2577,79 @@ En éco, en plus : les effets « Studio » (flou → net) sont remplacés par ce
 - Règles : sans fichier en attente, le fil se réveille toutes les 2 s au lieu
   de 2 fois par seconde.
 
-Pour comparer : Réglages → Général → À propos → « Ressources utilisées ».
+Pour comparer : Réglages → À propos → « Ressources utilisées ».
+
+## Ondine et les fenêtres (`src/modules/windowlife/`, `src-tauri/src/modules/windowlife.rs`, `src-tauri/src/platform/winlife.rs`)
+
+Module sans onglet. Un thread (4 fois par seconde, 2 en éco ; 30 quand la
+souris est tout près de l'île) lit la fenêtre au premier plan
+(`winlife::foreground` : place sans bordure invisible, agrandie, à Ondine…)
+et publie ce qu'il voit ; le front en fait des expressions (`mascot.emote`,
+rien en mode Calme). Réglages (les intrusifs coupés par défaut) :
+`avoidForeground` (non : source `foreground` de dodge.rs, sauf fenêtre
+agrandie ou plein écran), `perchTitle` (non), `throwSnap` (non : à la fin
+d'un déplacement, island/mod.rs appelle `throw_window` ; un geste de plus de
+1800 px/s colle la fenêtre au premier plan à la moitié gauche / droite,
+l'agrandit (haut) ou la restaure (bas), `push`), `fullscreenHop`
+(`surprised` ; le mode présentation cache toujours l'île), `sitEdge`
+(`sit-edge`), `mouseShake` (`laugh` / `hide`), `toastRoom` (heuristique :
+fenêtres `Windows.UI.Core.CoreWindow` petites dans le coin bas droit → source
+`toast`), `nightSunglasses` (21 h – 6 h, 9 pixels de la nouvelle fenêtre au
+premier plan, au plus toutes les 15 min), `agendaClimb` (`agenda.reminder` →
+`climb`), `lockGoodbye` (`OpenInputDesktop` refusé = verrouillé : `goodbye`,
+puis `stretch`), `tidyForgotten` (non) + `forgottenMins` (une notification
+propose « Réduire » : commande `minimize`, jamais fermer). Le « pont » de
+fichiers à travers l'île n'est pas fait (l'Étagère sait déjà glisser un
+fichier vers l'Explorateur).
 
 ## Fenêtre de réglages : catégories et sous-menus (`src/settings/main.ts`)
 
+- **Rangement 1.2.2** (`src/settings/layout.ts`, données pures testées dans
+  `tests/front/settings-layout.test.ts`) : cinq groupes dans la barre
+  (`NAV_GROUPS`) :
+  - **Ondine** : Général (prénom, langue, Vous / Tu, Lancer avec Windows,
+    Refaire l'assistant), Mascotte, Parler à Ondine (page du module
+    `askclaude`, id `module:askclaude` inchangé) ;
+  - **L'île** : Apparence, Comportement (sous-menus « Comportement de l'île »
+    et « Ondine et les fenêtres » : le module `windowlife`, son interrupteur
+    Activé et ses champs), Animations et halos (voir plus bas), Onglets ;
+  - **Automatiser** : Règles, Profils ;
+  - **Modules** : les catégories (`MODULE_CATEGORIES`) ; les modules rangés
+    ailleurs (`MODULES_ELSEWHERE` : rules, askclaude, halos, windowlife) n'y
+    sont plus ;
+  - **Sécurité et système** : Confidentialité, Identifiants, Sauvegarde, Mises
+    à jour, Performances et journal, À propos (avec le mode démo).
+
+  Seules les pages bougent : chaque réglage garde sa clé dans son module
+  (`modules.<id>.values.<clé>`) ou dans `general` / `island`. Une page peut
+  afficher les champs de plusieurs modules (`fieldRows(man, champs)`
+  enregistre dans le bon module). Une page qui suit un module (`Page.module`,
+  ou `Sub.module` pour une section) porte le point « désactivé » dans la barre.
+- **Animations et halos** (id `animations`) : `ANIMATION_SUBS` range les champs
+  du module Animations de l'île et les halos de batterie du module Système
+  (`MOVED_FIELDS.system` : la page Système ne les montre plus et met un lien
+  à leur place) en Style, Le PC, Ondine et les agents, Son et clavier, Ma
+  journée, Le liquide. Chaque sous-menu commence par **« Tout »** (clé
+  `tout:<sous-menu>`) : allumé si au moins un moment l'est ; le couper met les
+  oui/non à faux et un choix qui a « Jamais » (`chargeHalo`) à `never` ; le
+  rallumer remet tout (un choix éteint reprend son défaut). Dans Style,
+  « Tout » est l'interrupteur du module. Un champ de `halos` non rangé (ajouté
+  plus tard) tombe dans Style ; le test l'interdit.
+- **Anciennes places** : `resolvePlace(page, sous-menu)` mène une page d'avant
+  1.2.2 à sa nouvelle place (`module:halos` → `animations`,
+  `module:windowlife` → `behavior`/`windows`, `general` + `updates` / `perf`
+  / `about` / `island` → leur page…). Servent la page retenue dans
+  `localStorage` et tout lien profond `go(page, clé, sous-menu)`. La
+  recherche connaît les anciens noms (`FORMER_NAMES` : « Animations de
+  l'île », « Ondine et les fenêtres », « Halos de batterie »…).
 - La barre latérale range les pages de modules en **catégories** repliables
-  (`MODULE_CATEGORIES` : Ondine et IA, Fichiers, Organisation, Outils IT, Le PC
+  (`MODULE_CATEGORIES` : IA, Fichiers, Organisation, Outils IT, Le PC
   au quotidien ; un module inconnu va dans « Autres modules »). Titres en texte
   seul ; dans une catégorie, l'ordre des onglets. Les catégories ouvertes sont
   retenues (`localStorage` « settings.cats ») ; celle de la page affichée
   s'ouvre toute seule.
-- Une page longue a des **sous-menus** (`Page.subs`) : Général, Onglets,
-  Mascotte, Profils (un par profil), et pour les modules `MODULE_SECTIONS`
+- Une page longue a des **sous-menus** (`Page.subs`) : Comportement, Animations
+  et halos, Onglets, Mascotte, Profils (un par profil), et pour les modules `MODULE_SECTIONS`
   (Agents IA, Parler à Ondine, par clé de champ du manifeste ; un champ non
   listé va dans le premier sous-menu). Ils se déplient sous la page dans la
   barre (pli `grid-template-rows`), la page n'affiche que celui choisi, retenu
@@ -2018,8 +2657,9 @@ Pour comparer : Réglages → Général → À propos → « Ressources utilisé
 - Le rendu dessine **toute** la page et marque chaque bloc du haut avec
   `data-sub` (`inSub`, controls.ts) ; `showPage` retire les autres blocs avant
   `applyMode`, ce qui fait que « N réglages de plus » compte le sous-menu
-  affiché. Un sous-menu dont rien ne resterait en Simple est grisé dans la
-  barre (`dimSubs`). Un résultat de recherche ou un lien profond vers une ligne
+  affiché. Un sous-menu dont rien ne resterait en Simple est caché dans la
+  barre (`dimSubs`, classe `dim`) et n'est jamais affiché vide : la page ouvre
+  le premier sous-menu qui a quelque chose (il revient en Complet). Un résultat de recherche ou un lien profond vers une ligne
   d'un autre sous-menu y bascule d'abord (`showPage(…, focusKey)`).
 - `SEARCH_ALIASES` : des mots de recherche qui ne sont pas un libellé
   (Tutoiement → « S'adresser à moi »…) mènent à la bonne ligne.
@@ -2047,12 +2687,16 @@ Pour comparer : Réglages → Général → À propos → « Ressources utilisé
   pouvait pas toucher : Bilan de la semaine) ; l'en-tête de la page (Activé,
   Permissions, À propos) reste. Pour les pages de l'île, `ISLAND_ESSENTIALS`
   (clé = le `data-key` de la ligne, c'est-à-dire son libellé) : Général (Langue,
-  S'adresser à moi, Lancer avec Windows, Bord de l'écran, Mises à jour
-  automatiques), Apparence (Thème, Style des icônes), Onglets (la liste des
-  modules, marquée `data-essential` dans le DOM), Mascotte (Afficher la
-  mascotte, Mascotte, Couleur, Ondine vit sur le bureau), Profils (Profil actif). Règles et les trois
-  pages Sécurité restent entières (`WHOLE_PAGE`) : courtes, ou pas une liste
-  de réglages.
+  S'adresser à moi, Lancer avec Windows), Comportement (Bord de l'écran,
+  Toujours en mini, Raccourci ; plus Activé et l'essentiel du manifeste de
+  windowlife), Apparence (Thème, Style des icônes, Élasticité), Animations et
+  halos (les trois réglages du halo et chaque « Tout » : aucun sous-menu vide),
+  Performances et journal (Performances, Économie d'énergie, Mode utilisé),
+  Onglets (la liste des modules, marquée `data-essential` dans le DOM), Mascotte
+  (Afficher la mascotte, Mascotte, Couleur, Ondine vit sur le bureau, et une
+  ligne par sous-menu), Profils (Profil actif). Règles, Confidentialité,
+  Identifiants, Sauvegarde, Mises à jour et À propos restent entières
+  (`WHOLE_PAGE`) : courtes, ou pas une liste de réglages.
 - `mode.ts` (`applyMode`) travaille sur la page déjà dessinée : `.row[data-key]`
   et `section.group[data-key]` ; un conteneur `data-essential` garde tout ce
   qu'il contient ; `data-follows="<clé>"` suit la ligne de cette clé. La recherche trouve tout : un résultat caché en Simple porte

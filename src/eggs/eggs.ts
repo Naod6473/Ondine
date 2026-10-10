@@ -9,7 +9,8 @@
 //   15 clics rapides sur Ondine → elle se divise en deux gouttes, puis se recolle
 //   2 tours de souris autour d'elle → le tournis
 //   De la musique et la mini-île → Ondine danse tant que ça joue (tous les jours,
-//     ce n'est pas une surprise : seulement si la mascotte a une animation « danse »)
+//     ce n'est pas une surprise : seulement si la mascotte a une animation « danse »),
+//     dans le style de la musique et à son tempo (dance.ts) ; en « Calme », un simple hochement
 //   De temps en temps, mini-île tranquille → Ondine traverse la mini-île en
 //     mangeant son contenu (≈ 6 s), puis tout revient (« le goûter »)
 //   Le calendrier, à l'ouverture de l'île (une fois par jour) : 1er janvier,
@@ -37,6 +38,7 @@ import { reducedMotion } from "../island/tab-pill";
 import type { MascotManifest } from "../mascot/types";
 import { dayKey, isHot, isRainy, musicPlaying, seasonOf, type MediaPayload, type WeatherLike } from "./calendar";
 import { PcReactions } from "./context";
+import { MusicDance } from "./dance";
 import { FxLayer } from "./fx-layer";
 import { MascotFx } from "./mascot-fx";
 import { TREASURES, treasure } from "./treasures";
@@ -96,6 +98,8 @@ export class EasterEggs {
   /** La musique s'arrête : on attend un peu avant d'arrêter la danse (entre deux morceaux). */
   private musicOff = 0;
   private dancing = false;
+  /** Le style et le tempo de la danse (dance.ts). */
+  private dance: MusicDance;
   private lastSnack = Date.now();
   private snackWanted = false;
   /** Dernière fois que la souris était sur l'île. */
@@ -109,6 +113,7 @@ export class EasterEggs {
     private readonly notifications: NotificationQueue,
   ) {
     this.fx = new FxLayer(hooks.shell);
+    this.dance = new MusicDance(bus);
     this.mfx = new MascotFx(hooks.slot);
     const on = (topic: string, fn: (payload: any) => void) => this.offs.push(this.bus.on(topic, (m) => fn(m.payload), "eggs"));
     on("easter.word", (p: { word?: MagicWord } | null) => p?.word && this.word(p.word));
@@ -168,6 +173,7 @@ export class EasterEggs {
 
   destroy() {
     this.reactions.destroy();
+    this.dance.destroy();
     for (const off of this.offs) off();
     this.fx.clear();
     this.mfx.destroy();
@@ -354,7 +360,7 @@ export class EasterEggs {
    * disparaît derrière elle, bouchée par bouchée), s'arrête au bout, contente,
    * revient à sa place, et le contenu réapparaît en fondu. Environ 6 secondes.
    * Pas si la souris est sur l'île, pas pendant une notification, seulement
-   * quand l'île est en haut de l'écran (sur un côté, la mini-île est verticale).
+   * quand l'île est en haut ou en bas de l'écran (sur un côté, la mini-île est verticale).
    */
   private async snack() {
     const { shell, slot } = this.hooks;
@@ -364,7 +370,7 @@ export class EasterEggs {
       this.hooks.state() === "compact" &&
       !!content &&
       !content.querySelector(".notif") &&
-      edge === "top" &&
+      (edge === "top" || edge === "bottom") &&
       !this.busy &&
       !this.mfx.splitting &&
       Date.now() - this.lastHover > SNACK_QUIET_MS &&
@@ -563,15 +569,15 @@ export class EasterEggs {
 
   /** De la musique et la mini-île : Ondine danse (et le 21 juin, c'est un trésor). */
   private syncDance() {
-    // Pas de danse en « Calme » (mascot.calm).
-    // En mini-île, ou sur le bureau (src/pet/), où elle danse aussi.
+    // En mini-île, ou sur le bureau (src/pet/), où elle danse aussi. En
+    // « Calme » (mascot.calm), un simple hochement de tête (dance.ts).
     const m = settingsStore.current.mascot;
     const here = this.hooks.state() === "compact" && !!this.hooks.manifest();
     const desk = m.enabled && !!m.pet;
-    const want = this.music && (here || desk) && !this.busy && !m.calm;
+    const want = this.music && (here || desk) && !this.busy;
     if (want === this.dancing) return;
     this.dancing = want;
-    this.bus.emit("mascot.dance", { on: want }, "eggs");
+    this.dance.set(want);
     if (want && seasonOf(new Date()) === "music-day" && this.allowed("seasonal")) this.discover("music-day");
   }
 }

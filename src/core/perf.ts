@@ -2,7 +2,7 @@
 // et les boucles de dessin de l'interface.
 //
 // Le mode qui s'applique (« effectif ») est décidé par le Rust
-// (src-tauri/src/services/perf.rs) : le choix de Réglages → Général →
+// (src-tauri/src/services/perf.rs) : le choix de Réglages → Performances
 // Performances, ou « éco » sur batterie si la case est cochée. Il arrive au
 // démarrage (Bridge.perfState) puis à chaque changement (événement "perf-mode") :
 // tout change à chaud, sans redémarrer.
@@ -55,6 +55,10 @@ export const CADENCES = {
   weeklyCheck: [60000, 60000, 120000],
   /** Agents IA : le budget du jour (coût estimé des jetons) est-il dépassé ? */
   agentsBudget: [900000, 900000, 1800000],
+  /** Animations de l'île : heure de partir, bonjour du matin, couleurs du ciel. */
+  halosClock: [30000, 30000, 60000],
+  /** Animations de l'île : le niveau du micro (visio) ou de la musique, pendant qu'ils servent. */
+  halosLevel: [66, 80, 160],
 } satisfies Record<string, readonly [number, number, number]>;
 
 export type Cadence = keyof typeof CADENCES;

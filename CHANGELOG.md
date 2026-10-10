@@ -1,5 +1,235 @@
 # Changements · Changelog
 
+## 1.2.2 · 2026-10-10
+
+- Parlez à Ondine à voix haute : raccourci Ctrl+Alt+V (ou bouton 🎙️), appuyer
+  une fois ou maintenir, Échap annule, sous-titres en direct ; le halo de
+  l'île tremble avec votre voix. Reconnaissance de Windows (service en ligne
+  de Microsoft), ou transcription par l'API (OpenAI, Gemini) en option. · Talk
+  to Ondine out loud: Ctrl+Alt+V shortcut (or 🎙️ button), press once or hold,
+  Esc cancels, live captions; the island's halo trembles with your voice.
+  Windows speech recognition (Microsoft's online service), or transcription by
+  the API (OpenAI, Gemini) as an option.
+- Ondine répond en « plop plip » : le texte s'écrit petit à petit avec des
+  sons de gouttes, selon son humeur et le timbre de chaque mascotte, et sa
+  bouche suit les syllabes. · Ondine answers with « plop plip »: the text
+  writes itself out with little droplet sounds, following her mood and each
+  mascot's tone, and her mouth follows the syllables.
+- Halos de lumière autour de l'île, animés en vagues : vert au branchement,
+  orange quand la batterie est faible, rouge critique avec Ondine qui panique,
+  et un nouveau module « Animations de l'île » pour la sortie de veille, les
+  clés USB, les téléchargements, la météo, la concentration, les agents IA,
+  Verr Maj, Copié/Collé, le volume, les rendez-vous… chaque moment se coupe à
+  part. Fixes si Windows réduit les animations ou en mode Calme. · Light halos
+  around the island, animated in waves: green when plugging in, orange when
+  the battery is low, red when critical with a panicking Ondine, and a new
+  "Island animations" module for waking from sleep, USB drives, downloads,
+  weather, focus, AI agents, Caps Lock, Copied/Pasted, volume, meetings… each
+  moment can be turned off. Still with reduced motion or Calm mode.
+- L'île s'écarte de la fenêtre de réglages quand elle la cacherait (avec une
+  petite peur), la suit si on la pousse, puis revient à sa place à la
+  fermeture. Elle peut aussi se poser en bas de l'écran, au-dessus de la barre
+  des tâches. · The island moves out of the way of the settings window (with a
+  little fright), follows it when pushed, then returns to its place when it
+  closes. It can also sit at the bottom of the screen, above the taskbar.
+- Nouveau module « Ondine et les fenêtres » : sursaut au plein écran,
+  s'asseoir sur une fenêtre, souris secouée, place aux notifications de
+  Windows, lunettes de soleil la nuit, grimper avant un rendez-vous, au revoir
+  au verrouillage ; en option, éviter la fenêtre active, se poser sur sa barre
+  de titre, ranger une fenêtre en lançant l'île, réduire une fenêtre oubliée.
+  · New "Ondine and your windows" module: full-screen jump, sitting on a
+  window, mouse shake, room for Windows notifications, sunglasses at night,
+  climbing before an appointment, goodbye on lock; optionally avoid the active
+  window, sit on its title bar, snap a window by throwing the island, minimize
+  a forgotten window.
+- L'île ouverte suit le texte en douceur, en hauteur et en largeur (Parler à
+  Ondine). · The open island smoothly follows text, in height and width (Talk
+  to Ondine).
+- Premier lancement : Ondine se présente dans l'île et configure tout en 5
+  étapes passables (prénom, langue et vous/tu, ce que vous faites sur ce PC,
+  mascotte, place de l'île et style des icônes, clé de Parler à Ondine). Les
+  cartes sont pré-cochées d'après les logiciels installés, détectés sur le PC
+  sans rien envoyer. · First launch: Ondine introduces herself in the island
+  and sets everything up in 5 skippable steps (name, language, what you do on
+  this PC, mascot, island position and icon style, Talk to Ondine key). Cards
+  are pre-checked from installed software, detected locally with nothing sent.
+- Une île qui commence petite : les cartes allument seulement les onglets
+  utiles et créent les profils qui vont avec. Ondine propose ensuite le bon
+  onglet au bon moment (première clé USB, première visio, premier fichier
+  glissé) et de masquer un onglet oublié depuis 3 semaines, jamais sans vous
+  demander. « Reprendre la configuration de mon autre PC », « Refaire
+  l'assistant », et Ondine vous appelle par votre prénom. · An island that
+  starts small: cards turn on only the useful tabs and create matching
+  profiles. Ondine then suggests the right tab at the right moment (first USB
+  drive, first video call, first dropped file) and offers to hide a tab unused
+  for 3 weeks, never without asking. "Bring over the setup from my other PC",
+  "Run the setup again", and Ondine calls you by your first name.
+- Équipe : un vrai chat. L'icône 💬 ouvre les conversations à deux et le salon
+  « Toute l'équipe ». Les messages des collègues arrivent directement (un lien
+  ne s'ouvre jamais tout seul), on répond depuis la notification de l'île, on
+  voit « … écrit » et « Lu », et la mascotte joue les réactions 👍 😂 ❤️.
+  Chiffré de bout en bout, sans serveur ; l'historique reste en mémoire, ou 7
+  jours chiffré sur le disque en option. · Team: a real chat. The 💬 icon opens
+  one-to-one conversations and a "Whole team" room. Teammates' messages arrive
+  directly (links never open by themselves), you can reply from the island
+  notification, see "… is typing" and "Read", and the mascot plays 👍 😂 ❤️
+  reactions. End-to-end encrypted, no server; history stays in memory, or
+  optionally 7 days encrypted on disk.
+- La mascotte danse selon la musique : Ondine trouve le tempo à partir du
+  niveau du son (sur votre PC, rien n'est enregistré ni envoyé) et danse dans
+  le style du morceau (rock, metal, rap, RnB, pop, électro, reggae, jazz et
+  chill), pour les 15 mascottes ; le halo bat sur les mêmes temps. En Calme,
+  un simple hochement de tête. · The mascot dances to the music: Ondine finds
+  the tempo from the sound level (on your PC, nothing is recorded or sent) and
+  dances in the style of the track (rock, metal, rap, R&B, pop, electro,
+  reggae, jazz and chill), for all 15 mascots; the halo pulses on the same
+  beats. In Calm mode, a simple nod.
+- Animations à l'intérieur de l'île : un liquide (eau, gelée, lumière ou
+  sable) remplit l'île derrière son contenu. Il monte avec un minuteur (agité
+  à la fin, puis il déborde), un envoi de fichier ou la charge de la batterie,
+  et ondule avec la musique ou la voix. Pluie sur la vitre, bulles quand le
+  processeur chauffe, une goutte à chaque notification, un lac pendant la
+  concentration. Il penche quand on déplace l'île ; Ondine flotte quand l'île
+  est pleine. · Animations inside the island: a liquid (water, jelly, light or
+  sand) fills the island behind its content. It rises with a timer (stirring
+  at the end, then overflowing), a file transfer or battery charging, and
+  ripples with music or your voice. Rain on the glass, bubbles when the CPU is
+  busy, a drop for each notification, a calm lake during focus. It tilts when
+  you move the island; Ondine floats when the island is full.
+- Minuteurs : un liseré de lumière fait le tour de l'île (mini-île comprise)
+  et se vide au fil du temps, pour le Minuteur, le Pomodoro et les minuteurs
+  lancés par le Lanceur ou par Ondine ; il rougit dans les dernières secondes
+  et reste figé en pause. · Timers: a line of light runs around the island
+  (mini island included) and empties as time passes, for the Timer, Pomodoro
+  and timers started from the Launcher or by Ondine; it turns red in the last
+  seconds and freezes while paused.
+- Halos plus fins et plus discrets, et nouveau réglage « Où dessiner le halo »
+  : à l'intérieur de l'île, sur le contour (par défaut) ou à l'extérieur, avec
+  un aperçu en direct. · Thinner, subtler halos, and a new "Where to draw the
+  halo" setting: inside the island, on the outline (default) or outside, with
+  a live preview.
+- Île : la barre de défilement Windows laisse place à une fine pastille grise
+  translucide, visible seulement au survol ou pendant le défilement. · Island:
+  the Windows scrollbar is replaced by a thin translucent grey thumb, shown
+  only on hover or while scrolling.
+- Ondine sur le bureau : les onglets de sa bulle sont des icônes (le nom en
+  infobulle), et la bulle s'adapte à son contenu en largeur et en hauteur. ·
+  Ondine on the desktop: her bubble's tabs are icons (name in tooltip), and
+  the bubble fits its content in width and height.
+- Icônes : Équipe, Animations de l'île et Ondine et les fenêtres ont leur
+  image en couleur et une vraie icône au trait dans le style épuré. · Icons:
+  Team, Island animations and Ondine & windows now have a colour image and a
+  proper line icon in the clean style.
+- Les 15 mascottes ont 15 nouvelles expressions (panique avec pile vide, peur,
+  soulagement, étirement, sursaut, écoute, lunettes de soleil, écharpe, au
+  revoir, pousser, assise jambes dans le vide, se cacher, tapoter la vitre,
+  grimper, parler). · The 15 mascots get 15 new expressions (panic with an
+  empty battery, scared, relieved, stretch, startled, listening, sunglasses,
+  scarf, goodbye, push, sitting with dangling legs, hide, tap on the glass,
+  climb, talk).
+- Mascottes plus réalistes et plus vivantes : reflet qui suit la souris ou
+  l'heure, gomme translucide avec bulles d'air, reflets teintés par la
+  pochette en lecture, pupilles qui se dilatent, émotions dosées et mélangées,
+  anticipation et rattrapage, repos jamais identique, sourcils sur « ? » et
+  « ! », plus fluides à 60 images/s ; avec « Réduire les animations », une
+  image fixe qui ne coûte plus rien. · More realistic, more alive mascots:
+  shine that follows the mouse or the time of day, translucent gum with air
+  bubbles, highlights tinted by the playing album art, pupils that dilate,
+  blended emotions of varying intensity, anticipation and follow-through, a
+  rest pose that never repeats, eyebrows on "?" and "!", smoother at 60 FPS;
+  with "Reduce animations", a still image that costs nothing.
+- Podium : une couleur par mascotte. · Podium: one colour per mascot.
+- Nouveau module Équipe (désactivé par défaut) : les Ondine d'un même réseau
+  local se parlent sans serveur ni Internet ; appairage par code à 6 chiffres,
+  tout chiffré de bout en bout (Noise + SPAKE2), clés dans le Gestionnaire
+  d'identifiants. · New Team module (off by default): Ondines on the same
+  local network talk to each other with no server or Internet; pairing with a
+  6-digit code, everything end-to-end encrypted (Noise + SPAKE2), keys in
+  Windows Credential Manager.
+- Équipe : présence des collègues (dispo, en réunion, concentration, absent),
+  coucou et réactions jouées par la mascotte, « Tu es dispo ? », visite
+  d'Ondine avec un petit mot ; fichiers, dossiers, textes et liens toujours à
+  accepter, reçus dans Téléchargements\Ondine sans jamais rien exécuter ni
+  écraser ; café, sondage express, Pomodoro d'équipe, annonce. · Team:
+  teammates' presence (available, in a meeting, focusing, away), hellos and
+  reactions played by the mascot, "Are you free?", Ondine visits with a short
+  note; files, folders, texts and links always to be accepted, received in
+  Downloads\Ondine, never run or overwritten; coffee, quick polls, team
+  Pomodoro, announcements.
+- Équipe, pour l'IT : demander de l'aide (résumé système + capture), état du
+  PC et Bureau à distance avec accord à chaque fois, inventaire des PC qui
+  l'acceptent ; entre mes PC : batterie du portable, presse-papiers partagé et
+  même mascotte (options). · Team, for IT: ask for help (system summary +
+  screenshot), PC status and Remote Desktop with consent each time, inventory
+  of the PCs that agree; between my PCs: laptop battery, shared clipboard and
+  same mascot (options).
+- Commandes rapides sans IA ni clé : « volume 30 », « minuteur 10 minutes »,
+  « musique suivante », « note : … », « luminosité 50 », « mode sombre ».
+  Mains libres, « Regarde ça » (image de la fenêtre active, montrée avant
+  l'envoi), discrétion en visio, présentation et concentration. · Quick
+  commands without AI or key: "volume 30", "timer 10 minutes", "next song",
+  "note: …", "brightness 50", "dark mode". Hands-free, "Look at this" (image
+  of the active window, shown before sending), discretion during video calls,
+  presentations and focus.
+- Île épurée : ce qui part et la consigne exacte sont maintenant dans les
+  Réglages de Parler à Ondine. · Cleaner island: what is sent and the exact
+  instructions are now in the Talk to Ondine settings.
+- Recherche web : dernière ligne du Lanceur « Rechercher « … » sur Google »
+  (Google, DuckDuckGo, Bing, Qwant ou Ecosia), et Ondine peut ouvrir une
+  recherche après votre accord. · Web search: the Launcher's last line "Search
+  "…" on Google" (Google, DuckDuckGo, Bing, Qwant or Ecosia), and Ondine can
+  open a search once you agree.
+- Règles : nouveaux déclencheurs (heure fixe, déverrouillage, presse-papiers,
+  coupure ou retour d'Internet et VPN, batterie, secteur, agent, musique),
+  conditions jours / heures / ancienneté, actions note ou tâche, décompresser,
+  copier le chemin, mascotte, calme ; compteur hebdomadaire et 4 nouveaux
+  modèles. · Rules: new triggers (scheduled time, unlock, clipboard, internet
+  down/up and VPN, battery, power, agent, music), day/time/age conditions, add
+  note/to-do, unzip, copy path, mascot and quiet actions; weekly counter and 4
+  new templates.
+- Contrôles : batterie des appareils Bluetooth avec une alerte sous un seuil
+  réglable, « Bureau propre » pour cacher ou montrer les icônes du bureau d'un
+  clic, télécommande sur le téléphone par QR code (désactivée par défaut,
+  réseau local, s'arrête toute seule). · Controls: Bluetooth device batteries
+  with an adjustable low-battery alert, "Clean desktop" to hide or show
+  desktop icons in one click, phone remote via QR code (off by default, local
+  network only, stops by itself).
+- Réseau : surveillance de l'état de Claude, ChatGPT et Gemini (désactivée par
+  défaut), avec alertes, point rouge sur l'île et historique sur 7 jours. ·
+  Network: Claude, ChatGPT and Gemini status monitoring (off by default), with
+  alerts, a red dot on the island and a 7-day history.
+- Système : nouveau seuil « Batterie critique » (10 %) et réglages des halos
+  de batterie. · System: new "Critical battery" threshold (10%) and battery
+  halo settings.
+- Réglages rangés en cinq groupes (Ondine, L'île, Automatiser, Modules,
+  Sécurité et système). Une page « Animations et halos » réunit les halos, le
+  liquide, le liseré des minuteurs et les halos de batterie, en sous-menus avec
+  un interrupteur « Tout » chacun ; « Ondine et les fenêtres » rejoint
+  Comportement. Aucun réglage perdu, la recherche connaît les anciens noms, et
+  le mode Simple n'affiche plus de sous-menu vide. · Settings regrouped into
+  five groups (Ondine, The island, Automate, Modules, Security and system). A
+  new "Animations and halos" page brings together halos, the liquid, the timer
+  outline and battery halos, in sub-menus that each have an "All" switch;
+  "Ondine and windows" moves into Behavior. No setting is lost, search still
+  finds the old page names, and Simple mode no longer shows empty sub-menus.
+- Correction : si la dictée de Windows échoue, un message clair dit quoi
+  régler (reconnaissance vocale en ligne, micro, langue), avec un bouton vers
+  la bonne page des Paramètres et, si une clé OpenAI ou Gemini est
+  enregistrée, un bouton pour passer à la transcription par l'API. · Fix: when
+  Windows dictation fails, a clear message says what to change (online speech
+  recognition, microphone, language), with a button to the right Settings page
+  and, if an OpenAI or Gemini key is saved, a button to switch to API
+  transcription.
+- Correction : « Le halo suit la musique » fonctionne (décoché, plus aucun
+  halo pendant la musique). Le Lanceur dit « Recherche web : « … » sur
+  Google ». Île en bas de l'écran : plus de trait le long du bord. · Fix: "The
+  halo follows the music" works (unchecked, no halo while music plays). The
+  Launcher says "Web search: « … » on Google". Island at the bottom: no more
+  line along the screen edge.
+- Correction : enregistrer un réglage d'un module jamais ouvert ne l'active
+  plus tout seul. · Fix: saving a setting of a module never opened no longer
+  turns it on by itself.
+
 ## 1.2.1 · 2026-10-09
 
 - « Demander à Claude » devient « Parler à Ondine » : une vraie conversation

@@ -1,7 +1,9 @@
 /* Ondine sur le bureau (src/pet/main.ts, src-tauri/src/pet.rs).
-   La fenêtre fait 112 × 112 (la case de la mascotte) ou, bulle ouverte,
-   532 × 480 : la case dans un coin, la bulle à côté. Le reste est transparent
-   et laisse passer les clics. Les vues des onglets gardent les styles de l'île
+   La fenêtre fait 112 × 112 (la case de la mascotte) ou, bulle ouverte, la
+   case dans un coin et la bulle à côté : la bulle prend la taille de son
+   contenu (src/pet/main.ts pose sa largeur et sa hauteur en ligne, entre
+   360 × 120 et 640 × 560, bornées à l'écran) et la fenêtre suit. Le reste est
+   transparent et laisse passer les clics. Les vues des onglets gardent les styles de l'île
    (island.css, chargé avant). */
 
 .pet {
@@ -61,8 +63,8 @@
 .pet-bubble {
   position: absolute;
   box-sizing: border-box;
-  width: 408px;
-  max-height: 480px;
+  /* Avant la première mesure ; ensuite, la taille du contenu (en ligne). */
+  width: 420px;
   display: none;
   flex-direction: column;
   padding: 10px 12px 12px;
@@ -136,12 +138,24 @@
   min-height: 0;
   overflow: auto;
 }
-/* Parler à Ondine : la bulle a plus de place que l'île. */
+/* La rangée d'onglets : des icônes seules (le nom en infobulle), qui ne
+   passent jamais à la ligne ni ne se tassent. */
+.pet-bubble .tabs {
+  flex: none;
+  gap: 2px;
+}
+.pet-bubble .tab {
+  padding: 4px 7px;
+}
+.pet-bubble .tab-icon {
+  font-size: 15px;
+}
+/* Parler à Ondine : la conversation grandit avec la bulle (qui suit son contenu). */
 .pet-bubble .ask-thread {
-  max-height: 120px;
+  max-height: 220px;
 }
 .pet-bubble .ask.grow .ask-thread {
-  max-height: 200px;
+  max-height: 340px;
 }
 .pet-empty {
   margin: 12px 4px;

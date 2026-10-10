@@ -21,12 +21,22 @@ mod askclaude_providers;
 mod askclaude_tools;
 // Ses outils pour le PC et les onglets : regarder, régler, ouvrir.
 mod askclaude_pc;
+// Sa voix : raccourci, écoute, transcription (Windows ou API), « Regarde ça ».
+mod askclaude_voice;
+// Ses commandes rapides comprises sans IA (minuteur, volume, note…).
+mod askclaude_quick;
 mod capture;
 mod clipboard;
 mod controls;
+// Contrôles → télécommande sur le téléphone : une petite page sur le réseau local.
+mod controls_remote;
 mod launcher;
 mod media;
+// Le tempo de la musique (estimation locale à partir du niveau sonore) : la danse de la mascotte.
+mod media_tempo;
 mod nettools;
+// Réseau → surveillance des services IA (pages d'état de Claude, ChatGPT, Gemini).
+mod nettools_ai;
 mod rules;
 mod notes;
 mod remote;
@@ -39,6 +49,14 @@ mod shelf_phone;
 mod shelf_hash;
 mod shelf_tools;
 mod system;
+// Équipe : les Ondine du réseau local se parlent (découverte, appairage, échanges chiffrés).
+mod team;
+// Son chat (1.2.2) : conversations à deux, salon « Toute l'équipe », historique.
+mod team_chat;
+// Ses fils de fond : écoute, découverte, présence, fichiers.
+mod team_net;
+// Son protocole (messages, chiffrement, appairage), en code pur testé.
+mod team_proto;
 mod terminal;
 mod clipboard_qr;
 mod weather;
@@ -61,6 +79,10 @@ mod agents_tools;
 mod agents_mcp_extra;
 // Les rappels d'attente.
 mod agents_wait;
+// Animations de l'île : sortie de veille, Verr Maj, copier / coller, volume, Wi-Fi, niveaux sonores.
+mod halos;
+// Ondine et les fenêtres (public : island/mod.rs lui demande le « lancer »).
+pub mod windowlife;
 
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -234,6 +256,9 @@ impl Registry {
             Box::new(askclaude::AskClaude::default()),
             Box::new(weather::WeatherModule::default()),
             Box::new(weekly::Weekly::default()),
+            Box::new(halos::Halos),
+            Box::new(team::Team::default()),
+            Box::new(windowlife::WindowLife),
         ];
 
         let mut entries = Vec::new();
@@ -455,11 +480,25 @@ mod tests {
     }
 
     #[test]
+    fn halos_manifest_is_valid() {
+        let m = check_manifest(halos::Halos.manifest_json()).unwrap();
+        assert_eq!(m.id, "halos");
+    }
+
+    #[test]
     fn weekly_manifest_is_valid() {
         let m = check_manifest(weekly::Weekly::default().manifest_json()).unwrap();
         assert_eq!(m.id, "weekly");
         assert!(m.events.listens.iter().any(|t| t == "timer.work-session"));
         assert!(m.events.listens.iter().any(|t| t == "notes.todo-toggled"));
+    }
+
+    #[test]
+    fn team_manifest_is_valid() {
+        let m = check_manifest(team::Team::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "team");
+        assert!(m.events.listens.iter().any(|t| t == "timer.focus"));
+        assert!(m.events.emits.iter().any(|t| t == "mascot.emote"));
     }
 
     #[test]

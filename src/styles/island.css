@@ -31,6 +31,49 @@ body {
   color: var(--island-fg);
 }
 
+/* Les barres de défilement (île et bulle d'Ondine sur le bureau) : pas de
+   barre Windows avec ses flèches, mais une fine pastille grise, arrondie et
+   translucide, qui n'apparaît qu'au survol de la zone ou pendant le
+   défilement, puis s'efface (src/island/scrollbars.ts anime --sb-a de 0 à 1).
+   La place de la barre (8 px) est toujours la même, visible ou non : le
+   contenu ne bouge pas quand elle apparaît.
+   Attention : `scrollbar-width` ou `scrollbar-color` sur un élément font
+   ignorer ces règles par Chromium (WebView2) ; ne pas les utiliser ici. */
+@property --sb-a {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  background: transparent;
+}
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  /* Non héritée : la pastille lit la valeur de sa zone. */
+  --sb-a: inherit;
+  min-height: 24px;
+  min-width: 24px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+  background-color: color-mix(in srgb, var(--island-fg) calc(var(--sb-a) * 38%), transparent);
+}
+/* Sous la souris, la pastille s'épaissit un peu pour qu'on l'attrape. */
+::-webkit-scrollbar-thumb:hover {
+  border-width: 1px;
+  background-color: color-mix(in srgb, var(--island-fg) calc(var(--sb-a) * 55%), transparent);
+}
+
 .island {
   position: absolute;
   top: 0;
@@ -77,7 +120,9 @@ body {
   --r: 21px;
 }
 .island[data-state="expanded"] {
-  width: 640px;
+  /* --fit-w : plus étroite pour une réponse courte, un peu plus large pour un
+     contenu large (data-island-fit="both", fit.ts). */
+  width: var(--fit-w, 640px);
   /* Plus haute si un contenu doit se voir en entier (un QR code) : --fit-h,
      posée par island.ts (fit.ts). Le ressort de l'île anime le changement. */
   height: max(270px, var(--fit-h, 0px));
@@ -500,6 +545,245 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* ── L'assistant de premier lancement (src/island/setup-panel.ts) ────────────
+   Dans l'alerte de l'île : le titre de la carte s'efface (chaque étape a le
+   sien), et l'île prend la hauteur de l'étape (data-step) avec ses ressorts. */
+.notif.custom:has(.setup) > .notif-icon,
+.notif.custom:has(.setup) .notif-title {
+  display: none;
+}
+.notif.custom:has(.setup) .notif-text {
+  flex-basis: calc(100% - 30px);
+}
+.notif.custom:has(.setup) .notif-actions {
+  flex-basis: auto;
+  align-self: flex-start;
+}
+.island[data-state="alert"]:has(.setup) {
+  width: 640px;
+  height: 224px;
+}
+.island[data-state="alert"]:has(.setup[data-step="hello"]) {
+  height: 252px;
+}
+.island[data-state="alert"]:has(.setup[data-step="cards"]),
+.island[data-state="alert"]:has(.setup[data-step="mascot"]) {
+  height: 292px;
+}
+.island[data-state="alert"]:has(.setup[data-step="place"]) {
+  height: 236px;
+}
+.island[data-state="alert"]:has(.setup[data-step="done"]) {
+  height: 214px;
+}
+.setup {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 6px;
+  min-height: 0;
+}
+.setup-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.setup-dots {
+  position: relative;
+  display: inline-flex;
+  gap: 6px;
+  padding: 3px;
+}
+.setup-dots[hidden] {
+  display: none;
+}
+.setup-dots .tab-pill {
+  background: var(--accent);
+  box-shadow: none;
+  opacity: 0.9;
+}
+.setup-dot {
+  position: relative;
+  z-index: 1;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  transition: background 250ms ease;
+}
+.setup-dot.on {
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.setup-count {
+  color: var(--muted);
+  font-size: 11px;
+}
+.setup-stage {
+  display: grid;
+  min-height: 0;
+}
+.setup-stage > .setup-step {
+  grid-area: 1 / 1;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+}
+.setup-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+.setup-text {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.setup-note {
+  color: var(--muted);
+  font-size: 11px;
+  min-height: 1em;
+}
+.setup-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.setup-row.end {
+  justify-content: flex-end;
+}
+.setup-label {
+  color: var(--muted);
+  font-size: 12px;
+  min-width: 96px;
+}
+.setup .segmented {
+  margin-bottom: 0;
+}
+.setup-name {
+  flex: 1;
+  min-width: 0;
+  max-width: 320px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--island-fg);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 200ms ease, background 200ms ease;
+}
+.setup-name:focus {
+  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  background: rgba(255, 255, 255, 0.09);
+}
+.setup .link-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.setup .link-btn:hover {
+  text-decoration: underline;
+}
+.setup .btn.ghost {
+  background: transparent;
+}
+.setup-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.setup-foot .spacer {
+  flex: 1;
+}
+.setup-foot [hidden] {
+  display: none;
+}
+.setup-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.setup-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease;
+}
+.setup-card:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+.setup-card.on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.setup-card-icon {
+  flex: none;
+  font-size: 18px;
+}
+.setup-card-text {
+  display: grid;
+  min-width: 0;
+}
+.setup-card-label {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.setup-card-desc {
+  color: var(--muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.setup-found {
+  position: absolute;
+  top: 3px;
+  right: 6px;
+  color: var(--accent);
+  font-size: 10px;
+}
+.setup-preview {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  min-height: 24px;
+}
+.setup-tab {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 14px;
+}
+.setup-tab .icon-img {
+  width: 16px;
+  height: 16px;
+}
+.setup-mascots .wn-panel {
+  margin-top: 0;
+}
+
 .notif.prio-critical .notif-title {
   color: #ff8a8a;
 }
@@ -3047,20 +3331,65 @@ body[data-perf="eco"] .gh-today.gh-zero {
   align-self: flex-start;
   border-radius: 8px;
 }
-.ask-footnote {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-}
-.ask-footnote .ask-doc {
-  flex-basis: 100%;
-  font-family: inherit;
-}
 .ask-error {
   margin: 0;
   color: #ff8a8a;
   font-size: 12px;
+}
+/* La voix : la bulle des sous-titres en direct, le point rouge du micro, le bouton. */
+.ask-bubble.live {
+  min-width: 46%;
+  border: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.ask-live-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.ask-mic-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: #ff5a5a;
+  opacity: 0.5;
+}
+.ask-mic-dot.on {
+  opacity: 1;
+  animation: ask-mic 1.2s ease-in-out infinite;
+}
+@keyframes ask-mic {
+  50% {
+    box-shadow: 0 0 0 5px rgba(255, 90, 90, 0);
+    transform: scale(1.15);
+  }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 90, 90, 0.45);
+  }
+}
+.ask-mic-btn.on {
+  background: rgba(255, 90, 90, 0.22);
+  border-color: rgba(255, 90, 90, 0.5);
+}
+.ask-voice-note {
+  margin: 0;
+  font-size: 12px;
+}
+/* Sous un échec de l'écoute : la page des Paramètres Windows, la transcription par l'API. */
+.ask-voice-help {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.ask-voice-help small {
+  flex-basis: 100%;
+  font-size: 11px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ask-mic-dot.on {
+    animation: none;
+  }
 }
 
 /* Étagère : un bouton qui attend son second clic (« Confirmer ? »). */
@@ -3403,7 +3732,6 @@ body[data-perf="eco"] .gh-today.gh-zero {
   display: flex;
   gap: 6px;
   overflow-x: auto;
-  scrollbar-width: thin;
 }
 .ctl-usb-item {
   flex: none;
@@ -3429,6 +3757,36 @@ body[data-perf="eco"] .gh-today.gh-zero {
 .ctl-usb-item .btn {
   flex: none;
   border-radius: 999px;
+}
+/* Batteries Bluetooth : une petite jauge, rouge sous le seuil ; grisée si l'appareil est éteint. */
+.ctl-bt-meter {
+  flex: none;
+  width: 22px;
+  height: 8px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: linear-gradient(90deg, #4cd964 var(--p, 0%), transparent var(--p, 0%));
+}
+.ctl-bt-item.low .ctl-bt-meter {
+  background: linear-gradient(90deg, #ff5a4e var(--p, 0%), transparent var(--p, 0%));
+}
+.ctl-bt-item.low .ctl-usb-letter {
+  color: #ffb4a8;
+}
+.ctl-bt-item.off {
+  opacity: 0.55;
+}
+.ctl-bt-none {
+  font-size: 11px;
+  align-self: center;
+}
+.ctl-bt > .btn {
+  flex: none;
+  border-radius: 999px;
+}
+.ctl-bt > .btn[hidden],
+.ctl-root[hidden] {
+  display: none;
 }
 @media (prefers-reduced-motion: reduce) {
   .ctl-dot,
@@ -3466,7 +3824,7 @@ body[data-perf="eco"] .gh-today.gh-zero {
 }
 
 /* ── L'île ailleurs qu'en haut au centre (gestures.ts, island/mod.rs) ──── */
-/* <body data-edge="top|left|right" data-align="start|center|end"> */
+/* <body data-edge="top|bottom|left|right" data-align="start|center|end"> */
 body[data-edge="top"][data-align="start"] .island {
   left: 0;
   translate: 0 0;
@@ -3477,6 +3835,28 @@ body[data-edge="top"][data-align="end"] .island {
   right: 0;
   translate: 0 0;
   border-radius: 0 0 0 var(--r, 0);
+}
+/* En bas : posée sur la barre des tâches, elle s'ouvre vers le haut (le
+   centre de l'écran) ; les coins arrondis sont ceux du haut. */
+body[data-edge="bottom"] .island {
+  top: auto;
+  bottom: 0;
+  border-radius: var(--r, 0) var(--r, 0) 0 0;
+}
+body[data-edge="bottom"][data-align="start"] .island {
+  left: 0;
+  translate: 0 0;
+  border-radius: 0 var(--r, 0) 0 0;
+}
+body[data-edge="bottom"][data-align="end"] .island {
+  left: auto;
+  right: 0;
+  translate: 0 0;
+  border-radius: var(--r, 0) 0 0 0;
+}
+body[data-edge="bottom"] .island::after {
+  bottom: auto;
+  top: 4px;
 }
 body[data-edge="left"] .island,
 body[data-edge="right"] .island {
@@ -3607,6 +3987,12 @@ body[data-edge="right"] .island::after {
   left: auto;
   right: 0;
 }
+/* En bas : elle sort la tête de la barre des tâches, debout. */
+.hang[data-edge="bottom"] {
+  --hide: 0 115%;
+  top: auto;
+  bottom: 0;
+}
 .hang[data-edge="left"][data-align="start"],
 .hang[data-edge="right"][data-align="start"] {
   top: 64px;
@@ -3638,6 +4024,9 @@ body[data-edge="right"] .island::after {
 }
 .hang[data-edge="right"] .hang-sway {
   transform-origin: 100% 50%;
+}
+.hang[data-edge="bottom"] .hang-sway {
+  transform-origin: 50% 100%;
 }
 @keyframes hang-sway {
   from {
@@ -3841,6 +4230,80 @@ body[data-edge="right"] .privacy-dot {
 }
 .net-status:empty {
   display: none;
+}
+/* Services IA (Réseau, réglage aiStatus) : une pastille par service. */
+.net-ai {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+}
+.net-ai[hidden] {
+  display: none;
+}
+.net-ai-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+.net-ai-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.net-ai-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ai, #8e8e93);
+  box-shadow: 0 0 6px var(--ai, transparent);
+}
+.net-ai-pill.ok {
+  --ai: #30d158;
+}
+.net-ai-pill.degraded {
+  --ai: #ff9f0a;
+}
+.net-ai-pill.down {
+  --ai: #ff453a;
+}
+.net-ai-history {
+  margin: 0;
+  padding-left: 16px;
+}
+p.net-ai-history {
+  padding-left: 0;
+}
+
+/* Un service IA en panne (Réseau → services IA) : une pastille rouge dans le
+   coin de l'île, même réduite (mini-île), comme le point du micro. */
+.ai-dot {
+  position: absolute;
+  top: 7px;
+  left: 12px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ff453a;
+  box-shadow: 0 0 8px #ff453a;
+  opacity: 0;
+  scale: 0.3;
+  pointer-events: none;
+  transition:
+    opacity var(--speed) var(--ease),
+    scale var(--speed) var(--ease);
+}
+.island[data-ai-outage="1"]:not([data-state="hidden"], [data-state="peek"]) .ai-dot {
+  opacity: 1;
+  scale: 1;
+  pointer-events: auto;
+}
+body[data-edge="left"] .ai-dot,
+body[data-edge="right"] .ai-dot {
+  top: auto;
+  bottom: 22px;
+  left: calc(50% - 3.5px);
 }
 
 /* Presse-papiers : le bouton « Aa » et ses quatre casses. */
@@ -4450,4 +4913,479 @@ body.retro .island .btn {
 .agents-ask.open {
   background: rgba(124, 196, 255, 0.1);
   border-color: rgba(124, 196, 255, 0.3);
+}
+
+/* ── Équipe (src/modules/team/) ─────────────────────────────────────────── */
+.team {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.team-head,
+.team-line,
+.team-sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.team-grow {
+  flex: 1;
+}
+.team-status {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--island-fg);
+  border: 0;
+  border-radius: 8px;
+  padding: 3px 6px;
+  font: inherit;
+  font-size: 12px;
+}
+/* La pastille : la couleur de la mascotte du collègue, l'anneau = son statut. */
+.team-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--peer, #5cc8ff);
+  box-shadow: 0 0 0 2px var(--st, rgba(255, 255, 255, 0.25));
+  transition: box-shadow 300ms ease;
+}
+.team-st-available {
+  --st: #5ee08a;
+}
+.team-st-meeting {
+  --st: #ffb84d;
+}
+.team-st-focus {
+  --st: #b98cff;
+}
+.team-st-away {
+  --st: rgba(255, 255, 255, 0.35);
+}
+.team-st-offline {
+  --st: rgba(255, 255, 255, 0.12);
+  opacity: 0.5;
+}
+.team-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.team-sub {
+  margin-top: 6px;
+}
+.team-peer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.team-peer.off {
+  opacity: 0.6;
+}
+.team-peer.near {
+  padding: 4px 8px;
+  gap: 8px;
+}
+.team-peer-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--island-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    transform 300ms var(--ease);
+}
+.team-peer-main:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.team-peer-main:active {
+  transform: scale(0.98);
+}
+.team-peer-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.team-tag {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+}
+.team-tag.warn,
+.team-warn {
+  color: #ffb84d;
+}
+.team-group,
+.team-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.team-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.team-text {
+  resize: vertical;
+  min-height: 48px;
+}
+.team-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.team-fp {
+  font-variant-numeric: tabular-nums;
+}
+.team-remove {
+  align-self: flex-start;
+  color: #ff7a6b;
+}
+.team-code {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(124, 196, 255, 0.1);
+  text-align: center;
+}
+.team-code-digits {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  font-variant-numeric: tabular-nums;
+}
+.team-code-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+.team-code-input {
+  font-size: 18px;
+  letter-spacing: 0.15em;
+  text-align: center;
+}
+.team-pending {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.team-req {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(255, 184, 77, 0.1);
+  font-size: 12px;
+}
+.team-req-what {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.8;
+}
+.team-report,
+.team-inv {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+}
+/* La visite : la mascotte du collègue traverse la carte (visit.ts, ressort en JS). */
+.team-visit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.team-visit-lane {
+  position: relative;
+  width: 100%;
+  height: 72px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+.team-visit-walker {
+  width: 72px;
+  height: 72px;
+  will-change: transform;
+}
+.team-visit-note {
+  max-width: 90%;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  opacity: 0;
+  transform: translateY(4px) scale(0.96);
+  transition:
+    opacity 260ms ease,
+    transform 420ms var(--ease);
+  overflow-wrap: anywhere;
+}
+.team-visit-note.shown {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .team-visit-note {
+    transition: none;
+  }
+}
+
+/* ── Équipe : le chat (src/modules/team/chat.ts) ────────────────────────────
+   Les bulles sont celles de Parler à Ondine (.ask-bubble) ; ici, la liste des
+   conversations, le fil, la zone de saisie, les réactions et « Lu ». */
+.team-chat-btn {
+  position: relative;
+}
+.team-chat-badge {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #ff5e6b;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.team-chat-btn .team-chat-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+}
+.team-chat,
+.team-chat-rooms {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.team-chat-rooms {
+  gap: 2px;
+}
+.team-chat-room {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--island-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    transform 300ms var(--ease);
+}
+.team-chat-room:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.team-chat-room:active {
+  transform: scale(0.98);
+}
+.team-chat-room.off {
+  opacity: 0.6;
+}
+.team-chat-avatar {
+  width: 12px;
+  text-align: center;
+  font-size: 12px;
+}
+.team-chat-room-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.team-chat-prev {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.team-chat-foot {
+  font-size: 11px;
+}
+.team-chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 190px;
+  min-height: 60px;
+  overflow-y: auto;
+  padding: 2px;
+}
+.team-chat-recent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.team-chat-author {
+  font-size: 11px;
+  font-weight: 600;
+}
+.team-chat-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+/* Les réactions : la barre apparaît au survol (ou au clavier) d'une bulle. */
+.team-chat-react {
+  display: inline-flex;
+  gap: 1px;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.team-chat-bubble:hover .team-chat-react,
+.team-chat-bubble:focus-within .team-chat-react {
+  opacity: 1;
+}
+.team-chat-react .icon-btn {
+  min-width: 0;
+  padding: 0 3px;
+  font-size: 12px;
+}
+.team-chat-count {
+  padding: 0 5px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.team-chat-count.mine {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.team-chat-read {
+  color: var(--accent);
+}
+.team-chat-note {
+  align-self: center;
+  font-size: 11px;
+  opacity: 0.75;
+}
+.team-chat-typing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.team-chat-empty {
+  align-self: center;
+}
+.team-chat-compose {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+.team-chat-input {
+  flex: 1;
+  min-height: 30px;
+  max-height: 90px;
+  resize: none;
+  field-sizing: content;
+}
+/* Calme ou animations réduites : les trois gouttes de « … écrit » ne sautillent pas. */
+.ask-bubble.typing.still span {
+  animation: none;
+}
+.team-chat-note.fresh {
+  animation: soft-in 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .team-chat-room,
+  .team-chat-react {
+    transition: none;
+  }
+  .team-chat-note.fresh {
+    animation: none;
+  }
+}
+/* ── Le liquide à l'intérieur de l'île (src/island/liquid.ts) ─────────────────
+   Un canvas, premier enfant de l'île : z-index -1 dans la pile de l'île (qui en
+   crée une avec translate), donc au-dessus de son fond, sous le texte et la
+   mascotte ; rogné par sa découpe en gelée. Ne prend jamais la souris. */
+.island-liquid {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+}
+/* L'île pleine : Ondine flotte (elle monte et descend, penche un peu). */
+.island.liquid-float .mascot-slot:not(.carried) > .mascot-canvas {
+  animation: liquid-float 2.8s ease-in-out infinite;
+}
+/* Un téléchargement arrive : elle plonge et ressort avec le fichier. */
+.island.liquid-dive .mascot-slot:not(.carried) > .mascot-canvas {
+  animation: liquid-dive 1.4s cubic-bezier(0.3, 0.7, 0.4, 1) both;
+}
+@keyframes liquid-float {
+  0%,
+  100% {
+    translate: 0 1px;
+    rotate: -3deg;
+  }
+  50% {
+    translate: 0 -2px;
+    rotate: 3deg;
+  }
+}
+@keyframes liquid-dive {
+  0% {
+    translate: 0 0;
+  }
+  25% {
+    translate: 0 -4px;
+  }
+  50% {
+    translate: 0 70%;
+    opacity: 0.35;
+  }
+  80% {
+    translate: 0 -3px;
+    opacity: 1;
+  }
+  100% {
+    translate: 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .island.liquid-float .mascot-slot > .mascot-canvas,
+  .island.liquid-dive .mascot-slot > .mascot-canvas {
+    animation: none;
+  }
 }

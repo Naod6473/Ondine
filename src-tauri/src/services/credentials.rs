@@ -109,6 +109,39 @@ mod store {
     }
 }
 
+/// La clé privée X25519 du module Équipe (l'identité de ce PC pour les
+/// collègues du réseau local). Hors de KNOWN_KEYS exprès : le front ne peut
+/// ni demander si elle existe, ni l'écrire, ni l'effacer. Seul le Rust du
+/// module Équipe la lit et l'écrit (modules/team.rs), et elle ne sort jamais
+/// de ce PC.
+const TEAM_IDENTITY: &str = "team-identity-key";
+
+pub fn team_identity_get() -> Option<String> {
+    store::get(TEAM_IDENTITY)
+}
+
+pub fn team_identity_set(value: &str) -> Result<(), String> {
+    store::set(TEAM_IDENTITY, value)
+}
+
+/// La clé qui chiffre l'historique du chat Équipe gardé 7 jours (réglage
+/// « chatKeep », modules/team_chat.rs). Même règle que la clé d'identité :
+/// hors de KNOWN_KEYS, jamais lisible ni modifiable par le front. L'effacer
+/// rend l'ancien fichier d'historique illisible pour de bon.
+const TEAM_CHAT: &str = "team-chat-key";
+
+pub fn team_chat_key_get() -> Option<String> {
+    store::get(TEAM_CHAT)
+}
+
+pub fn team_chat_key_set(value: &str) -> Result<(), String> {
+    store::set(TEAM_CHAT, value)
+}
+
+pub fn team_chat_key_delete() -> Result<(), String> {
+    store::delete(TEAM_CHAT)
+}
+
 /// La clé existe-t-elle ? (la seule question que le front peut poser)
 pub fn exists(key: &str) -> bool {
     check_key(key).is_ok() && store::get(key).is_some()
@@ -171,6 +204,20 @@ mod tests {
         }
         // Le message ne recopie jamais l'adresse.
         assert!(!check_ical_url("http://secret-token").unwrap_err().contains("secret-token"));
+    }
+
+    #[test]
+    fn the_team_key_is_out_of_reach_of_the_front() {
+        // Ni exists, ni set, ni delete (les seules portes du front) ne la connaissent.
+        assert!(check_key(TEAM_IDENTITY).is_err());
+        assert!(!exists(TEAM_IDENTITY));
+        assert!(set(TEAM_IDENTITY, "x").is_err());
+        assert!(delete(TEAM_IDENTITY).is_err());
+        // La clé de l'historique du chat Équipe non plus.
+        assert!(check_key(TEAM_CHAT).is_err());
+        assert!(!exists(TEAM_CHAT));
+        assert!(set(TEAM_CHAT, "x").is_err());
+        assert!(delete(TEAM_CHAT).is_err());
     }
 
     #[test]

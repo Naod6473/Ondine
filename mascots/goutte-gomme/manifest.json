@@ -40,7 +40,22 @@
     "embarrassed": "genee",
     "yawn": "baille",
     "pensive": "pensive",
-    "cheer": "bras-leves"
+    "cheer": "bras-leves",
+    "panic": "panique",
+    "scared": "peur",
+    "relieved": "soulagee",
+    "stretch": "etirement",
+    "surprised": "sursaut",
+    "listening": "ecoute",
+    "sunglasses": "lunettes",
+    "scarf": "echarpe",
+    "goodbye": "au-revoir",
+    "push": "pousse",
+    "sit-edge": "assise-bord",
+    "hide": "cachee",
+    "tap-glass": "tapote-vitre",
+    "climb": "grimpe",
+    "talk": "parle"
   },
   "animations": [
     {
@@ -585,6 +600,294 @@
       ],
       "source": {
         "function": "danse"
+      }
+    },
+    {
+      "name": "danse-rock",
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "danse-rock"
+      }
+    },
+    {
+      "name": "danse-metal",
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "danse-metal"
+      }
+    },
+    {
+      "name": "danse-rap",
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "danse-rap"
+      }
+    },
+    {
+      "name": "danse-rnb",
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "danse-rnb"
+      }
+    },
+    {
+      "name": "danse-pop",
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "danse-pop"
+      }
+    },
+    {
+      "name": "danse-electro",
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "danse-electro"
+      }
+    },
+    {
+      "name": "danse-reggae",
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "danse-reggae"
+      }
+    },
+    {
+      "name": "danse-jazz",
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "danse-jazz"
+      }
+    },
+    {
+      "name": "danse-hochement",
+      "durationMs": 2000,
+      "loop": true,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "danse-hochement"
+      }
+    },
+    {
+      "name": "panique",
+      "durationMs": 3000,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "panique"
+      }
+    },
+    {
+      "name": "peur",
+      "durationMs": 2400,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "peur"
+      }
+    },
+    {
+      "name": "soulagee",
+      "durationMs": 2800,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "soulagee"
+      }
+    },
+    {
+      "name": "etirement",
+      "durationMs": 2200,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "etirement"
+      }
+    },
+    {
+      "name": "sursaut",
+      "durationMs": 1100,
+      "loop": false,
+      "priority": 3,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "sursaut"
+      }
+    },
+    {
+      "name": "ecoute",
+      "durationMs": 6000,
+      "loop": false,
+      "priority": 1,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "ecoute"
+      }
+    },
+    {
+      "name": "lunettes",
+      "durationMs": 3600,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "lunettes"
+      }
+    },
+    {
+      "name": "echarpe",
+      "durationMs": 3200,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "echarpe"
+      }
+    },
+    {
+      "name": "au-revoir",
+      "durationMs": 2400,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "au-revoir"
+      }
+    },
+    {
+      "name": "pousse",
+      "durationMs": 2400,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "pousse"
+      }
+    },
+    {
+      "name": "assise-bord",
+      "durationMs": 4200,
+      "loop": true,
+      "priority": 0,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "assise-bord"
+      }
+    },
+    {
+      "name": "cachee",
+      "durationMs": 2800,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "cachee"
+      }
+    },
+    {
+      "name": "tapote-vitre",
+      "durationMs": 2000,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "tapote-vitre"
+      }
+    },
+    {
+      "name": "grimpe",
+      "durationMs": 2400,
+      "loop": false,
+      "priority": 2,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "grimpe"
+      }
+    },
+    {
+      "name": "parle",
+      "durationMs": 3000,
+      "loop": true,
+      "priority": 1,
+      "transitionsTo": [
+        "*"
+      ],
+      "source": {
+        "function": "parle"
       }
     }
   ]

@@ -12,7 +12,8 @@
 // toutes les 5 s (leur réponse est lente).
 //
 // Les clés USB (bande du bas, notifications « branchée » et « éjectée ») sont
-// dans usb.ts.
+// dans usb.ts ; la batterie des appareils Bluetooth et « Bureau propre »
+// (cacher les icônes du bureau), dans bt.ts.
 
 import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
@@ -20,6 +21,8 @@ import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-
 import { el } from "../../island/dom";
 import { pacedInterval } from "../../core/perf";
 import { usbStrip, wireUsbNotifications } from "./usb";
+import { btStrip, wireBtNotifications } from "./bt";
+import { onRemoteChange, remotePanel, remoteSession, wireRemote } from "./remote";
 import type { UsbDrive } from "./usb-text";
 
 type DeviceId = "speakers" | "microphone";
@@ -512,10 +515,16 @@ export const controls: IslandModule = {
     });
     // Clé USB branchée (« Ouvrir », « Éjecter ») et résultat d'une éjection.
     const offUsb = wireUsbNotifications(api);
+    // Un appareil Bluetooth passe sous le seuil (fil de fond du Rust).
+    const offBt = wireBtNotifications(api);
+    // Télécommande sur le téléphone : téléphone connecté, arrêt automatique.
+    const offRemote = wireRemote(api);
     return () => {
+      offRemote();
       offMuted();
       offError();
       offUsb();
+      offBt();
     };
   },
 
@@ -529,7 +538,19 @@ export const controls: IslandModule = {
       const ctl = el("div", { class: "ctl" }, toggles.node, el("div", { class: "ctl-card ctl-pillars" }, speakers.node, microphone.node, screensBox));
       // En bas, les clés USB branchées (la bande se cache quand il n'y en a pas).
       const usb = usbStrip(api);
-      root.append(el("div", { class: "ctl-root" }, ctl, usb.node));
+      // Puis la batterie des appareils Bluetooth et « Bureau propre ».
+      const bt = btStrip(api);
+      const ctlRoot = el("div", { class: "ctl-root" }, ctl, usb.node, bt.node);
+      // La télécommande tourne : son panneau (QR code) remplace l'onglet.
+      const remoteHost = el("div", { class: "ctl-remote-host" });
+      const showRemote = () => {
+        const s = remoteSession();
+        ctlRoot.hidden = !!s;
+        remoteHost.replaceChildren(...(s ? [remotePanel(api, s)] : []));
+      };
+      root.append(ctlRoot, remoteHost);
+      showRemote();
+      const offRemote = onRemoteChange(showRemote);
       const closeMenu = outputMenu(api, speakers.caption, ctl);
       toggles.radios([]);
 
@@ -576,6 +597,7 @@ export const controls: IslandModule = {
         void refreshWindow();
         void refreshTheme();
         void refreshUsb();
+        void bt.refreshDesk();
         try {
           const list = await api.invoke<Radio[]>("radios");
           if (alive) toggles.radios(list);
@@ -622,6 +644,8 @@ export const controls: IslandModule = {
         alive = false;
         closeMenu();
         usb.stop();
+        bt.stop();
+        offRemote();
         timers.forEach((stop) => stop());
       };
     },

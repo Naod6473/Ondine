@@ -40,6 +40,10 @@ pub fn enter_held_in(_win: &WebviewWindow) -> bool {
     false
 }
 pub fn make_non_activating(_win: &WebviewWindow) {}
+pub fn set_bounds(win: &WebviewWindow, pos: tauri::PhysicalPosition<i32>, size: tauri::PhysicalSize<u32>) {
+    let _ = win.set_position(pos);
+    let _ = win.set_size(size);
+}
 pub fn set_activating(_win: &WebviewWindow, _activating: bool) {}
 pub fn unblock_webview_drops(_app: &AppHandle) {}
 pub fn unblock_window_drops(_app: &AppHandle, _label: &'static str) {}

@@ -58,6 +58,11 @@ const BY_EMOJI: Record<string, string> = {
   "💾": "backup",
   "☕": "pauses",
   "🎨": "appearance",
+  // Animations de l'île, Ondine et les fenêtres, Équipe (images de Simon ;
+  // au trait : magic-wand, app-window et users-three de Phosphor).
+  "🌈": "halos",
+  "🪟": "windowlife",
+  "🤝": "team",
   // Pas encore d'image en couleur : l'emoji reste affiché dans ce pack.
   "🌤️": "weather",
   "🧭": "profiles",

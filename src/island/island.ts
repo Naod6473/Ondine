@@ -14,6 +14,7 @@ import { onPerfChange, pacedInterval, perfMode } from "../core/perf";
 import type { ModuleRegistry } from "../core/module-registry";
 import { isAlert, type IslandNotification, type NotificationQueue } from "../core/notifications";
 import { settingsStore } from "../core/settings-store";
+import { noteTabOpen } from "../core/suggestions";
 import { applyTabOrder, mergeOrder } from "../core/tab-order";
 import type { Settings } from "../core/types";
 import { EasterEggs } from "../eggs/eggs";
@@ -25,8 +26,10 @@ import type { MascotManifest } from "../mascot/types";
 import { clear, el } from "./dom";
 import { icon } from "./icon";
 import { IslandStateMachine, type IslandState } from "./island-state";
-import { contentHeight, FIT_ATTR, fitHeight } from "./fit";
-import { enableGestures, grabZone, type Edge } from "./gestures";
+import { contentHeight, FIT_ATTR, FIT_MAX_W, FIT_MAX_W_SIDE, FIT_W_ATTR, fitHeight, fitMode, fitWidth, naturalWidth, settle } from "./fit";
+import { attachHalo } from "./halo";
+import { attachLiquid } from "./liquid";
+import { enableGestures, grabZone, horizontal, type Edge } from "./gestures";
 import { Jelly } from "./jelly";
 import { elasticityOf } from "./spring";
 import { sounds, setSoundPrefs } from "./sounds";
@@ -49,6 +52,8 @@ type MascotReaction = Parameters<NonNullable<MascotRenderer["react"]>>[0];
 const SETTLE_FALLBACK_MS = 1500;
 /** Zone au bord de l'écran qui compte comme « survol » même si l'île est minuscule. */
 const EDGE_ZONE = { len: 240, depth: 14 };
+/** L'île qui s'écarte d'une fenêtre : la peur d'Ondine au plus toutes les… (ms). */
+const FRIGHT_EVERY_MS = 4000;
 /** Survol prolongé de la mascotte → `love`. */
 const LONG_HOVER_MS = 2500;
 
@@ -97,6 +102,8 @@ export class Island {
   private content = el("div", { class: "island-content" });
   /** Le petit point orange (micro) ou vert (caméra) quand une appli s'en sert. */
   private privacyDot = el("span", { class: "privacy-dot", "aria-hidden": "true" });
+  /** Un service IA en panne (Réseau → services IA) : pastille rouge dans le coin. */
+  private aiDot = el("span", { class: "ai-dot" });
   /** Qui utilise le micro et la caméra (message "controls.media-use" du module Contrôles). */
   private mediaUse: { mic: string[]; cam: string[] } = { mic: [], cam: [] };
   private mascot: MascotController | null = null;
@@ -127,6 +134,11 @@ export class Island {
   private collapseTimer: number | null = null;
   /** L'île ouverte agrandie pour un contenu à montrer en entier (fit.ts) : sa hauteur, sinon null. */
   private fitH: number | null = null;
+  /** Sa largeur quand le contenu marqué la demande aussi (`data-island-fit="both"`), sinon null. */
+  private fitW: number | null = null;
+  /** Le contenu marqué observé en continu (ResizeObserver), pour suivre un texte qui s'écrit. */
+  private fitWatched: [Element | null, Element | null] = [null, null];
+  private fitObserver: ResizeObserver | null = null;
   /** La fenêtre a le panneau haut (le Rust le sait aussi). */
   private tall = false;
   private tallTimer: number | undefined;
@@ -142,6 +154,10 @@ export class Island {
   private lastPeek = Date.now();
   /** Une présentation ou une appli plein écran est en cours : l'île se fait oublier. */
   private presenting = false;
+  /** La place provisoire donnée par le Rust quand l'île s'écarte d'une fenêtre
+      (island/dodge.rs) : elle remplace le bord et la place réglés. */
+  private dodgePlace: { edge: Edge; align: string } | null = null;
+  private lastFright = 0;
   /** Ouverte au clavier (raccourci) : le focus va sur l'onglet actif. */
   private focusTabsOnOpen = false;
   /** Les surprises cachées (src/eggs/). */
@@ -157,8 +173,12 @@ export class Island {
   ) {
     this.fsm = new IslandStateMachine(timingsFrom(settingsStore.current));
     this.fsm.onTransition = (from, to) => this.onTransition(from, to);
-    this.shell.append(this.mascotSlot, this.content, this.privacyDot);
+    this.shell.append(this.mascotSlot, this.content, this.privacyDot, this.aiDot);
     this.root.append(this.shell);
+    // Le halo de lumière autour de l'île (halo.ts) : sous elle, sur toute la fenêtre.
+    attachHalo(this.root, this.shell, this.bus, () => this.fsm.state);
+    // Le liquide À L'INTÉRIEUR de l'île (liquid.ts) : derrière le contenu.
+    attachLiquid(this.shell, this.bus, () => this.fsm.state);
     this.jelly = new Jelly(this.shell, {
       edge: () => this.edge(),
       align: () => document.body.dataset.align ?? "center",
@@ -254,6 +274,8 @@ export class Island {
     spotlight(this.shell);
     this.wirePrivacy();
     this.wireFocus();
+    this.wireRulesQuiet();
+    this.wireAiDot();
     // On porte Ondine (sur le bureau) au-dessus de l'île : elle se montre pour l'accueillir.
     void onTauriEvent<boolean>("pet-over-island", (over) => (over ? this.fsm.pointerEnter() : this.fsm.pointerLeave()));
     // Des fichiers lâchés sur Ondine (sur le bureau) : l'île connaît les cibles,
@@ -277,8 +299,9 @@ export class Island {
     // Réglages → Apparence → Élasticité : raideur, rebond, amplitude des déformations.
     this.jelly.setElasticity(elasticityOf(s.island.elasticity));
     // Le bord et la place de l'île : la forme s'adapte en CSS (island.css).
-    document.body.dataset.edge = s.island.edge ?? "top";
-    document.body.dataset.align = s.island.align ?? "center";
+    // (Sauf si elle s'écarte en ce moment d'une fenêtre : sa place provisoire.)
+    document.body.dataset.edge = this.dodgePlace?.edge ?? s.island.edge ?? "top";
+    document.body.dataset.align = this.dodgePlace?.align ?? s.island.align ?? "center";
     applyTheme(s.island.theme ?? "nuit", s.island.color ?? "");
     setSoundPrefs(s.island.sounds ?? true, s.island.soundVolume ?? 0.5);
     this.reorderTabs();
@@ -443,7 +466,7 @@ export class Island {
     this.shell.addEventListener("pointermove", (e) => {
       if (e.buttons) return;
       const zone = ["compact", "expanded", "alert"].includes(this.fsm.state) ? grabZone(this.shell, this.edge(), e.clientX, e.clientY) : null;
-      const along = this.edge() === "top" ? "ns-resize" : "ew-resize";
+      const along = horizontal(this.edge()) ? "ns-resize" : "ew-resize";
       this.shell.style.cursor = zone === "outer" ? "grab" : zone === "inner" ? along : "";
       this.shell.classList.toggle("grab-inner", zone === "inner");
     });
@@ -487,6 +510,10 @@ export class Island {
     });
     void onTauriEvent<string>("hotkey-error", (text) => this.notifications.push({ moduleId: "island", title: text, icon: "⌨️", priority: "normal" }));
     void onTauriEvent("screen-changed", () => void Bridge.islandReposition());
+    // L'île s'écarte d'une fenêtre (les réglages…), acculée, ou rentre chez elle.
+    void onTauriEvent<{ edge: Edge; align: string; phase: "flee" | "cornered" | "home"; soft?: boolean }>("island-placement", (p) => this.onDodge(p));
+    // Mode démo (scène « L'île s'écarte », core/demo.ts).
+    this.bus.on("island.dodge-demo", (msg) => this.onDodge(msg.payload as { edge: Edge; align: string; phase: "flee" | "cornered" | "home"; soft?: boolean }));
     // Fin d'un déplacement : l'île s'est posée sur un bord.
     void onTauriEvent("island-drag-end", () => {
       this.shell.classList.remove("moving");
@@ -506,7 +533,8 @@ export class Island {
     reshape.observe(document.body, { attributes: true, attributeFilter: ["class", "data-edge", "data-align"] });
     // Le contenu change (un QR code s'ouvre, un autre onglet) : l'île ouverte
     // grandit pour le montrer en entier, ou reprend sa taille (fit.ts).
-    new MutationObserver(() => this.scheduleFit()).observe(this.content, { childList: true, subtree: true });
+    // characterData : le texte d'une réponse qui s'écrit mot à mot.
+    new MutationObserver(() => this.scheduleFit()).observe(this.content, { childList: true, subtree: true, characterData: true });
   }
 
   private scheduleFit() {
@@ -612,11 +640,33 @@ export class Island {
     }
   }
 
-  /** L'île ouverte prend la hauteur de son contenu marqué `data-island-fit`, ou sa taille habituelle. */
+  /**
+   * L'île ouverte prend la hauteur (et, avec `data-island-fit="both"`, la
+   * largeur) de son contenu marqué `data-island-fit`, ou sa taille habituelle.
+   * Appelée à chaque changement du contenu, en continu (fit.ts).
+   */
   private async applyFit() {
     const view = this.fsm.state === "expanded" ? this.expandedUi?.body : undefined;
-    const target = view?.querySelector(`[${FIT_ATTR}]`) ? fitHeight(this.shell.offsetHeight, view.clientHeight, contentHeight(view)) : null;
-    if (target === this.fitH) return;
+    const marked = view?.querySelector<HTMLElement>(`[${FIT_ATTR}]`) ?? null;
+    const wantH = view && marked ? fitHeight(this.shell.offsetHeight, view.clientHeight, contentHeight(view)) : null;
+    const wide = marked && fitMode(marked.getAttribute(FIT_ATTR)) === "both" ? (marked.querySelector<HTMLElement>(`[${FIT_W_ATTR}]`) ?? marked) : null;
+    this.watchFit(marked, wide);
+    const wantW = view && wide ? fitWidth(this.shell.offsetWidth, view.clientWidth, naturalWidth(wide), this.tabsWidth(), horizontal(this.edge()) ? FIT_MAX_W : FIT_MAX_W_SIDE) : null;
+    // Sans va-et-vient : elle grandit tout de suite, ne rétrécit que nettement.
+    const target = settle(this.fitH, wantH);
+    const width = settle(this.fitW, wantW);
+    if (target === this.fitH && width === this.fitW) return;
+    // Un contenu qui change pendant qu'il est montré : la gelée glisse (sans rebond).
+    this.jelly.setGlide(target !== null || width !== null);
+    if (width !== this.fitW) {
+      this.fitW = width;
+      if (width === null) this.shell.style.removeProperty("--fit-w");
+      else this.shell.style.setProperty("--fit-w", `${width}px`);
+      if (target === this.fitH) {
+        this.jelly.retarget();
+        return;
+      }
+    }
     this.fitH = target;
     window.clearTimeout(this.tallTimer);
     if (target === null) {
@@ -645,6 +695,33 @@ export class Island {
     }
   }
 
+  /** Observe en continu le contenu marqué (sa taille change sans changer de nœuds : une image qui charge, un texte qui s'allonge). */
+  private watchFit(marked: Element | null, wide: Element | null) {
+    if (marked === this.fitWatched[0] && wide === this.fitWatched[1]) return;
+    this.fitObserver?.disconnect();
+    this.fitWatched = [marked, wide];
+    if (!marked) return;
+    this.fitObserver ??= new ResizeObserver(() => this.scheduleFit());
+    this.fitObserver.observe(marked);
+    if (wide && wide !== marked) this.fitObserver.observe(wide);
+  }
+
+  /** La largeur qu'il faut aux onglets de l'île ouverte (l'île ne se resserre jamais en dessous). */
+  private tabsWidth(): number {
+    const header = this.expandedUi?.tabs.values().next().value?.parentElement;
+    if (!header) return 0;
+    const gap = parseFloat(getComputedStyle(header).columnGap) || 0;
+    let need = 0;
+    let n = 0;
+    for (const child of header.children) {
+      if (!(child instanceof HTMLElement) || child.classList.contains("spacer")) continue;
+      need += child.offsetWidth;
+      n++;
+    }
+    // Les marges de l'île autour de la vue.
+    return need + gap * Math.max(0, n - 1) + (this.shell.offsetWidth - header.clientWidth);
+  }
+
   /** Le bord de l'écran où se trouve l'île (posé sur <body> par applySettings). */
   /**
    * Un petit saut de l'île (une alerte qui arrive, une notification en
@@ -657,8 +734,11 @@ export class Island {
     if (reducedMotion() || perfMode() === "eco" || !motionOn()) return;
     const edge = this.edge();
     const px = Math.round(7 * amount);
-    const away = edge === "top" ? `0 ${px}px` : edge === "left" ? `${px}px 0` : `${-px}px 0`;
-    const back = edge === "top" ? `0 ${-Math.round(px * 0.35)}px` : edge === "left" ? `${-Math.round(px * 0.35)}px 0` : `${Math.round(px * 0.35)}px 0`;
+    // Vers le centre de l'écran (« away »), puis un petit dépassement de l'autre côté.
+    const dir = { top: [0, 1], bottom: [0, -1], left: [1, 0], right: [-1, 0] }[edge];
+    const at = (k: number) => `${Math.round(dir[0] * k)}px ${Math.round(dir[1] * k)}px`;
+    const away = at(px);
+    const back = at(-px * 0.35);
     this.shell.animate(
       [
         { translate: "0 0", offset: 0 },
@@ -672,7 +752,7 @@ export class Island {
 
   private edge(): Edge {
     const e = document.body.dataset.edge;
-    return e === "left" || e === "right" ? e : "top";
+    return e === "left" || e === "right" || e === "bottom" ? e : "top";
   }
 
   /** La bande au bord de l'écran, là où l'île se cache (pour le survol). */
@@ -687,11 +767,43 @@ export class Island {
     };
     if (edge === "left") return x <= EDGE_ZONE.depth && span(H, y);
     if (edge === "right") return x >= W - EDGE_ZONE.depth && span(H, y);
+    if (edge === "bottom") return y >= H - EDGE_ZONE.depth && span(W, x);
     return y <= EDGE_ZONE.depth && span(W, x);
+  }
+
+  /**
+   * Le Rust déplace l'île pour qu'elle ne cache pas une fenêtre (island/dodge.rs) :
+   * sa forme prend le nouveau bord, et Ondine a peur (acculée : panique) ; de
+   * retour chez elle, elle soupire de soulagement. La peur n'est pas rejouée à
+   * chaque pas quand on pousse la fenêtre vers elle.
+   */
+  private onDodge(p: { edge: Edge; align: string; phase: "flee" | "cornered" | "home"; soft?: boolean }) {
+    const s = settingsStore.current;
+    if (p.phase === "home") {
+      if (!this.dodgePlace) return;
+      this.dodgePlace = null;
+      document.body.dataset.edge = s.island.edge ?? "top";
+      document.body.dataset.align = s.island.align ?? "center";
+      if (!p.soft) this.bus.emit("mascot.emote", { emotion: "relieved" });
+      return;
+    }
+    const first = !this.dodgePlace;
+    this.dodgePlace = { edge: p.edge, align: p.align };
+    document.body.dataset.edge = p.edge;
+    document.body.dataset.align = p.align;
+    const now = Date.now();
+    // Une fenêtre au premier plan, une bulle de Windows : elle s'écarte sans avoir peur.
+    if (p.soft) return;
+    if (first || p.phase === "cornered" || now - this.lastFright > FRIGHT_EVERY_MS) {
+      this.lastFright = now;
+      this.bus.emit("mascot.emote", { emotion: p.phase === "cornered" ? "panic" : "scared" });
+    }
   }
 
   /** On a attrapé l'île par son bord extérieur : le Rust déplace la fenêtre. */
   private startMove() {
+    // Le Rust oublie la place provisoire : c'est la main qui décide.
+    this.dodgePlace = null;
     this.jelly.release();
     this.shell.classList.add("moving");
     void Bridge.islandDragStart();
@@ -761,6 +873,37 @@ export class Island {
       if (n > 1 && !this.notifications.isPaused()) {
         this.notifications.push({ moduleId: "island", title: `${n} notifications pendant votre concentration`, icon: "🍅", priority: "low", key: "focus-summary" });
       }
+    });
+  }
+
+  /**
+   * Règles → « Calme / Ne pas déranger pendant X min » : "rules.quiet" {on}.
+   * Comme la concentration du Minuteur : les notifications attendent (sauf
+   * « critical »), puis un résumé à la fin.
+   */
+  private wireRulesQuiet() {
+    this.bus.on("rules.quiet", (msg) => {
+      const on = !!(msg.payload as { on?: boolean } | null)?.on;
+      if (on) {
+        this.notifications.pause(true, "rules-quiet");
+        return;
+      }
+      if (!this.notifications.isPaused("rules-quiet")) return;
+      const n = this.notifications.waiting();
+      this.notifications.pause(false, "rules-quiet");
+      if (n > 1 && !this.notifications.isPaused()) {
+        this.notifications.push({ moduleId: "island", title: `${n} notifications pendant le mode Calme`, icon: "🌙", priority: "low", key: "rules-quiet-summary" });
+      }
+    });
+  }
+
+  /** "nettools.ai-status" : une pastille rouge tant qu'un service IA est en panne. */
+  private wireAiDot() {
+    this.bus.on("nettools.ai-status", (msg) => {
+      const list = ((msg.payload as { services?: { name: string; level: string }[] } | null)?.services ?? []).filter((s) => s.level === "down");
+      this.shell.dataset.aiOutage = list.length ? "1" : "";
+      this.aiDot.title = list.length ? `En panne : ${list.map((s) => s.name).join(", ")}` : "";
+      this.aiDot.setAttribute("aria-label", this.aiDot.title);
     });
   }
 
@@ -1113,6 +1256,8 @@ export class Island {
     if (this.activeTab) {
       this.unmountView = this.registry.mountView(this.activeTab, "expanded", body);
       this.tips.show(this.activeTab, this.tipOf(this.activeTab), this.content);
+      // Le jour où cet onglet a été ouvert (proposition de masquer un onglet oublié).
+      noteTabOpen(this.activeTab);
     } else {
       const benched = this.registry.benchedNames();
       body.append(
@@ -1206,6 +1351,7 @@ export class Island {
     this.renderedKey = ["expanded", id, "", ""].join("|");
     this.unmountView = this.registry.mountView(id, "expanded", body);
     this.tips.show(id, this.tipOf(id), this.content);
+    noteTabOpen(id);
 
     if (reducedMotion()) {
       old.remove();

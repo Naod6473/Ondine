@@ -71,7 +71,7 @@ import {
   type Radii,
   type Rect,
 } from "./contour";
-import type { Edge } from "./gestures";
+import { horizontal, type Edge } from "./gestures";
 import { studioOn } from "./motion";
 import { feelFor, rubber, springAtRest, squashScale, stepSpring, type Elasticity, type Feel, type Spring, type SpringParams } from "./spring";
 import { reducedMotion } from "./tab-pill";
@@ -86,6 +86,8 @@ interface Shape {
 }
 
 /** Les propriétés en ligne que pilote ce fichier (effacées pour lire le CSS, et au repos). */
+/** La « glisse » de l'île ouverte qui suit son contenu (fit.ts) : amortie, sans rebond. */
+export const GLIDE: SpringParams = { stiffness: 150, damping: 1 };
 const OWNED = [
   "width",
   "height",
@@ -178,6 +180,18 @@ export class Jelly {
   /** Le réglage « Élasticité ». */
   setElasticity(e: Elasticity) {
     this.elasticity = e;
+  }
+
+  /** La « glisse » : l'île ouverte suit un contenu qui grandit (fit.ts). */
+  private glide = false;
+
+  /**
+   * Glisse (true) : la taille de l'île ouverte suit sa cible avec un ressort
+   * amorti, sans rebond (GLIDE). Une cible qui bouge à chaque mot ne la fait
+   * pas sautiller : la vitesse est gardée, la cible rattrapée en douceur.
+   */
+  setGlide(on: boolean) {
+    this.glide = on;
   }
 
   /** La boucle tourne-t-elle ? */
@@ -273,7 +287,7 @@ export class Jelly {
       if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom && r.width > 0) {
         want = 1;
         // -1 (bout gauche ou haut) à 1 (bout droit ou bas), le long du bord.
-        const side = this.hooks.edge() === "top" ? (x - (r.left + r.width / 2)) / (r.width / 2) : (y - (r.top + r.height / 2)) / (r.height / 2);
+        const side = horizontal(this.hooks.edge()) ? (x - (r.left + r.width / 2)) / (r.width / 2) : (y - (r.top + r.height / 2)) / (r.height / 2);
         magnet = Math.max(-1, Math.min(1, side)) * HOVER_MAGNET * this.feel().amp;
       }
     }
@@ -331,7 +345,7 @@ export class Jelly {
     if (reducedMotion() || !this.target) return;
     const rect = this.rect();
     const local = this.toLocal(x, y);
-    const top = this.hooks.edge() === "top";
+    const top = horizontal(this.hooks.edge());
     const len = top ? rect.w : rect.h;
     const along = top ? local.x : local.y;
     const r = Math.max(rect.r.tl, rect.r.tr, rect.r.br, rect.r.bl);
@@ -430,9 +444,11 @@ export class Jelly {
     if (!t) return true;
     const f = this.feel();
     // L'épaisseur (hauteur en haut de l'écran, largeur sur un côté) mène, la longueur suit.
-    const top = this.hooks.edge() === "top";
-    const pw = top ? f.trail : f.lead;
-    const ph = top ? f.lead : f.trail;
+    const top = horizontal(this.hooks.edge());
+    // En glisse (contenu qui grandit, fit.ts) : un seul ressort amorti, sans rebond.
+    const glide = this.glide && this.hooks.state() === "expanded";
+    const pw = glide ? GLIDE : top ? f.trail : f.lead;
+    const ph = glide ? GLIDE : top ? f.lead : f.trail;
     const s = this.s;
     let rest = true;
     const go = (sp: Spring, to: number, p: SpringParams) => {
@@ -516,7 +532,7 @@ export class Jelly {
 
   /** La forme au repos à cet instant (taille des ressorts + gonflement du survol). */
   private rect(): Rect {
-    const top = this.hooks.edge() === "top";
+    const top = horizontal(this.hooks.edge());
     const inflate = Math.max(0, this.hover.x) * HOVER_INFLATE * this.feel().amp;
     // Le gonflement : 2 × sur la longueur (les deux bouts), 1 × sur l'épaisseur (le bord collé ne bouge pas).
     let w = this.s.w.x + (top ? 2 : 1) * inflate;
@@ -532,10 +548,13 @@ export class Jelly {
     const b = this.shell.getBoundingClientRect();
     const rect = this.rect();
     // La boîte peut être mise à l'échelle (écrasement) : on ramène à la forme.
-    const sx = b.width / Math.max(1, rect.w + (this.hooks.edge() === "top" ? 0 : this.headroom));
-    const sy = b.height / Math.max(1, rect.h + (this.hooks.edge() === "top" ? this.headroom : 0));
-    const ox = this.hooks.edge() === "right" ? this.headroom : 0;
-    return { x: (x - b.left) / (sx || 1) - ox, y: (y - b.top) / (sy || 1) };
+    const e = this.hooks.edge();
+    const sx = b.width / Math.max(1, rect.w + (horizontal(e) ? 0 : this.headroom));
+    const sy = b.height / Math.max(1, rect.h + (horizontal(e) ? this.headroom : 0));
+    // La marge de bosse est du côté intérieur : à gauche (bord droit) ou en haut (bord du bas).
+    const ox = e === "right" ? this.headroom : 0;
+    const oy = e === "bottom" ? this.headroom : 0;
+    return { x: (x - b.left) / (sx || 1) - ox, y: (y - b.top) / (sy || 1) - oy };
   }
 
   /** Le milieu du bord intérieur (celui qui regarde le centre de l'écran). */
@@ -543,6 +562,7 @@ export class Jelly {
     const e = this.hooks.edge();
     if (e === "left") return { x: rect.w, y: rect.h / 2 };
     if (e === "right") return { x: 0, y: rect.h / 2 };
+    if (e === "bottom") return { x: rect.w / 2, y: 0 };
     return { x: rect.w / 2, y: rect.h };
   }
 
@@ -557,6 +577,7 @@ export class Jelly {
       const onLeft = p.x <= 0.5;
       const onRight = p.x >= rect.w - 0.5;
       if (e === "top") return onTop || (a === "start" && onLeft) || (a === "end" && onRight);
+      if (e === "bottom") return onBottom || (a === "start" && onLeft) || (a === "end" && onRight);
       const ends = (a === "start" && onTop) || (a === "end" && onBottom);
       return (e === "left" ? onLeft : onRight) || ends;
     };
@@ -570,6 +591,7 @@ export class Jelly {
     const pos = a === "start" ? "0%" : a === "end" ? "100%" : "50%";
     if (e === "left") return `0% ${pos}`;
     if (e === "right") return `100% ${pos}`;
+    if (e === "bottom") return `${pos} 100%`;
     return `${pos} 0%`;
   }
 
@@ -579,7 +601,8 @@ export class Jelly {
     if (!t) return;
     const f = this.feel();
     const e = this.hooks.edge();
-    const top = e === "top";
+    // « top » : l'île est couchée le long d'un bord horizontal (haut ou bas).
+    const top = horizontal(e);
     const rect = this.rect();
     const st = this.shell.style;
     this.styled = true;
@@ -592,7 +615,8 @@ export class Jelly {
     const hr = this.headroom;
 
     const pad = [this.s.pt.x, this.s.pr.x, this.s.pb.x, this.s.pl.x].map((v) => Math.max(0, v));
-    if (top) pad[2] += hr;
+    if (e === "top") pad[2] += hr;
+    else if (e === "bottom") pad[0] += hr;
     else if (e === "left") pad[1] += hr;
     else pad[3] += hr;
     st.width = `${rect.w + (top ? 0 : hr)}px`;
@@ -608,7 +632,7 @@ export class Jelly {
     if ((bumpOn || chainOn) && rect.w > 1 && rect.h > 1) {
       const bump: Bump | null = bumpOn
         ? {
-            along: e === "left" ? { x: 1, y: 0 } : e === "right" ? { x: -1, y: 0 } : { x: 0, y: 1 },
+            along: e === "left" ? { x: 1, y: 0 } : e === "right" ? { x: -1, y: 0 } : e === "bottom" ? { x: 0, y: -1 } : { x: 0, y: 1 },
             center: this.bumpCenter,
             depth: this.bumpDepth.x,
             shift: this.bumpShift.x,
@@ -617,7 +641,7 @@ export class Jelly {
           }
         : null;
       const points = sampleContour(rect, 5);
-      const path = contourPath(points, { x: e === "right" ? hr : 0, y: 0 }, (u) => this.chain.at(u), bump);
+      const path = contourPath(points, { x: e === "right" ? hr : 0, y: e === "bottom" ? hr : 0 }, (u) => this.chain.at(u), bump);
       st.clipPath = `path("${path}")`;
       // La découpe dessine déjà les coins : la boîte, elle, reste carrée
       // (sinon ses propres arrondis rogneraient la bosse).

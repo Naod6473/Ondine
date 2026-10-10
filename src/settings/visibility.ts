@@ -23,21 +23,29 @@ export const WHOLE_PAGE = "*";
  * est courte ou n'est pas une liste de réglages (un éditeur, des boutons) et
  * reste entière. Une page absente d'ici est entière aussi.
  *
- * « Bord de l'écran » vit dans Général (bloc « L'île ») : on ne déplace rien,
- * il est donc essentiel là où il est.
+ * Rangement 1.2.2 (layout.ts) : trois lignes au plus par page (ou par
+ * sous-menu), pour qu'aucune page ne soit vide en Simple. Les pages faites des
+ * champs d'un module (Animations et halos, la section « Ondine et les
+ * fenêtres » de Comportement) ajoutent l'essentiel de son manifeste (main.ts).
  */
 export const ISLAND_ESSENTIALS: Record<string, string[] | typeof WHOLE_PAGE> = {
-  general: ["Langue", "S'adresser à moi", "Lancer avec Windows", "Bord de l'écran", "Mises à jour automatiques"],
-  look: ["Thème", "Style des icônes"],
+  general: ["Langue", "S'adresser à moi", "Lancer avec Windows"],
+  behavior: ["Bord de l'écran", "Toujours en mini", "Raccourci pour ouvrir l'île"],
+  look: ["Thème", "Style des icônes", "Élasticité de l'île"],
   // La liste des modules (ordre des onglets, sans onglet) est marquée dans le
   // DOM (data-essential) : ses clés sont les noms des modules.
   tabs: [],
-  mascot: ["Afficher la mascotte", "Mascotte", "Couleur", "Roue de couleur", "Ondine vit sur le bureau"],
+  // Une ligne au moins par sous-menu (Humeur, Visites, Surprises, Tester) ; la
+  // bulle du bureau est marquée dans le DOM (data-essential).
+  mascot: ["Afficher la mascotte", "Mascotte", "Couleur", "Roue de couleur", "Ondine vit sur le bureau", "Calme : moins de gestes spontanés", "Ondine vient pendre au bord", "Surprises cachées", "Tester les animations"],
   rules: WHOLE_PAGE,
   profiles: ["Profil actif"],
   privacy: WHOLE_PAGE,
   credentials: WHOLE_PAGE,
   backup: WHOLE_PAGE,
+  updates: WHOLE_PAGE,
+  perf: ["Performances", "Économie d'énergie automatique sur batterie", "Mode utilisé"],
+  about: WHOLE_PAGE,
 };
 
 /**

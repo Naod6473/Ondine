@@ -17,7 +17,7 @@
 //
 // CHANGELOG.md est intégré à l'appli au moment de la construction (« ?raw » de
 // Vite) : rien n'est téléchargé. La lecture du fichier est dans changelog.ts.
-// Le bouton « Voir les nouveautés » (Réglages → Général → À propos) et la scène
+// Le bouton « Voir les nouveautés » (Réglages → À propos) et la scène
 // « Quoi de neuf » du mode démo publient « app.whats-new » : l'île montre le
 // même panneau, sans rien noter (le message peut porter une version :
 // { version: "1.2.0" }, pour voir celui d'une autre version dans un navigateur).

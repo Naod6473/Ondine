@@ -3,10 +3,11 @@
 //
 // Disposition :
 //   - à gauche, une barre latérale en verre : une recherche, puis les pages
-//     rangées en trois groupes (L'île, Modules, Sécurité) ; une pastille glisse
-//     sous la page affichée. Les modules sont rangés en catégories repliables
-//     (MODULE_CATEGORIES), et une page longue déplie ses sous-menus sous elle
-//     (`subs`) : la page n'affiche alors que le sous-menu choisi ;
+//     rangées en cinq groupes (Ondine, L'île, Automatiser, Modules, Sécurité et
+//     système, voir layout.ts) ; une pastille glisse sous la page affichée. Les
+//     modules sont rangés en catégories repliables (MODULE_CATEGORIES), et une
+//     page longue déplie ses sous-menus sous elle (`subs`) : la page n'affiche
+//     alors que le sous-menu choisi ;
 //   - à droite, la page : un en-tête, puis des blocs de lignes (controls.ts).
 //
 // Chaque changement est appliqué tout de suite et enregistré par le Rust, qui
@@ -15,9 +16,10 @@
 import { Bridge, IS_TAURI, windowLabel } from "../core/bridge";
 import { Bus } from "../core/bus";
 import { errorText } from "../core/log";
-import type { ModuleManifest } from "../core/module-types";
+import type { ModuleManifest, SettingField } from "../core/module-types";
 import { settingsStore } from "../core/settings-store";
 import { applyTabOrder, mergeOrder } from "../core/tab-order";
+import { cleanFirstName } from "../core/setup-plan";
 import type { Settings } from "../core/types";
 import { el } from "../island/dom";
 import { icon as iconNode } from "../island/icon";
@@ -25,6 +27,7 @@ import { sounds, setSoundPrefs } from "../island/sounds";
 import { jellyButtons, setStudio, staggerIn, watchContent } from "../island/motion";
 import { reducedMotion } from "../island/tab-pill";
 import { THEMES, themeFor } from "../island/themes";
+import { haloPreview } from "../island/halo";
 import { mascotCatalog } from "../mascot/catalog";
 import { colorWheel } from "./color-wheel";
 import { found, TREASURES } from "../eggs/treasures";
@@ -38,10 +41,12 @@ import { connectRules, rulesSection } from "./rules-editor";
 import { profilesPage, profileSubs } from "./profiles-page";
 import { mascotPodium, type Podium } from "./podium";
 import { aboutGroup } from "./about";
+import { askclaudeGroups } from "./askclaude-page";
 import { perfGroup } from "./perf-group";
 import { startPerf } from "../core/perf";
 import { applyMode, hiddenByMode, modeSwitch } from "./mode";
 import { isHidden, modeOf, moduleEssentialKeys, pageEssentials, WHOLE_PAGE, type SettingsMode } from "./visibility";
+import { allKey, ANIMATION_SUBS, FORMER_NAMES, MODULE_CATEGORIES, MODULES_ELSEWHERE, MOVED_FIELDS, resolvePlace, type NavGroup } from "./layout";
 
 const PERMISSION_LABELS: Record<string, string> = {
   files: "Fichiers",
@@ -51,17 +56,22 @@ const PERMISSION_LABELS: Record<string, string> = {
   credentials: "Identifiants",
 };
 
-/** Un sous-menu d'une page longue. `noI18n` : un nom choisi par l'utilisateur (un profil). */
+/**
+ * Un sous-menu d'une page longue. `noI18n` : un nom choisi par l'utilisateur
+ * (un profil). `module` : le sous-menu est la section d'un module (point
+ * « désactivé » dans la barre quand il est éteint).
+ */
 interface Sub {
   id: string;
   label: string;
   noI18n?: boolean;
+  module?: string;
 }
 
 /** Une page de la barre latérale. */
 interface Page {
   id: string;
-  group: "L'île" | "Modules" | "Sécurité";
+  group: NavGroup;
   icon: string;
   label: string;
   /** Une ligne sous le titre de la page. */
@@ -82,21 +92,9 @@ interface Page {
   subs?: () => Sub[];
   /** Modules : leur catégorie dans la barre (MODULE_CATEGORIES). */
   category?: string;
+  /** Le module dont la page suit l'interrupteur (point « désactivé » dans la barre). */
+  module?: string;
 }
-
-/**
- * Les catégories de modules dans la barre (texte seul, repliables). Un module
- * qui n'est dans aucune va dans « Autres modules ». Dans une catégorie, les
- * modules gardent l'ordre des onglets.
- */
-const MODULE_CATEGORIES: { id: string; label: string; modules: string[] }[] = [
-  { id: "ai", label: "Ondine et IA", modules: ["askclaude", "agents"] },
-  { id: "files", label: "Fichiers", modules: ["shelf", "clipboard", "capture", "launcher"] },
-  { id: "organize", label: "Organisation", modules: ["timer", "notes", "agenda", "pauses", "weekly"] },
-  { id: "it", label: "Outils IT", modules: ["terminal", "system", "remote", "nettools"] },
-  { id: "daily", label: "Le PC au quotidien", modules: ["media", "controls", "weather"] },
-  { id: "other", label: "Autres modules", modules: [] },
-];
 
 function categoryOf(moduleId: string): string {
   return MODULE_CATEGORIES.find((c) => c.modules.includes(moduleId))?.id ?? "other";
@@ -124,7 +122,15 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
     { id: "general", label: "Général", keys: [] },
     { id: "models", label: "Fournisseur et modèles", keys: ["provider", "model", "openaiModel", "geminiModel", "maxTokens"] },
     { id: "persona", label: "Personnalité et affichage", keys: ["personality", "autoGrow", "emotions", "showDrop"] },
+    { id: "voice", label: "Voix et sons", keys: ["voiceHotkey", "micMode", "voiceEngine", "lookHotkey", "handsFree", "quickCommands", "plops", "plopVolume", "discreet"] },
     { id: "files", label: "Fichiers et PC", keys: ["fileTools", "pcTools", "filesFolder"] },
+  ],
+  // Équipe (réseau local).
+  team: [
+    { id: "general", label: "Général", keys: ["visible", "name", "visits", "autoStatus"] },
+    { id: "files", label: "Fichiers et IT", keys: ["maxMb", "shareInventory"] },
+    { id: "mine", label: "Entre mes PC", keys: ["clipboardSync", "mascotSync"] },
+    { id: "chat", label: "Chat", keys: ["chatReceipts", "chatKeep"] },
   ],
 };
 
@@ -144,49 +150,49 @@ const SEARCH_ALIASES: Record<string, string> = {
   "Faire venir Ondine": "Essayer",
 };
 
-const ISLAND_PAGES: Page[] = [
+// ── Les pages (rangement : layout.ts) ─────────────────────────────────────────
+
+/** Le manifeste d'un module (undefined s'il n'existe pas). */
+function manifestOf(id: string): ModuleManifest | undefined {
+  return ALL_MODULES.find((m) => m.manifest.id === id)?.manifest;
+}
+
+/** Les libellés des champs d'un module (pour la recherche), sauf ceux affichés sur une autre page. */
+function fieldLabels(id: string): string[] {
+  const moved = MOVED_FIELDS[id]?.keys ?? [];
+  return (manifestOf(id)?.settings?.fields ?? []).filter((f) => !moved.includes(f.key)).map((f) => f.label);
+}
+
+/** Les libellés des champs de la page Animations et halos (tous modules confondus). */
+function animationLabels(): string[] {
+  return ANIMATION_SUBS.flatMap((s) => s.blocks.flatMap((b) => b.keys.map((k) => manifestOf(b.module)?.settings?.fields.find((f) => f.key === k)?.label ?? ""))).filter(Boolean);
+}
+
+/** Mode Simple, page Animations et halos : les trois réglages du halo et chaque « Tout ». */
+function animationEssentials(): string[] {
+  const halos = manifestOf("halos")?.settings?.fields ?? [];
+  return [...moduleEssentialKeys("halos", halos).filter((k) => k !== "Activé"), ...ANIMATION_SUBS.map((s) => allKey(s.id))];
+}
+
+/** Mode Simple, page Comportement : l'île, puis l'interrupteur et l'essentiel d'« Ondine et les fenêtres ». */
+function behaviorEssentials(): string[] {
+  const own = pageEssentials("behavior");
+  return [...(own === WHOLE_PAGE ? [] : own), ...moduleEssentialKeys("windowlife", manifestOf("windowlife")?.settings?.fields ?? []).filter((k) => k !== "Permissions" && k !== "À propos")];
+}
+
+const ONDINE_PAGES: Page[] = [
   {
     id: "general",
-    group: "L'île",
+    group: "Ondine",
     icon: "⚙️",
     label: "Général",
-    sub: "L'écran, le repli de l'île, les notifications et le journal.",
-    keywords: ["Langue", "Language", "Lancer avec Windows", "Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Mode présentation", "Mises à jour automatiques", "Version installée", "Niveau du journal", "Dossier du journal", "Signaler un problème", "Nouveautés", "Version", "Ressources utilisées", "Performances", "Économie d'énergie automatique sur batterie", "Mode utilisé", "S'adresser à moi", "Tutoiement", "Vouvoiement", "Mode démo"],
+    sub: "Votre prénom, la langue et le démarrage avec Windows.",
+    keywords: ["Langue", "Language", "Lancer avec Windows", "S'adresser à moi", "Tutoiement", "Vouvoiement", "Prénom", "Premiers pas", "Refaire l'assistant"],
     render: general,
-    subs: () => [
-      { id: "start", label: "Langue et démarrage" },
-      { id: "island", label: "Comportement de l'île" },
-      { id: "updates", label: "Mises à jour" },
-      { id: "perf", label: "Performances et journal" },
-      { id: "about", label: "À propos" },
-    ],
-  },
-  {
-    id: "look",
-    group: "L'île",
-    icon: "🎨",
-    label: "Apparence",
-    sub: "La couleur de l'île et ses petits sons.",
-    keywords: ["Thème", "Icônes", "Style des icônes", "Animations", "Style des animations", "Studio", "Élasticité de l'île", "Couleur de l'île", "Couleur personnalisée", "Sons de clic", "Volume des sons"],
-    render: look,
-  },
-  {
-    id: "tabs",
-    group: "L'île",
-    icon: "🗂️",
-    label: "Onglets",
-    sub: "Les modules actifs et l'ordre de leurs onglets dans l'île.",
-    keywords: ["Ordre des onglets", "Activer un module", "Désactiver un module", "Ordre d'origine", "Astuces à la première ouverture d'un onglet", "Revoir les astuces"],
-    render: tabs,
-    subs: () => [
-      { id: "order", label: "Ordre des onglets" },
-      ...(ALL_MODULES.some((m) => !m.views?.expanded) ? [{ id: "notab", label: "Modules sans onglet" }] : []),
-      { id: "tips", label: "Astuces" },
-    ],
   },
   {
     id: "mascot",
-    group: "L'île",
+    group: "Ondine",
     icon: "💧",
     label: "Mascotte",
     sub: "Qui vit dans l'île, et quand elle s'ennuie ou s'endort.",
@@ -202,23 +208,80 @@ const ISLAND_PAGES: Page[] = [
       { id: "anim", label: "Tester les animations" },
     ],
   },
+  // « Parler à Ondine » (module askclaude) : ajoutée ici par modulePages.
+];
+
+const ISLAND_PAGES: Page[] = [
+  {
+    id: "look",
+    group: "L'île",
+    icon: "🎨",
+    label: "Apparence",
+    sub: "La couleur de l'île, ses icônes, son élasticité et ses petits sons.",
+    keywords: ["Thème", "Icônes", "Style des icônes", "Animations", "Style des animations", "Studio", "Élasticité de l'île", "Halo autour de l'île", "Couleur de l'île", "Couleur personnalisée", "Sons de clic", "Volume des sons"],
+    render: look,
+  },
+  {
+    id: "behavior",
+    group: "L'île",
+    icon: "🪟",
+    label: "Comportement",
+    sub: "Où vit l'île, quand elle se replie, et comment Ondine vit avec vos fenêtres.",
+    keywords: ["Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Ondine évite la fenêtre de réglages", "Mode présentation", ...fieldLabels("windowlife")],
+    render: behavior,
+    essentials: behaviorEssentials(),
+    subs: () => [
+      { id: "island", label: "Comportement de l'île" },
+      { id: "windows", label: "Ondine et les fenêtres", module: "windowlife" },
+    ],
+  },
+  {
+    id: "animations",
+    group: "L'île",
+    icon: "🌈",
+    label: "Animations et halos",
+    sub: "Le halo autour de l'île, le liquide à l'intérieur, et les moments qui les allument.",
+    keywords: [manifestOf("halos")?.description ?? "", ...animationLabels()],
+    render: animations,
+    essentials: animationEssentials(),
+    module: "halos",
+    subs: () => ANIMATION_SUBS.map(({ id, label }) => ({ id, label })),
+  },
+  {
+    id: "tabs",
+    group: "L'île",
+    icon: "🗂️",
+    label: "Onglets",
+    sub: "Les modules actifs et l'ordre de leurs onglets dans l'île.",
+    keywords: ["Ordre des onglets", "Activer un module", "Désactiver un module", "Ordre d'origine", "Astuces à la première ouverture d'un onglet", "Revoir les astuces", "Propositions d'Ondine", "Revoir les propositions"],
+    render: tabs,
+    subs: () => [
+      { id: "order", label: "Ordre des onglets" },
+      ...(ALL_MODULES.some((m) => !m.views?.expanded) ? [{ id: "notab", label: "Modules sans onglet" }] : []),
+      { id: "tips", label: "Astuces" },
+      { id: "suggest", label: "Propositions" },
+    ],
+  },
+];
+
+const AUTOMATE_PAGES: Page[] = [
   {
     id: "rules",
-    group: "L'île",
+    group: "Automatiser",
     icon: "⚡",
     label: "Règles",
     sub: "Quand quelque chose arrive, l'île agit pour vous.",
     keywords: ["Règles automatiques", "Raccourci clavier", "Surveiller un dossier", "Clé USB", "Modèles de règles"],
     // Le module « Règles » n'a pas de page à part : son interrupteur est ici.
     render: (main) => {
-      const man = ALL_MODULES.find((m) => m.manifest.id === "rules")?.manifest;
+      const man = manifestOf("rules");
       if (man) modulePage(main, man, true);
       rulesSection(main);
     },
   },
   {
     id: "profiles",
-    group: "L'île",
+    group: "Automatiser",
     icon: "🧭",
     label: "Profils",
     sub: "Travail, Maison… : les onglets, la couleur et la mini-île d'un coup.",
@@ -228,10 +291,10 @@ const ISLAND_PAGES: Page[] = [
   },
 ];
 
-const SECURITY_PAGES: Page[] = [
+const SYSTEM_PAGES: Page[] = [
   {
     id: "privacy",
-    group: "Sécurité",
+    group: "Sécurité et système",
     icon: "🛡️",
     label: "Confidentialité",
     sub: "Aucune télémétrie. Ce qui part vers une IA est toujours montré avant.",
@@ -240,7 +303,7 @@ const SECURITY_PAGES: Page[] = [
   },
   {
     id: "credentials",
-    group: "Sécurité",
+    group: "Sécurité et système",
     icon: "🔑",
     label: "Identifiants",
     sub: "Rangés dans le Gestionnaire d'identifiants Windows.",
@@ -249,34 +312,70 @@ const SECURITY_PAGES: Page[] = [
   },
   {
     id: "backup",
-    group: "Sécurité",
+    group: "Sécurité et système",
     icon: "💾",
     label: "Sauvegarde",
     sub: "Exporter ou importer vos réglages (jamais les clés).",
     keywords: ["Exporter les réglages", "Importer des réglages"],
     render: backup,
   },
+  {
+    id: "updates",
+    group: "Sécurité et système",
+    icon: "🔄",
+    label: "Mises à jour",
+    sub: "Ondine regarde sur GitHub s'il existe une nouvelle version. Rien ne s'installe sans votre accord.",
+    keywords: ["Mises à jour automatiques", "Version installée", "Rechercher maintenant"],
+    render: (main) => main.append(updatesGroup()),
+  },
+  {
+    id: "perf",
+    group: "Sécurité et système",
+    icon: "🔋",
+    label: "Performances et journal",
+    sub: "La réactivité d'Ondine, l'économie d'énergie et le journal.",
+    keywords: ["Performances", "Économie d'énergie automatique sur batterie", "Mode utilisé", "Niveau du journal", "Dossier du journal"],
+    render: perf,
+  },
+  {
+    id: "about",
+    group: "Sécurité et système",
+    icon: "✨",
+    label: "À propos",
+    sub: "La version, les nouveautés, les ressources utilisées et le mode démo.",
+    keywords: ["Version", "Nouveautés", "Signaler un problème", "Ressources utilisées", "Mode démo"],
+    render: (main) => main.append(aboutGroup(() => bus.emit("app.whats-new", null, "settings")), demoGroup()),
+  },
 ];
 
-/** Une page par module : par catégorie, puis dans l'ordre des onglets. */
+/** La page d'un module (dans « Modules », ou ailleurs : Parler à Ondine). */
+function modulePageEntry(man: ModuleManifest, pageGroup: NavGroup): Page {
+  return {
+    id: `module:${man.id}`,
+    group: pageGroup,
+    category: pageGroup === "Modules" ? categoryOf(man.id) : undefined,
+    module: man.id,
+    subs: MODULE_SECTIONS[man.id] ? () => MODULE_SECTIONS[man.id].map(({ id, label }) => ({ id, label })) : undefined,
+    icon: man.icon,
+    label: man.name,
+    sub: firstSentence(man.description),
+    keywords: [man.description, ...fieldLabels(man.id)],
+    render: (main: HTMLElement) => modulePage(main, man),
+    essentials: moduleEssentialKeys(man.id, man.settings?.fields ?? []),
+  };
+}
+
+/**
+ * Une page par module : par catégorie, puis dans l'ordre des onglets. Les
+ * modules rangés ailleurs (MODULES_ELSEWHERE) n'y sont pas.
+ */
 function modulePages(): Page[] {
-  const listed = ALL_MODULES.filter((m) => m.manifest.id !== "rules");
+  const listed = ALL_MODULES.filter((m) => !MODULES_ELSEWHERE.includes(m.manifest.id));
   const rank = (id: string) => MODULE_CATEGORIES.findIndex((c) => c.id === categoryOf(id));
   const ordered = applyTabOrder(listed, (m) => m.manifest.id, settingsStore.current.island.tabOrder ?? []);
   // Tri stable : l'ordre des onglets tient dans chaque catégorie.
   ordered.sort((a, b) => rank(a.manifest.id) - rank(b.manifest.id));
-  return ordered.map((m) => ({
-    id: `module:${m.manifest.id}`,
-    group: "Modules" as const,
-    category: categoryOf(m.manifest.id),
-    subs: MODULE_SECTIONS[m.manifest.id] ? () => MODULE_SECTIONS[m.manifest.id].map(({ id, label }) => ({ id, label })) : undefined,
-    icon: m.manifest.icon,
-    label: m.manifest.name,
-    sub: firstSentence(m.manifest.description),
-    keywords: [m.manifest.description, ...(m.manifest.settings?.fields ?? []).map((f) => f.label)],
-    render: (main: HTMLElement) => modulePage(main, m.manifest),
-    essentials: moduleEssentialKeys(m.manifest.id, m.manifest.settings?.fields ?? []),
-  }));
+  return ordered.map((m) => modulePageEntry(m.manifest, "Modules"));
 }
 
 /** « Lance Claude Code… en un clic. Un tableau… » → « Lance Claude Code… en un clic. » */
@@ -285,8 +384,10 @@ function firstSentence(text: string): string {
   return end > 0 ? text.slice(0, end + 1) : text;
 }
 
+/** Toutes les pages, dans l'ordre de la barre (les groupes de layout.ts). */
 function allPages(): Page[] {
-  return [...ISLAND_PAGES, ...modulePages(), ...SECURITY_PAGES];
+  const ask = manifestOf("askclaude");
+  return [...ONDINE_PAGES, ...(ask ? [modulePageEntry(ask, "Ondine")] : []), ...ISLAND_PAGES, ...AUTOMATE_PAGES, ...modulePages(), ...SYSTEM_PAGES];
 }
 
 let bus: Bus;
@@ -324,7 +425,6 @@ async function start() {
   } catch {
     // stockage indisponible : on démarre sur « Général »
   }
-  if (!allPages().some((p) => p.id === current)) current = "general";
   try {
     chosenSubs = JSON.parse(localStorage.getItem("settings.subs") ?? "{}") ?? {};
     const cats: unknown = JSON.parse(localStorage.getItem("settings.cats") ?? "null");
@@ -332,6 +432,14 @@ async function start() {
   } catch {
     // rien de retenu : premiers sous-menus, catégories repliées
   }
+  // Une page retenue avant le rangement de 1.2.2 (« Animations de l'île »,
+  // Général → Mises à jour…) : on ouvre sa nouvelle place (layout.ts).
+  const place = resolvePlace(current, chosenSubs[current]);
+  if (place.page !== current) {
+    current = place.page;
+    if (place.sub) chosenSubs[current] = place.sub;
+  }
+  if (!allPages().some((p) => p.id === current)) current = "general";
   // Première fois : seule la catégorie de la page affichée est dépliée.
   const cat = pageById(current)?.category;
   if (cat) openCats.add(cat);
@@ -442,10 +550,23 @@ function saveCats() {
   }
 }
 
-function go(id: string, focusKey?: string) {
+/**
+ * Ouvre une page (et peut-être un de ses sous-menus, ou la ligne `focusKey`).
+ * Un ancien nom de page ou de sous-menu (avant 1.2.2) mène à sa nouvelle
+ * place (resolvePlace, layout.ts) : les liens profonds restent bons.
+ */
+function go(target: string, focusKey?: string, subId?: string) {
+  const place = resolvePlace(target, subId);
+  const id = place.page;
+  const subChanged = !!place.sub && place.sub !== chosenSubs[id];
+  if (place.sub) setSub(id, place.sub);
   if (id === current && !query) {
+    if (subChanged) {
+      syncNav();
+      showPage(true, 1, focusKey);
+    }
     // Même page : la ligne est peut-être dans un autre sous-menu.
-    if (focusKey && !findKey(content, focusKey)) showPage(true, 1, focusKey);
+    else if (focusKey && !findKey(content, focusKey)) showPage(true, 1, focusKey);
     if (focusKey) highlight(focusKey);
     return;
   }
@@ -520,7 +641,7 @@ function drawNav() {
       list.append(fold.head, fold.body);
       into = fold.inner;
     }
-    const moduleOff = p.id.startsWith("module:") && !settingsStore.moduleEnabled(p.id.slice(7));
+    const moduleOff = !!p.module && !settingsStore.moduleEnabled(p.module);
     const subs = p.subs?.() ?? [];
     const here = p.id === current;
     const item = el(
@@ -604,10 +725,12 @@ function subsFold(p: Page, subs: Sub[]): HTMLElement {
   const chosen = subOf(p);
   const inner = el("div", { class: "nav-fold-inner" });
   for (const s of subs) {
+    const off = !!s.module && !settingsStore.moduleEnabled(s.module);
     const b = el(
       "button",
-      { class: `nav-sub ${open && s.id === chosen ? "active" : ""}`, "data-page": p.id, "data-sub": s.id, "data-no-i18n": s.noI18n ? "" : undefined },
+      { class: `nav-sub ${open && s.id === chosen ? "active" : ""} ${off ? "off" : ""}`, "data-page": p.id, "data-sub": s.id, "data-no-i18n": s.noI18n ? "" : undefined },
       el("span", { class: "nav-label" }, s.label),
+      off ? el("span", { class: "nav-off", title: "Module désactivé" }) : null,
     );
     b.addEventListener("click", () => goSub(p.id, s.id));
     inner.append(b);
@@ -644,8 +767,8 @@ let navShape = "";
 function shapeOf(): string {
   return allPages()
     .map((p) => {
-      const off = p.id.startsWith("module:") && !settingsStore.moduleEnabled(p.id.slice(7)) ? "-off" : "";
-      const subs = (p.subs?.() ?? []).map((s) => `${s.id}=${s.label}`).join("|");
+      const off = p.module && !settingsStore.moduleEnabled(p.module) ? "-off" : "";
+      const subs = (p.subs?.() ?? []).map((s) => `${s.id}=${s.label}${s.module && !settingsStore.moduleEnabled(s.module) ? "-off" : ""}`).join("|");
       return `${p.id}${off}${subs ? `[${subs}]` : ""}`;
     })
     .join(",");
@@ -702,7 +825,7 @@ function showPage(animate: boolean, direction = 1, focusKey?: string) {
   if (query.trim()) {
     results(page, query);
   } else {
-    const p = pageById(current) ?? ISLAND_PAGES[0];
+    const p = pageById(current) ?? ONDINE_PAGES[0];
     // La page entière est dessinée, puis on ne garde que son sous-menu.
     const body = el("div", {});
     p.render(body);
@@ -716,10 +839,20 @@ function showPage(animate: boolean, direction = 1, focusKey?: string) {
         syncNav();
       }
     }
+    // Mode Simple : un sous-menu sans rien à montrer n'est pas affiché (il
+    // reste dans Complet) ; on ouvre le premier qui a quelque chose.
+    const empty = sub ? dimSubs(body, p, subs) : new Set<string>();
+    if (sub && empty.has(sub) && !focusKey) {
+      const alt = subs.find((s) => !empty.has(s.id));
+      if (alt) {
+        setSub(p.id, alt.id);
+        sub = alt.id;
+        syncNav();
+      }
+    }
     const shown = subs.find((s) => s.id === sub);
     page.append(header(p.icon, p.label, p.sub, undefined, shown));
     if (sub) {
-      dimSubs(body, p, subs);
       for (const child of [...body.children] as HTMLElement[]) if (child.dataset.sub && child.dataset.sub !== sub) child.remove();
     }
     page.append(...body.childNodes);
@@ -741,10 +874,10 @@ function showPage(animate: boolean, direction = 1, focusKey?: string) {
 }
 
 /**
- * Mode Simple : grise dans la barre les sous-menus de la page dont rien ne
- * resterait affiché (on peut quand même les ouvrir : « Tout afficher »).
+ * Mode Simple : cache dans la barre les sous-menus de la page dont rien ne
+ * resterait affiché (ils reviennent en Complet). Renvoie leurs ids.
  */
-function dimSubs(body: HTMLElement, p: Page, subs: Sub[]) {
+function dimSubs(body: HTMLElement, p: Page, subs: Sub[]): Set<string> {
   const mode = settingsMode();
   const essentials = essentialsOf(p);
   const empty = new Set<string>();
@@ -763,6 +896,7 @@ function dimSubs(body: HTMLElement, p: Page, subs: Sub[]) {
     if (dim) b.title = "Réglages en mode Complet";
     else b.removeAttribute("title");
   }
+  return empty;
 }
 
 function header(pageIcon: string, title: string, sub: string, extra?: HTMLElement, crumb?: Sub): HTMLElement {
@@ -811,12 +945,14 @@ function simple(text: string): string {
 
 function results(page: HTMLElement, q: string) {
   const words = simple(q).split(/\s+/).filter(Boolean);
-  const hits: { page: Page; key?: string; label: string }[] = [];
+  const hits: { page: Page; key?: string; sub?: string; label: string; former?: boolean }[] = [];
   for (const p of allPages()) {
     const matches = (text: string) => words.every((w) => simple(text).includes(w));
     if (matches(`${p.label} ${p.sub}`)) hits.push({ page: p, label: p.label });
+    // Les anciens noms de la page et de ses sous-menus (avant 1.2.2).
+    for (const f of FORMER_NAMES[p.id] ?? []) if (matches(f.name)) hits.push({ page: p, sub: f.sub, label: f.name, former: true });
     for (const k of p.keywords) {
-      if (!matches(k)) continue;
+      if (!k || !matches(k)) continue;
       // Une description trouvée : on montre la page, pas tout le texte.
       if (k.length > 80) {
         if (!hits.some((h) => h.page === p && !h.key)) hits.push({ page: p, label: p.label });
@@ -831,9 +967,9 @@ function results(page: HTMLElement, q: string) {
       hits.slice(0, 40).map((h) =>
         el(
           "button",
-          { class: "row result", onclick: () => go(h.page.id, h.key) },
+          { class: "row result", onclick: () => go(h.page.id, h.key, h.sub) },
           el("span", { class: "result-icon" }, iconNode(h.page.icon)),
-          el("div", { class: "row-text" }, el("div", { class: "row-label" }, h.label), el("div", { class: "row-help" }, h.key ? h.page.label : h.page.group)),
+          el("div", { class: "row-text" }, el("div", { class: "row-label" }, h.label), el("div", { class: "row-help" }, h.key || h.former ? h.page.label : h.page.group)),
           advancedHit(h.page, h.key) ? chip("réglage avancé") : null,
           el("span", { class: "chevron" }, "›"),
         ),
@@ -859,28 +995,41 @@ function addressRow(s: Settings): HTMLElement {
   return r;
 }
 
+/** Ondine → Général : le prénom, la langue, le tutoiement, le démarrage. */
 function general(main: HTMLElement) {
   const s = settingsStore.current;
   main.append(
-    inSub("start", group("Langue et démarrage", [
+    group("Langue et démarrage", [
       row(
         "Langue",
         choice(s.general.language ?? "auto", [["auto", "Automatique"], ["fr", "Français"], ["en", "English"]], (v) => save((d) => (d.general.language = v as Settings["general"]["language"]))),
         "Automatique : la langue choisie à l'installation, sinon celle de Windows. Les fenêtres se rechargent.",
       ),
       addressRow(s),
+      ...firstRunRows(s),
       row(
         "Lancer avec Windows",
         toggle(s.general.autostart !== false, (v) => save((d) => (d.general.autostart = v)), "Lancer avec Windows"),
         "Ondine s'ouvre toute seule quand vous ouvrez votre session.",
       ),
+    ]),
+  );
+}
+
+/**
+ * L'île → Comportement : où vit l'île et quand elle se replie, puis « Ondine
+ * et les fenêtres » (module windowlife), en section de la page : ses réglages
+ * restent dans le module, son interrupteur « Activé » aussi.
+ */
+function behavior(main: HTMLElement) {
+  const s = settingsStore.current;
+  main.append(
+    inSub("island", group("Comportement de l'île", [
       row(
         "Sur quel écran ?",
         choice(s.general.screen, [["primary", "Écran principal"], ["cursor", "Suit la souris"]], (v) => save((d) => (d.general.screen = v as Settings["general"]["screen"]))),
         "Seulement si vous avez plusieurs écrans : l'île reste sur l'écran principal, ou suit l'écran où se trouve votre souris.",
       ),
-    ])),
-    inSub("island", group("Comportement de l'île", [
       row(
         "Toujours en mini",
         toggle(s.island.alwaysMini ?? true, (v) => save((d) => (d.island.alwaysMini = v)), "Toujours en mini"),
@@ -903,7 +1052,7 @@ function general(main: HTMLElement) {
       ),
       row(
         "Bord de l'écran",
-        choice(s.island.edge, [["top", "En haut"], ["left", "À gauche"], ["right", "À droite"]], (v) =>
+        choice(s.island.edge, [["top", "En haut"], ["bottom", "En bas"], ["left", "À gauche"], ["right", "À droite"]], (v) =>
           save((d) => {
             d.island.edge = v as Settings["island"]["edge"];
             d.island.align = "center";
@@ -913,14 +1062,31 @@ function general(main: HTMLElement) {
         "Vous pouvez aussi attraper l'île par son bord collé à l'écran et la poser ailleurs : elle s'aimante aux bords, aux coins et au centre.",
       ),
       row(
+        "Ondine évite la fenêtre de réglages",
+        toggle(s.island.avoidSettings ?? true, (v) => save((d) => (d.island.avoidSettings = v)), "Ondine évite la fenêtre de réglages"),
+        "Si cette fenêtre la cache, l'île glisse le long du bord pour lui laisser la place, puis revient à sa place quand vous la fermez.",
+      ),
+      row(
         "Mode présentation",
         toggle(s.island.presentationQuiet ?? true, (v) => save((d) => (d.island.presentationQuiet = v)), "Mode présentation"),
         "Pendant un diaporama, une vidéo ou un jeu en plein écran, l'île se cache et garde les notifications pour la fin.",
       ),
     ])),
-    inSub("updates", updatesGroup()),
-    inSub("perf", perfGroup(save)),
-    inSub("perf", group(
+  );
+  const man = manifestOf("windowlife");
+  if (!man) return;
+  main.append(
+    inSub("windows", group(null, [row("Activé", enableToggle(man), "Désactivé, Ondine ne réagit plus à vos fenêtres.")])),
+    inSub("windows", group(man.name, fieldRows(man, man.settings?.fields ?? []))),
+  );
+}
+
+/** Sécurité et système → Performances et journal. */
+function perf(main: HTMLElement) {
+  const s = settingsStore.current;
+  main.append(
+    perfGroup(save),
+    group(
       "Journal",
       [
         row(
@@ -934,9 +1100,7 @@ function general(main: HTMLElement) {
         row("Dossier du journal", el("button", { class: "btn small", onclick: () => void Bridge.openLogsFolder() }, "Ouvrir")),
       ],
       "Le journal reste sur votre PC (%LOCALAPPDATA%\\Ondine\\logs). Il ne contient jamais de clé ni de contenu de fichier.",
-    )),
-    inSub("about", aboutGroup(() => bus.emit("app.whats-new", null, "settings"))),
-    inSub("about", demoGroup()),
+    ),
   );
 }
 
@@ -1030,6 +1194,21 @@ function demoGroup(): HTMLElement {
                 scene("download", "Fichier téléchargé"),
                 scene("next-track", "Morceau suivant"),
                 scene("whats-new", "Quoi de neuf"),
+                scene("halos-battery", "Halos de batterie"),
+                scene("halos-tour", "Autres halos"),
+                scene("timer-ring", "Liseré d'un minuteur"),
+                scene("liquid-timer", "Minuteur qui se remplit"),
+                scene("liquid-moods", "Ambiances dans l'île"),
+                scene("liquid-float", "Ondine qui flotte"),
+                scene("voice", "Parler à Ondine"),
+                scene("voice-error", "La dictée échoue"),
+                scene("mascot-talk", "Ondine parle"),
+                scene("team-visit", "Visite d'une collègue"),
+                scene("team-chat", "Message d'une collègue"),
+                scene("ai-outage", "Panne d'un service IA"),
+                scene("island-dodge", "L'île s'écarte"),
+                scene("setup", "Premier lancement"),
+                scene("dances", "Danses selon la musique"),
               ),
               "La notification arrive dans l'île : lancez l'enregistrement avant de cliquer.",
             ),
@@ -1089,6 +1268,12 @@ function look(main: HTMLElement) {
         "Élasticité de l'île",
         segmented(s.island.elasticity ?? "normal", [["soft", "Doux"], ["normal", "Normal"], ["jelly", "Gelée"]], (v) => save((d) => (d.island.elasticity = v as Settings["island"]["elasticity"]))),
         "Doux : l'île se pose sans rebondir. Normal : un petit rebond. Gelée : elle tremblote, se creuse sous vos clics et s'étire comme de la guimauve. Si Windows réduit les animations, rien ne bouge.",
+      ),
+      // Le halo de lumière autour de l'île : ses réglages sont ceux du module « Animations de l'île ».
+      row(
+        "Halo autour de l'île",
+        el("button", { class: "btn small", onclick: () => go("animations") }, "Régler les animations et halos"),
+        "Un liseré de lumière en couleurs qui bougent : batterie, agents, sortie de veille, téléchargements… Chaque moment se coupe à part.",
       ),
     ]),
     group("Sons", [
@@ -1197,11 +1382,17 @@ function tabs(main: HTMLElement) {
     el("div", { class: "actions", "data-sub": "order" }, el("button", { class: "btn", onclick: () => save((d) => (d.island.tabOrder = []), true) }, "Ordre d'origine")),
   );
   if (without.length) {
-    const sans = group("Sans onglet", without.map((man) => row(`${man.icon}  ${man.name}`, enableToggle(man), undefined, man.name)));
+    // L'icône du module en vraie icône (image en couleur, trait en épuré), pas en emoji.
+    const sans = group("Sans onglet", without.map((man) => {
+      const line = row(man.name, enableToggle(man), undefined, man.name);
+      line.querySelector(".row-label")?.prepend(el("span", { class: "row-icon", "aria-hidden": "true" }, iconNode(man.icon)));
+      return line;
+    }));
     sans.dataset.essential = ""; // mode Simple : la liste des modules reste entière
     main.append(inSub("notab", sans));
   }
   main.append(inSub("tips", tipsGroup()));
+  main.append(inSub("suggest", suggestionsGroup()));
 }
 
 /**
@@ -1229,6 +1420,63 @@ function tipsGroup(): HTMLElement {
       "La première fois que vous ouvrez un onglet, une petite bulle d'Ondine explique son geste principal.",
     ),
     row("Revoir les astuces", el("div", { class: "chips" }, again, status)),
+  ]);
+}
+
+// ── Premier lancement (src/core/setup.ts, src/core/suggestions.ts) ───────────
+
+/**
+ * Général : le prénom donné à l'assistant de premier lancement (« Bonjour
+ * Simon ! », le bilan, la bulle du bureau), et « Refaire l'assistant », qui
+ * le rouvre dans l'île (sujet « app.setup »).
+ */
+function firstRunRows(s: Settings): HTMLElement[] {
+  const name = el("input", { type: "text", class: "text", maxlength: 40, placeholder: "Votre prénom", "aria-label": "Prénom", autocomplete: "given-name" }) as HTMLInputElement;
+  name.value = s.general.firstName ?? "";
+  name.addEventListener("change", () => save((d) => (d.general.firstName = cleanFirstName(name.value))));
+  const status = el("span", { class: "muted", "aria-live": "polite" }, "");
+  const again = el(
+    "button",
+    {
+      class: "btn small",
+      onclick: () => {
+        bus.emit("app.setup", null, "settings");
+        status.textContent = "L'assistant s'ouvre dans l'île.";
+      },
+    },
+    "Refaire l'assistant",
+  );
+  return [
+    row("Prénom", name, "Ondine dit bonjour avec, dans l'île, le bilan de la semaine et la bulle du bureau. Il reste sur ce PC."),
+    row("Premiers pas", el("div", { class: "chips" }, again, status), "Votre prénom, ce que vous faites sur ce PC (les onglets), la mascotte, la place de l'île et la clé de Parler à Ondine."),
+  ];
+}
+
+/**
+ * Onglets : les propositions d'Ondine (le bon onglet au bon moment, masquer
+ * un onglet oublié), jamais faites toutes seules, une fois chacune.
+ */
+function suggestionsGroup(): HTMLElement {
+  const s = settingsStore.current;
+  const status = el("span", { class: "muted", "aria-live": "polite" }, "");
+  const again = el(
+    "button",
+    {
+      class: "btn small",
+      onclick: () => {
+        save((d) => (d.island.suggested = []));
+        status.textContent = "Ondine pourra refaire ses propositions.";
+      },
+    },
+    "Revoir les propositions",
+  );
+  return group("Propositions", [
+    row(
+      "Propositions d'Ondine",
+      toggle(s.island.suggestions !== false, (v) => save((d) => (d.island.suggestions = v)), "Propositions d'Ondine"),
+      "À la première clé USB, la première visio ou le premier fichier glissé sur l'île, Ondine propose l'onglet qui va avec. Un onglet jamais ouvert depuis 3 semaines : elle propose de le masquer. Toujours à accepter, une seule fois chacune, compté sur ce PC.",
+    ),
+    row("Revoir les propositions", el("div", { class: "chips" }, again, status)),
   ]);
 }
 
@@ -1264,19 +1512,18 @@ function modulePage(main: HTMLElement, man: ModuleManifest, compact = false) {
     compact ? null : wideRow("À propos", el("div", {}, about, man.description.length > 220 ? more : null)),
   ]);
   main.append(sections ? inSub(sections[0].id, top) : top);
-  const fields = man.settings?.fields ?? [];
+  // Des champs montrés sur une autre page (layout.ts, MOVED_FIELDS) : un lien à leur place.
+  const moved = MOVED_FIELDS[man.id];
+  const fields = (man.settings?.fields ?? []).filter((f) => !moved?.keys.includes(f.key));
   if (!fields.length) {
     if (!compact) main.append(el("p", { class: "empty" }, "Ce module n'a pas de réglage."));
     return;
   }
-  const rowsOf = (list: typeof fields) =>
-    settingsRows(list, settingsStore.moduleValues(man), (key, value) =>
-      save((d) => {
-        const entry = (d.modules[man.id] ??= { enabled: true, values: {} });
-        entry.values[key] = value;
-      }),
-    );
-  if (!sections) main.append(group("Réglages", rowsOf(fields)));
+  const rowsOf = (list: typeof fields) => fieldRows(man, list);
+  const elsewhere = moved
+    ? row(moved.label, el("button", { class: "btn small", onclick: () => go(moved.page, undefined, moved.sub) }, `Ouvrir ${pageById(moved.page)?.label ?? ""}`), "Ils se règlent maintenant avec les autres animations de l'île.")
+    : null;
+  if (!sections) main.append(group("Réglages", [...rowsOf(fields), elsewhere]));
   else {
     const listed = new Set(sections.slice(1).flatMap((s) => s.keys));
     sections.forEach((s, i) => {
@@ -1285,7 +1532,97 @@ function modulePage(main: HTMLElement, man: ModuleManifest, compact = false) {
     });
   }
   if (!compact && man.id === "weekly") main.append(weeklyGroup(man));
+  // Animations de l'île : l'aperçu du halo, en direct, avec les réglages choisis.
+  // Parler à Ondine : ce qui part et la consigne exacte (askclaude-page.ts).
+  if (!compact && man.id === "askclaude") main.append(...askclaudeGroups());
   if (!compact) main.append(el("p", { class: "version" }, `${man.name} · version ${man.version}`));
+}
+
+/** Les lignes des champs `list` d'un module ; chaque changement est enregistré dans ce module. */
+function fieldRows(man: ModuleManifest, list: SettingField[]): HTMLElement[] {
+  return settingsRows(list, settingsStore.moduleValues(man), (key, value) =>
+    save((d) => {
+      const entry = (d.modules[man.id] ??= { enabled: settingsStore.moduleEnabled(man.id), values: {} });
+      entry.values[key] = value;
+    }),
+  );
+}
+
+// ── Animations et halos (layout.ts, ANIMATION_SUBS) ──────────────────────────
+
+/**
+ * L'île → Animations et halos : le module Animations de l'île (halos, liquide,
+ * liseré des minuteurs) et les halos de batterie du module Système, rangés en
+ * sous-menus. Chacun commence par « Tout » ; dans Style, c'est l'interrupteur
+ * du module lui-même. Les réglages restent dans leur module.
+ */
+function animations(main: HTMLElement) {
+  const halos = manifestOf("halos");
+  if (!halos) return;
+  const listed = new Set(ANIMATION_SUBS.flatMap((s) => s.blocks.filter((b) => b.module === "halos").flatMap((b) => b.keys)));
+  for (const sub of ANIMATION_SUBS) {
+    const blocks: HTMLElement[] = [];
+    for (const b of sub.blocks) {
+      const man = manifestOf(b.module);
+      if (!man) continue;
+      const all = man.settings?.fields ?? [];
+      const mine = b.keys.map((k) => all.find((f) => f.key === k)).filter((f): f is SettingField => !!f);
+      // Un champ de « halos » rangé nulle part (ajouté plus tard) : dans Style.
+      if (sub.id === ANIMATION_SUBS[0].id && b === sub.blocks[0]) mine.push(...all.filter((f) => b.module === "halos" && !listed.has(f.key)));
+      if (!mine.length) continue;
+      // Un autre module (Système) éteint : ses halos attendent, la ligne le dit.
+      const off = b.module !== "halos" && !settingsStore.moduleEnabled(b.module);
+      const block = group(b.title, fieldRows(man, mine), off ? `Le module ${man.name} est désactivé : ces halos reviendront quand vous le rallumerez (Modules → ${man.name}).` : undefined);
+      if (off) block.classList.add("module-off");
+      blocks.push(block);
+    }
+    const top =
+      sub.id === "style"
+        ? row("Tout", enableToggle(halos), "Éteint d'un coup tous les halos et le liquide de l'île. Désactivé, le module Animations de l'île s'arrête.", allKey(sub.id))
+        : allRow(sub.id, sub.blocks, blocks);
+    main.append(inSub(sub.id, group(null, [top])), ...blocks.map((b) => inSub(sub.id, b)));
+  }
+  // L'aperçu du halo, en direct, avec les réglages choisis.
+  main.append(inSub("style", haloPreviewGroup()));
+}
+
+/** La valeur « éteint » d'un champ pour « Tout » (oui/non : false ; un choix avec « Jamais » : never), ou undefined. */
+function offValue(f: SettingField): unknown {
+  if (f.type === "boolean") return false;
+  if (f.type === "select") return f.options.find((o) => o.value === "never" || o.value === "off")?.value;
+  return undefined;
+}
+
+/**
+ * « Tout » d'un sous-menu : allumé si au moins un moment l'est. Le couper
+ * éteint tous les moments du sous-menu (oui/non et choix avec « Jamais ») ;
+ * le rallumer les remet tous (un choix éteint reprend sa valeur par défaut).
+ */
+function allRow(sub: string, specs: { module: string; keys: string[] }[], blocks: HTMLElement[]): HTMLElement {
+  const targets = specs.flatMap((b) => {
+    const man = manifestOf(b.module);
+    return (man?.settings?.fields ?? []).filter((f) => b.keys.includes(f.key) && offValue(f) !== undefined).map((f) => ({ man: man!, f }));
+  });
+  const isOn = () =>
+    targets.some(({ man, f }) => {
+      const v = settingsStore.moduleValues(man)[f.key];
+      return v !== offValue(f);
+    });
+  const sw = toggle(isOn(), (on) => {
+    save((d) => {
+      for (const { man, f } of targets) {
+        const entry = (d.modules[man.id] ??= { enabled: settingsStore.moduleEnabled(man.id), values: {} });
+        const now = settingsStore.moduleValues(man)[f.key];
+        const def = "default" in f ? f.default : undefined;
+        const fallback = def !== offValue(f) ? def : f.type === "select" ? f.options.find((o) => o.value !== offValue(f))?.value : true;
+        entry.values[f.key] = on ? (now === offValue(f) ? fallback : now) : offValue(f);
+      }
+    }, true);
+  }, "Tout");
+  // Un moment changé à la main : « Tout » suit (allumé si au moins un l'est).
+  const input = sw.querySelector("input");
+  for (const b of blocks) b.addEventListener("change", () => input && (input.checked = isOn()));
+  return row("Tout", sw, "Coupe ou rallume d'un coup tous les moments de ce sous-menu.", allKey(sub));
 }
 
 /**
@@ -1317,6 +1654,32 @@ function weeklyGroup(man: ModuleManifest): HTMLElement {
       "Ce qui est compté depuis le dernier bilan : la notification s'affiche dans l'île. Le vrai bilan arrivera quand même à l'heure dite.",
     ),
   ]);
+}
+
+/**
+ * Animations de l'île : une petite île factice et son halo (haloPreview dans
+ * island/halo.ts), qui change de forme toutes les 4 s. Changer « Où dessiner
+ * le halo », l'intensité ou les couleurs se voit tout de suite.
+ */
+function haloPreviewGroup(): HTMLElement {
+  const island = el("div", { class: "halo-preview-island" }, el("span", { class: "halo-preview-dot" }), el("span", { class: "halo-preview-line" }));
+  const box = el("div", { class: "halo-preview", "aria-hidden": "true" }, island);
+  // Une fois dans la page (sa taille est connue).
+  requestAnimationFrame(() => {
+    if (box.isConnected) haloPreview(box, island);
+  });
+  const g = group("Aperçu", [
+    wideRow("Aperçu du halo", box, "Comète, musique, liseré d'un minuteur, éclat : le halo dessiné comme sur l'île, avec les réglages choisis ici."),
+  ]);
+  // Visible aussi en mode Simple, sous « Où dessiner le halo ».
+  g.dataset.essential = "";
+  return g;
+}
+
+/** Mode Simple : le bloc reste entier (une liste courte, sans réglage « avancé »). */
+function essential<T extends HTMLElement>(node: T): T {
+  node.dataset.essential = "";
+  return node;
 }
 
 /** Ondine sur le bureau (src/pet/) : la mascotte sort de l'île. */
@@ -1425,11 +1788,11 @@ function mascot(main: HTMLElement) {
       row(
         "Calme : moins de gestes spontanés",
         toggle(s.mascot.calm ?? false, (v) => save((d) => (d.mascot.calm = v)), "Calme : moins de gestes spontanés"),
-        "Plus d'ennui, de goûter, de visites au bord de l'écran, de danse ni de réactions aux modules. Elle réagit toujours aux agents IA (attente, question), aux erreurs, aux réussites, aux alertes, et elle dort.",
+        "Plus d'ennui, de goûter, de visites au bord de l'écran ni de réactions aux modules ; en musique, un simple hochement de tête au lieu de la danse. Elle réagit toujours aux agents IA (attente, question), aux erreurs, aux réussites, aux alertes, et elle dort.",
       ),
     ])),
     inSub("desk", petGroup()),
-    inSub("bubble", petTabsGroup()),
+    inSub("bubble", essential(petTabsGroup())),
     inSub("peek", group(
       "Visites au bord de l'écran",
       [

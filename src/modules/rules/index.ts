@@ -14,7 +14,7 @@ import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
 import { reducedMotion } from "../../island/tab-pill";
-import { summary, type Listing } from "./shared";
+import { countText, summary, type Listing } from "./shared";
 
 let listing: Listing = { rules: [], paused: false, history: [], errors: {}, topics: [] };
 const redraws = new Set<() => void>();
@@ -59,6 +59,13 @@ export const rules: IslandModule = {
       const p = (msg.payload ?? {}) as { title?: string; body?: string };
       api.notify({ title: p.title || "Règle", body: p.body || undefined, icon: "⚡", priority: "normal", key: `rules-${p.title}` });
     });
+    // Pancarte de la mascotte (action « Mascotte → pancarte ») : tant que la
+    // mascotte ne sait pas écrire sur sa pancarte, le texte s'affiche en
+    // notification à côté d'elle.
+    api.on("mascot.sign", (msg) => {
+      const p = (msg.payload ?? {}) as { text?: string };
+      if (p.text) api.notify({ title: p.text, icon: "🪧", priority: "normal", key: "rules-sign" });
+    });
     api.on("rules.open-island", (msg) => {
       const p = (msg.payload ?? {}) as { tab?: string };
       api.openIsland(p.tab || undefined);
@@ -91,7 +98,7 @@ export const rules: IslandModule = {
             el(
               "p",
               { class: "muted rules-empty" },
-              "Aucune règle. Exemples : ranger les PDF téléchargés, Ctrl+Alt+V pour coller sans mise en forme, ouvrir une clé USB dès qu'elle est branchée.",
+              "Aucune règle. Exemples : ranger les PDF téléchargés, Ctrl+Alt+V pour coller sans mise en forme, la mascotte qui danse quand un agent IA a fini.",
             ),
           );
         }
@@ -110,6 +117,7 @@ export const rules: IslandModule = {
                 { class: "rule-main", title: "Modifier", onclick: api.handler(() => edit(api, r.id)) },
                 el("b", {}, r.name),
                 el("span", { class: "muted" }, summary(r, topics)),
+                countText(listing.counts?.[String(r.id)]) ? el("span", { class: "muted rule-count" }, countText(listing.counts?.[String(r.id)])) : null,
                 error ? el("span", { class: "rule-error" }, `⚠️ ${error}`) : null,
               ),
             ),

@@ -81,10 +81,28 @@ impl RustModule for Notes {
         *self.data.locked() = load();
     }
 
-    /// "notes.add" `{text}` : un autre module (Agents IA, outil MCP
-    /// ondine_note) ajoute une note. Mêmes limites que « note_save ».
+    /// "notes.add" `{text, kind?}` : un autre module (Agents IA, outil MCP
+    /// ondine_note, Règles) ajoute une note, ou une tâche si `kind` vaut
+    /// "todo". Mêmes limites que « note_save » / « todo_add ».
     fn on_event(&self, ctx: &ModuleContext, msg: &BusMessage) {
         if msg.topic != "notes.add" {
+            return;
+        }
+        if msg.payload.get("kind").and_then(Value::as_str) == Some("todo") {
+            let text = match arg_text(&msg.payload, MAX_TODO_CHARS) {
+                Ok(t) => t,
+                Err(e) => return ctx.log_warn(format!("tâche refusée : {e}")),
+            };
+            {
+                let mut d = self.data.locked();
+                if d.todos.len() >= MAX_TODOS {
+                    return ctx.log_warn(format!("tâche refusée : au plus {MAX_TODOS} tâches"));
+                }
+                let id = d.new_id();
+                d.todos.push(Todo { id, text, done: false, created: now_ms() });
+            }
+            ctx.log_info("tâche ajoutée par un autre module");
+            changed(ctx.app, &self.data);
             return;
         }
         let text = match arg_text(&msg.payload, MAX_NOTE_CHARS) {

@@ -14,6 +14,10 @@
 // « 1 Go en Mio », « 192.168.1.0/26 », « 15 h Montréal »…), la réponse vient
 // en premier ; Entrée la copie (commande Rust "copy", permission clipboard).
 // « guid » propose un GUID neuf, copié de la même façon.
+//
+// Recherche web : la dernière ligne, « Recherche web : « … » sur Google » (moteur
+// au choix dans les réglages). Entrée ou clic : le Rust (`web_search`) ouvre
+// la page de résultats dans le navigateur par défaut. Rien ne part avant.
 
 import manifest from "./manifest.json";
 import { Bridge } from "../../core/bridge";
@@ -70,6 +74,8 @@ const KIND_BONUS = { action: 4, app: 3, tool: 2, recent: 1 };
 /** Un calcul passe avant tout le reste (le minuteur « 10 min » a 120). */
 const CALC_SCORE = 1000;
 const CALC_ICONS: Record<CalcKind, string> = { math: "🧮", base: "🧮", convert: "📏", temp: "🌡️", duration: "⏳", subnet: "🌐", time: "🕐" };
+/** Les moteurs de la recherche web (réglage « searchEngine », mêmes ids que launcher.rs). */
+const ENGINE_NAMES: Record<string, string> = { google: "Google", duckduckgo: "DuckDuckGo", bing: "Bing", qwant: "Qwant", ecosia: "Ecosia" };
 const CALC_TAGS: Record<CalcKind, string> = { math: "Calcul", base: "Calcul", convert: "Conversion", temp: "Conversion", duration: "Durée", subnet: "Réseau", time: "Heure" };
 
 let listing: Listing = { items: [], hotkey: "", hotkeyError: null };
@@ -255,6 +261,23 @@ function results(api: ModuleApi, query: string): Result[] {
   return all.sort((a, b) => b.score - a.score).slice(0, MAX_RESULTS);
 }
 
+/** La dernière ligne : chercher ce texte sur le web (rien ne part avant Entrée ou le clic). */
+function webResult(api: ModuleApi, query: string): Result {
+  const engine = ENGINE_NAMES[String(api.settings().searchEngine ?? "")] ?? ENGINE_NAMES.google;
+  return {
+    key: "web",
+    name: `Recherche web : « ${query} » sur ${engine}`,
+    detail: "",
+    icon: "🌍",
+    tag: "Web",
+    score: 0,
+    run: async () => {
+      await api.invoke("web_search", { query });
+      api.closeIsland();
+    },
+  };
+}
+
 /** « Super+Shift+Space » → « Win+Maj+Espace ». */
 function prettyHotkey(keys: string): string {
   return keys.replace("Super", "Win").replace("Shift", "Maj").replace("Space", "Espace");
@@ -391,9 +414,17 @@ export const launcher: IslandModule = {
             current.push(r);
           }
         }
+        const q = search.value.trim();
+        if (q && !current.length) rows.push(el("li", { class: "muted launch-empty" }, "Rien trouvé."));
+        // Toujours en dernier : chercher sur le web.
+        if (q) {
+          const web = webResult(api, q);
+          rows.push(item(web, current.length));
+          current.push(web);
+        }
         list.replaceChildren(...rows);
         if (!current.length) {
-          list.append(el("li", { class: "muted launch-empty" }, search.value.trim() ? "Rien trouvé." : "Tapez le nom d'une appli, d'un fichier, d'un onglet, un mot de vos notes, ou un calcul (« 18 % de 240 », « 1 Go en Mio »)."));
+          list.append(el("li", { class: "muted launch-empty" }, "Tapez le nom d'une appli, d'un fichier, d'un onglet, un mot de vos notes, ou un calcul (« 18 % de 240 », « 1 Go en Mio »)."));
         }
         setLabel(
           foot,

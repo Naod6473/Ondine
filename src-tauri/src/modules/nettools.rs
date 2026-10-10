@@ -18,7 +18,9 @@
 //     toutes les minutes) : prévient quand l'un ne répond plus, puis revient ;
 //   - SEULEMENT si on l'active : l'adresse IP publique, demandée à
 //     api.ipify.org toutes les 10 minutes (ce site voit alors ton adresse IP,
-//     comme n'importe quel site visité ; rien d'autre ne part).
+//     comme n'importe quel site visité ; rien d'autre ne part) ;
+//   - SEULEMENT si on l'active : l'état de Claude, ChatGPT et Gemini, lu sur
+//     leurs pages d'état publiques (nettools_ai.rs).
 
 use crate::sync::LockExt;
 use std::collections::{BTreeSet, HashMap};
@@ -30,8 +32,10 @@ use std::time::{Duration, Instant};
 use serde_json::{json, Value};
 use tauri::AppHandle;
 
+use super::nettools_ai::{self as ai, Level, Outage, Reading};
 use super::remote::check_host;
 use super::{ModuleContext, RustModule};
+use crate::services::bus::BusMessage;
 use crate::platform;
 use crate::services::log;
 use crate::services::perf::{self, Loop};
@@ -60,6 +64,12 @@ struct Watch {
     public_ip: Option<String>,
     /// Pour chaque serveur surveillé : nombre d'échecs d'affilée, et prévenu « en panne ».
     hosts: HashMap<String, (u32, bool)>,
+    /// Services IA : le dernier coup d'œil, et les pannes des 7 derniers jours.
+    ai: Vec<Reading>,
+    ai_history: Option<Vec<Outage>>,
+    /// Concentration en cours (Minuteur ou Agents IA) : pas de coup d'œil aux services IA.
+    focus: bool,
+    quiet: bool,
 }
 
 #[derive(Default)]
@@ -84,6 +94,12 @@ impl RustModule for NetTools {
             let w = self.watch.locked();
             let vpns: Vec<&String> = w.vpns.iter().flatten().collect();
             return Ok(json!({ "internet": w.internet, "vpns": vpns, "publicIp": w.public_ip }));
+        }
+        if command == "ai_status" {
+            // {} → { services: [{ id, name, level, description, checkedAt }], history: [{ id, from, to, level }] }
+            let mut w = self.watch.locked();
+            let history = w.ai_history.get_or_insert_with(ai::load_history).clone();
+            return Ok(json!({ "services": w.ai, "history": history }));
         }
         let host = arg_host(&args)?;
         match command {
@@ -146,6 +162,17 @@ impl RustModule for NetTools {
             other => Err(format!("commande inconnue : {other}")),
         }
     }
+
+    /// La concentration commence ou finit ("timer.focus", "agents.quiet" {on}) :
+    /// pendant ce temps, pas de coup d'œil aux services IA.
+    fn on_event(&self, _ctx: &ModuleContext, msg: &BusMessage) {
+        let on = msg.payload.get("on").and_then(Value::as_bool).unwrap_or(false);
+        match msg.topic.as_str() {
+            "timer.focus" => self.watch.locked().focus = on,
+            "agents.quiet" => self.watch.locked().quiet = on,
+            _ => {}
+        }
+    }
 }
 
 /// L'adresse tapée, vérifiée (sans crochets autour d'une IPv6).
@@ -169,6 +196,7 @@ fn resolve(host: &str) -> Result<Vec<SocketAddr>, String> {
 fn watch_loop(app: AppHandle, watch: Arc<Mutex<Watch>>) {
     let mut last_hosts: Option<Instant> = None;
     let mut last_ip: Option<Instant> = None;
+    let mut last_ai: Option<Instant> = None;
     loop {
         // Toutes les 5 s (3 s en haute, 15 s en éco : services/perf.rs).
         std::thread::sleep(perf::every(Loop::NetWatch));
@@ -192,6 +220,23 @@ fn watch_loop(app: AppHandle, watch: Arc<Mutex<Watch>>) {
                 } else if watch.locked().internet != Some(false) && last_ip.is_none_or(|t| t.elapsed() >= PUBLIC_IP_EVERY) {
                     last_ip = Some(Instant::now());
                     watch_public_ip(ctx, &watch);
+                }
+                if !on("aiStatus", false) {
+                    if !watch.locked().ai.is_empty() {
+                        watch.locked().ai.clear();
+                        ctx.emit("nettools.ai-status", json!({ "services": [], "change": null }));
+                    }
+                    last_ai = None;
+                } else {
+                    // En pause pendant une présentation, la concentration, ou Internet coupé.
+                    let paused = {
+                        let w = watch.locked();
+                        w.focus || w.quiet || w.internet == Some(false)
+                    } || platform::presentation_busy();
+                    if !paused && last_ai.is_none_or(|t| t.elapsed() >= ai::EVERY) {
+                        last_ai = Some(Instant::now());
+                        watch_ai(ctx, &watch);
+                    }
                 }
             });
         }));
@@ -240,6 +285,46 @@ fn watch_vpns(ctx: &ModuleContext, watch: &Mutex<Watch>, alert: bool) {
     for new in now.difference(&before) {
         ctx.emit("nettools.vpn", json!({ "name": new, "up": true }));
     }
+}
+
+/// Un coup d'œil aux pages d'état des services IA. Prévient quand une panne
+/// commence ou finit (la mascotte grimace, puis soupire de soulagement).
+fn watch_ai(ctx: &ModuleContext, watch: &Mutex<Watch>) {
+    let at = now_ms();
+    let readings: Vec<Reading> = ai::SERVICES.iter().map(|s| ai::fetch(s, at)).collect();
+    let mut changes = Vec::new();
+    let (history, differs) = {
+        let mut w = watch.locked();
+        let before: Vec<Reading> = std::mem::take(&mut w.ai);
+        let history = w.ai_history.get_or_insert_with(ai::load_history);
+        for r in &readings {
+            let prev = before.iter().find(|b| b.id == r.id).map(|b| b.level).filter(|l| *l != Level::Unknown);
+            if ai::track(history, r.id, prev, r.level, at) {
+                changes.push(r.clone());
+            }
+        }
+        let differs = before.len() != readings.len() || before.iter().zip(&readings).any(|(a, b)| a.level != b.level);
+        let history = history.clone();
+        w.ai = readings.clone();
+        (history, differs)
+    };
+    ai::save_history(&history);
+    // Le journal dit seulement quels services ont changé.
+    for c in &changes {
+        log::info(format!("réseau : service IA {} : {}", c.name, if c.level.bad() { "incident" } else { "rétabli" }));
+    }
+    if differs || !changes.is_empty() {
+        let change = changes.first();
+        ctx.emit("nettools.ai-status", json!({ "services": readings, "change": change }));
+    }
+    if let Some(c) = changes.first() {
+        let emotion = if c.level.bad() { "worried" } else { "relieved" };
+        ctx.emit("mascot.emote", json!({ "emotion": emotion }));
+    }
+}
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
 }
 
 /// Un serveur à surveiller : son nom, et un port (sinon : ping).

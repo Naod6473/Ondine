@@ -411,12 +411,20 @@ body {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
-/* Mode Simple : rien à y montrer (« Tout afficher » une fois dedans). */
+/* Mode Simple : rien à y montrer, le sous-menu attend le mode Complet. */
 .nav-sub.dim {
-  opacity: 0.5;
+  display: none;
 }
 .nav-fold-inner > .nav-sub:last-child {
   margin-bottom: 4px;
+}
+/* Une section de module éteint (Comportement → Ondine et les fenêtres). */
+.nav-sub.off .nav-label {
+  opacity: 0.6;
+}
+/* Les champs d'un autre module éteint (Animations et halos → Batterie, avec Système). */
+.group.module-off .group-body {
+  opacity: 0.55;
 }
 
 /* Le sous-menu affiché, à côté du titre de la page. */
@@ -634,6 +642,14 @@ body {
   text-align: center;
   font-size: 18px;
   flex: none;
+}
+/* L'icône d'un module dans la liste « Sans onglet ». */
+.row-icon {
+  display: inline-block;
+  width: 24px;
+  margin-right: 6px;
+  text-align: center;
+  font-size: 16px;
 }
 .chevron {
   color: var(--muted);
@@ -1280,6 +1296,25 @@ code.cals-source {
   text-align: left;
   justify-content: flex-start;
 }
+/* Règles : jours, plage horaire, réglages d'une action, compteur. */
+.rule-days,
+.rule-hours,
+.rule-param {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.rule-day {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 13px;
+}
+.rule-count {
+  margin: 2px 0 0;
+  font-size: 12px;
+}
 
 /* ── Fenêtre étroite : la barre ne garde que les icônes ───────────────────── */
 
@@ -1349,6 +1384,24 @@ code.cals-source {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Parler à Ondine : ce qui part, la consigne exacte (askclaude-page.ts) */
+.ask-sent p {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+.ask-system {
+  margin: 8px 0 0;
+  max-height: 260px;
+  overflow: auto;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(127, 127, 127, 0.12);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .link-btn {
   margin-top: 4px;
@@ -1785,4 +1838,42 @@ html:not([lang="fr"]) .fr-only {
   .podium-token.first::after {
     animation: none;
   }
+}
+
+/* ── Animations de l'île : l'aperçu du halo (haloPreview, island/halo.ts) ── */
+/* Un bout de bureau, et une petite île collée en haut comme la vraie. */
+.halo-preview {
+  position: relative;
+  height: 112px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #34465f, #6b5a78);
+}
+.halo-preview-island {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  translate: -50% 0;
+  width: 220px;
+  height: 42px;
+  border-radius: 0 0 21px 21px;
+  background: #0c0d12;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  box-sizing: border-box;
+}
+.halo-preview-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #7cc4ff;
+  flex: none;
+}
+.halo-preview-line {
+  height: 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.55);
+  flex: 1;
 }

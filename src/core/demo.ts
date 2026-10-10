@@ -22,7 +22,7 @@ export function demoOn(): boolean {
 }
 
 /** Les scènes que la fenêtre de réglages peut demander (sujet « demo.scene »). */
-export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new"] as const;
+export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "timer-ring", "voice", "voice-error", "mascot-talk", "ai-outage", "team-visit", "island-dodge", "setup", "team-chat", "dances", "liquid-timer", "liquid-moods", "liquid-float"] as const;
 export type DemoScene = (typeof DEMO_SCENES)[number];
 
 /**
@@ -32,7 +32,7 @@ export type DemoScene = (typeof DEMO_SCENES)[number];
 const REAL_DATA = [
   "agenda.", "agents.", "claude.", "capture.", "clipboard.changed", "clipboard.link-cleaned", "controls.",
   "media.", "nettools.", "notes.", "remote.", "rules.notify", "shelf.", "system.", "task.",
-  "weather.",
+  "weather.", "halos.", "team.",
 ];
 
 export function hidesRealData(msg: BusMessage): boolean {
@@ -74,8 +74,8 @@ function cover(n: number): string {
 }
 
 const TRACKS = [
-  { title: "Lumière d'été", artist: "Les Vagues", album: "Marées", durationMs: 214_000 },
-  { title: "Nuit bleue", artist: "Corail", album: "Profondeurs", durationMs: 187_000 },
+  { title: "Lumière d'été", artist: "Les Vagues", album: "Marées", durationMs: 214_000, genre: "Pop", bpm: 116 },
+  { title: "Nuit bleue", artist: "Corail", album: "Profondeurs", durationMs: 187_000, genre: "Électro", bpm: 128 },
 ];
 
 const state = {
@@ -106,7 +106,7 @@ function position(): number {
 }
 
 function mediaState() {
-  const t = TRACKS[state.track];
+  const t = { ...TRACKS[state.track], ...(danceTrack ?? {}) };
   return {
     playing: {
       app: "Spotify.exe",
@@ -121,6 +121,60 @@ function mediaState() {
     // Un numéro de pochette à part (1000+) : il ne se confond pas avec les vrais.
     artwork: 1000 + state.track,
   };
+}
+
+// ── Le tempo inventé (la danse de la mascotte, src/eggs/dance.ts) ────────────
+
+/** Le morceau de la scène « Danses selon la musique » (un style après l'autre), à la place du morceau de démo. */
+let danceTrack: { title: string; artist: string; genre: string; bpm: number } | null = null;
+let tempoTimer = 0;
+const tempoClock = performance.now();
+
+/**
+ * Ce que le Rust mesurerait (« media.tempo » une fois par seconde tant que la
+ * mascotte danse) : le tempo du morceau de démo, des temps réguliers depuis
+ * le chargement de la page.
+ */
+function demoTempo(bus: Bus, on: boolean) {
+  window.clearInterval(tempoTimer);
+  tempoTimer = 0;
+  if (!on) return;
+  const tick = () => {
+    if (!demoOn() || !state.playing) return;
+    const bpm = danceTrack?.bpm ?? TRACKS[state.track].bpm;
+    const phase = ((performance.now() - tempoClock) / (60_000 / bpm)) % 1;
+    bus.inject("media.tempo", { bpm, phase: Math.round(phase * 1000) / 1000, confidence: 0.6, energy: 0.4 }, "media");
+  };
+  tick();
+  tempoTimer = window.setInterval(tick, 1000);
+}
+
+/** Les styles de la scène « Danses selon la musique » : le genre que donnerait le lecteur, et le tempo. */
+const DANCE_TOUR: [genre: string, bpm: number][] = [
+  ["Rock", 124],
+  ["Heavy Metal", 150],
+  ["Hip-Hop", 92],
+  ["R&B", 76],
+  ["Pop", 116],
+  ["Electronic", 128],
+  ["Reggae", 78],
+  ["Jazz", 96],
+];
+const DANCE_STEP_MS = 6500;
+
+function danceTour(bus: Bus) {
+  state.playing = true;
+  DANCE_TOUR.forEach(([genre, bpm], i) =>
+    window.setTimeout(() => {
+      if (!demoOn()) return;
+      danceTrack = { title: `Démo ${genre}`, artist: `${bpm} BPM`, genre, bpm };
+      bus.inject("media.changed", mediaState(), "demo");
+    }, i * DANCE_STEP_MS),
+  );
+  window.setTimeout(() => {
+    danceTrack = null;
+    if (demoOn()) bus.inject("media.changed", mediaState(), "demo");
+  }, DANCE_TOUR.length * DANCE_STEP_MS);
 }
 
 function setPosition(ms: number) {
@@ -327,6 +381,15 @@ function agentsHistory() {
   };
 }
 
+/** Les services IA surveillés (Réseau). */
+const DEMO_AI = [
+  { id: "claude", name: "Claude" },
+  { id: "chatgpt", name: "ChatGPT" },
+  { id: "gemini", name: "Gemini" },
+];
+
+/** « Bureau propre » du mode démo : les icônes du bureau sont-elles cachées ? */
+let demoDeskHidden = false;
 const RULE_EMPTY = { extensions: [], nameContains: "", minKb: null, maxKb: null };
 
 /** La clé USB inventée de l'onglet Contrôles. */
@@ -437,6 +500,9 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return mediaState();
     case "media.artwork":
       return { url: cover(state.track) };
+    case "media.tempo":
+      demoTempo(bus, args.on === true);
+      return null;
     case "media.toggle":
       setPosition(position());
       state.playing = !state.playing;
@@ -495,6 +561,17 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return { title: "Présentation.pptx - PowerPoint", pinned: true };
     case "controls.theme":
       return { dark: state.dark, mixed: false, night: { supported: true, on: state.night } };
+    // Batteries Bluetooth et « Bureau propre » (bande du bas).
+    case "controls.bt_batteries":
+      return [
+        { name: "Casque Bluetooth", percent: 62, connected: true },
+        { name: "Souris MX", percent: 11, connected: true },
+      ];
+    case "controls.desktop_icons":
+      return { hidden: demoDeskHidden };
+    case "controls.set_desktop_icons":
+      demoDeskHidden = args.hidden === true;
+      return { hidden: demoDeskHidden };
     case "controls.set_dark":
       state.dark = args.on === true;
       return null;
@@ -568,6 +645,12 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return { ip: "93.184.215.14", state: "open", ms: 21 };
     case "nettools.dns":
       return { reverse: false, addrs: ["93.184.215.14", "2606:2800:21f:cb07::1"], ms: 12 };
+    // Services IA (réglage aiStatus) : tout va bien, une petite panne hier.
+    case "nettools.ai_status":
+      return {
+        services: DEMO_AI.map((s) => ({ ...s, level: "ok", description: "All Systems Operational", checkedAt: Date.now() })),
+        history: [{ id: "chatgpt", from: Date.now() - 26 * 3600_000, to: Date.now() - 25 * 3600_000 - 20 * MIN, level: "degraded" }],
+      };
     case "remote.list":
       return {
         favorites: [
@@ -584,16 +667,46 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       window.setTimeout(() => bus.inject("remote.wake-done", { ...fav, awake: true, secs: 4, ms: 3 }, "remote"), 4000);
       return { sent: 3 };
     }
+    // Équipe : de faux collègues, aucun réseau.
+    case "team.state":
+      return teamDemo();
+    case "team.show_code":
+      return { code: "482913", seconds: 180, ip: "192.168.1.20" };
+    // Le chat (1.2.2) : une fausse conversation, rien ne part.
+    case "team.chat_state":
+      return chatDemoState();
+    case "team.chat_history":
+      return { lines: CHAT_DEMO[String(args.room)] ?? [], typing: Date.now() < (chatTyping.get(String(args.room)) ?? 0) ? [TEAM_PEERS[0].id] : [] };
+    case "team.chat_send":
+      return chatDemoSend(bus, String(args.room), String(args.text ?? ""));
+    case "team.chat_react": {
+      const line = (CHAT_DEMO[String(args.room)] ?? []).find((l) => l.id === Number(args.id));
+      if (!line) return { added: false };
+      const had = line.reactions.some(([w, k]) => w === "" && k === args.kind);
+      line.reactions = line.reactions.filter(([w]) => w !== "");
+      if (!had) line.reactions.push(["", String(args.kind)]);
+      return { added: !had };
+    }
+    case "team.chat_read":
+      chatUnread.set(String(args.room), 0);
+      return null;
     case "rules.list":
       return {
         rules: [
           { id: 1, name: "Ranger les PDF", enabled: true, trigger: { type: "file", folder: `${HOME}\\Downloads` }, conditions: { ...RULE_EMPTY, extensions: ["pdf"] }, actions: [{ type: "move", to: `${HOME}\\Documents\\PDF` }] },
           { id: 2, name: "Clé USB branchée", enabled: true, trigger: { type: "drive" }, conditions: RULE_EMPTY, actions: [{ type: "reveal" }] },
+          { id: 3, name: "Agent fini", enabled: true, trigger: { type: "agent", waiting: false }, conditions: RULE_EMPTY, actions: [{ type: "mascot", gesture: "dance" }] },
+          { id: 4, name: "Pause déjeuner", enabled: true, trigger: { type: "schedule", time: "12:30", days: [0, 1, 2, 3, 4] }, conditions: RULE_EMPTY, actions: [{ type: "notify", text: "C'est l'heure de manger !" }, { type: "quiet", minutes: 45 }] },
+          { id: 5, name: "Vieux téléchargements", enabled: true, trigger: { type: "schedule", time: "17:00", days: [4], folder: `${HOME}\\Downloads` }, conditions: { ...RULE_EMPTY, olderThanDays: 30 }, actions: [{ type: "trash" }] },
         ],
         paused: false,
-        history: [{ at: Date.now() - 12 * MIN, rule: "Ranger les PDF", subject: "Facture-octobre.pdf", ok: true, message: "Déplacé dans PDF" }],
+        history: [
+          { at: Date.now() - 4 * MIN, rule: "Agent fini", subject: "site-ondine", ok: true, message: "la mascotte danse" },
+          { at: Date.now() - 12 * MIN, rule: "Ranger les PDF", subject: "Facture-octobre.pdf", ok: true, message: "Déplacé dans PDF" },
+        ],
         errors: {},
         topics: [],
+        counts: { "1": 7, "3": 12, "4": 4 },
       };
     case "launcher.entries":
       return {
@@ -697,6 +810,14 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     case "askclaude.unprepare":
     case "askclaude.reset":
       return null;
+    // Le bouton 🎙️ : la petite scène de la voix (sous-titres, halo, réponse en « plop plip »).
+    case "askclaude.listen":
+      demoVoice(bus);
+      return null;
+    case "askclaude.voice_fix":
+      return null;
+    case "askclaude.voice_state":
+      return { listening: false, discreet: null };
     // Un message qui parle de volume ou d'application : Ondine règle, puis demande avant d'ouvrir.
     case "askclaude.send":
       if (/volume|musique|ouvre|calculatrice|lumi/i.test(String(args.message ?? ""))) {
@@ -760,6 +881,12 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     case "weather.current":
       // Une fausse météo : un bel après-midi à Lyon.
       return { place: "Lyon", temp: 21.4, min: 12.1, max: 23.6, wind: 9, code: 1, isDay: true, icon: "🌤️", label: "Plutôt dégagé", unit: "c", at: "15:00" };
+    case "halos.levels": {
+      // Le halo qui suit la voix (visio) : une voix inventée qui monte et descend.
+      const t = Date.now() / 1000;
+      const v = Math.max(0, 0.08 + 0.3 * Math.sin(t * 5.3) * Math.sin(t * 1.7) + 0.12 * Math.sin(t * 11));
+      return { mic: args.mic ? v : null, out: args.out ? v : null };
+    }
     case "weekly.peek":
       // « Voir le bilan maintenant » : une belle semaine inventée (« due » reste null : pas de vrai bilan en démo).
       return { pomodoros: 9, focusMinutes: 215, todos: 14, until: "", agents: agentsWeek() };
@@ -819,7 +946,295 @@ function playScene(bus: Bus, scene: string) {
       // Le panneau « Quoi de neuf » de la version installée (core/whats-new.ts).
       bus.inject("app.whats-new", null, "demo");
       break;
+    case "halos-battery":
+      play(bus, HALOS_BATTERY);
+      break;
+    case "halos-tour":
+      play(bus, HALOS_TOUR);
+      break;
+    case "timer-ring":
+      // Un vrai minuteur de 40 s (module Minuteur) : le liseré fait le tour de
+      // l'île et se vide, rougit dans les 10 dernières secondes, puis l'éclat.
+      bus.inject("timer.start", { seconds: 40 }, "demo");
+      break;
+    case "voice":
+      demoVoice(bus);
+      break;
+    case "voice-error":
+      // La dictée de Windows échoue (1.2.2) : le message dit quoi régler, avec les
+      // boutons « Ouvrir les paramètres Windows » et « Passer à la transcription par l'API ».
+      bus.inject("askclaude.voice", { kind: "open", look: false, hold: false }, "askclaude");
+      window.setTimeout(() => {
+        bus.inject("askclaude.voice", {
+          kind: "error",
+          message: "la dictée de Windows n'a pas marché sans dire pourquoi : vérifiez dans Paramètres Windows que « Reconnaissance vocale en ligne » est activée (Confidentialité → Voix), que le micro est permis aux applications de bureau (Confidentialité → Microphone) et que la voix de votre langue est installée (Heure et langue → Voix)",
+          fix: "speech",
+          apiTo: "api.openai.com",
+        }, "askclaude");
+      }, 900);
+      break;
+    case "mascot-talk":
+      talkScene(bus);
+      break;
+    case "ai-outage": {
+      // Claude tombe (Réseau → services IA) : notification, pastille rouge sur l'île, la mascotte grimace.
+      const services = DEMO_AI.map((s) => ({ ...s, level: s.id === "claude" ? "down" : "ok", description: s.id === "claude" ? "Elevated errors on Claude.ai" : "", checkedAt: now }));
+      bus.inject("nettools.ai-status", { services, change: services[0] }, "demo");
+      bus.inject("mascot.emote", { emotion: "worried" }, "demo");
+      break;
+    }
+    case "team-visit":
+      // La mascotte d'une collègue traverse l'île (module Équipe).
+      bus.inject("team.event", { kind: "visit", from: TEAM_PEERS[0], note: "Le café est prêt !" }, "demo");
+      break;
+    case "setup":
+      // L'assistant de premier lancement, dans l'île (core/setup.ts) : en démo,
+      // les cartes se pré-cochent d'après de faux logiciels et rien n'est enregistré.
+      bus.inject("app.setup", null, "demo");
+      break;
+    case "team-chat": {
+      // Un message du chat Équipe : la notification avec « Répondre ».
+      const line = chatLine(TEAM_PEERS[0].id, "On se fait une pause dans 10 min ? ☕", 0);
+      (CHAT_DEMO[TEAM_PEERS[0].id] ??= []).push(line);
+      chatUnread.set(TEAM_PEERS[0].id, (chatUnread.get(TEAM_PEERS[0].id) ?? 0) + 1);
+      bus.inject("team.chat", { kind: "message", room: TEAM_PEERS[0].id, line, from: TEAM_PEERS[0] }, "demo");
+      break;
+    }
+    case "dances":
+      // Un style après l'autre (6,5 s chacun), au tempo inventé : la mascotte danse
+      // si l'île est en mini-île (ou sur le bureau), avec le halo sur les temps.
+      danceTour(bus);
+      break;
+    case "liquid-timer":
+      // Le liquide à l'intérieur de l'île (island/liquid.ts) : un vrai minuteur
+      // de 20 s qui la remplit (agité à la fin, il déborde), puis la batterie,
+      // une empreinte de fichier et le disque presque plein.
+      bus.inject("timer.start", { seconds: 20 }, "demo");
+      play(bus, LIQUID_FILLS);
+      break;
+    case "liquid-moods":
+      play(bus, LIQUID_MOODS);
+      break;
+    case "liquid-float":
+      playLiquid(bus, LIQUID_FLOAT);
+      break;
+    case "island-dodge":
+      // L'île s'écarte de la fenêtre de réglages (forme et peur d'Ondine ; la
+      // fenêtre, elle, ne bouge pas dans un navigateur), puis rentre chez elle.
+      bus.inject("island.dodge-demo", { edge: "top", align: "end", phase: "flee" }, "demo");
+      window.setTimeout(() => bus.inject("island.dodge-demo", { edge: "top", align: "end", phase: "cornered" }, "demo"), 1800);
+      window.setTimeout(() => bus.inject("island.dodge-demo", { edge: "top", align: "center", phase: "home" }, "demo"), 4200);
+      break;
   }
+}
+
+// ── Les halos de l'île (src/island/halo.ts) : des moments qui défilent ────────
+
+type Step = [ms: number, topic: string, payload: unknown];
+
+/** Les halos de batterie : branché, chargée, débranché, faible, critique, branché (soulagement). */
+const HALOS_BATTERY: Step[] = [
+  [0, "system.battery-plug", { plugged: true, percent: 56, charging: true }],
+  [5000, "system.battery-full", {}],
+  [9000, "system.battery-plug", { plugged: false, percent: 82, charging: false }],
+  [12500, "system.battery-low", { percent: 18 }],
+  [20000, "system.battery-critical", { percent: 8 }],
+  [28000, "system.battery-plug", { plugged: true, percent: 9, charging: true }],
+];
+
+/** Les autres halos, l'un après l'autre. */
+const HALOS_TOUR: Step[] = [
+  [0, "halos.wake", { secs: 3600 }],
+  [5500, "controls.usb-added", { root: "E:\\", letter: "E:", label: "CLÉ", removable: true }],
+  [8500, "shelf.downloaded", { name: "Facture-octobre.pdf" }],
+  [12000, "system.disk-low", { mount: "C:\\", freePct: 3, freeGb: 14.2 }],
+  [18500, "halos.wifi", { quality: 22 }],
+  [23500, "weather.updated", { icon: "⛈️", temp: "16°C", label: "Orage", place: "Lyon", detail: "" }],
+  [32000, "island.halo", { action: "think", on: true }],
+  [37000, "island.halo", { action: "think", on: false }],
+  [37500, "agents.event", { at: 0, source: "claude-code", kind: "waiting", title: "Claude attend votre permission", body: "npm run build", project: "site-ondine" }],
+  [42000, "agents.event", { at: 0, source: "claude-code", kind: "done", title: "Claude a fini", body: "Le site est à jour", project: "site-ondine" }],
+  [46500, "halos.lock-key", { key: "caps", on: true }],
+  [48500, "halos.clip", { action: "copy", text: "Bonjour tout le monde" }],
+  [50500, "halos.volume", { volume: 45, muted: false }],
+  [51200, "halos.volume", { volume: 60, muted: false }],
+  [53000, "controls.media-use", { mic: ["Teams"], cam: [] }],
+  [60000, "controls.media-use", { mic: [], cam: [] }],
+  // Le halo qui suit la musique (case « Le halo suit la musique ») : un son qui monte et descend.
+  [61000, "island.halo", { action: "show", id: "demo-music", palette: "music", shape: "level", priority: "low" }],
+  ...Array.from({ length: 80 }, (_, i): Step => [61100 + i * 100, "island.halo", { action: "level", id: "demo-music", level: Math.max(0, 0.55 + 0.4 * Math.sin(i * 0.9) * Math.sin(i * 0.23)) }]),
+  [69500, "island.halo", { action: "hide", id: "demo-music" }],
+];
+
+// ── Le liquide à l'intérieur de l'île (src/island/liquid.ts) ─────────────────
+
+/** Après le minuteur : la batterie en charge, une empreinte qui avance, le disque presque plein. */
+const LIQUID_FILLS: Step[] = [
+  [25000, "system.battery-plug", { plugged: true, percent: 56, charging: true }],
+  ...[0, 15, 35, 55, 80, 100].map((percent, i): Step => [33000 + i * 900, "shelf.hash-progress", { job: 1, percent }]),
+  [40000, "system.disk-low", { mount: "C:\\", freePct: 6, freeGb: 28.4 }],
+];
+
+/** Les ambiances : agent au travail puis vague de fin, pluie, ébullition, voix, goutte, étoiles, lac. */
+const LIQUID_MOODS: Step[] = [
+  [0, "claude.thinking", {}],
+  [4500, "agents.event", { at: 0, source: "claude-code", kind: "done", title: "Claude a fini", body: "Le site est à jour", project: "site-ondine" }],
+  [7000, "weather.updated", { icon: "🌧️", temp: "14°C", label: "Pluie", place: "Lyon", detail: "" }],
+  [7500, "system.cpu-busy", { on: true }],
+  [12500, "system.cpu-busy", { on: false }],
+  [13000, "voice.listening", { on: true, look: false }],
+  ...Array.from({ length: 40 }, (_, i): Step => [13100 + i * 80, "voice.level", { level: Math.round((0.4 + 0.35 * Math.sin(i * 0.9) * Math.sin(i * 0.23)) * 100) / 100 }]),
+  [16500, "voice.listening", { on: false, look: false }],
+  [17000, "island.liquid", { action: "drop" }],
+  [18200, "island.liquid", { action: "drop" }],
+  [20000, "island.liquid", { action: "ambience", name: "stars", on: true }],
+  [23500, "timer.focus", { on: true }],
+  [28000, "timer.focus", { on: false }],
+  [28000, "island.liquid", { action: "ambience", name: "stars", on: false }],
+  [28000, "weather.updated", { icon: "🌤️", temp: "21°C", label: "Plutôt dégagé", place: "Lyon", detail: "" }],
+];
+
+/** Comme play(), mais un liquide qui suit le temps avec « endsAt: 0 » finit dans `total` ms à partir de son départ. */
+function playLiquid(bus: Bus, steps: Step[]) {
+  play(
+    bus,
+    steps.map(([ms, topic, payload]): Step => {
+      const p = payload as { endsAt?: number; total?: number } | null;
+      if (!p || p.endsAt !== 0 || !p.total) return [ms, topic, payload];
+      return [ms, topic, { ...p, get endsAt() { return Date.now() + (p.total ?? 0); } }];
+    }),
+  );
+}
+
+/** L'île se remplit en 5 s : Ondine flotte, la bouée quand ça déborde ; puis elle plonge chercher un téléchargement. */
+const LIQUID_FLOAT: Step[] = [
+  [0, "island.liquid", { action: "show", id: "demo-float", level: 0, endsAt: 0, total: 5000, overflow: true }],
+  [9000, "island.liquid", { action: "hide", id: "demo-float" }],
+  [10500, "shelf.downloaded", { name: "Facture-octobre.pdf" }],
+];
+
+function play(bus: Bus, steps: Step[]) {
+  for (const [ms, topic, payload] of steps) window.setTimeout(() => demoOn() && bus.inject(topic, payload, "demo"), ms);
+}
+
+/**
+ * Parler à Ondine à voix haute, pour la vidéo : l'écoute s'ouvre, les mots
+ * s'écrivent en direct pendant que le niveau du micro bouge (le halo), puis
+ * la question part (réponse inventée de `askclaude.send`).
+ */
+function demoVoice(bus: Bus) {
+  const words = ["Dis", "Ondine,", "c'est", "quoi", "cette", "petite", "île", "en", "haut", "de", "l'écran", "?"];
+  bus.inject("voice.listening", { on: true, look: false }, "askclaude");
+  bus.inject("askclaude.voice", { kind: "open", look: false, hold: false }, "askclaude");
+  const start = Date.now();
+  const level = window.setInterval(() => {
+    const t = (Date.now() - start) / 1000;
+    bus.inject("voice.level", { level: Math.round((0.35 + 0.3 * Math.sin(t * 9) * Math.sin(t * 2.3)) * 100) / 100 }, "askclaude");
+  }, 80);
+  words.forEach((_, i) => {
+    window.setTimeout(() => bus.inject("askclaude.voice", { kind: "partial", text: words.slice(0, i + 1).join(" ").replace(" ?", " ?") }, "askclaude"), 500 + i * 260);
+  });
+  window.setTimeout(() => {
+    window.clearInterval(level);
+    bus.inject("voice.level", { level: 0 }, "askclaude");
+    bus.inject("voice.listening", { on: false, look: false }, "askclaude");
+    bus.inject("askclaude.voice", { kind: "final", text: "Dis Ondine, c'est quoi cette petite île en haut de l'écran ?", look: false }, "askclaude");
+  }, 500 + words.length * 260 + 900);
+}
+
+/**
+ * La mascotte qui parle (1.2.2) : comme le ferait la voix, « Bonjour ! Ça va ? »
+ * syllabe par syllabe (mascot.talk, la bouche suit ; les sourcils montent sur
+ * « ! » et « ? »), puis les lunettes de soleil.
+ */
+function talkScene(bus: Bus) {
+  const syllables: [number, string?][] = [[0.9], [0.5], [0.8, "!"], [0], [0.7], [0.4], [0.9, "?"], [0]];
+  bus.inject("mascot.emote", { emotion: "talk" }, "demo");
+  syllables.forEach(([open, mark], i) => setTimeout(() => bus.inject("mascot.talk", { open, mark }, "demo"), 150 + i * 190));
+  setTimeout(() => bus.inject("mascot.emote", { emotion: "sunglasses" }, "demo"), 2600);
+}
+
+// ── Équipe ───────────────────────────────────────────────────────────────────
+
+const TEAM_PEERS = [
+  { id: "a1b2c3d4e5f60718", name: "Léa", color: "#ff8f78", mascot: "goutte-gomme", mine: false, it: false },
+  { id: "0f1e2d3c4b5a6978", name: "Karim", color: "#62e6c4", mascot: "goutte-gomme", mine: false, it: true },
+  { id: "1122334455667788", name: "Portable", color: "#b98cff", mascot: "goutte-gomme", mine: true, it: false },
+];
+
+function teamDemo() {
+  const live = [
+    { status: "available", statusText: "", battery: null },
+    { status: "meeting", statusText: "Point hebdo", battery: null },
+    { status: "focus", statusText: "", battery: { percent: 64, charging: false } },
+  ];
+  return {
+    me: { id: "9988776655443322", fingerprint: "9988 7766 5544 3322", name: "Simon", ip: "192.168.1.20", status: "available", statusText: "", auto: true, visible: true },
+    peers: TEAM_PEERS.map((p, i) => ({ ...p, ...live[i], addr: `192.168.1.${30 + i}`, online: true, version: "1.2.2", visits: true, fingerprint: p.id.replace(/(.{4})(?!$)/g, "$1 ") })),
+    nearby: [{ id: "5566778899aabbcc", name: "Camille", color: "#ffd24a", addr: "192.168.1.44" }],
+    pending: [{ id: 1, peer: TEAM_PEERS[0].id, kind: "file", text: "", name: "Planning-octobre.xlsx", size: 48_640, folder: false, at: Date.now() - MIN }],
+    code: null,
+    polls: [],
+  };
+}
+
+// Le chat : une conversation avec Léa, et le salon « Toute l'équipe ».
+interface DemoLine {
+  id: number;
+  from: string;
+  kind: "text";
+  text: string;
+  at: number;
+  read: boolean;
+  reactions: [string, string][];
+}
+let chatId = 1;
+function chatLine(from: string, text: string, minutesAgo: number, read = false): DemoLine {
+  return { id: chatId++, from, kind: "text", text, at: Date.now() - minutesAgo * MIN, read, reactions: [] };
+}
+const CHAT_DEMO: Record<string, DemoLine[]> = {
+  [TEAM_PEERS[0].id]: [
+    chatLine(TEAM_PEERS[0].id, "Tu as vu la nouvelle maquette du site ?", 14),
+    chatLine("", "Oui ! Elle est superbe, surtout la page d'accueil.", 12, true),
+    chatLine(TEAM_PEERS[0].id, "Je t'envoie le lien : https://exemple.fr/maquette", 11),
+    chatLine("", "Merci, je regarde ça après la réunion 👍", 9, true),
+  ],
+  all: [
+    chatLine(TEAM_PEERS[1].id, "Le serveur de test redémarre à 18 h.", 40),
+    chatLine(TEAM_PEERS[0].id, "Merci Karim !", 38),
+  ],
+};
+CHAT_DEMO[TEAM_PEERS[0].id][1].reactions = [[TEAM_PEERS[0].id, "heart"]];
+const chatUnread = new Map<string, number>([["all", 1]]);
+/** « Léa écrit… » jusqu'à cette heure. */
+const chatTyping = new Map<string, number>();
+
+function chatDemoState() {
+  return {
+    rooms: Object.entries(CHAT_DEMO).map(([room, lines]) => ({ room, unread: chatUnread.get(room) ?? 0, last: lines[lines.length - 1] ?? null, typing: [] })),
+    keep: false,
+    receipts: true,
+  };
+}
+
+/** Mon message part (pour de faux) ; Léa « écrit… » puis répond. */
+function chatDemoSend(bus: Bus, room: string, text: string) {
+  const line = chatLine("", text, 0);
+  (CHAT_DEMO[room] ??= []).push(line);
+  if (room === TEAM_PEERS[0].id) {
+    window.setTimeout(() => {
+      line.read = true;
+      chatTyping.set(room, Date.now() + 2400);
+      bus.inject("team.chat", { kind: "typing", room, from: TEAM_PEERS[0] }, "demo");
+    }, 1200);
+    window.setTimeout(() => {
+      const reply = chatLine(TEAM_PEERS[0].id, "Parfait, à tout à l'heure !", 0);
+      CHAT_DEMO[room].push(reply);
+      chatTyping.delete(room);
+      bus.inject("team.chat", { kind: "message", room, line: reply, from: TEAM_PEERS[0] }, "demo");
+    }, 3600);
+  }
+  return line;
 }
 
 /** Branche le mode démo sur l'île (fenêtre principale). */

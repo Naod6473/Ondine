@@ -108,6 +108,10 @@ pub enum Loop {
     Profiles,
     /// Météo : « est-ce l'heure de redemander ? » (l'appel réseau reste à 30 min).
     Weather,
+    /// Animations de l'île : Verr Maj, copier / coller, touches de volume (quelques touches seulement).
+    HaloKeys,
+    /// Animations de l'île : sortie de veille, signal Wi-Fi (quand les touches ne sont pas regardées).
+    HaloIdle,
 }
 
 /// Le tableau des rythmes, en millisecondes : (haute, équilibrée, éco).
@@ -136,6 +140,8 @@ pub const fn table(l: Loop) -> (u64, u64, u64) {
         Loop::LauncherHotkey => (1_000, 1_000, 3_000),
         Loop::Profiles => (30_000, 30_000, 60_000),
         Loop::Weather => (10_000, 10_000, 30_000),
+        Loop::HaloKeys => (40, 50, 100),
+        Loop::HaloIdle => (1_000, 1_000, 3_000),
     }
 }
 
@@ -253,7 +259,7 @@ mod tests {
         assert_eq!(serde_json::to_value(Mode::Eco).unwrap(), "eco");
     }
 
-    const ALL: [Loop; 18] = [
+    const ALL: [Loop; 20] = [
         Loop::CursorMoving,
         Loop::CursorStill,
         Loop::CursorFar,
@@ -272,6 +278,8 @@ mod tests {
         Loop::LauncherHotkey,
         Loop::Profiles,
         Loop::Weather,
+        Loop::HaloKeys,
+        Loop::HaloIdle,
     ];
 
     #[test]

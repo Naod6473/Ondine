@@ -2,13 +2,14 @@
 // nouvelle version (un peu après le démarrage, puis une fois par jour) et on la
 // propose dans une notification. Rien ne s'installe sans un clic sur « Installer ».
 //
-// Réglage : general.autoUpdate (Réglages → Général). Jamais en mode démo ni
+// Réglage : general.autoUpdate (Réglages → Mises à jour). Jamais en mode démo ni
 // dans un navigateur.
 
 import { Bridge, IS_TAURI } from "./bridge";
 import { errorText, logger } from "./log";
 import type { NotificationQueue } from "./notifications";
 import { settingsStore } from "./settings-store";
+import { haloAllowed, showHalo } from "../island/halo";
 
 const log = logger("updates");
 
@@ -54,6 +55,8 @@ export async function check(notifications: NotificationQueue | null, manual: boo
 }
 
 function offer(notifications: NotificationQueue, version: string) {
+  // Un arc-en-ciel fait le tour de l'île, une seule fois (réglage « Mise à jour disponible »).
+  if (haloAllowed("update")) showHalo({ id: "update", palette: "rainbow", shape: "comet", rhythm: 2600, durationMs: 2600 });
   notifications.push({
     moduleId: "island",
     title: `Ondine ${version} est disponible`,

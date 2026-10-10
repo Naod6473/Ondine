@@ -42,8 +42,43 @@ The intro video is on the website: [ondine.pissits.com](https://ondine.pissits.c
 
 ## What's new
 
-New in version 1.2.1 (the full list is in the
+New in version 1.2.2 (the full list is in the
 [CHANGELOG](CHANGELOG.md)):
+
+- **Talk to Ondine out loud**: Ctrl+Alt+V (or 🎙️), live captions, the island's
+  halo trembles with your voice. She answers with « plop plip » in time with
+  the text, and her mouth follows. Quick commands without AI ("volume 30",
+  "timer 10 minutes"…), hands-free, "Look at this". Windows dictation goes
+  through Microsoft's online service; transcription by the API is optional.
+- **Light halos** around the island: green when plugging in, orange when the
+  battery is low, red when critical with a panicking Ondine, and the "Island
+  animations" module for about twenty PC moments (sleep, USB drive, weather,
+  AI agents, meetings…).
+- **A lively island around your windows**: it moves out of the settings
+  window's way, can sit at the bottom of the screen, follows text in height
+  and width, and the "Ondine and your windows" module makes it react to full
+  screen, locking, a shaken mouse…
+- **More realistic mascots**: 15 new expressions for all 15 mascots, moving
+  shine and pupils, translucent gum, blended emotions, a rest pose that never
+  repeats, one colour per mascot on the podium.
+- **Team** (off by default): Ondines on the same local network talk to each
+  other with no server, end-to-end encrypted: teammates' presence, hellos,
+  files to accept, coffee, polls, team Pomodoro, IT help with consent.
+- **First launch**: Ondine asks your name and what you do on this PC, then
+  turns on only the useful tabs. Later she suggests the right tab at the right
+  moment.
+- **Animations inside the island**: a liquid (water, jelly, light, sand) that
+  fills up with a timer, the battery or a transfer, and ripples with music; a
+  line of light also runs around the island for timers.
+- **Ondine dances to the music**: tempo measured on the PC, 9 styles (rock,
+  metal, rap, R&B, pop, electro, reggae, jazz…).
+- **Team chat**: talk with the other Ondines on the local network, one-to-one
+  or in the team room, end-to-end encrypted.
+- **And also**: 17 new things in Rules, Bluetooth batteries, "Clean desktop",
+  phone remote, Claude, ChatGPT and Gemini status, web search in the Launcher,
+  a cleaner Talk to Ondine island.
+
+### In 1.2.1
 
 - **[Talk to Ondine](#talk-to-ondine)** replaces "Ask Claude": a real
   conversation in bubbles, with Ondine's own personality (editable) and moods,

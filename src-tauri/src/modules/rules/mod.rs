@@ -2,6 +2,9 @@
 //
 //   - model.rs : la forme d'une règle, sa validation, les petites fonctions pures ;
 //   - watch.rs : le thread qui surveille les dossiers et les lecteurs ;
+//   - sense.rs : les déclencheurs qu'on regarde de temps en temps (heure,
+//     réseau, batterie, session déverrouillée, presse-papiers) ;
+//   - unzip.rs : l'action « Décompresser une archive .zip » ;
 //   - ce fichier : les commandes, l'exécution des actions, les raccourcis.
 //
 // Garde-fous (voir docs/ARCHITECTURE.md, « Module Règles ») :
@@ -15,9 +18,13 @@
 //   - « Tester » décrit ce que la règle ferait, sans rien faire.
 //
 // Les autres modules sont prévenus par le bus (shelf.add, terminal.open,
-// timer.start, clipboard.paste-plain) : aucun appel direct entre modules.
+// timer.start, clipboard.paste-plain, notes.add, mascot.*) : aucun appel
+// direct entre modules. Agents IA et Musique nous préviennent de même
+// (agents.event, media.changed).
 
 mod model;
+mod sense;
+mod unzip;
 mod watch;
 
 use crate::sync::LockExt;
@@ -37,7 +44,7 @@ use crate::platform;
 use crate::services::bus::{self, BusMessage};
 use crate::services::undo::DEFAULT_WINDOW;
 use crate::services::{files, log};
-use model::{Action, Rule, Trigger};
+use model::{Action, Gesture, Rule, Trigger};
 use model::{Conditions, Subject};
 
 const ID: &str = "rules";
@@ -55,6 +62,9 @@ struct Saved {
     next_id: u64,
     /// « Tout mettre en pause ».
     paused: bool,
+    /// Les heures (ms) des déclenchements des 8 derniers jours, par règle :
+    /// le compteur « déclenchée N fois cette semaine ». Que des heures.
+    fired: HashMap<u64, Vec<u64>>,
 }
 
 /// Une ligne de l'historique (en mémoire seulement : jamais écrit sur le disque).
@@ -80,9 +90,15 @@ struct State {
     produced: Vec<(PathBuf, Instant)>,
     /// Les raccourcis actuellement réservés par l'île.
     hotkeys: Vec<String>,
+    /// Musique : quelque chose jouait au dernier media.changed.
+    music_playing: bool,
+    /// Calme : numéro du dernier « Calme pendant X min » (un plus récent prolonge).
+    quiet_gen: u64,
 }
 
 type Shared = Arc<Mutex<State>>;
+/// « Ce message déclenche-t-il ce déclencheur ? »
+type TriggerFilter = Box<dyn Fn(&Trigger) -> bool>;
 
 /// Les messages pour le thread de surveillance.
 enum Msg {
@@ -214,20 +230,38 @@ impl RustModule for Rules {
     }
 
     fn on_event(&self, ctx: &ModuleContext, msg: &BusMessage) {
-        let rules: Vec<Rule> = {
-            let s = self.state.locked();
-            if s.saved.paused {
-                return;
+        // Ce que le message déclenche : (filtre sur le déclencheur, nom pour {nom}).
+        let p = &msg.payload;
+        let (wanted, label): (TriggerFilter, String) = match msg.topic.as_str() {
+            // Agents IA : « a fini » ou « attend ta réponse ».
+            "agents.event" => {
+                let waiting = match p.get("kind").and_then(Value::as_str) {
+                    Some("done") => false,
+                    Some("waiting") => true,
+                    _ => return,
+                };
+                let who = p.get("project").and_then(Value::as_str).filter(|x| !x.is_empty());
+                let label = who.or_else(|| p.get("title").and_then(Value::as_str)).unwrap_or("").chars().take(80).collect();
+                (Box::new(move |t| *t == Trigger::Agent { waiting }), label)
             }
-            s.saved
-                .rules
-                .iter()
-                .filter(|r| r.enabled && matches!(&r.trigger, Trigger::Event { topic } if *topic == msg.topic))
-                .cloned()
-                .collect()
+            // Musique : seulement le passage à « en lecture ».
+            "media.changed" => {
+                let playing = p.get("playing").and_then(|x| x.get("status")).and_then(Value::as_str) == Some("playing");
+                let was = std::mem::replace(&mut self.state.locked().music_playing, playing);
+                if !playing || was {
+                    return;
+                }
+                let title = p.get("playing").and_then(|x| x.get("title")).and_then(Value::as_str).unwrap_or("");
+                (Box::new(|t| *t == Trigger::Music), title.chars().take(80).collect())
+            }
+            topic => {
+                let topic = topic.to_string();
+                (Box::new(move |t| matches!(t, Trigger::Event { topic: x } if *x == topic)), String::new())
+            }
         };
+        let rules: Vec<Rule> = active_rules(&self.state).into_iter().filter(|r| wanted(&r.trigger)).collect();
         for rule in rules {
-            fire(ctx, &self.state, &rule, None, "");
+            fire(ctx, &self.state, &rule, None, &label);
         }
     }
 }
@@ -258,7 +292,11 @@ fn notify_front(app: &AppHandle) {
 fn listing(s: &State) -> Value {
     let topics: Vec<Value> = model::EVENT_TOPICS.iter().map(|(t, l)| json!({ "topic": t, "label": l })).collect();
     let errors: HashMap<String, &String> = s.errors.iter().map(|(k, v)| (k.to_string(), v)).collect();
+    let since = Now::local().week_start_ms;
+    let counts: HashMap<String, usize> =
+        s.saved.fired.iter().map(|(id, times)| (id.to_string(), times.iter().filter(|t| **t >= since).count())).collect();
     json!({
+        "counts": counts,
         "rules": s.saved.rules,
         "paused": s.saved.paused,
         "history": s.history,
@@ -279,9 +317,27 @@ fn check_rule(ctx: &ModuleContext, rule: &Rule) -> Result<(), String> {
             }
             Some((f, *subfolders))
         }
+        Trigger::Schedule { folder, .. } if !folder.trim().is_empty() => {
+            let f = ctx.check_path(folder)?;
+            if !f.is_dir() {
+                return Err("le dossier choisi n'est pas un dossier".into());
+            }
+            None // passage à heure fixe : pas de boucle possible
+        }
         _ => None,
     };
     for a in &rule.actions {
+        if let Action::Unzip { to, .. } = a {
+            let dest = ctx.check_path(to)?;
+            if !dest.is_dir() {
+                return Err(format!("{} n'est pas un dossier", dest.display()));
+            }
+            if let Some((folder, true)) = &watched {
+                if dest.starts_with(folder) {
+                    return Err("l'archive serait décompressée dans le dossier surveillé : la règle tournerait en boucle".into());
+                }
+            }
+        }
         if let Action::Move { to } | Action::Copy { to } = a {
             let dest = ctx.check_path(to)?;
             if !dest.is_dir() {
@@ -399,6 +455,11 @@ enum UndoStep {
 /// Déclenche une règle (avec la limite par minute) et note le résultat.
 /// `subject` : le fichier, ou la racine du lecteur. `label` : son nom affiché.
 fn fire(ctx: &ModuleContext, state: &Shared, rule: &Rule, subject: Option<PathBuf>, label: &str) {
+    // « Seulement certains jours / certaines heures » : en dehors, rien.
+    let now = Now::local();
+    if !model::in_time_window(&rule.conditions, now.weekday, now.minutes) {
+        return;
+    }
     // Trop de déclenchements : la règle se met en pause, et on prévient.
     let too_many = {
         let mut s = state.locked();
@@ -422,7 +483,10 @@ fn fire(ctx: &ModuleContext, state: &Shared, rule: &Rule, subject: Option<PathBu
         return;
     }
 
-    let result = execute(ctx, state, rule, subject, label);
+    count(state, rule.id);
+    let mut undo = Vec::new();
+    let result = execute(ctx, state, rule, subject, label, &mut undo);
+    offer(ctx, rule, label, undo);
     let (ok, message) = match result {
         Ok(steps) => (true, steps.join(", ")),
         Err(e) => (false, e),
@@ -436,7 +500,53 @@ fn fire(ctx: &ModuleContext, state: &Shared, rule: &Rule, subject: Option<PathBu
     record(ctx.app, state, rule, label, ok, message);
 }
 
+/// Une règle horaire sur un dossier : les mêmes actions sur chaque fichier
+/// trouvé, comptées comme UN déclenchement, avec un seul « Annuler » pour tout.
+fn fire_batch(ctx: &ModuleContext, state: &Shared, rule: &Rule, found: Vec<PathBuf>) {
+    let now = Now::local();
+    if found.is_empty() || !model::in_time_window(&rule.conditions, now.weekday, now.minutes) {
+        return;
+    }
+    count(state, rule.id);
+    let mut undo = Vec::new();
+    let (mut done, mut failed) = (0usize, Vec::new());
+    for path in &found {
+        let label = file_name(path);
+        match execute(ctx, state, rule, Some(path.clone()), &label, &mut undo) {
+            Ok(_) => done += 1,
+            Err(e) => failed.push(format!("{label} : {e}")),
+        }
+    }
+    let label = format!("{} fichier(s)", found.len());
+    offer(ctx, rule, &label, undo);
+    let ok = failed.is_empty();
+    let message = if ok { format!("{done} fichier(s) traité(s)") } else { format!("{done} traité(s), {} erreur(s) : {}", failed.len(), failed.join(" ; ")) };
+    if ok {
+        ctx.log_info(format!("règle « {} » : {message}", rule.name));
+    } else {
+        ctx.log_warn(format!("règle « {} » : {message}", rule.name));
+    }
+    record(ctx.app, state, rule, &label, ok, message);
+}
+
+/// Note un déclenchement pour le compteur de la semaine (on garde 8 jours).
+fn count(state: &Shared, id: u64) {
+    let now = now_ms();
+    let mut s = state.locked();
+    let times = s.saved.fired.entry(id).or_default();
+    times.retain(|t| now.saturating_sub(*t) < 8 * 86_400_000);
+    times.push(now);
+    // Garde-fou : une règle très active ne fait pas grossir rules.json sans fin.
+    let extra = times.len().saturating_sub(2000);
+    times.drain(..extra);
+    let ids: Vec<u64> = s.saved.rules.iter().map(|r| r.id).collect();
+    s.saved.fired.retain(|k, _| ids.contains(k));
+    let _ = save(&s.saved);
+}
+
 fn record(app: &AppHandle, state: &Shared, rule: &Rule, subject: &str, ok: bool, message: String) {
+    // Presse-papiers : ce qui a été copié ne s'affiche pas dans l'historique.
+    let subject = if matches!(rule.trigger, Trigger::Clipboard { .. }) { "presse-papiers" } else { subject };
     {
         let mut s = state.locked();
         s.history.push_front(HistoryEntry { at: now_ms(), rule: rule.name.clone(), subject: subject.into(), ok, message });
@@ -448,14 +558,20 @@ fn record(app: &AppHandle, state: &Shared, rule: &Rule, subject: &str, ok: bool,
 /// Fait les actions dans l'ordre. Un fichier déplacé ou renommé est suivi :
 /// l'action suivante agit sur son nouveau chemin. À la première erreur, on
 /// s'arrête (ce qui est déjà fait reste annulable).
-fn execute(ctx: &ModuleContext, state: &Shared, rule: &Rule, subject: Option<PathBuf>, label: &str) -> Result<Vec<String>, String> {
+fn execute(
+    ctx: &ModuleContext,
+    state: &Shared,
+    rule: &Rule,
+    subject: Option<PathBuf>,
+    label: &str,
+    undo: &mut Vec<UndoStep>,
+) -> Result<Vec<String>, String> {
     let mut current = subject;
-    let mut undo: Vec<UndoStep> = Vec::new();
     let mut steps: Vec<String> = Vec::new();
     let mut error = None;
 
     for action in &rule.actions {
-        match run_action(ctx, state, action, &mut current, label, &mut undo) {
+        match run_action(ctx, state, action, &mut current, label, undo) {
             Ok(step) => steps.push(step),
             Err(e) => {
                 error = Some(e);
@@ -463,9 +579,18 @@ fn execute(ctx: &ModuleContext, state: &Shared, rule: &Rule, subject: Option<Pat
             }
         }
     }
+    match error {
+        Some(e) if steps.is_empty() => Err(e),
+        Some(e) => Err(format!("{} puis erreur : {e}", steps.join(", "))),
+        None => Ok(steps),
+    }
+}
 
+/// Propose « Annuler » pour tout ce qui a été déplacé, copié, renommé,
+/// décompressé ou mis à la Corbeille.
+fn offer(ctx: &ModuleContext, rule: &Rule, label: &str, undo: Vec<UndoStep>) {
     if !undo.is_empty() {
-        let what = if label.is_empty() { rule.name.clone() } else { format!("{label} ({})", rule.name) };
+        let what = if label.is_empty() || matches!(rule.trigger, Trigger::Clipboard { .. }) { rule.name.clone() } else { format!("{label} ({})", rule.name) };
         ctx.offer_undo(
             &format!("Règle : {what}"),
             DEFAULT_WINDOW,
@@ -484,11 +609,6 @@ fn execute(ctx: &ModuleContext, state: &Shared, rule: &Rule, subject: Option<Pat
                 if errors.is_empty() { Ok(()) } else { Err(errors.join(" ; ")) }
             }),
         );
-    }
-    match error {
-        Some(e) if steps.is_empty() => Err(e),
-        Some(e) => Err(format!("{} puis erreur : {e}", steps.join(", "))),
-        None => Ok(steps),
     }
 }
 
@@ -521,13 +641,8 @@ fn run_action(
         }
         Action::Rename { pattern } => {
             let src = path()?;
-            let now = platform::local_time();
-            let new_name = model::rename(
-                pattern,
-                &src,
-                &format!("{:04}-{:02}-{:02}", now.year, now.month, now.day),
-                &format!("{:02}h{:02}", now.hour, now.minute),
-            );
+            let now = Now::local();
+            let new_name = model::rename(pattern, &src, &now.date, &now.time);
             let dir = src.parent().ok_or("dossier introuvable")?;
             // Le nouveau nom reste dans le même dossier : pas de séparateur, pas de « .. ».
             if new_name.contains(['/', '\\', ':']) || new_name == ".." || new_name == "." {
@@ -573,7 +688,8 @@ fn run_action(
             Ok("terminal ouvert".into())
         }
         Action::Notify { text } => {
-            ctx.emit("rules.notify", json!({ "title": model::fill(text, &name), "body": "" }));
+            let now = Now::local();
+            ctx.emit("rules.notify", json!({ "title": model::fill_all(text, &name, &now.date, &now.time), "body": "" }));
             Ok("notification".into())
         }
         Action::OpenIsland { tab } => {
@@ -588,6 +704,69 @@ fn run_action(
             ctx.emit("clipboard.paste-plain", json!({}));
             Ok("collé sans mise en forme".into())
         }
+        Action::AddNote { text, todo } => {
+            let now = Now::local();
+            let text = model::fill_all(text, &name, &now.date, &now.time);
+            ctx.emit("notes.add", json!({ "text": text, "kind": if *todo { "todo" } else { "note" } }));
+            Ok(if *todo { "to-do ajoutée".into() } else { "note ajoutée".into() })
+        }
+        Action::Unzip { to, shelf } => {
+            let dest_dir = ctx.check_path(to)?;
+            let out = unzip::extract(&path()?, &dest_dir)?;
+            mark_produced(state, &out);
+            undo.push(UndoStep::TrashCopy(out.clone()));
+            if *shelf {
+                ctx.emit("shelf.add", json!({ "paths": [out.display().to_string()] }));
+            }
+            Ok(format!("décompressé dans {}", file_name(&out)))
+        }
+        Action::CopyPath { name_only } => {
+            let p = path()?;
+            let text = if *name_only { file_name(&p) } else { p.display().to_string() };
+            files::copy_text(&text)?;
+            Ok(if *name_only { "nom copié".into() } else { "chemin copié".into() })
+        }
+        Action::Mascot { gesture, emotion, text } => match gesture {
+            Gesture::Dance => {
+                ctx.emit("mascot.dance", json!({ "on": true }));
+                // Quelques secondes de danse, puis elle reprend sa vie.
+                let app = ctx.app.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(Duration::from_secs(8));
+                    super::with_context(&app, ID, |c| c.emit("mascot.dance", json!({ "on": false })));
+                });
+                Ok("la mascotte danse".into())
+            }
+            Gesture::Emote => {
+                ctx.emit("mascot.emote", json!({ "emotion": emotion }));
+                Ok(format!("expression « {emotion} »"))
+            }
+            Gesture::Sign => {
+                let shown: String = model::fill(text, &name).chars().take(40).collect();
+                ctx.emit("mascot.sign", json!({ "text": shown, "secs": 8 }));
+                Ok("pancarte".into())
+            }
+        },
+        Action::Quiet { minutes } => {
+            let generation = {
+                let mut s = state.locked();
+                s.quiet_gen += 1;
+                s.quiet_gen
+            };
+            ctx.emit("rules.quiet", json!({ "on": true, "minutes": minutes }));
+            ctx.emit("mascot.emote", json!({ "emotion": "calm" }));
+            let (app, state) = (ctx.app.clone(), state.clone());
+            let minutes = *minutes;
+            std::thread::spawn(move || {
+                std::thread::sleep(Duration::from_secs(u64::from(minutes) * 60));
+                // Un « Calme » plus récent a pris le relais : c'est lui qui finira.
+                if state.locked().quiet_gen == generation {
+                    // Même module coupé entre-temps : l'île doit retrouver ses notifications.
+                    bus::emit(&app, ID, "rules.quiet", json!({ "on": false }));
+                }
+            });
+            Ok(format!("Calme pendant {minutes} min"))
+        }
     }
 }
 
@@ -595,17 +774,22 @@ fn run_action(
 fn preview(rule: &Rule, path: Option<&Path>) -> Vec<String> {
     let mut out = Vec::new();
     let mut current = path.map(Path::to_path_buf);
-    if let (Some(p), Trigger::File { .. }) = (path, &rule.trigger) {
+    if let (Some(p), true) = (path, rule.trigger.gives_file()) {
         let ext = p.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
-        let size = std::fs::metadata(p).ok().map(|m| m.len());
+        let meta = std::fs::metadata(p).ok();
+        let size = meta.as_ref().map(|m| m.len());
+        let age = file_age_days(meta.as_ref());
         let name = file_name(p);
-        if !model::matches(&rule.conditions, &Subject { name: &name, ext: &ext, size }) {
+        if !model::matches(&rule.conditions, &Subject { name: &name, ext: &ext, size, age_days: age }) {
             out.push(format!("{name} ne remplit pas les conditions : la règle ne ferait rien."));
             return out;
         }
         out.push(format!("{name} remplit les conditions."));
     }
-    let label = current.as_deref().map(file_name).unwrap_or_else(|| "le lecteur".into());
+    let label = current.as_deref().map(file_name).unwrap_or_else(|| match rule.trigger {
+        Trigger::Drive { .. } => "le lecteur".into(),
+        _ => "…".into(),
+    });
     for a in &rule.actions {
         let line = match a {
             Action::Move { to } => {
@@ -632,6 +816,17 @@ fn preview(rule: &Rule, path: Option<&Path>) -> Vec<String> {
             Action::OpenIsland { tab } => format!("Ouvrir l'île sur l'onglet {tab}"),
             Action::Timer { minutes } => format!("Lancer un minuteur de {minutes} min"),
             Action::PastePlain => "Coller le presse-papiers sans mise en forme".into(),
+            Action::AddNote { text, todo: false } => format!("Ajouter la note « {} »", model::fill(text, &label)),
+            Action::AddNote { text, todo: true } => format!("Ajouter la to-do « {} »", model::fill(text, &label)),
+            Action::Unzip { to, shelf } => {
+                format!("Décompresser l'archive .zip dans {to}{}", if *shelf { ", puis la poser sur l'étagère" } else { "" })
+            }
+            Action::CopyPath { name_only: true } => "Copier le nom du fichier".into(),
+            Action::CopyPath { name_only: false } => "Copier le chemin du fichier".into(),
+            Action::Mascot { gesture: Gesture::Dance, .. } => "La mascotte danse".into(),
+            Action::Mascot { gesture: Gesture::Emote, emotion, .. } => format!("La mascotte montre l'expression « {emotion} »"),
+            Action::Mascot { gesture: Gesture::Sign, text, .. } => format!("La mascotte tient une pancarte « {} »", model::fill(text, &label)),
+            Action::Quiet { minutes } => format!("Calme et Ne pas déranger pendant {minutes} min"),
         };
         out.push(line);
     }
@@ -648,7 +843,9 @@ fn file_rules_for(state: &Shared, path: &Path) -> Vec<Rule> {
     }
     let name = file_name(path);
     let ext = path.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
-    let size = std::fs::metadata(path).ok().map(|m| m.len());
+    let meta = std::fs::metadata(path).ok();
+    let size = meta.as_ref().map(|m| m.len());
+    let age = file_age_days(meta.as_ref());
     s.saved
         .rules
         .iter()
@@ -657,7 +854,7 @@ fn file_rules_for(state: &Shared, path: &Path) -> Vec<Rule> {
             Trigger::File { folder, subfolders } => in_folder(path, Path::new(folder), *subfolders),
             _ => false,
         })
-        .filter(|r| model::matches(&r.conditions, &Subject { name: &name, ext: &ext, size }))
+        .filter(|r| model::matches(&r.conditions, &Subject { name: &name, ext: &ext, size, age_days: age }))
         .cloned()
         .collect()
 }
@@ -675,10 +872,55 @@ fn drive_rules_for(state: &Shared, removed: bool, label: &str) -> Vec<Rule> {
         .filter(|r| {
             // Pour un lecteur, seule la condition « le nom contient » a un sens.
             let c = Conditions { name_contains: r.conditions.name_contains.clone(), ..Default::default() };
-            model::matches(&c, &Subject { name: label, ext: "", size: None })
+            model::matches(&c, &Subject { name: label, ext: "", size: None, age_days: None })
         })
         .cloned()
         .collect()
+}
+
+/// Les règles actives (rien si tout est en pause).
+fn active_rules(state: &Shared) -> Vec<Rule> {
+    let s = state.locked();
+    if s.saved.paused {
+        return Vec::new();
+    }
+    s.saved.rules.iter().filter(|r| r.enabled).cloned().collect()
+}
+
+/// L'heure locale, sous les formes dont les règles ont besoin.
+struct Now {
+    /// 0 = lundi … 6 = dimanche.
+    weekday: u8,
+    /// Minutes depuis minuit.
+    minutes: u32,
+    /// "2026-10-05"
+    date: String,
+    /// "14h30"
+    time: String,
+    /// Le lundi 00:00 de cette semaine (ms depuis 1970).
+    week_start_ms: u64,
+}
+
+impl Now {
+    fn local() -> Now {
+        use chrono::{Datelike, Timelike};
+        let now = chrono::Local::now();
+        let weekday = now.weekday().num_days_from_monday() as u8;
+        let since_midnight = u64::from(now.num_seconds_from_midnight()) * 1000;
+        Now {
+            weekday,
+            minutes: now.hour() * 60 + now.minute(),
+            date: format!("{:04}-{:02}-{:02}", now.year(), now.month(), now.day()),
+            time: format!("{:02}h{:02}", now.hour(), now.minute()),
+            week_start_ms: model::week_start(now_ms(), weekday, since_midnight),
+        }
+    }
+}
+
+/// Jours depuis la dernière modification d'un fichier.
+fn file_age_days(meta: Option<&std::fs::Metadata>) -> Option<u64> {
+    let modified = meta?.modified().ok()?;
+    std::time::SystemTime::now().duration_since(modified).ok().map(|d| d.as_secs() / 86_400)
 }
 
 /// Les dossiers à surveiller : (dossier, avec sous-dossiers ?).
