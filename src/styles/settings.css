@@ -1831,3 +1831,41 @@ html:not([lang="fr"]) .fr-only {
     animation: none;
   }
 }
+
+/* ── Animations de l'île : l'aperçu du halo (haloPreview, island/halo.ts) ── */
+/* Un bout de bureau, et une petite île collée en haut comme la vraie. */
+.halo-preview {
+  position: relative;
+  height: 112px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #34465f, #6b5a78);
+}
+.halo-preview-island {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  translate: -50% 0;
+  width: 220px;
+  height: 42px;
+  border-radius: 0 0 21px 21px;
+  background: #0c0d12;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  box-sizing: border-box;
+}
+.halo-preview-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #7cc4ff;
+  flex: none;
+}
+.halo-preview-line {
+  height: 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.55);
+  flex: 1;
+}

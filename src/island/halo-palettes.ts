@@ -231,6 +231,65 @@ export function intensityOf(v: unknown): Intensity {
   return v === "subtle" || v === "normal" || v === "vivid" ? v : "vivid";
 }
 
+// ── Où dessiner le halo ──────────────────────────────────────────────────────
+
+/**
+ * Réglage « Où dessiner le halo » : à l'intérieur de l'île (lueur interne,
+ * rien ne dépasse), sur le contour (un liseré fin sur le bord, le plus
+ * discret, par défaut) ou à l'extérieur (une lueur autour, mais fine).
+ * Un halo reste un accent près de l'île, jamais un voile sur l'écran.
+ */
+export type HaloPlace = "inside" | "edge" | "outside";
+
+export function placeOf(v: unknown): HaloPlace {
+  return v === "inside" || v === "outside" ? v : "edge";
+}
+
+/**
+ * Ce que chaque place change au dessin :
+ *   scale   la lueur de l'intensité (INTENSITY.glow) multipliée par ça ;
+ *   passes  les traits du contour, du plus large au plus fin :
+ *           [largeur × lueur, opacité, largeur minimale en px] ;
+ *   ring    jusqu'où vont les ondes (px ; vers l'intérieur pour « inside ») ;
+ *   spark   vitesse et chute des étincelles et des gouttes (× ; vers
+ *           l'intérieur pour « inside ») ;
+ *   life    leur durée de vie (×) : elles s'éteignent près de l'île ;
+ *   alpha   opacité d'ensemble.
+ */
+export const PLACE: Record<HaloPlace, { scale: number; passes: [number, number, number][]; ring: number; spark: number; life: number; alpha: number }> = {
+  inside: { scale: 0.75, passes: [[2, 0.1, 0], [1.1, 0.2, 0], [0.5, 0.36, 0], [0.22, 0.95, 2.4]], ring: 10, spark: 0.35, life: 0.7, alpha: 1 },
+  edge: { scale: 0.45, passes: [[0.9, 0.22, 3], [0.4, 0.5, 0], [0.16, 1, 1.5]], ring: 6, spark: 0.3, life: 0.45, alpha: 1 },
+  outside: { scale: 0.55, passes: [[2, 0.12, 0], [1.1, 0.24, 0], [0.55, 0.42, 0], [0.18, 0.95, 1.4]], ring: 12, spark: 0.5, life: 0.6, alpha: 1 },
+};
+
+/**
+ * Une forme qui gonfle sa lueur (respiration, éclat, niveau fort) : au-delà
+ * de 1, le gonflement est tassé, et jamais plus de 1,3 fois la lueur de base.
+ */
+export function swell(f: number): number {
+  return Math.min(1.3, f <= 1 ? Math.max(0, f) : 1 + (f - 1) * 0.4);
+}
+
+/** Jusqu'où (px) le halo peut dépasser du bord de l'île, au pire (lueur gonflée et ondes). */
+export function haloReach(place: HaloPlace, intensity: Intensity): number {
+  if (place === "inside") return 0;
+  const p = PLACE[place];
+  const glow = INTENSITY[intensity].glow * p.scale * swell(Infinity);
+  const stroke = Math.max(...p.passes.map(([w, , min]) => Math.max(min, w * glow) / 2));
+  return Math.max(stroke, p.ring);
+}
+
+/**
+ * Un halo qui reste (jusqu'à ce qu'on l'éteigne, ou plus de 20 s) et qui n'est
+ * pas une alerte : la musique, la visio, le processeur, Internet coupé, la
+ * concentration… Il est plus pâle (× 0,7) : on le voit sans qu'il gêne.
+ * Le liseré d'un minuteur, déjà fin, garde sa lumière.
+ */
+export function lastingDim(durationMs: number, priority: string, shape: string): number {
+  const lasting = durationMs === 0 || durationMs > 20_000;
+  return lasting && (priority === "low" || priority === "normal") && shape !== "progress" ? 0.7 : 1;
+}
+
 // ── Le liseré d'un minuteur (forme "progress" de halo.ts) ────────────────────
 
 const clamp = (v: number) => Math.max(0, Math.min(1, v));

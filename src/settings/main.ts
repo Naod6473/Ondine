@@ -25,6 +25,7 @@ import { sounds, setSoundPrefs } from "../island/sounds";
 import { jellyButtons, setStudio, staggerIn, watchContent } from "../island/motion";
 import { reducedMotion } from "../island/tab-pill";
 import { THEMES, themeFor } from "../island/themes";
+import { haloPreview } from "../island/halo";
 import { mascotCatalog } from "../mascot/catalog";
 import { colorWheel } from "./color-wheel";
 import { found, TREASURES } from "../eggs/treasures";
@@ -123,7 +124,7 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
   ],
   // Animations de l'île : une case par moment, rangées par famille.
   halos: [
-    { id: "general", label: "Général", keys: ["intensity", "colors"] },
+    { id: "general", label: "Général", keys: ["intensity", "colors", "place"] },
     { id: "pc", label: "Événements du PC", keys: ["wake", "usb", "download", "disk", "wifi", "weather", "network", "capture", "shelfDrop", "cpu", "update"] },
     { id: "ondine", label: "Ondine et agents", keys: ["think", "agents", "voice", "focus", "timerRing", "meeting", "streak", "dance"] },
     { id: "keys", label: "Clavier et presse-papiers", keys: ["capsLock", "numLock", "clipboard", "clipText", "volumeKeys"] },
@@ -1326,6 +1327,8 @@ function modulePage(main: HTMLElement, man: ModuleManifest, compact = false) {
     });
   }
   if (!compact && man.id === "weekly") main.append(weeklyGroup(man));
+  // Animations de l'île : l'aperçu du halo, en direct, avec les réglages choisis.
+  if (!compact && man.id === "halos") main.append(inSub("general", haloPreviewGroup()));
   // Parler à Ondine : ce qui part et la consigne exacte (askclaude-page.ts).
   if (!compact && man.id === "askclaude") main.append(...askclaudeGroups());
   if (!compact) main.append(el("p", { class: "version" }, `${man.name} · version ${man.version}`));
@@ -1360,6 +1363,26 @@ function weeklyGroup(man: ModuleManifest): HTMLElement {
       "Ce qui est compté depuis le dernier bilan : la notification s'affiche dans l'île. Le vrai bilan arrivera quand même à l'heure dite.",
     ),
   ]);
+}
+
+/**
+ * Animations de l'île : une petite île factice et son halo (haloPreview dans
+ * island/halo.ts), qui change de forme toutes les 4 s. Changer « Où dessiner
+ * le halo », l'intensité ou les couleurs se voit tout de suite.
+ */
+function haloPreviewGroup(): HTMLElement {
+  const island = el("div", { class: "halo-preview-island" }, el("span", { class: "halo-preview-dot" }), el("span", { class: "halo-preview-line" }));
+  const box = el("div", { class: "halo-preview", "aria-hidden": "true" }, island);
+  // Une fois dans la page (sa taille est connue).
+  requestAnimationFrame(() => {
+    if (box.isConnected) haloPreview(box, island);
+  });
+  const g = group("Aperçu", [
+    wideRow("Aperçu du halo", box, "Comète, musique, liseré d'un minuteur, éclat : le halo dessiné comme sur l'île, avec les réglages choisis ici."),
+  ]);
+  // Visible aussi en mode Simple, sous « Où dessiner le halo ».
+  g.dataset.essential = "";
+  return g;
 }
 
 /** Ondine sur le bureau (src/pet/) : la mascotte sort de l'île. */
