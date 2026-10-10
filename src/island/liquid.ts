@@ -568,7 +568,7 @@ class LiquidLayer {
     const v = values();
     const matter = matterOf(v.liquidMatter);
     const feel = FEEL[matter];
-    const opacity = clamp01(num(v.liquidOpacity, 40) / 100);
+    const opacity = clamp01(num(v.liquidOpacity, 50) / 100);
     const nowMs = Date.now();
     const q = top ?? this.shown;
 
@@ -872,6 +872,8 @@ class LiquidLayer {
   private drawRings(ctx: CanvasRenderingContext2D, t: number, W: number, surfaceAt: (x: number) => number, light: { color: string; alpha: number }, env: number) {
     this.rings = this.rings.filter((r) => t - r.at < RING_MS);
     for (const r of this.rings) {
+      // Le second rond d'une goutte part un peu après le premier.
+      if (t < r.at) continue;
       const k = (t - r.at) / RING_MS;
       const x = r.x * W;
       ctx.beginPath();

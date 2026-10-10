@@ -28,6 +28,9 @@ export function ringReplaced(values: Record<string, unknown>): boolean {
   return values.liquid !== false && values.liquidTimer !== false && values.liquidTimerStyle === "replace";
 }
 
+/** Combien de temps l'eau d'un minuteur fini reste là (elle déborde, puis s'en va). */
+const OVERFLOW_MS = 3200;
+
 const pct = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(1, v / 100)) : 0);
 
 export function liquidMoments(api: ModuleApi): () => void {
@@ -58,17 +61,24 @@ export function liquidMoments(api: ModuleApi): () => void {
   };
 
   // ── Minuteurs : l'eau monte avec le temps (ou descend pendant une pause Pomodoro) ──
+  /** Juste fini : le Minuteur publie « off » aussitôt après « done », on laisse l'eau déborder. */
+  const overflowUntil = new Map<string, number>();
   listen("timer.progress", (p) => {
     const plan = timerHaloPlan(p);
     if (!plan) return;
     const id = `liquid-${plan.action === "done" ? plan.id.replace(/-done$/, "") : plan.id}`;
-    if (plan.action === "hide") return hide(id);
+    if (plan.action === "hide") {
+      if ((overflowUntil.get(id) ?? 0) > Date.now()) return;
+      return hide(id);
+    }
     if (plan.action === "done") {
       // Elle arrive en haut, déborde doucement, puis s'en va.
       if (!shown.has(id)) return;
-      show("liquidTimer", id, { level: 1, overflow: true, priority: "normal", durationMs: 3200 });
+      overflowUntil.set(id, Date.now() + OVERFLOW_MS);
+      show("liquidTimer", id, { level: 1, overflow: true, priority: "normal", durationMs: OVERFLOW_MS });
       return;
     }
+    overflowUntil.delete(id);
     const rest = plan.palette === "rest";
     show("liquidTimer", id, {
       endsAt: plan.endsAt,

@@ -323,7 +323,7 @@
         "type": "number",
         "label": "Opacité du liquide (%)",
         "help": "Si besoin, la couleur est assombrie pour que le texte garde un bon contraste.",
-        "default": 40,
+        "default": 50,
         "min": 10,
         "max": 80,
         "step": 5
