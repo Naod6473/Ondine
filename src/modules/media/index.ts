@@ -13,6 +13,7 @@ import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-
 import { el } from "../../island/dom";
 import { pacedInterval, perfMode, setText } from "../../core/perf";
 import { reducedMotion } from "../../island/tab-pill";
+import { setCover } from "../../mascot/env-tint";
 
 /** Miroir de `NowPlaying` (src-tauri/src/platform/media.rs). */
 interface NowPlaying {
@@ -202,6 +203,8 @@ export const media: IslandModule = {
           artworkUrl = url;
         }
       }
+      // Les reflets de la mascotte gomme prennent un peu la couleur de la pochette (en lecture seulement).
+      setCover(playing?.status === "playing" ? artworkUrl : null);
 
       // Nouveau morceau qui joue : on le montre (pas au démarrage de l'île).
       const newTrack = !!playing && (!before || before.title !== playing.title || before.artist !== playing.artist);
@@ -234,6 +237,7 @@ export const media: IslandModule = {
       playing = null;
       artworkId = 0;
       artworkUrl = null;
+      setCover(null);
     };
   },
 

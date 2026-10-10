@@ -22,7 +22,7 @@ export function demoOn(): boolean {
 }
 
 /** Les scènes que la fenêtre de réglages peut demander (sujet « demo.scene »). */
-export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "voice"] as const;
+export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "voice", "mascot-talk"] as const;
 export type DemoScene = (typeof DEMO_SCENES)[number];
 
 /**
@@ -468,6 +468,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         { kind: "wifi", on: state.radios.wifi, disabled: false },
         { kind: "bluetooth", on: state.radios.bluetooth, disabled: false },
       ];
+      break;
     case "controls.set_radio":
       if (args.kind === "wifi" || args.kind === "bluetooth") state.radios[args.kind] = args.on === true;
       return null;
@@ -484,6 +485,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         { id: "speakers", name: "Haut-parleurs", default: state.output === "speakers" },
         { id: "headset", name: "Casque Bluetooth", default: state.output === "headset" },
       ];
+      break;
     case "controls.set_output":
       state.output = String(args.id);
       return null;
@@ -522,6 +524,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       bus.inject("notes.changed", null, "notes");
       return null;
     }
+      break;
     case "notes.note_save":
       return { id: Number(args.id) || 99 };
     case "clipboard.list":
@@ -533,6 +536,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       bus.inject("clipboard.changed", null, "clipboard");
       return null;
     }
+      break;
     case "clipboard.password_generate":
       return { password: "Vague-Corail-Lagune-27" };
     case "clipboard.qr":
@@ -575,6 +579,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
           { id: 2, name: "Poste de l'accueil", kind: "rdp", host: "accueil.exemple.local", port: null, user: "", mac: "02:4F:4E:44:49:4E" },
         ],
       };
+      break;
     case "remote.probe":
       return { online: true, ms: 10 + Number(args.id) * 7 };
     // Réveiller : rien ne part, le « poste » répond au bout de 4 s.
@@ -584,6 +589,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       window.setTimeout(() => bus.inject("remote.wake-done", { ...fav, awake: true, secs: 4, ms: 3 }, "remote"), 4000);
       return { sent: 3 };
     }
+      break;
     case "rules.list":
       return {
         rules: [
@@ -595,6 +601,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         errors: {},
         topics: [],
       };
+      break;
     case "launcher.entries":
       return {
         items: [
@@ -606,6 +613,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         hotkey: "",
         hotkeyError: null,
       };
+      break;
     case "launcher.search":
       return islandSearch(String(args.query ?? ""));
     case "terminal.start_dir":
@@ -641,6 +649,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
           { path: "docs/notes-lancement.md", added: 6, removed: 0, untracked: true, exists: true },
         ],
       };
+      break;
     case "agents.open_vscode_file":
     case "agents.copy_text":
       return null;
@@ -659,6 +668,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       githubAsked = true;
       return cal;
     }
+      break;
     case "agents.answer":
       bus.inject("agents.ask.closed", { id: Number(args.id), expired: false }, "agents");
       return null;
@@ -671,6 +681,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       if (t in DEMO_HOOKS) DEMO_HOOKS[t] = command === "hook_install" ? "installed" : "absent";
       return command === "hook_install" ? { backup: null, changed: true, removed: 0, otherPermission: false } : { backup: null, removed: 1 };
     }
+      break;
     case "askclaude.status":
       return {
         provider: "claude",
@@ -685,6 +696,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         pcTools: true,
         filesFolder: "C:\\Users\\Camille\\Documents\\Ondine",
       };
+      break;
     case "askclaude.prepare":
       return {
         id: 1,
@@ -694,6 +706,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         bytes: 112,
         destination: "api.anthropic.com",
       };
+      break;
     case "askclaude.unprepare":
     case "askclaude.reset":
       return null;
@@ -733,6 +746,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         inputTokens: 64,
         outputTokens: 48,
       };
+      break;
     case "askclaude.confirm":
       if (args.id === 8) {
         return {
@@ -763,6 +777,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
             ]
           : [],
       };
+      break;
     case "weather.current":
       // Une fausse météo : un bel après-midi à Lyon.
       return { place: "Lyon", temp: 21.4, min: 12.1, max: 23.6, wind: 9, code: 1, isDay: true, icon: "🌤️", label: "Plutôt dégagé", unit: "c", at: "15:00" };
@@ -772,6 +787,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       const v = Math.max(0, 0.08 + 0.3 * Math.sin(t * 5.3) * Math.sin(t * 1.7) + 0.12 * Math.sin(t * 11));
       return { mic: args.mic ? v : null, out: args.out ? v : null };
     }
+      break;
     case "weekly.peek":
       // « Voir le bilan maintenant » : une belle semaine inventée (« due » reste null : pas de vrai bilan en démo).
       return { pomodoros: 9, focusMinutes: 215, todos: 14, until: "", agents: agentsWeek() };
@@ -840,6 +856,9 @@ function playScene(bus: Bus, scene: string) {
     case "voice":
       demoVoice(bus);
       break;
+    case "mascot-talk":
+      talkScene(bus);
+      break;
   }
 }
 
@@ -904,6 +923,18 @@ function demoVoice(bus: Bus) {
     bus.inject("voice.listening", { on: false, look: false }, "askclaude");
     bus.inject("askclaude.voice", { kind: "final", text: "Dis Ondine, c'est quoi cette petite île en haut de l'écran ?", look: false }, "askclaude");
   }, 500 + words.length * 260 + 900);
+}
+
+/**
+ * La mascotte qui parle (1.2.2) : comme le ferait la voix, « Bonjour ! Ça va ? »
+ * syllabe par syllabe (mascot.talk, la bouche suit ; les sourcils montent sur
+ * « ! » et « ? »), puis les lunettes de soleil.
+ */
+function talkScene(bus: Bus) {
+  const syllables: [number, string?][] = [[0.9], [0.5], [0.8, "!"], [0], [0.7], [0.4], [0.9, "?"], [0]];
+  bus.inject("mascot.emote", { emotion: "talk" }, "demo");
+  syllables.forEach(([open, mark], i) => setTimeout(() => bus.inject("mascot.talk", { open, mark }, "demo"), 150 + i * 190));
+  setTimeout(() => bus.inject("mascot.emote", { emotion: "sunglasses" }, "demo"), 2600);
 }
 
 /** Branche le mode démo sur l'île (fenêtre principale). */

@@ -13,7 +13,13 @@
 //   task.finished → success (sinon celebrate)                  task.failed → error (sinon annoyed)
 //   claude.thinking → thinking     claude.done → idle
 //   agents.ask → question (sinon alert)                        agents.event « waiting » → question
-//   mascot.emote {emotion} → cette émotion (si la mascotte l'a)
+//   mascot.emote {emotion, intensity?, mix?, mixK?, side?} → cette émotion ; si
+//     la mascotte ne l'a pas, une expression proche (EMOTE_NEAR). intensity
+//     (0 à 1) la dose, mix (un autre id) + mixK (0 à 1) la mélange, side
+//     "left" la joue de l'autre côté (pousser, fuir, grimper vers la gauche)
+//   mascot.talk {open, mark?} → la bouche suit la voix (open 0 à 1 au rythme
+//     des syllabes, mark « ? » ou « ! » : les sourcils) ; l'état « talk »
+//     revient au repos 1,5 s après le dernier message
 //   island.files-dropped → eating  notify.alert → alert       notify.alert-end → idle
 //   notify.shown → une petite réaction selon la notification (voir REACTIONS)
 //   mascot.clicked ×3 rapides → annoyed, ×6 → dizzy           mascot.hover-long → love
@@ -49,7 +55,7 @@ import { settingsStore } from "../core/settings-store";
 import { pacedInterval } from "../core/perf";
 import { isRainy, type WeatherLike } from "../eggs/calendar";
 import type { MascotRenderer } from "./renderer";
-import { MASCOT_STATES, NO_EXTRAS, type AnimationSpec, type MascotExtras, type MascotManifest, type MascotState, type Mood } from "./types";
+import { EMOTE_NEAR, MASCOT_STATES, NO_EXTRAS, type AnimationSpec, type MascotExtras, type MascotManifest, type MascotState, type Mood } from "./types";
 
 /**
  * Comment Ondine réagit à une notification : d'abord selon le module qui
@@ -94,6 +100,15 @@ export function isLate(date = new Date()): boolean {
 /** Pas deux réactions à des notifications à moins de ce délai (une rafale ne fait pas danser Ondine sans fin). */
 const REACTION_GAP_MS = 4000;
 
+/** Ce que reçoit mascot.emote (seul `emotion` est obligatoire). */
+export interface EmotePayload {
+  emotion?: string;
+  intensity?: number;
+  mix?: string;
+  mixK?: number;
+  side?: "left" | "right";
+}
+
 export interface MascotTimings {
   boredAfterMs: number;
   sleepAfterMs: number;
@@ -125,6 +140,8 @@ export class MascotController {
   private rainy = false;
   /** Ce qu'elle porte en ce moment (renderer.setExtras), pour ne pousser que les changements. */
   private extras: MascotExtras = NO_EXTRAS;
+  /** Le dernier message de mascot.talk (l'état « talk » revient au repos après un silence). */
+  private lastTalk = 0;
   /** Quand le minuteur a sonné (son task.finished arrive juste après : la fête est déjà là). */
   private timerDone = 0;
   private stopInactivity: () => void;
@@ -273,6 +290,8 @@ export class MascotController {
   }
 
   private checkInactivity() {
+    // Elle parlait, la voix s'est tue : retour au repos.
+    if (this.state === "talk" && Date.now() - this.lastTalk > 1500) this.request(this.baseState(), true);
     const idleMs = Date.now() - this.lastActivity;
     if (this.moodUntil && Date.now() > this.moodUntil) this.moodUntil = 0;
     if (!this.moodUntil) this.renderer.setMood(this.baseMood());
@@ -343,9 +362,14 @@ export class MascotController {
     });
     on("agents.event", (e: { kind?: string } | null) => e?.kind === "waiting" && this.has("question") && this.request("question"));
     // N'importe quel module peut montrer une émotion : bus.emit("mascot.emote", { emotion: "sad" }).
-    on("mascot.emote", (p: { emotion?: string } | null) => {
-      const want = p?.emotion as MascotState | undefined;
-      if (want && (MASCOT_STATES as readonly string[]).includes(want) && this.has(want)) this.request(want);
+    on("mascot.emote", (p: EmotePayload | null) => this.emote(p));
+    // La voix (zone Parler à Ondine) : la bouche suit les syllabes, les sourcils la ponctuation.
+    on("mascot.talk", (p: { open?: number; mark?: string } | null) => {
+      const open = typeof p?.open === "number" ? p.open : 0;
+      this.lastTalk = Date.now();
+      // Elle se met à parler (au repos ou attentive) : l'état « talk », la moufle qui accompagne.
+      if (open > 0 && (this.state === "idle" || this.state === "listening") && this.has("talk")) this.request("talk");
+      this.renderer.talk?.(open, p?.mark === "?" || p?.mark === "!" ? p.mark : null);
     });
     on("island.files-dropped", () => {
       this.activity();
@@ -396,6 +420,28 @@ export class MascotController {
       if (want) this.playAnimation("danse");
       else this.request(this.baseState(), true);
     });
+  }
+
+  /** L'état qu'on montre pour une émotion demandée : elle-même, sinon une proche (deux pas au plus). */
+  private stateFor(emotion: string | undefined): MascotState | undefined {
+    let want = emotion;
+    for (let i = 0; i < 3 && want; i++) {
+      if ((MASCOT_STATES as readonly string[]).includes(want) && this.has(want as MascotState)) return want as MascotState;
+      want = EMOTE_NEAR[want];
+    }
+    return undefined;
+  }
+
+  /** mascot.emote : l'émotion (ou une proche), dosée, mélangée, du bon côté. */
+  private emote(p: EmotePayload | null) {
+    const state = this.stateFor(p?.emotion);
+    if (state === "talk") this.lastTalk = Date.now();
+    if (!state || !this.request(state)) return;
+    const intensity = typeof p?.intensity === "number" ? p.intensity : undefined;
+    const mixState = p?.mix ? this.stateFor(p.mix) : undefined;
+    const mix = mixState && mixState !== state ? this.animationFor(mixState) : undefined;
+    const mirror = p?.side === "left";
+    if (intensity !== undefined || mix || mirror) this.renderer.express?.({ intensity, mix, mixK: typeof p?.mixK === "number" ? p.mixK : undefined, mirror });
   }
 
   /**

@@ -1043,6 +1043,7 @@ function demoGroup(): HTMLElement {
                 scene("halos-battery", "Halos de batterie"),
                 scene("halos-tour", "Autres halos"),
                 scene("voice", "Parler à Ondine"),
+                scene("mascot-talk", "Ondine parle"),
               ),
               "La notification arrive dans l'île : lancez l'enregistrement avant de cliquer.",
             ),

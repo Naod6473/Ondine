@@ -33,12 +33,34 @@ export interface MascotRenderer {
    * question d'agent ouverte), le parapluie (la Météo annonce la pluie).
    */
   setExtras?(extras: MascotExtras): void;
+  /**
+   * Facultatif : dose l'émotion qui vient de commencer (`intensity` 0 à 1),
+   * la mélange à une autre animation (`mix`, part `mixK`), ou la joue de
+   * l'autre côté (`mirror`). Appelé juste après play() (mascot.emote).
+   */
+  express?(e: MascotExpression): void;
+  /**
+   * Facultatif : la bouche suit la voix (mascot.talk) : `open` de 0 à 1 au
+   * rythme des syllabes ; `mark` = « ? » ou « ! » lu dans le texte.
+   */
+  talk?(open: number, mark?: TalkMark | null): void;
   /** Appelé à la fin d'une animation non bouclée. */
   onAnimationEnd(cb: (name: string) => void): void;
   destroy(): void;
 }
 
 export type MascotReaction = "poke" | "stretch" | "release" | "shake";
+
+/** Le dosage et le mélange d'une émotion (voir MascotRenderer.express). */
+export interface MascotExpression {
+  intensity?: number;
+  mix?: AnimationSpec;
+  mixK?: number;
+  mirror?: boolean;
+}
+
+/** Une ponctuation lue dans le texte qui s'affiche : les sourcils réagissent. */
+export type TalkMark = "?" | "!";
 
 export { NO_EXTRAS, type MascotExtras } from "./types";
 

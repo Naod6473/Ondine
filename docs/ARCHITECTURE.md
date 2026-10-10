@@ -415,7 +415,8 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `agents.quiet` `{on: true}` | agents | calm |
 | `mascot.clicked`, `mascot.hover-long` | île | annoyed, dizzy / love |
 | `mascot.play` `{animation}` | réglages | joue une animation |
-| `mascot.emote` `{emotion}` | tout module | montre cette émotion (un état, ex. `sad`), si la mascotte l'a |
+| `mascot.emote` `{emotion, intensity?, mix?, mixK?, side?}` | tout module | montre cette émotion (un état, ex. `sad`) ; si la mascotte ne l'a pas, une expression proche (`EMOTE_NEAR`, types.ts). `intensity` (0 à 1) la dose, `mix` (un autre id) + `mixK` la mélange, `side: "left"` la joue de l'autre côté. Les ids de la 1.2.2 : panic, scared, relieved, stretch, yawn, surprised, listening, sunglasses, scarf, goodbye, push, sit-edge (en boucle : renvoyer `idle` pour finir), laugh, hide, tap-glass, climb, talk |
+| `mascot.talk` `{open, mark?}` | voix (Parler à Ondine) | la bouche suit la voix : `open` de 0 à 1 au rythme des syllabes (sans message pendant 180 ms, elle se referme) ; `mark` `"?"` ou `"!"` : les sourcils montent. Au repos ou attentive, elle passe en `talk`, puis revient au repos 1,5 s après le dernier message |
 | `agents.ask`, `agents.event` « waiting » | Agents IA | question (la goutte violette et son « ? ») |
 | `mascot.state` | mascotte | |
 | `mascot.dance` `{on}` | surprises (src/eggs/) | elle danse en boucle (musique + mini-île) ; les autres réactions passent puis la danse reprend |
@@ -565,7 +566,7 @@ bus ──▶ MascotController (mascot-state.ts) ──▶ MascotRenderer (rende
   alert, eating, celebrate, love, bored, et les émotions de la goutte v2 :
   success, question, error, warning, info, sad, worried, surprise, shy, calm,
   wink, et ceux de la famille gomme : wave, laugh, proud, pout, starstruck,
-  mischief, focus, moved, embarrassed, yawn, pensive, cheer. Un état que la mascotte n'a pas retombe sur `fallback` (et le contrôleur
+  mischief, focus, moved, embarrassed, yawn, pensive, cheer, et ceux de la 1.2.2 (demandés par mascot.emote) : panic, scared, relieved, stretch, surprised, listening, sunglasses, scarf, goodbye, push, sit-edge, hide, tap-glass, climb, talk. Un état que la mascotte n'a pas retombe sur `fallback` (et le contrôleur
   choisit l'ancien état équivalent quand il y en a un). Humeurs : neutral,
   happy, grumpy, tired.
 - **Déclencheurs** : voir le tableau du bus ; plus l'inactivité (bored après
@@ -631,11 +632,47 @@ moteur `gum` ; le catalogue fabrique les cousines à partir de `GUM_FAMILY`
   l'animation 0,1 s plus loin), s'allonge en l'air et s'écrase en retombant, le
   visage traîne un peu derrière le corps, les mains suivent leur pose avec leur
   propre ressort, la couleur passe en fondu. Sans souris, de petits coups d'œil ;
-  le clignement se ferme vite et se rouvre lentement. `react()` reçoit ce qui
+  le clignement se ferme en 70 ms et se rouvre en 130 ms (toutes les 2,2 à
+  5,4 s, deux fois de suite une fois sur cinq environ). `react()` reçoit ce qui
   arrive à l'île (clic, étirement, lâcher, secousse). Avec « Réduire les
-  animations », tout va directement à sa cible.
+  animations », tout va directement à sa cible, chaque animation est une image
+  fixe, et on ne redessine plus tant que rien ne change.
+  Depuis la 1.2.2 (tout lissé selon le temps écoulé, même rendu à 30 ou 60 i/s) :
+  - *Yeux* : un iris (l'encre teintée par la couleur du bonbon) et une pupille
+    qui se dilate (contente, amoureuse : `Face.pupil` > 1) ou se serre
+    (surprise, peur) ; les pupilles partent avant la tête (`look` rapide, `head`
+    lent : le visage glisse sur le volume) ; le point de lumière reste où est la
+    lampe quand l'œil tourne ; l'œil s'aplatit un peu de côté.
+  - *Lumière* (`GumScene.light`) : vers la souris quand elle bouge près d'elle,
+    sinon l'heure (de gauche à 7 h à droite à 19 h). Le reflet glisse dans le
+    corps, le dégradé, la lueur du bas (à l'opposé de la lampe) et l'ombre
+    suivent. Les reflets prennent un peu la couleur de la pochette en lecture
+    (`src/mascot/env-tint.ts`, que le module Musique nourrit ; rien ne sort).
+  - *Gomme translucide*, par forme (`GumShape.gel`, `bubbles`, `bubbleKind`) :
+    lueur du bas et bord qui s'éclaircit selon `gel` (berlingot 1, dragée 0,2) ;
+    bulles d'air qui remontent et tremblent après un choc (`jolt`), pores de la
+    guimauve, braises du soleil et de la flamme, rien dans le nuage.
+  - *Expressions* : chaque réglage du visage a sa vitesse (`FACE_RATE` : yeux et
+    bouche vite, sourcils en ressort qui dépasse, joues lentes : le
+    rattrapage) ; anticipation de 110 ms avant un geste ponctuel (elle se tasse,
+    le regard part) ; `express()` dose, mélange et retourne ; `talk()` ouvre la
+    bouche et lève les sourcils sur « ? » / « ! » ; au repos, la respiration
+    varie et un petit geste (`idleAct` : poids, soupir, moue, regard, fredonne)
+    passe toutes les 4 à 9 s (10 à 18 s avec « Calme », poids et soupir seulement).
+  - *Corps* : atterrissage en images clés (`LANDING`), traînée de gomme
+    (cisaillement selon la vitesse de côté), ombre qui respire (plus large
+    écrasée, plus floue en l'air), yeux un peu plus grands quand la souris file
+    près d'elle.
+  - *Accessoires d'un geste* (`Frame.prop`, en fondu) : lunettes de soleil qui
+    descendent du front, écharpe, pile vide qui clignote (pose `panic`),
+    petites jambes (assise, `swing` les balance), ronds de tapotement.
+  - Hors de l'écran (IntersectionObserver), rien n'est calculé.
 - `gum-draw.ts` : le dessin (couches de gomme, visage, moufles, accessoires,
   météo) et les teintes (`TINTS`, plus l'arc-en-ciel).
+
+Sur le podium des Réglages (`src/settings/podium.ts`), chaque mascotte a sa
+couleur (`PODIUM_TINT` de gum-family.ts, `GumEngine.setTintOverride`) ; celle
+de la première marche garde la couleur des réglages.
 
 Réglages (Réglages → Mascotte → Style, seulement pour une mascotte gomme) :
 `mascot.color` (`auto` = la couleur de la forme, une teinte de `TINTS`,
