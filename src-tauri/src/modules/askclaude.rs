@@ -698,13 +698,15 @@ fn ask_json(id: u64, action: &Action, destination: &str, ctx: &ModuleContext) ->
 /// La voix, pour les réglages (« Ce qui part ») : Windows, ou l'API et sa destination.
 fn voice_status(ctx: &ModuleContext) -> Value {
     let s = ctx.settings();
-    let engine = if s.get("voiceEngine").and_then(Value::as_str) == Some("api") { "api" } else { "windows" };
-    let destination = (engine == "api").then(|| match provider(ctx) {
+    let engine = speech::VoiceEngine::of(&s);
+    let destination = (engine == speech::VoiceEngine::Api).then(|| match provider(ctx) {
         Provider::Gemini => Provider::Gemini.destination(),
         // Claude n'écoute pas l'audio : OpenAI (ou Gemini, faute de clé OpenAI).
         _ => Provider::OpenAi.destination(),
     });
-    json!({ "engine": engine, "destination": destination })
+    // Hors ligne : le moteur de la langue est-il installé (son nom) ?
+    let offline = (engine == speech::VoiceEngine::Offline).then(|| crate::platform::voice::offline_engine(speech::dictation_tag(ctx.app)));
+    json!({ "engine": engine.id(), "destination": destination, "offline": offline.map(|o| json!({ "ready": o.is_some(), "name": o })) })
 }
 
 /// Le réglage « Ondine peut agir sur le PC ».

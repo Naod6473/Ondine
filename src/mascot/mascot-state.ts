@@ -51,11 +51,16 @@
 //   weather.updated (pluie) → un parapluie au-dessus d'elle
 //   agents.ask → la pancarte « ? » jusqu'à agents.ask.closed (même en « Calme » :
 //     un clic sur elle ouvre alors l'onglet Agents IA, voir island.ts)
+//   mascot.sign {text, secs} → une pancarte avec un mot court (« Occupé »…),
+//     levée au-dessus de sa tête pendant secs (8 s ; sign-text.ts) ; text vide
+//     ou un clic sur elle : elle la baisse. Le « ? » d'un agent passe avant.
 //   Réglage « Calme » (mascot.calm) : voir calmMode() et docs/ARCHITECTURE.md.
 
 import { beatFrom, DANCE_ANIM, type DanceStyle } from "./beat";
 import type { Bus } from "../core/bus";
+import { cleanSignText, signSeconds } from "./sign-text";
 import { settingsStore } from "../core/settings-store";
+import { t } from "../core/i18n";
 import { pacedInterval } from "../core/perf";
 import { isRainy, type WeatherLike } from "../eggs/calendar";
 import type { MascotRenderer } from "./renderer";
@@ -91,6 +96,12 @@ function moodFollowsPc(): boolean {
  * réflexion, succès, erreur, question et pancarte « ? », alerte, repas (dépôt
  * de fichiers), les réponses aux clics et au survol.
  */
+/** La mascotte de l'île écrit le mot de sa pancarte (famille gomme) ; sinon une notification le dit (module Règles). */
+let signDrawn = false;
+export function signTextDrawn(): boolean {
+  return signDrawn;
+}
+
 export function calmMode(): boolean {
   return settingsStore.current.mascot.calm === true;
 }
@@ -140,6 +151,9 @@ export class MascotController {
   private wakes: number[] = [];
   /** Les questions d'agents ouvertes (ids de agents.ask), pour la pancarte « ? ». */
   private asks = new Set<number>();
+  /** La pancarte levée par mascot.sign (« Occupé »…) et sa minuterie ; "" : aucune. */
+  private signWord = "";
+  private signTimer: ReturnType<typeof setTimeout> | null = null;
   /** La concentration des agents est en cours (agents.quiet). */
   private quiet = false;
   /** La Météo annonce la pluie. */
@@ -160,6 +174,7 @@ export class MascotController {
     public timings: MascotTimings,
   ) {
     renderer.onAnimationEnd((name) => this.onEnd(name));
+    signDrawn = renderer.drawsSignText === true;
     this.wire();
     // Toutes les 2 s (4 s en économie d'énergie : src/core/perf.ts).
     this.stopInactivity = pacedInterval(() => this.checkInactivity(), "mascotIdle");
@@ -173,7 +188,22 @@ export class MascotController {
     return this.asks.size > 0;
   }
 
+  /** Elle tient une pancarte avec un mot (mascot.sign). */
+  get signHeld(): string {
+    return this.signWord;
+  }
+
+  /** Lève la pancarte `text` pendant `secs` secondes (texte vide : la baisse). */
+  private holdSign(text: string, secs: number) {
+    if (this.signTimer) clearTimeout(this.signTimer);
+    this.signTimer = null;
+    this.signWord = text;
+    if (text) this.signTimer = setTimeout(() => this.holdSign("", 0), secs * 1000);
+    this.pushExtras();
+  }
+
   destroy() {
+    if (this.signTimer) clearTimeout(this.signTimer);
     this.stopInactivity();
     for (const off of this.offs) off();
     this.renderer.destroy();
@@ -313,8 +343,11 @@ export class MascotController {
   /** Pousse au moteur ce qu'elle porte, si ça a changé. */
   private pushExtras() {
     const calm = calmMode();
-    const next: MascotExtras = { ears: this.quiet && !calm, sign: this.asks.size > 0, umbrella: this.rainy && !calm };
-    if (next.ears === this.extras.ears && next.sign === this.extras.sign && next.umbrella === this.extras.umbrella) return;
+    // La pancarte « ? » d'une question d'agent passe avant un mot (elle attend une réponse).
+    const ask = this.asks.size > 0;
+    const next: MascotExtras = { ears: this.quiet && !calm, sign: ask || this.signWord !== "", signText: ask ? "" : this.signWord, umbrella: this.rainy && !calm };
+    const same = (Object.keys(next) as (keyof MascotExtras)[]).every((k) => next[k] === this.extras[k]);
+    if (same) return;
     this.extras = next;
     this.renderer.setExtras?.(next);
   }
@@ -403,7 +436,18 @@ export class MascotController {
     on("system.disk-low", () => this.reactTo("worried"));
     on("notify.alert-end", () => this.state === "alert" && this.request(this.baseState(), true));
     on("mascot.hover-long", () => this.request("love"));
-    on("mascot.clicked", () => this.onClick());
+    on("mascot.clicked", () => {
+      // Un clic baisse la pancarte (sans autre réaction : c'est une réponse au geste).
+      if (this.signWord) return this.holdSign("", 0);
+      this.onClick();
+    });
+    // La pancarte avec un mot court (une règle, le statut d'Équipe…) : sign-text.ts.
+    on("mascot.sign", (p: { text?: unknown; secs?: unknown } | null) => {
+      // Le canvas n'est pas traduit par i18n.ts : on traduit le mot ici (« Occupé » → « Busy »).
+      const text = cleanSignText(t(cleanSignText(p?.text)));
+      this.holdSign(text, signSeconds(p?.secs));
+      if (text) this.activity();
+    });
     // L'humeur suit le PC.
     on("system.cpu-busy", (p: { on?: boolean } | null) => {
       this.cpuBusy = !!p?.on;

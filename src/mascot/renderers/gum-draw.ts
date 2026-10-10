@@ -20,6 +20,7 @@
 
 import { drawHeart, drawOverlay, type Overlay } from "./overlays";
 import { halfWidthAt, topAt, type GumShape, type Pt } from "./gum-shapes";
+import { signLayout } from "../sign-text";
 
 const TAU = Math.PI * 2;
 const INK = "#1a1630";
@@ -301,6 +302,8 @@ export interface GumScene {
   handsAlpha: number;
   /** Ce que les mains tiennent : un cœur (pose « heart »), la pancarte « ? » (pose « sign », une question d'agent ouverte), la pile vide (panique). */
   handItem: "heart" | "sign" | "battery" | null;
+  /** Le mot de la pancarte (mascot.sign) ; vide ou absent : « ? ». */
+  signText?: string;
   /** La main gauche passe devant le corps (bras croisés). */
   leftFront: boolean;
   wear: Wear;
@@ -504,7 +507,10 @@ export function drawGum(ctx: CanvasRenderingContext2D, w: number, h: number, sc:
     if (sc.props.guitar > 0.02) drawGuitar(ctx, sc.hands, sx, sy, R, sc.handsAlpha * sc.props.guitar);
     drawMitt(ctx, sc.hands[0], sx, sy, R, -1, c, sc.handsAlpha);
     // La pancarte est derrière la moufle droite, qui tient son manche (la pile vide aussi).
-    if (sc.handItem === "sign") drawSign(ctx, sc.hands[1], sx, sy, R, sc.handsAlpha, t);
+    if (sc.handItem === "sign") {
+      if (sc.signText) drawWordSign(ctx, sc, sc.hands[1], sx, sy, R, sc.handsAlpha, sc.signText);
+      else drawSign(ctx, sc.hands[1], sx, sy, R, sc.handsAlpha, t);
+    }
     if (sc.handItem === "battery" && sc.props.battery > 0.02) drawBattery(ctx, sc.hands[1], sx, sy, R, sc.handsAlpha * sc.props.battery, t);
     if (!sc.leftFront) drawMitt(ctx, sc.hands[1], sx, sy, R, 1, c, sc.handsAlpha);
     if (sc.props.taps > 0.02) drawTaps(ctx, sc.hands[1], sx, sy, R, sc.props.taps, t);
@@ -1152,6 +1158,65 @@ function drawSign(ctx: CanvasRenderingContext2D, H: Hand, sx: number, sy: number
   ctx.textBaseline = "middle";
   ctx.fillText("?", 0, y + R * 0.02);
   gloss(ctx, -w * 0.28, y - h * 0.28, R * 0.09, R * 0.035);
+  ctx.restore();
+}
+
+const SIGN_WOOD = "#8a5a2b";
+const SIGN_BOARD = "#fff6dc";
+
+/**
+ * La pancarte avec un mot (1.2.3, message mascot.sign : « Occupé », « En
+ * réunion », « Pause »…) : levée AU-DESSUS de sa tête, au bout d'un long
+ * manche tenu par la moufle droite, aussi large que le mot (sign-text.ts,
+ * signLayout). Elle suit la moufle (son ressort la fait monter en gelée) et
+ * penche avec elle. Même bois et même encre que la pancarte « ? ».
+ */
+function drawWordSign(ctx: CanvasRenderingContext2D, sc: GumScene, H: Hand, sx: number, sy: number, R: number, alpha: number, word: string) {
+  const fontOf = (px: number) => `800 ${px}px system-ui, sans-serif`;
+  ctx.save();
+  const lay = signLayout(
+    word,
+    (px) => {
+      ctx.font = fontOf(px);
+      return ctx.measureText(word).width;
+    },
+    R,
+  );
+  const { w, h } = lay;
+  const hx = H.x * R * sx;
+  const hy = H.y * R * sy;
+  // Au-dessus de la tête (et d'un chapeau), sans sortir du dessin par le haut.
+  const top = topAt(sc.pts, 0).y * R * sy;
+  const by = Math.max(-R * 1.6 + h / 2, top - R * 0.14 - h / 2);
+  // La planche penche un peu avec la moufle.
+  const tilt = (H.r + 0.15) * 0.25;
+  ctx.globalAlpha = alpha;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  // le manche : de la moufle jusque sous la planche (côté droit)
+  const stickX = Math.min(w * 0.32, R * 0.55);
+  ctx.strokeStyle = SIGN_WOOD;
+  ctx.lineWidth = R * 0.07;
+  ctx.beginPath();
+  ctx.moveTo(hx, hy + R * 0.05);
+  ctx.lineTo(stickX, by + h / 2 - R * 0.02);
+  ctx.stroke();
+  // la planche et le mot, à l'encre des yeux
+  ctx.translate(0, by);
+  ctx.rotate(tilt);
+  ctx.fillStyle = SIGN_BOARD;
+  ctx.strokeStyle = SIGN_WOOD;
+  ctx.lineWidth = R * 0.045;
+  ctx.beginPath();
+  ctx.roundRect(-w / 2, -h / 2, w, h, R * 0.1);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = INK;
+  ctx.font = fontOf(lay.font);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(word, 0, R * 0.02);
+  gloss(ctx, -w * 0.36, -h * 0.26, R * 0.09, R * 0.035);
   ctx.restore();
 }
 

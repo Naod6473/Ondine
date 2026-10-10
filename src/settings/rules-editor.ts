@@ -367,8 +367,13 @@ function editor(main: HTMLElement, r: Rule) {
     when.append(
       row(
         "Changement",
-        selectInput(t.change, Object.entries(NET_LABELS) as [string, string][], (v) => (t.change = v as NetChange)),
-        "Ondine demande à Windows, rien n'est envoyé sur Internet.",
+        selectInput(t.change, Object.entries(NET_LABELS) as [string, string][], (v) => {
+          t.change = v as NetChange;
+          redraw();
+        }),
+        t.change === "newDevice"
+          ? "Ondine regarde doucement le réseau local de ce PC (un ping toutes les 3 secondes, rien d'autre), seulement tant que la règle est active. La première fois, elle apprend les appareils présents sans prévenir. {nom} = l'appareil. Rien ne quitte le PC."
+          : "Ondine demande à Windows, rien n'est envoyé sur Internet.",
       ),
     );
   } else if (t.type === "battery") {
@@ -613,7 +618,9 @@ function actionRow(r: Rule, a: Action, i: number) {
           ? "Dans un nouveau dossier au nom de l'archive : rien n'est écrasé, « Annuler » le met à la Corbeille."
           : a.type === "quiet"
             ? "L'île garde ses notifications pour plus tard et la mascotte se calme. Les alertes importantes passent quand même."
-            : null;
+            : a.type === "mascot" && a.gesture === "sign"
+              ? "Un mot court, levé au-dessus de sa tête pendant 8 s : « Occupé », « En réunion », « Pause », « ? »… (14 caractères au plus sur la pancarte). Un clic sur elle la baisse."
+              : null;
   return el(
     "div",
     { class: "rule-action" },

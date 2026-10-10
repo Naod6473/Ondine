@@ -18,7 +18,7 @@ interface Status {
   maxTurns: number;
   fileTools: boolean;
   pcTools: boolean;
-  voice?: { engine: string; destination: string | null };
+  voice?: { engine: string; destination: string | null; offline?: { ready: boolean; name: string | null } | null };
 }
 
 /** Ce qui part à chaque message (une phrase entière pour la traduction). */
@@ -27,7 +27,12 @@ export function sentText(destination: string, maxTurns: number): string {
 }
 
 /** La voix : par Windows, ou l'audio vers l'API choisie. */
-export function voiceText(engine: string, destination: string | null): string {
+export function voiceText(engine: string, destination: string | null, offlineReady?: boolean): string {
+  if (engine === "offline") {
+    return offlineReady === false
+      ? "Dictée hors ligne choisie, mais la reconnaissance vocale de votre langue n'est pas installée dans Windows : Paramètres Windows → Heure et langue → Langue et région → votre langue → Options de langue → Reconnaissance vocale."
+      : "Quand vous parlez à Ondine, le moteur de reconnaissance installé dans Windows écrit vos mots sur le PC : rien ne le quitte, rien n'est enregistré sur le disque.";
+  }
   if (engine === "api" && destination) return `Quand vous parlez à Ondine, l'audio de votre voix part vers ${destination} pour être écrit en texte. Il reste en mémoire, jamais sur le disque.`;
   return "Quand vous parlez à Ondine, la reconnaissance vocale de Windows écrit vos mots. Pour la dictée, Windows passe par son service en ligne (réglage « Reconnaissance vocale en ligne » de Windows). Rien n'est enregistré sur le disque.";
 }
@@ -47,7 +52,7 @@ export function askclaudeGroups(): HTMLElement[] {
       const lines = [sentText(s.destination, s.maxTurns)];
       if (s.fileTools) lines.push("Ondine peut chercher vos fichiers par leur nom : les noms trouvés partent aussi. Pour lire ou créer un fichier, elle vous demande d'abord.");
       if (s.pcTools) lines.push("Ondine peut aussi régler le PC quand vous le lui demandez. Pour ouvrir une application ou un site, elle vous demande d'abord.");
-      if (s.voice) lines.push(voiceText(s.voice.engine, s.voice.destination));
+      if (s.voice) lines.push(voiceText(s.voice.engine, s.voice.destination, s.voice.offline?.ready));
       sent.replaceChildren(...lines.map((l) => el("p", {}, l)));
       system.textContent = s.system;
     })

@@ -631,6 +631,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `mascot.dance` `{on}` | surprises (src/eggs/) | elle danse en boucle (musique + mini-île) ; les autres réactions passent puis la danse reprend |
 | `shelf.downloaded`, `timer.done`, `clipboard.link-cleaned`, `capture.done`, `controls.usb-ejected`, `system.disk-low` | modules | une courte réaction de la mascotte (voir « La famille gomme ») |
 | `agents.ask` / `agents.ask.closed` | Agents IA | la pancarte « ? » tant qu'une question est ouverte |
+| `mascot.sign` `{text, secs?}` | Règles (action pancarte), Équipe (statut changé à la main) | 1.2.3 : elle lève une pancarte avec ce mot (14 caractères, 8 s par défaut, 2 s à 10 min) au-dessus de sa tête ; `text` vide ou un clic sur elle : elle la baisse ; le « ? » d'un agent passe avant (`src/mascot/sign-text.ts`) |
 | `easter.word` `{word}` | Lanceur (mot magique + Entrée) | une surprise : `code-rain`, `retro`, `barrel-roll`, `answer` |
 | `easter.snack` | réglages (bouton « Essayer ») | Ondine mange la mini-île au prochain passage en mini |
 | `undo.offered` / `undo.done` / `undo.expired` | service d'annulation | bouton « Annuler » |
@@ -1516,8 +1517,8 @@ qui surveille dossiers et lecteurs).
   (`mascot.dance` / `mascot.emote` / `mascot.sign {text, secs}`), `quiet`
   (`rules.quiet {on}` : l'île met les notifications en pause). Compteur
   « déclenchée N fois cette semaine » (`fired` dans le fichier des règles).
-  Point d'extension prévu pour « nouvel appareil sur le réseau » (dans
-  `sense.rs`).
+  1.2.3 : `network` `newDevice` (un nouvel appareil sur le réseau local,
+  `rules/newdevice.rs`, voir la section 1.2.3 en fin de document).
 
 ### Module Lanceur (`src/modules/launcher/`, `src-tauri/src/modules/launcher.rs`)
 
@@ -2617,6 +2618,9 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
     `audio/transcriptions` (gpt-4o-mini-transcribe) ou Gemini (audio en
     `inline_data`) ; avec Claude : clé OpenAI, sinon Gemini, sinon une
     erreur claire. Personne n'a parlé : rien ne part. Rien sur le disque ;
+    `offline` (1.2.3) = dictée 100 % hors ligne, moteur SAPI de bureau
+    (voir « 1.2.3 : dictée hors ligne, pancarte, pont de fichier, nouvel
+    appareil ») ;
   - échec de la dictée : `voice::Failure {message, fix, detail}`. L'état
     « Unknown » (6) et les HRESULT inconnus sont expliqués par les réglages
     de Windows LUS dans le registre (reconnaissance en ligne, stratégie
@@ -2874,3 +2878,139 @@ fichier vers l'Explorateur).
   ligne cachée) passe en Complet avant de faire briller la ligne.
 - Tests : `tests/front/visibility.test.ts` (champs visibles selon le mode,
   compte « N de plus », 1 à 3 champs essentiels par module, défauts).
+
+## 1.2.3 : dictée hors ligne, pancarte, pont de fichier, nouvel appareil
+
+### Dictée 100 % hors ligne (`platform/voice.rs` `dictate_offline`, `askclaude_voice.rs`)
+
+Troisième choix du réglage `voiceEngine` de Parler à Ondine : `offline`
+(« Hors ligne (rien ne quitte le PC) »), à côté de `windows` (défaut,
+inchangé) et `api`.
+
+- **Le choix** : le moteur de reconnaissance « de bureau » de Windows (SAPI 5 :
+  `SpInprocRecognizer` + `ISpRecoGrammar::LoadDictation`), par la crate
+  `windows` déjà là (fonction `Win32_Media_Speech` en plus, aucune autre
+  dépendance, rien à compiler en C++, rien à télécharger). Il tourne dans le
+  processus d'Ondine, sur le micro par défaut (`SpMMAudioIn`) : rien ne
+  quitte le PC.
+- **Pourquoi pas les autres pistes** : `Windows.Media.SpeechRecognition` (le
+  moteur `windows`) ne fait la dictée libre qu'avec le service en ligne de
+  Microsoft ; hors ligne il ne reconnaît que des listes de phrases fixées
+  d'avance (contraintes « liste » ou « grammaire »), pas une question libre.
+  whisper.cpp demande cmake et un compilateur C++ sur la CI. Un modèle
+  téléchargé à la demande (Vosk, Whisper en Rust pur) pèserait 40 Mo à
+  plusieurs centaines de Mo, plus une bibliothèque native à charger : gardé
+  comme repli si le moteur de bureau manque sur trop de PC (voir les limites).
+- **Langue** : celle de l'appli (fr-FR ou en-US). Le moteur est un jeton de la
+  catégorie `SPCAT_RECOGNIZERS` dont l'attribut `Language` vaut le LCID
+  (`40C` pour le français, `409` puis `809` pour l'anglais : `offline_lcids`).
+  Pas de jeton : `offline_missing` → la phrase « la dictée hors ligne a besoin
+  de la reconnaissance vocale du français, installée sur ce PC : Paramètres
+  Windows → Heure et langue → Langue et région → Français (France) → Options
+  de langue → Reconnaissance vocale → Télécharger (Windows 10 : …) » et
+  `Fix::Pack` (bouton « Ouvrir les paramètres Windows » → `ms-settings:regionlanguage`).
+- **Écoute** : événements SAPI lus toutes les 40 ms (`SetNotifyWin32Event`,
+  `WaitForNotifyEvent`, `GetEvents`) : `SPEI_HYPOTHESIS` → sous-titres en direct
+  (`partial`), `SPEI_RECOGNITION` → une phrase gardée, `SPEI_FALSE_RECOGNITION`
+  → bruit oublié. L'objet porté par chaque événement est libéré par
+  `event_text` (à la place de `SpClearEvent`). Le moteur de bureau dicte sans
+  fin : en mode « once », `EndGate` termine 1 s après la dernière phrase
+  reconnue (2,5 s si des mots devinés n'ont jamais été confirmés), ou au
+  délai du début si personne ne parle ; en mode « hold », la touche relâchée.
+  Échap, 2e appui et garde-fou de durée comme avant. Niveau du micro par le
+  même `Meter`.
+- **Erreurs** : micro refusé (`MIC_TEXT`, `Fix::Mic`), pas de micro, codes
+  SAPI `0x800450xx` (moteur mal installé → la phrase du pack). En hors ligne,
+  jamais de bouton « Passer à la transcription par l'API » (`apiTo` vide).
+  À l'inverse, quand la dictée en ligne de Windows échoue et que le moteur
+  hors ligne est installé, l'erreur porte `offline: true` et l'onglet propose
+  « 🔒 Passer à la dictée hors ligne » (change le réglage puis réécoute).
+- **Réglages** : « Ce qui part » (askclaude-page.ts, commande `status` →
+  `voice.offline {ready, name}`) dit que rien ne quitte le PC, ou que la
+  reconnaissance de la langue manque et où l'installer.
+- **Limites** : moteur plus ancien, un peu moins précis que la dictée en
+  ligne ; pas de ponctuation automatique. Windows 11 a retiré l'appli
+  « Reconnaissance vocale Windows » (remplacée par l'Accès vocal) ; le moteur
+  SAPI de bureau et ses jetons sont installés avec la reconnaissance vocale
+  de la langue, mais leur présence sur les dernières versions de Windows 11
+  n'a pas pu être vérifiée d'ici : à confirmer sur le PC de Simon (liste de
+  tests). S'il manque, le message le dit clairement.
+- Tests (Linux, sans Windows) : `offline_lcids`, `offline_missing` (page et
+  phrase), `EndGate` (silence, mots jamais confirmés, bruit, « hold »), stub
+  sans moteur.
+
+### La pancarte d'Ondine (`src/mascot/sign-text.ts`, `mascot-state.ts`, `gum-draw.ts`)
+
+La pancarte « ? » des agents (1.2.0) sait maintenant porter un mot court.
+
+- Bus `mascot.sign {text, secs?}` (existait déjà pour l'action de règle
+  « Mascotte → pancarte », qui ne montrait qu'une notification) : le mot est
+  nettoyé (`cleanSignText` : sans contrôle ni inversion de texte, 14
+  caractères au plus, « … » au-delà), traduit par `t()` (le canvas n'est pas
+  vu par i18n.ts : « Occupé » → « Busy »), tenu `signSeconds` (8 s ; 2 s à
+  10 min), puis baissé. `text` vide ou un clic sur la mascotte : baissé (le
+  clic ne fait alors rien d'autre). Une question d'agent ouverte passe avant
+  (le « ? » reste prioritaire).
+- `MascotExtras.signText` ; la famille gomme (`drawsSignText = true`) le
+  dessine : `drawWordSign` lève une planche en bois clair AU-DESSUS de sa
+  tête, au bout d'un long manche tenu par la moufle droite, aussi large que
+  le mot (`signLayout` : jusqu'à 2,4 R, puis le texte rapetisse), encre des
+  yeux. La moufle suit son ressort (la pancarte monte en gelée) ; « Réduire
+  les animations » : posée d'un coup. Le « ? » garde sa petite planche.
+  Les mascottes « poses » montrent toujours « ? » ; le module Règles affiche
+  alors le texte en notification (`signTextDrawn()`).
+- Qui la lève : l'action de règle (inchangée, aide ajoutée dans l'éditeur),
+  et l'onglet Équipe quand on change son statut à la main (`statusSign` :
+  En réunion, Occupé pour Concentration, Pause pour Absent ; 6 s).
+- Tests : `tests/front/sign-text.test.ts`.
+
+### Le pont de fichier à travers l'île (`src/modules/team/bridge.ts`, `bridge-path.ts`)
+
+Un fichier lâché sur la cible d'un collègue (module Équipe, et la cible du
+chat à deux) part comme avant (`send_files` / `chat_files`, toujours à
+accepter par le destinataire) ; en plus, une petite feuille de gomme (dégradé
+de la goutte, coin replié) plonge dans l'île par le haut, s'écrase en gelée,
+file à travers l'île et ressort par le bord droit, où un rond à la couleur du
+collègue s'allume. Chez le destinataire, à l'arrivée du fichier (`received`),
+le chemin inverse : elle entre par la gauche et se pose au milieu.
+
+- Mouvement (`bridge-path.ts`, sans DOM) : deux ressorts de spring.ts en
+  fractions de la boîte de l'île (elle peut changer de taille en route),
+  écrasement selon la vitesse (sx × sy = 1), garde-fou de 4 s.
+- Dessin (`bridge.ts`) : un calque `.team-bridge` dans `.island` (qui rogne :
+  la feuille passe À TRAVERS l'île), `pointer-events: none`, rien n'anime
+  `translate` de `.island`. Interruptible : un clic, un nouveau glisser ou un
+  autre pont l'enlève. « Réduire les animations » : seulement le rond du
+  collègue, en fondu.
+- Tests : `tests/front/team-bridge.test.ts`.
+
+### Règle « un nouvel appareil apparaît sur le réseau local » (`src-tauri/src/modules/rules/newdevice.rs`)
+
+Déclencheur `{type: "network", change: "newDevice"}` (éditeur : Quand → Le
+réseau change → « un nouvel appareil apparaît sur le réseau local ») ;
+`{nom}` = « nom DNS (IP, MAC) » ou « IP (MAC) ».
+
+- Coupé par défaut : rien ne tourne tant qu'aucune règle active ne le demande
+  (et pas en pause) ; `sense.rs` démarre le fil `newdevice::start` à la
+  première règle, le lâche (il s'arrête) sinon.
+- Balayage doux du réseau local de ce PC seulement : la carte Wi-Fi /
+  Ethernet avec une adresse privée (pas un VPN, `platform::netwatch::local_nets`),
+  son /24 au plus (`targets`) ; UN ping (une demande d'écho ICMP, 400 ms)
+  toutes les 3 s, un tour complet ≈ 13 min, puis 5 min de pause. Aucun port
+  essayé, rien vers Internet. Le ping sert à ce que Windows apprenne
+  l'adresse MAC des appareils silencieux.
+- Toutes les minutes et à la fin d'un tour : la table ARP de Windows
+  (`platform::netwatch::neighbors`, `GetIpNetTable2`, lue sans rien envoyer).
+  Une adresse MAC jamais vue → la règle part. La liste des déjà vus :
+  `%APPDATA%\Ondine\network-devices.json` (MAC, dernière IP, dates ;
+  500 au plus), même fichier et même forme que le scanner de la PR #62, plus
+  `nets` : les réseaux (« 192.168.1.0/24 via 192.168.1.1 ») dont un premier
+  tour complet a été fait. Sur un réseau jamais vu, ce premier tour apprend
+  sans prévenir.
+- Repris de la PR #62 (branche `bilan-du-jour`, non modifiée) : `targets`,
+  `network_label`, les adresses MAC, `Known` (sans la table des fabricants),
+  et `local_nets` / `neighbors` de `platform/netwatch.rs` (copiés à
+  l'identique pour que la fusion de #62 reste simple).
+- Tests : `newdevice.rs` (le /24 privé seulement, apprendre avant de
+  prévenir, fichier relu y compris celui de #62, le tour, les textes).
+
