@@ -1,6 +1,9 @@
 /* L'île. Les tailles sont en px logiques ; la fenêtre fait 720 × 320 (panneau)
    ou 240 × 6 (bande de réveil quand l'île est cachée). */
 
+/* 1.2.3 : sons d'ambiance, test de débit, « … écoute », QR d'appairage. */
+@import "./fonctions.css";
+
 :root {
   --island-bg: #0c0d12;
   --island-fg: #eef0f6;

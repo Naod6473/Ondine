@@ -3,7 +3,7 @@
   "name": "Minuteur",
   "tip": "Choisissez une durée : le temps qui reste s'affiche aussi dans la mini-île.",
   "icon": "⏱️",
-  "description": "Minuteur, Pomodoro et chronomètre. Le temps qui reste s'affiche dans la pilule de l'île, et l'île vous prévient (avec un petit son) quand c'est fini.",
+  "description": "Minuteur, Pomodoro, chronomètre et sons d'ambiance pour la concentration (pluie, vagues, bruit doux, fabriqués par Ondine). Le temps qui reste s'affiche dans la pilule de l'île, et l'île vous prévient (avec un petit son) quand c'est fini.",
   "version": "0.1.0",
   "permissions": [],
   "settings": {
@@ -16,13 +16,15 @@
       { "key": "autoNext", "type": "boolean", "label": "Pomodoro : enchaîner automatiquement travail et pauses", "default": true },
       { "key": "sound", "essential": true, "type": "boolean", "label": "Jouer un son à la fin", "default": true },
       { "key": "showCompact", "type": "boolean", "label": "Afficher le temps dans la pilule de l'île", "default": true },
+      { "key": "ambientVolume", "type": "number", "label": "Sons d'ambiance : volume (%)", "default": 40, "min": 0, "max": 100, "step": 1 },
+      { "key": "ambientWithPomodoro", "type": "boolean", "label": "Sons d'ambiance : lancer avec le Pomodoro", "help": "Le son choisi dans l'onglet « Ambiance » part au début de chaque séance de travail et s'arrête à la pause.", "default": false },
       { "key": "focusQuiet", "type": "boolean", "label": "Mode concentration pendant le Pomodoro", "help": "Pendant une séance de travail, les notifications de l'île attendent (sauf les urgentes) ; elles arrivent à la pause, avec un résumé. Les bannières de Windows ne sont pas coupées : pour cela, lancez une séance « Focus » dans l'appli Horloge de Windows 11.", "default": true }
     ]
   },
   "views": ["compact", "expanded"],
   "commands": [],
   "events": {
-    "emits": ["timer.done", "task.finished", "timer.focus", "timer.work-session", "timer.progress"],
+    "emits": ["timer.done", "task.finished", "timer.focus", "timer.work-session", "timer.progress", "timer.ambient"],
     "listens": ["timer.start"]
   }
 }

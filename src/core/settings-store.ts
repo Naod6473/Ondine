@@ -9,7 +9,7 @@ import type { CalendarEntry, ModuleManifest, SettingField } from "./module-types
  * Les modules désactivés tant qu'on ne les a pas allumés (ceux qui ouvrent un
  * port sur le réseau local). Même liste dans src-tauri/src/services/settings.rs.
  */
-export const MODULES_OFF_BY_DEFAULT: readonly string[] = ["team"];
+export const MODULES_OFF_BY_DEFAULT: readonly string[] = ["team", "screensaver"];
 
 type Listener = (s: Settings) => void;
 

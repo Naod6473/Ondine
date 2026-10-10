@@ -12,6 +12,9 @@
 //     `media.tempo` {bpm} viendra de l'analyse faite pour les danses), voix
 //     (voice.level), pluie (weather.updated), processeur (system.cpu-busy),
 //     nuit, notification (notify.shown), concentration (timer.focus).
+//   Sons d'ambiance du Minuteur (timer.ambient, 1.2.3) : le liquide suit le
+//     son : gouttes sur la vitre pour la pluie, une vague à chaque crête pour
+//     les vagues, la surface ondule avec le niveau du son.
 //   Ondine flotte quand l'île est pleine (liquid.ts émet mascot.emote).
 
 import type { ModuleApi } from "../../core/module-types";
@@ -19,6 +22,7 @@ import { pacedInterval } from "../../core/perf";
 import { hideLiquid, liquidDive, liquidDrop, liquidWave, setLiquidAmbience, showLiquid, updateLiquid, type LiquidAmbience } from "../../island/liquid";
 import { isNight } from "../../island/liquid-rules";
 import { levelFromPeak, mediaPlaying, timerHaloPlan, weatherKind } from "./halo-rules";
+import { ambientLiquidPlan, nextCrestIn, type AmbientNews } from "../timer/ambient-logic";
 
 /**
  * Le remplissage remplace-t-il le liseré des minuteurs ? (réglage « Minuteurs :
@@ -191,10 +195,59 @@ export function liquidMoments(api: ModuleApi): () => void {
     if (typeof p.level === "number") updateLiquid("liquid-voice", { wobble: p.level });
   });
 
+  // ── Sons d'ambiance du Minuteur : le liquide suit le son ──
+  let ambientWave = 0;
+  let ambientRain = false;
+  /** La concentration est en cours (le lac lisse revient quand le son s'arrête). */
+  let focusLake = false;
+  const stopAmbientWaves = () => {
+    window.clearTimeout(ambientWave);
+    ambientWave = 0;
+  };
+  listen("timer.ambient", (p) => {
+    const n = p as unknown as AmbientNews;
+    const plan = on("liquidAmbient") ? ambientLiquidPlan(n) : null;
+    if (!plan) {
+      stopAmbientWaves();
+      hide("liquid-ambient");
+      if (ambientRain) ambience("liquidAmbient", "rain", false);
+      ambientRain = false;
+      if (focusLake) ambience("liquidFocus", "still", true);
+      return;
+    }
+    if (focusLake) ambience("liquidFocus", "still", false);
+    const o = { level: plan.level, wobble: plan.wobble, bubbles: plan.bubbles, priority: "low" as const };
+    if (shown.has("liquid-ambient")) updateLiquid("liquid-ambient", o);
+    else show("liquidAmbient", "liquid-ambient", o);
+    if (plan.rain !== ambientRain) {
+      ambientRain = plan.rain;
+      ambience("liquidAmbient", "rain", plan.rain);
+    }
+    // Une vague traverse l'île à chaque crête du son (même horloge que le son : startedAt).
+    if (plan.waveEveryMs && typeof n.startedAt === "number") {
+      if (!ambientWave) {
+        const startedAt = n.startedAt;
+        const every = plan.waveEveryMs;
+        const next = () => {
+          ambientWave = window.setTimeout(() => {
+            if (!shown.has("liquid-ambient")) return (ambientWave = 0);
+            liquidWave();
+            next();
+          }, Math.max(200, nextCrestIn(Date.now(), startedAt, every)));
+        };
+        next();
+      }
+    } else stopAmbientWaves();
+  });
+
   // ── Ambiances ──
   listen("weather.updated", (p) => ambience("liquidRain", "rain", weatherKind(p?.icon) !== null));
   listen("system.cpu-busy", (p) => ambience("liquidCpu", "boil", p.on === true));
-  listen("timer.focus", (p) => ambience("liquidFocus", "still", p.on === true));
+  // (Un son d'ambiance qui joue garde la surface vivante : pas de lac lisse.)
+  listen("timer.focus", (p) => {
+    focusLake = p.on === true;
+    ambience("liquidFocus", "still", focusLake && !shown.has("liquid-ambient"));
+  });
   listen("notify.shown", (p) => {
     // Pas pour les petits retours du clavier (Verr Maj, Copié…) : trop fréquents.
     if (p.moduleId === "halos" || !on("liquidNotify")) return;
@@ -219,6 +272,7 @@ export function liquidMoments(api: ModuleApi): () => void {
     for (const t of timers) window.clearTimeout(t);
     stopClock();
     stopLevel?.();
+    stopAmbientWaves();
     for (const id of [...shown.keys()]) hideLiquid(id);
     for (const name of ["rain", "boil", "stars", "still"] as const) setLiquidAmbience(name, false);
   };

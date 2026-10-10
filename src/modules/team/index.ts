@@ -22,7 +22,8 @@ import type { DropTarget, IslandModule, ModuleApi, ModuleManifest } from "../../
 import { settingsStore } from "../../core/settings-store";
 import { el } from "../../island/dom";
 import { sizeText } from "../shelf/phone-text";
-import { ANSWER_LABEL, codeText, diskLow, isLink, isPrivateIp, lookColor, PINGS, pingText, pollChoices, sortPeers, STATUS_LABEL, type PeerView, type Status } from "./logic";
+import { ANSWER_LABEL, codeText, diskLow, isLink, isPrivateIp, lookColor, openTarget, PINGS, pingText, pollChoices, sortPeers, STATUS_LABEL, trackText, type PairQr, type PeerView, type Status } from "./logic";
+import { qrReader } from "./qr";
 import { mountVisit } from "./visit";
 import { chatButton, chatDropTarget, chatPane, chatSetup, onChatChange, setChatOpener, takePendingRoom, type ChatContext, type ChatPane } from "./chat";
 
@@ -35,6 +36,7 @@ interface Me {
   statusText: string;
   auto: boolean;
   visible: boolean;
+  shareListening?: boolean;
 }
 
 interface PendingView {
@@ -53,8 +55,20 @@ interface TeamState {
   peers: PeerView[];
   nearby: { id: string; name: string; color: string; addr: string }[];
   pending: PendingView[];
-  code: { code: string; seconds: number; mine: boolean } | null;
+  code: { code: string; seconds: number; mine: boolean; qr?: string | null } | null;
   polls: { poll: number; question: string; choices: string[]; counts: number[] }[];
+}
+
+/** Le formulaire « Ajouter un collègue » : ce qui est tapé ou lu dans un QR code. */
+interface AddState {
+  kind: "add";
+  addr: string;
+  name: string;
+  code?: string;
+  mine?: boolean;
+  /** L'empreinte lue dans un QR code : le PC qui répond doit l'avoir (vérifié par le Rust). */
+  fp?: string;
+  note?: string;
 }
 
 /** Qui a envoyé (dans « team.event »). */
@@ -333,6 +347,24 @@ function dropTargets(): DropTarget[] {
 
 // ── L'onglet ────────────────────────────────────────────────────────────────
 
+/**
+ * « Alex écoute « Clair de lune » · Debussy » : un clic ouvre la recherche du
+ * même morceau dans le navigateur (adresse fabriquée par le Rust, team_listen.rs).
+ */
+function listeningLine(api: ModuleApi, p: PeerView): HTMLElement | null {
+  const t = p.listening;
+  if (!t || !p.online) return null;
+  const openWith = String(settingsStore.current.modules?.team?.values?.listenOpen ?? "same");
+  return el(
+    "button",
+    { class: "team-listen", title: `Ouvrir ce morceau sur ${openTarget(t, openWith)}`, onclick: api.handler(() => run(api, "listen_open", { id: p.id })) },
+    el("span", { class: "team-listen-note", "aria-hidden": "true" }, "♪"),
+    el("span", { "data-no-i18n": true }, p.name),
+    el("span", {}, "écoute"),
+    el("span", { class: "team-listen-track", "data-no-i18n": true }, trackText(t)),
+  );
+}
+
 function dot(color: string, status: Status): HTMLElement {
   const d = el("span", { class: `team-dot team-st-${status}`, title: STATUS_LABEL[status] });
   d.style.setProperty("--peer", /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#5cc8ff");
@@ -343,10 +375,14 @@ function expanded(root: HTMLElement, api: ModuleApi): () => void {
   const body = el("div", { class: "team" });
   root.append(body);
   /** La fiche ouverte (un collègue), ou le formulaire d'ajout. */
-  let open: { kind: "peer"; id: string } | { kind: "add"; addr: string; name: string } | { kind: "group"; what: string } | { kind: "chat" } | null = null;
+  let open: { kind: "peer"; id: string } | AddState | { kind: "group"; what: string } | { kind: "chat" } | null = null;
   let tick = 0;
   /** Le chat (créé à la première ouverture, gardé tant que l'onglet est affiché). */
   let chat: ChatPane | null = null;
+  /** La lecture du QR code (formulaire d'ajout), gardée d'un dessin à l'autre : la webcam reste allumée. */
+  let qrUi: { node: HTMLElement; stop: () => void } | null = null;
+  let qrFound: (q: PairQr) => void = () => {};
+  let qrStatus: (text: string) => void = () => {};
   const openChat = (room: string | null) => {
     chat ??= chatPane(api, chatCtx, () => ((open = null), draw()));
     open = { kind: "chat" };
@@ -360,6 +396,11 @@ function expanded(root: HTMLElement, api: ModuleApi): () => void {
       return;
     }
     const s = state;
+    // Le formulaire d'ajout est quitté : la webcam s'éteint.
+    if (open?.kind !== "add") {
+      qrUi?.stop();
+      qrUi = null;
+    }
     // La zone de saisie du chat garde le clavier quand la liste se redessine (présence…).
     const focused = document.activeElement;
     body.replaceChildren(head(s), ...codePanel(s), ...pendingList(s), main(s));
@@ -406,8 +447,9 @@ function expanded(root: HTMLElement, api: ModuleApi): () => void {
       el(
         "div",
         { class: "team-code", "data-island-fit": true },
+        s.code.qr ? el("img", { class: "team-code-qr", src: s.code.qr, alt: "QR code d'appairage", draggable: "false" }) : null,
         el("div", { class: "team-code-digits", "data-no-i18n": true }, codeText(s.code.code)),
-        el("div", { class: "muted" }, "Tapez ce code sur l'autre PC (onglet Équipe, « Ajouter »). Un seul essai."),
+        el("div", { class: "muted" }, s.code.qr ? "Tapez ce code sur l'autre PC (onglet Équipe, « Ajouter »), ou lisez le QR code. Un seul essai." : "Tapez ce code sur l'autre PC (onglet Équipe, « Ajouter »). Un seul essai."),
         el("div", { class: "team-code-meta" }, el("span", { "data-no-i18n": true }, s.me.ip ? `IP ${s.me.ip}` : ""), el("span", { class: "team-clock", "data-no-i18n": true }, `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`)),
         el("label", { class: "team-check" }, mine, "C'est un de mes PC"),
         el("button", { class: "btn small", onclick: api.handler(() => run(api, "hide_code").then(() => refresh(api))) }, "Masquer"),
@@ -477,6 +519,7 @@ function expanded(root: HTMLElement, api: ModuleApi): () => void {
         ),
         ...quick,
         el("button", { class: "btn small", disabled: !p.online, onclick: api.handler(() => ask(api, p)) }, "Dispo ?"),
+        listeningLine(api, p),
       );
     });
     const nearby = s.nearby.map((n) =>
@@ -520,11 +563,27 @@ function expanded(root: HTMLElement, api: ModuleApi): () => void {
   };
 
   // ── Ajouter un collègue (code tapé, adresse trouvée ou tapée) ──
-  const addForm = (s: TeamState, o: { addr: string; name: string }) => {
+  const addForm = (s: TeamState, o: AddState) => {
     const addr = el("input", { class: "clip-input", type: "text", placeholder: "Adresse IP (ex. 192.168.1.20)", value: o.addr, spellcheck: "false", maxlength: 15 }) as HTMLInputElement;
-    const code = el("input", { class: "clip-input team-code-input", type: "text", inputmode: "numeric", placeholder: "Code à 6 chiffres", maxlength: 7, autocomplete: "off" }) as HTMLInputElement;
+    const code = el("input", { class: "clip-input team-code-input", type: "text", inputmode: "numeric", placeholder: "Code à 6 chiffres", maxlength: 7, autocomplete: "off", value: o.code ?? "" }) as HTMLInputElement;
     const mine = el("input", { type: "checkbox" }) as HTMLInputElement;
-    const status = el("small", { class: "muted" });
+    mine.checked = !!o.mine;
+    const status = el("small", { class: "muted" }, o.note ?? "");
+    // Ce qui est tapé ou lu survit à un nouveau dessin (présence d'un collègue…).
+    // Taper à la main : l'empreinte d'un QR lu avant ne compte plus.
+    addr.addEventListener("input", () => ((o.addr = addr.value), (o.fp = "")));
+    code.addEventListener("input", () => ((o.code = code.value), (o.fp = "")));
+    mine.addEventListener("change", () => (o.mine = mine.checked));
+    qrFound = (q: PairQr) => {
+      Object.assign(o, { addr: q.addr, code: codeText(q.code), mine: q.mine, fp: q.fp, note: `QR code lu : ${q.addr}. Cliquez sur « Ajouter ».` });
+      addr.value = o.addr;
+      code.value = o.code ?? "";
+      mine.checked = q.mine;
+      status.textContent = o.note ?? "";
+      addBtn.focus();
+    };
+    qrStatus = (text) => ((o.note = text), (status.textContent = text));
+    qrUi ??= qrReader(api, (q) => qrFound(q), (t) => qrStatus(t));
     const go = api.handler(async () => {
       if (!isPrivateIp(addr.value)) {
         status.textContent = "Adresse du réseau local attendue (192.168.x.x, 10.x.x.x, 172.16-31.x.x).";
@@ -532,7 +591,7 @@ function expanded(root: HTMLElement, api: ModuleApi): () => void {
       }
       status.textContent = "Appairage…";
       try {
-        const p = await api.invoke<{ name: string }>("pair", { addr: addr.value.trim(), code: code.value, mine: mine.checked });
+        const p = await api.invoke<{ name: string }>("pair", { addr: addr.value.trim(), code: code.value, mine: mine.checked, fp: o.fp ?? "" });
         open = null;
         api.notify({ title: "Nouveau collègue", body: p.name, icon: "🤝", priority: "normal", key: "team-paired" });
         await refresh(api);
@@ -541,10 +600,11 @@ function expanded(root: HTMLElement, api: ModuleApi): () => void {
       }
     });
     code.addEventListener("keydown", api.handler((e: KeyboardEvent) => e.key === "Enter" && go()));
+    const addBtn = el("button", { class: "btn small primary", onclick: go }, "Ajouter");
     const near = s.nearby.map((n) =>
       el("button", { class: `btn small ${n.addr === addr.value ? "primary" : ""}`, onclick: api.handler(() => ((addr.value = n.addr), code.focus())) }, n.name),
     );
-    queueMicrotask(() => (o.addr ? code : addr).focus());
+    if (!o.fp) queueMicrotask(() => (o.addr ? code : addr).focus());
     return el(
       "div",
       { class: "team-sheet" },
@@ -554,7 +614,8 @@ function expanded(root: HTMLElement, api: ModuleApi): () => void {
       addr,
       code,
       el("label", { class: "team-check" }, mine, "C'est un de mes PC (presse-papiers, batterie, mascotte)"),
-      el("div", { class: "btn-row" }, el("button", { class: "btn small primary", onclick: go }, "Ajouter"), status),
+      qrUi.node,
+      el("div", { class: "btn-row" }, addBtn, status),
     );
   };
 
@@ -599,6 +660,7 @@ function expanded(root: HTMLElement, api: ModuleApi): () => void {
         el("small", { class: "muted" }, STATUS_LABEL[p.status]),
         p.battery ? el("small", { class: "team-tag", "data-no-i18n": true }, `${p.battery.charging ? "⚡" : "🔋"} ${p.battery.percent} %`) : null,
       ),
+      listeningLine(api, p),
       el("div", { class: "chips" }, ...pings, el("button", { class: "btn small", disabled: off, onclick: api.handler(() => ask(api, p)) }, "🔔 Tu es dispo ?")),
       el("div", { class: "team-line" }, note, el("button", { class: "btn small", disabled: off || !p.visits, title: p.visits ? "" : "Ce collègue n'accepte pas les visites", onclick: api.handler(() => run(api, "visit", { id: p.id, note: note.value.trim() }).then((r) => r !== null && (note.value = ""))) }, "🫧 Visite d'Ondine")),
       text,
@@ -725,6 +787,7 @@ function expanded(root: HTMLElement, api: ModuleApi): () => void {
     stopChat();
     setChatOpener(null);
     chat?.destroy();
+    qrUi?.stop();
   };
 }
 

@@ -37,6 +37,8 @@ mod media_tempo;
 mod nettools;
 // Réseau → surveillance des services IA (pages d'état de Claude, ChatGPT, Gemini).
 mod nettools_ai;
+// Son test de débit (1.2.3), seulement au clic.
+mod nettools_speed;
 mod rules;
 mod notes;
 mod remote;
@@ -48,11 +50,17 @@ mod shelf_phone;
 // Étagère → cible « Empreinte » : SHA-256 (ou l'algorithme d'une empreinte copiée).
 mod shelf_hash;
 mod shelf_tools;
+// Écran de veille d'Ondine (1.2.3), désactivé par défaut.
+mod screensaver;
 mod system;
 // Équipe : les Ondine du réseau local se parlent (découverte, appairage, échanges chiffrés).
 mod team;
 // Son chat (1.2.2) : conversations à deux, salon « Toute l'équipe », historique.
 mod team_chat;
+// « Alex écoute… » (Équipe, 1.2.3).
+mod team_listen;
+// Appairage par QR code (Équipe, 1.2.3).
+mod team_qr;
 // Ses fils de fond : écoute, découverte, présence, fichiers.
 mod team_net;
 // Son protocole (messages, chiffrement, appairage), en code pur testé.
@@ -259,6 +267,7 @@ impl Registry {
             Box::new(halos::Halos),
             Box::new(team::Team::default()),
             Box::new(windowlife::WindowLife),
+            Box::new(screensaver::Screensaver),
         ];
 
         let mut entries = Vec::new();

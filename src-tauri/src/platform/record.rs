@@ -84,10 +84,10 @@ pub fn size_label_at(sel: Area, label: (i32, i32), gap: i32, screen_bottom: i32)
 }
 
 #[cfg(windows)]
-pub use self::win::{hide_from_capture, select_area, Grabber, Outline};
+pub use self::win::{desktop_area, hide_from_capture, select_area, Grabber, Outline};
 
 #[cfg(not(windows))]
-pub use self::stub::{hide_from_capture, select_area, Grabber, Outline};
+pub use self::stub::{desktop_area, hide_from_capture, select_area, Grabber, Outline};
 
 #[cfg(windows)]
 mod win {
@@ -270,6 +270,17 @@ mod win {
             }
             let old = SelectObject(dc, bitmap.into());
             Some((dc, bitmap, old))
+        }
+    }
+
+    /// Tout le bureau (tous les écrans), en pixels physiques. Met le fil qui
+    /// appelle en « DPI par écran », comme Grabber::new (à appeler sur le fil
+    /// qui copiera l'écran).
+    pub fn desktop_area() -> Option<Area> {
+        unsafe {
+            SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+            let (w, h) = (GetSystemMetrics(SM_CXVIRTUALSCREEN), GetSystemMetrics(SM_CYVIRTUALSCREEN));
+            (w > 0 && h > 0).then(|| Area { x: GetSystemMetrics(SM_XVIRTUALSCREEN), y: GetSystemMetrics(SM_YVIRTUALSCREEN), width: w as u32, height: h as u32 })
         }
     }
 
@@ -979,6 +990,10 @@ mod stub {
 
     pub fn select_area(_hint: &str) -> Result<Option<Area>, String> {
         Err(ONLY_WINDOWS.into())
+    }
+
+    pub fn desktop_area() -> Option<Area> {
+        None
     }
 
     pub struct Grabber;

@@ -439,9 +439,9 @@ fn undo_run(app: AppHandle, undo: State<UndoService>, id: u64) -> Result<String,
 /// fenêtre créée : toutes les fenêtres doivent donc demander EXACTEMENT les mêmes
 /// arguments que l'île (voir `additionalBrowserArgs` dans tauri.conf.json), sinon
 /// la seconde reste blanche sans aucune erreur. (Constat de Coucou.)
-const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";
+pub(crate) const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";
 
-fn page_url(app: &AppHandle, page: &str) -> WebviewUrl {
+pub(crate) fn page_url(app: &AppHandle, page: &str) -> WebviewUrl {
     // En développement, les pages sont servies par Vite.
     #[cfg(dev)]
     if let Some(mut base) = app.config().build.dev_url.clone() {
