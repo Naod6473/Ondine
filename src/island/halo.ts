@@ -346,7 +346,12 @@ class HaloLayer {
 
   show(id: string, o: HaloOptions) {
     if (!halosEnabled()) return;
-    const old = this.stack.get(id);
+    // La même demande encore là (ou en train de s'éteindre) : on repart de sa lumière.
+    let old = this.stack.get(id);
+    if (!old) {
+      old = this.fading.find((f) => f.id === id) ?? null;
+      if (old) this.fading = this.fading.filter((f) => f !== old);
+    }
     if (old) window.clearTimeout(old.timer);
     const shape = SHAPES.includes(o.shape as HaloShape) ? (o.shape as HaloShape) : "aurora";
     const req = o.palette ?? "work";
@@ -423,13 +428,14 @@ class HaloLayer {
     if (!top || this.still() || !this.geo?.pts.length) return;
     let best = 0;
     let bestD = Infinity;
-    for (const p of this.geo.pts) {
+    const pts = this.geo.pts;
+    pts.forEach((p, i) => {
       const d = (p.x - x) ** 2 + (p.y - y) ** 2;
       if (d < bestD) {
         bestD = d;
-        best = p.u;
+        best = i / pts.length;
       }
-    }
+    });
     top.pokes.push({ u: best, at: performance.now() });
     if (top.pokes.length > 4) top.pokes.shift();
     this.wake();
@@ -474,7 +480,10 @@ class HaloLayer {
       return; // repartira à la prochaine demande, au retour de l'île, au redimensionnement
     }
     // Les halos lents, et ceux qui suivent un niveau (une visio d'une heure), à 30 images/s.
-    const slow = drawn.every((h) => h.shape === "aurora" || h.shape === "cocoon" || h.shape === "level" || (h.shape === "breathe" && rhythmMs(h.rhythm) >= 3000));
+    // (Un balayage déjà arrivé, comme le halo vert qui reste pendant la charge, aussi.)
+    const slow = drawn.every(
+      (h) => h.shape === "aurora" || h.shape === "cocoon" || h.shape === "level" || (h.shape === "breathe" && rhythmMs(h.rhythm) >= 3000) || (h.shape === "sweep" && now - h.start > 2000),
+    );
     const fps = perfMode() === "eco" ? ECO_FPS : slow && drawn.every((h) => Math.abs(h.env.v) < 0.05) ? SLOW_FPS : 60;
     if (fps >= 60) this.raf = requestAnimationFrame((t) => this.frame(t));
     else
@@ -502,15 +511,15 @@ class HaloLayer {
     const key = [b.x, b.y, b.width, b.height, r.tl, r.tr, r.br, r.bl].map((v) => v.toFixed(1)).join(",");
     if (this.geo?.key === key) return this.geo;
     const rect: Rect = { w: b.width, h: b.height, r };
-    const pts = sampleContour(rect, 4).map((p) => ({ ...p, x: p.x + b.x, y: p.y + b.y }));
+    const all = sampleContour(rect, 4).map((p) => ({ ...p, x: p.x + b.x, y: p.y + b.y }));
     let path: Path2D | null = null;
-    if (typeof Path2D !== "undefined" && pts.length > 1) {
+    if (typeof Path2D !== "undefined" && all.length > 1) {
       path = new Path2D();
-      path.moveTo(pts[0].x, pts[0].y);
-      for (const p of pts) path.lineTo(p.x, p.y);
+      path.moveTo(all[0].x, all[0].y);
+      for (const p of all) path.lineTo(p.x, p.y);
       path.closePath();
     }
-    this.geo = { key, x: b.x, y: b.y, w: b.width, h: b.height, pts, path };
+    this.geo = { key, x: b.x, y: b.y, w: b.width, h: b.height, pts: visibleRun(all, document.body.dataset.edge ?? "top"), path };
     return this.geo;
   }
 
@@ -675,7 +684,7 @@ class HaloLayer {
       case "ripple": {
         // Une goutte tombe : le contour s'allume là où elle tombe, puis la
         // lumière file des deux côtés ; et des ronds dans l'eau partent de l'île.
-        const u0 = h.from === "left" ? 0.75 : h.from === "right" ? 0.25 : 0.5;
+        const u0 = h.from === "left" ? 0.85 : h.from === "right" ? 0.15 : 0.5;
         this.glowStroke(ctx, path, grad, glow * 0.6, alpha * Math.min(1, t / 500) * 0.45);
         this.drawFronts(ctx, g, h.colors, u0, t / 1400, glow, alpha);
         this.spawnRings(h, now, Math.max(450, period / 2), 3);
@@ -757,8 +766,11 @@ class HaloLayer {
     const len = Math.max(2, Math.round(trail * n));
     ctx.lineCap = "round";
     for (let i = len; i > 0; i--) {
-      const a = pts[(head - i + n) % n];
-      const b = pts[(head - i + 1 + n) % n];
+      const ia = (head - i + n) % n;
+      // Le passage d'un bout à l'autre (derrière le bord de l'écran) : rien à tracer.
+      if (ia === n - 1) continue;
+      const a = pts[ia];
+      const b = pts[ia + 1];
       const f = 1 - i / len; // 0 au bout de la traînée, 1 à la tête
       ctx.strokeStyle = colorAt(colors, f);
       ctx.globalAlpha = alpha * f * f * 0.35;
@@ -803,8 +815,10 @@ class HaloLayer {
     const len = Math.max(2, Math.round(trail * n));
     ctx.lineCap = "round";
     for (let i = len; i > 0; i--) {
-      const a = pts[(head + i) % n];
-      const b = pts[(head + i - 1) % n];
+      const ib = (head + i - 1) % n;
+      if (ib === n - 1) continue; // derrière le bord de l'écran
+      const a = pts[(ib + 1) % n];
+      const b = pts[ib];
       const f = 1 - i / len;
       ctx.strokeStyle = colorAt(colors, f);
       ctx.globalAlpha = alpha * f * f * 0.35;
@@ -888,7 +902,7 @@ class HaloLayer {
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
-      ctx.closePath();
+      // Pas refermée : le côté collé au bord de l'écran ne se voit pas.
       ctx.globalAlpha = alpha * (1 - p) ** 1.6 * 0.9;
       ctx.lineWidth = Math.max(1, 2.6 * (1 - p));
       ctx.stroke();
@@ -974,6 +988,33 @@ class HaloLayer {
     }
     ctx.globalAlpha = 1;
   }
+}
+
+/**
+ * Les points du contour qu'on voit : sans le côté collé au bord de l'écran
+ * (il est hors de la fenêtre, ou caché par l'île). Une comète qui fait « le
+ * tour » passe donc derrière le bord de l'écran au lieu d'y disparaître
+ * longtemps. Le résultat est un seul morceau continu, d'un bout à l'autre.
+ */
+function visibleRun(pts: ContourPoint[], edge: string): ContourPoint[] {
+  const hidden = (p: ContourPoint) => (edge === "left" ? p.nx < -0.7 : edge === "right" ? p.nx > 0.7 : p.ny < -0.7);
+  const keep = pts.map((p) => !hidden(p));
+  if (keep.every(Boolean) || !keep.some(Boolean)) return pts;
+  // On commence au premier point visible qui suit un point caché.
+  const n = pts.length;
+  let start = 0;
+  for (let i = 0; i < n; i++) {
+    if (keep[i] && !keep[(i - 1 + n) % n]) {
+      start = i;
+      break;
+    }
+  }
+  const out: ContourPoint[] = [];
+  for (let k = 0; k < n; k++) {
+    const i = (start + k) % n;
+    if (keep[i]) out.push(pts[i]);
+  }
+  return out;
 }
 
 /** La palette d'orage ajoute des éclairs à la pluie. */
