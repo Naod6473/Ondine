@@ -1038,6 +1038,8 @@ function demoGroup(): HTMLElement {
                 scene("download", "Fichier téléchargé"),
                 scene("next-track", "Morceau suivant"),
                 scene("whats-new", "Quoi de neuf"),
+                scene("halos-battery", "Halos de batterie"),
+                scene("halos-tour", "Autres halos"),
               ),
               "La notification arrive dans l'île : lancez l'enregistrement avant de cliquer.",
             ),
