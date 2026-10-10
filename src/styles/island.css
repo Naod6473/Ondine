@@ -5330,6 +5330,9 @@ body.retro .island .btn {
     transition: none;
   }
   .team-chat-note.fresh {
+    animation: none;
+  }
+}
 /* ── Le liquide à l'intérieur de l'île (src/island/liquid.ts) ─────────────────
    Un canvas, premier enfant de l'île : z-index -1 dans la pile de l'île (qui en
    crée une avec translate), donc au-dessus de son fond, sous le texte et la
