@@ -337,6 +337,17 @@ export class Jelly {
   }
 
   /**
+   * Un petit saut sans quitter le bord (une alerte, une notification en
+   * mini-île) : l'épaisseur gonfle vers le centre de l'écran puis revient en
+   * rebondissant, attachée au bord collé (`origin`). `amount` : 1 = une alerte.
+   */
+  bump(amount: number) {
+    if (!this.canDeform()) return;
+    this.thump.v -= 2.2 * amount * this.feel().amp;
+    this.start();
+  }
+
+  /**
    * L'étirement (gestures.ts) : `amount` px vers le centre de l'écran (déjà
    * « élastique », négatif = on pousse), la souris en (x, y). La bosse suit la
    * souris le long du bord ; au-delà du bout de l'île, son sommet penche.
