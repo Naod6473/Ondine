@@ -17,6 +17,7 @@ import type { DropTarget, IslandModule, ModuleApi, ViewKind } from "./module-typ
 import type { NotificationQueue } from "./notifications";
 import { settingsStore } from "./settings-store";
 import { demoInvoke, demoOn } from "./demo";
+import { homeCardKey, homeCards } from "./home-cards";
 
 const MAX_FAILURES = 3;
 const log = logger("modules");
@@ -286,6 +287,26 @@ export class ModuleRegistry {
       refreshCompact: () => self.onCompactChange(),
       closeIsland: () => self.onCloseRequest(),
       openIsland: (tab?: string) => self.onOpenRequest(tab),
+      homeCard(spec) {
+        // Une fenêtre satellite (bulle d'Ondine) n'a pas d'Accueil.
+        if (self.opts.satellite) return { refresh: () => {}, remove: () => {} };
+        const remove = homeCards.add({
+          key: homeCardKey(id, spec.id),
+          moduleId: id,
+          spec,
+          expand: module.views?.expanded && spec.expandable !== false ? (el) => self.mountView(id, "expanded", el) : null,
+          guard(what, fn, fallback) {
+            try {
+              return fn();
+            } catch (err) {
+              self.fail(id, err, `carte d'accueil (${what})`);
+              return fallback;
+            }
+          },
+        });
+        own().push(remove);
+        return { refresh: () => homeCards.changed(), remove };
+      },
       log: logger(id),
     };
   }

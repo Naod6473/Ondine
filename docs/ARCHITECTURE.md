@@ -54,6 +54,7 @@ ondine/
 │  │  └─ renderers/            canvas-placeholder.ts, gum.ts, gum-anims.ts, gum-draw.ts, gum-shapes.ts, poses.ts, spritesheet.ts, overlays.ts
 │  ├─ modules/
 │  │  ├─ index.ts             LISTE DES MODULES (front)
+│  │  ├─ home/                Accueil : la première page de l'île ouverte, faite de cartes (1.2.3)
 │  │  ├─ shelf/               Étagère et dépôt de fichiers (phase 2)
 │  │  ├─ clipboard/           Presse-papiers et snippets (phase 4)
 │  │  ├─ capture/             Captures d'écran et OCR (phase 5)
@@ -575,6 +576,8 @@ Ce qui est vérifié, et où :
   `start(app)`, appelé une fois au démarrage pour lancer un travail de fond
   (un thread qui vérifie `modules::is_active` à chaque tour et rattrape ses
   propres paniques).
+- **Carte d'accueil** (facultatif, 1.2.3) : `api.homeCard({ title, icon, view })`
+  dans `setup` propose une carte à l'onglet Accueil (voir « Accueil »).
 - **Vue compacte** : l'île montre celle du premier module (ordre de
   `src/modules/index.ts`) qui en a une à montrer. Un module peut dire « pas
   maintenant » avec `views.compactWhen(api)`, et prévenir l'île que sa réponse a
@@ -2264,6 +2267,77 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
 - Menu de l'icône (`tray.rs`) : sous-menu « Profil » (case cochée devant
   l'actif), infobulle « Ondine · Travail ».
 
+## Accueil (`src/modules/home/`, `src/core/home-cards.ts`, `src/styles/home.css`)
+
+Le premier onglet de l'île ouverte (1.2.3) : une carte par module qui a
+quelque chose à dire, la phrase d'Ondine en haut, la carte « Reprendre », et
+4 actions rapides en bas. Module front seulement, sans permission.
+
+- **Les cartes viennent des modules.** L'Accueil ne connaît aucun module :
+  chacun propose sa carte dans son `setup` avec `api.homeCard(spec)`
+  (`HomeCardSpec`, `src/core/home-cards.ts`) :
+  `title`, `icon`, `size` (`small` ou `large`), `moments` (importance 0 à 100
+  le matin / en journée / le soir), `view(ctx)` qui renvoie ce que montre la
+  carte (`value` qui roule, `sub`, `progress`, `image`, `tint`, `rows`,
+  `actions`, `urgent`, `phrase`) ou **null quand le module n'a rien à dire**
+  (pas de musique = pas de carte), `load()` + `refreshMs` (une commande Rust,
+  appelée seulement pendant que l'Accueil est affiché), `expandable`, et
+  `resume()` (une ligne pour « Reprendre »). Le registre range la carte dans
+  `homeCards` avec son module : une erreur dans `view()` compte pour ce
+  module (isolation habituelle, 3 erreurs = module mis à l'écart), la carte
+  disparaît quand le module s'arrête ; une fenêtre satellite n'en a pas.
+- **Qui propose quoi** : Musique (large, teintée par la pochette via
+  `coverTint()`, ⏮ ⏯ ⏭), Agents IA (sessions, « vous attend » = urgente,
+  dernière session pour Reprendre), Minuteur (compte à rebours, Pomodoro,
+  chrono), Agenda (prochain rendez-vous ; le soir après 18 h, ceux de demain
+  comme le récap ; urgente 15 min avant, « Rejoindre »), Météo (si allumée),
+  Système (batterie, rien sur un PC fixe ; faible = urgente), Notes (tâches à
+  faire ; dernière note pour Reprendre), Étagère (fichiers posés ; le dernier
+  pour Reprendre, daté quand il arrive : rien après un redémarrage).
+- **Ordre** (`home-rules.ts`, `arrangeCards`) : automatique, la carte
+  urgente d'abord puis la plus importante à ce moment (matin 5 h-11 h,
+  journée 11 h-18 h, soir ; réglage `byMoment`). Glisser une carte enregistre
+  l'ordre (les cartes silencieuses gardent leur place relative) ; clic droit :
+  petite / grande taille, retirer, « Ranger selon le moment », « Remettre les
+  cartes retirées ». Tout ça est rangé **par profil** dans
+  `modules.home.values.layouts` (clé = id du profil actif, « base » sans
+  profil ; 12 au plus) : chaque profil a son accueil, sans toucher au Rust des
+  profils.
+- **La carte s'ouvre sur place** : un clic monte la vue `expanded` du module
+  dans la carte (`registry.mountView`), qui prend toute la place (les autres
+  cartes, la phrase et les actions se cachent) ; la racine de l'Accueil porte
+  `data-island-fit`, l'île grandit donc jusqu'au contenu (fit.ts). Un clic sur
+  l'en-tête ou Échap la referme. Animation FLIP en ressort, interrompue
+  proprement par un autre clic.
+- **La phrase d'Ondine** (`composePhrase`) : « Bonjour, Simon. » selon le
+  moment, puis au plus 3 morceaux `phrase` des cartes, dans leur ordre
+  (« 3 rendez-vous aujourd'hui, Claude a fini, 21° dehors. »). Rien d'IA ;
+  chaque morceau est un `<span>` traduit à part (motifs de `i18n-en.json`),
+  la majuscule du premier est faite en CSS.
+- **Actions rapides** : réglages `action1` … `action4` (catalogue
+  `QUICK_ACTIONS`), seulement si leur module est allumé : capture
+  (`capture.request`), pipette (`capture.pick`), minuteur 25 min
+  (`timer.start`), terminal (`terminal.open`), sinon l'onglet du module.
+- **Ondine montre la carte importante** : quand la première carte urgente
+  change, l'Accueil publie `mascot.look-at {x, y}` (centre de la carte, en px
+  de la fenêtre de l'île ; branché par l'agent scènes : les yeux en style
+  bouche, Ondine qui se pose à côté en classique). Pas en Calme, ni avec le
+  réglage `look` coupé.
+- **Design** : verre sombre en style classique ; en style bouche
+  (`island.style = "mouth"`, lu seulement), classe `.home-gum` : relief, reflet
+  et ombre aux couleurs de la goutte gomme. Les chiffres roulent grâce à
+  `watchContent` (motion.ts) : les cartes sont mises à jour sur place
+  (`setText`), jamais redessinées. Entrée en cascade en gelée (WAAPI,
+  `jellyIn`) ; avec « Réduire les animations », un simple fondu, rien ne
+  respire ni ne glisse.
+- **Place dans la rangée** : `ALL_MODULES` commence par `home` (premier onglet
+  d'une nouvelle installation ; l'assistant de premier lancement le met dans
+  `BASE_TABS`). Une île déjà rangée (`island.tabOrder` non vide sans `home`) :
+  `LEAD_TABS` de `tab-order.ts` le met en tête sans bousculer le reste ; une
+  fois glissé ailleurs, il est dans la liste et garde sa place. Réglage
+  `openOnHome` (oui par défaut) : l'île se rouvre sur l'Accueil (island.ts,
+  `onTransition`), sauf quand un onglet précis est demandé (`openIsland(tab)`).
+
 ## Météo (`src/modules/weather/`, `src-tauri/src/modules/weather.rs`)
 
 - Désactivée par défaut (réglage `on`), permission `network`. Rien ne part
@@ -2652,6 +2726,7 @@ Front (ms) :
 | Halo de l'île (pendant un halo seulement) | 60 im/s | 60 im/s | 30 im/s | `halo.ts` ; 30 im/s pour les halos lents ; arrêté sans halo ou île cachée |
 | Animations de l'île : heure de partir, bonjour, ciel | 30 000 | 30 000 | 60 000 | `halosClock` |
 | Animations de l'île : niveau du micro / de la musique | 66 | 80 | 160 | `halosLevel`, seulement micro utilisé ou musique (réglage) |
+| Accueil : cartes relues (seulement Accueil affiché) | 1 000 | 1 000 | 2 000 | `homeTick` ; les `load()` des cartes toutes les 5 à 30 s |
 
 En éco, en plus : les effets « Studio » (flou → net) sont remplacés par ceux de
 « Classique », et les cartes de verre des Contrôles perdent leur flou

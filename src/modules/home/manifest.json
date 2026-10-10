@@ -1,0 +1,37 @@
+{
+  "id": "home",
+  "name": "Accueil",
+  "tip": "Glissez une carte pour la ranger, cliquez pour l'ouvrir ; clic droit pour changer sa taille ou la retirer.",
+  "icon": "🏠",
+  "description": "La première page de l'île ouverte : une carte pour chaque module qui a quelque chose à dire (musique, agent en cours, minuteur, prochain rendez-vous, météo, batterie…), une phrase d'Ondine qui résume la journée, une carte « Reprendre » et quatre actions rapides. Les cartes se rangent en les glissant, s'ouvrent sur place d'un clic, et suivent le profil actif. Tout est calculé sur votre PC.",
+  "version": "0.1.0",
+  "permissions": [],
+  "settings": {
+    "version": 1,
+    "fields": [
+      { "key": "openOnHome", "essential": true, "type": "boolean", "label": "Ouvrir l'île sur l'Accueil", "help": "Sinon, l'île se rouvre sur le dernier onglet utilisé.", "default": true },
+      { "key": "phrase", "essential": true, "type": "boolean", "label": "Afficher la phrase d'Ondine", "help": "Une phrase qui résume les cartes (« 3 rendez-vous aujourd'hui, Claude a fini »), fabriquée sur votre PC, sans IA.", "default": true },
+      { "key": "byMoment", "type": "boolean", "label": "Ranger les cartes selon le moment de la journée", "help": "Le matin, l'agenda et la météo d'abord ; en journée, les agents et le minuteur ; le soir, les rendez-vous de demain. Une carte rangée à la main garde sa place.", "default": true },
+      { "key": "resume", "type": "boolean", "label": "Carte « Reprendre »", "help": "Le dernier fichier posé sur l'étagère, la dernière note et la dernière session d'agent.", "default": true },
+      { "key": "look", "type": "boolean", "label": "Ondine regarde la carte importante", "default": true },
+      { "key": "action1", "essential": true, "type": "select", "label": "Action rapide 1", "default": "capture", "options": [
+        { "value": "none", "label": "Aucune" }, { "value": "capture", "label": "Capture" }, { "value": "note", "label": "Notes" }, { "value": "timer25", "label": "Minuteur 25 min" }, { "value": "askclaude", "label": "Parler à Ondine" }, { "value": "launcher", "label": "Rechercher" }, { "value": "terminal", "label": "Terminal" }, { "value": "color", "label": "Pipette" }, { "value": "clipboard", "label": "Presse-papiers" }, { "value": "agents", "label": "Agents IA" }
+      ] },
+      { "key": "action2", "type": "select", "label": "Action rapide 2", "default": "note", "options": [
+        { "value": "none", "label": "Aucune" }, { "value": "capture", "label": "Capture" }, { "value": "note", "label": "Notes" }, { "value": "timer25", "label": "Minuteur 25 min" }, { "value": "askclaude", "label": "Parler à Ondine" }, { "value": "launcher", "label": "Rechercher" }, { "value": "terminal", "label": "Terminal" }, { "value": "color", "label": "Pipette" }, { "value": "clipboard", "label": "Presse-papiers" }, { "value": "agents", "label": "Agents IA" }
+      ] },
+      { "key": "action3", "type": "select", "label": "Action rapide 3", "default": "timer25", "options": [
+        { "value": "none", "label": "Aucune" }, { "value": "capture", "label": "Capture" }, { "value": "note", "label": "Notes" }, { "value": "timer25", "label": "Minuteur 25 min" }, { "value": "askclaude", "label": "Parler à Ondine" }, { "value": "launcher", "label": "Rechercher" }, { "value": "terminal", "label": "Terminal" }, { "value": "color", "label": "Pipette" }, { "value": "clipboard", "label": "Presse-papiers" }, { "value": "agents", "label": "Agents IA" }
+      ] },
+      { "key": "action4", "type": "select", "label": "Action rapide 4", "default": "askclaude", "options": [
+        { "value": "none", "label": "Aucune" }, { "value": "capture", "label": "Capture" }, { "value": "note", "label": "Notes" }, { "value": "timer25", "label": "Minuteur 25 min" }, { "value": "askclaude", "label": "Parler à Ondine" }, { "value": "launcher", "label": "Rechercher" }, { "value": "terminal", "label": "Terminal" }, { "value": "color", "label": "Pipette" }, { "value": "clipboard", "label": "Presse-papiers" }, { "value": "agents", "label": "Agents IA" }
+      ] }
+    ]
+  },
+  "views": ["expanded"],
+  "commands": [],
+  "events": {
+    "emits": ["timer.start", "capture.request", "capture.pick", "terminal.open", "mascot.look-at"],
+    "listens": []
+  }
+}

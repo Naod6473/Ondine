@@ -6,6 +6,7 @@
 // Voir docs/ARCHITECTURE.md, « Ajouter un module ».
 
 import type { BusHandler } from "./bus";
+import type { HomeCardHandle, HomeCardSpec } from "./home-cards";
 import type { Logger } from "./log";
 import type { NotificationRequest } from "./notifications";
 
@@ -129,6 +130,11 @@ export interface ModuleApi {
    * actif. Sans effet pendant une alerte ou un glisser-déposer.
    */
   openIsland(tab?: string): void;
+  /**
+   * Propose une carte à l'Accueil (src/core/home-cards.ts). Elle disparaît
+   * quand le module s'arrête. Sans effet hors de l'île (bulle d'Ondine).
+   */
+  homeCard(spec: HomeCardSpec): HomeCardHandle;
   log: Logger;
 }
 

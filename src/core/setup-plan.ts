@@ -33,12 +33,12 @@ export const SETUP_CARDS: readonly SetupCard[] = [
   { id: "study", icon: "🎓", label: "Études", desc: "Notes, Pomodoro, agenda", modules: ["notes", "timer", "agenda", "capture", "shelf"], profile: "Études" },
 ];
 
-/** Toujours là, en premier : Parler à Ondine. */
-export const BASE_TABS: readonly string[] = ["askclaude"];
+/** Toujours là, en premier : l'Accueil, puis Parler à Ondine. */
+export const BASE_TABS: readonly string[] = ["home", "askclaude"];
 /** Jamais allumés ni éteints par les cartes : Équipe (un port ouvert sur le réseau local, on l'allume soi-même). */
 export const NEVER_TOUCHED: readonly string[] = ["team"];
 /** Aucune carte cochée : une île vraiment minimale, qui s'enrichit ensuite. */
-export const MINIMAL_TABS: readonly string[] = ["askclaude", "shelf", "notes"];
+export const MINIMAL_TABS: readonly string[] = ["home", "askclaude", "shelf", "notes"];
 
 /** Les logiciels trouvés sur le PC (src-tauri/src/services/apps.rs) → la carte qu'ils pré-cochent. */
 export const APP_CARDS: Record<string, string> = {

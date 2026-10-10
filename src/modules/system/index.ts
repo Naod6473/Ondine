@@ -117,6 +117,27 @@ export const system: IslandModule = {
     const stopBattery = watchBattery(api);
     // Redémarrage en attente (reboot.ts) : le rappel doux.
     const stopReboot = watchReboot(api);
+    // L'Accueil : la batterie (rien sur un PC fixe), relue toutes les 30 s pendant qu'il est affiché.
+    let battery: Snapshot["battery"] = null;
+    api.homeCard({
+      title: "Batterie",
+      icon: "🔋",
+      moments: { morning: 30, day: 40, evening: 30 },
+      load: async () => {
+        battery = await api.invoke<Snapshot["battery"]>("battery").catch(() => null);
+      },
+      view: () => {
+        if (!battery || battery.percent === null) return null;
+        const low = !battery.plugged && battery.percent <= Number(api.settings().batteryLowPct ?? 20);
+        return {
+          value: `${battery.percent} %`,
+          sub: battery.charging ? "En charge" : battery.plugged ? "Branché" : "Sur batterie",
+          progress: battery.percent / 100,
+          urgent: low,
+          phrase: low ? `batterie à ${battery.percent} %` : null,
+        };
+      },
+    });
     return () => {
       stopBattery();
       stopReboot();
