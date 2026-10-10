@@ -1712,7 +1712,6 @@
 "Aucune cible de dépôt active": "No active drop target",
 "Un fichier pour Ondine : qu'en faire ?": "A file for Ondine: what should she do with it?",
 "Selon l'heure ou le Wi-Fi (la règle de chaque profil, dans son sous-menu). Un choix fait à la main tient jusqu'au prochain changement.": "By time or Wi-Fi (each profile's rule, in its sub-menu). A manual choice holds until the next change.",
-"Pour comparer les modes : la ligne « Ressources utilisées », dans le sous-menu À propos.": "To compare modes: the “Resources used” line, in the About sub-menu.",
 "Ondine et IA": "Ondine & AI",
 "Fichiers": "Files",
 "Organisation": "Organization",
@@ -2356,7 +2355,38 @@
 "Elle plonge aussi quand un téléchargement arrive, et met une bouée quand le minuteur déborde.": "She also dives when a download arrives, and puts on a rubber ring when the timer overflows.",
 "Minuteur qui se remplit": "Timer that fills up",
 "Ambiances dans l'île": "Moods inside the island",
-"Ondine qui flotte": "Ondine floating"
+"Ondine qui flotte": "Ondine floating",
+"Automatiser": "Automate",
+"Sécurité et système": "Security and system",
+"IA": "AI",
+"Le halo": "The halo",
+"Moments": "Moments",
+"Batterie": "Battery",
+"Le liquide": "The liquid",
+"Le PC": "The PC",
+"Ondine et les agents": "Ondine and agents",
+"Son et clavier": "Sound and keyboard",
+"Ma journée": "My day",
+"Animations et halos": "Animations and halos",
+"Comportement": "Behavior",
+"Votre prénom, la langue et le démarrage avec Windows.": "Your first name, the language and starting with Windows.",
+"La couleur de l'île, ses icônes, son élasticité et ses petits sons.": "The island's color, its icons, its elasticity and its little sounds.",
+"Où vit l'île, quand elle se replie, et comment Ondine vit avec vos fenêtres.": "Where the island lives, when it folds away, and how Ondine lives with your windows.",
+"Le halo autour de l'île, le liquide à l'intérieur, et les moments qui les allument.": "The halo around the island, the liquid inside, and the moments that light them up.",
+"Ondine regarde sur GitHub s'il existe une nouvelle version. Rien ne s'installe sans votre accord.": "Ondine checks GitHub for a new version. Nothing installs without your consent.",
+"La réactivité d'Ondine, l'économie d'énergie et le journal.": "Ondine's responsiveness, power saving and the log.",
+"La version, les nouveautés, les ressources utilisées et le mode démo.": "The version, what's new, the resources used and demo mode.",
+"Désactivé, Ondine ne réagit plus à vos fenêtres.": "Off, Ondine no longer reacts to your windows.",
+"Tout": "All",
+"Éteint d'un coup tous les halos et le liquide de l'île. Désactivé, le module Animations de l'île s'arrête.": "Turns off every halo and the island's liquid at once. Off, the Island animations module stops.",
+"Coupe ou rallume d'un coup tous les moments de ce sous-menu.": "Turns every moment of this sub-menu off or back on at once.",
+"Ils se règlent maintenant avec les autres animations de l'île.": "They are now set with the island's other animations.",
+"Ouvrir Animations et halos": "Open Animations and halos",
+"Régler les animations et halos": "Set animations and halos",
+"Halos": "Halos",
+"Liseré des minuteurs": "Timer outline",
+"Pour comparer les modes : la ligne « Ressources utilisées », dans la page À propos.": "To compare modes: the “Resources used” line, on the About page.",
+"Le module Système est désactivé : ces halos reviendront quand vous le rallumerez (Modules → Système).": "The System module is off: these halos will come back when you turn it back on (Modules → System)."
 },
 "patterns": [
 [
@@ -4186,6 +4216,10 @@
 [
 "^(.+) écrit…$",
 "$1 is typing…"
+],
+[
+"^Le module (.+) est désactivé : ces halos reviendront quand vous le rallumerez \\(Modules → (.+)\\)\\.$",
+"The $1 module is off: these halos will come back when you turn it back on (Modules → $2)."
 ]
 ]
 }

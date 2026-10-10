@@ -2,7 +2,7 @@
 // et les boucles de dessin de l'interface.
 //
 // Le mode qui s'applique (« effectif ») est décidé par le Rust
-// (src-tauri/src/services/perf.rs) : le choix de Réglages → Général →
+// (src-tauri/src/services/perf.rs) : le choix de Réglages → Performances
 // Performances, ou « éco » sur batterie si la case est cochée. Il arrive au
 // démarrage (Bridge.perfState) puis à chaque changement (événement "perf-mode") :
 // tout change à chaud, sans redémarrer.

@@ -273,7 +273,11 @@
 "Éteint (recommandé) : les conversations restent en mémoire et s'effacent quand vous quittez Ondine. Allumé : elles sont gardées 7 jours sur ce PC, chiffrées (clé dans le Gestionnaire d'identifiants de Windows) ; l'éteindre les efface du disque.": "Éteint (recommandé) : les conversations restent en mémoire et s'effacent quand tu quittes Ondine. Allumé : elles sont gardées 7 jours sur ce PC, chiffrées (clé dans le Gestionnaire d'identifiants de Windows) ; l'éteindre les efface du disque.",
 "glissez le fichier dans une conversation à deux": "glisse le fichier dans une conversation à deux",
 "Un liquide remplit l'île derrière son contenu (minuteurs, fichiers, batterie…), avec des bulles et des vagues ; il penche quand vous déplacez l'île. Le texte reste lisible. Figé si Windows réduit les animations, ou avec le réglage Calme de la mascotte.": "Un liquide remplit l'île derrière son contenu (minuteurs, fichiers, batterie…), avec des bulles et des vagues ; il penche quand tu déplaces l'île. Le texte reste lisible. Figé si Windows réduit les animations, ou avec le réglage Calme de la mascotte.",
-"Parler à Ondine : la surface vibre avec votre voix": "Parler à Ondine : la surface vibre avec ta voix"
+"Parler à Ondine : la surface vibre avec votre voix": "Parler à Ondine : la surface vibre avec ta voix",
+"Votre prénom, la langue et le démarrage avec Windows.": "Ton prénom, la langue et le démarrage avec Windows.",
+"Où vit l'île, quand elle se replie, et comment Ondine vit avec vos fenêtres.": "Où vit l'île, quand elle se replie, et comment Ondine vit avec tes fenêtres.",
+"Ondine regarde sur GitHub s'il existe une nouvelle version. Rien ne s'installe sans votre accord.": "Ondine regarde sur GitHub s'il existe une nouvelle version. Rien ne s'installe sans ton accord.",
+"Désactivé, Ondine ne réagit plus à vos fenêtres.": "Désactivé, Ondine ne réagit plus à tes fenêtres."
 },
 "patterns": [
 [
@@ -439,6 +443,10 @@
 [
 "^Bonjour (.+) ! Je suis Ondine\\. Posez-moi une question sur votre PC, collez une erreur, ou montrez-moi un fichier : je vous aide\\.$",
 "Bonjour $1 ! Je suis Ondine. Pose-moi une question sur ton PC, colle une erreur, ou montre-moi un fichier : je t'aide."
+],
+[
+"^Le module (.+) est désactivé : ces halos reviendront quand vous le rallumerez \\(Modules → (.+)\\)\\.$",
+"Le module $1 est désactivé : ces halos reviendront quand tu le rallumeras (Modules → $2)."
 ]
 ]
 }

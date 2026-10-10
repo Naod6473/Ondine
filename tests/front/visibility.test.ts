@@ -95,12 +95,14 @@ describe("pages de l'île", () => {
   });
 
   test("les pages de l'île attendues sont là, Sécurité et Règles restent entières", () => {
-    for (const id of ["general", "look", "tabs", "mascot", "profiles"]) assert.ok(Array.isArray(ISLAND_ESSENTIALS[id]), id);
-    for (const id of ["privacy", "credentials", "backup", "rules"]) assert.equal(pageEssentials(id), WHOLE_PAGE, id);
+    for (const id of ["general", "behavior", "look", "tabs", "mascot", "profiles", "perf"]) assert.ok(Array.isArray(ISLAND_ESSENTIALS[id]), id);
+    for (const id of ["privacy", "credentials", "backup", "rules", "updates", "about"]) assert.equal(pageEssentials(id), WHOLE_PAGE, id);
     // Une page inconnue reste entière plutôt que vide.
     assert.equal(pageEssentials("nouvelle-page"), WHOLE_PAGE);
     const general = ISLAND_ESSENTIALS.general as string[];
-    for (const k of ["Langue", "Lancer avec Windows", "Mises à jour automatiques", "S'adresser à moi"]) assert.ok(general.includes(k), k);
+    for (const k of ["Langue", "Lancer avec Windows", "S'adresser à moi"]) assert.ok(general.includes(k), k);
+    // « Bord de l'écran » a suivi le comportement de l'île (page Comportement).
+    assert.ok((ISLAND_ESSENTIALS.behavior as string[]).includes("Bord de l'écran"));
     for (const k of ["Afficher la mascotte", "Mascotte", "Couleur"]) assert.ok((ISLAND_ESSENTIALS.mascot as string[]).includes(k), k);
     assert.ok((ISLAND_ESSENTIALS.profiles as string[]).includes("Profil actif"));
   });

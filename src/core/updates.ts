@@ -2,7 +2,7 @@
 // nouvelle version (un peu après le démarrage, puis une fois par jour) et on la
 // propose dans une notification. Rien ne s'installe sans un clic sur « Installer ».
 //
-// Réglage : general.autoUpdate (Réglages → Général). Jamais en mode démo ni
+// Réglage : general.autoUpdate (Réglages → Mises à jour). Jamais en mode démo ni
 // dans un navigateur.
 
 import { Bridge, IS_TAURI } from "./bridge";

@@ -51,6 +51,6 @@ export function perfGroup(save: (change: (s: Settings) => void) => void): HTMLEl
       ),
       row("Mode utilisé", now),
     ],
-    "Pour comparer les modes : la ligne « Ressources utilisées », dans le sous-menu À propos.",
+    "Pour comparer les modes : la ligne « Ressources utilisées », dans la page À propos.",
   );
 }

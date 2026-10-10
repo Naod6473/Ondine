@@ -423,8 +423,7 @@ reste celle de l'écran (l'eau monte du bas de l'île). Branché par
   (`weather.updated`), processeur (`system.cpu-busy`), nuit (22 h – 6 h),
   notification (`notify.shown`, sauf les petits retours du clavier),
   concentration (`timer.focus`).
-- **Réglages** (module Animations de l'île, sous-menu « À l'intérieur de
-  l'île ») : `liquid` (oui), `liquidMatter` (`water`), `liquidColor`
+- **Réglages** (L'île → Animations et halos, sous-menu « Le liquide ») : `liquid` (oui), `liquidMatter` (`water`), `liquidColor`
   (`island` : l'accent du thème ; ou mascotte, couleurs nommées,
   `custom` + `liquidCustom`), `liquidOpacity` (50 %), `liquidTimerStyle`
   (`both` : avec le liseré, ou `replace` : `ringReplaced()` coupe le liseré
@@ -646,7 +645,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
   téléchargement, rien d'exécuté) et déroule les répétitions. Voir « Module
   Agenda ».
 - **Diagnostic** (`src-tauri/src/diagnostics.rs`) : « Signaler un problème »
-  (Réglages → Général → À propos) ouvre dans le navigateur une issue GitHub
+  (Réglages → Sécurité et système → À propos) ouvre dans le navigateur une issue GitHub
   préremplie (`bug.yml` : version, Windows, 40 dernières lignes du journal,
   chemins personnels masqués, adresse de 2000 caractères au plus) ; rien ne part
   sans la personne. Et la mémoire / le processeur d'Ondine et de ses processus
@@ -2248,7 +2247,7 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   mascotte tout de suite, et elle fait coucou. Les puces du CHANGELOG sont
   sous le carrousel. « Plus tard » ou × ferment ; les moteurs sont détruits.
   Classe CSS `custom` sur la carte (île 660 × 268).
-- Rouvrable : Réglages → Général → À propos → « Voir les nouveautés », et en
+- Rouvrable : Réglages → À propos → « Voir les nouveautés », et en
   mode démo la scène « Quoi de neuf » (Réglages → Captures d'écran). Le
   message `app.whats-new` peut porter `{ version }` (dans un navigateur :
   `window.ondineBus.inject("app.whats-new", { version: "1.2.0" })`).
@@ -2257,7 +2256,7 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   commande `release_page_open` (Rust, `update.rs`) : ouvre
   `https://github.com/Naod6473/Ondine/releases/tag/v<version de l'appli>` dans
   le navigateur ; la version vient du Rust, pas de la page. Réglages →
-  Général → À propos → « Voir les nouveautés » publie `app.whats-new`.
+  À propos → « Voir les nouveautés » publie `app.whats-new`.
 
 ## Astuces d'onglet (`src/island/tips.ts`, `src/island/tip-state.ts`)
 
@@ -2490,7 +2489,7 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
 
 ## Modes de performance (`src-tauri/src/services/perf.rs`, `src/core/perf.ts`)
 
-Réglages → Général → Performances : `general.perfMode` = `high` (Performance
+Réglages → Performances et journal : `general.perfMode` = `high` (Performance
 haute), `balanced` (Équilibrée, par défaut) ou `eco` (Économie d'énergie), et
 `general.ecoOnBattery` (« Économie d'énergie automatique sur batterie »,
 activé par défaut).
@@ -2578,7 +2577,7 @@ En éco, en plus : les effets « Studio » (flou → net) sont remplacés par ce
 - Règles : sans fichier en attente, le fil se réveille toutes les 2 s au lieu
   de 2 fois par seconde.
 
-Pour comparer : Réglages → Général → À propos → « Ressources utilisées ».
+Pour comparer : Réglages → À propos → « Ressources utilisées ».
 
 ## Ondine et les fenêtres (`src/modules/windowlife/`, `src-tauri/src/modules/windowlife.rs`, `src-tauri/src/platform/winlife.rs`)
 
@@ -2605,14 +2604,52 @@ fichier vers l'Explorateur).
 
 ## Fenêtre de réglages : catégories et sous-menus (`src/settings/main.ts`)
 
+- **Rangement 1.2.2** (`src/settings/layout.ts`, données pures testées dans
+  `tests/front/settings-layout.test.ts`) : cinq groupes dans la barre
+  (`NAV_GROUPS`) :
+  - **Ondine** : Général (prénom, langue, Vous / Tu, Lancer avec Windows,
+    Refaire l'assistant), Mascotte, Parler à Ondine (page du module
+    `askclaude`, id `module:askclaude` inchangé) ;
+  - **L'île** : Apparence, Comportement (sous-menus « Comportement de l'île »
+    et « Ondine et les fenêtres » : le module `windowlife`, son interrupteur
+    Activé et ses champs), Animations et halos (voir plus bas), Onglets ;
+  - **Automatiser** : Règles, Profils ;
+  - **Modules** : les catégories (`MODULE_CATEGORIES`) ; les modules rangés
+    ailleurs (`MODULES_ELSEWHERE` : rules, askclaude, halos, windowlife) n'y
+    sont plus ;
+  - **Sécurité et système** : Confidentialité, Identifiants, Sauvegarde, Mises
+    à jour, Performances et journal, À propos (avec le mode démo).
+
+  Seules les pages bougent : chaque réglage garde sa clé dans son module
+  (`modules.<id>.values.<clé>`) ou dans `general` / `island`. Une page peut
+  afficher les champs de plusieurs modules (`fieldRows(man, champs)`
+  enregistre dans le bon module). Une page qui suit un module (`Page.module`,
+  ou `Sub.module` pour une section) porte le point « désactivé » dans la barre.
+- **Animations et halos** (id `animations`) : `ANIMATION_SUBS` range les champs
+  du module Animations de l'île et les halos de batterie du module Système
+  (`MOVED_FIELDS.system` : la page Système ne les montre plus et met un lien
+  à leur place) en Style, Le PC, Ondine et les agents, Son et clavier, Ma
+  journée, Le liquide. Chaque sous-menu commence par **« Tout »** (clé
+  `tout:<sous-menu>`) : allumé si au moins un moment l'est ; le couper met les
+  oui/non à faux et un choix qui a « Jamais » (`chargeHalo`) à `never` ; le
+  rallumer remet tout (un choix éteint reprend son défaut). Dans Style,
+  « Tout » est l'interrupteur du module. Un champ de `halos` non rangé (ajouté
+  plus tard) tombe dans Style ; le test l'interdit.
+- **Anciennes places** : `resolvePlace(page, sous-menu)` mène une page d'avant
+  1.2.2 à sa nouvelle place (`module:halos` → `animations`,
+  `module:windowlife` → `behavior`/`windows`, `general` + `updates` / `perf`
+  / `about` / `island` → leur page…). Servent la page retenue dans
+  `localStorage` et tout lien profond `go(page, clé, sous-menu)`. La
+  recherche connaît les anciens noms (`FORMER_NAMES` : « Animations de
+  l'île », « Ondine et les fenêtres », « Halos de batterie »…).
 - La barre latérale range les pages de modules en **catégories** repliables
-  (`MODULE_CATEGORIES` : Ondine et IA, Fichiers, Organisation, Outils IT, Le PC
+  (`MODULE_CATEGORIES` : IA, Fichiers, Organisation, Outils IT, Le PC
   au quotidien ; un module inconnu va dans « Autres modules »). Titres en texte
   seul ; dans une catégorie, l'ordre des onglets. Les catégories ouvertes sont
   retenues (`localStorage` « settings.cats ») ; celle de la page affichée
   s'ouvre toute seule.
-- Une page longue a des **sous-menus** (`Page.subs`) : Général, Onglets,
-  Mascotte, Profils (un par profil), et pour les modules `MODULE_SECTIONS`
+- Une page longue a des **sous-menus** (`Page.subs`) : Comportement, Animations
+  et halos, Onglets, Mascotte, Profils (un par profil), et pour les modules `MODULE_SECTIONS`
   (Agents IA, Parler à Ondine, par clé de champ du manifeste ; un champ non
   listé va dans le premier sous-menu). Ils se déplient sous la page dans la
   barre (pli `grid-template-rows`), la page n'affiche que celui choisi, retenu
@@ -2620,8 +2657,9 @@ fichier vers l'Explorateur).
 - Le rendu dessine **toute** la page et marque chaque bloc du haut avec
   `data-sub` (`inSub`, controls.ts) ; `showPage` retire les autres blocs avant
   `applyMode`, ce qui fait que « N réglages de plus » compte le sous-menu
-  affiché. Un sous-menu dont rien ne resterait en Simple est grisé dans la
-  barre (`dimSubs`). Un résultat de recherche ou un lien profond vers une ligne
+  affiché. Un sous-menu dont rien ne resterait en Simple est caché dans la
+  barre (`dimSubs`, classe `dim`) et n'est jamais affiché vide : la page ouvre
+  le premier sous-menu qui a quelque chose (il revient en Complet). Un résultat de recherche ou un lien profond vers une ligne
   d'un autre sous-menu y bascule d'abord (`showPage(…, focusKey)`).
 - `SEARCH_ALIASES` : des mots de recherche qui ne sont pas un libellé
   (Tutoiement → « S'adresser à moi »…) mènent à la bonne ligne.
@@ -2649,12 +2687,16 @@ fichier vers l'Explorateur).
   pouvait pas toucher : Bilan de la semaine) ; l'en-tête de la page (Activé,
   Permissions, À propos) reste. Pour les pages de l'île, `ISLAND_ESSENTIALS`
   (clé = le `data-key` de la ligne, c'est-à-dire son libellé) : Général (Langue,
-  S'adresser à moi, Prénom, Premiers pas, Lancer avec Windows, Bord de l'écran, Mises à jour
-  automatiques), Apparence (Thème, Style des icônes), Onglets (la liste des
-  modules, marquée `data-essential` dans le DOM), Mascotte (Afficher la
-  mascotte, Mascotte, Couleur, Ondine vit sur le bureau), Profils (Profil actif). Règles et les trois
-  pages Sécurité restent entières (`WHOLE_PAGE`) : courtes, ou pas une liste
-  de réglages.
+  S'adresser à moi, Lancer avec Windows), Comportement (Bord de l'écran,
+  Toujours en mini, Raccourci ; plus Activé et l'essentiel du manifeste de
+  windowlife), Apparence (Thème, Style des icônes, Élasticité), Animations et
+  halos (les trois réglages du halo et chaque « Tout » : aucun sous-menu vide),
+  Performances et journal (Performances, Économie d'énergie, Mode utilisé),
+  Onglets (la liste des modules, marquée `data-essential` dans le DOM), Mascotte
+  (Afficher la mascotte, Mascotte, Couleur, Ondine vit sur le bureau, et une
+  ligne par sous-menu), Profils (Profil actif). Règles, Confidentialité,
+  Identifiants, Sauvegarde, Mises à jour et À propos restent entières
+  (`WHOLE_PAGE`) : courtes, ou pas une liste de réglages.
 - `mode.ts` (`applyMode`) travaille sur la page déjà dessinée : `.row[data-key]`
   et `section.group[data-key]` ; un conteneur `data-essential` garde tout ce
   qu'il contient ; `data-follows="<clé>"` suit la ligne de cette clé. La recherche trouve tout : un résultat caché en Simple porte

@@ -411,12 +411,20 @@ body {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
-/* Mode Simple : rien à y montrer (« Tout afficher » une fois dedans). */
+/* Mode Simple : rien à y montrer, le sous-menu attend le mode Complet. */
 .nav-sub.dim {
-  opacity: 0.5;
+  display: none;
 }
 .nav-fold-inner > .nav-sub:last-child {
   margin-bottom: 4px;
+}
+/* Une section de module éteint (Comportement → Ondine et les fenêtres). */
+.nav-sub.off .nav-label {
+  opacity: 0.6;
+}
+/* Les champs d'un autre module éteint (Animations et halos → Batterie, avec Système). */
+.group.module-off .group-body {
+  opacity: 0.55;
 }
 
 /* Le sous-menu affiché, à côté du titre de la page. */
