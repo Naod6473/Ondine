@@ -268,6 +268,15 @@ qu'une fois les ressorts posés (au plus tard après 1,5 s).
   donc la pastille s'étire puis se rétracte (effet « verre liquide »).
   L'ancien contenu s'efface d'un côté pendant que le nouveau arrive de l'autre,
   dans la même case de grille (`.view-stage`).
+- **Barres de défilement** (`src/island/scrollbars.ts`, island.css) : pas de
+  barre Windows à flèches dans l'île ni dans la bulle d'Ondine, mais une fine
+  pastille grise translucide (`::-webkit-scrollbar`, 8 px de place toujours
+  réservée : le contenu ne bouge pas). Elle n'apparaît qu'au survol d'une zone
+  qui défile ou pendant le défilement, puis s'efface : une animation Web de la
+  variable `--sb-a` (déclarée par `@property`, lue par la pastille), pas une
+  transition CSS qui écraserait celles des zones. Ne pas mettre
+  `scrollbar-width` / `scrollbar-color` dans ces pages : Chromium ignorerait
+  alors ces règles.
 - **Réduire les animations** (réglage d'accessibilité de Windows) : tout
   devient instantané (`reducedMotion()`, `prefers-reduced-motion`).
 
@@ -782,10 +791,25 @@ Une quatrième fenêtre, « pet », créée cachée au démarrage comme les autr
 tâches, au-dessus des fenêtres ou derrière (`mascot.petOnTop`). Elle est
 montrée quand `mascot.enabled && mascot.pet` (`pet::apply`, au démarrage et
 dans `apply_settings`). Deux tailles : la case de la mascotte (112 × 112) ou,
-bulle ouverte, la case dans un coin et la bulle (420 × 480) du côté où l'écran
-a de la place (`choose_layout`) ; la mascotte ne bouge pas à l'écran, seule la
-fenêtre s'agrandit autour d'elle. Le Rust annonce le côté par l'événement
-`pet-layout` avant de changer la fenêtre.
+bulle ouverte, la case dans un coin et la bulle du côté où l'écran a de la
+place (`choose_layout`, d'après la zone de travail) ; la mascotte ne bouge pas
+à l'écran, seule la fenêtre s'agrandit autour d'elle. Le Rust annonce le côté
+par l'événement `pet-layout` avant de changer la fenêtre, avec `maxW`/`maxH` :
+la plus grande bulle qui tient de ce côté.
+
+- **Taille de la bulle** (1.2.2) : comme l'île qui suit son contenu (`fit.ts`),
+  la bulle prend la taille de son contenu, en largeur et en hauteur, entre
+  360 × 120 et 640 × 560 (`src/pet/bubble-size.ts`, mêmes bornes dans
+  `pet.rs`, un test le vérifie). `src/pet/main.ts` la mesure (largeur
+  « max-content », puis hauteur pour cette largeur, sans rien dessiner entre
+  les deux), suit le contenu (MutationObserver) et l'anime avec la glisse de
+  l'île (`GLIDE` de jelly.ts, ressort amorti sans rebond ; d'un coup avec
+  « Réduire les animations » ou « Calme »). La fenêtre suit par `pet_bubble` :
+  elle grandit AVANT la glisse (rien n'est coupé en route) et ne se resserre
+  qu'une fois la bulle posée ; place et taille changent d'un seul appel
+  (`platform::set_bounds`, SetWindowPos), pour qu'une bulle qui grandit vers
+  la gauche ou le haut ne fasse pas sauter la mascotte. Les onglets de la
+  bulle sont des icônes seules (nom en infobulle et `aria-label`).
 
 - **Déplacer** : un appui suivi d'un mouvement sur la mascotte appelle
   `pet_drag_start` ; un thread fait suivre la souris à la fenêtre (bulle
