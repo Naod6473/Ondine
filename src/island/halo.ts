@@ -209,6 +209,34 @@ export function halosEnabled(): boolean {
 }
 
 /**
+ * Les halos sont permis ET la catégorie `key` (un réglage booléen du module
+ * « Animations de l'île », ex. "think", "update") n'est pas coupée.
+ */
+export function haloAllowed(key: string): boolean {
+  return halosEnabled() && settingsStore.current.modules?.halos?.values?.[key] !== false;
+}
+
+/** L'id du halo « Ondine réfléchit » (trois gouttes qui se courent après). */
+export const THINK_HALO = "ondine-think";
+
+/**
+ * « Ondine réfléchit » : trois gouttes de couleur qui se courent après autour
+ * de l'île, tant que Parler à Ondine attend sa réponse (écrite ou à voix
+ * haute). `ondineThinking(true)` au départ, `ondineThinking(false)` à la
+ * réponse ou à l'erreur. Coupé par le réglage « Ondine réfléchit ».
+ * Aussi par le bus : `island.halo` {action: "think", on}.
+ */
+export function ondineThinking(on: boolean): void {
+  if (on && haloAllowed("think")) showHalo({ id: THINK_HALO, palette: "think", shape: "drops", rhythm: 2200 });
+  else hideHalo(THINK_HALO);
+}
+
+/** Les couleurs de la mascotte, pour un halo qui « répond » à la mascotte. */
+export function mascotPalette(): string[] {
+  return mascotColors();
+}
+
+/**
  * Branche le halo sur l'île (appelé une fois par island.ts). `state` : l'état
  * de l'île (rien n'est dessiné quand elle est cachée : la fenêtre n'est plus
  * qu'une bande de 6 px).
@@ -222,6 +250,8 @@ export function attachHalo(root: HTMLElement, shell: HTMLElement, bus: Bus, stat
     const id = typeof p.id === "string" ? p.id : "";
     if (p.action === "hide") {
       if (id) l.hide(id);
+    } else if (p.action === "think") {
+      ondineThinking((p as { on?: boolean }).on !== false);
     } else if (p.action === "level") {
       if (id) l.update(id, { level: p.level, fill: p.fill });
     } else showHalo({ ...p, id: id || undefined });
@@ -231,6 +261,14 @@ export function attachHalo(root: HTMLElement, shell: HTMLElement, bus: Bus, stat
 }
 
 // ── Petits calculs ───────────────────────────────────────────────────────────
+
+/** La couleur à `f` (0 à 1) le long de la palette, en mélangeant les voisines. */
+function colorAt(colors: string[], f: number): string {
+  if (colors.length < 2) return colors[0] ?? "#ffffff";
+  const x = clamp01(f) * (colors.length - 1);
+  const i = Math.min(colors.length - 2, Math.floor(x));
+  return mix(colors[i], colors[i + 1], x - i);
+}
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const easeOut = (t: number) => 1 - (1 - clamp01(t)) ** 3;
@@ -325,21 +363,22 @@ class HaloLayer {
       from: o.from === "right" || o.from === "center" ? o.from : "left",
       level: clamp01(Number(o.level) || 0),
       levelS: { x: 0, v: 0 },
-      start: now,
+      // Même forme qu'avant (le volume qu'on monte, touche après touche) : elle continue.
+      start: old && old.shape === shape ? old.start : now,
       // Une demande qui remplace la même garde sa lumière (pas de trou noir entre les deux).
       env: old ? old.env : { x: 0, v: 0 },
       ending: false,
       timer: 0,
-      particles: [],
-      rings: [],
-      lastRing: -Infinity,
-      ringsSpawned: 0,
+      particles: old && old.shape === shape ? old.particles : [],
+      rings: old && old.shape === shape ? old.rings : [],
+      lastRing: old && old.shape === shape ? old.lastRing : -Infinity,
+      ringsSpawned: old && old.shape === shape ? old.ringsSpawned : 0,
       pokes: [],
       seed: Math.random() * 1000,
       lastFlash: now,
     };
     if (h.durationMs > 0) h.timer = window.setTimeout(() => this.hide(id), h.durationMs);
-    if (shape === "burst") this.spark(h, 34);
+    if (shape === "burst" && !(old && old.shape === shape)) this.spark(h, 34);
     this.stack.add(h);
     this.wake();
   }
@@ -434,7 +473,8 @@ class HaloLayer {
       this.last = 0;
       return; // repartira à la prochaine demande, au retour de l'île, au redimensionnement
     }
-    const slow = drawn.every((h) => h.shape === "aurora" || h.shape === "cocoon" || (h.shape === "breathe" && rhythmMs(h.rhythm) >= 3000));
+    // Les halos lents, et ceux qui suivent un niveau (une visio d'une heure), à 30 images/s.
+    const slow = drawn.every((h) => h.shape === "aurora" || h.shape === "cocoon" || h.shape === "level" || (h.shape === "breathe" && rhythmMs(h.rhythm) >= 3000));
     const fps = perfMode() === "eco" ? ECO_FPS : slow && drawn.every((h) => Math.abs(h.env.v) < 0.05) ? SLOW_FPS : 60;
     if (fps >= 60) this.raf = requestAnimationFrame((t) => this.frame(t));
     else
@@ -720,8 +760,7 @@ class HaloLayer {
       const a = pts[(head - i + n) % n];
       const b = pts[(head - i + 1 + n) % n];
       const f = 1 - i / len; // 0 au bout de la traînée, 1 à la tête
-      const color = colors.length > 1 ? mix(colors[0], colors[1], f) : colors[0];
-      ctx.strokeStyle = color;
+      ctx.strokeStyle = colorAt(colors, f);
       ctx.globalAlpha = alpha * f * f * 0.35;
       ctx.lineWidth = glow * (0.6 + f * 1.2);
       ctx.beginPath();
@@ -737,7 +776,7 @@ class HaloLayer {
     const r = glow * 1.1;
     const rad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
     rad.addColorStop(0, rgba("#ffffff", alpha));
-    rad.addColorStop(0.35, rgba(colors[colors.length > 1 ? 1 : 0], alpha * 0.8));
+    rad.addColorStop(0.35, rgba(colors[colors.length - 1], alpha * 0.8));
     rad.addColorStop(1, rgba(colors[0], 0));
     ctx.globalAlpha = 1;
     ctx.fillStyle = rad;
@@ -767,7 +806,7 @@ class HaloLayer {
       const a = pts[(head + i) % n];
       const b = pts[(head + i - 1) % n];
       const f = 1 - i / len;
-      ctx.strokeStyle = colors.length > 1 ? mix(colors[0], colors[1], f) : colors[0];
+      ctx.strokeStyle = colorAt(colors, f);
       ctx.globalAlpha = alpha * f * f * 0.35;
       ctx.lineWidth = glow * (0.6 + f * 1.2);
       ctx.beginPath();

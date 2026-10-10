@@ -19,6 +19,7 @@ import { Bridge } from "../../core/bridge";
 import { errorText } from "../../core/log";
 import type { DropTarget, IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
+import { ondineThinking } from "../../island/halo";
 
 interface Preview {
   id: number;
@@ -179,6 +180,8 @@ async function send(api: ModuleApi) {
   state.draft = "";
   redraw();
   api.emit("mascot.emote", { emotion: "thinking" });
+  // Trois gouttes qui se courent après autour de l'île tant qu'Ondine réfléchit (island/halo.ts).
+  ondineThinking(true);
   try {
     const a = await api.invoke<Answer>("send", { message, attachment: attachment?.id });
     state.attachment = null;
@@ -190,6 +193,7 @@ async function send(api: ModuleApi) {
     state.error = errorText(err);
     api.emit("mascot.emote", { emotion: "sad" });
   } finally {
+    ondineThinking(false);
     state.busy = false;
     redraw();
   }
@@ -203,6 +207,7 @@ async function confirm(api: ModuleApi, ok: boolean) {
   state.error = "";
   redraw();
   api.emit("mascot.emote", { emotion: "thinking" });
+  ondineThinking(true);
   try {
     receive(api, await api.invoke<Answer>("confirm", { id: p.ask.id, ok }));
   } catch (err) {
@@ -211,6 +216,7 @@ async function confirm(api: ModuleApi, ok: boolean) {
     state.error = errorText(err);
     api.emit("mascot.emote", { emotion: "sad" });
   } finally {
+    ondineThinking(false);
     state.busy = false;
     redraw();
   }

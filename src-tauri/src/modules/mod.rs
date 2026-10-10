@@ -61,6 +61,8 @@ mod agents_tools;
 mod agents_mcp_extra;
 // Les rappels d'attente.
 mod agents_wait;
+// Animations de l'île : sortie de veille, Verr Maj, copier / coller, volume, Wi-Fi, niveaux sonores.
+mod halos;
 
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -234,6 +236,7 @@ impl Registry {
             Box::new(askclaude::AskClaude::default()),
             Box::new(weather::WeatherModule::default()),
             Box::new(weekly::Weekly::default()),
+            Box::new(halos::Halos),
         ];
 
         let mut entries = Vec::new();
@@ -452,6 +455,12 @@ mod tests {
     fn rules_manifest_is_valid() {
         let m = check_manifest(rules::Rules::default().manifest_json()).unwrap();
         assert_eq!(m.id, "rules");
+    }
+
+    #[test]
+    fn halos_manifest_is_valid() {
+        let m = check_manifest(halos::Halos.manifest_json()).unwrap();
+        assert_eq!(m.id, "halos");
     }
 
     #[test]

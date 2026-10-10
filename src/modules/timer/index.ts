@@ -171,7 +171,8 @@ function syncFocus(api: ModuleApi, force?: boolean) {
   const wanted = force ?? (Boolean(api.settings().focusQuiet) && running(pomodoro.clock) && pomodoro.phase === "work");
   if (wanted === focusOn) return;
   focusOn = wanted;
-  api.emit("timer.focus", { on: wanted });
+  // endsAt, total : pour la jauge du halo de l'île (module « Animations de l'île »).
+  api.emit("timer.focus", { on: wanted, endsAt: pomodoro.clock.endsAt, total: pomodoro.clock.total });
 }
 
 // ── Séances de travail, pour le bilan de la semaine ─────────────────────────

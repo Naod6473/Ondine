@@ -1,0 +1,276 @@
+{
+  "id": "halos",
+  "name": "Animations de l'île",
+  "icon": "🌈",
+  "description": "Un halo de lumière autour de l'île, en dégradés qui bougent : vert quand le chargeur est branché, orange quand un agent attend, un lever de soleil à la sortie de veille, une goutte qui tombe quand un téléchargement finit, trois gouttes qui se courent après quand Ondine réfléchit… Désactivez ce module pour éteindre tous les halos. Si Windows réduit les animations, ou avec le réglage Calme de la mascotte, le halo reste fixe.",
+  "version": "0.1.0",
+  "permissions": [
+    "clipboard"
+  ],
+  "settings": {
+    "version": 1,
+    "fields": [
+      {
+        "key": "intensity",
+        "essential": true,
+        "type": "select",
+        "label": "Intensité du halo",
+        "default": "vivid",
+        "options": [
+          {
+            "value": "subtle",
+            "label": "Discret"
+          },
+          {
+            "value": "normal",
+            "label": "Normal"
+          },
+          {
+            "value": "vivid",
+            "label": "Vif"
+          }
+        ]
+      },
+      {
+        "key": "colors",
+        "essential": true,
+        "type": "select",
+        "label": "Couleurs du halo",
+        "help": "Selon l'état : chaque moment a ses couleurs (vert en charge, orange quand un agent attend…).",
+        "default": "state",
+        "options": [
+          {
+            "value": "state",
+            "label": "Selon l'état"
+          },
+          {
+            "value": "rainbow",
+            "label": "Arc-en-ciel"
+          },
+          {
+            "value": "mascot",
+            "label": "Couleur de ma mascotte"
+          }
+        ]
+      },
+      {
+        "key": "wake",
+        "type": "boolean",
+        "label": "Sortie de veille (lever de soleil)",
+        "default": true
+      },
+      {
+        "key": "usb",
+        "type": "boolean",
+        "label": "Clé USB branchée ou éjectée",
+        "default": true
+      },
+      {
+        "key": "download",
+        "type": "boolean",
+        "label": "Téléchargement terminé (une goutte dans l'eau)",
+        "default": true,
+        "help": "Avec l'Étagère : quand un fichier arrive dans Téléchargements."
+      },
+      {
+        "key": "disk",
+        "type": "boolean",
+        "label": "Disque presque plein (réservoir qui déborde)",
+        "default": true
+      },
+      {
+        "key": "wifi",
+        "type": "boolean",
+        "label": "Wi-Fi faible (le halo grésille)",
+        "default": true,
+        "help": "Depuis Windows 11 24H2, Windows ne donne la force du signal qu'aux applis autorisées à utiliser la localisation."
+      },
+      {
+        "key": "weather",
+        "type": "boolean",
+        "label": "Pluie et orage (avec le module Météo)",
+        "default": true
+      },
+      {
+        "key": "network",
+        "type": "boolean",
+        "label": "Internet coupé, puis revenu",
+        "default": true
+      },
+      {
+        "key": "capture",
+        "type": "boolean",
+        "label": "Capture d'écran (un flash blanc)",
+        "default": true
+      },
+      {
+        "key": "shelfDrop",
+        "type": "boolean",
+        "label": "Fichier posé sur l'île",
+        "default": true
+      },
+      {
+        "key": "cpu",
+        "type": "boolean",
+        "label": "Processeur à fond (une teinte chaude)",
+        "default": true
+      },
+      {
+        "key": "update",
+        "type": "boolean",
+        "label": "Mise à jour disponible (un arc-en-ciel)",
+        "default": true
+      },
+      {
+        "key": "think",
+        "type": "boolean",
+        "label": "Ondine réfléchit (trois gouttes)",
+        "default": true
+      },
+      {
+        "key": "agents",
+        "type": "boolean",
+        "label": "Agents IA : au travail, en attente, fini",
+        "default": true
+      },
+      {
+        "key": "voice",
+        "type": "boolean",
+        "label": "Visio : le halo suit votre voix",
+        "default": true,
+        "help": "Seulement quand une appli utilise le micro. Ondine lit le niveau sonore, comme la barre des Paramètres de son : rien n'est écouté ni enregistré."
+      },
+      {
+        "key": "focus",
+        "type": "boolean",
+        "label": "Concentration : cocon, jauge, puis fleur",
+        "default": true
+      },
+      {
+        "key": "meeting",
+        "type": "boolean",
+        "label": "Rendez-vous qui approche",
+        "default": true
+      },
+      {
+        "key": "streak",
+        "type": "boolean",
+        "label": "Série du jour réussie",
+        "default": true
+      },
+      {
+        "key": "dance",
+        "type": "boolean",
+        "label": "Le halo danse avec la mascotte",
+        "default": true
+      },
+      {
+        "key": "capsLock",
+        "type": "boolean",
+        "label": "Verr Maj",
+        "default": true
+      },
+      {
+        "key": "numLock",
+        "type": "boolean",
+        "label": "Verr Num",
+        "default": true
+      },
+      {
+        "key": "clipboard",
+        "type": "boolean",
+        "label": "Copié, Coupé, Collé",
+        "default": true,
+        "help": "Ondine regarde seulement Ctrl+C, Ctrl+X et Ctrl+V, rien d'autre."
+      },
+      {
+        "key": "clipText",
+        "type": "boolean",
+        "label": "Montrer le début du texte copié",
+        "default": true,
+        "help": "Jamais pour un contenu marqué sensible (gestionnaire de mots de passe). Rien n'est gardé."
+      },
+      {
+        "key": "volumeKeys",
+        "type": "boolean",
+        "label": "Touches de volume du clavier",
+        "default": true
+      },
+      {
+        "key": "leaveTime",
+        "essential": true,
+        "type": "string",
+        "label": "Heure de partir",
+        "help": "Du lundi au vendredi, à cette heure (ex. 18:00) : un coucher de soleil, et Ondine met son écharpe. Vide = jamais.",
+        "default": "",
+        "maxLength": 5
+      },
+      {
+        "key": "morning",
+        "type": "boolean",
+        "label": "Bonjour du matin",
+        "default": true,
+        "help": "À la première activité de la journée (avant midi) : un éclat doux, avec la météo si le module Météo est activé."
+      },
+      {
+        "key": "sky",
+        "type": "boolean",
+        "label": "Couleurs du ciel au repos",
+        "default": false,
+        "help": "Une aurore très lente aux couleurs de l'heure (aube rose, journée bleue, coucher orange, nuit violette)."
+      },
+      {
+        "key": "music",
+        "type": "boolean",
+        "label": "Le halo suit la musique",
+        "default": false,
+        "help": "Pendant la lecture, le halo pulse avec le son qui sort des haut-parleurs (seulement son niveau)."
+      }
+    ]
+  },
+  "views": [],
+  "commands": [
+    "levels"
+  ],
+  "events": {
+    "emits": [
+      "halos.wake",
+      "halos.lock-key",
+      "halos.clip",
+      "halos.volume",
+      "halos.wifi",
+      "mascot.emote",
+      "island.halo"
+    ],
+    "listens": [
+      "halos.wake",
+      "halos.lock-key",
+      "halos.clip",
+      "halos.volume",
+      "halos.wifi",
+      "system.disk-low",
+      "system.cpu-busy",
+      "controls.usb-added",
+      "controls.usb-ejected",
+      "controls.media-use",
+      "shelf.downloaded",
+      "weather.updated",
+      "nettools.internet",
+      "capture.done",
+      "island.files-dropped",
+      "island.state",
+      "agents.event",
+      "agents.ask",
+      "agents.ask.closed",
+      "claude.thinking",
+      "claude.done",
+      "timer.focus",
+      "timer.work-session",
+      "agenda.reminder",
+      "agenda.join",
+      "agents.github-streak",
+      "mascot.dance",
+      "media.changed"
+    ]
+  }
+}
