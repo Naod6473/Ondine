@@ -262,8 +262,6 @@
 "Vous ne l'avez pas ouvert depuis 3 semaines. Vous pourrez le rallumer dans Réglages → Onglets.": "Tu ne l'as pas ouvert depuis 3 semaines. Tu pourras le rallumer dans Réglages → Onglets.",
 "Votre prénom, ce que vous faites sur ce PC (les onglets), la mascotte, la place de l'île et la clé de Parler à Ondine.": "Ton prénom, ce que tu fais sur ce PC (les onglets), la mascotte, la place de l'île et la clé de Parler à Ondine.",
 "Aucune carte : une île minimale de 4 onglets, qui s'enrichira avec vos réponses.": "Aucune carte : une île minimale de 4 onglets, qui s'enrichira avec tes réponses.",
-"Les Ondine d'un même réseau local se parlent directement, sans serveur, sans Internet et sans compte : présence, coucou, « Tu es dispo ? », fichiers et textes (toujours à accepter), chat (conversations à deux et salon « Toute l'équipe »), café collectif, sondage, Pomodoro d'équipe, aide à l'IT, et entre vos propres PC le presse-papiers partagé. On n'échange qu'avec un collègue ajouté par un code à 6 chiffres ; tout est chiffré de bout en bout avec les clés de l'appairage (gardées dans le Gestionnaire d'identifiants de Windows). Rien de ce qui arrive n'est exécuté. Ports : 47820 (UDP, découverte) et 47821 (TCP). Le pare-feu de Windows peut demander l'autorisation la première fois.": "Les Ondine d'un même réseau local se parlent directement, sans serveur, sans Internet et sans compte : présence, coucou, « Tu es dispo ? », fichiers et textes (toujours à accepter), chat (conversations à deux et salon « Toute l'équipe »), café collectif, sondage, Pomodoro d'équipe, aide à l'IT, et entre tes propres PC le presse-papiers partagé. On n'échange qu'avec un collègue ajouté par un code à 6 chiffres ; tout est chiffré de bout en bout avec les clés de l'appairage (gardées dans le Gestionnaire d'identifiants de Windows). Rien de ce qui arrive n'est exécuté. Ports : 47820 (UDP, découverte) et 47821 (TCP). Le pare-feu de Windows peut demander l'autorisation la première fois.",
-"Aucune carte : une île minimale de 3 onglets, qui s'enrichira avec vos réponses.": "Aucune carte : une île minimale de 3 onglets, qui s'enrichira avec tes réponses.",
 "Les Ondine d'un même réseau local se parlent directement, sans serveur, sans Internet et sans compte : présence, coucou, « Tu es dispo ? », fichiers et textes (toujours à accepter), chat (conversations à deux et salon « Toute l'équipe »), café collectif, sondage, Pomodoro d'équipe, aide à l'IT, et entre vos propres PC le presse-papiers partagé. On n'échange qu'avec un collègue ajouté par un code à 6 chiffres (ou son QR code) ; tout est chiffré de bout en bout avec les clés de l'appairage (gardées dans le Gestionnaire d'identifiants de Windows). Rien de ce qui arrive n'est exécuté. Ports : 47820 (UDP, découverte) et 47821 (TCP). Le pare-feu de Windows peut demander l'autorisation la première fois.": "Les Ondine d'un même réseau local se parlent directement, sans serveur, sans Internet et sans compte : présence, coucou, « Tu es dispo ? », fichiers et textes (toujours à accepter), chat (conversations à deux et salon « Toute l'équipe »), café collectif, sondage, Pomodoro d'équipe, aide à l'IT, et entre tes propres PC le presse-papiers partagé. On n'échange qu'avec un collègue ajouté par un code à 6 chiffres (ou son QR code) ; tout est chiffré de bout en bout avec les clés de l'appairage (gardées dans le Gestionnaire d'identifiants de Windows). Rien de ce qui arrive n'est exécuté. Ports : 47820 (UDP, découverte) et 47821 (TCP). Le pare-feu de Windows peut demander l'autorisation la première fois.",
 "Votre réponse…": "Ta réponse…",
 "Votre réponse": "Ta réponse",
@@ -470,7 +468,9 @@
 ],
 [
 "^vous attend · (.+)$",
-"t'attend · $1",
+"t'attend · $1"
+],
+[
 "^QR code lu : (.+)\\. Cliquez sur « Ajouter »\\.$",
 "QR code lu : $1. Clique sur « Ajouter »."
 ]
