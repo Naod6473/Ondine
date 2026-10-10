@@ -26,7 +26,7 @@ import { clear, el } from "./dom";
 import { icon } from "./icon";
 import { IslandStateMachine, type IslandState } from "./island-state";
 import { contentHeight, FIT_ATTR, fitHeight } from "./fit";
-import { enableGestures, grabZone, type Edge } from "./gestures";
+import { enableGestures, grabZone, horizontal, type Edge } from "./gestures";
 import { Jelly } from "./jelly";
 import { elasticityOf } from "./spring";
 import { sounds, setSoundPrefs } from "./sounds";
@@ -443,7 +443,7 @@ export class Island {
     this.shell.addEventListener("pointermove", (e) => {
       if (e.buttons) return;
       const zone = ["compact", "expanded", "alert"].includes(this.fsm.state) ? grabZone(this.shell, this.edge(), e.clientX, e.clientY) : null;
-      const along = this.edge() === "top" ? "ns-resize" : "ew-resize";
+      const along = horizontal(this.edge()) ? "ns-resize" : "ew-resize";
       this.shell.style.cursor = zone === "outer" ? "grab" : zone === "inner" ? along : "";
       this.shell.classList.toggle("grab-inner", zone === "inner");
     });
@@ -657,8 +657,11 @@ export class Island {
     if (reducedMotion() || perfMode() === "eco" || !motionOn()) return;
     const edge = this.edge();
     const px = Math.round(7 * amount);
-    const away = edge === "top" ? `0 ${px}px` : edge === "left" ? `${px}px 0` : `${-px}px 0`;
-    const back = edge === "top" ? `0 ${-Math.round(px * 0.35)}px` : edge === "left" ? `${-Math.round(px * 0.35)}px 0` : `${Math.round(px * 0.35)}px 0`;
+    // Vers le centre de l'écran (« away »), puis un petit dépassement de l'autre côté.
+    const dir = { top: [0, 1], bottom: [0, -1], left: [1, 0], right: [-1, 0] }[edge];
+    const at = (k: number) => `${Math.round(dir[0] * k)}px ${Math.round(dir[1] * k)}px`;
+    const away = at(px);
+    const back = at(-px * 0.35);
     this.shell.animate(
       [
         { translate: "0 0", offset: 0 },
@@ -672,7 +675,7 @@ export class Island {
 
   private edge(): Edge {
     const e = document.body.dataset.edge;
-    return e === "left" || e === "right" ? e : "top";
+    return e === "left" || e === "right" || e === "bottom" ? e : "top";
   }
 
   /** La bande au bord de l'écran, là où l'île se cache (pour le survol). */
@@ -687,6 +690,7 @@ export class Island {
     };
     if (edge === "left") return x <= EDGE_ZONE.depth && span(H, y);
     if (edge === "right") return x >= W - EDGE_ZONE.depth && span(H, y);
+    if (edge === "bottom") return y >= H - EDGE_ZONE.depth && span(W, x);
     return y <= EDGE_ZONE.depth && span(W, x);
   }
 

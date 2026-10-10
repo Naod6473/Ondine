@@ -6,7 +6,8 @@
 // Un clic sur elle ouvre l'île. Réglage « mascot.peek » pour la désactiver.
 //
 // Elle utilise le même moteur de dessin que la mascotte de l'île (un second
-// exemplaire), tourné d'un demi-tour (en haut) ou d'un quart de tour (sur un côté).
+// exemplaire), tourné d'un demi-tour (en haut) ou d'un quart de tour (sur un côté) ;
+// en bas, elle sort la tête debout.
 
 import type { Edge } from "../island/gestures";
 import { reducedMotion } from "../island/tab-pill";
@@ -19,7 +20,7 @@ const STAY_MS = 6500;
 const MOVE_MS = 650;
 
 /** Le demi-tour ou quart de tour selon le bord : sa base se colle au bord de l'écran. */
-const SPIN: Record<Edge, number> = { top: 180, left: 90, right: -90 };
+const SPIN: Record<Edge, number> = { top: 180, bottom: 0, left: 90, right: -90 };
 
 export interface HangHooks {
   edge(): Edge;

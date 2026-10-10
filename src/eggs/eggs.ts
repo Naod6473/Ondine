@@ -354,7 +354,7 @@ export class EasterEggs {
    * disparaît derrière elle, bouchée par bouchée), s'arrête au bout, contente,
    * revient à sa place, et le contenu réapparaît en fondu. Environ 6 secondes.
    * Pas si la souris est sur l'île, pas pendant une notification, seulement
-   * quand l'île est en haut de l'écran (sur un côté, la mini-île est verticale).
+   * quand l'île est en haut ou en bas de l'écran (sur un côté, la mini-île est verticale).
    */
   private async snack() {
     const { shell, slot } = this.hooks;
@@ -364,7 +364,7 @@ export class EasterEggs {
       this.hooks.state() === "compact" &&
       !!content &&
       !content.querySelector(".notif") &&
-      edge === "top" &&
+      (edge === "top" || edge === "bottom") &&
       !this.busy &&
       !this.mfx.splitting &&
       Date.now() - this.lastHover > SNACK_QUIET_MS &&

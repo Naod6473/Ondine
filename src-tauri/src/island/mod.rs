@@ -2,7 +2,7 @@
 // les clics traversants et la lecture de la souris.
 //
 // Un PC n'a pas d'encoche : l'île est une forme noire dessinée au bord de
-// l'écran (en haut, à gauche ou à droite, voir `Placement`), dans une fenêtre
+// l'écran (en haut, en bas, à gauche ou à droite, voir `Placement`), dans une fenêtre
 // sans bordure, transparente, toujours au premier plan, qui ne prend pas le
 // focus. La fenêtre a deux tailles :
 //   - « bande » (240 × 6, ou 6 × 240 sur un côté) quand l'île est cachée : une
@@ -16,7 +16,7 @@
 //
 // On déplace l'île en l'attrapant par son bord extérieur (island.ts appelle
 // `drag_start`) : la fenêtre suit la souris, puis au lâcher elle s'aimante au
-// bord le plus proche (haut, gauche ou droite), et dans un coin ou au centre
+// bord le plus proche (haut, bas, gauche ou droite), et dans un coin ou au centre
 // si on la lâche près d'eux.
 //
 // Clics traversants : Tauri 2 ne sait rendre transparente aux clics que la fenêtre
@@ -97,11 +97,15 @@ impl Placement {
 /// Le choix du bord et de la place au lâcher, d'après le centre de l'île
 /// (`cx`, `cy` en px logiques, depuis le coin haut gauche de l'écran `w` × `h`).
 pub fn snap(cx: f64, cy: f64, w: f64, h: f64) -> Placement {
-    // Le bord le plus proche : en haut, à gauche ou à droite (pas en bas : la
-    // barre des tâches y est souvent).
-    let (edge, pos, len) = if cy <= cx && cy <= w - cx {
+    // Le bord le plus proche : en haut, en bas, à gauche ou à droite. En bas,
+    // l'île se pose au-dessus de la barre des tâches (voir `target_frame`).
+    let (top, bottom, left, right) = (cy, h - cy, cx, w - cx);
+    let nearest = top.min(bottom).min(left).min(right);
+    let (edge, pos, len) = if top == nearest {
         ("top", cx, w)
-    } else if cx <= w - cx {
+    } else if bottom == nearest {
+        ("bottom", cx, w)
+    } else if left == nearest {
         ("left", cy, h)
     } else {
         ("right", cy, h)
@@ -369,9 +373,33 @@ pub fn screen_info(app: &AppHandle, pref: &str) -> ScreenInfo {
 
 /// Où mettre la fenêtre (px physiques) : sa taille et son coin haut gauche.
 fn target_frame(m: &Monitor, place: &Placement, collapsed: bool, tall: bool) -> (u32, u32, i32, i32) {
-    let scale = m.scale_factor();
-    let mp = *m.position();
-    let ms = *m.size();
+    let wa = m.work_area();
+    let screen = Area {
+        x: m.position().x,
+        y: m.position().y,
+        w: m.size().width,
+        h: m.size().height,
+        work_bottom: wa.position.y + wa.size.height as i32,
+    };
+    frame_in(&screen, m.scale_factor(), place, collapsed, tall)
+}
+
+/// Un écran pour le calcul du placement (px physiques) : sa position, sa
+/// taille, et le bas de sa zone de travail (au-dessus de la barre des tâches).
+#[derive(Clone, Copy, Debug)]
+pub struct Area {
+    pub x: i32,
+    pub y: i32,
+    pub w: u32,
+    pub h: u32,
+    pub work_bottom: i32,
+}
+
+/// Le calcul de `target_frame`, sans Tauri (testé) : taille et coin haut gauche
+/// de la fenêtre (px physiques) pour ce placement sur cet écran.
+pub fn frame_in(a: &Area, scale: f64, place: &Placement, collapsed: bool, tall: bool) -> (u32, u32, i32, i32) {
+    let mp = PhysicalPosition::new(a.x, a.y);
+    let ms = PhysicalSize::new(a.w, a.h);
     let (lw, lh) = place.window_size(collapsed, tall);
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
@@ -389,6 +417,9 @@ fn target_frame(m: &Monitor, place: &Placement, collapsed: bool, tall: bool) -> 
     let (x, y) = match place.edge.as_str() {
         "left" => (mp.x, along(mp.y, ms.height, ph)),
         "right" => (mp.x + ms.width as i32 - pw as i32, along(mp.y, ms.height, ph)),
+        // En bas : posée sur la barre des tâches (le bas de la zone de travail),
+        // pour ne pas la recouvrir. Sans barre en bas, c'est le bas de l'écran.
+        "bottom" => (along(mp.x, ms.width, pw), a.work_bottom.min(mp.y + ms.height as i32) - ph as i32),
         _ => (along(mp.x, ms.width, pw), mp.y),
     };
     (pw, ph, x, y)
@@ -706,7 +737,7 @@ pub fn apply_hotkey(app: &AppHandle, wanted: &str) {
 
 #[cfg(test)]
 mod tests {
-    use super::{snap, Placement, PANEL_H, PANEL_W, SIDE_PANEL_H, STRIP_H, STRIP_W, TALL_PANEL_H};
+    use super::{frame_in, snap, Area, Placement, PANEL_H, PANEL_W, SIDE_PANEL_H, STRIP_H, STRIP_W, TALL_PANEL_H};
     use super::{distance_outside, frame_is_fresh, on_shape, poll_interval, IslandRect};
     use crate::services::perf::Mode;
     use std::time::Duration;
@@ -786,10 +817,40 @@ mod tests {
         assert_eq!((p.edge.as_str(), p.align.as_str()), ("left", "center"));
         let p = snap(1900.0, 1000.0, 1920.0, 1080.0);
         assert_eq!((p.edge.as_str(), p.align.as_str()), ("right", "end"));
+        // Le bas : au centre, dans un coin, ou ailleurs le long du bord.
+        let p = snap(970.0, 1060.0, 1920.0, 1080.0);
+        assert_eq!((p.edge.as_str(), p.align.as_str(), p.offset), ("bottom", "center", 0.5));
+        let p = snap(1850.0, 1075.0, 1920.0, 1080.0);
+        assert_eq!((p.edge.as_str(), p.align.as_str()), ("bottom", "end"));
+        let p = snap(500.0, 1050.0, 1920.0, 1080.0);
+        assert_eq!(p.edge, "bottom");
+        assert!((p.offset - 500.0 / 1920.0).abs() < 1e-9);
+        // Plus près du côté que du bas : le côté.
+        assert_eq!(snap(20.0, 1000.0, 1920.0, 1080.0).edge, "left");
         // Ni coin ni centre : la place exacte est gardée.
         let p = snap(1400.0, 10.0, 1920.0, 1080.0);
         assert_eq!(p.align, "center");
         assert!((p.offset - 1400.0 / 1920.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn bottom_edge_sits_on_the_taskbar() {
+        // 1920 × 1080 à 100 %, barre des tâches de 48 px en bas.
+        let a = Area { x: 0, y: 0, w: 1920, h: 1080, work_bottom: 1032 };
+        let bottom = Placement { edge: "bottom".into(), align: "center".into(), offset: 0.5 };
+        // Panneau : 720 × 320, centré, posé sur la barre.
+        assert_eq!(frame_in(&a, 1.0, &bottom, false, false), (720, 320, 600, 1032 - 320));
+        // Bande de réveil : 240 × 6 juste au-dessus de la barre.
+        assert_eq!(frame_in(&a, 1.0, &bottom, true, false), (240, 6, 840, 1026));
+        // Coin bas droit, à 150 %, sur un deuxième écran à droite, sans barre en bas.
+        let b = Area { x: 1920, y: 0, w: 2880, h: 1620, work_bottom: 1620 };
+        let end = Placement { edge: "bottom".into(), align: "end".into(), offset: 1.0 };
+        assert_eq!(frame_in(&b, 1.5, &end, false, false), (1080, 480, 1920 + 2880 - 1080, 1620 - 480));
+        // Le haut, lui, reste collé en haut de l'écran.
+        let top = Placement { edge: "top".into(), align: "start".into(), offset: 0.0 };
+        assert_eq!(frame_in(&a, 1.0, &top, false, false), (720, 320, 0, 0));
+        // Le bas n'est pas un côté : même panneau qu'en haut.
+        assert_eq!(bottom.window_size(false, false), (PANEL_W, PANEL_H));
     }
 
     #[test]

@@ -465,6 +465,7 @@
 "En haut": "Top",
 "À gauche": "Left",
 "À droite": "Right",
+"En bas": "Bottom",
 "Vous pouvez aussi attraper l'île par son bord collé à l'écran et la poser ailleurs : elle s'aimante aux bords, aux coins et au centre.": "You can also grab the island by its edge against the screen and drop it elsewhere: it snaps to edges, corners and the center.",
 "Pendant un diaporama, une vidéo ou un jeu en plein écran, l'île se cache et garde les notifications pour la fin.": "During a slideshow, video or full-screen game, the island hides and keeps notifications until the end.",
 "Débogage": "Debugging",

@@ -38,7 +38,7 @@ export interface Settings {
     /** L'ordre des onglets (ids de modules) ; vide = l'ordre d'origine. */
     tabOrder: string[];
     /** Le bord de l'écran où vit l'île. */
-    edge: "top" | "left" | "right";
+    edge: "top" | "bottom" | "left" | "right";
     /** Sa place le long du bord : coin de début, centre (à `offset`), coin de fin. */
     align: "start" | "center" | "end";
     /** Pour "center" : position du centre de l'île le long du bord (0 à 1). */

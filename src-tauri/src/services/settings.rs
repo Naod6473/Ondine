@@ -79,7 +79,7 @@ pub struct IslandPrefs {
     /// L'ordre des onglets (ids de modules) choisi par l'utilisateur ; vide =
     /// l'ordre d'origine. Un module absent de la liste se met après les autres.
     pub tab_order: Vec<String>,
-    /// Le bord de l'écran où vit l'île : "top", "left" ou "right".
+    /// Le bord de l'écran où vit l'île : "top", "bottom", "left" ou "right".
     pub edge: String,
     /// Sa place le long de ce bord : "start" (coin haut ou gauche), "center"
     /// (à `offset`), "end" (coin bas ou droit).
@@ -279,7 +279,7 @@ impl Settings {
             self.general.settings_mode = "simple".into();
         }
         let i = &mut self.island;
-        if !["top", "left", "right"].contains(&i.edge.as_str()) {
+        if !["top", "bottom", "left", "right"].contains(&i.edge.as_str()) {
             i.edge = "top".into();
         }
         if !["start", "center", "end"].contains(&i.align.as_str()) {

@@ -903,7 +903,7 @@ function general(main: HTMLElement) {
       ),
       row(
         "Bord de l'écran",
-        choice(s.island.edge, [["top", "En haut"], ["left", "À gauche"], ["right", "À droite"]], (v) =>
+        choice(s.island.edge, [["top", "En haut"], ["bottom", "En bas"], ["left", "À gauche"], ["right", "À droite"]], (v) =>
           save((d) => {
             d.island.edge = v as Settings["island"]["edge"];
             d.island.align = "center";
