@@ -1051,6 +1051,7 @@ function demoGroup(): HTMLElement {
                 scene("voice", "Parler à Ondine"),
                 scene("mascot-talk", "Ondine parle"),
                 scene("team-visit", "Visite d'une collègue"),
+                scene("ai-outage", "Panne d'un service IA"),
               ),
               "La notification arrive dans l'île : lancez l'enregistrement avant de cliquer.",
             ),

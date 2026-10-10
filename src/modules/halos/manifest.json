@@ -270,7 +270,7 @@
       "agenda.join",
       "agents.github-streak",
       "mascot.dance",
-      "media.changed"
+      "media.changed", "voice.listening", "voice.level"
     ]
   }
 }

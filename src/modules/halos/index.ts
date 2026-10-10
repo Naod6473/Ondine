@@ -227,6 +227,15 @@ export const halos: IslandModule = {
           .finally(() => (busy = false));
       }, "halosLevel", true);
     };
+    // Parler à Ondine à voix haute : le halo tremble avec la voix tant que le micro écoute
+    // (niveau envoyé par le Rust du module, ~15 fois par seconde).
+    listen("voice.listening", (p) => {
+      if (p.on) showHalo({ id: "ondine-voice", palette: "voice", shape: "level", priority: "high" });
+      else hideHalo("ondine-voice");
+    });
+    listen("voice.level", (p) => {
+      if (typeof p.level === "number") updateHalo("ondine-voice", { level: p.level });
+    });
     listen("controls.media-use", (p) => {
       const now = Array.isArray(p.mic) && p.mic.length > 0;
       if (now === micInUse) return;

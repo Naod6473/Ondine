@@ -364,12 +364,14 @@ export class MascotController {
     // N'importe quel module peut montrer une émotion : bus.emit("mascot.emote", { emotion: "sad" }).
     on("mascot.emote", (p: EmotePayload | null) => this.emote(p));
     // La voix (zone Parler à Ondine) : la bouche suit les syllabes, les sourcils la ponctuation.
-    on("mascot.talk", (p: { open?: number; mark?: string } | null) => {
+    // Parler à Ondine envoie `brow` ("question" / "exclaim") : même effet que `mark` « ? » / « ! ».
+    on("mascot.talk", (p: { open?: number; mark?: string; brow?: string } | null) => {
       const open = typeof p?.open === "number" ? p.open : 0;
+      const mark = p?.mark ?? (p?.brow === "question" ? "?" : p?.brow === "exclaim" ? "!" : undefined);
       this.lastTalk = Date.now();
       // Elle se met à parler (au repos ou attentive) : l'état « talk », la moufle qui accompagne.
       if (open > 0 && (this.state === "idle" || this.state === "listening") && this.has("talk")) this.request("talk");
-      this.renderer.talk?.(open, p?.mark === "?" || p?.mark === "!" ? p.mark : null);
+      this.renderer.talk?.(open, mark === "?" || mark === "!" ? mark : null);
     });
     on("island.files-dropped", () => {
       this.activity();
