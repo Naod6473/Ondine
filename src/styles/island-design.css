@@ -109,14 +109,14 @@
 }
 /* Mini-île très petite (format nano, île-bouche…) ou trait : la jauge seule. */
 .island[data-state="peek"] .volume-hud,
-.island[data-size="nano"] .volume-hud {
+.island[data-state="compact"][data-form="nano"] .volume-hud {
   height: 8px;
   bottom: 2px;
   padding: 0 3px;
   min-width: 28px;
 }
 .island[data-state="peek"] .volume-hud svg,
-.island[data-size="nano"] .volume-hud svg {
+.island[data-state="compact"][data-form="nano"] .volume-hud svg {
   display: none;
 }
 /* Sur les autres bords : contre le bord intérieur. */
