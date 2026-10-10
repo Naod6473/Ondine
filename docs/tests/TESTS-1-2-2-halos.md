@@ -40,3 +40,27 @@ et « Autres halos ».
 27. Ctrl+C sur un texte : « Copié » + début du texte ; Ctrl+X : « Coupé » ; Ctrl+V : « Collé ». Copier un mot de passe depuis un gestionnaire (Bitwarden, KeePass, 1Password) : « Copié » sans texte. Ctrl+C dans un terminal sans sélection : rien.
 28. Touches de volume du clavier : barre qui suit (« Volume · 45 % », « Son coupé »).
 29. Taper vite : aucune prise de focus, rien ne gêne la frappe.
+
+## Retours de test (2e passe, zone « halos2 »)
+
+### Le halo suit la musique
+Cause trouvée : le module Musique publie `{playing: {status: "playing"}}`, le
+halo testait `playing === true` : le halo de la musique ne s'allumait jamais.
+Le halo vu pendant la musique était celui de la danse (musique + mini-île,
+case « Le halo danse avec la mascotte »), qui ne regardait pas la case Musique.
+
+30. « Le halo suit la musique » DÉCOCHÉ, lancer une musique (Spotify, YouTube…), île en mini-île : aucun halo (Ondine peut danser, mais sans halo).
+31. Cocher la case PENDANT la lecture : le halo s'allume tout de suite et pulse avec le son (plus fort = plus de lueur et des ondes). La décocher pendant la lecture : il s'éteint tout de suite.
+32. Mettre la musique en pause : le halo s'éteint. Changer de morceau : pas de clignotement.
+33. Visio (micro utilisé) pendant la musique : le halo vert d'eau de la voix passe devant ; micro libéré : retour au halo de la musique.
+
+### Liseré des minuteurs (Animations de l'île → Ondine et agents → « Minuteurs : un liseré… », coché par défaut)
+34. Minuteur → 1 min, replier l'île (mini-île) : une ligne de lumière (rose-ambre) fait le tour de l'île et raccourcit en continu, sans à-coups. Même chose île ouverte.
+35. Dans les 10 dernières secondes : la ligne vire au rouge et bat doucement une fois par seconde ; à 0 : un éclat avec étincelles, puis plus rien.
+36. Pause : la ligne reste figée, plus pâle ; Reprendre : elle repart d'où elle était. « +1 min » : elle s'allonge. Réinitialiser : elle s'éteint.
+37. Pomodoro travail : ligne tomate (et plus de cocon bleu nuit) ; fin de séance : fleur ; pause courte : ligne menthe, puis éclat menthe.
+38. Lanceur → taper « 10 min » → Entrée, ou demander à Ondine « lance un minuteur de 2 minutes » : le liseré apparaît aussi.
+39. Décocher la case pendant qu'un minuteur tourne : le liseré disparaît tout de suite ; la recocher : il revient au bon endroit.
+40. Animations réduites (Windows) ou Calme : la ligne ne scintille plus, avance par petits pas toutes les 5 s.
+41. Gestionnaire des tâches, minuteur de 25 min, mini-île : CPU d'Ondine faible (dessin à 12 images/s).
+42. Mode démo → « Liseré d'un minuteur » : minuteur de 40 s avec tout le parcours (rouge à 10 s, éclat).
