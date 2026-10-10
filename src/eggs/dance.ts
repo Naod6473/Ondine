@@ -16,6 +16,7 @@
 
 import { Bridge } from "../core/bridge";
 import type { Bus } from "../core/bus";
+import { demoInvoke, demoOn } from "../core/demo";
 import { settingsStore } from "../core/settings-store";
 import { reducedMotion } from "../island/tab-pill";
 import { cleanBpm, DANCE_STYLES, danceStyle, genreOf, steadyStyle, styleFromGenre, trackOf, type DanceStyle } from "../mascot/beat";
@@ -90,7 +91,7 @@ export class MusicDance {
     } else {
       this.tempo = null;
       this.lastStyle = null;
-      void Bridge.moduleInvoke("media", "tempo", { on: false }).catch(() => undefined);
+      this.ask();
     }
     this.publish();
   }
@@ -109,8 +110,10 @@ export class MusicDance {
   private ask() {
     if (!settingsStore.moduleEnabled("media")) return;
     const on = this.on && mediaPrefs().tempo;
-    // Hors de l'appli (navigateur, démo) : pas de module, elle danse au tempo du style.
-    void Bridge.moduleInvoke("media", "tempo", { on }).catch(() => undefined);
+    // Mode démo : le tempo inventé de la musique de démo (src/core/demo.ts).
+    // Hors de l'appli (navigateur) : pas de module, elle danse au tempo du style.
+    const call = demoOn() ? demoInvoke(this.bus, "media", "tempo", { on }) : Bridge.moduleInvoke("media", "tempo", { on });
+    void call.catch(() => undefined);
     if (!on) this.tempo = null;
   }
 

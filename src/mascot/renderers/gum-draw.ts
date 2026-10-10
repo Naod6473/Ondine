@@ -1677,28 +1677,43 @@ function drawGuitar(ctx: CanvasRenderingContext2D, hands: [Hand, Hand], sx: numb
   ctx.ellipse(len + R * 0.2, 0, R * 0.1, R * 0.07, 0, 0, TAU);
   ctx.fill();
   ctx.stroke();
-  // la caisse : deux rondeurs, une plaque blanche, la rosace
+  // la caisse (plus grande que la moufle) : deux rondeurs, la main qui gratte sur la rosace
+  ctx.save();
+  ctx.scale(1.5, 1.5);
+  ctx.lineWidth = R * 0.02;
   ctx.fillStyle = "#e5483f";
   ctx.strokeStyle = "#7d1a17";
   ctx.beginPath();
-  ctx.ellipse(-R * 0.08, 0, R * 0.26, R * 0.22, 0, 0, TAU);
-  ctx.ellipse(R * 0.14, 0, R * 0.18, R * 0.16, 0, 0, TAU);
+  ctx.ellipse(-R * 0.2, 0, R * 0.34, R * 0.29, 0, 0, TAU);
   ctx.fill();
   ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(R * 0.1, 0, R * 0.24, R * 0.21, 0, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  // la jointure des deux rondeurs, sans trait au milieu
+  ctx.beginPath();
+  ctx.ellipse(-R * 0.06, 0, R * 0.2, R * 0.2, 0, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = "#f5efe6";
+  ctx.beginPath();
+  ctx.ellipse(-R * 0.28, R * 0.1, R * 0.12, R * 0.07, 0.4, 0, TAU);
+  ctx.fill();
   ctx.fillStyle = "#2a1408";
   ctx.beginPath();
-  ctx.arc(R * 0.1, 0, R * 0.055, 0, TAU);
+  ctx.arc(R * 0.04, 0, R * 0.07, 0, TAU);
   ctx.fill();
+  ctx.restore();
   // les cordes
   ctx.strokeStyle = "rgba(255, 245, 220, 0.8)";
   ctx.lineWidth = R * 0.008;
-  for (const dy of [-0.02, 0, 0.02]) {
+  for (const dy of [-0.025, 0, 0.025]) {
     ctx.beginPath();
-    ctx.moveTo(-R * 0.12, dy * R);
+    ctx.moveTo(-R * 0.45, dy * R);
     ctx.lineTo(len + R * 0.14, dy * R);
     ctx.stroke();
   }
-  gloss(ctx, -R * 0.16, -R * 0.1, R * 0.08, R * 0.035);
+  gloss(ctx, -R * 0.48, -R * 0.2, R * 0.14, R * 0.05);
   ctx.restore();
 }
 

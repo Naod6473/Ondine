@@ -86,7 +86,7 @@ function moodFollowsPc(): boolean {
  * (elle passe du repos au sommeil, sans bâiller), la bouderie au réveil, les
  * réactions aux notifications et aux modules, les moufles sur les oreilles et
  * le parapluie, les émotions qui suivent le PC (processeur, batterie ; l'humeur
- * de fond reste), et ailleurs la danse, le goûter (src/eggs/eggs.ts) et les
+ * de fond reste), et ailleurs la danse (un simple hochement à la place), le goûter (src/eggs/eggs.ts) et les
  * visites au bord de l'écran (island.ts). Gardé : réveil, sommeil, travail,
  * réflexion, succès, erreur, question et pancarte « ? », alerte, repas (dépôt
  * de fichiers), les réponses aux clics et au survol.

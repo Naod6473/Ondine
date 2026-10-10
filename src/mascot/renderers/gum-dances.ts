@@ -179,8 +179,8 @@ export const DANCE_HANDS: Record<DanceHandPose, (t: number, p: number, S: GumSha
     const strum = Math.sin(TAU * b * 2) * 0.07;
     const slide = Math.sin((b / 4) * TAU) * 0.05;
     return [
-      { x: -w - 0.42 + slide, y: -0.02 - slide, r: 0.5, s: 0.95 },
-      { x: w * 0.55, y: 0.5 + strum, r: -0.5 + strum * 2 },
+      { x: -w - 0.1 + slide, y: 0.02 - slide, r: 0.6, s: 0.95 },
+      { x: w * 0.45, y: 0.58 + strum, r: -0.5 + strum * 2 },
     ];
   },
   // Les cornes : les deux mains levées près de la tête, qui pompent sur le temps.
@@ -212,7 +212,7 @@ export const DANCE_HANDS: Record<DanceHandPose, (t: number, p: number, S: GumSha
     const ph = (b + 1) / 2;
     const open = Math.min(1, Math.abs(Math.sin(ph * Math.PI)) * 1.3);
     const sep = 0.1 + 0.5 * open;
-    const y = S.eyeY + 0.55 - open * 0.05;
+    const y = S.eyeY + 0.78 - open * 0.05;
     return [
       { x: S.faceX - sep, y, r: 1.2 - open * 0.5 },
       { x: S.faceX + sep, y, r: -1.2 + open * 0.5 },

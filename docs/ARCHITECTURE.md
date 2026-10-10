@@ -753,7 +753,7 @@ Réglages → Mascotte → Humeur → « Calme : moins de gestes spontanés »
 du repos au sommeil sans bâiller), la bouderie au réveil, les réactions aux
 notifications et aux modules, les moufles sur les oreilles et le parapluie,
 les émotions qui suivent le PC (processeur, batterie ; l'humeur de fond
-reste), la danse et le goûter (src/eggs/eggs.ts), les visites au bord de
+reste), la danse (un simple hochement en musique à la place) et le goûter (src/eggs/eggs.ts), les visites au bord de
 l'écran (island.ts). Gardé : réveil, sommeil, travail, réflexion, succès,
 erreur, question et pancarte « ? », alerte, repas (dépôt de fichiers), les
 réponses aux clics et au survol. Les surprises gardent leur propre réglage
@@ -858,7 +858,7 @@ déclencheurs aux effets ; le réglage `mascot.surprises` (`all`, `seasonal`,
 | « tonneau », « barrel roll » | l'île fait un tour complet |
 | « la réponse » | Ondine réfléchit, puis « 42 » |
 | Mini-île tranquille (au plus toutes les 20 min, une chance sur 4 toutes les 30 s) | « le goûter » : elle traverse la mini-île en mangeant le contenu (`clip-path`), revient, le contenu réapparaît |
-| Musique + mini-île | elle danse tant que ça joue (`mascot.dance`) |
+| Musique + mini-île | elle danse tant que ça joue (`mascot.dance`), dans le style et au tempo de la musique (voir « La danse selon la musique ») ; en « Calme », un simple hochement |
 | Calendrier (`calendar.ts`), à l'ouverture, une fois par jour | 1/1 et 14/7 feux d'artifice, 14/2 cœurs, 1/4 poisson en papier dans le dos (tombe au clic), 21/6 trésor de la danse, 31/10 fantôme, décembre neige qui s'entasse ; Météo : pluie (éclaboussures), canicule (`fondue`) |
 
 - **Réactions au PC** (`context.ts`, permises sauf avec « Surprises : aucune ») :
@@ -881,6 +881,38 @@ déclencheurs aux effets ; le réglage `mascot.surprises` (`all`, `seasonal`,
 - Les animations propres à une surprise (`pluie-glitch`, `esquive`, `fondue`)
   sont lues dans le manifeste de la mascotte ; une mascotte qui ne les a pas
   (la famille gomme) montre une émotion à la place.
+
+### La danse selon la musique (`src/eggs/dance.ts`, `src/mascot/beat.ts`, `src/mascot/renderers/gum-dances.ts`)
+
+- **Quand** : eggs.ts (musique + mini-île ou bureau). **Comment** : `MusicDance`
+  demande le tempo au module Musique (voir plus bas) et choisit le style
+  (`danceStyle`) : Calme ou animations réduites → `nod` (simple hochement) ;
+  sinon le réglage `media.danceStyle` ; sinon le genre du lecteur
+  (`styleFromGenre`, expressions régulières FR/EN) ; sinon le tempo et
+  l'énergie (`guessStyle`) ; sinon pop. Un style deviné ne change qu'après 3
+  mesures de suite (`steadyStyle`). Publie `mascot.dance` {on, style, bpm,
+  phase} à chaque changement et à chaque mesure (phase : où on en est dans le
+  temps à l'envoi ; chaque fenêtre en déduit l'instant d'un temps, `beatFrom`).
+- **Les danses** (manifeste goutte-gomme, partagé par les 15 mascottes) :
+  `danse-rock` (hochements, air guitar), `danse-metal` (headbang, cornes),
+  `danse-rap` (rebond des genoux, bras croisés, casquette), `danse-rnb`
+  (balancement, claquements de doigts sur 2 et 4), `danse-pop` (pas de côté,
+  clap), `danse-electro` (bras en l'air), `danse-reggae` (balancement,
+  contretemps), `danse-jazz` (ondulation, yeux mi-clos), `danse-hochement`.
+  `danse` seule reste pour les règles et les mascottes sans styles. Accessoires :
+  `Props.cap`, `guitar`, `snap`, `clap`, `Hand.horns` (gum-draw.ts).
+- **Le temps** : pour une animation `danse*`, le moteur donne `t = temps / 2`
+  (les temps tombent sur les entiers de `2t` ; à 120 BPM, t = secondes).
+  `BeatFollower` rattrape le temps de la musique sans saut ni recul (±35 % de
+  vitesse au plus) ; sans tempo mesuré (aperçu des réglages, démo, navigateur),
+  le tempo typique du style (`STYLE_BPM`). `MascotRenderer.setBeat`.
+- **Le halo** (`src/modules/halos/`, seulement si `halos.dance` ET
+  `halos.music`) : avec un tempo mesuré, le halo de la danse (forme `breathe`
+  + `beatAt`) bat sur les mêmes temps (un temps, ou deux au-delà de ~133 BPM :
+  `haloBeatMs`, jamais sous `MIN_PERIOD_MS`), un éclat (`flash`) pour l'électro,
+  et passe devant le halo qui suit le niveau du son ; sans tempo, comme avant.
+- **Démo** : `media.tempo` inventé (tempo du morceau de démo), scène
+  « Danses selon la musique » (un genre après l'autre).
 
 ## Module Étagère (phase 2)
 
@@ -982,6 +1014,25 @@ et l'accès à Windows dans `src-tauri/src/platform/media.rs`.
 - **Mettre en pause** (`media.pause`, publié par l'Agenda quand on rejoint
   une réunion) : si quelque chose joue, un fil appelle `TryPauseAsync` sur la
   session SMTC en cours.
+- **Genre** : le champ `genre` de `media.changed` (`Genres` des propriétés
+  SMTC, trois au plus ; souvent vide, beaucoup de lecteurs ne le donnent pas).
+- **Tempo** (1.2.2, la danse de la mascotte) : commande `tempo` {on} (redite
+  toutes les 10 s par `src/eggs/dance.ts` tant qu'elle danse ; sans nouvelle
+  depuis 30 s, ou réglage `danceTempo` décoché, le fil s'arrête). Le fil lit
+  l'indicateur de niveau des haut-parleurs (`platform::halos::Meter`, gardé
+  ouvert, périphérique relu toutes les 3 s) toutes les 10 ms (20 ms en éco) et
+  publie `media.tempo` {bpm, phase, confidence, energy} une fois par seconde,
+  `{bpm: null}` quand le rythme est perdu. L'estimation (`media_tempo.rs`,
+  pure, testée avec des signaux fabriqués) : attaques (montée du niveau en
+  échelle log, lissée sur 20 ms), autocorrélation sur 8 s aux écarts
+  fractionnaires (pas de 0,5 BPM de 60 à 200, penchant doux pour ~120 BPM
+  contre les erreurs d'octave), phase par peigne (les temps récents comptent
+  plus), recalage (même tempo à 4 % : lissé ; double ou moitié : ignoré ; trois
+  mesures ailleurs : nouveau tempo ; 1,5 s de silence ou nouveau morceau :
+  tout repart de zéro). Un seul nombre par lecture, jamais le son ; rien n'est
+  gardé au-delà de 8 s ni envoyé.
+- Réglages : `danceTempo` (activé), `danceStyle` (`auto`, `rock`, `metal`,
+  `rap`, `rnb`, `pop`, `electro`, `reggae`, `jazz`).
 
 ## Module Presse-papiers (phase 4)
 
