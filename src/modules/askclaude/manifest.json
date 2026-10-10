@@ -64,10 +64,64 @@
         "help": "Elle regarde l'état du PC, l'agenda, la météo, la musique et vos notes, et agit quand vous le lui demandez : volume, luminosité, mode sombre, musique, minuteur, note. Pour ouvrir une application, un site ou une recherche web, poser un fichier sur l'Étagère ou toucher au Wi-Fi et au Bluetooth, elle attend votre accord. Elle ne peut rien supprimer ni lancer de commande.",
         "default": true
       },
+      {
+        "key": "voiceHotkey",
+        "type": "select",
+        "label": "Raccourci pour parler à Ondine",
+        "help": "Ouvre Parler à Ondine et écoute, de n'importe où. Échap annule. Un point rouge reste visible tant que le micro écoute ; rien n'est enregistré sur le disque.",
+        "default": "Ctrl+Alt+V",
+        "options": [
+          { "value": "Ctrl+Alt+V", "label": "Ctrl + Alt + V" },
+          { "value": "Alt+Shift+V", "label": "Alt + Maj + V" },
+          { "value": "Ctrl+Alt+Enter", "label": "Ctrl + Alt + Entrée" },
+          { "value": "", "label": "Aucun" }
+        ]
+      },
+      {
+        "key": "micMode",
+        "type": "select",
+        "label": "Mode du micro",
+        "default": "once",
+        "options": [
+          { "value": "once", "label": "Appuyer une fois (arrêt au silence)" },
+          { "value": "hold", "label": "Maintenir pour parler" }
+        ]
+      },
+      {
+        "key": "voiceEngine",
+        "type": "select",
+        "label": "Reconnaissance de la voix",
+        "help": "Windows : la dictée de Windows écrit vos mots en direct (elle passe par le service en ligne de Microsoft, à activer dans Paramètres Windows → Confidentialité → Voix). API : l'audio de votre voix part vers OpenAI ou Gemini, avec votre clé (Claude n'écoute pas l'audio : il faut alors une clé OpenAI ou Gemini). Rien ne part si personne ne parle.",
+        "default": "windows",
+        "options": [
+          { "value": "windows", "label": "Reconnaissance vocale de Windows" },
+          { "value": "api", "label": "Transcription par l'API (l'audio part)" }
+        ]
+      },
+      {
+        "key": "lookHotkey",
+        "type": "select",
+        "label": "Raccourci « Regarde ça »",
+        "help": "Comme le raccourci pour parler, et Ondine prend une image de la fenêtre active pour la joindre à votre question. Elle vous est montrée avant l'envoi : rien ne part sans votre clic.",
+        "default": "",
+        "options": [
+          { "value": "", "label": "Aucun" },
+          { "value": "Ctrl+Alt+G", "label": "Ctrl + Alt + G" },
+          { "value": "Alt+Shift+G", "label": "Alt + Maj + G" }
+        ]
+      },
+      { "key": "handsFree", "type": "boolean", "label": "Mains libres", "help": "Après une réponse à une question dite à voix haute, le micro se rallume quelques secondes pour enchaîner.", "default": false },
+      { "key": "quickCommands", "type": "boolean", "label": "Commandes rapides sans IA", "help": "« minuteur 10 minutes », « volume 30 », « musique suivante », « note : … », « luminosité 50 » : faits tout de suite sur le PC, sans clé et sans rien envoyer.", "default": true },
+      { "key": "plops", "type": "boolean", "label": "Petits sons pendant qu'Ondine répond", "help": "Des « plop plip » de gouttes au rythme du texte, plus graves quand elle est triste, plus aigus quand elle est joyeuse, avec le timbre de votre mascotte.", "default": true },
+      { "key": "plopVolume", "type": "number", "label": "Volume des petits sons", "default": 50, "min": 0, "max": 100, "step": 10 },
+      { "key": "discreet", "type": "boolean", "label": "Discrétion en visio, présentation et concentration", "help": "Le micro ne s'ouvre pas et les petits sons se taisent quand une autre appli utilise le micro, pendant une présentation ou une séance de concentration.", "default": true },
       { "key": "filesFolder", "type": "string", "label": "Dossier des fichiers créés par Ondine", "help": "Un chemin complet, par exemple D:\\Mes fichiers\\Ondine. Vide = Documents\\Ondine. Un fichier existant n'est jamais écrasé.", "default": "", "maxLength": 260 }
     ]
   },
   "views": ["expanded", "drop"],
-  "commands": ["status", "prepare", "unprepare", "send", "confirm", "open_card", "reset", "copy"],
-  "events": { "emits": ["mascot.emote", "timer.start", "shelf.add"], "listens": [] }
+  "commands": ["status", "prepare", "unprepare", "send", "confirm", "open_card", "reset", "copy", "listen", "voice_stop", "voice_state", "quick"],
+  "events": {
+    "emits": ["mascot.emote", "mascot.talk", "timer.start", "shelf.add", "voice.listening", "voice.level", "askclaude.voice"],
+    "listens": ["askclaude.voice", "timer.focus", "agents.quiet"]
+  }
 }

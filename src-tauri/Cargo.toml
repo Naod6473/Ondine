@@ -147,6 +147,8 @@ windows = { version = "0.61", features = [
   "Win32_System_Ioctl",
   "Win32_Devices_DeviceAndDriverInstallation",
   "Win32_System_EventLog",
+  # Parler à Ondine à voix haute : la reconnaissance vocale de Windows (platform/voice.rs).
+  "Media_SpeechRecognition",
 ] }
 
 [profile.release]

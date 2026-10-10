@@ -273,11 +273,6 @@ pub fn engine(app: &AppHandle) -> &'static str {
     super::with_context(app, ID, |ctx| engine_of(&ctx.settings())).unwrap_or(ENGINES[0].0)
 }
 
-/// Le nom affiché d'un moteur (« DuckDuckGo »).
-pub fn engine_name(engine: &str) -> &'static str {
-    ENGINES.iter().find(|(id, _, _)| *id == engine).map_or(ENGINES[0].1, |(_, name, _)| name)
-}
-
 /// L'adresse de la page de résultats : le texte (coupé à MAX_WEB_QUERY,
 /// blancs regroupés) encodé pour l'adresse, puis revalidé par `web_url`.
 /// None si le texte est vide.
@@ -560,7 +555,7 @@ mod tests {
         let mut settings = serde_json::Map::new();
         assert_eq!(engine_of(&settings), "google");
         settings.insert("searchEngine".into(), json!("ecosia"));
-        assert_eq!((engine_of(&settings), engine_name("ecosia")), ("ecosia", "Ecosia"));
+        assert_eq!(engine_of(&settings), "ecosia");
     }
 
     #[test]

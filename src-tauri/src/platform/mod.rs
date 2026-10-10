@@ -36,6 +36,8 @@ pub mod theme;
 pub mod nightlight;
 // Capture → GIF animé : choisir une zone de l'écran, la copier dix fois par seconde. Contient sa propre version Linux.
 pub mod record;
+// Parler à Ondine à voix haute : dictée de Windows, micro en mémoire, fenêtre active. Contient sa propre version Linux.
+pub mod voice;
 
 #[cfg(windows)]
 mod drop_target;
