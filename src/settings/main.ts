@@ -1054,6 +1054,7 @@ function demoGroup(): HTMLElement {
                 scene("halos-battery", "Halos de batterie"),
                 scene("halos-tour", "Autres halos"),
                 scene("voice", "Parler à Ondine"),
+                scene("voice-error", "La dictée échoue"),
                 scene("mascot-talk", "Ondine parle"),
                 scene("team-visit", "Visite d'une collègue"),
                 scene("ai-outage", "Panne d'un service IA"),

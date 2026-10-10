@@ -243,9 +243,11 @@
 "Seulement les PC qui l'acceptent (réglage « Partager l'inventaire » chez eux, et vous marqué « IT » de leur côté).": "Seulement les PC qui l'acceptent (réglage « Partager l'inventaire » chez eux, et toi marqué « IT » de leur côté).",
 "choisissez de 1 à 100 éléments": "choisis de 1 à 100 éléments",
 "clé du collègue abîmée : retirez-le puis ajoutez-le de nouveau": "clé du collègue abîmée : retire-le puis ajoute-le de nouveau",
-"dossier trop gros (200 Mo au plus) : envoyez plutôt une archive faite à la main": "dossier trop gros (200 Mo au plus) : envoie plutôt une archive faite à la main"
+"dossier trop gros (200 Mo au plus) : envoyez plutôt une archive faite à la main": "dossier trop gros (200 Mo au plus) : envoie plutôt une archive faite à la main",
+"la dictée de Windows n'a pas marché sans dire pourquoi : vérifiez dans Paramètres Windows que « Reconnaissance vocale en ligne » est activée (Confidentialité → Voix), que le micro est permis aux applications de bureau (Confidentialité → Microphone) et que la voix de votre langue est installée (Heure et langue → Voix)": "la dictée de Windows n'a pas marché sans dire pourquoi : vérifie dans Paramètres Windows que « Reconnaissance vocale en ligne » est activée (Confidentialité → Voix), que le micro est permis aux applications de bureau (Confidentialité → Microphone) et que la voix de ta langue est installée (Heure et langue → Voix)"
 },
 "patterns": [
+["^L'audio de votre voix partira vers (.+), avec votre clé\\.$", "L'audio de ta voix partira vers $1, avec ta clé."],
 ["^Vous ne l'avez pas utilisée depuis (\\d+) minutes\\. Ondine peut la réduire dans la barre des tâches \\(elle ne sera pas fermée\\)\\.$", "Tu ne l'as pas utilisée depuis $1 minutes. Ondine peut la réduire dans la barre des tâches (elle ne sera pas fermée)."],
 [
 "^Autoriser\\ /\\ Refuser\\ depuis\\ l'île\\ \\((.+?)\\)\\ :\\ quand\\ (.+?)\\ demande\\ une\\ permission,\\ l'île\\ montre\\ la\\ commande\\ avec\\ «\\ Autoriser\\ »\\ \\(à\\ confirmer\\)\\ et\\ «\\ Refuser\\ »\\.\\ Sans\\ réponse\\ à\\ temps,\\ la\\ question\\ passe\\ au\\ terminal\\.\\ Collez\\ ce\\ hook\\ en\\ plus,\\ de\\ la\\ même\\ façon\\.$",

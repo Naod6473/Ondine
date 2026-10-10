@@ -126,6 +126,10 @@ interface VoiceMsg {
   hold?: boolean;
   why?: string;
   message?: string;
+  /** La page des Paramètres Windows qui règle l'échec (« speech », « mic », « language »). */
+  fix?: string | null;
+  /** La dictée de Windows a échoué et une clé OpenAI ou Gemini est rangée : où partirait l'audio. */
+  apiTo?: string | null;
 }
 
 /** Un message affiché. Les réponses gardent leurs jetons pour la petite ligne du bas. */
@@ -155,6 +159,8 @@ const state: {
   voice: { on: boolean; look: boolean; hold: boolean; partial: string; transcribing: boolean; note: string };
   /** Le message en cours venait de la voix (mains libres après la réponse). */
   spoken: boolean;
+  /** Après un échec de l'écoute (`error` : son message, les boutons ne vont qu'avec lui) : la page des Paramètres Windows à ouvrir, et la transcription par l'API à proposer. */
+  voiceHelp: { fix: string | null; apiTo: string | null; error: string } | null;
 } = {
   draft: "",
   attachment: null,
@@ -165,6 +171,7 @@ const state: {
   pending: null,
   voice: { on: false, look: false, hold: false, partial: "", transcribing: false, note: "" },
   spoken: false,
+  voiceHelp: null,
 };
 /** La réponse qui s'écrit petit à petit (son indice, ce qui est visible, de quoi l'arrêter). */
 let reveal: { index: number; shown: number; stop: () => void } | null = null;
@@ -281,6 +288,7 @@ async function send(api: ModuleApi) {
   state.busy = true;
   state.error = "";
   state.voice.note = "";
+  state.voiceHelp = null;
   state.bubbles.push({ user: true, text: message, attachment: attachment?.name ?? null });
   state.draft = "";
   redraw();
@@ -368,6 +376,7 @@ function wireVoice(api: ModuleApi, owner: () => boolean) {
         reveal?.stop();
         state.voice = { on: true, look: !!p.look, hold: !!p.hold, partial: "", transcribing: false, note: "" };
         state.error = "";
+        state.voiceHelp = null;
         if (mine) {
           api.openIsland("askclaude");
           // Surprise au début, puis elle tend l'oreille.
@@ -399,11 +408,67 @@ function wireVoice(api: ModuleApi, owner: () => boolean) {
       case "error":
         state.voice = { ...v, on: false, transcribing: false, partial: "" };
         state.error = p.message ?? "écoute impossible";
+        state.voiceHelp = p.fix || p.apiTo ? { fix: p.fix ?? null, apiTo: p.apiTo ?? null, error: state.error } : null;
         if (mine) api.notify({ title: state.error, icon: "🎙️", priority: "normal", key: "askclaude-voice" });
         break;
     }
     redraw();
   });
+}
+
+/**
+ * Sous un échec de l'écoute : ouvrir la bonne page des Paramètres Windows, et,
+ * si une clé OpenAI ou Gemini est rangée, passer à la transcription par l'API
+ * (le réglage change, puis l'écoute reprend : l'audio ne part qu'à ce clic).
+ */
+function voiceHelpRow(api: ModuleApi, help: { fix: string | null; apiTo: string | null }): HTMLElement {
+  return el(
+    "div",
+    { class: "btn-row ask-voice-help" },
+    help.fix
+      ? el(
+          "button",
+          {
+            class: "btn small",
+            onclick: api.handler(async () => {
+              try {
+                await api.invoke("voice_fix", { fix: help.fix });
+              } catch (err) {
+                state.error = errorText(err);
+                redraw();
+              }
+            }),
+          },
+          "⚙️ Ouvrir les paramètres Windows",
+        )
+      : null,
+    help.apiTo
+      ? el(
+          "button",
+          {
+            class: "btn small",
+            title: `L'audio de votre voix partira vers ${help.apiTo}, avec votre clé.`,
+            onclick: api.handler(async () => {
+              await settingsStore.update((d) => {
+                const entry = (d.modules.askclaude ??= { enabled: true, values: {} });
+                entry.values.voiceEngine = "api";
+              });
+              state.error = "";
+              state.voiceHelp = null;
+              redraw();
+              try {
+                await api.invoke("listen", {});
+              } catch (err) {
+                state.error = errorText(err);
+                redraw();
+              }
+            }),
+          },
+          "🎙️ Passer à la transcription par l'API",
+        )
+      : null,
+    help.apiTo ? el("small", { class: "muted" }, `L'audio de votre voix partira vers ${help.apiTo}, avec votre clé.`) : null,
+  );
 }
 
 /** Votre réponse à une demande d'accord : l'échange reprend. */
@@ -748,6 +813,7 @@ export const askclaude: IslandModule = {
         parts.push(list);
 
         if (state.error) parts.push(el("p", { class: "ask-error" }, `⚠️ ${state.error}`));
+        if (state.error && state.voiceHelp?.error === state.error) parts.push(voiceHelpRow(api, state.voiceHelp));
         if (state.voice.note && !state.voice.on) parts.push(el("p", { class: "ask-voice-note muted" }, state.voice.note));
 
         // Le fichier joint : montré en entier, il partira avec le prochain message.

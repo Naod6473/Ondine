@@ -2176,9 +2176,16 @@
 "Fichiers et IT": "Files and IT",
 "Entre mes PC": "Between my PCs",
 "Visite d'une collègue": "A teammate drops by",
-"Panne d'un service IA": "An AI service goes down"
+"Panne d'un service IA": "An AI service goes down",
+"la dictée de Windows n'a pas marché sans dire pourquoi : vérifiez dans Paramètres Windows que « Reconnaissance vocale en ligne » est activée (Confidentialité → Voix), que le micro est permis aux applications de bureau (Confidentialité → Microphone) et que la voix de votre langue est installée (Heure et langue → Voix)": "Windows dictation failed without saying why: check in Windows Settings that « Online speech recognition » is on (Privacy → Speech), that desktop apps may use the microphone (Privacy → Microphone) and that speech for your language is installed (Time & language → Speech)",
+"⚙️ Ouvrir les paramètres Windows": "⚙️ Open Windows Settings",
+"🎙️ Passer à la transcription par l'API": "🎙️ Switch to transcription by the API",
+"page des Paramètres inconnue": "unknown Settings page",
+"La dictée échoue": "Dictation fails"
 },
 "patterns": [
+["^L'audio de votre voix partira vers (.+), avec votre clé\\.$", "The audio of your voice will go to $1, with your key."],
+["^micro indisponible \\((.+)\\)$", "microphone unavailable ($1)"],
 ["^Vous ne l'avez pas utilisée depuis (\\d+) minutes\\. Ondine peut la réduire dans la barre des tâches \\(elle ne sera pas fermée\\)\\.$", "You have not used it for $1 minutes. Ondine can minimize it to the taskbar (it will not be closed)."],
 ["^Ranger « (.+) » \\?$", "Tidy up “$1”?"],
 [

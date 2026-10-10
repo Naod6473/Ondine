@@ -3095,6 +3095,15 @@ body[data-perf="eco"] .gh-today.gh-zero {
   margin: 0;
   font-size: 12px;
 }
+/* Sous un échec de l'écoute : la page des Paramètres Windows, la transcription par l'API. */
+.ask-voice-help {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.ask-voice-help small {
+  flex-basis: 100%;
+  font-size: 11px;
+}
 @media (prefers-reduced-motion: reduce) {
   .ask-mic-dot.on {
     animation: none;
