@@ -4451,3 +4451,244 @@ body.retro .island .btn {
   background: rgba(124, 196, 255, 0.1);
   border-color: rgba(124, 196, 255, 0.3);
 }
+
+/* ── Équipe (src/modules/team/) ─────────────────────────────────────────── */
+.team {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.team-head,
+.team-line,
+.team-sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.team-grow {
+  flex: 1;
+}
+.team-status {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--island-fg);
+  border: 0;
+  border-radius: 8px;
+  padding: 3px 6px;
+  font: inherit;
+  font-size: 12px;
+}
+/* La pastille : la couleur de la mascotte du collègue, l'anneau = son statut. */
+.team-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--peer, #5cc8ff);
+  box-shadow: 0 0 0 2px var(--st, rgba(255, 255, 255, 0.25));
+  transition: box-shadow 300ms ease;
+}
+.team-st-available {
+  --st: #5ee08a;
+}
+.team-st-meeting {
+  --st: #ffb84d;
+}
+.team-st-focus {
+  --st: #b98cff;
+}
+.team-st-away {
+  --st: rgba(255, 255, 255, 0.35);
+}
+.team-st-offline {
+  --st: rgba(255, 255, 255, 0.12);
+  opacity: 0.5;
+}
+.team-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.team-sub {
+  margin-top: 6px;
+}
+.team-peer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.team-peer.off {
+  opacity: 0.6;
+}
+.team-peer.near {
+  padding: 4px 8px;
+  gap: 8px;
+}
+.team-peer-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--island-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    transform 300ms var(--ease);
+}
+.team-peer-main:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.team-peer-main:active {
+  transform: scale(0.98);
+}
+.team-peer-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.team-tag {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+}
+.team-tag.warn,
+.team-warn {
+  color: #ffb84d;
+}
+.team-group,
+.team-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.team-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.team-text {
+  resize: vertical;
+  min-height: 48px;
+}
+.team-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.team-fp {
+  font-variant-numeric: tabular-nums;
+}
+.team-remove {
+  align-self: flex-start;
+  color: #ff7a6b;
+}
+.team-code {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(124, 196, 255, 0.1);
+  text-align: center;
+}
+.team-code-digits {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  font-variant-numeric: tabular-nums;
+}
+.team-code-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+.team-code-input {
+  font-size: 18px;
+  letter-spacing: 0.15em;
+  text-align: center;
+}
+.team-pending {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.team-req {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(255, 184, 77, 0.1);
+  font-size: 12px;
+}
+.team-req-what {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.8;
+}
+.team-report,
+.team-inv {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+}
+/* La visite : la mascotte du collègue traverse la carte (visit.ts, ressort en JS). */
+.team-visit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.team-visit-lane {
+  position: relative;
+  width: 100%;
+  height: 72px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+}
+.team-visit-walker {
+  width: 72px;
+  height: 72px;
+  will-change: transform;
+}
+.team-visit-note {
+  max-width: 90%;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  opacity: 0;
+  transform: translateY(4px) scale(0.96);
+  transition:
+    opacity 260ms ease,
+    transform 420ms var(--ease);
+  overflow-wrap: anywhere;
+}
+.team-visit-note.shown {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .team-visit-note {
+    transition: none;
+  }
+}
