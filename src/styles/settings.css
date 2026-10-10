@@ -635,6 +635,14 @@ body {
   font-size: 18px;
   flex: none;
 }
+/* L'icône d'un module dans la liste « Sans onglet ». */
+.row-icon {
+  display: inline-block;
+  width: 24px;
+  margin-right: 6px;
+  text-align: center;
+  font-size: 16px;
+}
 .chevron {
   color: var(--muted);
   font-size: 18px;

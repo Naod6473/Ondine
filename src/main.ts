@@ -15,6 +15,7 @@ import { Island } from "./island/island";
 import { startUpdates } from "./core/updates";
 import { startWhatsNew } from "./core/whats-new";
 import { startPerf } from "./core/perf";
+import { startScrollbars } from "./island/scrollbars";
 import { ALL_MODULES } from "./modules";
 
 const log = logger("app");
@@ -29,6 +30,8 @@ async function start() {
   await startI18n();
   // Le mode de performance (haute, équilibrée, éco) : avant les modules, qui le lisent.
   await startPerf();
+  // Barres de défilement discrètes (island.css, scrollbars.ts).
+  startScrollbars();
 
   const bus = new Bus(windowLabel("island"));
   // Mode démo : les vraies nouvelles du Rust (musique, presse-papiers…) sont ignorées.

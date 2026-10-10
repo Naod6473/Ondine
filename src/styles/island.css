@@ -31,6 +31,49 @@ body {
   color: var(--island-fg);
 }
 
+/* Les barres de défilement (île et bulle d'Ondine sur le bureau) : pas de
+   barre Windows avec ses flèches, mais une fine pastille grise, arrondie et
+   translucide, qui n'apparaît qu'au survol de la zone ou pendant le
+   défilement, puis s'efface (src/island/scrollbars.ts anime --sb-a de 0 à 1).
+   La place de la barre (8 px) est toujours la même, visible ou non : le
+   contenu ne bouge pas quand elle apparaît.
+   Attention : `scrollbar-width` ou `scrollbar-color` sur un élément font
+   ignorer ces règles par Chromium (WebView2) ; ne pas les utiliser ici. */
+@property --sb-a {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  background: transparent;
+}
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  /* Non héritée : la pastille lit la valeur de sa zone. */
+  --sb-a: inherit;
+  min-height: 24px;
+  min-width: 24px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+  background-color: color-mix(in srgb, var(--island-fg) calc(var(--sb-a) * 38%), transparent);
+}
+/* Sous la souris, la pastille s'épaissit un peu pour qu'on l'attrape. */
+::-webkit-scrollbar-thumb:hover {
+  border-width: 1px;
+  background-color: color-mix(in srgb, var(--island-fg) calc(var(--sb-a) * 55%), transparent);
+}
+
 .island {
   position: absolute;
   top: 0;
@@ -3450,7 +3493,6 @@ body[data-perf="eco"] .gh-today.gh-zero {
   display: flex;
   gap: 6px;
   overflow-x: auto;
-  scrollbar-width: thin;
 }
 .ctl-usb-item {
   flex: none;

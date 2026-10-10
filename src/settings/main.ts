@@ -1233,7 +1233,12 @@ function tabs(main: HTMLElement) {
     el("div", { class: "actions", "data-sub": "order" }, el("button", { class: "btn", onclick: () => save((d) => (d.island.tabOrder = []), true) }, "Ordre d'origine")),
   );
   if (without.length) {
-    const sans = group("Sans onglet", without.map((man) => row(`${man.icon}  ${man.name}`, enableToggle(man), undefined, man.name)));
+    // L'icône du module en vraie icône (image en couleur, trait en épuré), pas en emoji.
+    const sans = group("Sans onglet", without.map((man) => {
+      const line = row(man.name, enableToggle(man), undefined, man.name);
+      line.querySelector(".row-label")?.prepend(el("span", { class: "row-icon", "aria-hidden": "true" }, iconNode(man.icon)));
+      return line;
+    }));
     sans.dataset.essential = ""; // mode Simple : la liste des modules reste entière
     main.append(inSub("notab", sans));
   }

@@ -59,6 +59,9 @@ export interface PetLayout {
   right: boolean;
   /** Vers le haut depuis son bas (sinon vers le bas depuis son haut). */
   up: boolean;
+  /** La plus grande bulle qui tient dans l'écran de ce côté (px logiques). */
+  maxW?: number;
+  maxH?: number;
 }
 
 export interface UpdateInfo {
@@ -95,7 +98,9 @@ export const Bridge = {
   islandDragStart: () => call<void>("island_drag_start"),
   // Ondine sur le bureau (src-tauri/src/pet.rs)
   /** Ouvre ou ferme la bulle à côté d'elle ; renvoie de quel côté elle s'ouvre. */
-  petOpen: (open: boolean) => call<PetLayout>("pet_open", { open }),
+  petOpen: (open: boolean, size?: { w: number; h: number }) => call<PetLayout>("pet_open", { open, w: size?.w ?? null, h: size?.h ?? null }),
+  /** La bulle a besoin d'une autre taille (px logiques) : la fenêtre suit, la mascotte ne bouge pas. */
+  petBubble: (w: number, h: number) => call<void>("pet_bubble", { w, h }),
   /** On attrape Ondine : sa fenêtre suit la souris jusqu'au lâcher. */
   petDragStart: () => call<void>("pet_drag_start"),
   /** Les cases de la page qui prennent la souris (px logiques). */

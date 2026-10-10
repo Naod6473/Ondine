@@ -8,6 +8,10 @@
 //     (`mascot.petTabs`). La bulle va du côté où l'écran a de la place
 //     (droite sinon gauche, vers le haut sinon vers le bas) ; la mascotte, elle,
 //     ne bouge pas à l'écran : seule la fenêtre s'agrandit autour d'elle.
+//     La bulle prend la taille de son contenu, en largeur et en hauteur
+//     (src/pet/main.ts la mesure et l'anime) : la page demande la place qu'il
+//     lui faut (`pet_bubble`), bornée à ce que l'écran laisse de son côté
+//     (`max_w`, `max_h` de la disposition).
 //
 // On la déplace en l'attrapant (`pet_drag_start`) : la fenêtre suit la souris
 // jusqu'au lâcher (bulle comprise), puis la place de la mascotte est enregistrée
@@ -39,9 +43,16 @@ pub const WINDOW_LABEL: &str = "pet";
 
 /// La case de la mascotte (px logiques).
 pub const PET_BOX: f64 = 112.0;
-/// La bulle ouverte à côté d'elle (px logiques).
+/// La bulle ouverte à côté d'elle (px logiques) : sa taille avant la première
+/// mesure de la page, et ses bornes (mêmes valeurs dans src/pet/bubble-size.ts).
 pub const BUBBLE_W: f64 = 420.0;
 pub const BUBBLE_H: f64 = 480.0;
+pub const BUBBLE_MIN_W: f64 = 360.0;
+pub const BUBBLE_MIN_H: f64 = 120.0;
+pub const BUBBLE_MAX_W: f64 = 640.0;
+pub const BUBBLE_MAX_H: f64 = 560.0;
+/// L'air laissé entre la bulle et le bord de la zone de travail (px logiques).
+const SCREEN_GAP: f64 = 8.0;
 /// La marge laissée au bord de l'écran quand Ondine n'a jamais été posée.
 const DEFAULT_MARGIN: f64 = 48.0;
 /// Lâchée à moins de ça (px logiques) d'un bord de la zone de travail, elle s'y colle.
@@ -65,9 +76,18 @@ pub struct Layout {
     pub right: bool,
     /// La bulle monte au-dessus du bas de la mascotte (sinon elle descend depuis son haut).
     pub up: bool,
+    /// La plus grande bulle qui tient dans l'écran de ce côté (px logiques).
+    pub max_w: f64,
+    pub max_h: f64,
 }
 
-const CLOSED: Layout = Layout { open: false, right: true, up: true };
+const CLOSED: Layout = Layout { open: false, right: true, up: true, max_w: BUBBLE_MAX_W, max_h: BUBBLE_MAX_H };
+
+/// La taille de la bulle (px logiques), bornée par la disposition.
+fn clamp_bubble(l: Layout, (w, h): (f64, f64)) -> (f64, f64) {
+    let (w, h) = (if w.is_finite() { w } else { BUBBLE_W }, if h.is_finite() { h } else { BUBBLE_H });
+    (w.clamp(BUBBLE_MIN_W, l.max_w.max(BUBBLE_MIN_W)).round(), h.clamp(BUBBLE_MIN_H, l.max_h.max(BUBBLE_MIN_H)).round())
+}
 
 /// Une case de la page qui prend la souris (px logiques, depuis le coin de la fenêtre).
 #[derive(Clone, Copy, Debug, Default, PartialEq, serde::Deserialize)]
@@ -82,6 +102,8 @@ pub struct HitRect {
 /// les cases qui prennent la souris.
 pub struct PetState {
     layout: Mutex<Layout>,
+    /// La place que la fenêtre garde pour la bulle (px logiques).
+    bubble: Mutex<(f64, f64)>,
     dragging: AtomicBool,
     walking: AtomicBool,
     hit: Mutex<Vec<HitRect>>,
@@ -89,7 +111,7 @@ pub struct PetState {
 
 impl Default for PetState {
     fn default() -> Self {
-        Self { layout: Mutex::new(CLOSED), dragging: AtomicBool::new(false), walking: AtomicBool::new(false), hit: Mutex::new(Vec::new()) }
+        Self { layout: Mutex::new(CLOSED), bubble: Mutex::new((BUBBLE_W, BUBBLE_H)), dragging: AtomicBool::new(false), walking: AtomicBool::new(false), hit: Mutex::new(Vec::new()) }
     }
 }
 
@@ -180,23 +202,29 @@ pub fn window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window(WINDOW_LABEL)
 }
 
-/// Le décalage (px logiques) de la case de la mascotte dans la fenêtre.
-fn mascot_offset(l: Layout) -> (f64, f64) {
+/// Le décalage (px logiques) de la case de la mascotte dans la fenêtre, pour
+/// une disposition et une taille de bulle.
+fn mascot_offset(l: Layout, (bw, bh): (f64, f64)) -> (f64, f64) {
     if !l.open {
         return (0.0, 0.0);
     }
-    let x = if l.right { 0.0 } else { BUBBLE_W };
-    let y = if l.up { BUBBLE_H - PET_BOX } else { 0.0 };
+    let x = if l.right { 0.0 } else { bw };
+    let y = if l.up { bh.max(PET_BOX) - PET_BOX } else { 0.0 };
     (x, y)
 }
 
-/// La taille de la fenêtre (px logiques) pour une disposition.
-fn window_size(l: Layout) -> (f64, f64) {
+/// La taille de la fenêtre (px logiques) pour une disposition et une taille de bulle.
+fn window_size(l: Layout, (bw, bh): (f64, f64)) -> (f64, f64) {
     if l.open {
-        (PET_BOX + BUBBLE_W, BUBBLE_H.max(PET_BOX))
+        (PET_BOX + bw, bh.max(PET_BOX))
     } else {
         (PET_BOX, PET_BOX)
     }
+}
+
+/// La place gardée pour la bulle.
+fn bubble_of(app: &AppHandle) -> (f64, f64) {
+    app.try_state::<PetState>().map(|s| *s.bubble.locked()).unwrap_or((BUBBLE_W, BUBBLE_H))
 }
 
 fn monitor_contains(m: &Monitor, x: f64, y: f64) -> bool {
@@ -264,33 +292,56 @@ fn snap(edges: (i32, i32, i32, i32), scale: f64, mx: i32, my: i32) -> (i32, i32)
     (x, y)
 }
 
-/// Où ouvrir la bulle : du côté où elle tient dans l'écran de la mascotte.
-fn choose_layout(m: &Monitor, mx: i32, my: i32) -> Layout {
-    let scale = m.scale_factor();
-    let p = m.position();
-    let s = m.size();
-    let (bw, bh, pb) = (BUBBLE_W * scale, BUBBLE_H * scale, PET_BOX * scale);
-    let right = mx as f64 + pb + bw <= (p.x + s.width as i32) as f64 || (mx as f64 - bw) < p.x as f64;
-    let up = my as f64 + pb - bh >= p.y as f64;
-    Layout { open: true, right, up }
+/// Où ouvrir la bulle : du côté où une bulle de `want` (px logiques) tient
+/// dans la zone de travail de l'écran de la mascotte (`edges`, px physiques),
+/// et la plus grande bulle qui y tient de ce côté.
+fn choose_layout(edges: (i32, i32, i32, i32), scale: f64, mx: i32, my: i32, want: (f64, f64)) -> Layout {
+    let (l, t, r, b) = (edges.0 as f64, edges.1 as f64, edges.2 as f64, edges.3 as f64);
+    let (mx, my) = (mx as f64, my as f64);
+    let (bw, bh, pb) = (want.0 * scale, want.1 * scale, PET_BOX * scale);
+    let right = mx + pb + bw <= r || mx - bw < l;
+    let up = my + pb - bh >= t;
+    // La place de ce côté, en px logiques, moins un peu d'air.
+    let room_w = if right { r - (mx + pb) } else { mx - l } / scale - SCREEN_GAP;
+    let room_h = if up { my + pb - t } else { b - my } / scale - SCREEN_GAP;
+    Layout {
+        open: true,
+        right,
+        up,
+        max_w: room_w.clamp(BUBBLE_MIN_W, BUBBLE_MAX_W).round(),
+        max_h: room_h.clamp(BUBBLE_MIN_H, BUBBLE_MAX_H).round(),
+    }
+}
+
+/// La disposition ouverte pour la mascotte au coin (mx, my).
+fn open_layout(app: &AppHandle, mx: i32, my: i32, want: (f64, f64)) -> Layout {
+    match monitor_at(app, mx as f64 + 4.0, my as f64 + 4.0) {
+        Some(m) => choose_layout(work_edges(&m), m.scale_factor(), mx, my, want),
+        None => Layout { open: true, ..CLOSED },
+    }
 }
 
 /// Donne à la fenêtre la taille et la place d'une disposition, la mascotte
 /// restant au coin (mx, my), et prévient la page.
 fn apply_layout(app: &AppHandle, win: &WebviewWindow, l: Layout, mx: i32, my: i32) {
     let scale = monitor_at(app, mx as f64, my as f64).map(|m| m.scale_factor()).unwrap_or(1.0);
-    let (w, h) = window_size(l);
-    let (ox, oy) = mascot_offset(l);
+    let bubble = clamp_bubble(l, bubble_of(app));
+    let (w, h) = window_size(l, bubble);
+    let (ox, oy) = mascot_offset(l, bubble);
     let size = PhysicalSize::new((w * scale).round() as u32, (h * scale).round() as u32);
     let pos = PhysicalPosition::new(mx - (ox * scale).round() as i32, my - (oy * scale).round() as i32);
-    // La page se dispose d'abord, puis la fenêtre change : la mascotte ne saute pas.
-    let _ = win.emit("pet-layout", l);
-    let _ = win.set_size(size);
-    let _ = win.set_position(pos);
-    let _ = win.set_size(size);
     if let Some(state) = app.try_state::<PetState>() {
         *state.layout.locked() = l;
+        *state.bubble.locked() = bubble;
     }
+    // La page se dispose d'abord, puis la fenêtre change : la mascotte ne saute pas.
+    let _ = win.emit("pet-layout", l);
+    // Place et taille d'un seul coup (une bulle qui grandit vers la gauche ou
+    // vers le haut déplace la fenêtre en même temps qu'elle l'agrandit), puis
+    // la taille encore une fois : passée sur un écran d'une autre échelle,
+    // Windows a pu la recalculer.
+    platform::set_bounds(win, pos, size);
+    let _ = win.set_size(size);
 }
 
 /// La place actuelle de la mascotte à l'écran (px physiques), d'après la fenêtre.
@@ -298,7 +349,7 @@ fn current_mascot(app: &AppHandle, win: &WebviewWindow) -> Option<(i32, i32)> {
     let origin = win.outer_position().ok()?;
     let l = app.try_state::<PetState>().map(|s| *s.layout.locked()).unwrap_or(CLOSED);
     let scale = monitor_at(app, origin.x as f64, origin.y as f64).map(|m| m.scale_factor()).unwrap_or(1.0);
-    let (ox, oy) = mascot_offset(l);
+    let (ox, oy) = mascot_offset(l, bubble_of(app));
     Some((origin.x + (ox * scale).round() as i32, origin.y + (oy * scale).round() as i32))
 }
 
@@ -358,18 +409,15 @@ fn apply_hotkey(app: &AppHandle, wanted: &str) {
     }
 }
 
-/// Ouvre (ou ferme) la bulle à côté de la mascotte.
-pub fn set_open(app: &AppHandle, open: bool) -> Layout {
+/// Ouvre (ou ferme) la bulle à côté de la mascotte. `want` : la taille de la
+/// bulle mesurée par la page (px logiques), si elle l'a.
+pub fn set_open(app: &AppHandle, open: bool, want: Option<(f64, f64)>) -> Layout {
     let Some(win) = window(app) else { return CLOSED };
     let Some((mx, my)) = current_mascot(app, &win) else { return CLOSED };
-    let l = if open {
-        match monitor_at(app, mx as f64, my as f64) {
-            Some(m) => choose_layout(&m, mx, my),
-            None => Layout { open: true, right: true, up: true },
-        }
-    } else {
-        CLOSED
-    };
+    if let (Some(want), Some(state)) = (want, app.try_state::<PetState>()) {
+        *state.bubble.locked() = want;
+    }
+    let l = if open { open_layout(app, mx, my, bubble_of(app)) } else { CLOSED };
     apply_layout(app, &win, l, mx, my);
     // Ouverte : la bulle prend le clavier (le champ de « Parler à Ondine ») ;
     // fermée : le focus retourne à l'appli d'avant.
@@ -378,6 +426,30 @@ pub fn set_open(app: &AppHandle, open: bool) -> Layout {
         let _ = win.set_focus();
     }
     l
+}
+
+/// La page demande une autre place pour la bulle (son contenu a changé) : la
+/// fenêtre s'agrandit ou se resserre autour, la mascotte ne bouge pas. Le côté
+/// ne change pas tant que la bulle est ouverte ; la taille reste bornée à l'écran.
+pub fn set_bubble(app: &AppHandle, w: f64, h: f64) {
+    let Some(win) = window(app) else { return };
+    let Some(state) = app.try_state::<PetState>() else { return };
+    let l = *state.layout.locked();
+    if state.dragging.load(Ordering::SeqCst) {
+        return;
+    }
+    let want = clamp_bubble(l, (w, h));
+    if want == *state.bubble.locked() {
+        return;
+    }
+    if !l.open {
+        *state.bubble.locked() = want;
+        return;
+    }
+    // La place de la mascotte d'abord (elle dépend de l'ancienne taille).
+    let Some((mx, my)) = current_mascot(app, &win) else { return };
+    *state.bubble.locked() = want;
+    apply_layout(app, &win, l, mx, my);
 }
 
 /// On a attrapé Ondine : la fenêtre suit la souris jusqu'au lâcher, puis la
@@ -439,7 +511,7 @@ fn drag_end(app: &AppHandle, win: &WebviewWindow) {
             // Près d'un bord : elle s'y colle. La bulle ouverte a peut-être
             // maintenant plus de place de l'autre côté.
             let (sx, sy) = snap(work_edges(&m), m.scale_factor(), mx, my);
-            let l = if open { choose_layout(&m, sx, sy) } else { CLOSED };
+            let l = if open { choose_layout(work_edges(&m), m.scale_factor(), sx, sy, bubble_of(app)) } else { CLOSED };
             apply_layout(app, win, l, sx, sy);
             (sx, sy)
         }
@@ -578,13 +650,47 @@ mod tests {
 
     #[test]
     fn mascot_stays_in_its_corner() {
-        assert_eq!(mascot_offset(CLOSED), (0.0, 0.0));
-        assert_eq!(window_size(CLOSED), (PET_BOX, PET_BOX));
+        let b = (BUBBLE_W, BUBBLE_H);
+        let open = |right, up| Layout { open: true, right, up, ..CLOSED };
+        assert_eq!(mascot_offset(CLOSED, b), (0.0, 0.0));
+        assert_eq!(window_size(CLOSED, b), (PET_BOX, PET_BOX));
         // Bulle à droite, vers le haut : la mascotte en bas à gauche de la fenêtre.
-        assert_eq!(mascot_offset(Layout { open: true, right: true, up: true }), (0.0, BUBBLE_H - PET_BOX));
+        assert_eq!(mascot_offset(open(true, true), b), (0.0, BUBBLE_H - PET_BOX));
         // Bulle à gauche, vers le bas : la mascotte en haut à droite.
-        assert_eq!(mascot_offset(Layout { open: true, right: false, up: false }), (BUBBLE_W, 0.0));
-        assert_eq!(window_size(Layout { open: true, right: false, up: false }), (PET_BOX + BUBBLE_W, BUBBLE_H));
+        assert_eq!(mascot_offset(open(false, false), b), (BUBBLE_W, 0.0));
+        assert_eq!(window_size(open(false, false), b), (PET_BOX + BUBBLE_W, BUBBLE_H));
+        // Une petite bulle (moins haute que la case) : la fenêtre garde la hauteur de la case.
+        assert_eq!(window_size(open(true, true), (300.0, 90.0)), (PET_BOX + 300.0, PET_BOX));
+        assert_eq!(mascot_offset(open(false, true), (300.0, 90.0)), (300.0, 0.0));
+    }
+
+    #[test]
+    fn the_bubble_fits_its_content_within_the_screen() {
+        // Écran 1920 × 1080, barre des tâches de 48 px, échelle 1.
+        let edges = (0, 0, 1920, 1032);
+        // En bas à droite : la bulle va à gauche, vers le haut.
+        let l = choose_layout(edges, 1.0, 1760, 930, (400.0, 300.0));
+        assert!(!l.right && l.up);
+        assert_eq!(l.max_w, BUBBLE_MAX_W);
+        assert_eq!(l.max_h, BUBBLE_MAX_H);
+        // Près du haut de l'écran : vers le bas, et pas plus haute que la place.
+        let l = choose_layout(edges, 1.0, 400, 10, (400.0, 300.0));
+        assert!(l.right && !l.up);
+        assert_eq!(l.max_h, BUBBLE_MAX_H);
+        // Petit écran (1024 × 600) : bornée à la place qui reste.
+        let l = choose_layout((0, 0, 1024, 600), 1.0, 500, 450, (600.0, 500.0));
+        assert!(l.up);
+        assert_eq!(l.max_h, 450.0 + 112.0 - 8.0);
+        assert_eq!(l.max_w, 1024.0 - 612.0 - 8.0);
+        // Échelle 1,5 : les bornes restent en px logiques.
+        let l = choose_layout((0, 0, 2880, 1620), 1.5, 100, 1400, (400.0, 300.0));
+        assert!(l.right && l.up);
+        assert_eq!(l.max_h, BUBBLE_MAX_H);
+        // La taille demandée est bornée : jamais plus petite que le minimum, jamais plus grande que l'écran.
+        let small = Layout { open: true, right: true, up: true, max_w: 500.0, max_h: 300.0 };
+        assert_eq!(clamp_bubble(small, (100.0, 50.0)), (BUBBLE_MIN_W, BUBBLE_MIN_H));
+        assert_eq!(clamp_bubble(small, (900.0, 900.0)), (500.0, 300.0));
+        assert_eq!(clamp_bubble(small, (f64::NAN, 200.4)), (BUBBLE_W.min(500.0), 200.0));
     }
 
     #[test]
