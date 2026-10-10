@@ -175,7 +175,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "🎨",
     label: "Apparence",
     sub: "La couleur de l'île et ses petits sons.",
-    keywords: ["Thème", "Icônes", "Style des icônes", "Animations", "Style des animations", "Studio", "Élasticité de l'île", "Couleur de l'île", "Couleur personnalisée", "Sons de clic", "Volume des sons"],
+    keywords: ["Thème", "Icônes", "Style des icônes", "Animations", "Style des animations", "Studio", "Élasticité de l'île", "Halo autour de l'île", "Couleur de l'île", "Couleur personnalisée", "Sons de clic", "Volume des sons"],
     render: look,
   },
   {
@@ -1099,6 +1099,12 @@ function look(main: HTMLElement) {
         "Élasticité de l'île",
         segmented(s.island.elasticity ?? "normal", [["soft", "Doux"], ["normal", "Normal"], ["jelly", "Gelée"]], (v) => save((d) => (d.island.elasticity = v as Settings["island"]["elasticity"]))),
         "Doux : l'île se pose sans rebondir. Normal : un petit rebond. Gelée : elle tremblote, se creuse sous vos clics et s'étire comme de la guimauve. Si Windows réduit les animations, rien ne bouge.",
+      ),
+      // Le halo de lumière autour de l'île : ses réglages sont ceux du module « Animations de l'île ».
+      row(
+        "Halo autour de l'île",
+        el("button", { class: "btn small", onclick: () => go("module:halos") }, "Régler les animations de l'île"),
+        "Un liseré de lumière en couleurs qui bougent : batterie, agents, sortie de veille, téléchargements… Chaque moment se coupe à part.",
       ),
     ]),
     group("Sons", [
