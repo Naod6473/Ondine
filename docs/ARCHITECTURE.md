@@ -1089,6 +1089,21 @@ qui surveille dossiers et lecteurs).
 - Front : l'onglet de l'île (liste, interrupteurs, pause générale, historique)
   et la section « Règles » de la fenêtre de réglages
   (`src/settings/rules-editor.ts`).
+- 1.2.2 : déclencheurs sans fichier, sondés par `rules/sense.rs` à chaque
+  tour du fil de fond (`schedule` heure + jours, avec balayage facultatif
+  d'un dossier ; `unlock` par `platform/session.rs` ; `clipboard` lien /
+  e-mail / code / texte, presse-papiers marqué sensible ignoré, texte jamais
+  journalisé ; `network` coupure / retour d'Internet et VPN, toutes les
+  10 s, confirmé par deux lectures ; `battery` / `power`) ou reçus du bus
+  (`agent` ← `agents.event`, `music` ← `media.changed`). Conditions `days`,
+  `from` / `to`, `olderThanDays`. Actions `addNote` (`notes.add`, `kind`
+  `todo`), `unzip` (`rules/unzip.rs` : noms protégés, 10 000 entrées et
+  4 Go au plus, jamais d'écrasement, annulable), `copyPath`, `mascot`
+  (`mascot.dance` / `mascot.emote` / `mascot.sign {text, secs}`), `quiet`
+  (`rules.quiet {on}` : l'île met les notifications en pause). Compteur
+  « déclenchée N fois cette semaine » (`fired` dans le fichier des règles).
+  Point d'extension prévu pour « nouvel appareil sur le réseau » (dans
+  `sense.rs`).
 
 ### Module Lanceur (`src/modules/launcher/`, `src-tauri/src/modules/launcher.rs`)
 
@@ -1262,9 +1277,30 @@ s'il n'existe pas ou est désactivé).
   réponse : éteinte ou pare-feu). Raccourcis : 443, 80, 3389, 22, 445, 53.
 - `dns {host}` : nom → adresses par le résolveur de Windows ; une IPv4 →
   son nom (`GetNameInfoW`, recherche inverse).
+- Services IA (`nettools_ai.rs`, réglage `aiStatus`, **désactivé** par
+  défaut) : toutes les 5 min, lecture des pages d'état publiques de Claude
+  (`status.anthropic.com/api/v2/status.json`), ChatGPT
+  (`status.openai.com/api/v2/status.json`, format Statuspage) et Gemini
+  (`status.cloud.google.com/incidents.json`, incidents en cours dont le
+  produit contient « Gemini »). Vert / orange / rouge, historique des pannes
+  sur 7 jours (`ai-status.json`). En pause pendant la concentration
+  (`timer.focus`), le calme des agents, une présentation ou sans Internet.
+  Bus : `nettools.ai-status {services, change}` (notifications, point rouge
+  de la mini-île, conseil « Claude a un incident en cours » sur les
+  événements d'agents) et `mascot.emote` (inquiet / soulagé).
 
 ### Module Contrôles (`src/modules/controls/`, `src-tauri/src/modules/controls.rs`, `src-tauri/src/platform/audio.rs`)
 
+- 1.2.2 : `bt_batteries` (`platform/bt_battery.rs`, propriété
+  `DEVPKEY_Bluetooth_Battery` des périphériques `BTH*`, aucun appareil
+  contacté) et alerte `controls.bt-battery-low` sous le réglage
+  `btBatteryLow` (15 %), réarmée à +5 % ; `desktop_icons` /
+  `set_desktop_icons` (« Bureau propre », `platform/desktop_icons.rs`) ;
+  télécommande sur le téléphone (`controls_remote.rs`, réglage `phoneRemote`
+  **désactivé** par défaut, permission `network`) : serveur HTTP du réseau
+  local avec jeton de 128 bits, un seul téléphone, actions fixes (musique,
+  volume, minuteur, diapositive par Page suivante / précédente), arrêt après
+  10 min sans action ou 3 h ; publie `controls.remote {state}`.
 - Volume et coupure des haut-parleurs et du micro **par défaut** de Windows,
   par Core Audio (`IMMDeviceEnumerator::GetDefaultAudioEndpoint` →
   `IAudioEndpointVolume`). Aucune permission : rien n'est lu ni envoyé.
