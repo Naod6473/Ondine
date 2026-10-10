@@ -461,7 +461,7 @@ export const shelf: IslandModule = {
               item.exists ? confirmButton(api, "icon-btn", "🗑️", "Envoyer à la Corbeille", () => actions.trash(api, one)) : null,
               el(
                 "button",
-                { class: "icon-btn", title: "Retirer de l'étagère", onclick: api.handler(() => attempt(api, "Retirer", () => api.invoke("remove", { paths: one }).then(() => {}))) },
+                { class: "icon-btn", title: "Retirer de l'étagère", "data-scene": "shelf-remove", onclick: api.handler(() => attempt(api, "Retirer", () => api.invoke("remove", { paths: one }).then(() => {}))) },
                 "×",
               ),
             ),

@@ -18,14 +18,21 @@ import { countText, summary, type Listing } from "./shared";
 
 let listing: Listing = { rules: [], paused: false, history: [], errors: {}, topics: [] };
 const redraws = new Set<() => void>();
+/** La liste a déjà été lue une fois (une règle exécutée avant le démarrage ne compte pas). */
+let loaded = false;
 
 async function refresh(api: ModuleApi) {
+  const lastRun = loaded ? (listing.history[0]?.at ?? 0) : null;
   try {
     listing = await api.invoke<Listing>("list");
   } catch {
     return; // hors de l'appli (navigateur)
   }
+  loaded = true;
   for (const r of redraws) r();
+  // Une règle vient de s'exécuter : Ondine tourne une manivelle à côté (src/island/scenes/).
+  const newest = listing.history[0];
+  if (newest && lastRun !== null && newest.at > lastRun) api.emit("mascot.scene", { scene: "rules-run", name: newest.rule });
 }
 
 async function attempt(api: ModuleApi, run: () => Promise<unknown>) {

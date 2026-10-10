@@ -447,6 +447,13 @@
         "label": "Ondine flotte quand l'île est pleine",
         "default": true,
         "help": "Elle plonge aussi quand un téléchargement arrive, et met une bouée quand le minuteur déborde."
+      },
+      {
+        "key": "ondineWalk",
+        "type": "boolean",
+        "label": "Ondine se déplace dans l'île",
+        "default": true,
+        "help": "Pour certaines actions (retirer un fichier, changer d'onglet, un minuteur, une copie…), elle quitte sa case en petits sauts, agit, puis revient. Avec « Calme » ou en économie d'énergie, un simple geste à la place ; rien si Windows réduit les animations."
       }
     ]
   },

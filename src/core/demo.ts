@@ -22,7 +22,7 @@ export function demoOn(): boolean {
 }
 
 /** Les scènes que la fenêtre de réglages peut demander (sujet « demo.scene »). */
-export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "timer-ring", "voice", "voice-error", "mascot-talk", "ai-outage", "team-visit", "island-dodge", "setup", "team-chat", "dances", "liquid-timer", "liquid-moods", "liquid-float"] as const;
+export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "timer-ring", "voice", "voice-error", "mascot-talk", "ai-outage", "team-visit", "island-dodge", "setup", "team-chat", "dances", "liquid-timer", "liquid-moods", "liquid-float", "ondine-walk"] as const;
 export type DemoScene = (typeof DEMO_SCENES)[number];
 
 /**
@@ -1018,6 +1018,10 @@ function playScene(bus: Bus, scene: string) {
     case "liquid-float":
       playLiquid(bus, LIQUID_FLOAT);
       break;
+    case "ondine-walk":
+      // Ondine se déplace dans l'île (src/island/scenes/) : les scènes l'une après l'autre.
+      ondineTour(bus);
+      break;
     case "island-dodge":
       // L'île s'écarte de la fenêtre de réglages (forme et peur d'Ondine ; la
       // fenêtre, elle, ne bouge pas dans un navigateur), puis rentre chez elle.
@@ -1025,6 +1029,54 @@ function playScene(bus: Bus, scene: string) {
       window.setTimeout(() => bus.inject("island.dodge-demo", { edge: "top", align: "end", phase: "cornered" }, "demo"), 1800);
       window.setTimeout(() => bus.inject("island.dodge-demo", { edge: "top", align: "center", phase: "home" }, "demo"), 4200);
       break;
+    default:
+      // « ondine:<scène> » : une seule scène d'Ondine qui se déplace (liste : SCENE_IDS de scene-rules.ts).
+      if (scene.startsWith("ondine:")) bus.inject("mascot.scene", { scene: scene.slice(7), demo: true }, "demo");
+  }
+}
+
+// ── Ondine se déplace dans l'île : le tour des scènes ────────────────────────
+
+/** Les scènes du tour, et combien de temps on laisse à chacune (ms). Le dépôt de fichier (15) demande un vrai glisser. */
+const ONDINE_TOUR: [scene: string, ms: number, extra?: Record<string, unknown>][] = [
+  ["island-open", 3000],
+  ["tab-hop", 3500],
+  ["shelf-remove", 5000],
+  ["shelf-add", 4000],
+  ["sweep", 6000],
+  ["note-delete", 5000],
+  ["note-save", 4500],
+  ["timer-sit", 7000],
+  ["timer-bell", 4500],
+  ["pomodoro-stretch", 7000],
+  ["media-next", 6500],
+  ["clip-new", 4000],
+  ["volume", 5000],
+  ["agent-done", 4500],
+  ["agent-wait", 4500],
+  ["launcher-search", 5000],
+  ["capture", 4500],
+  ["team-send", 5000],
+  ["team-receive", 6000],
+  ["rules-run", 4500],
+  ["progress", 7500],
+  ["banner", 6000],
+  ["idle-stroll", 9000],
+  ["liquid-swim", 10_000],
+  ["weather", 8000, { kind: "rain" }],
+  ["weather", 5000, { kind: "sun" }],
+  ["day-end", 8000],
+];
+
+let tourTimers: number[] = [];
+
+function ondineTour(bus: Bus) {
+  for (const t of tourTimers) window.clearTimeout(t);
+  tourTimers = [];
+  let at = 0;
+  for (const [scene, ms, extra] of ONDINE_TOUR) {
+    tourTimers.push(window.setTimeout(() => bus.inject("mascot.scene", { scene, demo: true, ...extra }, "demo"), at));
+    at += ms;
   }
 }
 

@@ -331,7 +331,7 @@ export const media: IslandModule = {
         }
         const p = playing;
         const button = (label: string, title: string, enabled: boolean, command: "toggle" | "next" | "previous") =>
-          el("button", { class: "media-btn", title, disabled: !enabled, onclick: api.handler(() => control(api, command)) }, label);
+          el("button", { class: "media-btn", title, disabled: !enabled, "data-scene-target": command === "next" ? "media-next" : undefined, onclick: api.handler(() => control(api, command)) }, label);
 
         const bar = el("div", { class: "media-bar" }, el("div", { class: "media-bar-fill" }));
         const times = el("div", { class: "media-times" }, el("span"), el("span"));
