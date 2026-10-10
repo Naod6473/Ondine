@@ -201,6 +201,17 @@
 - Système : nouveau seuil « Batterie critique » (10 %) et réglages des halos
   de batterie. · System: new "Critical battery" threshold (10%) and battery
   halo settings.
+- Réglages rangés en cinq groupes (Ondine, L'île, Automatiser, Modules,
+  Sécurité et système). Une page « Animations et halos » réunit les halos, le
+  liquide, le liseré des minuteurs et les halos de batterie, en sous-menus avec
+  un interrupteur « Tout » chacun ; « Ondine et les fenêtres » rejoint
+  Comportement. Aucun réglage perdu, la recherche connaît les anciens noms, et
+  le mode Simple n'affiche plus de sous-menu vide. · Settings regrouped into
+  five groups (Ondine, The island, Automate, Modules, Security and system). A
+  new "Animations and halos" page brings together halos, the liquid, the timer
+  outline and battery halos, in sub-menus that each have an "All" switch;
+  "Ondine and windows" moves into Behavior. No setting is lost, search still
+  finds the old page names, and Simple mode no longer shows empty sub-menus.
 - Correction : si la dictée de Windows échoue, un message clair dit quoi
   régler (reconnaissance vocale en ligne, micro, langue), avec un bouton vers
   la bonne page des Paramètres et, si une clé OpenAI ou Gemini est
