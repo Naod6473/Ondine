@@ -1855,8 +1855,10 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
   message : un document à lire, pas des instructions.
 - Front : bulles (vous à droite, Ondine à gauche, `data-no-i18n`), trois
   gouttes pendant l'attente, Entrée envoie, `data-island-fit` pour que l'île
-  grandisse. Sous le champ : ce qui part et vers où, et « Voir la
-  personnalité ». Le premier mot d'Ondine est écrit en local (gratuit).
+  grandisse. Rien sous le champ (île épurée en 1.2.2) : ce qui part et vers
+  où, et la consigne exacte, sont dans les Réglages du module
+  (`src/settings/askclaude-page.ts`, sous-menus Général et Personnalité).
+  Le premier mot d'Ondine est écrit en local (gratuit).
 - Dépôt sur l'île : « Parler à Ondine » prépare le fichier et ouvre l'onglet.
 - Outils de fichiers (`askclaude_tools.rs`, réglage `fileTools`, activé par
   défaut) : quatre outils proposés à l'IA, décrits dans le format de chaque

@@ -110,10 +110,9 @@ const state: {
   status: Status | null;
   busy: boolean;
   error: string;
-  showSystem: boolean;
   /** L'échange arrêté sur une demande d'accord, et ce qu'Ondine a déjà fait. */
   pending: { ask: Ask; activity: Activity[] } | null;
-} = { draft: "", attachment: null, bubbles: [], status: null, busy: false, error: "", showSystem: false, pending: null };
+} = { draft: "", attachment: null, bubbles: [], status: null, busy: false, error: "", pending: null };
 /** Les bulles déjà apparues : seules les nouvelles s'animent à l'arrivée. */
 let shown = 0;
 const redraws = new Set<() => void>();
@@ -303,13 +302,6 @@ function askText(what: string, value: string): string {
 }
 
 const ACTIVITY_ICONS: Record<Activity["kind"], string> = { search: "🔎", read: "📖", created: "✏️", refused: "🚫", did: "⚡", "refused-act": "🚫" };
-
-/** Ce qui part à chaque message, en une phrase (trois phrases entières pour la traduction). */
-function footnote(destination: string, previous: number): string {
-  if (previous === 0) return `À chaque message partent vers ${destination} : la personnalité d'Ondine et le vôtre. Rien n'est gardé sur le disque.`;
-  if (previous === 1) return `À chaque message partent vers ${destination} : la personnalité d'Ondine, le message précédent et le vôtre. Rien n'est gardé sur le disque.`;
-  return `À chaque message partent vers ${destination} : la personnalité d'Ondine, les ${previous} messages précédents et le vôtre. Rien n'est gardé sur le disque.`;
-}
 
 function size(bytes: number): string {
   return bytes < 1024 ? `${bytes} o` : `${(bytes / 1024).toFixed(bytes < 10240 ? 1 : 0)} Ko`;
@@ -572,30 +564,6 @@ export const askclaude: IslandModule = {
             el("button", { class: "btn small", disabled: state.busy, onclick: pick }, "📎 Joindre un fichier…"),
           ),
         );
-
-        // Ce qui part, dit simplement, et la personnalité à relire.
-        if (s) {
-          const n = Math.min(state.bubbles.length, s.maxTurns - 1);
-          parts.push(
-            el(
-              "div",
-              { class: "ask-footnote" },
-              el("small", { class: "muted" }, footnote(s.destination, n)),
-              s.fileTools
-                ? el("small", { class: "muted" }, "Ondine peut chercher vos fichiers par leur nom : les noms trouvés partent aussi. Pour lire ou créer un fichier, elle vous demande d'abord.")
-                : null,
-              s.pcTools
-                ? el("small", { class: "muted" }, "Ondine peut aussi régler le PC quand vous le lui demandez. Pour ouvrir une application ou un site, elle vous demande d'abord.")
-                : null,
-              el(
-                "button",
-                { class: "btn small", onclick: () => ((state.showSystem = !state.showSystem), redraw()) },
-                state.showSystem ? "Masquer la personnalité" : "Voir la personnalité",
-              ),
-              state.showSystem ? el("pre", { class: "ask-doc", "data-no-i18n": "" }, s.system) : null,
-            ),
-          );
-        }
 
         const hadFocus = document.activeElement?.classList.contains("ask-input") ?? false;
         box.replaceChildren(...parts.filter((x): x is HTMLElement => x !== null));

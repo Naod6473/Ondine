@@ -1350,6 +1350,24 @@ code.cals-source {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Parler à Ondine : ce qui part, la consigne exacte (askclaude-page.ts) */
+.ask-sent p {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+.ask-system {
+  margin: 8px 0 0;
+  max-height: 260px;
+  overflow: auto;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(127, 127, 127, 0.12);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .link-btn {
   margin-top: 4px;
   padding: 0;

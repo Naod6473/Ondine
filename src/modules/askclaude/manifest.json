@@ -43,7 +43,7 @@
         "type": "string",
         "multiline": true,
         "label": "Personnalité d'Ondine",
-        "help": "Vide = une goutte joyeuse, curieuse et un brin espiègle, qui répond en quelques phrases. Écrivez la vôtre pour changer son caractère. Elle part avec chaque message, et vous pouvez la relire dans l'onglet.",
+        "help": "Vide = une goutte joyeuse, curieuse et un brin espiègle, qui répond en quelques phrases. Écrivez la vôtre pour changer son caractère. Elle part avec chaque message : relisez la consigne exacte dans ces réglages.",
         "default": "",
         "maxLength": 1500
       },

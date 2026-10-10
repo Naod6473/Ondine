@@ -3047,16 +3047,6 @@ body[data-perf="eco"] .gh-today.gh-zero {
   align-self: flex-start;
   border-radius: 8px;
 }
-.ask-footnote {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-}
-.ask-footnote .ask-doc {
-  flex-basis: 100%;
-  font-family: inherit;
-}
 .ask-error {
   margin: 0;
   color: #ff8a8a;

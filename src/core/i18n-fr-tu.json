@@ -184,7 +184,10 @@
 "Écrivez à Ondine comme à une amie : elle répond grâce à Claude, GPT ou Gemini, et vous montre tout fichier joint avant l'envoi.": "Écris à Ondine comme à une amie : elle répond grâce à Claude, GPT ou Gemini, et te montre tout fichier joint avant l'envoi.",
 "Une conversation avec Ondine, qui répond grâce à l'API de Claude (par défaut), d'OpenAI (GPT) ou de Gemini, avec sa petite personnalité (modifiable) et ses humeurs, que la mascotte joue sur l'île. Vous pouvez joindre un fichier texte ou une capture, ou en déposer un sur l'île. Ondine peut aussi chercher vos fichiers par leur nom (les noms trouvés partent avec la conversation), en lire un ou en créer un dans son dossier (Documents\\Ondine par défaut) après votre accord, et vous proposer d'en ouvrir un. Elle peut regarder l'état du PC, l'agenda, la météo ou la musique, et agir quand vous le lui demandez : volume, luminosité, mode sombre, musique, minuteur, note ; ouvrir une application ou un site, poser un fichier sur l'Étagère, Wi-Fi et Bluetooth après votre accord. Elle ne peut rien supprimer ni lancer de commande. ENVOIE DU CONTENU À L'API CHOISIE (api.anthropic.com, api.openai.com ou generativelanguage.googleapis.com) : à chaque message partent la personnalité, les derniers messages de la conversation (20 au plus, avec leurs fichiers joints) et le nouveau. Un fichier joint vous est montré en entier avant l'envoi, et rien ne part sans votre clic. Les dossiers exclus sont refusés. La conversation reste en mémoire, jamais sur le disque : elle s'efface quand vous la recommencez ou quittez l'île. Les clés API restent dans le Gestionnaire d'identifiants Windows. Les réponses sont seulement affichées : rien n'est exécuté.": "Une conversation avec Ondine, qui répond grâce à l'API de Claude (par défaut), d'OpenAI (GPT) ou de Gemini, avec sa petite personnalité (modifiable) et ses humeurs, que la mascotte joue sur l'île. Tu peux joindre un fichier texte ou une capture, ou en déposer un sur l'île. Ondine peut aussi chercher tes fichiers par leur nom (les noms trouvés partent avec la conversation), en lire un ou en créer un dans son dossier (Documents\\Ondine par défaut) après ton accord, et te proposer d'en ouvrir un. Elle peut regarder l'état du PC, l'agenda, la météo ou la musique, et agir quand tu le lui demandes : volume, luminosité, mode sombre, musique, minuteur, note ; ouvrir une application ou un site, poser un fichier sur l'Étagère, Wi-Fi et Bluetooth après ton accord. Elle ne peut rien supprimer ni lancer de commande. ENVOIE DU CONTENU À L'API CHOISIE (api.anthropic.com, api.openai.com ou generativelanguage.googleapis.com) : à chaque message partent la personnalité, les derniers messages de la conversation (20 au plus, avec leurs fichiers joints) et le nouveau. Un fichier joint t'est montré en entier avant l'envoi, et rien ne part sans ton clic. Les dossiers exclus sont refusés. La conversation reste en mémoire, jamais sur le disque : elle s'efface quand tu la recommences ou quittes l'île. Les clés API restent dans le Gestionnaire d'identifiants Windows. Les réponses sont seulement affichées : rien n'est exécuté.",
 "Chacun a sa clé API, à ajouter dans Réglages → Identifiants. Vous pouvez en changer à tout moment, même au milieu d'une conversation.": "Chacun a sa clé API, à ajouter dans Réglages → Identifiants. Tu peux en changer à tout moment, même au milieu d'une conversation.",
-"Vide = une goutte joyeuse, curieuse et un brin espiègle, qui répond en quelques phrases. Écrivez la vôtre pour changer son caractère. Elle part avec chaque message, et vous pouvez la relire dans l'onglet.": "Vide = une goutte joyeuse, curieuse et un brin espiègle, qui répond en quelques phrases. Écris la tienne pour changer son caractère. Elle part avec chaque message, et tu peux la relire dans l'onglet.",
+"Vide = une goutte joyeuse, curieuse et un brin espiègle, qui répond en quelques phrases. Écrivez la vôtre pour changer son caractère. Elle part avec chaque message : relisez la consigne exacte dans ces réglages.": "Vide = une goutte joyeuse, curieuse et un brin espiègle, qui répond en quelques phrases. Écris la tienne pour changer son caractère. Elle part avec chaque message : relis la consigne exacte dans ces réglages.",
+"Activez le module pour voir ce qui part.": "Active le module pour voir ce qui part.",
+"Un fichier joint vous est toujours montré en entier avant l'envoi, et rien ne part sans votre clic ou votre voix.": "Un fichier joint t'est toujours montré en entier avant l'envoi, et rien ne part sans ton clic ou ta voix.",
+"Quand vous parlez à Ondine, la reconnaissance vocale de Windows écrit vos mots. Pour la dictée, Windows passe par son service en ligne (réglage « Reconnaissance vocale en ligne » de Windows). Rien n'est enregistré sur le disque.": "Quand tu parles à Ondine, la reconnaissance vocale de Windows écrit tes mots. Pour la dictée, Windows passe par son service en ligne (réglage « Reconnaissance vocale en ligne » de Windows). Rien n'est enregistré sur le disque.",
 "Bonjour ! Je suis Ondine. Posez-moi une question sur votre PC, collez une erreur, ou montrez-moi un fichier : je vous aide.": "Bonjour ! Je suis Ondine. Pose-moi une question sur ton PC, colle une erreur, ou montre-moi un fichier : je t'aide.",
 "Un module qui envoie du contenu à une API d'IA (Claude, GPT, Gemini) le déclare et vous montre ce qui part.": "Un module qui envoie du contenu à une API d'IA (Claude, GPT, Gemini) le déclare et te montre ce qui part.",
 "le fichier joint a changé : vérifiez ce qui part, puis renvoyez": "le fichier joint a changé : vérifie ce qui part, puis renvoie",
@@ -201,6 +204,14 @@
 "Elle regarde l'état du PC, l'agenda, la météo, la musique et vos notes, et agit quand vous le lui demandez : volume, luminosité, mode sombre, musique, minuteur, note. Pour ouvrir une application ou un site, poser un fichier sur l'Étagère ou toucher au Wi-Fi et au Bluetooth, elle attend votre accord. Elle ne peut rien supprimer ni lancer de commande.": "Elle regarde l'état du PC, l'agenda, la météo, la musique et tes notes, et agit quand tu le lui demandes : volume, luminosité, mode sombre, musique, minuteur, note. Pour ouvrir une application ou un site, poser un fichier sur l'Étagère ou toucher au Wi-Fi et au Bluetooth, elle attend ton accord. Elle ne peut rien supprimer ni lancer de commande."
 },
 "patterns": [
+[
+"^À chaque message partent vers (.+?) : la personnalité d'Ondine, les (\\d+) derniers messages au plus \\(avec leurs fichiers joints\\) et votre nouveau message\\. Rien n'est gardé sur le disque\\.$",
+"À chaque message partent vers $1 : la personnalité d'Ondine, les $2 derniers messages au plus (avec leurs fichiers joints) et ton nouveau message. Rien n'est gardé sur le disque."
+],
+[
+"^Quand vous parlez à Ondine, l'audio de votre voix part vers (.+?) pour être écrit en texte\\. Il reste en mémoire, jamais sur le disque\\.$",
+"Quand tu parles à Ondine, l'audio de ta voix part vers $1 pour être écrit en texte. Il reste en mémoire, jamais sur le disque."
+],
 [
 "^Autoriser\\ /\\ Refuser\\ depuis\\ l'île\\ \\((.+?)\\)\\ :\\ quand\\ (.+?)\\ demande\\ une\\ permission,\\ l'île\\ montre\\ la\\ commande\\ avec\\ «\\ Autoriser\\ »\\ \\(à\\ confirmer\\)\\ et\\ «\\ Refuser\\ »\\.\\ Sans\\ réponse\\ à\\ temps,\\ la\\ question\\ passe\\ au\\ terminal\\.\\ Collez\\ ce\\ hook\\ en\\ plus,\\ de\\ la\\ même\\ façon\\.$",
 "Autoriser / Refuser depuis l'île ($1) : quand $2 demande une permission, l'île montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Sans réponse à temps, la question passe au terminal. Colle ce hook en plus, de la même façon."
@@ -328,18 +339,6 @@
 [
 "^(.+?) · partira vers (.+?) avec votre message$",
 "$1 · partira vers $2 avec ton message"
-],
-[
-"^À chaque message partent vers (.+?) : la personnalité d'Ondine et le vôtre\\. Rien n'est gardé sur le disque\\.$",
-"À chaque message partent vers $1 : la personnalité d'Ondine et le tien. Rien n'est gardé sur le disque."
-],
-[
-"^À chaque message partent vers (.+?) : la personnalité d'Ondine, le message précédent et le vôtre\\. Rien n'est gardé sur le disque\\.$",
-"À chaque message partent vers $1 : la personnalité d'Ondine, le message précédent et le tien. Rien n'est gardé sur le disque."
-],
-[
-"^À chaque message partent vers (.+?) : la personnalité d'Ondine, les (\\d+) messages précédents et le vôtre\\. Rien n'est gardé sur le disque\\.$",
-"À chaque message partent vers $1 : la personnalité d'Ondine, les $2 messages précédents et le tien. Rien n'est gardé sur le disque."
 ],
 [
 "^Pas de (clé API \\w+) : ajoutez-la dans Réglages → Identifiants\\.$",

@@ -1587,7 +1587,16 @@
 "Le nom exact du modèle chez Google. Vide = gemini-3.8-flash.": "The exact model name at Google. Empty = gemini-3.8-flash.",
 "Longueur maximale d'une réponse (jetons)": "Maximum length of an answer (tokens)",
 "Personnalité d'Ondine": "Ondine's personality",
-"Vide = une goutte joyeuse, curieuse et un brin espiègle, qui répond en quelques phrases. Écrivez la vôtre pour changer son caractère. Elle part avec chaque message, et vous pouvez la relire dans l'onglet.": "Empty = a cheerful, curious, slightly mischievous droplet who answers in a few sentences. Write your own to change her character. It goes with every message, and you can read it again in the tab.",
+"Vide = une goutte joyeuse, curieuse et un brin espiègle, qui répond en quelques phrases. Écrivez la vôtre pour changer son caractère. Elle part avec chaque message : relisez la consigne exacte dans ces réglages.": "Empty = a cheerful, curious, slightly mischievous droplet who answers in a few sentences. Write your own to change her character. It goes with every message: read the exact instructions in these settings.",
+"Voir la consigne exacte": "Show the exact instructions",
+"Masquer la consigne exacte": "Hide the exact instructions",
+"Ce qui part": "What is sent",
+"Consigne exacte": "Exact instructions",
+"La consigne envoyée à chaque message": "The instructions sent with each message",
+"La personnalité, puis les consignes des humeurs et des outils, telles qu'elles partent.": "The personality, then the mood and tool instructions, exactly as they are sent.",
+"Activez le module pour voir ce qui part.": "Turn the module on to see what is sent.",
+"Un fichier joint vous est toujours montré en entier avant l'envoi, et rien ne part sans votre clic ou votre voix.": "An attached file is always shown to you in full before sending, and nothing goes out without your click or your voice.",
+"Quand vous parlez à Ondine, la reconnaissance vocale de Windows écrit vos mots. Pour la dictée, Windows passe par son service en ligne (réglage « Reconnaissance vocale en ligne » de Windows). Rien n'est enregistré sur le disque.": "When you talk to Ondine, Windows speech recognition writes your words. For dictation, Windows uses its online service (the Windows « Online speech recognition » setting). Nothing is recorded on disk.",
 "Ondine montre ses humeurs sur l'île": "Ondine shows her moods on the island",
 "L'île s'agrandit avec la conversation": "The island grows with the conversation",
 "Elle grandit à chaque message jusqu'à sa taille maximale, puis la conversation défile. Sinon, elle garde sa taille habituelle.": "It grows with each message up to its maximum size, then the conversation scrolls. Otherwise, it keeps its usual size.",
@@ -1612,8 +1621,6 @@
 "📎 Joindre un fichier…": "📎 Attach a file…",
 "Montrer un fichier à Ondine": "Show a file to Ondine",
 "Copier la réponse": "Copy the answer",
-"Voir la personnalité": "Show the personality",
-"Masquer la personnalité": "Hide the personality",
 "Envoie à une API d'IA": "Sends to an AI API",
 "Aucune télémétrie. Ce qui part vers une IA est toujours montré avant.": "No telemetry. What is sent to an AI is always shown first.",
 "Envoi à une IA": "Sending to an AI",
@@ -1704,6 +1711,14 @@
 "Refusé : couper le Bluetooth": "Refused: turn Bluetooth off"
 },
 "patterns": [
+[
+"^À chaque message partent vers (.+?) : la personnalité d'Ondine, les (\\d+) derniers messages au plus \\(avec leurs fichiers joints\\) et votre nouveau message\\. Rien n'est gardé sur le disque\\.$",
+"Each message sends to $1: Ondine's personality, the last $2 messages at most (with their attached files) and your new message. Nothing is kept on disk."
+],
+[
+"^Quand vous parlez à Ondine, l'audio de votre voix part vers (.+?) pour être écrit en texte\\. Il reste en mémoire, jamais sur le disque\\.$",
+"When you talk to Ondine, the audio of your voice goes to $1 to be written as text. It stays in memory, never on disk."
+],
 [
 "^(\\d+)\\ réglages?\\ de\\ plus\\ en\\ mode\\ Complet$",
 "$1 more settings in Full mode"
@@ -3099,18 +3114,6 @@
 [
 "^(.+?) · partira vers (.+?) avec votre message$",
 "$1 · will go to $2 with your message"
-],
-[
-"^À chaque message partent vers (.+?) : la personnalité d'Ondine et le vôtre\\. Rien n'est gardé sur le disque\\.$",
-"Each message sends to $1: Ondine's personality and yours. Nothing is kept on disk."
-],
-[
-"^À chaque message partent vers (.+?) : la personnalité d'Ondine, le message précédent et le vôtre\\. Rien n'est gardé sur le disque\\.$",
-"Each message sends to $1: Ondine's personality, the previous message and yours. Nothing is kept on disk."
-],
-[
-"^À chaque message partent vers (.+?) : la personnalité d'Ondine, les (\\d+) messages précédents et le vôtre\\. Rien n'est gardé sur le disque\\.$",
-"Each message sends to $1: Ondine's personality, the $2 previous messages and yours. Nothing is kept on disk."
 ],
 [
 "^Pas de clé API (\\w+) : ajoutez-la dans Réglages → Identifiants\\.$",
