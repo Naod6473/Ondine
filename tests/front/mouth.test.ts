@@ -29,7 +29,7 @@ describe("île-bouche : les trois formes de la maquette", () => {
     assert.equal(v1 - v0, 58);
     // Le corps touche le bord de l'écran (la lèvre arrière = le décalage de la bouche).
     assert.equal(L.frame.map(0, v0).y, 0);
-    assert.equal(L.p.tipH, 15);
+    assert.equal(L.p.tipH, 0); // forme ronde, sans pointe (demande de Simon)
   });
 
   test("mini : bouche 318 × 40, corps 334 × 76, langue visible", () => {
@@ -95,12 +95,12 @@ describe("île-bouche : les bords de l'écran", () => {
     assert.equal(dirForEdge("???"), "down");
   });
 
-  test("en bas : les yeux au-dessus de la bouche, la pointe vers le haut", () => {
+  test("en bas : les yeux au-dessus de la bouche (forme ronde, sans pointe)", () => {
     const m = { x: 100, y: 500, w: 318, h: 40 };
     const L = layoutMouth(m, "up", 1);
     const eye = L.frame.map(L.eyes[0].u, L.eyes[0].v);
     assert.ok(eye.y < m.y);
-    assert.ok(L.bounds.y < m.y - L.p.eyeZone);
+    assert.equal(L.bounds.y, m.y - L.p.eyeZone);
     assert.equal(L.bounds.y + L.bounds.h, m.y + m.h + L.p.back);
   });
 

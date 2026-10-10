@@ -3440,6 +3440,10 @@
 "$1 upcoming"
 ],
 [
+"^(\\d+) tâches à faire$",
+"$1 tasks to do"
+],
+[
 "^(.+?)\\ à\\ faire$",
 "$1 to do"
 ],
@@ -4462,10 +4466,6 @@
 [
 "^encore (\\d+) min de minuteur$",
 "$1 min left on the timer"
-],
-[
-"^(\\d+) tâches à faire$",
-"$1 tasks to do"
 ],
 [
 "^au travail · (.+)$",

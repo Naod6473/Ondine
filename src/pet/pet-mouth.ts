@@ -4,7 +4,7 @@
 //   nano     elle-même, la bouche fermée (dans sa case de 112 px)
 //   mini     la bouche entrouverte, le corps étiré, le texte de la mini-île dedans
 //   ouverte  la grande bouche, avec la bulle (ses onglets) dedans, liseré fin
-// Sur le bureau, elle se tient à l'endroit (la pointe en haut, les yeux
+// Sur le bureau, elle se tient à l'endroit (le haut arrondi, les yeux
 // au-dessus de la bouche) : c'est la pose debout de la goutte gomme, et la
 // bouche s'ouvre vers l'intérieur de l'écran, du côté que le Rust a choisi
 // pour la bulle (pet.rs, choose_layout : jamais hors de l'écran).

@@ -19,6 +19,7 @@ import {
   SceneGaps,
   sceneMode,
   walkSetting,
+  WALK_CHANCE,
   weatherKind,
   type SceneContext,
 } from "../../src/island/scenes/scene-rules";
@@ -125,6 +126,13 @@ describe("les règles des scènes", () => {
     for (let n = 1; n <= 22; n++) assert.ok(numbers.has(n), `scène ${n}`);
     assert.ok(isSceneId("tab-hop"));
     assert.ok(!isSceneId("dance"));
+  });
+
+  test("elle ne part qu'environ une fois sur 4 ou 5 (tirage au sort), toujours en démo", () => {
+    assert.ok(WALK_CHANCE >= 0.2 && WALK_CHANCE <= 0.25);
+    assert.equal(sceneMode("shelf-remove", { ...BASE, roll: 0.1 }), "walk");
+    assert.notEqual(sceneMode("shelf-remove", { ...BASE, roll: 0.9 }), "walk");
+    assert.equal(sceneMode("shelf-remove", { ...BASE, roll: 0.9, demo: true }), "walk");
   });
 
   test("île ouverte, tout permis : elle se déplace", () => {

@@ -20,7 +20,7 @@
   tasks, shelf) and a sentence from Ondine summing up the day, without AI.
   Drag cards to arrange them, right-click to remove them, click to open them
   in place; a "Pick up" card, 4 quick actions and a Home per profile.
-- Ondine se déplace dans l'île : pour une vingtaine d'actions (retirer un
+- Ondine se déplace dans l'île, de temps en temps : pour une vingtaine d'actions (retirer un
   fichier de l'étagère, supprimer une note, changer d'onglet, un minuteur, une
   copie, une alerte, la fin de journée…), elle quitte sa case en petits sauts
   de gomme, agit, puis revient. Un clic la ramène et elle ne cache jamais le

@@ -285,6 +285,15 @@ export class Scenes {
 
   // ── Jouer, interrompre ─────────────────────────────────────────────────────
 
+  /** Le tirage au sort d'un même événement (modeOf puis play) : un seul par scène et par instant. */
+  private dice: { id: SceneId; value: number; at: number } | null = null;
+
+  private rollFor(id: SceneId): number {
+    const now = Date.now();
+    if (!this.dice || this.dice.id !== id || now - this.dice.at > 200) this.dice = { id, value: Math.random(), at: now };
+    return this.dice.value;
+  }
+
   private context(): Parameters<typeof sceneMode>[1] {
     const s = settingsStore.current;
     return {
@@ -298,8 +307,8 @@ export class Scenes {
     };
   }
 
-  modeOf(id: SceneId): SceneMode {
-    return sceneMode(id, this.context());
+  modeOf(id: SceneId, demo = false): SceneMode {
+    return sceneMode(id, { ...this.context(), roll: this.rollFor(id), demo });
   }
 
   /** Les déplacements sont-ils possibles en ce moment (pour une scène qui marche) ? */
@@ -314,7 +323,7 @@ export class Scenes {
    * remplacée (Ondine repart d'où elle est). Rend le mode joué.
    */
   play(id: SceneId, script: (a: Act) => Promise<void>, opts: { demo?: boolean } = {}): SceneMode {
-    const mode = this.modeOf(id);
+    const mode = this.modeOf(id, !!opts.demo);
     if (mode === "off") return mode;
     const now = Date.now();
     if (!opts.demo && !this.gaps.ready(id, now)) return "off";
@@ -588,7 +597,7 @@ export class Scenes {
 
   /** (1) Retirer de l'étagère : elle pousse le fichier hors de l'île, il tombe. Île-bouche : elle le croque. */
   private shelfRemove(row: HTMLElement, demo = false) {
-    const mode = this.modeOf("shelf-remove");
+    const mode = this.modeOf("shelf-remove", demo);
     if (mode !== "walk" && mode !== "crunch") return void this.play("shelf-remove", async () => {}, { demo });
     const ghost = this.ghost(row);
     const rect = this.rectOf(row);
@@ -651,7 +660,7 @@ export class Scenes {
 
   /** (2) Supprimer une note ou une tâche : elle la froisse en boule et la lance. */
   private noteDelete(row: HTMLElement, demo = false) {
-    if (this.modeOf("note-delete") !== "walk") return void this.play("note-delete", async () => {}, { demo });
+    if (this.modeOf("note-delete", demo) !== "walk") return void this.play("note-delete", async () => {}, { demo });
     const ghost = this.ghost(row);
     const rect = this.rectOf(row);
     const played = this.play(

@@ -104,6 +104,10 @@ export interface SceneContext {
   eco: boolean;
   /** L'état de l'île. */
   state: IslandStateName;
+  /** Un tirage au sort (0 à 1) pour cette fois : sans lui, Ondine marche à chaque fois. */
+  roll?: number;
+  /** Mode démo (le tour des scènes, la vidéo) : elle marche à chaque fois. */
+  demo?: boolean;
 }
 
 /**
@@ -116,6 +120,9 @@ export interface SceneContext {
  */
 export type SceneMode = "off" | "gesture" | "walk" | "crunch";
 
+/** La part des fois où Ondine se déplace vraiment (environ 1 sur 4,5). */
+export const WALK_CHANCE = 0.22;
+
 export function sceneMode(id: SceneId, c: SceneContext): SceneMode {
   const info = SCENES[id];
   if (!c.hasMascot || c.reduced) return "off";
@@ -123,7 +130,10 @@ export function sceneMode(id: SceneId, c: SceneContext): SceneMode {
   if (c.state === "hidden" || c.state === "peek") return "off";
   if (c.calm && info.spontaneous) return "off";
   const still = c.calm || !c.walkOn || c.eco || !info.walk.includes(c.state);
-  if (still) return info.gesture ? "gesture" : "off";
+  // Simon (1.2.3) : les déplacements à chaque fois alourdissent l'île. Elle ne
+  // part qu'environ une fois sur 4 ou 5, au hasard ; les autres fois, le geste.
+  const skip = !c.demo && c.roll !== undefined && c.roll >= WALK_CHANCE;
+  if (still || skip) return info.gesture ? "gesture" : "off";
   return "walk";
 }
 

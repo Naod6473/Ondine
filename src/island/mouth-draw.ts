@@ -76,10 +76,13 @@ function bodyPath(ctx: CanvasRenderingContext2D, L: MouthLayout) {
   ctx.lineTo(u1, v1 - rf);
   // Le coin côté yeux, un peu « goutte » (une courbe plutôt qu'un quart de cercle).
   ctx.bezierCurveTo(u1, v1 - rf * 0.35, u1 - rf * 0.45, v1, u1 - rf, v1);
-  ctx.lineTo(mid + tw * 1.6, v1);
-  // La pointe : la gomme qui perle (maquette : M0 0 C6 0 9 5 10 14 C11 5 14 0 20 0).
-  ctx.bezierCurveTo(mid + tw * 0.6, v1, mid + tw * 0.1, v1 + p.tipH * 0.36, mid, v1 + p.tipH);
-  ctx.bezierCurveTo(mid - tw * 0.1, v1 + p.tipH * 0.36, mid - tw * 0.6, v1, mid - tw * 1.6, v1);
+  // La pointe de goutte, si une forme en a une. Simon (1.2.3) préfère une forme
+  // toute ronde, comme la gomme : les trois formes de référence n'en ont plus.
+  if (p.tipH > 0.5 && tw > 0.5) {
+    ctx.lineTo(mid + tw * 1.6, v1);
+    ctx.bezierCurveTo(mid + tw * 0.6, v1, mid + tw * 0.1, v1 + p.tipH * 0.36, mid, v1 + p.tipH);
+    ctx.bezierCurveTo(mid - tw * 0.1, v1 + p.tipH * 0.36, mid - tw * 0.6, v1, mid - tw * 1.6, v1);
+  }
   ctx.lineTo(u0 + rf, v1);
   ctx.bezierCurveTo(u0 + rf * 0.45, v1, u0, v1 - rf * 0.35, u0, v1 - rf);
   ctx.lineTo(u0, v0 + rb);

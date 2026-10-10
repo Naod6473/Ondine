@@ -291,7 +291,7 @@ export class MouthBody {
     // Le rebond : la zone des yeux et la pointe s'allongent un instant.
     if (Math.abs(this.swell.x) > 0.01) {
       L.p.eyeZone = Math.max(4, L.p.eyeZone + this.swell.x * 0.25);
-      L.p.tipH = Math.max(2, L.p.tipH + this.swell.x * 0.15);
+      if (L.p.tipH > 0) L.p.tipH = Math.max(2, L.p.tipH + this.swell.x * 0.15);
       L.local.v1 = L.frame.thick + L.p.eyeZone;
       L.eyes.forEach((e) => (e.v += this.swell.x * 0.12));
     }

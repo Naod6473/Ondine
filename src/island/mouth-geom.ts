@@ -57,11 +57,11 @@ export interface MouthParams {
 /** Les trois formes de la maquette. */
 export const MOUTH_KEYS: readonly MouthParams[] = [
   // nano : bouche fermée, Ondine à sa taille normale
-  { side: 23, back: 11, eyeZone: 40, eyeAt: 14.5, eyeW: 10, eyeH: 13, eyeGap: 13, tipW: 22, tipH: 15, rBack: 6, rFront: 31, tongue: 0 },
+  { side: 23, back: 11, eyeZone: 40, eyeAt: 14.5, eyeW: 10, eyeH: 13, eyeGap: 13, tipW: 0, tipH: 0, rBack: 6, rFront: 31, tongue: 0 },
   // mini : bouche entrouverte, corps étiré
-  { side: 8, back: 6, eyeZone: 30, eyeAt: 13, eyeW: 12, eyeH: 10, eyeGap: 34, tipW: 18, tipH: 12, rBack: 10, rFront: 36, tongue: 1 },
+  { side: 8, back: 6, eyeZone: 30, eyeAt: 13, eyeW: 12, eyeH: 10, eyeGap: 34, tipW: 0, tipH: 0, rBack: 10, rFront: 36, tongue: 1 },
   // ouverte : liseré très fin, yeux étirés en bas
-  { side: 4, back: 4, eyeZone: 12, eyeAt: 4.5, eyeW: 14, eyeH: 6, eyeGap: 26, tipW: 10, tipH: 7, rBack: 10, rFront: 31, tongue: 0 },
+  { side: 4, back: 4, eyeZone: 12, eyeAt: 4.5, eyeW: 14, eyeH: 6, eyeGap: 26, tipW: 0, tipH: 0, rBack: 10, rFront: 31, tongue: 0 },
 ];
 
 /** L'épaisseur de la bouche (px) qui correspond à chaque forme de référence. */
