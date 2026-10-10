@@ -535,7 +535,7 @@ function expanded(root: HTMLElement, api: ModuleApi): () => void {
     const text = el("textarea", { class: "clip-input team-text", rows: 3, maxlength: 20000, placeholder: "Texte ou lien à envoyer (montré ici avant l'envoi)" }) as HTMLTextAreaElement;
     const note = el("input", { class: "clip-input", type: "text", maxlength: 280, placeholder: "Un petit mot pour la visite" }) as HTMLInputElement;
     const kindHint = el("small", { class: "muted" });
-    text.addEventListener("input", () => (kindHint.textContent = isLink(text.value) ? "🔗 Lien" : text.value ? `${text.value.length} car.` : ""));
+    text.addEventListener("input", () => (kindHint.textContent = isLink(text.value) ? "🔗 Lien" : ""));
     const off = !p.online;
     const pings = PINGS.map((g) => el("button", { class: "btn small", disabled: off, onclick: api.handler(() => run(api, "ping", { id: p.id, kind: g.kind })) }, `${g.icon} ${g.label}`));
     const sendText = api.handler(async () => {

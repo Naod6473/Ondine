@@ -620,7 +620,7 @@ pub(super) fn my_status(app: &AppHandle, inner: &Inner) -> (String, String) {
     }
     let status = if focus {
         "focus"
-    } else if super::agenda::in_meeting(now_ms() as i64) {
+    } else if super::module_enabled(app, "agenda") && super::agenda::in_meeting(now_ms() as i64) {
         "meeting"
     } else if platform::idle_ms() > AWAY_AFTER_MS {
         "away"

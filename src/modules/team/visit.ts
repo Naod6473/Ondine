@@ -65,13 +65,19 @@ export function mountVisit(host: HTMLElement, who: { name: string; color: string
     play("idle");
     arrive();
   } else {
-    // Départ hors de la carte, à gauche ; la cible est le milieu (0).
-    const start = -(lane.clientWidth / 2 + 60) || -220;
-    const x: Spring = { x: start, v: 0 };
+    // Départ hors de la carte, à gauche ; la cible est le milieu (0). La
+    // largeur n'est connue qu'une fois la carte posée : lue à la 1re image.
+    const x: Spring = { x: -220, v: 0 };
+    let started = false;
     let last = performance.now();
+    walker.style.transform = "translateX(-220px)";
     play("happy");
     const frame = (now: number) => {
       if (stopped) return;
+      if (!started) {
+        started = true;
+        if (lane.clientWidth > 0) x.x = -(lane.clientWidth / 2 + 40);
+      }
       const dt = (now - last) / 1000;
       last = now;
       stepSpring(x, 0, WALK, dt);
