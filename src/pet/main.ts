@@ -28,6 +28,7 @@ import { errorText, logger } from "../core/log";
 import { ModuleRegistry } from "../core/module-registry";
 import { NotificationQueue, type IslandNotification } from "../core/notifications";
 import { startPerf } from "../core/perf";
+import { startScrollbars } from "../island/scrollbars";
 import { settingsStore } from "../core/settings-store";
 import type { Settings } from "../core/types";
 import { el } from "../island/dom";
@@ -399,6 +400,8 @@ async function start() {
   await settingsStore.connect(boot?.settings ?? null);
   await startI18n();
   await startPerf();
+  // Barres de défilement discrètes (island.css, scrollbars.ts).
+  startScrollbars();
 
   const bus = new Bus(windowLabel("pet"));
   bus.accept = (msg) => !hidesRealData(msg);
