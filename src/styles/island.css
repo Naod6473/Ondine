@@ -441,6 +441,19 @@ body {
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+/* En mini-île (42 px de haut), pas de place pour une 2e ligne : texte et
+   boutons restent sur une seule ligne, le titre se coupe en « … ». */
+.island[data-state="compact"] .notif.many {
+  flex-wrap: nowrap;
+}
+.island[data-state="compact"] .notif.many .notif-text {
+  flex-basis: auto;
+}
+.island[data-state="compact"] .notif.many .notif-actions {
+  flex-basis: auto;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
 .island[data-state="alert"]:has(.notif.many),
 .island[data-state="alert"]:has(.notif.wide) {
   width: 580px;
@@ -647,6 +660,9 @@ body {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+.setup-row[hidden] {
+  display: none;
 }
 .setup-row.end {
   justify-content: flex-end;

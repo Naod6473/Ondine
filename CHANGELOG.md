@@ -1,5 +1,19 @@
 # Changements · Changelog
 
+## 1.2.3 · à venir
+
+- Correction : en anglais, les textes d'aide des champs (« Write to Ondine… »,
+  « Your reply… », « Write to the whole team… ») ne restent plus en français.
+  · Fix: in English, field hints ("Write to Ondine…", "Your reply…", "Write
+  to the whole team…") no longer stay in French.
+- Correction : en anglais, l'assistant de premier lancement n'affiche plus la
+  ligne « vous / tu ». · Fix: in English, the first-launch assistant no longer
+  shows the "vous / tu" row.
+- Correction : en mini-île, une notification à deux boutons (Répondre / Ouvrir,
+  Ouvrir / Éjecter) garde son titre lisible sur une seule ligne. · Fix: in the
+  mini island, a notification with two buttons (Reply / Open, Open / Eject)
+  keeps its title readable on one line.
+
 ## 1.2.2 · 2026-10-10
 
 - Parlez à Ondine à voix haute : raccourci Ctrl+Alt+V (ou bouton 🎙️), appuyer
