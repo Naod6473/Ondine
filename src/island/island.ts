@@ -25,7 +25,7 @@ import type { MascotManifest } from "../mascot/types";
 import { clear, el } from "./dom";
 import { icon } from "./icon";
 import { IslandStateMachine, type IslandState } from "./island-state";
-import { contentHeight, FIT_ATTR, fitHeight } from "./fit";
+import { contentHeight, FIT_ATTR, FIT_MAX_W, FIT_MAX_W_SIDE, FIT_W_ATTR, fitHeight, fitMode, fitWidth, naturalWidth, settle } from "./fit";
 import { enableGestures, grabZone, horizontal, type Edge } from "./gestures";
 import { Jelly } from "./jelly";
 import { elasticityOf } from "./spring";
@@ -129,6 +129,11 @@ export class Island {
   private collapseTimer: number | null = null;
   /** L'île ouverte agrandie pour un contenu à montrer en entier (fit.ts) : sa hauteur, sinon null. */
   private fitH: number | null = null;
+  /** Sa largeur quand le contenu marqué la demande aussi (`data-island-fit="both"`), sinon null. */
+  private fitW: number | null = null;
+  /** Le contenu marqué observé en continu (ResizeObserver), pour suivre un texte qui s'écrit. */
+  private fitWatched: [Element | null, Element | null] = [null, null];
+  private fitObserver: ResizeObserver | null = null;
   /** La fenêtre a le panneau haut (le Rust le sait aussi). */
   private tall = false;
   private tallTimer: number | undefined;
@@ -517,7 +522,8 @@ export class Island {
     reshape.observe(document.body, { attributes: true, attributeFilter: ["class", "data-edge", "data-align"] });
     // Le contenu change (un QR code s'ouvre, un autre onglet) : l'île ouverte
     // grandit pour le montrer en entier, ou reprend sa taille (fit.ts).
-    new MutationObserver(() => this.scheduleFit()).observe(this.content, { childList: true, subtree: true });
+    // characterData : le texte d'une réponse qui s'écrit mot à mot.
+    new MutationObserver(() => this.scheduleFit()).observe(this.content, { childList: true, subtree: true, characterData: true });
   }
 
   private scheduleFit() {
@@ -623,11 +629,33 @@ export class Island {
     }
   }
 
-  /** L'île ouverte prend la hauteur de son contenu marqué `data-island-fit`, ou sa taille habituelle. */
+  /**
+   * L'île ouverte prend la hauteur (et, avec `data-island-fit="both"`, la
+   * largeur) de son contenu marqué `data-island-fit`, ou sa taille habituelle.
+   * Appelée à chaque changement du contenu, en continu (fit.ts).
+   */
   private async applyFit() {
     const view = this.fsm.state === "expanded" ? this.expandedUi?.body : undefined;
-    const target = view?.querySelector(`[${FIT_ATTR}]`) ? fitHeight(this.shell.offsetHeight, view.clientHeight, contentHeight(view)) : null;
-    if (target === this.fitH) return;
+    const marked = view?.querySelector<HTMLElement>(`[${FIT_ATTR}]`) ?? null;
+    const wantH = view && marked ? fitHeight(this.shell.offsetHeight, view.clientHeight, contentHeight(view)) : null;
+    const wide = marked && fitMode(marked.getAttribute(FIT_ATTR)) === "both" ? (marked.querySelector<HTMLElement>(`[${FIT_W_ATTR}]`) ?? marked) : null;
+    this.watchFit(marked, wide);
+    const wantW = view && wide ? fitWidth(this.shell.offsetWidth, view.clientWidth, naturalWidth(wide), this.tabsWidth(), horizontal(this.edge()) ? FIT_MAX_W : FIT_MAX_W_SIDE) : null;
+    // Sans va-et-vient : elle grandit tout de suite, ne rétrécit que nettement.
+    const target = settle(this.fitH, wantH);
+    const width = settle(this.fitW, wantW);
+    if (target === this.fitH && width === this.fitW) return;
+    // Un contenu qui change pendant qu'il est montré : la gelée glisse (sans rebond).
+    this.jelly.setGlide(target !== null || width !== null);
+    if (width !== this.fitW) {
+      this.fitW = width;
+      if (width === null) this.shell.style.removeProperty("--fit-w");
+      else this.shell.style.setProperty("--fit-w", `${width}px`);
+      if (target === this.fitH) {
+        this.jelly.retarget();
+        return;
+      }
+    }
     this.fitH = target;
     window.clearTimeout(this.tallTimer);
     if (target === null) {
@@ -654,6 +682,33 @@ export class Island {
       this.shell.style.setProperty("--fit-h", `${target}px`);
       this.jelly.retarget();
     }
+  }
+
+  /** Observe en continu le contenu marqué (sa taille change sans changer de nœuds : une image qui charge, un texte qui s'allonge). */
+  private watchFit(marked: Element | null, wide: Element | null) {
+    if (marked === this.fitWatched[0] && wide === this.fitWatched[1]) return;
+    this.fitObserver?.disconnect();
+    this.fitWatched = [marked, wide];
+    if (!marked) return;
+    this.fitObserver ??= new ResizeObserver(() => this.scheduleFit());
+    this.fitObserver.observe(marked);
+    if (wide && wide !== marked) this.fitObserver.observe(wide);
+  }
+
+  /** La largeur qu'il faut aux onglets de l'île ouverte (l'île ne se resserre jamais en dessous). */
+  private tabsWidth(): number {
+    const header = this.expandedUi?.tabs.values().next().value?.parentElement;
+    if (!header) return 0;
+    const gap = parseFloat(getComputedStyle(header).columnGap) || 0;
+    let need = 0;
+    let n = 0;
+    for (const child of header.children) {
+      if (!(child instanceof HTMLElement) || child.classList.contains("spacer")) continue;
+      need += child.offsetWidth;
+      n++;
+    }
+    // Les marges de l'île autour de la vue.
+    return need + gap * Math.max(0, n - 1) + (this.shell.offsetWidth - header.clientWidth);
   }
 
   /** Le bord de l'écran où se trouve l'île (posé sur <body> par applySettings). */

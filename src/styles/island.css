@@ -77,7 +77,9 @@ body {
   --r: 21px;
 }
 .island[data-state="expanded"] {
-  width: 640px;
+  /* --fit-w : plus étroite pour une réponse courte, un peu plus large pour un
+     contenu large (data-island-fit="both", fit.ts). */
+  width: var(--fit-w, 640px);
   /* Plus haute si un contenu doit se voir en entier (un QR code) : --fit-h,
      posée par island.ts (fit.ts). Le ressort de l'île anime le changement. */
   height: max(270px, var(--fit-h, 0px));

@@ -86,6 +86,8 @@ interface Shape {
 }
 
 /** Les propriétés en ligne que pilote ce fichier (effacées pour lire le CSS, et au repos). */
+/** La « glisse » de l'île ouverte qui suit son contenu (fit.ts) : amortie, sans rebond. */
+const GLIDE: SpringParams = { stiffness: 150, damping: 1 };
 const OWNED = [
   "width",
   "height",
@@ -178,6 +180,18 @@ export class Jelly {
   /** Le réglage « Élasticité ». */
   setElasticity(e: Elasticity) {
     this.elasticity = e;
+  }
+
+  /** La « glisse » : l'île ouverte suit un contenu qui grandit (fit.ts). */
+  private glide = false;
+
+  /**
+   * Glisse (true) : la taille de l'île ouverte suit sa cible avec un ressort
+   * amorti, sans rebond (GLIDE). Une cible qui bouge à chaque mot ne la fait
+   * pas sautiller : la vitesse est gardée, la cible rattrapée en douceur.
+   */
+  setGlide(on: boolean) {
+    this.glide = on;
   }
 
   /** La boucle tourne-t-elle ? */
@@ -431,8 +445,10 @@ export class Jelly {
     const f = this.feel();
     // L'épaisseur (hauteur en haut de l'écran, largeur sur un côté) mène, la longueur suit.
     const top = horizontal(this.hooks.edge());
-    const pw = top ? f.trail : f.lead;
-    const ph = top ? f.lead : f.trail;
+    // En glisse (contenu qui grandit, fit.ts) : un seul ressort amorti, sans rebond.
+    const glide = this.glide && this.hooks.state() === "expanded";
+    const pw = glide ? GLIDE : top ? f.trail : f.lead;
+    const ph = glide ? GLIDE : top ? f.lead : f.trail;
     const s = this.s;
     let rest = true;
     const go = (sp: Spring, to: number, p: SpringParams) => {
