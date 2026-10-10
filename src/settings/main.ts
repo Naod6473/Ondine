@@ -124,6 +124,12 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
   // Animations de l'île : une case par moment, rangées par famille.
   halos: [
     { id: "general", label: "Général", keys: ["intensity", "colors"] },
+    // Le liquide à l'intérieur de l'île (src/island/liquid.ts, modules/halos/liquid-moments.ts).
+    {
+      id: "inside",
+      label: "À l'intérieur de l'île",
+      keys: ["liquid", "liquidMatter", "liquidColor", "liquidCustom", "liquidOpacity", "liquidTimer", "liquidTimerStyle", "liquidFiles", "liquidBattery", "liquidDisk", "liquidAgents", "liquidMusic", "liquidVoice", "liquidRain", "liquidCpu", "liquidNight", "liquidNotify", "liquidFocus", "liquidOndine"],
+    },
     { id: "pc", label: "Événements du PC", keys: ["wake", "usb", "download", "disk", "wifi", "weather", "network", "capture", "shelfDrop", "cpu", "update"] },
     { id: "ondine", label: "Ondine et agents", keys: ["think", "agents", "voice", "focus", "timerRing", "meeting", "streak", "dance"] },
     { id: "keys", label: "Clavier et presse-papiers", keys: ["capsLock", "numLock", "clipboard", "clipText", "volumeKeys"] },
@@ -1054,6 +1060,9 @@ function demoGroup(): HTMLElement {
                 scene("halos-battery", "Halos de batterie"),
                 scene("halos-tour", "Autres halos"),
                 scene("timer-ring", "Liseré d'un minuteur"),
+                scene("liquid-timer", "Minuteur qui se remplit"),
+                scene("liquid-moods", "Ambiances dans l'île"),
+                scene("liquid-float", "Ondine qui flotte"),
                 scene("voice", "Parler à Ondine"),
                 scene("voice-error", "La dictée échoue"),
                 scene("mascot-talk", "Ondine parle"),

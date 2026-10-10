@@ -4916,3 +4916,60 @@ body.retro .island .btn {
     transition: none;
   }
 }
+
+/* ── Le liquide à l'intérieur de l'île (src/island/liquid.ts) ─────────────────
+   Un canvas, premier enfant de l'île : z-index -1 dans la pile de l'île (qui en
+   crée une avec translate), donc au-dessus de son fond, sous le texte et la
+   mascotte ; rogné par sa découpe en gelée. Ne prend jamais la souris. */
+.island-liquid {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+}
+/* L'île pleine : Ondine flotte (elle monte et descend, penche un peu). */
+.island.liquid-float .mascot-slot:not(.carried) > .mascot-canvas {
+  animation: liquid-float 2.8s ease-in-out infinite;
+}
+/* Un téléchargement arrive : elle plonge et ressort avec le fichier. */
+.island.liquid-dive .mascot-slot:not(.carried) > .mascot-canvas {
+  animation: liquid-dive 1.4s cubic-bezier(0.3, 0.7, 0.4, 1) both;
+}
+@keyframes liquid-float {
+  0%,
+  100% {
+    translate: 0 1px;
+    rotate: -3deg;
+  }
+  50% {
+    translate: 0 -2px;
+    rotate: 3deg;
+  }
+}
+@keyframes liquid-dive {
+  0% {
+    translate: 0 0;
+  }
+  25% {
+    translate: 0 -4px;
+  }
+  50% {
+    translate: 0 70%;
+    opacity: 0.35;
+  }
+  80% {
+    translate: 0 -3px;
+    opacity: 1;
+  }
+  100% {
+    translate: 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .island.liquid-float .mascot-slot > .mascot-canvas,
+  .island.liquid-dive .mascot-slot > .mascot-canvas {
+    animation: none;
+  }
+}

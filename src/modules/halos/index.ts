@@ -25,6 +25,7 @@ import type { IslandModule, ModuleManifest } from "../../core/module-types";
 import { hideHalo, mascotPalette, showHalo, updateHalo, type HaloOptions } from "../../island/halo";
 import { skyPalette } from "../../island/halo-palettes";
 import { calmMode } from "../../mascot/mascot-state";
+import { liquidMoments, ringReplaced } from "./liquid-moments";
 import { dayKey, leaveDue, levelFromPeak, mediaPlaying, meetingCometMs, morningDue, parseTime, sessionProgress, timerHaloPlan, weatherKind, type TimerProgress } from "./halo-rules";
 
 /** Un petit retour (Verr Maj, Copié…) : une ligne dans l'île, vite repartie. */
@@ -53,6 +54,8 @@ export const halos: IslandModule = {
       if (!calmMode()) api.emit("mascot.emote", { emotion });
     };
     const offs: (() => void)[] = [];
+    // Le liquide à l'intérieur de l'île : ses moments à lui (liquid-moments.ts).
+    offs.push(liquidMoments(api));
     /** La météo d'avant (pour ne réagir qu'au changement), et sa ligne pour le bonjour du matin. */
     let lastWeather: "rain" | "storm" | null = null;
     let weatherLine = "";
@@ -133,7 +136,8 @@ export const halos: IslandModule = {
     const showTimer = (p: TimerProgress, fresh: boolean) => {
       const plan = timerHaloPlan(p);
       if (!plan) return;
-      if (plan.action === "hide" || !on("timerRing")) {
+      // (Le liquide à l'intérieur de l'île peut remplacer le liseré : liquid-moments.ts.)
+      if (plan.action === "hide" || !on("timerRing") || ringReplaced(api.settings())) {
         hideHalo(plan.action === "done" ? plan.id.replace(/-done$/, "") : plan.id);
         return;
       }

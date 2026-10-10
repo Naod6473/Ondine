@@ -22,7 +22,7 @@ export function demoOn(): boolean {
 }
 
 /** Les scènes que la fenêtre de réglages peut demander (sujet « demo.scene »). */
-export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "timer-ring", "voice", "voice-error", "mascot-talk", "ai-outage", "team-visit", "island-dodge"] as const;
+export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "timer-ring", "voice", "voice-error", "mascot-talk", "ai-outage", "team-visit", "island-dodge", "liquid-timer", "liquid-moods", "liquid-float"] as const;
 export type DemoScene = (typeof DEMO_SCENES)[number];
 
 /**
@@ -912,6 +912,19 @@ function playScene(bus: Bus, scene: string) {
       // La mascotte d'une collègue traverse l'île (module Équipe).
       bus.inject("team.event", { kind: "visit", from: TEAM_PEERS[0], note: "Le café est prêt !" }, "demo");
       break;
+    case "liquid-timer":
+      // Le liquide à l'intérieur de l'île (island/liquid.ts) : un vrai minuteur
+      // de 20 s qui la remplit (agité à la fin, il déborde), puis la batterie,
+      // une empreinte de fichier et le disque presque plein.
+      bus.inject("timer.start", { seconds: 20 }, "demo");
+      play(bus, LIQUID_FILLS);
+      break;
+    case "liquid-moods":
+      play(bus, LIQUID_MOODS);
+      break;
+    case "liquid-float":
+      playLiquid(bus, LIQUID_FLOAT);
+      break;
     case "island-dodge":
       // L'île s'écarte de la fenêtre de réglages (forme et peur d'Ondine ; la
       // fenêtre, elle, ne bouge pas dans un navigateur), puis rentre chez elle.
@@ -954,6 +967,53 @@ const HALOS_TOUR: Step[] = [
   [51200, "halos.volume", { volume: 60, muted: false }],
   [53000, "controls.media-use", { mic: ["Teams"], cam: [] }],
   [60000, "controls.media-use", { mic: [], cam: [] }],
+];
+
+// ── Le liquide à l'intérieur de l'île (src/island/liquid.ts) ─────────────────
+
+/** Après le minuteur : la batterie en charge, une empreinte qui avance, le disque presque plein. */
+const LIQUID_FILLS: Step[] = [
+  [25000, "system.battery-plug", { plugged: true, percent: 56, charging: true }],
+  ...[0, 15, 35, 55, 80, 100].map((percent, i): Step => [33000 + i * 900, "shelf.hash-progress", { job: 1, percent }]),
+  [40000, "system.disk-low", { mount: "C:\\", freePct: 6, freeGb: 28.4 }],
+];
+
+/** Les ambiances : agent au travail puis vague de fin, pluie, ébullition, voix, goutte, étoiles, lac. */
+const LIQUID_MOODS: Step[] = [
+  [0, "claude.thinking", {}],
+  [4500, "agents.event", { at: 0, source: "claude-code", kind: "done", title: "Claude a fini", body: "Le site est à jour", project: "site-ondine" }],
+  [7000, "weather.updated", { icon: "🌧️", temp: "14°C", label: "Pluie", place: "Lyon", detail: "" }],
+  [7500, "system.cpu-busy", { on: true }],
+  [12500, "system.cpu-busy", { on: false }],
+  [13000, "voice.listening", { on: true, look: false }],
+  ...Array.from({ length: 40 }, (_, i): Step => [13100 + i * 80, "voice.level", { level: Math.round((0.4 + 0.35 * Math.sin(i * 0.9) * Math.sin(i * 0.23)) * 100) / 100 }]),
+  [16500, "voice.listening", { on: false, look: false }],
+  [17000, "island.liquid", { action: "drop" }],
+  [18200, "island.liquid", { action: "drop" }],
+  [20000, "island.liquid", { action: "ambience", name: "stars", on: true }],
+  [23500, "timer.focus", { on: true }],
+  [28000, "timer.focus", { on: false }],
+  [28000, "island.liquid", { action: "ambience", name: "stars", on: false }],
+  [28000, "weather.updated", { icon: "🌤️", temp: "21°C", label: "Plutôt dégagé", place: "Lyon", detail: "" }],
+];
+
+/** Comme play(), mais un liquide qui suit le temps avec « endsAt: 0 » finit dans `total` ms à partir de son départ. */
+function playLiquid(bus: Bus, steps: Step[]) {
+  play(
+    bus,
+    steps.map(([ms, topic, payload]): Step => {
+      const p = payload as { endsAt?: number; total?: number } | null;
+      if (!p || p.endsAt !== 0 || !p.total) return [ms, topic, payload];
+      return [ms, topic, { ...p, get endsAt() { return Date.now() + (p.total ?? 0); } }];
+    }),
+  );
+}
+
+/** L'île se remplit en 5 s : Ondine flotte, la bouée quand ça déborde ; puis elle plonge chercher un téléchargement. */
+const LIQUID_FLOAT: Step[] = [
+  [0, "island.liquid", { action: "show", id: "demo-float", level: 0, endsAt: 0, total: 5000, overflow: true }],
+  [9000, "island.liquid", { action: "hide", id: "demo-float" }],
+  [10500, "shelf.downloaded", { name: "Facture-octobre.pdf" }],
 ];
 
 function play(bus: Bus, steps: Step[]) {
