@@ -314,6 +314,13 @@ fn desk_state() -> DeskState {
     DeskState { idle_ms: platform::idle_ms(), busy: platform::presentation_busy() }
 }
 
+/// La page d'un reflet de l'île (autre écran, island/mirrors.rs) est chargée :
+/// elle reçoit son apparence, et peut être montrée.
+#[tauri::command]
+fn mirror_look(app: AppHandle, window: Window) -> island::mirrors::MirrorLook {
+    island::mirrors::page_ready(&app, window.label())
+}
+
 #[tauri::command]
 fn island_reposition(app: AppHandle, shared: State<Shared>) {
     let pref = shared.settings.locked().general.screen.clone();
@@ -439,9 +446,9 @@ fn undo_run(app: AppHandle, undo: State<UndoService>, id: u64) -> Result<String,
 /// fenêtre créée : toutes les fenêtres doivent donc demander EXACTEMENT les mêmes
 /// arguments que l'île (voir `additionalBrowserArgs` dans tauri.conf.json), sinon
 /// la seconde reste blanche sans aucune erreur. (Constat de Coucou.)
-const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";
+pub(crate) const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";
 
-fn page_url(app: &AppHandle, page: &str) -> WebviewUrl {
+pub(crate) fn page_url(app: &AppHandle, page: &str) -> WebviewUrl {
     // En développement, les pages sont servies par Vite.
     #[cfg(dev)]
     if let Some(mut base) = app.config().build.dev_url.clone() {
@@ -615,6 +622,7 @@ pub fn run() {
             island_set_focus,
             island_reposition,
             island_drag_start,
+            mirror_look,
             pet_open,
             pet_bubble,
             pet_drag_start,

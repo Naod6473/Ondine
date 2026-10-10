@@ -105,11 +105,17 @@ pub(super) fn request(inner: &Inner, peer: &Peer, msg: &Msg) -> Result<Msg, Stri
 }
 
 /// « Ajouter » : l'appairage avec le PC qui affiche le code.
-pub(super) fn pair_with(app: &AppHandle, inner: &Inner, ip: Ipv4Addr, code: &str, mine: bool) -> Result<Peer, String> {
+/// `expected` : l'empreinte lue dans un QR code (team_qr.rs) ; le PC qui a
+/// répondu doit l'avoir, sinon il n'est pas ajouté.
+pub(super) fn pair_with(app: &AppHandle, inner: &Inner, ip: Ipv4Addr, code: &str, mine: bool, expected: Option<&str>) -> Result<Peer, String> {
     let keys = inner.keys()?;
     let card = team::my_card(app, inner, mine);
     let mut s = connect(ip, IO_TIMEOUT).map_err(|_| "ce PC ne répond pas : Ondine y est-elle lancée, avec le module Équipe activé ? (le pare-feu de Windows peut aussi bloquer)".to_string())?;
     let paired = proto::client_pair(&mut s, code, &keys, card)?;
+    if expected.is_some_and(|fp| fp != proto::fingerprint(&paired.peer_public)) {
+        log::warn("équipe : appairage refusé (l'empreinte ne correspond pas au QR code)");
+        return Err("ce n'est pas le PC du QR code (empreinte différente) : rien n'a été ajouté".into());
+    }
     team::add_peer(app, inner, &paired, ip, mine)
 }
 
@@ -495,6 +501,7 @@ fn discover_step(app: &AppHandle, inner: &Inner, s: &UdpSocket, last_announce: &
 
 fn housekeeping(app: AppHandle, inner: Arc<Inner>) {
     let hello_running = Arc::new(AtomicBool::new(false));
+    let listen_running = Arc::new(AtomicBool::new(false));
     let mut last_hello: Option<Instant> = None;
     let mut was_online: HashSet<String> = HashSet::new();
     let mut tick: u64 = 0;
@@ -539,6 +546,10 @@ fn housekeeping(app: AppHandle, inner: Arc<Inner>) {
             super::team_chat::tick(&app, &inner);
             if tick.is_multiple_of(5) {
                 sync_mascot(&app, &inner);
+            }
+            // « Alex écoute… » (team_listen.rs) : le morceau, à ceux qui le comprennent.
+            if tick.is_multiple_of(2) {
+                super::team_listen::sync(&app, &inner, &listen_running);
             }
         }));
         if step.is_err() {

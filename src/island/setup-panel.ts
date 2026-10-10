@@ -253,12 +253,12 @@ export function mountSetupPanel(host: HTMLElement, ctrl: SetupController): () =>
           st.detected === null
             ? "Je regarde les logiciels de ce PC…"
             : !st.cards.length
-              ? "Aucune carte : une île minimale de 3 onglets, qui s'enrichira avec vos réponses."
+              ? "Aucune carte : une île minimale de 4 onglets, qui s'enrichira avec vos réponses."
               : st.detected.length && !st.touched
                 ? "Pré-cochées d'après les logiciels de ce PC : rien n'est envoyé."
                 : "Cochez ce qui vous ressemble. Le reste se rallume dans Réglages → Onglets.";
       };
-      // Les onglets qu'aura l'île (ceux des cartes, ou les 3 de l'île minimale).
+      // Les onglets qu'aura l'île (ceux des cartes, ou les 4 de l'île minimale).
       const tabsPreview = () => {
         explain();
         const ids = tabsForCards(st.cards, ctrl.tabs.map((t) => t.id));

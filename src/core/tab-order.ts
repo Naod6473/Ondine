@@ -3,8 +3,15 @@
 // Le réglage est une liste d'ids de modules. Un module qui n'y est pas (nouveau
 // module, ou réglage jamais touché) garde sa place d'origine, après ceux qui
 // y sont : ajouter un module ne bouscule jamais l'ordre déjà choisi.
+// Sauf LEAD_TABS (l'Accueil, 1.2.3) : absent de la liste, il se met en tête ;
+// une fois glissé ailleurs, il est dans la liste et garde la place choisie.
+
+/** Les onglets qui se mettent en tête tant qu'on ne les a pas rangés soi-même. */
+export const LEAD_TABS: readonly string[] = ["home"];
 
 export function applyTabOrder<T>(items: T[], idOf: (item: T) => string, order: string[]): T[] {
+  const lead = order.length ? LEAD_TABS.filter((id) => !order.includes(id)) : [];
+  if (lead.length) order = [...lead, ...order];
   const rank = new Map(order.map((id, i) => [id, i]));
   return items
     .map((item, i) => ({ item, i, r: rank.get(idOf(item)) }))

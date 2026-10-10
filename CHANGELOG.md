@@ -1,5 +1,114 @@
 # Changements · Changelog
 
+## 1.2.3 · à venir
+
+- Nouveau style d'île « Bouche d'Ondine » (au choix) : Ondine est suspendue
+  tête en bas et l'île est sa bouche, en gomme de la couleur de votre
+  mascotte ; plus elle l'ouvre, plus elle s'affine. Sur le bureau, c'est elle qui ouvre
+  la bouche là où elle se trouve. · New island style "Ondine's mouth"
+  (optional): Ondine hangs upside down and the island is her mouth, in gum
+  matching your mascot's colour; the wider she opens it, the thinner she gets.
+  On the desktop, she opens her mouth right where she is.
+- Nouvel onglet Accueil, la première page de l'île ouverte : une carte par
+  module qui a quelque chose à dire (musique teintée par la pochette, agents,
+  minuteur, prochain rendez-vous, météo, batterie, tâches, étagère) et une
+  phrase d'Ondine qui résume la journée, sans IA. On range les cartes en les
+  glissant, on les retire d'un clic droit, un clic les ouvre sur place ; carte
+  « Reprendre », 4 actions rapides et un accueil par profil. · New Home tab,
+  the first page of the open island: one card per module with something to say
+  (music tinted by the album art, agents, timer, next event, weather, battery,
+  tasks, shelf) and a sentence from Ondine summing up the day, without AI.
+  Drag cards to arrange them, right-click to remove them, click to open them
+  in place; a "Pick up" card, 4 quick actions and a Home per profile.
+- Ondine se déplace dans l'île, de temps en temps : pour une vingtaine d'actions (retirer un
+  fichier de l'étagère, supprimer une note, changer d'onglet, un minuteur, une
+  copie, une alerte, la fin de journée…), elle quitte sa case en petits sauts
+  de gomme, agit, puis revient. Un clic la ramène et elle ne cache jamais le
+  texte (réglage dans Animations et halos → Style). · Ondine moves around the
+  island: for about twenty actions (removing a file from the shelf, deleting a
+  note, switching tabs, a timer, a copy, an alert, the end of the day…), she
+  leaves her spot in little gummy hops, does her thing, then comes back. A
+  click brings her back and she never covers text (setting in Animations and
+  halos → Style).
+- Format nano : la mini-île peut devenir une toute petite encoche qui ne
+  montre qu'Ondine. Elle s'élargit au survol (sans clic), pour une
+  notification, un morceau, un minuteur, un agent ou la voix, avec des points
+  d'état, et Ondine y somnole. · Nano size: the mini island can become a tiny
+  notch showing only Ondine. It widens on hover (no click), for a
+  notification, a song, a timer, an agent or your voice, with status dots, and
+  Ondine dozes in it.
+- Nouveau thème « Givre » : l'île en verre clair, blanc dépoli ; tous les
+  onglets restent lisibles. · New "Frost" theme: a light frosted-glass island;
+  every tab stays readable.
+- La molette de la souris au-dessus de l'île règle le volume, sans cliquer,
+  avec une petite jauge. · The mouse wheel over the island sets the volume, no
+  click needed, with a small gauge.
+- Double-clic sur Ondine : une action au choix (Parler à Ondine par défaut,
+  Lanceur, Capture, Note rapide). · Double-click Ondine: an action of your
+  choice (Talk to Ondine by default, Launcher, Capture, Quick note).
+- Le halo de la musique prend les couleurs de la pochette du morceau en
+  lecture. · The music halo takes the colours of the album art of the track
+  playing.
+- Plusieurs écrans (option) : un reflet de l'île sur chaque autre écran ;
+  approchez la souris et l'île vient s'y ouvrir. · Multiple screens (option):
+  a reflection of the island on each other screen; move the mouse there and
+  the island opens on that screen.
+- Minuteur : sons d'ambiance pour se concentrer (pluie, vagues, bruit doux),
+  fabriqués par Ondine sans aucun fichier, avec le volume et un lancement avec
+  le Pomodoro ; le liquide de l'île suit le son. · Timer: ambient sounds for
+  focus (rain, waves, soft noise), made by Ondine with no files at all, with
+  volume and an option to start with the Pomodoro; the island's liquid follows
+  the sound.
+- Nouvel écran de veille (éteint par défaut) : Ondine se promène au bord de
+  l'eau, l'heure au centre. Jamais pendant une présentation, un plein écran ou
+  un appel, et Windows se verrouille comme d'habitude. · New screensaver (off
+  by default): Ondine strolls by the water with the time in the middle. Never
+  during a presentation, a full-screen app or a call, and Windows still locks
+  as usual.
+- Réseau : test de débit d'un clic (serveurs de Cloudflare) ; le liseré de
+  l'île tourne et pulse plus vite quand le débit monte. · Network: one-click
+  speed test (Cloudflare servers); the island's border spins and pulses faster
+  as the speed goes up.
+- Parler à Ondine : dictée 100 % hors ligne au choix (Réglages → Voix → « Hors
+  ligne ») : le moteur de reconnaissance installé dans Windows écrit vos mots,
+  rien ne quitte le PC. S'il manque, Ondine dit où l'installer. · Talk to
+  Ondine: optional 100% offline dictation (Settings → Voice → "Offline"): the
+  recognition engine installed in Windows writes your words, nothing leaves
+  the PC. If it is missing, Ondine tells you where to install it.
+- Équipe : appairage par QR code (lu à l'écran, depuis une image copiée ou à
+  la webcam, empreinte vérifiée), « Alex écoute… » (éteint par défaut, un clic
+  ouvre le même morceau), et un fichier envoyé traverse l'île en petite
+  feuille de gomme. · Team: pairing by QR code (read from the screen, a copied
+  image or the webcam, fingerprint checked), "Alex is listening to…" (off by
+  default, one click opens the same track), and a file you send crosses the
+  island as a little gum sheet.
+- Ondine lève une pancarte avec un mot (« En réunion », « Occupé », « Pause
+  »…) : action de règle, ou quand vous changez votre statut d'Équipe ; un clic
+  la baisse. · Ondine holds up a sign with a word ("In a meeting", "Busy",
+  "Pause"…): a rule action, or when you change your Team status; a click
+  lowers it.
+- Règles : nouveau déclencheur « un nouvel appareil apparaît sur le réseau
+  local » (balayage doux du réseau local, rien ne quitte le PC). · Rules: new
+  trigger "a new device appears on the local network" (gentle sweep of the
+  local network, nothing leaves the PC).
+- Correction : en anglais, les textes d'aide des champs (« Write to Ondine… »,
+  « Your reply… », « Write to the whole team… ») ne restent plus en français.
+  · Fix: in English, field hints ("Write to Ondine…", "Your reply…", "Write
+  to the whole team…") no longer stay in French.
+- Correction : en anglais, l'assistant de premier lancement n'affiche plus la
+  ligne « vous / tu ». · Fix: in English, the first-launch assistant no longer
+  shows the "vous / tu" row.
+- Correction : en mini-île, une notification à deux boutons (Répondre / Ouvrir,
+  Ouvrir / Éjecter) garde son titre lisible sur une seule ligne. · Fix: in the
+  mini island, a notification with two buttons (Reply / Open, Open / Eject)
+  keeps its title readable on one line.
+- Correction : Ondine vient de nouveau pendre au bord de l'écran (et le bouton
+  « Faire venir Ondine » marche) : avec la mini-île affichée, réglage par
+  défaut, la visite n'arrivait jamais ; la mini-île remonte maintenant le temps
+  de la visite. · Fix: Ondine hangs from the screen edge again (and "Bring
+  Ondine" works): with the mini island shown, the default, the visit never
+  happened; the mini island now slides up during the visit.
+
 ## 1.2.2 · 2026-10-10
 
 - Parlez à Ondine à voix haute : raccourci Ctrl+Alt+V (ou bouton 🎙️), appuyer

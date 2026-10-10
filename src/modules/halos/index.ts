@@ -30,6 +30,7 @@ import { liquidMoments, ringReplaced } from "./liquid-moments";
 import { dayKey, leaveDue, levelFromPeak, mediaPlaying, meetingCometMs, morningDue, parseTime, sessionProgress, timerHaloPlan, weatherKind, type TimerProgress } from "./halo-rules";
 import { settingsStore } from "../../core/settings-store";
 import { helloText } from "../../core/setup-plan";
+import { coverColors, onCoverColors } from "../../mascot/env-tint";
 
 /** Un petit retour (Verr Maj, Copié…) : une ligne dans l'île, vite repartie. */
 const KEY_NOTE_MS = 1600;
@@ -220,6 +221,10 @@ export const halos: IslandModule = {
     let danceFlash = false;
     let danceShown: Beat | null = null;
     let levelsOn: "voice" | "music" | null = null;
+    /** Les couleurs du halo de la musique : celles de la pochette en lecture (1.2.3), sinon la palette « musique ». */
+    const musicPalette = (): string[] | "music" => (on("musicCover") && coverColors()) || "music";
+    /** La danse : la pochette aussi, sinon les couleurs de la mascotte. */
+    const dancePalette = () => (on("musicCover") && coverColors()) || mascotPalette();
     /** La danse a un vrai tempo, et le halo de la danse est permis : il passe devant celui du son. */
     const beatDance = () => dancing && danceBeat !== null && on("dance") && on("music");
     const syncDance = () => {
@@ -230,7 +235,7 @@ export const halos: IslandModule = {
         danceShown = danceBeat;
         showHalo({
           id: "dance",
-          palette: mascotPalette(),
+          palette: dancePalette(),
           shape: "breathe",
           rhythm: danceBeat ? haloBeatMs(danceBeat.bpm, MIN_PERIOD_MS) : 520,
           beatAt: danceBeat?.at ?? null,
@@ -292,7 +297,7 @@ export const halos: IslandModule = {
       }
       const id = want;
       hideHalo(mic ? "music" : "voice");
-      showHalo({ id, palette: mic ? "voice" : "music", shape: "level", priority: "low" });
+      showHalo({ id, palette: mic ? "voice" : musicPalette(), shape: "level", priority: "low" });
       stopLevels?.();
       let busy = false;
       stopLevels = pacedInterval(() => {
@@ -315,6 +320,13 @@ export const halos: IslandModule = {
     listen("voice.level", (p) => {
       if (typeof p.level === "number") updateHalo("ondine-voice", { level: p.level });
     });
+    // Une autre pochette (morceau suivant) : la lumière prend ses couleurs, sans s'éteindre.
+    offs.push(
+      onCoverColors(() => {
+        if (levelsOn === "music" && haloShown("music")) updateHalo("music", { palette: musicPalette() });
+        if (haloShown("dance")) updateHalo("dance", { palette: dancePalette() });
+      }),
+    );
     listen("controls.media-use", (p) => {
       const now = Array.isArray(p.mic) && p.mic.length > 0;
       if (now === micInUse) return;

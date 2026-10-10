@@ -48,7 +48,8 @@
       "controls.usb-ejected",
       "controls.bt-battery-low",
       "controls.remote",
-      "timer.start"
+      "timer.start",
+      "controls.volume"
     ],
     "listens": [
       "controls.mic-muted",
@@ -57,7 +58,8 @@
       "controls.usb-added",
       "controls.usb-ejected",
       "controls.bt-battery-low",
-      "controls.remote"
+      "controls.remote",
+      "island.wheel"
     ]
   },
   "settings": {
@@ -92,6 +94,14 @@
             "label": "Pause"
           }
         ]
+      },
+      {
+        "key": "wheelVolume",
+        "essential": true,
+        "type": "boolean",
+        "label": "Molette sur l'île = volume",
+        "help": "Tournez la molette au-dessus de la mini-île (ou de la mascotte, île ouverte) : le son monte ou baisse, sans cliquer. Une petite jauge montre le niveau.",
+        "default": true
       },
       {
         "key": "privacyDot",

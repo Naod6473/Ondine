@@ -33,6 +33,7 @@ use serde_json::{json, Value};
 use tauri::AppHandle;
 
 use super::nettools_ai::{self as ai, Level, Outage, Reading};
+use super::nettools_speed::SpeedTest;
 use super::remote::check_host;
 use super::{ModuleContext, RustModule};
 use crate::services::bus::BusMessage;
@@ -75,6 +76,8 @@ struct Watch {
 #[derive(Default)]
 pub struct NetTools {
     watch: Arc<Mutex<Watch>>,
+    /// Le test de débit (nettools_speed.rs), seulement au clic.
+    speed: SpeedTest,
 }
 
 impl RustModule for NetTools {
@@ -94,6 +97,18 @@ impl RustModule for NetTools {
             let w = self.watch.locked();
             let vpns: Vec<&String> = w.vpns.iter().flatten().collect();
             return Ok(json!({ "internet": w.internet, "vpns": vpns, "publicIp": w.public_ip }));
+        }
+        // Test de débit (1.2.3) : {} → null ; les nouvelles arrivent par « nettools.speed ».
+        if command == "speed_start" {
+            self.speed.start(ctx.app, |app, payload| {
+                super::with_context(app, ID, |ctx| ctx.emit("nettools.speed", payload));
+            })?;
+            ctx.log_info("réseau : test de débit lancé (speed.cloudflare.com)");
+            return Ok(Value::Null);
+        }
+        if command == "speed_stop" {
+            self.speed.stop();
+            return Ok(json!({ "running": self.speed.busy() }));
         }
         if command == "ai_status" {
             // {} → { services: [{ id, name, level, description, checkedAt }], history: [{ id, from, to, level }] }

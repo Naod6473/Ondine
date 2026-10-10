@@ -55,8 +55,8 @@ pub enum Trigger {
         #[serde(default)]
         folder: String,
     },
-    /// Le réseau change. (Point d'extension : « un nouvel appareil sur le
-    /// réseau » viendra avec le scanner du module Réseau.)
+    /// Le réseau change (Internet, VPN), ou un nouvel appareil apparaît sur
+    /// le réseau local (balayage doux, voir rules/newdevice.rs).
     Network { change: NetChange },
     /// La batterie passe sous `below` %.
     Battery { below: u8 },
@@ -86,6 +86,8 @@ pub enum NetChange {
     InternetUp,
     VpnUp,
     VpnDown,
+    /// Un appareil jamais vu apparaît sur le réseau local (1.2.3).
+    NewDevice,
 }
 
 /// Ce qu'on cherche dans le presse-papiers.
@@ -717,6 +719,9 @@ mod tests {
         assert_eq!(t, Trigger::Unlock);
         let t: Trigger = serde_json::from_str(r#"{ "type": "network", "change": "internetDown" }"#).unwrap();
         assert_eq!(t, Trigger::Network { change: NetChange::InternetDown });
+        let t: Trigger = serde_json::from_str(r#"{ "type": "network", "change": "newDevice" }"#).unwrap();
+        assert_eq!(t, Trigger::Network { change: NetChange::NewDevice });
+        assert!(validate(&rule(t, vec![Action::Notify { text: "Nouvel appareil : {nom}".into() }])).is_ok());
         let t: Trigger = serde_json::from_str(r#"{ "type": "power" }"#).unwrap();
         assert_eq!(t, Trigger::Power { plugged: true });
         let a: Action = serde_json::from_str(r#"{ "type": "copyPath", "nameOnly": true }"#).unwrap();

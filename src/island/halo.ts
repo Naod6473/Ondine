@@ -49,6 +49,8 @@
 //   rise / set la lumière monte depuis le bas (lever de soleil) ou redescend (coucher)
 //   cocoon     une lueur serrée et très douce (concentration)
 //   level      la lueur et les vagues suivent un niveau donné par updateHalo
+//   speed      test de débit (1.2.3) : une comète qui tourne et une lueur qui
+//              pulse, d'autant plus vite que `level` (updateHalo) est haut
 //   progress   un liseré qui fait le tour de l'île et se vide au fil du temps
 //              (minuteurs) : donner `endsAt` (Date.now() de la fin) et `total`
 //              (ms) ; il est recalculé à chaque image (aucun saut), passe au
@@ -99,6 +101,8 @@ import {
   rgba,
   rgbToHex,
   rhythmMs,
+  speedBeatMs,
+  speedLapMs,
   swell,
   type HaloPlace,
   type PaletteName,
@@ -123,9 +127,10 @@ export type HaloShape =
   | "set"
   | "cocoon"
   | "level"
-  | "progress";
+  | "progress"
+  | "speed";
 
-const SHAPES: readonly HaloShape[] = ["aurora", "breathe", "comet", "sweep", "burst", "ripple", "waves", "drops", "crackle", "reservoir", "rain", "rise", "set", "cocoon", "level", "progress"];
+const SHAPES: readonly HaloShape[] = ["aurora", "breathe", "comet", "sweep", "burst", "ripple", "waves", "drops", "crackle", "reservoir", "rain", "rise", "set", "cocoon", "level", "progress", "speed"];
 
 export type HaloFrom = "left" | "right" | "center";
 
@@ -185,6 +190,9 @@ interface Halo {
   lastFlash: number;
   /** Un halo qui reste (musique, visio, processeur…) : plus pâle (lastingDim). */
   dim: number;
+  /** Forme "speed" : où en est la comète (tours) et la pulsation (battements), avancés à chaque image. */
+  lap: number;
+  beat: number;
 }
 
 interface Particle {
@@ -217,6 +225,13 @@ const STILL_PROGRESS_MS = 5000;
 // ── L'état partagé ───────────────────────────────────────────────────────────
 
 let layer: HaloLayer | null = null;
+
+/** Île-bouche (1.2.3, island-forms.ts) : le halo entoure le corps d'Ondine, pas seulement le noir. */
+type BodyShape = { x: number; y: number; w: number; h: number; r: { tl: number; tr: number; br: number; bl: number } };
+let shapeOverride: (() => BodyShape | null) | null = null;
+export function setHaloShape(fn: (() => BodyShape | null) | null): void {
+  shapeOverride = fn;
+}
 /** Les demandes faites avant que l'île n'existe (ou dans une autre fenêtre : ignorées). */
 let counter = 0;
 
@@ -529,6 +544,8 @@ class HaloLayer {
       seed: Math.random() * 1000,
       lastFlash: now,
       dim: 1,
+      lap: old && old.shape === shape ? old.lap : 0,
+      beat: old && old.shape === shape ? old.beat : 0,
     };
     h.dim = lastingDim(h.durationMs, h.priority, shape);
     if (h.durationMs > 0) h.timer = window.setTimeout(() => this.hide(id), h.durationMs);
@@ -613,7 +630,12 @@ class HaloLayer {
       const target = h === top ? 1 : 0;
       if (still) h.env = { x: target, v: 0 };
       else stepSpring(h.env, target, target ? ENTER : LEAVE, dt);
-      if (h.shape === "level") stepSpring(h.levelS, h.level, LEVEL, dt);
+      if (h.shape === "level" || h.shape === "speed") stepSpring(h.levelS, h.level, LEVEL, dt);
+      // Test de débit : la vitesse change sans à-coup (on avance la phase, on ne la recalcule pas).
+      if (h.shape === "speed" && !still) {
+        h.lap += (dt * 1000) / speedLapMs(h.levelS.x);
+        h.beat += (dt * 1000) / speedBeatMs(h.levelS.x);
+      }
     }
     for (const h of this.fading) {
       if (still) h.env = { x: 0, v: 0 };
@@ -661,7 +683,8 @@ class HaloLayer {
   // ── La géométrie ───────────────────────────────────────────────────────────
 
   private measure(): NonNullable<HaloLayer["geo"]> | null {
-    const sb = this.shell.getBoundingClientRect();
+    const ov = !this.preview ? shapeOverride?.() : null;
+    const sb = ov ? { x: ov.x, y: ov.y, width: ov.w, height: ov.h } : this.shell.getBoundingClientRect();
     if (sb.width < 2 || sb.height < 1) return null;
     // L'aperçu : en coordonnées de sa boîte.
     const o = this.preview ? this.root.getBoundingClientRect() : { x: 0, y: 0 };
@@ -676,7 +699,7 @@ class HaloLayer {
     const px = (v: string) => parseFloat(v) || 0;
     // La boîte peut être mise à l'échelle (gelée) : les arrondis aussi.
     const sx = this.shell.offsetWidth ? b.width / this.shell.offsetWidth : 1;
-    const r = {
+    const r = ov?.r ?? {
       tl: px(cs.borderTopLeftRadius) * sx,
       tr: px(cs.borderTopRightRadius) * sx,
       br: px(cs.borderBottomRightRadius) * sx,
@@ -906,6 +929,14 @@ class HaloLayer {
           h.lastRing = now;
         }
         this.drawRings(ctx, g, h, now, grad, alpha * l * 0.5);
+        break;
+      }
+      case "speed": {
+        // Test de débit : la lueur bat (plus vite si ça va vite), la comète tourne.
+        const l = clamp01(h.levelS.x);
+        const p = 0.5 + 0.5 * Math.sin(h.beat * Math.PI * 2);
+        this.glowStroke(ctx, path, grad, glow * (0.45 + 0.35 * p * (0.4 + 0.6 * l)), alpha * (0.22 + 0.25 * p));
+        this.drawComet(ctx, g, h.colors, h.lap % 1, 0.18 + 0.2 * l, glow, alpha);
         break;
       }
       case "progress":

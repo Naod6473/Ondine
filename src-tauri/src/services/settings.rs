@@ -106,6 +106,10 @@ pub struct IslandPrefs {
     pub icon_pack: String,
     /// L'île reste en mini (la pilule) au lieu de disparaître.
     pub always_mini: bool,
+    /// Plusieurs écrans : un petit reflet de l'île (Ondine dans une encoche)
+    /// sur chaque autre écran ; la souris qui le touche y fait venir l'île
+    /// (island/mirrors.rs). Coupé par défaut.
+    pub other_screens: bool,
     /// Le style des animations : "classic" (sobre) ou "studio" (façon vidéo de
     /// présentation : flou → net, chiffres qui roulent, boutons en gélatine).
     pub motion: String,
@@ -132,6 +136,15 @@ pub struct IslandPrefs {
     pub tab_seen_at: BTreeMap<String, u32>,
     /// Le jour où ce compte a commencé (fin de l'assistant) ; 0 = pas encore.
     pub usage_since: u32,
+    /// La taille de la mini-île (1.2.3) : "normal" ou "nano" (une toute petite
+    /// encoche qui ne montre qu'Ondine, src/island/island-forms.ts).
+    pub size: String,
+    /// Le style de l'île (1.2.3) : "classic" ou "mouth" (l'île-bouche d'Ondine,
+    /// src/island/mouth.ts).
+    pub style: String,
+    /// Île-bouche : quand Ondine est sur le bureau, l'île part avec elle (sa
+    /// fenêtre fait la bouche) ; sinon une bouche vide reste au bord.
+    pub mouth_follow: bool,
 }
 
 fn default_motion() -> String {
@@ -187,6 +200,9 @@ pub struct MascotPrefs {
     pub pet_hotkey: String,
     /// Elle se promène un peu quand personne ne touche le PC.
     pub pet_wander: bool,
+    /// Double-clic sur Ondine dans l'île : "ask" (Parler à Ondine, par défaut),
+    /// "launcher", "capture", "note" (note rapide) ou "none" (src/island/mascot-double-click.ts).
+    pub double_click: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -240,6 +256,7 @@ impl Default for IslandPrefs {
             presentation_quiet: true,
             icon_pack: "color".into(),
             always_mini: true,
+            other_screens: false,
             motion: default_motion(),
             elasticity: default_elasticity(),
             tips: true,
@@ -249,13 +266,16 @@ impl Default for IslandPrefs {
             suggested: Vec::new(),
             tab_seen_at: BTreeMap::new(),
             usage_since: 0,
+            size: "normal".into(),
+            style: "classic".into(),
+            mouth_follow: true,
         }
     }
 }
 
 impl Default for MascotPrefs {
     fn default() -> Self {
-        Self { enabled: true, id: "goutte-gomme".into(), bored_after_secs: 60.0, sleep_after_secs: 180.0, peek: true, peek_every_mins: 5.0, surprises: "all".into(), treasures: Vec::new(), color: "auto".into(), hands: "always".into(), wear_head: "none".into(), wear_eyes: "none".into(), wear_neck: "none".into(), custom_color: "#4da3ff".into(), size: "normal".into(), calm: false, pet: false, pet_x: -1.0, pet_y: -1.0, pet_on_top: true, pet_tabs: vec!["askclaude".into(), "launcher".into(), "agents".into()], pet_hotkey: "Ctrl+Alt+B".into(), pet_wander: true }
+        Self { enabled: true, id: "goutte-gomme".into(), bored_after_secs: 60.0, sleep_after_secs: 180.0, peek: true, peek_every_mins: 5.0, surprises: "all".into(), treasures: Vec::new(), color: "auto".into(), hands: "always".into(), wear_head: "none".into(), wear_eyes: "none".into(), wear_neck: "none".into(), custom_color: "#4da3ff".into(), size: "normal".into(), calm: false, pet: false, pet_x: -1.0, pet_y: -1.0, pet_on_top: true, pet_tabs: vec!["askclaude".into(), "launcher".into(), "agents".into()], pet_hotkey: "Ctrl+Alt+B".into(), pet_wander: true, double_click: "ask".into() }
     }
 }
 
@@ -289,6 +309,12 @@ impl Settings {
         }
         if !["soft", "normal", "jelly"].contains(&self.island.elasticity.as_str()) {
             self.island.elasticity = default_elasticity();
+        }
+        if !["normal", "nano"].contains(&self.island.size.as_str()) {
+            self.island.size = "normal".into();
+        }
+        if !["classic", "mouth"].contains(&self.island.style.as_str()) {
+            self.island.style = "classic".into();
         }
         if !["auto", "fr", "en"].contains(&self.general.language.as_str()) {
             self.general.language = "auto".into();
@@ -324,6 +350,9 @@ impl Settings {
         m.peek_every_mins = if m.peek_every_mins.is_finite() { m.peek_every_mins.clamp(1.0, 120.0) } else { 5.0 };
         if !matches!(m.surprises.as_str(), "all" | "seasonal" | "none") {
             m.surprises = "all".into();
+        }
+        if !matches!(m.double_click.as_str(), "ask" | "launcher" | "capture" | "note" | "none") {
+            m.double_click = "ask".into();
         }
         if !is_hex_color(&m.custom_color) {
             m.custom_color = "#4da3ff".into();
@@ -368,8 +397,8 @@ impl Settings {
 }
 
 /// Les modules désactivés tant qu'on ne les a pas allumés (ceux qui ouvrent un
-/// port sur le réseau local). Même liste dans src/core/settings-store.ts.
-pub const MODULES_OFF_BY_DEFAULT: &[&str] = &["team"];
+/// port sur le réseau local, l'écran de veille). Même liste dans src/core/settings-store.ts.
+pub const MODULES_OFF_BY_DEFAULT: &[&str] = &["team", "screensaver"];
 
 /// Une couleur « #rrggbb » (sept caractères, hexadécimaux).
 fn is_hex_color(s: &str) -> bool {
@@ -508,6 +537,16 @@ mod tests {
         assert_eq!(s.island.collapse_secs, 1.5);
         assert_eq!(s.island.notification_secs, 3.0);
         assert_eq!(s.version, CURRENT_VERSION);
+    }
+
+    #[test]
+    fn island_size_and_style_are_checked() {
+        let s = parse(r#"{ "version": 2 }"#).unwrap();
+        assert_eq!((s.island.size.as_str(), s.island.style.as_str(), s.island.mouth_follow), ("normal", "classic", true));
+        let s = parse(r#"{ "version": 2, "island": { "size": "nano", "style": "mouth", "mouthFollow": false } }"#).unwrap();
+        assert_eq!((s.island.size.as_str(), s.island.style.as_str(), s.island.mouth_follow), ("nano", "mouth", false));
+        let s = parse(r#"{ "version": 2, "island": { "size": "huge", "style": "beak" } }"#).unwrap();
+        assert_eq!((s.island.size.as_str(), s.island.style.as_str()), ("normal", "classic"));
     }
 
     #[test]

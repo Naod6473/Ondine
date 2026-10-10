@@ -96,6 +96,8 @@ pub const MAX_QUESTION: usize = 200;
 /// Un message du chat : 4 000 caractères au plus (un long message se coupe
 /// en plusieurs ; un texte plus long passe par « Envoyer le texte »).
 pub const MAX_CHAT: usize = 4_000;
+/// « Alex écoute… » (1.2.3) : le titre et l'artiste du morceau en cours.
+pub const MAX_TRACK: usize = 200;
 
 // ── Les clés ─────────────────────────────────────────────────────────────────
 
@@ -243,6 +245,25 @@ pub struct Hello {
     /// Accepte les visites d'Ondine (sa mascotte qui traverse l'écran).
     #[serde(default)]
     pub visits: bool,
+    /// Les messages que cette Ondine comprend en plus du protocole de base
+    /// (1.2.3 : « listening »). Une version plus ancienne n'envoie pas ce
+    /// champ (liste vide) : on ne lui envoie jamais un message qu'elle ne
+    /// saurait pas lire. Elle-même ignore ce champ inconnu en lisant notre
+    /// présence (serde laisse passer les champs en trop).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub features: Vec<String>,
+}
+
+/// Ce que comprend cette version (voir `Hello::features`).
+pub const FEATURES: &[&str] = &[FEATURE_LISTENING];
+/// « Alex écoute… » : le message `listening`.
+pub const FEATURE_LISTENING: &str = "listening";
+
+impl Hello {
+    /// Cette Ondine comprend-elle le message `feature` ?
+    pub fn knows(&self, feature: &str) -> bool {
+        self.features.iter().any(|f| f == feature)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -338,6 +359,13 @@ pub enum Msg {
     ChatRead { id: u64 },
     /// Une réaction (👍 😂 ❤️) à un message ; la même une deuxième fois l'enlève.
     ChatReact { id: u64, kind: String, #[serde(default)] group: bool },
+    // ── « Alex écoute… » (1.2.3, team_listen.rs) : envoyé seulement si le
+    //    réglage « Partager ce que j'écoute » est allumé, et seulement aux
+    //    Ondine qui annoncent `features: ["listening"]` dans leur présence.
+    /// Le morceau en cours (titre vide : plus rien ne joue). `app` : le
+    /// service reconnu (spotify, deezer…, vide si inconnu), pour ouvrir le
+    /// même morceau au même endroit.
+    Listening { title: String, #[serde(default)] artist: String, #[serde(default)] app: String },
 }
 
 /// Les gestes qu'un collègue peut envoyer.
@@ -359,6 +387,10 @@ impl Msg {
                 one_of(&h.status, STATUSES)?;
                 check_text(&h.status_text, MAX_STATUS_TEXT, false)?;
                 check_id(&h.version, 40)?;
+                if h.features.len() > 16 {
+                    return Err("trop de fonctions annoncées".into());
+                }
+                h.features.iter().try_for_each(|f| check_id(f, 24))?;
                 if h.battery.is_some_and(|b| b.percent > 100) {
                     return Err("batterie invalide".into());
                 }
@@ -403,6 +435,11 @@ impl Msg {
             Msg::Refused { reason } => check_text(reason, 200, false),
             Msg::Chat { text, .. } => nonempty(text).and(check_text(text, MAX_CHAT, true)),
             Msg::ChatReact { kind, .. } => one_of(kind, REACTIONS),
+            Msg::Listening { title, artist, app } => {
+                check_text(title, MAX_TRACK, false)?;
+                check_text(artist, MAX_TRACK, false)?;
+                check_id(app, 20)
+            }
             Msg::FileEnd { sha256 } => {
                 if sha256.len() == 64 && sha256.bytes().all(|b| b.is_ascii_hexdigit()) {
                     Ok(())
@@ -1108,7 +1145,7 @@ mod tests {
         assert!(Msg::Pomodoro { minutes: 500 }.check().is_err());
         assert!(Msg::Vote { id: 1, choice: 7 }.check().is_err());
         assert!(Msg::FileEnd { sha256: "abc".into() }.check().is_err());
-        let hello = Hello { name: "Simon".into(), color: "#ff0000".into(), mascot: "goutte-gomme".into(), status: "focus".into(), status_text: String::new(), version: "1.2.2".into(), battery: None, visits: true };
+        let hello = Hello { name: "Simon".into(), color: "#ff0000".into(), mascot: "goutte-gomme".into(), status: "focus".into(), status_text: String::new(), version: "1.2.2".into(), battery: None, visits: true, features: vec![] };
         assert!(Msg::Hello(hello.clone()).check().is_ok());
         assert!(Msg::Hello(Hello { status: "root".into(), ..hello.clone() }).check().is_err());
         assert!(Msg::Hello(Hello { color: "red".into(), ..hello }).check().is_err());
@@ -1297,5 +1334,41 @@ mod tests {
         write_frame(&mut ca, &first).unwrap();
         drop(ca);
         assert!(!server.join().unwrap());
+    }
+
+    #[test]
+    fn listening_stays_compatible_with_older_versions() {
+        // Présence d'une version d'avant (sans « features ») : lue, sans fonction en plus.
+        let old = r##"{"t":"hello","name":"Alex","color":"#5cc8ff","status":"available","version":"1.2.2","visits":true}"##;
+        let Msg::Hello(h) = serde_json::from_str::<Msg>(old).unwrap() else { panic!("présence attendue") };
+        assert!(h.features.is_empty() && !h.knows(FEATURE_LISTENING));
+        // Notre présence, lue par une version d'avant (sa fiche n'a pas « features ») : le champ en trop est ignoré.
+        #[derive(Deserialize)]
+        #[allow(dead_code)]
+        struct OldHello {
+            name: String,
+            status: String,
+        }
+        let mine = Hello { name: "Simon".into(), color: "#ff0000".into(), mascot: String::new(), status: "focus".into(), status_text: String::new(), version: "1.2.3".into(), battery: None, visits: true, features: FEATURES.iter().map(|f| f.to_string()).collect() };
+        let json = serde_json::to_string(&Msg::Hello(mine.clone())).unwrap();
+        assert!(json.contains("\"features\":[\"listening\"]"));
+        assert!(serde_json::from_str::<OldHello>(&json).is_ok());
+        assert!(mine.knows(FEATURE_LISTENING));
+        // Sans fonction annoncée, le champ n'est même pas écrit (présence identique à avant).
+        let bare = serde_json::to_string(&Hello { features: vec![], ..mine.clone() }).unwrap();
+        assert!(!bare.contains("features"));
+        // Des fonctions absurdes sont refusées.
+        assert!(Msg::Hello(Hello { features: vec!["Rm -rf".into()], ..mine.clone() }).check().is_err());
+        assert!(Msg::Hello(Hello { features: vec!["x".into(); 17], ..mine }).check().is_err());
+        // Le message lui-même : chiffré, vérifié ; titre vide = plus rien ne joue.
+        let (mut a, mut b) = session(true).unwrap();
+        let m = Msg::Listening { title: "Clair de lune".into(), artist: "Debussy".into(), app: "spotify".into() };
+        assert_eq!(b.open_msg(&a.seal_msg(&m).unwrap()).unwrap(), m);
+        assert!(Msg::Listening { title: String::new(), artist: String::new(), app: String::new() }.check().is_ok());
+        assert!(Msg::Listening { title: "x".repeat(MAX_TRACK + 1), artist: String::new(), app: String::new() }.check().is_err());
+        assert!(Msg::Listening { title: "a\u{202E}b".into(), artist: String::new(), app: String::new() }.check().is_err());
+        assert!(Msg::Listening { title: "a".into(), artist: String::new(), app: "Spotify!".into() }.check().is_err());
+        // Sans « artist » ni « app » (forme minimale) : lu quand même.
+        assert_eq!(serde_json::from_str::<Msg>(r#"{"t":"listening","title":"x"}"#).unwrap(), Msg::Listening { title: "x".into(), artist: String::new(), app: String::new() });
     }
 }

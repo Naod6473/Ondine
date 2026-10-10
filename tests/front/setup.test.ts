@@ -43,7 +43,8 @@ describe("les cartes", () => {
       }
     }
     for (const id of [...BASE_TABS, ...MINIMAL_TABS]) assert.ok(TABS.includes(id), id);
-    assert.equal(MINIMAL_TABS.length, 3);
+    assert.equal(MINIMAL_TABS.length, 4);
+    assert.equal(MINIMAL_TABS[0], "home");
   });
 
   test("les cartes et leurs textes sont traduits", () => {
@@ -76,10 +77,10 @@ describe("le plan des onglets", () => {
     assert.deepEqual(tabsForCards([], TABS), [...MINIMAL_TABS]);
   });
 
-  test("Parler à Ondine d'abord, puis les onglets des cartes dans l'ordre coché, sans doublon", () => {
+  test("l'Accueil et Parler à Ondine d'abord, puis les onglets des cartes dans l'ordre coché, sans doublon", () => {
     const ids = tabsForCards(["study", "office"], TABS);
-    assert.equal(ids[0], "askclaude");
-    assert.deepEqual(ids.slice(1, 4), ["notes", "timer", "agenda"]);
+    assert.deepEqual(ids.slice(0, 2), ["home", "askclaude"]);
+    assert.deepEqual(ids.slice(2, 5), ["notes", "timer", "agenda"]);
     assert.equal(new Set(ids).size, ids.length);
   });
 
@@ -89,7 +90,8 @@ describe("le plan des onglets", () => {
     assert.equal(plan.modules.media, false);
     assert.equal("team" in plan.modules, false);
     assert.deepEqual([...plan.order].sort(), [...TABS].sort());
-    assert.deepEqual(plan.order.slice(0, 2), ["askclaude", "agents"]);
+    assert.deepEqual(plan.order.slice(0, 3), ["home", "askclaude", "agents"]);
+    assert.equal(plan.modules.home, true);
   });
 
   test("un id inconnu (module retiré) est ignoré", () => {
@@ -109,7 +111,7 @@ describe("les profils des cartes", () => {
     );
     assert.equal(p[0].modules.shelf, true);
     assert.equal(p[0].modules.media, false);
-    assert.equal(p[0].tabOrder[0], "askclaude");
+    assert.equal(p[0].tabOrder[0], "home");
   });
 });
 

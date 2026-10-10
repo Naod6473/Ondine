@@ -15,6 +15,7 @@ import type { ModuleRegistry } from "../core/module-registry";
 import { isAlert, type IslandNotification, type NotificationQueue } from "../core/notifications";
 import { settingsStore } from "../core/settings-store";
 import { noteTabOpen } from "../core/suggestions";
+import { homeOnOpen } from "../core/home-cards";
 import { applyTabOrder, mergeOrder } from "../core/tab-order";
 import type { Settings } from "../core/types";
 import { EasterEggs } from "../eggs/eggs";
@@ -26,6 +27,7 @@ import type { MascotManifest } from "../mascot/types";
 import { clear, el } from "./dom";
 import { icon } from "./icon";
 import { IslandStateMachine, type IslandState } from "./island-state";
+import { IslandForms, islandStyle } from "./island-forms";
 import { contentHeight, FIT_ATTR, FIT_MAX_W, FIT_MAX_W_SIDE, FIT_W_ATTR, fitHeight, fitMode, fitWidth, naturalWidth, settle } from "./fit";
 import { attachHalo } from "./halo";
 import { attachLiquid } from "./liquid";
@@ -34,7 +36,10 @@ import { Jelly } from "./jelly";
 import { elasticityOf } from "./spring";
 import { sounds, setSoundPrefs } from "./sounds";
 import { enableTabDrag, flip } from "./tab-drag";
-import { applyTheme } from "./themes";
+import { applyIslandTheme } from "./light-island";
+import { attachWheelVolume } from "./volume-wheel";
+import { ACTION_MODULE, CONFIRM_MS, DoubleClick, doubleClickActionOf } from "./mascot-double-click";
+import { attachScenes, type Scenes } from "./scenes/scenes";
 import { reducedMotion, TabPill } from "./tab-pill";
 import { Tips } from "./tips";
 
@@ -99,6 +104,8 @@ export class Island {
   private fsm: IslandStateMachine;
   private shell = el("div", { class: "island", "data-state": "hidden" });
   private mascotSlot = el("div", { class: "mascot-slot", title: "" });
+  /** Les clics sur la mascotte, pour reconnaître un double-clic (réglage mascot.doubleClick). */
+  private doubleClick = new DoubleClick();
   private content = el("div", { class: "island-content" });
   /** Le petit point orange (micro) ou vert (caméra) quand une appli s'en sert. */
   private privacyDot = el("span", { class: "privacy-dot", "aria-hidden": "true" });
@@ -125,6 +132,8 @@ export class Island {
   private unmountView: () => void = () => {};
   /** Onglet (id de module) ouvert dans la vue agrandie. */
   private activeTab: string | null = null;
+  /** Un onglet précis vient d'être demandé (openIsland) : l'ouverture ne repasse pas par l'Accueil. */
+  private tabAsked = false;
   /** La vue agrandie affichée : ses onglets, leur pastille et la zone du contenu. */
   private expandedUi: { tabs: Map<string, HTMLElement>; pill: TabPill; stage: HTMLElement; body: HTMLElement } | null = null;
   /** Dernier état dessiné, pour animer l'arrivée du contenu quand il change. */
@@ -152,6 +161,8 @@ export class Island {
   /** Ondine qui pend au bord de l'écran (mascot/hang.ts), et sa dernière visite. */
   private hanger: Hanger;
   private lastPeek = Date.now();
+  /** La mini-île est remontée le temps d'une visite d'Ondine au bord. */
+  private peekHid = false;
   /** Une présentation ou une appli plein écran est en cours : l'île se fait oublier. */
   private presenting = false;
   /** La place provisoire donnée par le Rust quand l'île s'écarte d'une fenêtre
@@ -160,10 +171,14 @@ export class Island {
   private lastFright = 0;
   /** Ouverte au clavier (raccourci) : le focus va sur l'onglet actif. */
   private focusTabsOnOpen = false;
+  /** Format nano et île-bouche (1.2.3, island-forms.ts). */
+  private forms: IslandForms;
   /** Les surprises cachées (src/eggs/). */
   private eggs: EasterEggs;
   /** La bulle d'astuce à la première ouverture d'un onglet (tips.ts). */
   private tips = new Tips();
+  /** Ondine se déplace dans l'île (scenes/scenes.ts). */
+  private scenes: Scenes;
 
   constructor(
     private readonly root: HTMLElement,
@@ -179,6 +194,8 @@ export class Island {
     attachHalo(this.root, this.shell, this.bus, () => this.fsm.state);
     // Le liquide À L'INTÉRIEUR de l'île (liquid.ts) : derrière le contenu.
     attachLiquid(this.shell, this.bus, () => this.fsm.state);
+    // La molette sur l'île règle le volume, avec une petite jauge (volume-wheel.ts, 1.2.3).
+    attachWheelVolume(this.shell, this.mascotSlot, this.bus, () => this.fsm.state);
     this.jelly = new Jelly(this.shell, {
       edge: () => this.edge(),
       align: () => document.body.dataset.align ?? "center",
@@ -186,6 +203,16 @@ export class Island {
       // La forme est posée (fin de l'ancienne « transitionend ») : le Rust
       // reçoit le rectangle final, échelle comprise, pour les clics traversants.
       onSettle: () => this.pushRect(),
+    });
+    this.forms = new IslandForms({
+      shell: this.shell,
+      root: this.root,
+      fsm: this.fsm,
+      bus: this.bus,
+      mascot: () => this.mascot,
+      retarget: () => this.scheduleRetarget(),
+      petOut: () => petOn(settingsStore.current),
+      awayChanged: (away) => void Bridge.islandSetCollapsed(away || this.fsm.state === "hidden"),
     });
     this.hanger = new Hanger(this.root, {
       edge: () => this.edge(),
@@ -204,6 +231,17 @@ export class Island {
       this.bus,
       this.notifications,
     );
+    // Ondine quitte sa case pour agir dans l'île (les 22 scènes, scenes/).
+    this.scenes = attachScenes({
+      shell: this.shell,
+      slot: this.mascotSlot,
+      content: this.content,
+      bus: this.bus,
+      state: () => this.fsm.state,
+      mascot: () => this.mascot,
+      react: (kind, data) => this.react(kind, data),
+      open: (tab) => this.registry.onOpenRequest(tab),
+    });
     pacedInterval(() => void this.maybePeek(), "peekCheck");
     pacedInterval(() => void this.checkPresentation(), "presentationCheck");
     // Économie d'énergie : pas d'effets « Studio » (flous coûteux), ils reviennent ensuite.
@@ -216,6 +254,7 @@ export class Island {
         ondinePeek: () => this.hanger.show(),
         ondineBus: this.bus,
         ondineEggs: this.eggs,
+        ondineScenes: this.scenes,
         ondineNotify: (n: Parameters<NotificationQueue["push"]>[0]) => this.notifications.push(n),
       });
     }
@@ -258,8 +297,12 @@ export class Island {
     this.registry.onCompactChange = () => this.render();
     this.registry.onCloseRequest = () => this.fsm.close();
     this.registry.onOpenRequest = (tab) => {
-      if (tab && this.orderedTabs().some((t) => t.module.manifest.id === tab)) this.activeTab = tab;
+      if (tab && this.orderedTabs().some((t) => t.module.manifest.id === tab)) {
+        this.activeTab = tab;
+        this.tabAsked = true;
+      }
       this.fsm.open();
+      this.tabAsked = false;
       this.render(true);
     };
     settingsStore.onChange((s) => this.applySettings(s));
@@ -276,16 +319,19 @@ export class Island {
     this.wireRulesQuiet();
     this.wireAiDot();
     // On porte Ondine (sur le bureau) au-dessus de l'île : elle se montre pour l'accueillir.
-    void onTauriEvent<boolean>("pet-over-island", (over) => (over ? this.fsm.pointerEnter() : this.fsm.pointerLeave()));
+    void onTauriEvent<boolean>("pet-over-island", (over) => {
+      // Île-bouche partie avec elle : la bouche revient le temps de l'accueillir.
+      this.forms.setHoming(over);
+      if (over) this.fsm.pointerEnter();
+      else this.fsm.pointerLeave();
+    });
     // Des fichiers lâchés sur Ondine (sur le bureau) : l'île connaît les cibles,
     // elle les propose dans la bulle d'Ondine, puis fait le dépôt choisi.
     this.wirePetDrops();
     // La bulle d'Ondine sur le bureau demande un onglet qu'elle n'a pas.
     this.bus.on("island.open", (msg) => this.registry.onOpenRequest((msg.payload as { tab?: string } | null)?.tab));
     // Bouton « Faire venir Ondine » des réglages.
-    this.bus.on("mascot.peek-now", () => {
-      if (this.fsm.state === "hidden") this.hanger.show();
-    });
+    this.bus.on("mascot.peek-now", () => this.startPeek());
     this.render(true);
   }
 
@@ -301,7 +347,8 @@ export class Island {
     // (Sauf si elle s'écarte en ce moment d'une fenêtre : sa place provisoire.)
     document.body.dataset.edge = this.dodgePlace?.edge ?? s.island.edge ?? "top";
     document.body.dataset.align = this.dodgePlace?.align ?? s.island.align ?? "center";
-    applyTheme(s.island.theme ?? "nuit", s.island.color ?? "");
+    // Le thème (un thème clair retourne les couleurs d'island.css, light-island.ts).
+    applyIslandTheme(s);
     setSoundPrefs(s.island.sounds ?? true, s.island.soundVolume ?? 0.5);
     this.reorderTabs();
     this.drawPrivacy();
@@ -333,6 +380,8 @@ export class Island {
     if (this.mascot) {
       this.mascot.timings = { boredAfterMs: s.mascot.boredAfterSecs * 1000, sleepAfterMs: s.mascot.sleepAfterSecs * 1000 };
     }
+    // Format nano, île-bouche ; Ondine partie sur le bureau avec l'île : la fenêtre se fait bande.
+    this.forms.apply(s);
     // Le bord ou la place ont peut-être changé : la forme voulue aussi.
     this.jelly.retarget();
   }
@@ -381,7 +430,9 @@ export class Island {
       this.collapseTimer = null;
     }
     const token = ++this.collapseToken;
-    if (from === "hidden") {
+    this.forms.onTransition(from, to);
+    // (Île-bouche partie avec Ondine sur le bureau : la fenêtre reste une bande.)
+    if (from === "hidden" && !this.forms.away) {
       // On agrandit d'abord la fenêtre, puis l'île s'anime dedans.
       void Bridge.islandSetCollapsed(false);
       // Ondine pendait au bord : elle remonte, l'île arrive.
@@ -394,6 +445,10 @@ export class Island {
     // L'astuce d'un onglet ne vit que dans l'île ouverte (jamais par-dessus une alerte).
     if (from === "expanded") this.tips.hide();
     if (to !== "hidden") this.mascot?.activity();
+    // L'île se rouvre sur l'Accueil (réglage du module home), sauf onglet demandé.
+    if (to === "expanded" && (from === "hidden" || from === "peek" || from === "compact") && !this.tabAsked && homeOnOpen(settingsStore.current, settingsStore.moduleEnabled("home"))) {
+      this.activeTab = "home";
+    }
     // Petits sons : une bulle qui monte à l'ouverture, qui redescend à la fermeture.
     if (to === "expanded") sounds.open();
     else if (from === "expanded") sounds.close();
@@ -427,8 +482,10 @@ export class Island {
     }
     // Île cachée : la fenêtre n'est qu'une bande de 6 px. Le Rust surveille la
     // souris et prévient quand elle touche cette bande.
-    void onTauriEvent("wake-enter", () => this.fsm.state === "hidden" && !this.presenting && this.fsm.pointerEnter());
+    void onTauriEvent("wake-enter", () => this.fsm.state === "hidden" && !this.presenting && !this.forms.away && this.fsm.pointerEnter());
     void onTauriEvent("wake-leave", () => this.fsm.state === "hidden" && this.fsm.pointerLeave());
+    // La souris a touché le reflet de l'île sur un autre écran (src-tauri/src/island/mirrors.rs) : l'île y est venue, en mini-île.
+    void onTauriEvent("mirror-arrive", () => !this.presenting && this.fsm.showCompact());
 
     // Étirer l'île par son bord intérieur, la déplacer par son bord extérieur (gestures.ts).
     this.wasGesture = enableGestures(this.shell, {
@@ -491,6 +548,10 @@ export class Island {
         return;
       }
       this.bus.emit("mascot.clicked");
+      // Double-clic : l'action choisie, un instant après, si aucun 3e clic ne vient (mascot-double-click.ts).
+      if (this.doubleClick.click(performance.now())) {
+        window.setTimeout(() => this.doubleClick.confirm(performance.now()) && this.mascotDoubleClick(), CONFIRM_MS);
+      }
     });
 
     window.addEventListener("keydown", (e) => {
@@ -605,6 +666,7 @@ export class Island {
       slot.style.translate = "";
       if (!wasMoving) return;
       this.carried = true;
+      this.doubleClick.reset();
       window.setTimeout(() => (this.carried = false), 300);
       if (e.type !== "pointercancel" && outside(last.x, last.y)) {
         log.info("Ondine sortie de l'île vers le bureau");
@@ -617,6 +679,26 @@ export class Island {
     slot.addEventListener("pointercancel", end);
     // Windows a repris la souris (fenêtre devenue transparente aux clics) : c'est un lâcher.
     slot.addEventListener("lostpointercapture", end);
+  }
+
+  /**
+   * Double-clic sur Ondine (1.2.3) : l'action des réglages (Parler à Ondine
+   * par défaut, Lanceur, Capture, Note rapide, Rien). Chaque action passe par
+   * le module qui la fait ; un module désactivé le dit en une ligne.
+   */
+  private mascotDoubleClick() {
+    const action = doubleClickActionOf(settingsStore.current.mascot.doubleClick);
+    if (action === "none") return;
+    if (!settingsStore.moduleEnabled(ACTION_MODULE[action])) {
+      const names = { ask: "Parler à Ondine", launcher: "Lanceur", capture: "Capture", note: "Notes" };
+      this.notifications.push({ moduleId: "island", title: `Module « ${names[action]} » désactivé`, body: "Activez-le dans les Réglages, ou choisissez une autre action du double-clic.", icon: "💧", priority: "low", key: "mascot-dblclick" });
+      return;
+    }
+    log.info(`double-clic sur Ondine : ${action}`);
+    if (action === "ask") this.registry.onOpenRequest("askclaude");
+    else if (action === "launcher") this.bus.emit("launcher.open");
+    else if (action === "capture") this.bus.emit("capture.request", { then: "save" });
+    else this.bus.emit("notes.quick");
   }
 
   /** Un point de la fenêtre, en px depuis le centre de la mascotte (pour ses réactions). */
@@ -800,13 +882,43 @@ export class Island {
   private async maybePeek() {
     const s = settingsStore.current;
     // Pas de visite en « Calme » (mascot.calm).
-    if (!s.mascot.enabled || !s.mascot.peek || s.mascot.calm || this.fsm.state !== "hidden" || this.hanger.showing) return;
+    if (!s.mascot.enabled || !s.mascot.peek || s.mascot.calm || !this.fsm.resting() || this.hanger.showing) return;
     if (Date.now() - this.lastPeek < (s.mascot.peekEveryMins ?? 5) * 60_000) return;
     const desk = await Bridge.deskState();
     if (!desk || desk.busy || desk.idleMs < PEEK_IDLE_MS) return;
     if (Math.random() < 0.4) return;
     this.lastPeek = Date.now();
-    this.hanger.show();
+    this.startPeek();
+  }
+
+  /**
+   * Ondine vient pendre au bord. En « Toujours en mini » (réglage par défaut),
+   * la mini-île remonte le temps de la visite pour lui laisser la place, puis
+   * revient quand elle repart (onHangChange).
+   */
+  private startPeek() {
+    if (this.hanger.showing || this.presenting) return;
+    // Île-bouche : Ondine est déjà au bord (c'est elle, l'île) ; elle s'étire et cligne.
+    if (islandStyle(settingsStore.current) === "mouth") return this.forms.visit();
+    if (this.fsm.state === "hidden") {
+      this.hanger.show();
+      return;
+    }
+    if (!this.fsm.resting()) return;
+    this.peekHid = true;
+    this.fsm.hide();
+    // La mini-île finit de remonter avant que la goutte descende.
+    window.setTimeout(() => {
+      if (this.peekHid && this.fsm.state === "hidden") this.hanger.show();
+      else this.endPeekHide();
+    }, reducedMotion() ? 0 : 450);
+  }
+
+  /** Fin d'une visite qui avait fait remonter la mini-île : elle revient. */
+  private endPeekHide() {
+    if (!this.peekHid) return;
+    this.peekHid = false;
+    if (!this.presenting) this.fsm.restore();
   }
 
   /**
@@ -894,10 +1006,18 @@ export class Island {
   private onHangChange(on: boolean) {
     if (on) sounds.drop();
     if (this.fsm.state === "hidden") void Bridge.islandSetCollapsed(!on);
+    if (!on) this.endPeekHide();
     requestAnimationFrame(() => this.pushRect());
   }
 
   private pushRect() {
+    this.forms.reshaped();
+    // Île-bouche : l'île et le corps d'Ondine autour (rien quand elle est partie avec Ondine).
+    const body = this.forms.hitRect();
+    if (body) {
+      void Bridge.islandSetRect(body.x, body.y, body.w, body.h);
+      return;
+    }
     // Île cachée et Ondine au bord : seul son petit rectangle prend la souris.
     const hang = this.fsm.state === "hidden" ? this.hanger.rect() : null;
     if (hang) {
@@ -917,14 +1037,19 @@ export class Island {
       const h = this.hanger.rect();
       if (h && x >= h.left && x <= h.right && y >= h.top && y <= h.bottom) return;
     }
+    // Île-bouche partie avec Ondine sur le bureau : rien à suivre ici.
+    if (this.forms.away) return;
+    this.forms.pointer(x, y);
     // Présentation en cours : la souris au bord ne réveille pas l'île.
     if (this.presenting && this.fsm.state === "hidden") return;
     // Dans l'appli, l'île cachée est gérée par la bande de réveil (ci-dessus).
     if (this.fsm.state === "hidden" && IS_TAURI && !this.hanger.showing) return;
-    const r = this.shell.getBoundingClientRect();
+    const hb = this.forms.hitRect();
+    const r = hb ? { left: hb.x, top: hb.y, right: hb.x + hb.w, bottom: hb.y + hb.h } : this.shell.getBoundingClientRect();
     const margin = 8;
     const inIsland = x >= r.left - margin && x <= r.right + margin && y >= r.top - margin && y <= r.bottom + margin;
-    const inside = inIsland || this.inEdgeZone(x, y);
+    // L'encoche nano ne s'ouvre qu'au survol d'elle-même, pas de toute la bande du bord.
+    const inside = inIsland || ((this.fsm.state === "hidden" || this.fsm.shownForm !== "nano") && this.inEdgeZone(x, y));
     if (inside) this.fsm.pointerEnter();
     else this.fsm.pointerLeave();
     // Mini-île survolée : elle gonfle un peu et penche vers la souris.
@@ -932,7 +1057,9 @@ export class Island {
 
     if (!this.mascot) return;
     const m = this.mascotSlot.getBoundingClientRect();
-    this.mascot.lookAt(x - (m.left + m.width / 2), y - (m.top + m.height / 2));
+    // Une scène (ou mascot.look-at) lui fait regarder ailleurs un instant.
+    if (inside) this.scenes.pointer(x, y);
+    if (!this.scenes.gazeHeld()) this.mascot.lookAt(x - (m.left + m.width / 2), y - (m.top + m.height / 2));
     this.eggs.pointer(x, y);
     if (inside) this.mascot.activity();
 
@@ -1116,6 +1243,8 @@ export class Island {
       if (card) popIn(card);
     }
     this.renderedState = state;
+    // Ondine sortie avec l'île-bouche : elle montre la même chose dans sa bouche.
+    this.forms.publishMini();
   }
 
   /**

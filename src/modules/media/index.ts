@@ -13,7 +13,7 @@ import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-
 import { el } from "../../island/dom";
 import { pacedInterval, perfMode, setText } from "../../core/perf";
 import { reducedMotion } from "../../island/tab-pill";
-import { setCover } from "../../mascot/env-tint";
+import { coverTint, setCover } from "../../mascot/env-tint";
 
 /** Miroir de `NowPlaying` (src-tauri/src/platform/media.rs). */
 interface NowPlaying {
@@ -233,6 +233,31 @@ export const media: IslandModule = {
     // Changer le réglage « pilule » doit changer la vue compacte tout de suite.
     api.onSettingsChange(() => api.refreshCompact());
 
+    // L'Accueil : une carte large, teintée aux couleurs de la pochette, tant qu'un morceau est là.
+    api.homeCard({
+      title: "Musique",
+      icon: "🎵",
+      size: "large",
+      moments: { morning: 40, day: 55, evening: 70 },
+      view: () => {
+        if (!hasTrack() || !playing) return null;
+        const pos = currentPosition();
+        const on = playing.status === "playing";
+        return {
+          value: playing.title,
+          sub: playing.artist || appName(playing.app),
+          image: artworkUrl,
+          tint: on ? coverTint() : null,
+          progress: pos !== null && playing.durationMs ? pos / playing.durationMs : null,
+          actions: [
+            ...(playing.canPrevious ? [{ icon: "⏮", label: "Précédent", run: () => control(api, "previous") }] : []),
+            ...(playing.canToggle ? [{ icon: on ? "⏸" : "▶", label: on ? "Pause" : "Lecture", run: () => control(api, "toggle") }] : []),
+            ...(playing.canNext ? [{ icon: "⏭", label: "Suivant", run: () => control(api, "next") }] : []),
+          ],
+        };
+      },
+    });
+
     return () => {
       playing = null;
       artworkId = 0;
@@ -331,7 +356,7 @@ export const media: IslandModule = {
         }
         const p = playing;
         const button = (label: string, title: string, enabled: boolean, command: "toggle" | "next" | "previous") =>
-          el("button", { class: "media-btn", title, disabled: !enabled, onclick: api.handler(() => control(api, command)) }, label);
+          el("button", { class: "media-btn", title, disabled: !enabled, "data-scene-target": command === "next" ? "media-next" : undefined, onclick: api.handler(() => control(api, command)) }, label);
 
         const bar = el("div", { class: "media-bar" }, el("div", { class: "media-bar-fill" }));
         const times = el("div", { class: "media-times" }, el("span"), el("span"));

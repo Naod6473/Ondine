@@ -1,0 +1,68 @@
+/* Un reflet de l'île sur un autre écran (src/mirror/main.ts) : la fenêtre
+   fait la taille de l'encoche (76 × 24 px, ou 24 × 76 sur un côté). */
+
+:root {
+  --mirror-bg: #0c0d12;
+  --mirror-accent: #7cc4ff;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+}
+.mirror {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  background: var(--mirror-bg);
+  /* Arrondie du côté de l'écran, collée au bord comme l'île. */
+  border-radius: 0 0 12px 12px;
+}
+body[data-edge="bottom"] .mirror {
+  border-radius: 12px 12px 0 0;
+}
+body[data-edge="left"] .mirror {
+  border-radius: 0 12px 12px 0;
+}
+body[data-edge="right"] .mirror {
+  border-radius: 12px 0 0 12px;
+}
+/* Verre clair (thème Givre) : blanc dépoli et liseré d'encre. */
+:root[data-theme-tone="light"] .mirror {
+  box-shadow:
+    inset 0 0 0 1px rgba(27, 30, 43, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.mirror-ondine {
+  width: 18px;
+  height: 18px;
+  /* Elle somnole : une respiration lente, posée sur sa base. */
+  transform-origin: 50% 90%;
+  animation: mirror-breathe 4.2s ease-in-out infinite;
+}
+@keyframes mirror-breathe {
+  0%,
+  100% {
+    scale: 1 1;
+  }
+  50% {
+    scale: 1.05 0.96;
+  }
+}
+.mirror-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mirror-accent);
+  opacity: 0.8;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mirror-ondine {
+    animation: none;
+  }
+}

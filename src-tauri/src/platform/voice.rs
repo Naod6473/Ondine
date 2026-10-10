@@ -18,6 +18,16 @@
 //   La langue : celle de l'appli si Windows sait y faire la dictée
 //   (`SupportedTopicLanguages`), sinon une variante (fr-CA pour fr-FR), sinon
 //   la langue de la voix de Windows.
+//   - `dictate_offline` (1.2.3) : la dictée 100 % hors ligne, par le moteur
+//     de reconnaissance « de bureau » de Windows (SAPI 5, `SpInprocRecognizer`
+//     + grammaire de dictée). Rien ne quitte le PC : le moteur tourne dans
+//     notre processus, sur le micro par défaut (`SpMMAudioIn`). Il faut que la
+//     reconnaissance vocale de la langue soit installée (Paramètres Windows →
+//     Heure et langue → Langue et région → la langue → Options de langue →
+//     Reconnaissance vocale) ; sinon `Fix::Pack` et une phrase qui le dit.
+//     Pourquoi pas `Windows.Media.SpeechRecognition` : sa dictée libre passe
+//     toujours par le service en ligne ; hors ligne, il ne reconnaît que des
+//     listes de phrases fixées d'avance (pas une question libre).
 //   - `record` : la capture du micro en mémoire (WASAPI partagé), pour
 //     l'option « transcription par l'API ». Rien n'est écrit sur le disque.
 //   - le niveau du micro pendant la dictée (IAudioMeterInformation), pour que
@@ -61,6 +71,9 @@ pub enum Fix {
     Mic,
     /// Heure et langue → Voix (la langue de la reconnaissance).
     Language,
+    /// Heure et langue → Langue et région (la reconnaissance vocale hors
+    /// ligne s'installe dans les options de la langue).
+    Pack,
 }
 
 impl Fix {
@@ -69,11 +82,12 @@ impl Fix {
             Fix::Speech => "speech",
             Fix::Mic => "mic",
             Fix::Language => "language",
+            Fix::Pack => "pack",
         }
     }
 
     pub fn from_id(id: &str) -> Option<Fix> {
-        [Fix::Speech, Fix::Mic, Fix::Language].into_iter().find(|f| f.id() == id)
+        [Fix::Speech, Fix::Mic, Fix::Language, Fix::Pack].into_iter().find(|f| f.id() == id)
     }
 
     /// La page des Paramètres Windows à ouvrir.
@@ -82,6 +96,7 @@ impl Fix {
             Fix::Speech => "ms-settings:privacy-speech",
             Fix::Mic => "ms-settings:privacy-microphone",
             Fix::Language => "ms-settings:speech",
+            Fix::Pack => "ms-settings:regionlanguage",
         }
     }
 }
@@ -136,6 +151,87 @@ pub(crate) fn pick_language(wanted: &str, topics: &[String]) -> Option<String> {
     }
     let primary = |t: &str| t.split('-').next().unwrap_or("").to_ascii_lowercase();
     topics.iter().find(|t| primary(t) == primary(wanted)).cloned()
+}
+
+// ── La dictée hors ligne (moteur SAPI de bureau) : la partie sans Windows ──
+
+/// La dictée hors ligne a besoin de la reconnaissance vocale de la langue.
+pub(crate) const OFFLINE_MISSING_FR: &str = "la dictée hors ligne a besoin de la reconnaissance vocale du français, installée sur ce PC : Paramètres Windows → Heure et langue → Langue et région → Français (France) → Options de langue → Reconnaissance vocale → Télécharger (Windows 10 : Heure et langue → Langue → Français → Options)";
+pub(crate) const OFFLINE_MISSING_EN: &str = "la dictée hors ligne a besoin de la reconnaissance vocale de l'anglais, installée sur ce PC : Paramètres Windows → Heure et langue → Langue et région → English (United States) → Options de langue → Reconnaissance vocale → Télécharger (Windows 10 : Heure et langue → Langue → English → Options)";
+
+/// Les langues du moteur de bureau, en code LCID hexadécimal (l'attribut
+/// « Language » de ses jetons), à essayer dans l'ordre. Le moteur de bureau
+/// ne connaît que quelques langues : pas de variante canadienne, par exemple.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub(crate) fn offline_lcids(tag: &str) -> &'static [&'static str] {
+    let primary = tag.split('-').next().unwrap_or("").to_ascii_lowercase();
+    match primary.as_str() {
+        "fr" => &["40C"],
+        "en" if tag.eq_ignore_ascii_case("en-GB") => &["809", "409"],
+        "en" => &["409", "809"],
+        "de" => &["407"],
+        "es" => &["C0A"],
+        "ja" => &["411"],
+        "zh" => &["804", "404"],
+        _ => &[],
+    }
+}
+
+/// La phrase quand le moteur hors ligne de la langue manque.
+pub(crate) fn offline_missing(tag: &str) -> Failure {
+    let message = if tag.to_ascii_lowercase().starts_with("en") { OFFLINE_MISSING_EN } else { OFFLINE_MISSING_FR };
+    Failure { message: message.to_string(), fix: Some(Fix::Pack), detail: format!("moteur hors ligne : aucun jeton SAPI pour {tag} ({:?})", offline_lcids(tag)) }
+}
+
+/// Quand une écoute hors ligne s'arrête toute seule (mode « once »). Le moteur
+/// de bureau ne s'arrête pas : il dicte phrase après phrase. On termine après
+/// un silence (`END_MS` sans mot nouveau après une phrase reconnue), ou si
+/// personne n'a parlé dans le délai du début. En mode « hold », seule la
+/// touche relâchée (ou Échap, ou le garde-fou de durée) arrête.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub(crate) struct EndGate {
+    hold: bool,
+    initial_ms: u64,
+    /// Dernier mot entendu (hypothèse ou phrase), en ms depuis le début.
+    last: Option<u64>,
+    /// Des mots devinés attendent encore leur phrase reconnue.
+    pending: bool,
+}
+
+#[cfg_attr(not(windows), allow(dead_code))]
+impl EndGate {
+    /// Silence après la dernière phrase reconnue.
+    pub const END_MS: u64 = 1000;
+    /// Des mots devinés sans phrase reconnue : on n'attend pas plus.
+    pub const STUCK_MS: u64 = 2500;
+
+    pub fn new(hold: bool, initial_ms: u64) -> EndGate {
+        EndGate { hold, initial_ms, last: None, pending: false }
+    }
+
+    /// Des mots devinés en route (`final_ = false`) ou une phrase reconnue.
+    pub fn heard(&mut self, now_ms: u64, final_: bool) {
+        self.last = Some(now_ms);
+        self.pending = !final_;
+    }
+
+    /// Ce qui était deviné n'était qu'un bruit (et rien n'a encore été dit).
+    pub fn forget(&mut self) {
+        self.last = None;
+        self.pending = false;
+    }
+
+    /// Faut-il s'arrêter maintenant ?
+    pub fn done(&self, now_ms: u64) -> bool {
+        if self.hold {
+            return false;
+        }
+        match self.last {
+            None => now_ms >= self.initial_ms,
+            Some(t) if self.pending => now_ms.saturating_sub(t) >= Self::STUCK_MS,
+            Some(t) => now_ms.saturating_sub(t) >= Self::END_MS,
+        }
+    }
 }
 
 #[cfg(windows)]
@@ -487,6 +583,194 @@ mod win {
         }
     }
 
+    // ── La dictée hors ligne : le moteur SAPI « de bureau » ─────────────────
+
+    /// Un jeton de moteur hors ligne pour cette langue, et son nom affiché.
+    fn offline_token(tag: &str) -> Option<(windows::Win32::Media::Speech::ISpObjectToken, String)> {
+        use windows::Win32::Media::Speech::{ISpObjectTokenCategory, SpObjectTokenCategory, SPCAT_RECOGNIZERS};
+        unsafe {
+            let cat: ISpObjectTokenCategory = CoCreateInstance(&SpObjectTokenCategory, None, CLSCTX_ALL).ok()?;
+            cat.SetId(SPCAT_RECOGNIZERS, false).ok()?;
+            for lcid in super::offline_lcids(tag) {
+                let wanted = HSTRING::from(format!("Language={lcid}"));
+                let Ok(list) = cat.EnumTokens(&wanted, windows::core::PCWSTR::null()) else { continue };
+                let mut count = 0u32;
+                if list.GetCount(&mut count).is_err() || count == 0 {
+                    continue;
+                }
+                if let Ok(token) = list.Item(0) {
+                    let name = token
+                        .GetStringValue(windows::core::PCWSTR::null())
+                        .ok()
+                        .map(|p| {
+                            let text = p.to_string().unwrap_or_default();
+                            CoTaskMemFree(Some(p.0 as *const _));
+                            text
+                        })
+                        .unwrap_or_default();
+                    return Some((token, name));
+                }
+            }
+            None
+        }
+    }
+
+    /// Le moteur hors ligne de cette langue est-il installé ? Son nom, si oui.
+    pub fn offline_engine(tag: &str) -> Option<String> {
+        super::super::media::init_thread();
+        offline_token(tag).map(|(_, name)| if name.is_empty() { "Microsoft Speech Recognizer".to_string() } else { name })
+    }
+
+    /// Une erreur du moteur hors ligne, en phrase simple.
+    fn offline_failure(step: &str, tag: &str, e: &windows::core::Error) -> Failure {
+        let code = e.code().0 as u32;
+        let mic = mic_for_desktop();
+        let (message, fix) = match code {
+            ACCESS_DENIED => (MIC_TEXT.to_string(), Some(Fix::Mic)),
+            NO_DEVICE | NO_ENDPOINT => ("aucun micro trouvé".to_string(), Some(Fix::Mic)),
+            _ if mic == Some(false) => (MIC_TEXT.to_string(), Some(Fix::Mic)),
+            // SPERR_NOT_FOUND et compagnie : le moteur de la langue est mal installé.
+            0x8004_5000..=0x8004_50FF => (super::offline_missing(tag).message, Some(Fix::Pack)),
+            _ => (format!("la dictée hors ligne n'a pas démarré ({})", e.message()), None),
+        };
+        let detail = format!("étape « {step} » (dictée hors ligne, SAPI), HRESULT 0x{code:08X} ({}), langue {tag}, micro des applis de bureau : {}", e.message(), yes_no(mic));
+        Failure { message, fix, detail }
+    }
+
+    /// Le texte d'un résultat (hypothèse ou phrase reconnue) d'un événement SAPI.
+    /// L'objet porté par l'événement est libéré ici (à la place de SpClearEvent).
+    unsafe fn event_text(ev: &windows::Win32::Media::Speech::SPEVENT) -> Option<String> {
+        use windows::core::Interface;
+        use windows::Win32::Media::Speech::{ISpRecoResult, SPET_LPARAM_IS_OBJECT, SPET_LPARAM_IS_POINTER, SPET_LPARAM_IS_STRING, SPET_LPARAM_IS_TOKEN};
+        let kind = (ev._bitfield >> 16) & 0xFFFF;
+        let raw = ev.lParam.0 as *mut core::ffi::c_void;
+        if raw.is_null() {
+            return None;
+        }
+        if kind == SPET_LPARAM_IS_OBJECT.0 || kind == SPET_LPARAM_IS_TOKEN.0 {
+            // On prend la référence de l'événement : libérée à la fin du bloc.
+            let unk = windows::core::IUnknown::from_raw(raw);
+            let result: ISpRecoResult = unk.cast().ok()?;
+            let mut text = windows::core::PWSTR::null();
+            // SP_GETWHOLEPHRASE = 0xFFFFFFFF : toute la phrase.
+            result.GetText(u32::MAX, u32::MAX, true, &mut text, None).ok()?;
+            let out = text.to_string().ok();
+            CoTaskMemFree(Some(text.0 as *const _));
+            out
+        } else {
+            if kind == SPET_LPARAM_IS_POINTER.0 || kind == SPET_LPARAM_IS_STRING.0 {
+                CoTaskMemFree(Some(raw as *const _));
+            }
+            None
+        }
+    }
+
+    /// La dictée 100 % hors ligne : le moteur de bureau de Windows, dans notre
+    /// processus, sur le micro par défaut. Même contrat que `dictate`.
+    pub fn dictate_offline(lang: &str, hold: bool, initial_silence_ms: i64, cb: Listen) -> Result<String, Failure> {
+        use windows::Win32::Media::Speech::{
+            ISpRecognizer, SpInprocRecognizer, SpMMAudioIn, SPEI_FALSE_RECOGNITION, SPEI_HYPOTHESIS, SPEI_RECOGNITION, SPEI_RESERVED1, SPEI_RESERVED2, SPEVENT,
+            SPLO_STATIC, SPRS_ACTIVE, SPRS_INACTIVE,
+        };
+        super::super::media::init_thread();
+        let (token, name) = offline_token(lang).ok_or_else(|| super::offline_missing(lang))?;
+        let fail = |step: &str, e: windows::core::Error| offline_failure(step, lang, &e);
+        // SPFEI() de sapi.h : le bit de l'événement, plus les deux bits de contrôle.
+        let spfei = |ei: i32| (1u64 << ei) | (1u64 << SPEI_RESERVED1.0) | (1u64 << SPEI_RESERVED2.0);
+        unsafe {
+            let rec: ISpRecognizer = CoCreateInstance(&SpInprocRecognizer, None, CLSCTX_ALL).map_err(|e| fail("création du moteur", e))?;
+            rec.SetRecognizer(&token).map_err(|e| fail("choix de la langue", e))?;
+            let audio: windows::core::IUnknown = CoCreateInstance(&SpMMAudioIn, None, CLSCTX_ALL).map_err(|e| fail("micro", e))?;
+            rec.SetInput(&audio, true).map_err(|e| fail("micro", e))?;
+            let ctx = rec.CreateRecoContext().map_err(|e| fail("contexte", e))?;
+            let interest = spfei(SPEI_HYPOTHESIS.0) | spfei(SPEI_RECOGNITION.0) | spfei(SPEI_FALSE_RECOGNITION.0);
+            ctx.SetInterest(interest, interest).map_err(|e| fail("événements", e))?;
+            ctx.SetNotifyWin32Event().map_err(|e| fail("événements", e))?;
+            let grammar = ctx.CreateGrammar(0).map_err(|e| fail("grammaire", e))?;
+            grammar.LoadDictation(windows::core::PCWSTR::null(), SPLO_STATIC).map_err(|e| fail("dictée", e))?;
+            grammar.SetDictationState(SPRS_ACTIVE).map_err(|e| fail("dictée", e))?;
+            crate::services::log::info(format!("parler à Ondine : dictée hors ligne ({name})"));
+
+            let meter = Meter::open();
+            let started = Instant::now();
+            let mut gate = super::EndGate::new(hold, initial_silence_ms.max(0) as u64);
+            let mut said: Vec<String> = Vec::new();
+            let mut current = String::new();
+            let mut events = [SPEVENT::default(); 8];
+            // Lit les événements en attente : phrases reconnues et mots devinés.
+            let mut drain = |said: &mut Vec<String>, current: &mut String, gate: &mut super::EndGate, cb_partial: &mut dyn FnMut(&str)| loop {
+                let mut got = 0u32;
+                if ctx.GetEvents(events.len() as u32, events.as_mut_ptr(), &mut got).is_err() || got == 0 {
+                    break;
+                }
+                let now = started.elapsed().as_millis() as u64;
+                for ev in &events[..got as usize] {
+                    let id = ev._bitfield & 0xFFFF;
+                    let text = event_text(ev);
+                    if id == SPEI_RECOGNITION.0 {
+                        if let Some(t) = text.filter(|t| !t.trim().is_empty()) {
+                            said.push(t.trim().to_string());
+                        }
+                        current.clear();
+                        gate.heard(now, true);
+                    } else if id == SPEI_HYPOTHESIS.0 {
+                        if let Some(t) = text {
+                            *current = t;
+                            gate.heard(now, false);
+                        }
+                    } else if id == SPEI_FALSE_RECOGNITION.0 {
+                        // Un bruit pris pour des mots : oublié.
+                        current.clear();
+                        if said.is_empty() {
+                            gate.forget();
+                        } else {
+                            gate.heard(now, true);
+                        }
+                    }
+                    let mut shown = said.join(" ");
+                    if !current.is_empty() {
+                        if !shown.is_empty() {
+                            shown.push(' ');
+                        }
+                        shown.push_str(current);
+                    }
+                    cb_partial(&shown);
+                }
+                if (got as usize) < events.len() {
+                    break;
+                }
+            };
+            let finish = loop {
+                let _ = ctx.WaitForNotifyEvent(TICK.as_millis() as u32);
+                drain(&mut said, &mut current, &mut gate, &mut *cb.partial);
+                (cb.level)(meter.peak());
+                match cb.stop.load(Ordering::SeqCst) {
+                    CANCEL => break false,
+                    FINISH => break true,
+                    _ => {}
+                }
+                if gate.done(started.elapsed().as_millis() as u64) {
+                    break true;
+                }
+            };
+            if !finish {
+                let _ = grammar.SetDictationState(SPRS_INACTIVE);
+                return Ok(String::new());
+            }
+            // La phrase en cours : le moteur la rend juste après l'arrêt.
+            let _ = grammar.SetDictationState(SPRS_INACTIVE);
+            let until = Instant::now() + Duration::from_millis(600);
+            while Instant::now() < until && !current.is_empty() {
+                let _ = ctx.WaitForNotifyEvent(TICK.as_millis() as u32);
+                drain(&mut said, &mut current, &mut gate, &mut *cb.partial);
+            }
+            if !current.trim().is_empty() {
+                said.push(current.trim().to_string());
+            }
+            Ok(said.join(" "))
+        }
+    }
+
     /// Le sous-format « nombres à virgule » d'un WAVEFORMATEXTENSIBLE.
     const FLOAT_SUBTYPE: windows::core::GUID = windows::core::GUID::from_u128(0x00000003_0000_0010_8000_00aa00389b71);
     const WAVE_FORMAT_IEEE_FLOAT: u16 = 3;
@@ -590,6 +874,15 @@ mod stub {
         Err(ONLY_WINDOWS.into())
     }
 
+    pub fn dictate_offline(lang: &str, _hold: bool, _initial_silence_ms: i64, _cb: Listen) -> Result<String, Failure> {
+        // Sous Linux, aucun moteur : la même phrase que sur un PC sans le moteur (testée).
+        Err(super::offline_missing(lang))
+    }
+
+    pub fn offline_engine(_tag: &str) -> Option<String> {
+        None
+    }
+
     pub fn record(_stop: &std::sync::atomic::AtomicU8, _chunk: &mut dyn FnMut(&[f32], u32) -> bool) -> Result<Pcm, Failure> {
         Err(ONLY_WINDOWS.into())
     }
@@ -605,7 +898,7 @@ mod tests {
 
     #[test]
     fn fix_pages_are_a_fixed_list() {
-        for f in [Fix::Speech, Fix::Mic, Fix::Language] {
+        for f in [Fix::Speech, Fix::Mic, Fix::Language, Fix::Pack] {
             assert_eq!(Fix::from_id(f.id()), Some(f));
             assert!(f.uri().starts_with("ms-settings:"));
         }
@@ -632,5 +925,65 @@ mod tests {
         assert_eq!(pick_language("en-US", &topics(&["en-GB"])).as_deref(), Some("en-GB"));
         assert_eq!(pick_language("fr-FR", &topics(&["en-US"])), None);
         assert_eq!(pick_language("fr-FR", &[]), None);
+    }
+
+    #[test]
+    fn offline_languages_of_the_desktop_engine() {
+        assert_eq!(offline_lcids("fr-FR"), &["40C"]);
+        // Pas de moteur de bureau canadien : le français de France.
+        assert_eq!(offline_lcids("fr-CA"), &["40C"]);
+        assert_eq!(offline_lcids("en-US"), &["409", "809"]);
+        assert_eq!(offline_lcids("en-GB"), &["809", "409"]);
+        assert!(offline_lcids("xx").is_empty());
+        assert!(offline_lcids("").is_empty());
+    }
+
+    #[test]
+    fn missing_pack_says_where_to_install_it() {
+        let f = offline_missing("fr-FR");
+        assert_eq!(f.fix, Some(Fix::Pack));
+        assert_eq!(f.fix.unwrap().uri(), "ms-settings:regionlanguage");
+        assert!(f.message.contains("Reconnaissance vocale") && f.message.contains("Français (France)"));
+        assert!(offline_missing("en-US").message.contains("English (United States)"));
+        assert!(!f.detail.is_empty(), "le détail va dans le journal");
+    }
+
+    #[test]
+    fn offline_listening_ends_after_a_silence() {
+        // Personne ne parle : on abandonne au délai du début.
+        let g = EndGate::new(false, 5000);
+        assert!(!g.done(4999));
+        assert!(g.done(5000));
+        // Une phrase reconnue, puis le silence.
+        let mut g = EndGate::new(false, 5000);
+        g.heard(800, false);
+        assert!(!g.done(2000), "des mots devinés : on attend leur phrase");
+        g.heard(2100, true);
+        assert!(!g.done(2100 + EndGate::END_MS - 1));
+        assert!(g.done(2100 + EndGate::END_MS));
+        // Des mots devinés jamais confirmés : on n'attend pas sans fin.
+        let mut g = EndGate::new(false, 5000);
+        g.heard(500, false);
+        assert!(g.done(500 + EndGate::STUCK_MS));
+        // Un bruit oublié : on revient au délai du début.
+        let mut g = EndGate::new(false, 5000);
+        g.heard(500, false);
+        g.forget();
+        assert!(!g.done(4000));
+        // Maintenir pour parler : jamais d'arrêt tout seul.
+        let mut g = EndGate::new(true, 5000);
+        assert!(!g.done(60_000));
+        g.heard(1, true);
+        assert!(!g.done(60_000));
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn offline_dictation_without_engine_is_explained() {
+        let stop = AtomicU8::new(0);
+        let (mut p, mut l) = (|_: &str| {}, |_: f32| {});
+        let err = dictate_offline("fr-FR", false, 1000, Listen { stop: &stop, partial: &mut p, level: &mut l }).unwrap_err();
+        assert_eq!(err.fix, Some(Fix::Pack));
+        assert_eq!(offline_engine("fr-FR"), None);
     }
 }

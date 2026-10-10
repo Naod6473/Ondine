@@ -363,6 +363,36 @@ export const shelf: IslandModule = {
   manifest: manifest as ModuleManifest,
 
   setup(api) {
+    // L'Accueil : ce qui est sur l'étagère, et le dernier fichier posé pour « Reprendre ».
+    // (L'étagère ne date pas ses fichiers : on note l'heure quand le dernier change.)
+    let lastPath: string | null = null; // null : l'étagère n'est pas encore lue
+    let lastAt = 0;
+    const noteLast = () => {
+      const path = items[items.length - 1]?.path ?? "";
+      if (lastPath === null || path === lastPath) return;
+      lastAt = path ? Date.now() : 0;
+      lastPath = path;
+    };
+    api.homeCard({
+      title: "Étagère",
+      icon: "🧺",
+      moments: { morning: 35, day: 55, evening: 30 },
+      view: () => {
+        noteLast();
+        if (!items.length) return null;
+        return {
+          value: String(items.length),
+          sub: items.length > 1 ? "fichiers sur l'étagère" : "fichier sur l'étagère",
+          rows: items.slice(-3).reverse().map((i) => ({ label: `${i.isDir ? "📁" : "📄"} ${i.name}`, value: "" })),
+        };
+      },
+      resume: () => {
+        noteLast();
+        const last = items[items.length - 1];
+        if (!last || !lastAt) return null;
+        return { icon: last.isDir ? "📁" : "📄", label: last.name, detail: "Étagère", at: lastAt, open: () => attempt(api, "Ouverture", async () => void (await api.invoke("open", { path: last.path }))) };
+      },
+    });
     api.on("shelf.changed", (msg) => setItems((msg.payload as { items: ShelfItem[] }).items));
     // La cible « Empreinte » : progression et résultat du calcul (hash.ts).
     listenHash(api);
@@ -379,7 +409,8 @@ export const shelf: IslandModule = {
     api
       .invoke<{ items: ShelfItem[] }>("list")
       .then((r) => setItems(r.items))
-      .catch(() => {}); // hors de l'appli (navigateur) : étagère vide
+      .catch(() => {}) // hors de l'appli (navigateur) : étagère vide
+      .finally(() => (lastPath = items[items.length - 1]?.path ?? ""));
   },
 
   views: {
@@ -461,7 +492,7 @@ export const shelf: IslandModule = {
               item.exists ? confirmButton(api, "icon-btn", "🗑️", "Envoyer à la Corbeille", () => actions.trash(api, one)) : null,
               el(
                 "button",
-                { class: "icon-btn", title: "Retirer de l'étagère", onclick: api.handler(() => attempt(api, "Retirer", () => api.invoke("remove", { paths: one }).then(() => {}))) },
+                { class: "icon-btn", title: "Retirer de l'étagère", "data-scene": "shelf-remove", onclick: api.handler(() => attempt(api, "Retirer", () => api.invoke("remove", { paths: one }).then(() => {}))) },
                 "×",
               ),
             ),

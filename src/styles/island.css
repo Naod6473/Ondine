@@ -1,6 +1,9 @@
 /* L'île. Les tailles sont en px logiques ; la fenêtre fait 720 × 320 (panneau)
    ou 240 × 6 (bande de réveil quand l'île est cachée). */
 
+/* 1.2.3 : sons d'ambiance, test de débit, « … écoute », QR d'appairage. */
+@import "./fonctions.css";
+
 :root {
   --island-bg: #0c0d12;
   --island-fg: #eef0f6;
@@ -441,6 +444,19 @@ body {
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+/* En mini-île (42 px de haut), pas de place pour une 2e ligne : texte et
+   boutons restent sur une seule ligne, le titre se coupe en « … ». */
+.island[data-state="compact"] .notif.many {
+  flex-wrap: nowrap;
+}
+.island[data-state="compact"] .notif.many .notif-text {
+  flex-basis: auto;
+}
+.island[data-state="compact"] .notif.many .notif-actions {
+  flex-basis: auto;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
 .island[data-state="alert"]:has(.notif.many),
 .island[data-state="alert"]:has(.notif.wide) {
   width: 580px;
@@ -647,6 +663,9 @@ body {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+.setup-row[hidden] {
+  display: none;
 }
 .setup-row.end {
   justify-content: flex-end;
@@ -5387,5 +5406,184 @@ body.retro .island .btn {
   .island.liquid-float .mascot-slot > .mascot-canvas,
   .island.liquid-dive .mascot-slot > .mascot-canvas {
     animation: none;
+  }
+}
+
+/* ── Pont de fichier à travers l'île (1.2.3, module Équipe : bridge.ts) ──
+   Une feuille de gomme traverse l'île vers le collègue ; un rond à sa couleur
+   (--peer) s'allume au bord. Rien de cliquable. */
+.team-bridge {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  border-radius: inherit;
+}
+.team-bridge-sheet {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 16px;
+  height: 20px;
+  border-radius: 5px 8px 5px 5px;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.85) 0 2.5px, transparent 3.5px),
+    linear-gradient(160deg, #c9f0ff 0%, #5cc8ff 45%, #1f86e0 85%, #145a9e 100%);
+  box-shadow:
+    inset 0 -2px 3px rgba(20, 90, 158, 0.55),
+    0 2px 6px rgba(0, 0, 0, 0.35);
+  will-change: transform, opacity;
+}
+/* le coin replié de la feuille */
+.team-bridge-sheet::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 0 6px 0 3px;
+  background: linear-gradient(225deg, transparent 50%, #c9f0ff 50%);
+}
+.team-bridge-portal {
+  position: absolute;
+  top: 50%;
+  width: 26px;
+  height: 26px;
+  margin-top: -13px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--peer) 70%, white) 0 20%, var(--peer) 45%, transparent 72%);
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity 0.25s var(--ease-out),
+    transform 0.45s var(--ease);
+}
+.team-bridge-portal.right {
+  right: -10px;
+}
+.team-bridge-portal.left {
+  left: -10px;
+}
+.team-bridge-portal.lit {
+  opacity: 0.95;
+  transform: scale(1);
+}
+/* « Réduire les animations » : le rond en fondu seulement. */
+.team-bridge-portal.still {
+  transform: none;
+  transition: opacity 0.3s linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .team-bridge-portal {
+    transform: none;
+    transition: opacity 0.3s linear;
+  }
+}
+
+/* ── Ondine se déplace dans l'île (src/island/scenes/) ────────────────────
+   Sa case reste dans la grille : walker.ts la décale (translate) et l'écrase
+   (scale, attaché en bas). En route elle passe DERRIÈRE le contenu (on ne
+   cache jamais le texte qu'on lit) ; « ondine-front » quand sa place est libre. */
+.mascot-slot.ondine-away {
+  transform-origin: 50% 100%;
+  z-index: 1;
+}
+.island.ondine-walking .island-content {
+  z-index: 2;
+}
+.mascot-slot.ondine-away.ondine-front {
+  z-index: 3;
+}
+/* Les objets qu'elle tient, les fantômes des lignes qu'elle pousse, le flash, le soir. */
+.ondine-scene-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.ondine-ghost {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+.ondine-prop {
+  position: absolute;
+  translate: -50% -50%;
+  font-size: 15px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
+.ondine-prop.swing {
+  transform-origin: 50% 10%;
+  animation: ondine-swing 420ms ease-in-out infinite alternate;
+}
+.ondine-prop.spin {
+  animation: ondine-spin 900ms linear infinite;
+}
+.ondine-prop.wobble {
+  animation: ondine-swing 600ms ease-in-out infinite alternate;
+}
+.ondine-prop.sweep {
+  transform-origin: 50% 0;
+  animation: ondine-swing 260ms ease-in-out infinite alternate;
+}
+.ondine-prop.drag {
+  rotate: -14deg;
+}
+/* Le tampon de la note enregistrée et l'interrupteur du soir : placés par transform (animés). */
+.ondine-prop.stamp,
+.ondine-prop.switch {
+  translate: none;
+  transform: translate(-50%, -50%);
+}
+.ondine-prop.stamp {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 13px;
+  filter: none;
+}
+.ondine-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+}
+.ondine-dusk {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 6, 20, 0.5);
+  opacity: 0;
+}
+@keyframes ondine-swing {
+  from {
+    rotate: -16deg;
+  }
+  to {
+    rotate: 16deg;
+  }
+}
+@keyframes ondine-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ondine-scene-layer {
+    display: none;
   }
 }

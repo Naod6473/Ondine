@@ -39,7 +39,7 @@ let data: Data = { notes: [], todos: [] };
 let pane: "todo" | "notes" = "todo";
 const redraws = new Set<() => void>();
 /** Ce que le Lanceur a demandé d'ouvrir, en attendant que la vue soit là. */
-let wanted: { kind: "note" | "todo"; id: number } | null = null;
+let wanted: { kind: "note" | "todo"; id: number | "new" } | null = null;
 /** La vue affichée, si elle l'est : pour suivre une demande du Lanceur sur place. */
 let jump: (() => void) | null = null;
 
@@ -113,6 +113,45 @@ export const notes: IslandModule = {
       pane = wanted.kind === "todo" ? "todo" : "notes";
       jump?.(); // l'onglet était déjà affiché
     });
+    // L'Accueil : les tâches à faire, et la dernière note pour « Reprendre ».
+    api.homeCard({
+      title: "À faire",
+      icon: "✅",
+      moments: { morning: 70, day: 50, evening: 30 },
+      view: () => {
+        const open = data.todos.filter((t) => !t.done);
+        if (!open.length) return null;
+        return {
+          value: String(open.length),
+          sub: open.length > 1 ? "tâches à faire" : "tâche à faire",
+          rows: open.slice(0, 4).map((t) => ({ label: t.text, value: "" })),
+          phrase: open.length > 1 ? `${open.length} tâches à faire` : "1 tâche à faire",
+        };
+      },
+      resume: () => {
+        const last = [...data.notes].sort((a, b) => b.updated - a.updated)[0];
+        if (!last) return null;
+        return {
+          icon: "📝",
+          label: last.text.split("\n")[0].slice(0, 60) || "Note",
+          detail: "Note",
+          at: last.updated,
+          open: () => {
+            wanted = { kind: "note", id: last.id };
+            pane = "notes";
+            api.openIsland("notes");
+          },
+        };
+      },
+    });
+    // Double-clic sur Ondine, action « Note rapide » (1.2.3) : l'onglet s'ouvre
+    // sur une note neuve, prête à écrire.
+    api.on("notes.quick", () => {
+      wanted = { kind: "note", id: "new" };
+      pane = "notes";
+      api.openIsland("notes");
+      jump?.();
+    });
     void refresh(api).then(() => {
       const open = data.todos.filter((t) => !t.done).length;
       if (api.settings().showTodoCount && open) {
@@ -178,7 +217,7 @@ export const notes: IslandModule = {
           text.addEventListener("dblclick", () => edit(t.id, text));
           const del = el(
             "button",
-            { class: "icon-btn todo-del", title: "Supprimer", onclick: api.handler(() => attempt(api, () => api.invoke("todo_delete", { id: t.id }))) },
+            { class: "icon-btn todo-del", title: "Supprimer", "data-scene": "note-delete", onclick: api.handler(() => attempt(api, () => api.invoke("todo_delete", { id: t.id }))) },
             "×",
           );
           const li = el("li", { class: "todo-item", "data-id": String(t.id) }, check, text, del);
@@ -324,6 +363,8 @@ export const notes: IslandModule = {
             await save();
             openNote = null;
             draw();
+            // Ondine tamponne la note enregistrée (src/island/scenes/).
+            if (savedId !== null && area.value.trim()) api.emit("mascot.scene", { scene: "note-save" });
           };
           host.replaceChildren(
             el(
@@ -338,6 +379,7 @@ export const notes: IslandModule = {
                     {
                       class: "btn small",
                       title: "Supprimer la note (annulable)",
+                      "data-scene": "note-delete",
                       onclick: api.handler(async () => {
                         window.clearTimeout(timer);
                         if (savedId !== null) await attempt(api, () => api.invoke("note_delete", { id: savedId }));
@@ -370,14 +412,14 @@ export const notes: IslandModule = {
         if (!w) return;
         wanted = null;
         if (w.kind === "note") {
-          openNote = data.notes.some((n) => n.id === w.id) ? w.id : null;
+          openNote = w.id === "new" ? "new" : data.notes.some((n) => n.id === w.id) ? w.id : null;
           show("notes", false);
           pill.jumpTo(segButtons.notes);
           return;
         }
         show("todo", false);
         pill.jumpTo(segButtons.todo);
-        highlight(w.id);
+        if (typeof w.id === "number") highlight(w.id);
       };
 
       /** Fait clignoter doucement une tâche et la fait défiler jusqu'à elle. */

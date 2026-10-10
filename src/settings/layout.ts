@@ -21,7 +21,7 @@ export const MODULE_CATEGORIES: { id: string; label: string; modules: string[] }
   { id: "files", label: "Fichiers", modules: ["shelf", "clipboard", "capture", "launcher"] },
   { id: "organize", label: "Organisation", modules: ["timer", "notes", "agenda", "pauses", "weekly"] },
   { id: "it", label: "Outils IT", modules: ["terminal", "system", "remote", "nettools", "team"] },
-  { id: "daily", label: "Le PC au quotidien", modules: ["media", "controls", "weather"] },
+  { id: "daily", label: "Le PC au quotidien", modules: ["home", "media", "controls", "weather", "screensaver"] },
   { id: "other", label: "Autres modules", modules: [] },
 ];
 
@@ -58,7 +58,15 @@ export interface AnimationSub {
  * d'ici (ajouté plus tard) tombe dans Style ; le test vérifie qu'il n'y en a pas.
  */
 export const ANIMATION_SUBS: AnimationSub[] = [
-  { id: "style", label: "Style", blocks: [{ title: "Le halo", module: "halos", keys: ["intensity", "colors", "place"] }] },
+  {
+    id: "style",
+    label: "Style",
+    blocks: [
+      { title: "Le halo", module: "halos", keys: ["intensity", "colors", "place"] },
+      // Ondine quitte sa case pour agir dans l'île (src/island/scenes/).
+      { title: "Ondine", module: "halos", keys: ["ondineWalk"] },
+    ],
+  },
   {
     id: "pc",
     label: "Le PC",
@@ -68,7 +76,7 @@ export const ANIMATION_SUBS: AnimationSub[] = [
     ],
   },
   { id: "agents", label: "Ondine et les agents", blocks: [{ title: "Moments", module: "halos", keys: ["think", "agents", "update", "streak"] }] },
-  { id: "keys", label: "Son et clavier", blocks: [{ title: "Moments", module: "halos", keys: ["music", "voice", "dance", "volumeKeys", "capsLock", "numLock", "clipboard", "clipText"] }] },
+  { id: "keys", label: "Son et clavier", blocks: [{ title: "Moments", module: "halos", keys: ["music", "musicCover", "voice", "dance", "volumeKeys", "capsLock", "numLock", "clipboard", "clipText"] }] },
   { id: "day", label: "Ma journée", blocks: [{ title: "Moments", module: "halos", keys: ["morning", "leaveTime", "meeting", "weather", "sky", "focus", "timerRing"] }] },
   // Le liquide à l'intérieur de l'île (src/island/liquid.ts, modules/halos/liquid-moments.ts).
   {
@@ -79,7 +87,7 @@ export const ANIMATION_SUBS: AnimationSub[] = [
       {
         title: "Moments",
         module: "halos",
-        keys: ["liquidTimer", "liquidTimerStyle", "liquidFiles", "liquidBattery", "liquidDisk", "liquidAgents", "liquidMusic", "liquidVoice", "liquidRain", "liquidCpu", "liquidNight", "liquidNotify", "liquidFocus", "liquidOndine"],
+        keys: ["liquidTimer", "liquidTimerStyle", "liquidFiles", "liquidBattery", "liquidDisk", "liquidAgents", "liquidMusic", "liquidVoice", "liquidRain", "liquidCpu", "liquidNight", "liquidNotify", "liquidFocus", "liquidAmbient", "liquidOndine"],
       },
     ],
   },

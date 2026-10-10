@@ -12,7 +12,7 @@
 //      rallume dans Réglages → Onglets). Pré-cochées d'après les logiciels
 //      installés, lus sur le PC sans rien envoyer (apps_detect) ; plusieurs
 //      cartes = un profil par carte (Réglages → Profils). Aucune carte : une
-//      île minimale de 3 onglets, qui s'enrichit avec les propositions
+//      île minimale de 4 onglets, qui s'enrichit avec les propositions
 //      (suggestions.ts) ;
 //   3. la mascotte (le carrousel animé de « Quoi de neuf ») ;
 //   4. où vit l'île (haut, bas, côtés) et le style des icônes : en direct ;

@@ -37,6 +37,9 @@ use serde_json::{json, Map, Value};
 use tauri::{AppHandle, Manager};
 
 use super::team_chat;
+use super::team_listen::{self, Track};
+use super::team_qr;
+use base64::Engine;
 use super::team_net;
 use super::team_proto::{self as proto, Hello, Keys, Msg, Report};
 use super::{ModuleContext, RustModule};
@@ -114,6 +117,8 @@ struct Data {
 pub(super) struct Live {
     pub hello: Option<Hello>,
     pub seen: Option<Instant>,
+    /// « Alex écoute… » : le morceau qu'il partage (None : rien, ou pas partagé).
+    pub listening: Option<Track>,
 }
 
 /// Une Ondine voisine (visible), pas encore appairée.
@@ -211,6 +216,10 @@ pub(super) struct State {
     pub clip_from_peer: String,
     /// Mascotte synchronisée : la dernière envoyée ou reçue.
     pub mascot_last: String,
+    /// « Alex écoute… » (team_listen.rs) : le morceau qui joue ici (d'après
+    /// media.changed), et la dernière version envoyée à chaque collègue.
+    pub listen_now: Option<Track>,
+    pub listen_sent: HashMap<String, Option<Track>>,
 }
 
 /// Ce que les fils de fond et les commandes se partagent.
@@ -346,6 +355,12 @@ impl RustModule for Team {
     }
 
     fn on_event(&self, _ctx: &ModuleContext, msg: &BusMessage) {
+        // Le morceau en cours (module Musique) : partagé seulement si le réglage
+        // est allumé (team_listen::sync le vérifie à chaque envoi).
+        if msg.topic == "media.changed" {
+            self.inner.state.locked().listen_now = team_listen::track_from_media(&msg.payload);
+            return;
+        }
         if msg.topic == "timer.focus" {
             let on = msg.payload.get("on").and_then(Value::as_bool).unwrap_or(false);
             self.inner.state.locked().focus = on;
@@ -371,7 +386,8 @@ impl RustModule for Team {
                 let mine = args.get("mine").and_then(Value::as_bool).unwrap_or(false);
                 inner.state.locked().code = Some(Code { code: code.clone(), until: Instant::now() + CODE_FOR, mine });
                 ctx.log_info("équipe : code d'appairage affiché (3 min, un essai)");
-                Ok(json!({ "code": code, "seconds": CODE_FOR.as_secs(), "ip": lan::private_ipv4().map(|ip| ip.to_string()) }))
+                let ip = lan::private_ipv4();
+                Ok(json!({ "code": code, "seconds": CODE_FOR.as_secs(), "ip": ip.map(|ip| ip.to_string()), "qr": qr_svg(inner, ip, &code, mine) }))
             }
             "hide_code" => {
                 inner.state.locked().code = None;
@@ -385,8 +401,33 @@ impl RustModule for Team {
                 }
                 let code = proto::clean_pair_code(&str_arg("code")).ok_or("le code a 6 chiffres")?;
                 let mine = args.get("mine").and_then(Value::as_bool).unwrap_or(false);
-                let peer = team_net::pair_with(ctx.app, inner, ip, &code, mine)?;
+                // Lu dans un QR code : l'empreinte attendue du PC qui l'affiche.
+                let fp = Some(str_arg("fp").to_ascii_lowercase()).filter(|f| f.len() == 16 && f.bytes().all(|b| b.is_ascii_hexdigit()));
+                let peer = team_net::pair_with(ctx.app, inner, ip, &code, mine, fp.as_deref())?;
                 Ok(peer.card())
+            }
+            // { source: "screen" | "clipboard" } → { addr, code, fp, mine } | null : un QR
+            // d'appairage lu sur l'écran ou dans l'image copiée (team_qr.rs).
+            "qr_scan" => {
+                let me = inner.my_id()?;
+                let found = match str_arg("source").as_str() {
+                    "screen" => team_qr::scan_screen(&me)?,
+                    "clipboard" => team_qr::scan_clipboard(&me)?,
+                    _ => return Err("source inconnue".into()),
+                };
+                Ok(json!(found))
+            }
+            // { w, h, gray (base64, w × h octets) } : une image de la webcam (jamais gardée).
+            "qr_frame" => {
+                let (w, h) = (u64_arg("w") as usize, u64_arg("h") as usize);
+                if w == 0 || h == 0 || w * h > 1920 * 1080 {
+                    return Err("image de la webcam trop grande".into());
+                }
+                let gray = base64::engine::general_purpose::STANDARD.decode(str_arg("gray")).map_err(|_| "image de la webcam illisible")?;
+                if gray.len() != w * h {
+                    return Err("image de la webcam illisible".into());
+                }
+                Ok(json!(team_qr::find_in_gray(w, h, &gray, &inner.my_id()?)))
             }
             "remove" => {
                 let id = str_arg("id");
@@ -563,6 +604,14 @@ impl RustModule for Team {
                 files::reveal(&path)?;
                 Ok(Value::Null)
             }
+            // { id } : « Alex écoute… » → la recherche du même morceau dans le navigateur.
+            "listen_open" => {
+                let id = str_arg("id");
+                let track = inner.state.locked().live.get(&id).and_then(|l| l.listening.clone()).ok_or("ce collègue n'écoute plus rien")?;
+                let open_with = ctx.settings().get("listenOpen").and_then(Value::as_str).unwrap_or("same").to_string();
+                platform::shell_open(&team_listen::search_url(&track, &open_with)).map_err(|e| format!("navigateur non ouvert : {e}"))?;
+                Ok(Value::Null)
+            }
             // Le chat (1.2.2) : team_chat.rs.
             chat if chat.starts_with("chat_") => team_chat::invoke(ctx, inner, chat, &args),
             other => Err(format!("commande inconnue : {other}")),
@@ -655,6 +704,7 @@ pub(super) fn my_hello(app: &AppHandle, inner: &Inner, peer: &Peer) -> Hello {
         version: env!("CARGO_PKG_VERSION").into(),
         battery,
         visits: flag(&s, "visits", true),
+        features: proto::FEATURES.iter().map(|f| f.to_string()).collect(),
     }
 }
 
@@ -1177,6 +1227,21 @@ pub(super) fn on_message(app: &AppHandle, inner: &Inner, peer: &Peer, msg: Msg) 
             Msg::Ok
         }
         msg @ (Msg::Chat { .. } | Msg::ChatTyping { .. } | Msg::ChatRead { .. } | Msg::ChatReact { .. }) => team_chat::on_message(app, inner, peer, msg),
+        // « Alex écoute… » : seulement affiché ; rien ne s'ouvre sans un clic.
+        Msg::Listening { title, artist, app: service } => {
+            let track = Track::from_msg(title, artist, service);
+            let changed = {
+                let mut st = inner.state.locked();
+                let live = st.live.entry(peer.id.clone()).or_default();
+                let changed = live.listening != track;
+                live.listening = track;
+                changed
+            };
+            if changed {
+                emit(app, "team.changed", Value::Null);
+            }
+            Msg::Ok
+        }
         Msg::Pull { .. } | Msg::Ok | Msg::Refused { .. } | Msg::FileStart { .. } | Msg::FileEnd { .. } => refuse("message inattendu"),
     }
 }
@@ -1232,6 +1297,7 @@ fn state_json(ctx: &ModuleContext, inner: &Inner) -> Result<Value, String> {
             obj.insert("visits".into(), json!(hello.is_none_or(|h| h.visits)));
             obj.insert("battery".into(), json!(if online { hello.and_then(|h| h.battery) } else { None }));
             obj.insert("fingerprint".into(), json!(proto::fingerprint_pretty(&p.id)));
+            obj.insert("listening".into(), json!(if online { live.and_then(|l| l.listening.as_ref()) } else { None }));
             if let Some((r, at)) = s.inventory.get(&p.id) {
                 obj.insert("report".into(), json!({ "at": at, "data": r }));
             }
@@ -1244,7 +1310,10 @@ fn state_json(ctx: &ModuleContext, inner: &Inner) -> Result<Value, String> {
         .filter(|(id, n)| **id != my_id && n.seen.elapsed() < team_net::NEARBY_FOR)
         .map(|(id, n)| json!({ "id": id, "name": n.name, "color": n.color, "addr": n.addr.to_string() }))
         .collect();
-    let code = s.code.as_ref().filter(|c| Instant::now() < c.until).map(|c| json!({ "code": c.code, "seconds": c.until.saturating_duration_since(Instant::now()).as_secs(), "mine": c.mine }));
+    let code = s.code.as_ref().filter(|c| Instant::now() < c.until).map(|c| (c.code.clone(), c.until, c.mine));
+    drop(s);
+    let code = code.map(|(code, until, mine)| json!({ "code": code, "seconds": until.saturating_duration_since(Instant::now()).as_secs(), "mine": mine, "qr": qr_svg(inner, lan::private_ipv4(), &code, mine) }));
+    let s = inner.state.locked();
     let polls: Vec<Value> = s.polls.iter().map(tally).collect();
     Ok(json!({
         "me": {
@@ -1256,6 +1325,7 @@ fn state_json(ctx: &ModuleContext, inner: &Inner) -> Result<Value, String> {
             "statusText": status_text,
             "auto": s.manual.is_none(),
             "visible": flag(&settings, "visible", false),
+            "shareListening": flag(&settings, "shareListening", false),
         },
         "peers": peers,
         "nearby": nearby,
@@ -1263,6 +1333,15 @@ fn state_json(ctx: &ModuleContext, inner: &Inner) -> Result<Value, String> {
         "code": code,
         "polls": polls,
     }))
+}
+
+/// Le QR code d'appairage (image SVG en data URL) : adresse, code, empreinte
+/// de ce PC (team_qr.rs). Sans adresse du réseau local, pas de QR (le code se
+/// tape à la main).
+fn qr_svg(inner: &Inner, ip: Option<Ipv4Addr>, code: &str, mine: bool) -> Option<String> {
+    let fp = inner.my_id().ok()?;
+    let svg = team_qr::svg(&team_qr::payload(ip?, code, &fp, mine)).ok()?;
+    Some(format!("data:image/svg+xml;base64,{}", base64::engine::general_purpose::STANDARD.encode(svg)))
 }
 
 // ── Le fichier team.json ─────────────────────────────────────────────────────

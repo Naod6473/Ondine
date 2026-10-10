@@ -57,6 +57,8 @@ export const CADENCES = {
   agentsBudget: [900000, 900000, 1800000],
   /** Animations de l'île : heure de partir, bonjour du matin, couleurs du ciel. */
   halosClock: [30000, 30000, 60000],
+  /** Accueil : les cartes relues pendant qu'il est affiché (chiffres du minuteur, de la musique). */
+  homeTick: [1000, 1000, 2000],
   /** Animations de l'île : le niveau du micro (visio) ou de la musique, pendant qu'ils servent. */
   halosLevel: [66, 80, 160],
 } satisfies Record<string, readonly [number, number, number]>;

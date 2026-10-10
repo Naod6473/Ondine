@@ -26,6 +26,7 @@
 
 pub mod avoid;
 pub mod dodge;
+pub mod mirrors;
 
 use crate::sync::LockExt;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -389,6 +390,10 @@ fn target_monitor(app: &AppHandle, pref: &str) -> Option<Monitor> {
             }
         }
     }
+    // Plusieurs écrans avec reflets : l'écran où la souris a fait venir l'île (mirrors.rs).
+    if let Some(m) = mirrors::chosen_monitor(app, &monitors) {
+        return Some(m);
+    }
     app.primary_monitor().ok().flatten().or_else(|| monitors.into_iter().next())
 }
 
@@ -437,9 +442,14 @@ pub struct Area {
 /// Le calcul de `target_frame`, sans Tauri (testé) : taille et coin haut gauche
 /// de la fenêtre (px physiques) pour ce placement sur cet écran.
 pub fn frame_in(a: &Area, scale: f64, place: &Placement, collapsed: bool, tall: bool) -> (u32, u32, i32, i32) {
+    let (lw, lh) = place.window_size(collapsed, tall);
+    frame_sized(a, scale, place, lw, lh)
+}
+
+/// `frame_in` pour une taille logique donnée (un reflet de l'île, mirrors.rs).
+pub fn frame_sized(a: &Area, scale: f64, place: &Placement, lw: f64, lh: f64) -> (u32, u32, i32, i32) {
     let mp = PhysicalPosition::new(a.x, a.y);
     let ms = PhysicalSize::new(a.w, a.h);
-    let (lw, lh) = place.window_size(collapsed, tall);
     let pw = (lw * scale).round().max(1.0) as u32;
     let ph = (lh * scale).round().max(1.0) as u32;
 
@@ -657,6 +667,8 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                         let _ = app.emit_to(WINDOW_LABEL, "screen-changed", ());
                     }
                 }
+                // Les reflets de l'île sur les autres écrans (réglage coupé : rien).
+                mirrors::sync(&app);
             }
 
             let Some(win) = window(&app) else { continue };
@@ -693,6 +705,12 @@ pub fn spawn_cursor_poll(app: AppHandle, gate: Arc<PollGate>) {
                 drag_end(&app, &gate);
                 last = (f64::MIN, f64::MIN);
                 continue;
+            }
+
+            // La souris (sans bouton enfoncé) touche un reflet de l'île sur un
+            // autre écran : l'île y vient (mirrors.rs ; liste vide si c'est coupé).
+            if !down {
+                mirrors::hover(&app, cx, cy);
             }
 
             // Position, taille et échelle de la fenêtre : la copie gardée par

@@ -161,6 +161,12 @@ function skipped(elem: Element): boolean {
   return elem.closest("[data-no-i18n], textarea, [contenteditable='true']") !== null;
 }
 
+/** Les attributs (placeholder, title, aria-label) d'un champ de saisie sont à nous : traduits. */
+function attrsSkipped(elem: Element): boolean {
+  if (elem.closest("[data-no-i18n]")) return true;
+  return elem.parentElement?.closest("textarea, [contenteditable='true']") != null;
+}
+
 function translateNode(node: Node) {
   if (node.nodeType === Node.TEXT_NODE) {
     const parent = node.parentElement;
@@ -169,13 +175,14 @@ function translateNode(node: Node) {
   }
   if (node.nodeType !== Node.ELEMENT_NODE) return;
   const elem = node as Element;
+  if (!attrsSkipped(elem)) for (const a of ATTRS) applyAttr(elem, a);
   if (skipped(elem)) return;
-  for (const a of ATTRS) applyAttr(elem, a);
   const walker = document.createTreeWalker(elem, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
   let n = walker.nextNode();
   while (n) {
-    if (n.nodeType === Node.TEXT_NODE) applyText(n);
-    else for (const a of ATTRS) applyAttr(n as Element, a);
+    if (n.nodeType === Node.TEXT_NODE) {
+      if (!n.parentElement || !skipped(n.parentElement)) applyText(n);
+    } else if (!attrsSkipped(n as Element)) for (const a of ATTRS) applyAttr(n as Element, a);
     n = walker.nextNode();
   }
 }
@@ -233,7 +240,7 @@ export async function startI18n(): Promise<void> {
       if (r.type === "characterData") translateNode(r.target);
       else if (r.type === "attributes") {
         const e = r.target as Element;
-        if (!skipped(e)) applyAttr(e, r.attributeName!);
+        if (!attrsSkipped(e)) applyAttr(e, r.attributeName!);
       } else r.addedNodes.forEach(translateNode);
     }
   }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTRS });
