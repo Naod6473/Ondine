@@ -42,8 +42,35 @@ La vidéo de présentation est sur le site : [ondine.pissits.com](https://ondine
 
 ## Nouveautés
 
-Les nouveautés de la version 1.2.1 (la liste complète est dans le
+Les nouveautés de la version 1.2.2 (la liste complète est dans le
 [CHANGELOG](CHANGELOG.md)) :
+
+- **Parlez à Ondine à voix haute** : Ctrl+Alt+V (ou 🎙️), sous-titres en
+  direct, le halo de l'île tremble avec votre voix. Elle répond en « plop
+  plip » au rythme du texte, et sa bouche suit. Commandes rapides sans IA
+  (« volume 30 », « minuteur 10 minutes »…), mains libres, « Regarde ça ». La
+  dictée de Windows passe par le service en ligne de Microsoft ; la
+  transcription par l'API est en option.
+- **Halos de lumière** autour de l'île : vert au branchement, orange quand la
+  batterie est faible, rouge critique avec Ondine qui panique, et le module
+  « Animations de l'île » pour une vingtaine de moments du PC (veille, clé
+  USB, météo, agents IA, rendez-vous…).
+- **L'île vivante face aux fenêtres** : elle s'écarte de la fenêtre de
+  réglages, peut se poser en bas de l'écran, suit le texte en hauteur et en
+  largeur, et le module « Ondine et les fenêtres » la fait réagir au plein
+  écran, au verrouillage, à la souris secouée…
+- **Mascottes plus réalistes** : 15 nouvelles expressions pour les 15
+  mascottes, reflet et pupilles qui bougent, gomme translucide, émotions
+  mélangées, repos jamais identique, une couleur par mascotte sur le podium.
+- **Équipe** (désactivé par défaut) : les Ondine d'un même réseau local se
+  parlent sans serveur, chiffré de bout en bout : présence des collègues,
+  coucous, fichiers à accepter, café, sondage, Pomodoro d'équipe, aide de l'IT
+  avec accord.
+- **Et aussi** : 17 nouveautés dans les Règles, batteries Bluetooth, « Bureau
+  propre », télécommande sur le téléphone, surveillance de Claude, ChatGPT et
+  Gemini, recherche web dans le Lanceur, île de Parler à Ondine épurée.
+
+### Dans la 1.2.1
 
 - **[Parler à Ondine](#parler-à-ondine)** remplace « Demander à Claude » : une
   vraie conversation dans des bulles, avec la personnalité d'Ondine
