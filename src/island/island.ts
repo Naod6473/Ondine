@@ -152,6 +152,8 @@ export class Island {
   /** Ondine qui pend au bord de l'écran (mascot/hang.ts), et sa dernière visite. */
   private hanger: Hanger;
   private lastPeek = Date.now();
+  /** La mini-île est remontée le temps d'une visite d'Ondine au bord. */
+  private peekHid = false;
   /** Une présentation ou une appli plein écran est en cours : l'île se fait oublier. */
   private presenting = false;
   /** La place provisoire donnée par le Rust quand l'île s'écarte d'une fenêtre
@@ -283,9 +285,7 @@ export class Island {
     // La bulle d'Ondine sur le bureau demande un onglet qu'elle n'a pas.
     this.bus.on("island.open", (msg) => this.registry.onOpenRequest((msg.payload as { tab?: string } | null)?.tab));
     // Bouton « Faire venir Ondine » des réglages.
-    this.bus.on("mascot.peek-now", () => {
-      if (this.fsm.state === "hidden") this.hanger.show();
-    });
+    this.bus.on("mascot.peek-now", () => this.startPeek());
     this.render(true);
   }
 
@@ -800,13 +800,41 @@ export class Island {
   private async maybePeek() {
     const s = settingsStore.current;
     // Pas de visite en « Calme » (mascot.calm).
-    if (!s.mascot.enabled || !s.mascot.peek || s.mascot.calm || this.fsm.state !== "hidden" || this.hanger.showing) return;
+    if (!s.mascot.enabled || !s.mascot.peek || s.mascot.calm || !this.fsm.resting() || this.hanger.showing) return;
     if (Date.now() - this.lastPeek < (s.mascot.peekEveryMins ?? 5) * 60_000) return;
     const desk = await Bridge.deskState();
     if (!desk || desk.busy || desk.idleMs < PEEK_IDLE_MS) return;
     if (Math.random() < 0.4) return;
     this.lastPeek = Date.now();
-    this.hanger.show();
+    this.startPeek();
+  }
+
+  /**
+   * Ondine vient pendre au bord. En « Toujours en mini » (réglage par défaut),
+   * la mini-île remonte le temps de la visite pour lui laisser la place, puis
+   * revient quand elle repart (onHangChange).
+   */
+  private startPeek() {
+    if (this.hanger.showing || this.presenting) return;
+    if (this.fsm.state === "hidden") {
+      this.hanger.show();
+      return;
+    }
+    if (!this.fsm.resting()) return;
+    this.peekHid = true;
+    this.fsm.hide();
+    // La mini-île finit de remonter avant que la goutte descende.
+    window.setTimeout(() => {
+      if (this.peekHid && this.fsm.state === "hidden") this.hanger.show();
+      else this.endPeekHide();
+    }, reducedMotion() ? 0 : 450);
+  }
+
+  /** Fin d'une visite qui avait fait remonter la mini-île : elle revient. */
+  private endPeekHide() {
+    if (!this.peekHid) return;
+    this.peekHid = false;
+    if (!this.presenting) this.fsm.restore();
   }
 
   /**
@@ -894,6 +922,7 @@ export class Island {
   private onHangChange(on: boolean) {
     if (on) sounds.drop();
     if (this.fsm.state === "hidden") void Bridge.islandSetCollapsed(!on);
+    if (!on) this.endPeekHide();
     requestAnimationFrame(() => this.pushRect());
   }
 

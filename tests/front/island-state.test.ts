@@ -272,6 +272,25 @@ describe("« Toujours en mini » (alwaysMini)", () => {
     assert.equal(fsm.state, "compact");
   });
 
+  test("au repos en mini : une visite d'Ondine au bord est possible (bug 1.2.2)", () => {
+    // Les visites au bord n'arrivaient jamais : elles demandaient une île cachée,
+    // or « Toujours en mini » est activé par défaut.
+    fsm.setAlwaysMini(true);
+    assert.equal(fsm.resting(), true);
+    fsm.pointerEnter();
+    assert.equal(fsm.resting(), false);
+    fsm.pointerLeave();
+    assert.equal(fsm.resting(), true);
+    fsm.hold(true);
+    assert.equal(fsm.resting(), false);
+    fsm.hold(false);
+    // La visite fait remonter la mini-île (hide), qui revient ensuite (restore).
+    fsm.hide();
+    assert.equal(fsm.state, "hidden");
+    fsm.restore();
+    assert.equal(fsm.state, "compact");
+  });
+
   test("désactivé : l'île compacte se replie de nouveau", () => {
     fsm.setAlwaysMini(true);
     fsm.setAlwaysMini(false);

@@ -13,6 +13,12 @@
   Ouvrir / Éjecter) garde son titre lisible sur une seule ligne. · Fix: in the
   mini island, a notification with two buttons (Reply / Open, Open / Eject)
   keeps its title readable on one line.
+- Correction : Ondine vient de nouveau pendre au bord de l'écran (et le bouton
+  « Faire venir Ondine » marche) : avec la mini-île affichée, réglage par
+  défaut, la visite n'arrivait jamais ; la mini-île remonte maintenant le temps
+  de la visite. · Fix: Ondine hangs from the screen edge again (and "Bring
+  Ondine" works): with the mini island shown, the default, the visit never
+  happened; the mini island now slides up during the visit.
 
 ## 1.2.2 · 2026-10-10
 

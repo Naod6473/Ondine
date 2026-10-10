@@ -131,6 +131,11 @@ export class IslandStateMachine {
     if (this.alwaysMini && this.state === "hidden") this.go("compact");
   }
 
+  /** Au repos (cachée, ou mini en « Toujours en mini ») : ni survolée, ni notification affichée. */
+  resting(): boolean {
+    return this.state === this.rest() && !this.hovering && !this.holding;
+  }
+
   /** L'état où l'île se repose quand personne ne s'en sert. */
   private rest(): IslandState {
     return this.alwaysMini && !this.forcedHidden ? "compact" : "hidden";
