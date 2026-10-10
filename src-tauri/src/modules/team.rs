@@ -36,6 +36,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use tauri::{AppHandle, Manager};
 
+use super::team_chat;
 use super::team_net;
 use super::team_proto::{self as proto, Hello, Keys, Msg, Report};
 use super::{ModuleContext, RustModule};
@@ -218,6 +219,8 @@ pub(super) struct Inner {
     pub state: Mutex<State>,
     /// Envoyer la présence tout de suite (statut changé, collègue ajouté…).
     pub wake: AtomicBool,
+    /// Le chat (team_chat.rs) : à part, pour ne jamais attendre l'état ci-dessus.
+    pub chat: Mutex<team_chat::Chat>,
 }
 
 impl Inner {
@@ -398,6 +401,7 @@ impl RustModule for Team {
                 s.pending.retain(|p| p.peer != id);
                 save(&Data { peers: s.peers.clone() })?;
                 drop(s);
+                inner.chat.locked().forget(&id);
                 ctx.log_info("équipe : un collègue retiré");
                 changed(ctx);
                 Ok(Value::Null)
@@ -559,6 +563,8 @@ impl RustModule for Team {
                 files::reveal(&path)?;
                 Ok(Value::Null)
             }
+            // Le chat (1.2.2) : team_chat.rs.
+            chat if chat.starts_with("chat_") => team_chat::invoke(ctx, inner, chat, &args),
             other => Err(format!("commande inconnue : {other}")),
         }
     }
@@ -706,7 +712,7 @@ pub(super) fn take_code(inner: &Inner) -> Option<(String, bool)> {
 // ── Envoyer ──────────────────────────────────────────────────────────────────
 
 /// Envoie un message à un collègue et attend sa réponse courte.
-fn send_to(ctx: &ModuleContext, inner: &Inner, peer_id: &str, msg: &Msg) -> Result<Msg, String> {
+pub(super) fn send_to(ctx: &ModuleContext, inner: &Inner, peer_id: &str, msg: &Msg) -> Result<Msg, String> {
     msg.check()?;
     let peer = inner.peer(peer_id)?;
     let reply = team_net::request(inner, &peer, msg)?;
@@ -721,7 +727,7 @@ fn send_to(ctx: &ModuleContext, inner: &Inner, peer_id: &str, msg: &Msg) -> Resu
 
 /// Envoie à plusieurs collègues (vide = tous ceux qui sont en ligne), en
 /// parallèle. Renvoie combien l'ont reçu.
-fn broadcast(ctx: &ModuleContext, inner: &Inner, ids: &[String], msg: &Msg) -> Result<usize, String> {
+pub(super) fn broadcast(ctx: &ModuleContext, inner: &Inner, ids: &[String], msg: &Msg) -> Result<usize, String> {
     msg.check()?;
     let peers: Vec<Peer> = {
         let all = inner.peers();
@@ -743,7 +749,7 @@ fn broadcast(ctx: &ModuleContext, inner: &Inner, ids: &[String], msg: &Msg) -> R
 
 /// Propose des fichiers : un fichier seul part tel quel ; un dossier, ou
 /// plusieurs éléments, partent dans un .zip fait en mémoire (200 Mo au plus).
-fn send_files(ctx: &ModuleContext, inner: &Inner, peer_id: &str, raw: &[String]) -> Result<Value, String> {
+pub(super) fn send_files(ctx: &ModuleContext, inner: &Inner, peer_id: &str, raw: &[String]) -> Result<Value, String> {
     ctx.require("files")?;
     if raw.is_empty() || raw.len() > 100 {
         return Err("choisissez de 1 à 100 éléments".into());
@@ -1052,7 +1058,12 @@ pub(super) fn on_message(app: &AppHandle, inner: &Inner, peer: &Peer, msg: Msg) 
             if folder && !name.to_ascii_lowercase().ends_with(".zip") {
                 name.push_str(".zip");
             }
-            queue(pending("file", id, String::new(), name, size, folder))
+            let reply = queue(pending("file", id, String::new(), name.clone(), size, folder));
+            // Le fichier apparaît aussi dans la conversation à deux (toujours à accepter).
+            if reply == Msg::Ok {
+                team_chat::note_offer(app, inner, peer, &name);
+            }
+            reply
         }
         Msg::Decline { id } => {
             let removed = {
@@ -1165,6 +1176,7 @@ pub(super) fn on_message(app: &AppHandle, inner: &Inner, peer: &Peer, msg: Msg) 
             apply_mascot(app, inner, &mascot, &palette, &custom);
             Msg::Ok
         }
+        msg @ (Msg::Chat { .. } | Msg::ChatTyping { .. } | Msg::ChatRead { .. } | Msg::ChatReact { .. }) => team_chat::on_message(app, inner, peer, msg),
         Msg::Pull { .. } | Msg::Ok | Msg::Refused { .. } | Msg::FileStart { .. } | Msg::FileEnd { .. } => refuse("message inattendu"),
     }
 }

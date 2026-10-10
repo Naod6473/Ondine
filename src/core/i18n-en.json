@@ -2023,7 +2023,6 @@
 "Désactivé par défaut. Ondine lit les pages d'état publiques d'Anthropic, d'OpenAI et de Google Cloud, et vous prévient quand un service tombe ou revient. En pause pendant une présentation ou une séance de concentration. Ces sites voient votre adresse IP, rien d'autre.": "Off by default. Ondine reads the public status pages of Anthropic, OpenAI and Google Cloud, and tells you when a service goes down or comes back. Paused during a presentation or a focus session. These sites see your IP address, nothing else.",
 "Équipe": "Team",
 "Affichez votre code sur un PC, tapez-le sur l'autre : vous voilà collègues.": "Show your code on one PC, type it on the other: you're now teammates.",
-"Les Ondine d'un même réseau local se parlent directement, sans serveur, sans Internet et sans compte : présence, coucou, « Tu es dispo ? », fichiers et textes (toujours à accepter), café collectif, sondage, Pomodoro d'équipe, aide à l'IT, et entre vos propres PC le presse-papiers partagé. On n'échange qu'avec un collègue ajouté par un code à 6 chiffres ; tout est chiffré de bout en bout avec les clés de l'appairage (gardées dans le Gestionnaire d'identifiants de Windows). Rien de ce qui arrive n'est exécuté. Ports : 47820 (UDP, découverte) et 47821 (TCP). Le pare-feu de Windows peut demander l'autorisation la première fois.": "Ondines on the same local network talk to each other directly, with no server, no Internet and no account: presence, hellos, “Are you free?”, files and texts (always to be accepted), group coffee, polls, team Pomodoro, help from IT, and between your own PCs a shared clipboard. You only exchange with a teammate added with a 6-digit code; everything is end-to-end encrypted with the pairing keys (kept in Windows Credential Manager). Nothing received is ever run. Ports: 47820 (UDP, discovery) and 47821 (TCP). Windows Firewall may ask for permission the first time.",
 "Visible sur le réseau local": "Visible on the local network",
 "Votre nom apparaît chez les Ondine voisines, qui peuvent alors vous proposer de vous ajouter. Invisible, seuls vos collègues déjà ajoutés vous voient.": "Your name shows up on nearby Ondines, which can then offer to add you. Invisible, only teammates already added can see you.",
 "Votre nom pour les collègues": "Your name for teammates",
@@ -2256,13 +2255,67 @@
 "Ondine pourra refaire ses propositions.": "Ondine may make her suggestions again.",
 "Premier lancement": "First launch",
 "Pour m'ouvrir : la souris sur l'île. Mon icône est près de l'horloge (clic droit : Réglages, Quitter).": "To open me: hover the island. My icon is near the clock (right-click: Settings, Quit).",
-"Aucune carte : une île minimale de 3 onglets, qui s'enrichira avec vos réponses.": "No card: a minimal island with 3 tabs, which will grow with your answers."
+"Aucune carte : une île minimale de 3 onglets, qui s'enrichira avec vos réponses.": "No card: a minimal island with 3 tabs, which will grow with your answers.",
+"Les Ondine d'un même réseau local se parlent directement, sans serveur, sans Internet et sans compte : présence, coucou, « Tu es dispo ? », fichiers et textes (toujours à accepter), chat (conversations à deux et salon « Toute l'équipe »), café collectif, sondage, Pomodoro d'équipe, aide à l'IT, et entre vos propres PC le presse-papiers partagé. On n'échange qu'avec un collègue ajouté par un code à 6 chiffres ; tout est chiffré de bout en bout avec les clés de l'appairage (gardées dans le Gestionnaire d'identifiants de Windows). Rien de ce qui arrive n'est exécuté. Ports : 47820 (UDP, découverte) et 47821 (TCP). Le pare-feu de Windows peut demander l'autorisation la première fois.": "Ondines on the same local network talk to each other directly, with no server, no Internet and no account: presence, hellos, “Are you free?”, files and texts (always to be accepted), chat (one-to-one conversations and a “Whole team” room), group coffee, polls, team Pomodoro, help from IT, and between your own PCs a shared clipboard. You only exchange with a teammate added with a 6-digit code; everything is end-to-end encrypted with the pairing keys (kept in Windows Credential Manager). Nothing received is ever run. Ports: 47820 (UDP, discovery) and 47821 (TCP). Windows Firewall may ask for permission the first time.",
+"Votre réponse…": "Your reply…",
+"Votre réponse": "Your reply",
+"Envoyé": "Sent",
+"Toute l'équipe": "Whole team",
+"💬 Chat d'équipe": "💬 Team chat",
+"Aucun collègue en ligne pour l'instant.": "No teammates online right now.",
+"Message non envoyé": "Message not sent",
+"Effacer cette conversation": "Clear this conversation",
+"Message": "Message",
+"Chacun voit les messages des collègues avec qui il est appairé.": "Everyone sees messages from the teammates they are paired with.",
+"Glissez un fichier sur l'île pour le proposer (toujours à accepter).": "Drag a file onto the island to offer it (always to be accepted).",
+"Répondre": "Reply",
+"Ouvrir la conversation": "Open the conversation",
+"Répondre à toute l'équipe": "Reply to the whole team",
+"Rire": "Laugh",
+"J'adore": "Love it",
+"Ouvrir le lien (jamais ouvert tout seul)": "Open the link (never opened by itself)",
+"📤 Fichier proposé": "📤 File offered",
+"📥 Fichier reçu, à accepter": "📥 File received, to be accepted",
+"Lu": "Read",
+"Écrivez à tous les collègues en ligne.": "Write to all teammates online.",
+"Aucun message pour l'instant.": "No messages yet.",
+"Hors ligne : le message ne peut pas partir": "Offline: the message can't be sent",
+"Écrire à toute l'équipe…": "Write to the whole team…",
+"Écrire un message…": "Write a message…",
+"🔒 Historique gardé 7 jours sur ce PC, chiffré.": "🔒 History kept for 7 days on this PC, encrypted.",
+"🔒 Chiffré de bout en bout. Historique en mémoire seulement : effacé quand vous quittez Ondine.": "🔒 End-to-end encrypted. History in memory only: erased when you quit Ondine.",
+"Discuter avec vos collègues": "Chat with your teammates",
+"Plusieurs collègues écrivent…": "Several teammates are typing…",
+"Chat": "Chat",
+"Message d'une collègue": "Message from a teammate",
+"Montrer « … écrit » et « Lu »": "Show “… is typing” and “Read”",
+"Vos collègues voient quand vous écrivez et quand vous avez lu leurs messages, et vous voyez les leurs. Éteint : ni l'un ni l'autre, dans les deux sens.": "Your teammates see when you are typing and when you have read their messages, and you see theirs. Off: neither, both ways.",
+"Garder l'historique du chat 7 jours": "Keep chat history for 7 days",
+"Éteint (recommandé) : les conversations restent en mémoire et s'effacent quand vous quittez Ondine. Allumé : elles sont gardées 7 jours sur ce PC, chiffrées (clé dans le Gestionnaire d'identifiants de Windows) ; l'éteindre les efface du disque.": "Off (recommended): conversations stay in memory and are erased when you quit Ondine. On: they are kept for 7 days on this PC, encrypted (key in Windows Credential Manager); turning it off erases them from the disk.",
+"conversation inconnue": "unknown conversation",
+"message trop long (4000 caractères au plus)": "message too long (4000 characters max)",
+"personne n'a reçu le message (collègues injoignables)": "nobody received the message (teammates unreachable)",
+"message introuvable": "message not found",
+"glissez le fichier dans une conversation à deux": "drop the file into a one-to-one conversation",
+"lien refusé (seulement http ou https, tel qu'il est dans la conversation)": "link refused (http or https only, exactly as in the conversation)"
 },
 "patterns": [
-["^L'audio de votre voix partira vers (.+), avec votre clé\\.$", "The audio of your voice will go to $1, with your key."],
-["^micro indisponible \\((.+)\\)$", "microphone unavailable ($1)"],
-["^Vous ne l'avez pas utilisée depuis (\\d+) minutes\\. Ondine peut la réduire dans la barre des tâches \\(elle ne sera pas fermée\\)\\.$", "You have not used it for $1 minutes. Ondine can minimize it to the taskbar (it will not be closed)."],
-["^Ranger « (.+) » \\?$", "Tidy up “$1”?"],
+[
+"^L'audio de votre voix partira vers (.+), avec votre clé\\.$",
+"The audio of your voice will go to $1, with your key."
+],
+[
+"^micro indisponible \\((.+)\\)$",
+"microphone unavailable ($1)"
+],
+[
+"^Vous ne l'avez pas utilisée depuis (\\d+) minutes\\. Ondine peut la réduire dans la barre des tâches \\(elle ne sera pas fermée\\)\\.$",
+"You have not used it for $1 minutes. Ondine can minimize it to the taskbar (it will not be closed)."
+],
+[
+"^Ranger « (.+) » \\?$",
+"Tidy up “$1”?"
+],
 [
 "^(.+) est déjà pris par un autre logiciel : choisissez un autre raccourci dans les réglages de Parler à Ondine$",
 "$1 is already taken by another program: choose another shortcut in the Talk to Ondine settings"
@@ -4054,6 +4107,26 @@
 [
 "^Pour m'ouvrir : la souris sur l'île, ou (.+)\\. Mon icône est près de l'horloge \\(clic droit : Réglages, Quitter\\)\\.$",
 "To open me: hover the island, or $1. My icon is near the clock (right-click: Settings, Quit)."
+],
+[
+"^Répondre à (.+)$",
+"Reply to $1"
+],
+[
+"^💬 (.+) · Toute l'équipe$",
+"💬 $1 · Whole team"
+],
+[
+"^(\\d+) en ligne$",
+"$1 online"
+],
+[
+"^(.+) et (.+) écrivent…$",
+"$1 and $2 are typing…"
+],
+[
+"^(.+) écrit…$",
+"$1 is typing…"
 ]
 ]
 }

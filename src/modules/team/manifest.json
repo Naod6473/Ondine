@@ -3,7 +3,7 @@
   "name": "Équipe",
   "tip": "Affichez votre code sur un PC, tapez-le sur l'autre : vous voilà collègues.",
   "icon": "🤝",
-  "description": "Les Ondine d'un même réseau local se parlent directement, sans serveur, sans Internet et sans compte : présence, coucou, « Tu es dispo ? », fichiers et textes (toujours à accepter), café collectif, sondage, Pomodoro d'équipe, aide à l'IT, et entre vos propres PC le presse-papiers partagé. On n'échange qu'avec un collègue ajouté par un code à 6 chiffres ; tout est chiffré de bout en bout avec les clés de l'appairage (gardées dans le Gestionnaire d'identifiants de Windows). Rien de ce qui arrive n'est exécuté. Ports : 47820 (UDP, découverte) et 47821 (TCP). Le pare-feu de Windows peut demander l'autorisation la première fois.",
+  "description": "Les Ondine d'un même réseau local se parlent directement, sans serveur, sans Internet et sans compte : présence, coucou, « Tu es dispo ? », fichiers et textes (toujours à accepter), chat (conversations à deux et salon « Toute l'équipe »), café collectif, sondage, Pomodoro d'équipe, aide à l'IT, et entre vos propres PC le presse-papiers partagé. On n'échange qu'avec un collègue ajouté par un code à 6 chiffres ; tout est chiffré de bout en bout avec les clés de l'appairage (gardées dans le Gestionnaire d'identifiants de Windows). Rien de ce qui arrive n'est exécuté. Ports : 47820 (UDP, découverte) et 47821 (TCP). Le pare-feu de Windows peut demander l'autorisation la première fois.",
   "version": "0.1.0",
   "permissions": ["network", "files", "clipboard", "credentials"],
   "settings": {
@@ -16,7 +16,9 @@
       { "key": "maxMb", "type": "number", "label": "Taille maximale d'un fichier reçu (Mo)", "default": 2048, "min": 1, "max": 20480, "step": 1 },
       { "key": "shareInventory", "type": "boolean", "label": "Partager l'inventaire de ce PC avec l'IT", "help": "Versions de Windows et d'Ondine, place sur les disques, redémarrage en attente : envoyés seulement aux collègues marqués « IT » qui le demandent.", "default": false },
       { "key": "clipboardSync", "type": "boolean", "label": "Presse-papiers partagé entre mes PC", "help": "Le texte copié passe sur vos autres PC (ceux marqués « mon PC »). Jamais un élément marqué sensible (mot de passe).", "default": false },
-      { "key": "mascotSync", "type": "boolean", "label": "Même mascotte sur mes PC", "help": "Changer de mascotte ou de couleur sur un PC le fait aussi sur vos autres PC.", "default": false }
+      { "key": "mascotSync", "type": "boolean", "label": "Même mascotte sur mes PC", "help": "Changer de mascotte ou de couleur sur un PC le fait aussi sur vos autres PC.", "default": false },
+      { "key": "chatReceipts", "type": "boolean", "label": "Montrer « … écrit » et « Lu »", "help": "Vos collègues voient quand vous écrivez et quand vous avez lu leurs messages, et vous voyez les leurs. Éteint : ni l'un ni l'autre, dans les deux sens.", "default": true },
+      { "key": "chatKeep", "type": "boolean", "label": "Garder l'historique du chat 7 jours", "help": "Éteint (recommandé) : les conversations restent en mémoire et s'effacent quand vous quittez Ondine. Allumé : elles sont gardées 7 jours sur ce PC, chiffrées (clé dans le Gestionnaire d'identifiants de Windows) ; l'éteindre les efface du disque.", "default": false }
     ]
   },
   "views": ["expanded"],
@@ -24,10 +26,11 @@
     "state", "search", "show_code", "hide_code", "pair", "remove", "set_peer", "set_status", "set_look",
     "ping", "ask", "answer", "visit", "send_text", "send_files", "accept", "decline",
     "invite", "invite_reply", "poll", "vote", "pomodoro", "announce",
-    "help", "status_ask", "rdp_ask", "inventory", "open_inbox", "reveal"
+    "help", "status_ask", "rdp_ask", "inventory", "open_inbox", "reveal",
+    "chat_state", "chat_history", "chat_send", "chat_typing", "chat_read", "chat_react", "chat_files", "chat_clear", "chat_open_link"
   ],
   "events": {
-    "emits": ["team.changed", "team.event", "team.progress", "mascot.emote", "timer.start"],
-    "listens": ["team.changed", "team.event", "team.progress", "timer.focus"]
+    "emits": ["team.changed", "team.event", "team.progress", "team.chat", "mascot.emote", "timer.start"],
+    "listens": ["team.changed", "team.event", "team.progress", "team.chat", "timer.focus"]
   }
 }

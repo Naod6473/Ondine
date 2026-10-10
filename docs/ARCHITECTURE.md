@@ -1626,6 +1626,36 @@ aucun compte, rien sur Internet. **Désactivé par défaut**
   marqué sensible, sans écho) ; même mascotte (`mascotSync`).
 - **Pas de file d'attente** : un collègue éteint ne reçoit rien (« ne répond
   pas »).
+- **Chat** (1.2.2, `team_chat.rs`, front `chat.ts` / `chat-logic.ts`) : icône
+  💬 dans l'en-tête de l'onglet → liste (salon « Toute l'équipe », puis les
+  collègues en ligne avec leur pastille, et ceux qui ont un historique) → fil
+  en bulles (classes `.ask-bubble` de Parler à Ondine). Quatre messages de
+  plus dans le protocole, vérifiés comme les autres : `chat` (4 000
+  caractères au plus, `MAX_CHAT`), `chat-typing` (« … écrit », au plus toutes
+  les 3 s, effacé après 6 s), `chat-read` (« Lu » : le numéro du dernier de MES
+  messages qu'il a reçus ; envoyé une fois par nouveau message) et
+  `chat-react` (👍 😂 ❤️, une par personne, la même l'enlève). Les messages des
+  collègues appairés arrivent **directement** (pas de `pending`) ; rien n'est
+  ouvert ni exécuté : un lien est un bouton, et `chat_open_link` n'ouvre (par
+  `shell_open`) qu'un lien http(s) sans espace ni caractère invisible, présent
+  tel quel dans la conversation. Le salon n'a pas de serveur : le message part
+  à chaque collègue en ligne, chacun le range dans son salon (on n'y voit que
+  ses collègues appairés). Notification dans l'île compacte avec « Répondre »
+  (une alerte avec la zone de saisie, `content`, qui prend le clavier le temps
+  de répondre) et « Ouvrir » ; en concentration ou en réunion, discrète
+  (priorité basse, 4 s). Une réaction reçue fait `mascot.emote` côté front,
+  sauf concentration, réunion, Calme ou animations réduites. Glisser un
+  fichier pendant une conversation à deux : sa cible passe en premier
+  (`chat_files` = `send_files`, toujours à accepter) et une ligne 📤 / 📥 est
+  ajoutée au fil des deux côtés. **Historique** : en mémoire (500 messages par
+  conversation), effacé à la fermeture ; réglage `chatKeep` (éteint par
+  défaut) : `%APPDATA%\Ondine\team-chat.bin`, ChaCha20-Poly1305 (`ONDCHAT1`
+  + nonce + texte chiffré), clé tirée au hasard dans le Gestionnaire
+  d'identifiants (`team-chat-key`, hors de `KNOWN_KEYS`), 7 jours, réécrit au
+  plus toutes les 2 s par l'entretien (`team_chat::tick`). L'éteindre efface
+  la clé puis ce fichier interne. `chatReceipts` (allumé) : « … écrit » et
+  « Lu » dans les deux sens. Mode démo : une conversation avec Léa (elle
+  « écrit… » puis répond) et la scène `team-chat`.
 
 ## Agents IA (`src/modules/agents/`, `src-tauri/src/modules/agents.rs`, `src-tauri/src/cli.rs`)
 
