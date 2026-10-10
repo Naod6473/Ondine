@@ -985,6 +985,10 @@ const HALOS_TOUR: Step[] = [
   [51200, "halos.volume", { volume: 60, muted: false }],
   [53000, "controls.media-use", { mic: ["Teams"], cam: [] }],
   [60000, "controls.media-use", { mic: [], cam: [] }],
+  // Le halo qui suit la musique (case « Le halo suit la musique ») : un son qui monte et descend.
+  [61000, "island.halo", { action: "show", id: "demo-music", palette: "music", shape: "level", priority: "low" }],
+  ...Array.from({ length: 80 }, (_, i): Step => [61100 + i * 100, "island.halo", { action: "level", id: "demo-music", level: Math.max(0, 0.55 + 0.4 * Math.sin(i * 0.9) * Math.sin(i * 0.23)) }]),
+  [69500, "island.halo", { action: "hide", id: "demo-music" }],
 ];
 
 function play(bus: Bus, steps: Step[]) {

@@ -6,7 +6,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { forLightBackground, hexToRgb, intensityOf, isPaletteName, MIN_PERIOD_MS, PALETTES, paletteColors, progressLeft, progressWarn, pulse, rhythmMs, skyPalette } from "../../src/island/halo-palettes";
+import { forLightBackground, haloReach, hexToRgb, intensityOf, isPaletteName, lastingDim, MIN_PERIOD_MS, PALETTES, paletteColors, placeOf, progressLeft, progressWarn, pulse, rhythmMs, skyPalette, swell } from "../../src/island/halo-palettes";
 import { HaloStack, priorityOf, type HaloPriority } from "../../src/island/halo-stack";
 import { batteryPrefs, BRIEF_CHARGE_MS, chargeHaloMs, fillFor, PLUG_WAVE_MS } from "../../src/modules/system/battery-rules";
 import { dayKey, leaveDue, levelFromPeak, mediaPlaying, meetingCometMs, morningDue, parseTime, sessionProgress, timerHaloPlan, weatherKind } from "../../src/modules/halos/halo-rules";
@@ -49,6 +49,38 @@ describe("palettes du halo", () => {
     assert.equal(intensityOf(undefined), "vivid");
     assert.equal(intensityOf("subtle"), "subtle");
     assert.equal(intensityOf("n'importe quoi"), "vivid");
+  });
+
+  test("où dessiner le halo : sur le contour par défaut", () => {
+    assert.equal(placeOf(undefined), "edge");
+    assert.equal(placeOf("inside"), "inside");
+    assert.equal(placeOf("outside"), "outside");
+    assert.equal(placeOf("partout"), "edge");
+  });
+
+  test("un halo reste un accent près de l'île, jamais un voile", () => {
+    // Avant 1.2.2 : jusqu'à ~26 px de lueur et 26 px d'ondes autour de l'île.
+    for (const i of ["subtle", "normal", "vivid"] as const) {
+      assert.equal(haloReach("inside", i), 0);
+      assert.ok(haloReach("edge", i) <= 6, `contour ${i} : ${haloReach("edge", i)}`);
+      assert.ok(haloReach("outside", i) <= 12, `extérieur ${i} : ${haloReach("outside", i)}`);
+    }
+    assert.ok(haloReach("edge", "vivid") < haloReach("outside", "vivid"));
+  });
+
+  test("une forme qui gonfle reste tassée", () => {
+    assert.equal(swell(0.5), 0.5);
+    assert.equal(swell(1), 1);
+    assert.ok(swell(1.5) < 1.5);
+    assert.equal(swell(10), 1.3);
+  });
+
+  test("un halo qui reste (musique, visio, processeur) est plus pâle", () => {
+    assert.equal(lastingDim(0, "low", "level"), 0.7);
+    assert.equal(lastingDim(0, "normal", "breathe"), 0.7);
+    assert.equal(lastingDim(180_000, "high", "comet"), 1); // un agent qui attend : une alerte
+    assert.equal(lastingDim(2500, "normal", "sweep"), 1); // un moment bref
+    assert.equal(lastingDim(0, "normal", "progress"), 1); // le liseré d'un minuteur, déjà fin
   });
 });
 
@@ -217,9 +249,10 @@ describe("module « Animations de l'île »", () => {
   };
   const def = (k: string) => m.settings.fields.find((f) => f.key === k)?.default;
 
-  test("défauts : Vif, selon l'état, heure de partir et ciel désactivés", () => {
+  test("défauts : Vif, selon l'état, sur le contour, heure de partir et ciel désactivés", () => {
     assert.equal(def("intensity"), "vivid");
     assert.equal(def("colors"), "state");
+    assert.equal(def("place"), "edge");
     assert.equal(def("leaveTime"), "");
     assert.equal(def("sky"), false);
     assert.equal(def("music"), false);

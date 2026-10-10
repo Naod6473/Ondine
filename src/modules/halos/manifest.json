@@ -54,6 +54,28 @@
         ]
       },
       {
+        "key": "place",
+        "essential": true,
+        "type": "select",
+        "label": "Où dessiner le halo",
+        "help": "Sur le contour : un liseré fin sur le bord de l'île, le plus discret. À l'intérieur : une lueur dans l'île, rien ne dépasse. À l'extérieur : une lueur fine autour de l'île.",
+        "default": "edge",
+        "options": [
+          {
+            "value": "inside",
+            "label": "À l'intérieur de l'île"
+          },
+          {
+            "value": "edge",
+            "label": "Sur le contour"
+          },
+          {
+            "value": "outside",
+            "label": "À l'extérieur"
+          }
+        ]
+      },
+      {
         "key": "wake",
         "type": "boolean",
         "label": "Sortie de veille (lever de soleil)",
@@ -206,7 +228,6 @@
       },
       {
         "key": "leaveTime",
-        "essential": true,
         "type": "string",
         "label": "Heure de partir",
         "help": "Du lundi au vendredi, à cette heure (ex. 18:00) : un coucher de soleil, et Ondine met son écharpe. Vide = jamais.",

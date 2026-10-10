@@ -64,3 +64,25 @@ case « Le halo danse avec la mascotte »), qui ne regardait pas la case Musique
 40. Animations réduites (Windows) ou Calme : la ligne ne scintille plus, avance par petits pas toutes les 5 s.
 41. Gestionnaire des tâches, minuteur de 25 min, mini-île : CPU d'Ondine faible (dessin à 12 images/s).
 42. Mode démo → « Liseré d'un minuteur » : minuteur de 40 s avec tout le parcours (rouge à 10 s, éclat).
+
+## Retours de test (3e passe, zone « halos3 ») : halos plus fins, « Où dessiner le halo »
+
+Retour de Simon : le halo de la musique était trop large et gênait la vue.
+Maintenant : un halo reste près de l'île (au plus ~6 px sur le contour, ~12 px
+à l'extérieur, rien dehors à l'intérieur), un halo qui dure (musique, visio,
+processeur, Internet coupé, concentration, agent au travail) est plus pâle.
+La fenêtre de l'île ne grandit pas pour un halo (il est dessiné dans la
+fenêtre qui existe déjà, la souris passe au travers).
+
+43. Réglages → Animations de l'île → Général : « Où dessiner le halo » vaut « Sur le contour » par défaut (visible aussi en mode Simple). L'« Aperçu du halo » juste dessous montre une petite île : comète, musique, liseré d'un minuteur, éclat, toutes les 4 s. Changer le choix (et l'intensité) : l'aperçu change tout de suite.
+44. « Le halo suit la musique » coché, une musique qui joue, mini-île puis île ouverte : le halo pulse avec le son sans jamais voiler le texte des fenêtres derrière (comparer avec la 1.2.1 si possible).
+45. Les 3 choix, avec Mode démo → « Autres halos », « Halos de batterie », « Liseré d'un minuteur » :
+    - À l'intérieur : la lumière est dans l'île, le long du bord ; rien ne dépasse dehors ; le texte de l'île reste lisible.
+    - Sur le contour : un liseré fin sur le bord de l'île (comme le liseré des minuteurs) ; rien le long du bord de l'écran.
+    - À l'extérieur : une lueur fine autour, qui ne passe pas sur l'île.
+    Attendu dans les 3 : chaque forme se reconnaît (comète, vague, réservoir, pluie, éclat, gouttes, niveau, liseré qui rougit à la fin).
+46. Refaire 45 avec l'île sur les 4 bords (Réglages → Apparence → Bord de l'écran : haut, bas, gauche, droite) : jamais de trait le long du bord de l'écran, la comète passe « derrière » le bord.
+47. À l'intérieur ou sur le contour : cliquer sur l'île pendant un halo, et sur les boutons de l'île : tout répond normalement (le calque laisse passer la souris).
+48. Un thème clair de l'île (Apparence → Thème) avec « À l'intérieur » : les couleurs restent visibles sur le fond clair de l'île.
+49. Animations réduites (Windows) ou Calme : halo fixe dans les 3 choix.
+50. Gestionnaire des tâches pendant une musique de 5 min avec le halo : CPU d'Ondine faible (30 i/s, comme avant).
