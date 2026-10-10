@@ -286,9 +286,16 @@ fn island_reposition(app: AppHandle, shared: State<Shared>) {
 // ── Ondine sur le bureau (pet.rs) ────────────────────────────────────────────
 
 /// Ouvre ou ferme la bulle à côté d'elle ; renvoie la disposition choisie.
+/// `w`, `h` : la taille de la bulle mesurée par la page (px logiques).
 #[tauri::command]
-fn pet_open(app: AppHandle, open: bool) -> pet::Layout {
-    pet::set_open(&app, open)
+fn pet_open(app: AppHandle, open: bool, w: Option<f64>, h: Option<f64>) -> pet::Layout {
+    pet::set_open(&app, open, w.zip(h))
+}
+
+/// La bulle a besoin d'une autre taille (son contenu a changé).
+#[tauri::command]
+fn pet_bubble(app: AppHandle, w: f64, h: f64) {
+    pet::set_bubble(&app, w, h);
 }
 
 /// On a attrapé Ondine : elle suit la souris jusqu'au lâcher.
@@ -570,6 +577,7 @@ pub fn run() {
             island_reposition,
             island_drag_start,
             pet_open,
+            pet_bubble,
             pet_drag_start,
             pet_set_hit,
             pet_place,

@@ -214,6 +214,17 @@ pub fn make_non_activating(win: &WebviewWindow) {
     }
 }
 
+/// Place et taille d'une fenêtre d'un seul appel (pas d'image où elle a bougé
+/// sans encore avoir changé de taille), sans la passer devant ni l'activer.
+pub fn set_bounds(win: &WebviewWindow, pos: tauri::PhysicalPosition<i32>, size: tauri::PhysicalSize<u32>) {
+    use ::windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER};
+    let done = hwnd_of(win).is_some_and(|hwnd| unsafe { SetWindowPos(hwnd, None, pos.x, pos.y, size.width as i32, size.height as i32, SWP_NOZORDER | SWP_NOACTIVATE) }.is_ok());
+    if !done {
+        let _ = win.set_position(pos);
+        let _ = win.set_size(size);
+    }
+}
+
 /// La fenêtre qui avait le focus avant que l'île ne le prenne (stockée comme
 /// entier, car un HWND n'est pas partageable entre threads).
 static PREVIOUS_FOREGROUND: Mutex<isize> = Mutex::new(0);

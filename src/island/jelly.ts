@@ -87,7 +87,7 @@ interface Shape {
 
 /** Les propriétés en ligne que pilote ce fichier (effacées pour lire le CSS, et au repos). */
 /** La « glisse » de l'île ouverte qui suit son contenu (fit.ts) : amortie, sans rebond. */
-const GLIDE: SpringParams = { stiffness: 150, damping: 1 };
+export const GLIDE: SpringParams = { stiffness: 150, damping: 1 };
 const OWNED = [
   "width",
   "height",
