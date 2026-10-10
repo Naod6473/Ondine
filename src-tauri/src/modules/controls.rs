@@ -27,6 +27,18 @@
 //
 // Mode sombre et éclairage nocturne de Windows (platform::theme,
 // platform::nightlight) : deux pastilles de plus.
+//
+// Bluetooth (platform::bt_battery) : la batterie des écouteurs, souris,
+// claviers… telle que Windows la connaît. Le fil de fond la relit toutes les
+// 5 min et prévient une fois sous le seuil choisi ("controls.bt-battery-low",
+// réglage btBatteryLow, 15 % par défaut ; 0 = jamais), puis à nouveau
+// seulement après une recharge.
+//
+// Bureau propre (platform::desktop_icons) : cacher / montrer les icônes du
+// bureau, comme le menu du bureau de Windows (réversible d'un clic).
+//
+// Télécommande sur le téléphone (controls_remote.rs, réglage phoneRemote,
+// désactivé par défaut) : musique, volume, minuteur, diapositives.
 
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -35,6 +47,7 @@ use std::sync::Mutex;
 use serde_json::{json, Value};
 use tauri::AppHandle;
 
+use super::controls_remote::Remote;
 use super::{ModuleContext, RustModule};
 use crate::services::bus::BusMessage;
 use crate::platform::audio::{self, Device};
@@ -44,7 +57,8 @@ use crate::services::perf::{self, Loop};
 use crate::platform::brightness;
 use crate::platform::radios::{self, Kind};
 use crate::platform::eject::{self, DriveCache, EjectError, Ejectable};
-use crate::platform::{nightlight, theme};
+use crate::platform::bt_battery::{self, BtBattery};
+use crate::platform::{desktop_icons, nightlight, theme};
 
 const ID: &str = "controls";
 
@@ -58,6 +72,14 @@ static MIC_HOTKEY: Mutex<String> = Mutex::new(String::new());
 static DRIVES: Mutex<DriveCache> = Mutex::new(Vec::new());
 /// Les lecteurs en cours d'éjection (« E:\ »).
 static EJECTING: Mutex<Vec<String>> = Mutex::new(Vec::new());
+
+/// La télécommande sur le téléphone (une seule à la fois).
+static REMOTE: Remote = Remote::new();
+
+/// La batterie des appareils Bluetooth est relue toutes les… (le fil de fond).
+const BT_EVERY: std::time::Duration = std::time::Duration::from_secs(300);
+/// Après une alerte, on attend de repasser au-dessus du seuil + ceci (une recharge).
+const BT_REARM: u8 = 5;
 
 #[derive(Default)]
 pub struct Controls;
@@ -235,6 +257,31 @@ impl RustModule for Controls {
                     Ok(json!({ "opened": true }))
                 }
             }
+            // {} → { url, qr, paired, idleMinutes } : ouvre la télécommande (réglage phoneRemote).
+            "remote_start" => {
+                ctx.require("network")?;
+                let on = ctx.settings().get("phoneRemote").and_then(Value::as_bool).unwrap_or(false);
+                if !on {
+                    return Err("la télécommande est désactivée (Réglages → Contrôles)".into());
+                }
+                REMOTE.start(ctx.app)
+            }
+            "remote_stop" => {
+                REMOTE.stop();
+                Ok(Value::Null)
+            }
+            // {} → la télécommande en cours, ou null.
+            "remote_status" => Ok(REMOTE.status()),
+            // {} → [{ name, percent, connected }] : la batterie des appareils Bluetooth.
+            "bt_batteries" => Ok(json!(bt_battery::devices())),
+            // {} → { hidden } : les icônes du bureau sont-elles cachées ? (null : inconnu)
+            "desktop_icons" => Ok(json!({ "hidden": desktop_icons::hidden() })),
+            // { hidden: bool } → { hidden } : les cache ou les montre.
+            "set_desktop_icons" => {
+                let hide = args.get("hidden").and_then(Value::as_bool).ok_or("« hidden » doit valoir true ou false")?;
+                let now = desktop_icons::set_hidden(hide)?;
+                Ok(json!({ "hidden": now }))
+            }
             _ => Err(format!("commande non gérée : {command}")),
         }
     }
@@ -305,6 +352,23 @@ fn new_drives<'a>(before: Option<&[String]>, now: &'a [Ejectable]) -> Vec<&'a Ej
     }
 }
 
+/// Les appareils à signaler : connectés (ou on ne sait pas), sous le seuil,
+/// pas déjà signalés. `alerted` oublie un appareil rechargé (seuil + 5 %).
+fn bt_alerts(alerted: &mut Vec<String>, list: &[BtBattery], threshold: u8) -> Vec<BtBattery> {
+    alerted.retain(|name| list.iter().any(|b| b.name == *name && b.percent < threshold.saturating_add(BT_REARM)));
+    if threshold == 0 {
+        return Vec::new();
+    }
+    let mut out = Vec::new();
+    for b in list {
+        if b.connected != Some(false) && b.percent < threshold && !alerted.contains(&b.name) {
+            alerted.push(b.name.clone());
+            out.push(b.clone());
+        }
+    }
+    out
+}
+
 /// Coupe le micro s'il était ouvert, le rétablit sinon. Renvoie le nouvel état.
 fn toggle_mic() -> Result<bool, String> {
     let muted = !audio::get(Device::Microphone)?.muted;
@@ -319,6 +383,9 @@ fn watch(app: AppHandle) {
     let mut last_muted: Option<bool> = None;
     // Les lecteurs USB du tour d'avant (None : pas encore regardé).
     let mut last_usb: Option<Vec<String>> = None;
+    // Bluetooth : dernier coup d'œil, et les appareils déjà signalés.
+    let mut last_bt: Option<std::time::Instant> = None;
+    let mut bt_alerted: Vec<String> = Vec::new();
     loop {
         // Toutes les 2 s (1 s en haute, 3 s en éco : services/perf.rs).
         std::thread::sleep(perf::every(Loop::Controls));
@@ -333,14 +400,24 @@ fn watch(app: AppHandle) {
             continue;
         }
         let step = catch_unwind(AssertUnwindSafe(|| {
-            let (wanted, usb_notify) = super::with_context(&app, ID, |ctx| {
+            let (wanted, usb_notify, bt_low) = super::with_context(&app, ID, |ctx| {
                 let s = ctx.settings();
                 // Absents (réglages jamais ouverts) : les valeurs par défaut du manifeste.
                 let hotkey = s.get("micHotkey").and_then(Value::as_str).unwrap_or("Ctrl+Alt+M").to_string();
-                (hotkey, s.get("usbNotify").and_then(Value::as_bool).unwrap_or(true))
+                let bt_low = s.get("btBatteryLow").and_then(Value::as_u64).unwrap_or(15).min(50) as u8;
+                (hotkey, s.get("usbNotify").and_then(Value::as_bool).unwrap_or(true), bt_low)
             })
             .unwrap_or_default();
             apply_mic_hotkey(&app, &wanted);
+
+            // La batterie des appareils Bluetooth, toutes les 5 min.
+            if last_bt.is_none_or(|t| t.elapsed() >= BT_EVERY) {
+                last_bt = Some(std::time::Instant::now());
+                let list = if bt_low > 0 { bt_battery::devices() } else { Vec::new() };
+                for b in bt_alerts(&mut bt_alerted, &list, bt_low) {
+                    bus::emit(&app, ID, "controls.bt-battery-low", json!({ "name": b.name, "percent": b.percent }));
+                }
+            }
 
             // Une clé USB vient d'être branchée ? Le front affiche « Ouvrir » / « Éjecter ».
             let drives = usb_drives();
@@ -420,6 +497,27 @@ mod tests {
         let added: Vec<&str> = new_drives(Some(&before), &now).iter().map(|d| d.letter.as_str()).collect();
         assert_eq!(added, ["F:"]);
         assert!(new_drives(Some(&["E:\\".to_string(), "F:\\".to_string()]), &now).is_empty());
+    }
+
+    #[test]
+    fn bluetooth_alert_once_until_recharged() {
+        use super::{bt_alerts, BtBattery};
+        let b = |percent, connected| vec![BtBattery { name: "Casque".into(), percent, connected }];
+        let mut alerted = Vec::new();
+        assert_eq!(bt_alerts(&mut alerted, &b(40, None), 15).len(), 0);
+        assert_eq!(bt_alerts(&mut alerted, &b(14, None), 15).len(), 1);
+        // Toujours bas : pas de seconde alerte.
+        assert_eq!(bt_alerts(&mut alerted, &b(9, Some(true)), 15).len(), 0);
+        // Un peu remonté (sous 20 %) puis redescendu : toujours rien.
+        assert_eq!(bt_alerts(&mut alerted, &b(18, None), 15).len(), 0);
+        assert_eq!(bt_alerts(&mut alerted, &b(12, None), 15).len(), 0);
+        // Rechargé, puis à nouveau bas : nouvelle alerte.
+        assert_eq!(bt_alerts(&mut alerted, &b(80, None), 15).len(), 0);
+        assert_eq!(bt_alerts(&mut alerted, &b(10, None), 15).len(), 1);
+        // Éteint (déconnecté) : rien ; seuil 0 : jamais.
+        let mut fresh = Vec::new();
+        assert_eq!(bt_alerts(&mut fresh, &b(5, Some(false)), 15).len(), 0);
+        assert_eq!(bt_alerts(&mut fresh, &b(5, None), 0).len(), 0);
     }
 
     #[test]

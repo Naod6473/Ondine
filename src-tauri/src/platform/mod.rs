@@ -36,6 +36,14 @@ pub mod theme;
 pub mod nightlight;
 // Capture → GIF animé : choisir une zone de l'écran, la copier dix fois par seconde. Contient sa propre version Linux.
 pub mod record;
+// Règles : la session est-elle verrouillée (« je reviens devant le PC ») ? Contient sa propre version Linux.
+pub mod session;
+// Contrôles : la batterie des appareils Bluetooth (propriété lue par Windows). Contient sa propre version Linux.
+pub mod bt_battery;
+// Contrôles : cacher / montrer les icônes du bureau. Contient sa propre version Linux.
+pub mod desktop_icons;
+// Contrôles → télécommande sur le téléphone : Page suivante / précédente. Contient sa propre version Linux.
+pub mod keys;
 
 #[cfg(windows)]
 mod drop_target;

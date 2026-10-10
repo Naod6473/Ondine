@@ -16,12 +16,21 @@ import { ALL_MODULES } from "../modules";
 import {
   ACTION_LABELS,
   allowedActions,
+  CLIP_LABELS,
+  countText,
+  DAY_NAMES,
+  EMOTIONS,
   EMPTY_CONDITIONS,
+  givesFile,
+  NET_LABELS,
   prettyKeys,
   summary,
   TEMPLATES,
   type Action,
+  type ClipKind,
+  type Gesture,
   type Listing,
+  type NetChange,
   type Rule,
   type Trigger,
 } from "../modules/rules/shared";
@@ -147,6 +156,33 @@ function hotkeyInput(value: string, onChange: (v: string) => void) {
   return i;
 }
 
+/** Une heure « 12:30 » (champ heure du navigateur). */
+function timeInput(value: string, onChange: (v: string) => void) {
+  const i = el("input", { type: "time", step: 60 }) as HTMLInputElement;
+  i.value = value;
+  i.addEventListener("input", () => onChange(i.value));
+  return i;
+}
+
+/** Sept cases à cocher, du lundi au dimanche (aucune = tous les jours). */
+function daysInput(value: number[] | undefined, onChange: (v: number[]) => void) {
+  const chosen = new Set(value ?? []);
+  return el(
+    "span",
+    { class: "rule-days" },
+    ...DAY_NAMES.map((name, d) => {
+      const c = el("input", { type: "checkbox" }) as HTMLInputElement;
+      c.checked = chosen.has(d);
+      c.addEventListener("change", () => {
+        if (c.checked) chosen.add(d);
+        else chosen.delete(d);
+        onChange([...chosen].sort());
+      });
+      return el("label", { class: "rule-day" }, c, ` ${name}`);
+    }),
+  );
+}
+
 function row(label: string, control: HTMLElement | string, help?: string) {
   return el("div", { class: "field rule-field" }, el("label", {}, label), control, help ? el("div", { class: "help" }, help) : null);
 }
@@ -165,7 +201,7 @@ function list(main: HTMLElement) {
     el(
       "p",
       { class: "muted" },
-      "« Quand… alors… » : l'île agit toute seule quand un fichier arrive, qu'une clé USB est branchée ou que vous appuyez sur un raccourci. Déplacer ou renommer propose toujours « Annuler », et rien n'est supprimé définitivement.",
+      "« Quand… alors… » : l'île agit toute seule quand un fichier arrive, qu'une clé USB est branchée, que vous appuyez sur un raccourci, à une heure donnée, quand un agent IA a fini, qu'Internet coupe… Déplacer ou renommer propose toujours « Annuler », et rien n'est supprimé définitivement.",
     ),
     el("div", { class: "btn-row" }, el("button", { class: "btn primary", onclick: () => startEditing(newRule()) }, "＋ Nouvelle règle")),
   );
@@ -199,6 +235,7 @@ function list(main: HTMLElement) {
           ),
         ),
         el("p", { class: "muted rule-summary" }, summary(r, listing.topics)),
+        countText(listing.counts?.[String(r.id)]) ? el("p", { class: "muted rule-count" }, countText(listing.counts?.[String(r.id)])) : null,
         error ? el("div", { class: "note error" }, error) : null,
       ),
     );
@@ -218,7 +255,20 @@ function editor(main: HTMLElement, r: Rule) {
   const t = r.trigger;
 
   // ── Quand ──
-  const kind = t.type === "drive" ? (t.removed ? "drive-out" : "drive-in") : t.type;
+  const kind =
+    t.type === "drive"
+      ? t.removed
+        ? "drive-out"
+        : "drive-in"
+      : t.type === "agent"
+        ? t.waiting
+          ? "agent-waiting"
+          : "agent-done"
+        : t.type === "power"
+          ? t.plugged === false
+            ? "power-out"
+            : "power-in"
+          : t.type;
   const setTrigger = (k: string) => {
     const next: Record<string, Trigger> = {
       file: { type: "file", folder: "", subfolders: false },
@@ -226,6 +276,16 @@ function editor(main: HTMLElement, r: Rule) {
       "drive-out": { type: "drive", removed: true },
       hotkey: { type: "hotkey", keys: "" },
       event: { type: "event", topic: listing.topics[0]?.topic ?? "timer.done" },
+      "agent-done": { type: "agent", waiting: false },
+      "agent-waiting": { type: "agent", waiting: true },
+      schedule: { type: "schedule", time: "12:00", days: [], folder: "" },
+      network: { type: "network", change: "internetDown" },
+      battery: { type: "battery", below: 20 },
+      "power-in": { type: "power", plugged: true },
+      "power-out": { type: "power", plugged: false },
+      unlock: { type: "unlock" },
+      clipboard: { type: "clipboard", kind: "link", text: "" },
+      music: { type: "music" },
     };
     r.trigger = next[k];
     // Les conditions dépendent du déclencheur : on repart de zéro.
@@ -246,6 +306,16 @@ function editor(main: HTMLElement, r: Rule) {
           ["drive-in", "Une clé USB ou un disque est branché"],
           ["drive-out", "Un lecteur est débranché"],
           ["hotkey", "J'appuie sur un raccourci clavier"],
+          ["schedule", "À une heure donnée"],
+          ["agent-done", "Un agent IA a fini"],
+          ["agent-waiting", "Un agent IA m'attend"],
+          ["network", "Le réseau change (Internet, VPN)"],
+          ["battery", "La batterie passe sous un seuil"],
+          ["power-in", "Le PC est branché sur secteur"],
+          ["power-out", "Le PC est débranché du secteur"],
+          ["unlock", "Je reviens devant le PC (session déverrouillée)"],
+          ["clipboard", "Je copie un lien, une adresse e-mail, un code…"],
+          ["music", "Une musique démarre"],
           ["event", "Un événement de l'île"],
         ],
         setTrigger,
@@ -261,6 +331,60 @@ function editor(main: HTMLElement, r: Rule) {
     when.append(row("Raccourci", hotkeyInput(t.keys, (v) => (t.keys = v)), "Avec Ctrl, Alt ou Windows. Exemple : Ctrl+Alt+V."));
   } else if (t.type === "event") {
     when.append(row("Événement", selectInput(t.topic, listing.topics.map((x) => [x.topic, x.label]), (v) => (t.topic = v))));
+  } else if (t.type === "schedule") {
+    when.append(
+      row("Heure", timeInput(t.time, (v) => (t.time = v))),
+      row("Jours", daysInput(t.days, (v) => (t.days = v)), "Aucun jour coché = tous les jours."),
+      row(
+        "Agir sur les fichiers d'un dossier (facultatif)",
+        el(
+          "span",
+          { class: "rule-folder" },
+          folderInput(t.folder ?? "", (v) => {
+            t.folder = v;
+          }),
+          t.folder
+            ? el(
+                "button",
+                {
+                  class: "btn",
+                  onclick: () => {
+                    t.folder = "";
+                    r.conditions.olderThanDays = null;
+                    const allowed = allowedActions(r.trigger);
+                    r.actions = r.actions.filter((a) => allowed.includes(a.type));
+                    redraw();
+                  },
+                },
+                "Retirer",
+              )
+            : null,
+        ),
+        "Avec un dossier, la règle agit sur chaque fichier qui remplit les conditions (par exemple « plus vieux que 30 jours »).",
+      ),
+    );
+  } else if (t.type === "network") {
+    when.append(
+      row(
+        "Changement",
+        selectInput(t.change, Object.entries(NET_LABELS) as [string, string][], (v) => (t.change = v as NetChange)),
+        "Ondine demande à Windows, rien n'est envoyé sur Internet.",
+      ),
+    );
+  } else if (t.type === "battery") {
+    when.append(row("Seuil (%)", numberInput(t.below, 5, 95, (v) => (t.below = v ?? 20)), "Seulement quand le PC est sur batterie."));
+  } else if (t.type === "clipboard") {
+    when.append(
+      row(
+        "Le presse-papiers contient",
+        selectInput(t.kind, Object.entries(CLIP_LABELS) as [string, string][], (v) => {
+          t.kind = v as ClipKind;
+          redraw();
+        }),
+        "{nom} = ce qui a été trouvé (le lien, l'adresse, le code). Rien n'est gardé ni envoyé, et les copies d'un gestionnaire de mots de passe sont ignorées.",
+      ),
+    );
+    if (t.kind === "text") when.append(row("Texte cherché", textInput(t.text ?? "", "facture", (v) => (t.text = v), 60)));
   }
 
   // ── Si ──
@@ -278,10 +402,42 @@ function editor(main: HTMLElement, r: Rule) {
       row("Taille minimale (Ko)", numberInput(c.minKb, 0, 100_000_000, (v) => (c.minKb = v))),
       row("Taille maximale (Ko)", numberInput(c.maxKb, 0, 100_000_000, (v) => (c.maxKb = v))),
     );
+  } else if (t.type === "schedule" && givesFile(t)) {
+    cond.append(
+      row("Plus vieux que (jours)", numberInput(c.olderThanDays ?? null, 1, 3650, (v) => (c.olderThanDays = v)), "Pas modifié depuis ce nombre de jours."),
+      row(
+        "Extensions",
+        textInput(c.extensions.join(", "), "zip, exe (vide = toutes)", (v) => {
+          c.extensions = v.split(/[\s,;]+/).map((x) => x.replace(/^\./, "").toLowerCase()).filter(Boolean);
+        }, 120),
+      ),
+      row("Le nom contient", textInput(c.nameContains, "facture (vide = peu importe)", (v) => (c.nameContains = v), 60)),
+    );
   } else if (t.type === "drive") {
     cond.append(row("Le nom du lecteur contient", textInput(c.nameContains, "KINGSTON (vide = n'importe lequel)", (v) => (c.nameContains = v), 60)));
-  } else {
-    cond.append(el("p", { class: "muted" }, "Pas de condition pour ce déclencheur."));
+  }
+  // Pour toutes les règles : seulement certains jours, certaines heures.
+  if (t.type !== "schedule") cond.append(row("Seulement ces jours", daysInput(c.days, (v) => (c.days = v)), "Aucun jour coché = tous les jours."));
+  const clearHours = el(
+    "button",
+    {
+      class: "btn",
+      onclick: () => {
+        c.from = "";
+        c.to = "";
+        redraw();
+      },
+    },
+    "Toute la journée",
+  );
+  if (t.type !== "schedule") {
+    cond.append(
+      row(
+        "Seulement entre",
+        el("span", { class: "rule-hours" }, timeInput(c.from ?? "", (v) => (c.from = v)), " et ", timeInput(c.to ?? "", (v) => (c.to = v)), c.from || c.to ? clearHours : null),
+        "Exemple : de 09:00 à 18:00. De 22:00 à 06:00 passe minuit.",
+      ),
+    );
   }
 
   // ── Alors ──
@@ -305,7 +461,7 @@ function editor(main: HTMLElement, r: Rule) {
       onclick: async () => {
         try {
           let path: string | null = null;
-          if (r.trigger.type === "file") {
+          if (givesFile(r.trigger)) {
             path = await Bridge.pickFile("Choisir un fichier pour tester la règle", []);
             if (!path) return;
           }
@@ -371,6 +527,16 @@ function defaultAction(type: Action["type"]): Action {
       return { type, tab: "" };
     case "timer":
       return { type, minutes: 5 };
+    case "addNote":
+      return { type, text: "{nom}", todo: false };
+    case "unzip":
+      return { type, to: "", shelf: true };
+    case "copyPath":
+      return { type, nameOnly: false };
+    case "mascot":
+      return { type, gesture: "dance", emotion: "happy", text: "" };
+    case "quiet":
+      return { type, minutes: 30 };
     default:
       return { type } as Action;
   }
@@ -388,6 +554,52 @@ function actionRow(r: Rule, a: Action, i: number) {
   else if (a.type === "rename") param = textInput(a.pattern, "{date} {nom}", (v) => (a.pattern = v), 120);
   else if (a.type === "notify") param = textInput(a.text, "{nom} est arrivé", (v) => (a.text = v), 200);
   else if (a.type === "timer") param = numberInput(a.minutes, 1, 180, (v) => (a.minutes = v ?? 5));
+  else if (a.type === "quiet") param = numberInput(a.minutes, 1, 240, (v) => (a.minutes = v ?? 30));
+  else if (a.type === "addNote") {
+    param = el(
+      "span",
+      { class: "rule-param" },
+      textInput(a.text, "{nom} a fini", (v) => (a.text = v), 200),
+      el("label", {}, checkboxInput(Boolean(a.todo), (v) => (a.todo = v)), " Comme to-do"),
+    );
+  } else if (a.type === "unzip") {
+    param = el(
+      "span",
+      { class: "rule-param" },
+      folderInput(a.to, (v) => (a.to = v)),
+      el("label", {}, checkboxInput(Boolean(a.shelf), (v) => (a.shelf = v)), " Puis le poser sur l'étagère"),
+    );
+  } else if (a.type === "copyPath") {
+    param = selectInput(
+      a.nameOnly ? "name" : "path",
+      [
+        ["path", "Le chemin complet"],
+        ["name", "Seulement le nom"],
+      ],
+      (v) => (a.nameOnly = v === "name"),
+    );
+  } else if (a.type === "mascot") {
+    const gesture = selectInput(
+      a.gesture,
+      [
+        ["dance", "Danser"],
+        ["emote", "Une expression"],
+        ["sign", "Une pancarte avec un texte"],
+      ],
+      (v) => {
+        a.gesture = v as Gesture;
+        redraw();
+      },
+    );
+    const extra =
+      a.gesture === "emote"
+        ? selectInput(a.emotion || "happy", EMOTIONS, (v) => (a.emotion = v))
+        : a.gesture === "sign"
+          ? textInput(a.text ?? "", "Pause !", (v) => (a.text = v), 40)
+          : null;
+    if (a.gesture === "emote" && !a.emotion) a.emotion = "happy";
+    param = el("span", { class: "rule-param" }, gesture, extra);
+  }
   else if (a.type === "openIsland") {
     const tabs = ALL_MODULES.filter((m) => m.views?.expanded).map((m): [string, string] => [m.manifest.id, `${m.manifest.icon} ${m.manifest.name}`]);
     param = selectInput(a.tab, [["", "Le dernier onglet ouvert"], ...tabs], (v) => (a.tab = v));
@@ -395,9 +607,13 @@ function actionRow(r: Rule, a: Action, i: number) {
   const help =
     a.type === "rename"
       ? "{nom} = nom d'origine, {date} = 2026-10-05, {heure} = 14h30. L'extension est gardée."
-      : a.type === "notify"
-        ? "{nom} = le nom du fichier ou du lecteur."
-        : null;
+      : a.type === "notify" || a.type === "addNote"
+        ? "{nom} = le nom du fichier, du lecteur ou de l'agent ; {date} et {heure} aussi."
+        : a.type === "unzip"
+          ? "Dans un nouveau dossier au nom de l'archive : rien n'est écrasé, « Annuler » le met à la Corbeille."
+          : a.type === "quiet"
+            ? "L'île garde ses notifications pour plus tard et la mascotte se calme. Les alertes importantes passent quand même."
+            : null;
   return el(
     "div",
     { class: "rule-action" },

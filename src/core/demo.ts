@@ -327,6 +327,8 @@ function agentsHistory() {
   };
 }
 
+/** « Bureau propre » du mode démo : les icônes du bureau sont-elles cachées ? */
+let demoDeskHidden = false;
 const RULE_EMPTY = { extensions: [], nameContains: "", minKb: null, maxKb: null };
 
 /** La clé USB inventée de l'onglet Contrôles. */
@@ -495,6 +497,17 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return { title: "Présentation.pptx - PowerPoint", pinned: true };
     case "controls.theme":
       return { dark: state.dark, mixed: false, night: { supported: true, on: state.night } };
+    // Batteries Bluetooth et « Bureau propre » (bande du bas).
+    case "controls.bt_batteries":
+      return [
+        { name: "Casque Bluetooth", percent: 62, connected: true },
+        { name: "Souris MX", percent: 11, connected: true },
+      ];
+    case "controls.desktop_icons":
+      return { hidden: demoDeskHidden };
+    case "controls.set_desktop_icons":
+      demoDeskHidden = args.hidden === true;
+      return { hidden: demoDeskHidden };
     case "controls.set_dark":
       state.dark = args.on === true;
       return null;
@@ -589,11 +602,18 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         rules: [
           { id: 1, name: "Ranger les PDF", enabled: true, trigger: { type: "file", folder: `${HOME}\\Downloads` }, conditions: { ...RULE_EMPTY, extensions: ["pdf"] }, actions: [{ type: "move", to: `${HOME}\\Documents\\PDF` }] },
           { id: 2, name: "Clé USB branchée", enabled: true, trigger: { type: "drive" }, conditions: RULE_EMPTY, actions: [{ type: "reveal" }] },
+          { id: 3, name: "Agent fini", enabled: true, trigger: { type: "agent", waiting: false }, conditions: RULE_EMPTY, actions: [{ type: "mascot", gesture: "dance" }] },
+          { id: 4, name: "Pause déjeuner", enabled: true, trigger: { type: "schedule", time: "12:30", days: [0, 1, 2, 3, 4] }, conditions: RULE_EMPTY, actions: [{ type: "notify", text: "C'est l'heure de manger !" }, { type: "quiet", minutes: 45 }] },
+          { id: 5, name: "Vieux téléchargements", enabled: true, trigger: { type: "schedule", time: "17:00", days: [4], folder: `${HOME}\\Downloads` }, conditions: { ...RULE_EMPTY, olderThanDays: 30 }, actions: [{ type: "trash" }] },
         ],
         paused: false,
-        history: [{ at: Date.now() - 12 * MIN, rule: "Ranger les PDF", subject: "Facture-octobre.pdf", ok: true, message: "Déplacé dans PDF" }],
+        history: [
+          { at: Date.now() - 4 * MIN, rule: "Agent fini", subject: "site-ondine", ok: true, message: "la mascotte danse" },
+          { at: Date.now() - 12 * MIN, rule: "Ranger les PDF", subject: "Facture-octobre.pdf", ok: true, message: "Déplacé dans PDF" },
+        ],
         errors: {},
         topics: [],
+        counts: { "1": 7, "3": 12, "4": 4 },
       };
     case "launcher.entries":
       return {

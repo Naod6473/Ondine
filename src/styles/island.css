@@ -3430,6 +3430,36 @@ body[data-perf="eco"] .gh-today.gh-zero {
   flex: none;
   border-radius: 999px;
 }
+/* Batteries Bluetooth : une petite jauge, rouge sous le seuil ; grisée si l'appareil est éteint. */
+.ctl-bt-meter {
+  flex: none;
+  width: 22px;
+  height: 8px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: linear-gradient(90deg, #4cd964 var(--p, 0%), transparent var(--p, 0%));
+}
+.ctl-bt-item.low .ctl-bt-meter {
+  background: linear-gradient(90deg, #ff5a4e var(--p, 0%), transparent var(--p, 0%));
+}
+.ctl-bt-item.low .ctl-usb-letter {
+  color: #ffb4a8;
+}
+.ctl-bt-item.off {
+  opacity: 0.55;
+}
+.ctl-bt-none {
+  font-size: 11px;
+  align-self: center;
+}
+.ctl-bt > .btn {
+  flex: none;
+  border-radius: 999px;
+}
+.ctl-bt > .btn[hidden],
+.ctl-root[hidden] {
+  display: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .ctl-dot,
   .ctl-pill,

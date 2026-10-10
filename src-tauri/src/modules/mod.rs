@@ -24,6 +24,8 @@ mod askclaude_pc;
 mod capture;
 mod clipboard;
 mod controls;
+// Contrôles → télécommande sur le téléphone : une petite page sur le réseau local.
+mod controls_remote;
 mod launcher;
 mod media;
 mod nettools;

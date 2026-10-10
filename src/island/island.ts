@@ -254,6 +254,7 @@ export class Island {
     spotlight(this.shell);
     this.wirePrivacy();
     this.wireFocus();
+    this.wireRulesQuiet();
     // On porte Ondine (sur le bureau) au-dessus de l'île : elle se montre pour l'accueillir.
     void onTauriEvent<boolean>("pet-over-island", (over) => (over ? this.fsm.pointerEnter() : this.fsm.pointerLeave()));
     // Des fichiers lâchés sur Ondine (sur le bureau) : l'île connaît les cibles,
@@ -760,6 +761,27 @@ export class Island {
       // (Une présentation encore en cours fera le résumé à sa fin.)
       if (n > 1 && !this.notifications.isPaused()) {
         this.notifications.push({ moduleId: "island", title: `${n} notifications pendant votre concentration`, icon: "🍅", priority: "low", key: "focus-summary" });
+      }
+    });
+  }
+
+  /**
+   * Règles → « Calme / Ne pas déranger pendant X min » : "rules.quiet" {on}.
+   * Comme la concentration du Minuteur : les notifications attendent (sauf
+   * « critical »), puis un résumé à la fin.
+   */
+  private wireRulesQuiet() {
+    this.bus.on("rules.quiet", (msg) => {
+      const on = !!(msg.payload as { on?: boolean } | null)?.on;
+      if (on) {
+        this.notifications.pause(true, "rules-quiet");
+        return;
+      }
+      if (!this.notifications.isPaused("rules-quiet")) return;
+      const n = this.notifications.waiting();
+      this.notifications.pause(false, "rules-quiet");
+      if (n > 1 && !this.notifications.isPaused()) {
+        this.notifications.push({ moduleId: "island", title: `${n} notifications pendant le mode Calme`, icon: "🌙", priority: "low", key: "rules-quiet-summary" });
       }
     });
   }
