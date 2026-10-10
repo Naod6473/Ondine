@@ -325,6 +325,19 @@ le constructeur de `Island`.
   points (`visibleRun`) : une comète passe derrière le bord. Une mini-île a une
   lueur plus fine. Un appui sur l'île pendant un halo lance une onde de
   couleur depuis ce point.
+- **Où le dessiner** (réglage `place` du module, 1.2.2, `PLACE` dans
+  halo-palettes.ts) : `inside` (lueur interne, découpée sur l'île, rien ne
+  dépasse ; ondes et étincelles vers le centre), `edge` (défaut : un liseré
+  fin à cheval sur le bord, ~6 px au plus) ou `outside` (lueur fine autour,
+  découpée hors de l'île, ~12 px au plus, `haloReach`). Dedans et sur le
+  contour, le calque passe par-dessus l'île (`z-index: 1`, toujours
+  `pointer-events: none`) et ne trace que la partie visible du contour (pas
+  le côté collé à l'écran) ; les couleurs suivent alors le fond de l'île (un
+  thème clair). Toute forme qui gonfle est tassée (`swell`, 1,3 × au plus) ;
+  un halo qui reste (musique, visio, processeur, réseau…) est plus pâle
+  (`lastingDim`, × 0,7). La fenêtre ne grandit jamais pour un halo : il est
+  dessiné dans le panneau qui existe déjà. Aperçu en direct dans les
+  réglages (`haloPreview`).
 - **Performance** : une boucle `requestAnimationFrame` seulement quand un halo
   se voit (rien quand l'île est cachée ni sans halo) ; 30 i/s en éco et pour
   les halos lents (aurore, cocon, niveau, balayage arrivé). **Réduire les

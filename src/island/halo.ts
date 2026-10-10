@@ -1,6 +1,8 @@
-// Le halo de l'île : un liseré de lumière qui court sur son contour et déborde
-// autour d'elle, en dégradés animés (jamais une couleur plate), avec des
-// vagues qui partent de l'île comme des ondes sur l'eau.
+// Le halo de l'île : un liseré de lumière qui court sur son contour, en
+// dégradés animés (jamais une couleur plate), avec des vagues qui partent de
+// l'île comme des ondes sur l'eau. Selon le réglage « Où dessiner le halo »,
+// il est dans l'île, sur son bord (défaut) ou autour d'elle, toujours fin : un
+// accent près de l'île, jamais un voile sur l'écran.
 //
 // ── L'API (pour les modules et les autres zones de l'appli) ─────────────────
 //
@@ -50,8 +52,9 @@
 //              rouge dans les dernières secondes. Sans `endsAt` (en pause) : figé à `fill`.
 //
 // ── Comment c'est dessiné ────────────────────────────────────────────────────
-// Un <canvas> transparent, sous l'île, de la taille de la fenêtre, qui laisse
-// passer la souris. À chaque image on lit la boîte de l'île (sa forme en gelée
+// Un <canvas> transparent, de la taille de la fenêtre, qui laisse passer la
+// souris : sous l'île pour un halo à l'extérieur, par-dessus pour un halo
+// dedans ou sur le contour (découpé sur l'île, voir PLACE dans halo-palettes.ts). À chaque image on lit la boîte de l'île (sa forme en gelée
 // comprise, jelly.ts) et on trace son contour en plusieurs passes de plus en
 // plus fines (la lueur, puis le trait), sans flou : en style Classique comme
 // en Studio, c'est seulement de la lumière. Les couleurs viennent d'un dégradé
