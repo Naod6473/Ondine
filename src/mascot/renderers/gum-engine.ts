@@ -125,7 +125,7 @@ const FACE_RATE: Partial<Record<keyof Face, number>> = { pupil: 6, blush: 4, lin
 /** Mélange deux descriptions d'image (0 = a, 1 = b) : le corps, les accessoires, la pose dominante. */
 function blendFrames(a: Frame, b: Frame, k: number): Frame {
   const m = (x: number | undefined, y: number | undefined, base: number) => (x ?? base) + ((y ?? base) - (x ?? base)) * k;
-  const top = k < 0.5 ? a : b;
+  const top = k <= 0.5 ? a : b;
   const prop: Partial<Props> = {};
   for (const key of PROP_KEYS) prop[key] = m(a.prop?.[key], b.prop?.[key], 0);
   return {
@@ -246,6 +246,8 @@ export class GumEngine implements MascotRenderer {
   private extras: MascotExtras = NO_EXTRAS;
   /** Le parapluie apparaît et disparaît en fondu. */
   private umbrella = 0;
+  /** Une couleur imposée (le podium des Réglages : une couleur par mascotte), à la place du réglage. */
+  private tintOverride: GumTint | null = null;
 
   constructor(
     manifest: MascotManifest | undefined,
@@ -449,8 +451,18 @@ export class GumEngine implements MascotRenderer {
     this.lastSig = "";
   }
 
-  /** La couleur de fond : celle choisie dans les réglages, sinon celle de la forme. */
+  /**
+   * Impose une couleur (le podium des Réglages donne à chaque mascotte la
+   * sienne) ; null : de nouveau celle des réglages. Elle y passe en fondu.
+   */
+  setTintOverride(tint: GumTint | null) {
+    this.tintOverride = tint;
+    this.lastSig = "";
+  }
+
+  /** La couleur de fond : celle imposée, sinon celle choisie dans les réglages, sinon celle de la forme. */
   private baseTint(): GumTint {
+    if (this.tintOverride) return this.tintOverride;
     const c = this.prefs?.color ?? "auto";
     if (c !== "auto" && (TINT_NAMES as string[]).includes(c)) return c as GumTint;
     return this.shape.tint as GumTint;
@@ -566,8 +578,9 @@ export class GumEngine implements MascotRenderer {
     // Rien ne bouge (« Réduire les animations ») : la même image qu'avant, on ne redessine pas.
     if (calm) {
       const env = this.env.envTint?.() ?? null;
-      const tint = this.prefs.color;
+      const tint = this.tintOverride ?? this.prefs.color;
       const sig = [
+        tint,
         name,
         this.ended,
         this.mood,
@@ -593,6 +606,8 @@ export class GumEngine implements MascotRenderer {
 
     // 1. Ce que l'animation demande, mélangée à une autre, dosée, et du bon côté.
     let f = fn(t, p, this.mood);
+    // Le mélange : le corps de l'une et de l'autre, puis (plus bas) leurs deux visages.
+    const mixFaces = this.mixFn && this.mixK > 0 ? [faceOf(f).face, faceOf(this.mixFn(t, p, this.mood)).face] : null;
     if (this.mixFn && this.mixK > 0) f = blendFrames(f, this.mixFn(t, p, this.mood), this.mixK);
     const k = this.intensity;
     if (k < 1) {
@@ -645,9 +660,9 @@ export class GumEngine implements MascotRenderer {
 
     // 2. Le visage voulu, et le visage réel qui glisse vers lui.
     const want = faceOf(f);
-    if (this.mixFn && this.mixK > 0) {
-      const other = faceOf(this.mixFn(t, p, this.mood)).face;
-      for (const key of FACE_KEYS) want.face[key] += (other[key] - want.face[key]) * this.mixK;
+    if (mixFaces) {
+      const [a, b] = mixFaces;
+      for (const key of FACE_KEYS) want.face[key] = a[key] + (b[key] - a[key]) * this.mixK;
     }
     if (k < 1) {
       // Une émotion dosée : son visage, à mi-chemin du visage du repos.

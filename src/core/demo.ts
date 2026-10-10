@@ -22,7 +22,7 @@ export function demoOn(): boolean {
 }
 
 /** Les scènes que la fenêtre de réglages peut demander (sujet « demo.scene »). */
-export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new"] as const;
+export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "mascot-talk"] as const;
 export type DemoScene = (typeof DEMO_SCENES)[number];
 
 /**
@@ -819,7 +819,22 @@ function playScene(bus: Bus, scene: string) {
       // Le panneau « Quoi de neuf » de la version installée (core/whats-new.ts).
       bus.inject("app.whats-new", null, "demo");
       break;
+    case "mascot-talk":
+      talkScene(bus);
+      break;
   }
+}
+
+/**
+ * La mascotte qui parle (1.2.2) : comme le ferait la voix, « Bonjour ! Ça va ? »
+ * syllabe par syllabe (mascot.talk, la bouche suit ; les sourcils montent sur
+ * « ! » et « ? »), puis les lunettes de soleil.
+ */
+function talkScene(bus: Bus) {
+  const syllables: [number, string?][] = [[0.9], [0.5], [0.8, "!"], [0], [0.7], [0.4], [0.9, "?"], [0]];
+  bus.inject("mascot.emote", { emotion: "talk" }, "demo");
+  syllables.forEach(([open, mark], i) => setTimeout(() => bus.inject("mascot.talk", { open, mark }, "demo"), 150 + i * 190));
+  setTimeout(() => bus.inject("mascot.emote", { emotion: "sunglasses" }, "demo"), 2600);
 }
 
 /** Branche le mode démo sur l'île (fenêtre principale). */

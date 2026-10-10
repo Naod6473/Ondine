@@ -8,7 +8,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { N, SHAPES, SHAPE_IDS, signedArea, mixPts, halfWidthAt } from "../../src/mascot/renderers/gum-shapes";
 import { FACE_BASE, hslToHex, isHexColor, palette, paletteFromHex, rgbToHsl, TINT_NAMES } from "../../src/mascot/renderers/gum-draw";
 import { faceOf, HANDS, JellyRim, skyShape, weatherLook, ANIMS, BLINK, blinkCurve, idleAct, landingSquash, type HandPose } from "../../src/mascot/renderers/gum-anims";
-import { GUM_FAMILY, cousinManifest } from "../../src/mascot/gum-family";
+import { GUM_FAMILY, PODIUM_TINT, cousinManifest } from "../../src/mascot/gum-family";
 import { validateManifest } from "../../src/mascot/manifest-check";
 import { EMOTE_NEAR, MASCOT_STATES, type MascotManifest } from "../../src/mascot/types";
 import { averageColor } from "../../src/mascot/env-tint";
@@ -285,5 +285,14 @@ describe("la teinte de la pochette", () => {
     // Le gris autour compte peu : la couleur vive l'emporte.
     const mixed = averageColor([...px(120, 120, 120, 40), ...px(40, 90, 230, 8)])!;
     assert.ok(mixed[2] > 200 && mixed[0] < 60);
+  });
+});
+
+describe("podium", () => {
+  test("une couleur différente pour chacune des 15 mascottes", () => {
+    const ids = ["goutte-gomme", ...GUM_FAMILY.map((c) => c.id)];
+    const tints = ids.map((id) => PODIUM_TINT[id]);
+    for (const [i, t] of tints.entries()) assert.ok(t && (TINT_NAMES as string[]).includes(t), `${ids[i]} : ${t}`);
+    assert.equal(new Set(tints).size, ids.length);
   });
 });

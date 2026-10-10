@@ -14,13 +14,15 @@
 import { el } from "../island/dom";
 import { reducedMotion } from "../island/tab-pill";
 import type { CatalogEntry } from "../mascot/catalog";
+import { PODIUM_TINT } from "../mascot/gum-family";
 import { createRenderer, type MascotRenderer } from "../mascot/renderer";
+import type { GumTint } from "../mascot/renderers/gum-draw";
 import { podiumOrder, podiumRows } from "./podium-layout";
 
 /** La largeur de chaque marche, en % de la scène. */
 const WIDTHS = [26, 50, 76, 100];
 /** Les humeurs tirées au hasard (animations du manifeste gomme). */
-const MOODS = ["coucou", "rire", "love", "wink", "shy", "fiere", "boude", "etoiles", "malice", "emue", "genee", "danse", "pensive", "baille", "surprise", "happy", "calm"];
+const MOODS = ["coucou", "rire", "love", "wink", "shy", "fiere", "boude", "etoiles", "malice", "emue", "genee", "danse", "pensive", "baille", "surprise", "happy", "calm", "lunettes", "echarpe", "etirement", "ecoute", "tapote-vitre", "sursaut", "cachee"];
 const CHAMPION_MOODS = ["fiere", "danse", "coucou", "etoiles"];
 const ORDER_KEY = "settings.podium";
 
@@ -130,11 +132,21 @@ export function mascotPodium(catalog: CatalogEntry[], chosen: string, onChoose: 
   };
   const idle = (t: Token) => play(t, t.entry.manifest.fallback);
 
+  /**
+   * Une couleur par mascotte sur le podium ; celle de la première marche
+   * (celle de l'île) garde la couleur des réglages. Seul le moteur gomme sait le faire.
+   */
+  const paint = (t: Token) => {
+    const r = t.renderer as (MascotRenderer & { setTintOverride?: (tint: GumTint | null) => void }) | null;
+    r?.setTintOverride?.(t.slot === 0 ? null : (PODIUM_TINT[t.entry.manifest.id] ?? null));
+  };
+
   function place() {
     order.forEach((id, slot) => {
       const t = tokens.get(id);
       if (!t) return;
       t.slot = slot;
+      paint(t);
       t.el.style.left = `${slots[slot].x}%`;
       t.el.style.top = `${slots[slot].y}%`;
       t.el.classList.toggle("first", slot === 0);
@@ -250,6 +262,7 @@ export function mascotPodium(catalog: CatalogEntry[], chosen: string, onChoose: 
       if (t.renderer) continue;
       t.renderer = createRenderer(t.entry.manifest, t.entry.assets);
       t.renderer.mount(t.box);
+      paint(t);
       t.renderer.onAnimationEnd(() => idle(t));
       idle(t);
     }
