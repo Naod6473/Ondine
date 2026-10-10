@@ -12,7 +12,10 @@
 // place est revenue entre-temps.
 //
 // Il surveille aussi la batterie (« system.battery-low » sous le seuil choisi,
-// « system.battery-full » quand la charge est finie) et le processeur : s'il
+// « system.battery-critical » sous le seuil critique, « system.battery-full »
+// quand la charge est finie, « system.battery-plug » au branchement et au
+// débranchement du chargeur ; lue à chaque tour, c'est une lecture très
+// légère ; rien sur un PC fixe) et le processeur : s'il
 // reste longtemps très occupé, « system.cpu-busy » { on: true } (Ondine
 // transpire), puis { on: false } quand il se calme.
 //
@@ -65,34 +68,59 @@ struct State {
 #[derive(Default, Debug, PartialEq)]
 struct BatteryWatch {
     low_said: bool,
+    critical_said: bool,
     full_said: bool,
+    /// Le chargeur était-il branché au tour d'avant ? (None : premier tour)
+    plugged: Option<bool>,
 }
 
-/// Ce qu'il faut annoncer pour la batterie, selon l'état lu et le seuil (0 = jamais).
+/// Les seuils (réglages du module ; 0 = jamais).
+#[derive(Debug, Clone, Copy)]
+struct BatteryLimits {
+    low_pct: u8,
+    critical_pct: u8,
+}
+
+/// Ce qu'il faut annoncer pour la batterie, selon l'état lu et les seuils.
 #[derive(Debug, PartialEq)]
 enum BatteryNews {
+    /// Le chargeur vient d'être branché (true) ou débranché (false) : pourcentage, en charge.
+    Plug(bool, u8, bool),
     Low(u8),
+    Critical(u8),
     Full,
 }
 
-fn battery_news(w: &mut BatteryWatch, b: &platform::Battery, low_pct: u8, full_alert: bool) -> Option<BatteryNews> {
-    let pct = b.percent?;
-    // Branché : plus d'alerte « faible » à venir ; à 100 %, « chargée » une fois.
+fn battery_news(w: &mut BatteryWatch, b: &platform::Battery, limits: BatteryLimits) -> Vec<BatteryNews> {
+    let mut out = Vec::new();
+    let Some(pct) = b.percent else { return out };
+    // Branché / débranché : seulement un vrai changement (pas au démarrage).
+    if w.plugged.is_some_and(|was| was != b.plugged) {
+        out.push(BatteryNews::Plug(b.plugged, pct, b.charging));
+    }
+    w.plugged = Some(b.plugged);
+    // Branché : plus d'alerte « faible » ni « critique » à venir ; à 100 %, « chargée » une fois.
     if b.plugged {
         w.low_said = false;
-        if full_alert && pct >= 100 && !w.full_said {
+        w.critical_said = false;
+        if pct >= 100 && !w.full_said {
             w.full_said = true;
-            return Some(BatteryNews::Full);
+            out.push(BatteryNews::Full);
         }
-        return None;
+        return out;
     }
     // Débranché : on pourra de nouveau dire « chargée » la prochaine fois.
     w.full_said = false;
-    if low_pct > 0 && pct <= low_pct && !w.low_said {
+    if limits.critical_pct > 0 && pct <= limits.critical_pct && !w.critical_said {
+        // Critique : on ne dit plus « faible » (déjà dépassé).
+        w.critical_said = true;
         w.low_said = true;
-        return Some(BatteryNews::Low(pct));
+        out.push(BatteryNews::Critical(pct));
+    } else if limits.low_pct > 0 && pct <= limits.low_pct && !w.low_said {
+        w.low_said = true;
+        out.push(BatteryNews::Low(pct));
     }
-    None
+    out
 }
 
 /// Le processeur est « très occupé » après BUSY_FOR (≈ 20 s) de mesures
@@ -146,6 +174,9 @@ impl RustModule for SystemInfo {
     fn invoke(&self, ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
         match command {
             "snapshot" => Ok(snapshot(&self.state)),
+            // {} → { percent, charging, plugged } ou null (PC fixe) : très léger,
+            // pour les halos de batterie au démarrage (src/modules/system/battery-halo.ts).
+            "battery" => Ok(platform::battery().map(|b| json!({ "percent": b.percent, "charging": b.charging, "plugged": b.plugged })).unwrap_or(Value::Null)),
             // { description, withImage } → { folder }
             "ticket" => ticket(ctx, &support_snapshot(&self.state), &args),
             // {} → { pending, sinceSecs, reasons: ["updates" | "servicing"] }
@@ -192,13 +223,14 @@ fn watch(app: AppHandle, state: Shared) {
                 s.mem_total = sys.total_memory();
                 s.mem_used = sys.used_memory();
             }
-            super::with_context(&app, ID, |ctx| check_cpu(ctx, &state));
+            super::with_context(&app, ID, |ctx| {
+                check_cpu(ctx, &state);
+                // À chaque tour : le branchement du chargeur doit se voir tout de suite.
+                check_battery(ctx, &state);
+            });
             if last_disks.is_none_or(|t| t.elapsed() >= perf::every(Loop::SystemDisks)) {
                 last_disks = Some(Instant::now());
-                super::with_context(&app, ID, |ctx| {
-                    check_disks(ctx, &state);
-                    check_battery(ctx, &state);
-                });
+                super::with_context(&app, ID, |ctx| check_disks(ctx, &state));
             }
         }));
         if step.is_err() {
@@ -207,17 +239,25 @@ fn watch(app: AppHandle, state: Shared) {
     }
 }
 
-/// Prévient quand la batterie est faible, ou chargée.
+/// Prévient quand la batterie est faible, critique, chargée, et quand on
+/// branche ou débranche le chargeur. Rien sur un PC fixe (pas de batterie).
+/// « batteryFullAlert » ne règle plus que la notification (côté front) :
+/// l'événement part toujours, pour les halos.
 fn check_battery(ctx: &ModuleContext, state: &Shared) {
     let Some(b) = platform::battery() else { return };
     let settings = ctx.settings();
-    let low = settings.get("batteryLowPct").and_then(Value::as_u64).unwrap_or(20).min(50) as u8;
-    let full = settings.get("batteryFullAlert").and_then(Value::as_bool).unwrap_or(true);
-    let news = battery_news(&mut state.locked().battery, &b, low, full);
-    match news {
-        Some(BatteryNews::Low(pct)) => ctx.emit("system.battery-low", json!({ "percent": pct })),
-        Some(BatteryNews::Full) => ctx.emit("system.battery-full", json!({})),
-        None => {}
+    let pct = |key: &str, default: u64| settings.get(key).and_then(Value::as_u64).unwrap_or(default).min(50) as u8;
+    let limits = BatteryLimits { low_pct: pct("batteryLowPct", 20), critical_pct: pct("batteryCriticalPct", 10) };
+    let news = battery_news(&mut state.locked().battery, &b, limits);
+    for n in news {
+        match n {
+            BatteryNews::Plug(plugged, percent, charging) => {
+                ctx.emit("system.battery-plug", json!({ "plugged": plugged, "percent": percent, "charging": charging }))
+            }
+            BatteryNews::Low(percent) => ctx.emit("system.battery-low", json!({ "percent": percent })),
+            BatteryNews::Critical(percent) => ctx.emit("system.battery-critical", json!({ "percent": percent })),
+            BatteryNews::Full => ctx.emit("system.battery-full", json!({})),
+        }
     }
 }
 
@@ -463,16 +503,37 @@ mod tests {
     fn battery_news_once() {
         let mut w = BatteryWatch::default();
         let b = |percent, plugged| platform::Battery { percent: Some(percent), charging: plugged, plugged };
-        assert_eq!(battery_news(&mut w, &b(50, false), 20, true), None);
-        assert_eq!(battery_news(&mut w, &b(20, false), 20, true), Some(BatteryNews::Low(20)));
-        assert_eq!(battery_news(&mut w, &b(15, false), 20, true), None); // déjà dit
-        assert_eq!(battery_news(&mut w, &b(80, true), 20, true), None);
-        assert_eq!(battery_news(&mut w, &b(100, true), 20, true), Some(BatteryNews::Full));
-        assert_eq!(battery_news(&mut w, &b(100, true), 20, true), None);
-        assert_eq!(battery_news(&mut w, &b(19, false), 20, true), Some(BatteryNews::Low(19)));
-        // Seuil 0 : jamais.
+        let l = BatteryLimits { low_pct: 20, critical_pct: 10 };
+        assert_eq!(battery_news(&mut w, &b(50, false), l), vec![]);
+        assert_eq!(battery_news(&mut w, &b(20, false), l), vec![BatteryNews::Low(20)]);
+        assert_eq!(battery_news(&mut w, &b(15, false), l), vec![]); // déjà dit
+        assert_eq!(battery_news(&mut w, &b(10, false), l), vec![BatteryNews::Critical(10)]);
+        assert_eq!(battery_news(&mut w, &b(8, false), l), vec![]); // déjà dit
+        assert_eq!(battery_news(&mut w, &b(9, true), l), vec![BatteryNews::Plug(true, 9, true)]);
+        assert_eq!(battery_news(&mut w, &b(80, true), l), vec![]);
+        assert_eq!(battery_news(&mut w, &b(100, true), l), vec![BatteryNews::Full]);
+        assert_eq!(battery_news(&mut w, &b(100, true), l), vec![]);
+        assert_eq!(battery_news(&mut w, &b(99, false), l), vec![BatteryNews::Plug(false, 99, false)]);
+        // Une chute directe sous le seuil critique : « critique » seulement, pas « faible » ensuite.
+        assert_eq!(battery_news(&mut w, &b(9, false), l), vec![BatteryNews::Critical(9)]);
+        assert_eq!(battery_news(&mut w, &b(15, false), l), vec![]);
+        // Seuils à 0 : jamais.
         let mut w = BatteryWatch::default();
-        assert_eq!(battery_news(&mut w, &b(5, false), 0, true), None);
+        let never = BatteryLimits { low_pct: 0, critical_pct: 0 };
+        assert_eq!(battery_news(&mut w, &b(5, false), never), vec![]);
+    }
+
+    #[test]
+    fn battery_plug_is_not_said_at_startup() {
+        // Démarrage sur secteur, puis rien ne change : aucun « branché ».
+        let mut w = BatteryWatch::default();
+        let b = platform::Battery { percent: Some(56), charging: true, plugged: true };
+        let l = BatteryLimits { low_pct: 20, critical_pct: 10 };
+        assert_eq!(battery_news(&mut w, &b, l), vec![]);
+        assert_eq!(battery_news(&mut w, &b, l), vec![]);
+        // Pourcentage inconnu : rien du tout.
+        let unknown = platform::Battery { percent: None, charging: false, plugged: false };
+        assert_eq!(battery_news(&mut w, &unknown, l), vec![]);
     }
 
     #[test]

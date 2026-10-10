@@ -36,6 +36,9 @@ pub mod theme;
 pub mod nightlight;
 // Capture → GIF animé : choisir une zone de l'écran, la copier dix fois par seconde. Contient sa propre version Linux.
 pub mod record;
+// Les halos de l'île : niveau du micro et du son, signal Wi-Fi, Verr Maj / Verr Num,
+// quelques touches (copier, coller, volume). Contient sa propre version Linux.
+pub mod halos;
 
 #[cfg(windows)]
 mod drop_target;

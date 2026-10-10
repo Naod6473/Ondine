@@ -12,6 +12,7 @@ import { el } from "../../island/dom";
 import { pacedInterval } from "../../core/perf";
 import { worldClocks } from "./world-clocks";
 import { rebootRow, watchReboot } from "./reboot";
+import { watchBattery } from "./battery-halo";
 
 interface Disk {
   mount: string;
@@ -112,15 +113,14 @@ export const system: IslandModule = {
         key: `disk-low-${p.mount}`,
       });
     });
-    api.on("system.battery-low", (msg) => {
-      const p = (msg.payload ?? {}) as { percent?: number };
-      api.notify({ title: "Batterie faible", body: `Plus que ${p.percent ?? "?"} % : pensez à brancher le chargeur.`, icon: "🪫", priority: "normal", key: "battery" });
-    });
-    api.on("system.battery-full", () => {
-      api.notify({ title: "Batterie chargée", body: "Vous pouvez débrancher le chargeur.", icon: "🔋", priority: "low", key: "battery" });
-    });
+    // La batterie : notifications et halos autour de l'île (battery-halo.ts).
+    const stopBattery = watchBattery(api);
     // Redémarrage en attente (reboot.ts) : le rappel doux.
-    return watchReboot(api);
+    const stopReboot = watchReboot(api);
+    return () => {
+      stopBattery();
+      stopReboot();
+    };
   },
 
   views: {

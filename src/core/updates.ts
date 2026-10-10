@@ -9,6 +9,7 @@ import { Bridge, IS_TAURI } from "./bridge";
 import { errorText, logger } from "./log";
 import type { NotificationQueue } from "./notifications";
 import { settingsStore } from "./settings-store";
+import { haloAllowed, showHalo } from "../island/halo";
 
 const log = logger("updates");
 
@@ -54,6 +55,8 @@ export async function check(notifications: NotificationQueue | null, manual: boo
 }
 
 function offer(notifications: NotificationQueue, version: string) {
+  // Un arc-en-ciel fait le tour de l'île, une seule fois (réglage « Mise à jour disponible »).
+  if (haloAllowed("update")) showHalo({ id: "update", palette: "rainbow", shape: "comet", rhythm: 2600, durationMs: 2600 });
   notifications.push({
     moduleId: "island",
     title: `Ondine ${version} est disponible`,

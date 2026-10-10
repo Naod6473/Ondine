@@ -237,6 +237,75 @@ qu'une fois les ressorts posés (au plus tard après 1,5 s).
 - **Réduire les animations** (réglage d'accessibilité de Windows) : tout
   devient instantané (`reducedMotion()`, `prefers-reduced-motion`).
 
+### Le halo de l'île (`src/island/halo.ts`, `halo-palettes.ts`, `halo-stack.ts`)
+
+Un liseré de lumière qui court sur le contour de l'île et déborde autour, en
+dégradés animés (jamais une couleur plate), avec des vagues qui partent de
+l'île comme des ronds dans l'eau. Un `<canvas>` transparent sous l'île, de la
+taille de la fenêtre, `pointer-events: none` ; branché par `attachHalo()` dans
+le constructeur de `Island`.
+
+- **API** (pour tous les modules et les autres zones) :
+  `showHalo({ id?, palette, shape, rhythm, durationMs, fill, from, priority, level })`
+  → id ; `updateHalo(id, { level?, fill?, palette? })` ; `hideHalo(id)` ;
+  `haloAllowed(clé)` (module activé et case cochée) ; `ondineThinking(on)`
+  (« Ondine réfléchit », trois gouttes). Par le bus : `island.halo`
+  `{action: "show" | "hide" | "level" | "think", …}` (le module doit déclarer
+  `island.halo` dans `emits`).
+- **Formes** : `aurora`, `breathe`, `comet`, `sweep` (jusqu'à `fill`, depuis
+  `from`), `burst` (flash + étincelles), `ripple` (une goutte tombe : fronts
+  des deux côtés + ronds dans l'eau), `waves`, `drops`, `crackle`,
+  `reservoir` (déborde en gouttes au-delà de 95 %), `rain` (palette `storm` :
+  éclairs), `rise` / `set` (soleil qui monte ou descend), `cocoon`, `level`
+  (suit `updateHalo(id, {level})`). `fill` < 1 coupe n'importe quelle forme
+  (une braise, une jauge).
+- **Palettes** : `PALETTES` dans halo-palettes.ts, à UN seul endroit, écrites
+  pour fond sombre ; sur fond clair (`prefers-color-scheme: light`),
+  `forLightBackground` les fonce, sauf palette avec ses couleurs `light`. Les
+  couleurs s'additionnent (`lighter`) en sombre. Réglages du module
+  « Animations de l'île » : Couleurs (Selon l'état / Arc-en-ciel / Couleur de
+  ma mascotte) et Intensité (Discret / Normal / Vif, `INTENSITY`).
+- **Rythmes** : `slow` 6 s, `calm` 3 s, `medium` 1,5 s, `fast` 0,6 s,
+  `heartbeat` (deux battements puis repos) ou une période en ms, jamais sous
+  `MIN_PERIOD_MS` (450 ms : pas de clignotement fatigant).
+- **Priorités** (`HaloStack`) : une seule demande montrée, la plus prioritaire
+  puis la plus récente ; fondu au ressort (entrée qui dépasse un peu, sortie
+  douce) ; la précédente revient quand elle finit. Même id = remplacement ;
+  même id et même forme = continuité (le volume qu'on monte).
+- **Géométrie** : à chaque image, la boîte de l'île (`getBoundingClientRect`,
+  arrondis lus dans le style calculé, la gelée comprise) échantillonnée par
+  `sampleContour` (contour.ts). Le côté collé au bord de l'écran est retiré des
+  points (`visibleRun`) : une comète passe derrière le bord. Une mini-île a une
+  lueur plus fine. Un appui sur l'île pendant un halo lance une onde de
+  couleur depuis ce point.
+- **Performance** : une boucle `requestAnimationFrame` seulement quand un halo
+  se voit (rien quand l'île est cachée ni sans halo) ; 30 i/s en éco et pour
+  les halos lents (aurore, cocon, niveau, balayage arrivé). **Réduire les
+  animations** ou **Calme** : un halo fixe dessiné une fois, sans vagues ni
+  étincelles.
+- Le module **Animations de l'île** (`src/modules/halos/`, Rust
+  `modules/halos.rs`, `platform/halos.rs`) est l'interrupteur maître : coupé,
+  aucun halo (`halosEnabled()`). Ses moments : sortie de veille (le fil dort
+  1 s, l'horloge a sauté de plus d'une minute → `halos.wake`), Verr Maj /
+  Verr Num (`GetKeyState`), Copié / Coupé / Collé (`GetAsyncKeyState` sur
+  Ctrl, C, X, V seulement, aucun crochet ; Copié / Coupé seulement si le
+  numéro du presse-papiers change dans 1,2 s ; le début du texte, 40
+  caractères, jamais si le presse-papiers est marqué sensible), touches de
+  volume, Wi-Fi sous 35 % (`wlanSignalQuality` : refusé sans la localisation
+  depuis Windows 11 24H2), et `levels` : le niveau instantané du micro ou de
+  la sortie (`IAudioMeterInformation::GetPeakValue`, aucun flux ouvert, rien
+  n'est écouté). Le reste vient du bus (voir le tableau). Logique pure :
+  `halo-rules.ts` (heure de partir en semaine, bonjour du matin, météo,
+  comète des rendez-vous, jauge, niveau), testée par `tests/front/halo.test.ts`.
+- **Batterie** (module Système, `battery-halo.ts`, règles `battery-rules.ts`) :
+  branché = vague verte jusqu'au niveau + « En charge · 56 % », puis halo
+  vert (`chargeHalo` : toujours / quelques secondes / jamais) ; chargée =
+  éclat vert et doré ; débranché = balayage blanc + « Sur batterie · 82 % » ;
+  faible = vagues orange 8 s puis une braise (`fill` 0,14) jusqu'au
+  branchement, `mascot.emote` yawn ; critique = vagues rouges en battement de
+  cœur jusqu'au branchement ou « Compris », `panic` (de nouveau toutes les
+  45 s), puis `relieved` au branchement.
+
 ### La file de notifications (`src/core/notifications.ts`)
 
 Un module **demande** l'attention (`api.notify({...})`), l'île **décide** :
@@ -406,6 +475,10 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `controls.usb-ejected` `{root, letter, label, removable, ok, veto?, blocker?, error?, code?}` | Contrôles (Rust, fil d'éjection) | notification ✅ « Vous pouvez retirer la clé E: en toute sécurité. », ou ⚠️ avec qui bloque ; la bande USB de l'onglet se met à jour |
 | `shelf.hash-progress` `{job, percent}` | Étagère (Rust, cible « Empreinte ») | la notification « Empreinte SHA-256 : 45 % » (une fois par seconde, au-delà de 64 Mo) |
 | `shelf.hashed` `{job, algo, compared, cancelled, results: [{name, hex, matches} ou {name, error}]}` | Étagère (Rust) | notification « Identique ✓ » / « Différente ✗ » ou l'empreinte, avec « Copier » (`hash_copy {job}`) ; le texte copié n'est jamais dans le message |
+| `system.battery-plug` `{plugged, percent, charging}` | Système (Rust, à chaque tour) | chargeur branché / débranché (jamais au démarrage, rien sur un PC fixe) : halo vert ou blanc, « En charge · 56 % » |
+| `system.battery-critical` `{percent}` | Système (Rust) | sous `batteryCriticalPct` (10 %), une fois jusqu'au branchement : alerte « Batterie critique », halo rouge, Ondine panique |
+| `island.halo` `{action, id, palette, shape, …}` | tout module (le déclarer dans `emits`) | allume, règle ou éteint un halo (`action: "think"` : Ondine réfléchit), voir « Le halo de l'île » |
+| `halos.wake` `{secs}` / `halos.lock-key` `{key, on}` / `halos.clip` `{action, text?}` / `halos.volume` `{volume, muted}` / `halos.wifi` `{quality}` | Animations de l'île (Rust) | les halos correspondants et une ligne dans l'île (« Verr Maj · Activé », « Copié ») |
 | `capture.gif` `{state: recording / encoding / done / cancelled / error, …}` | Capture (Rust) | notification avec « Arrêter », puis « Création du GIF… », puis « GIF enregistré » (« Montrer dans l'Explorateur ») ; le bouton de l'onglet suit l'état |
 
 ## Services communs (`src-tauri/src/services/`)
@@ -1176,6 +1249,12 @@ s'il n'existe pas ou est désactivé).
 - Disque fixe sous le seuil (réglage `diskAlertPct`, 10 % par défaut, 0 =
   jamais) → `system.disk-low`, une seule fois par disque, de nouveau
   seulement si la place est revenue au-dessus du seuil + 2 points.
+- Batterie (lue à chaque tour, `GetSystemPowerStatus`) : `system.battery-low`
+  (`batteryLowPct`, 20 %), `system.battery-critical` (`batteryCriticalPct`,
+  10 %), `system.battery-full` (toujours ; `batteryFullAlert` ne règle plus que
+  la notification), `system.battery-plug` au branchement / débranchement. Les
+  halos (voir « Le halo de l'île ») : `chargeHalo`, `haloPlug`, `haloUnplug`,
+  `haloFull`, `haloLow`, `haloCritical`. Commande légère `battery`.
 - Commandes : `snapshot` (nom du PC, utilisateur, Windows, durée depuis le
   démarrage, processeur, mémoire, disques, cartes réseau avec IP et MAC,
   batterie) et `copy_support` (permission `clipboard`) : le même résumé en
@@ -1951,7 +2030,7 @@ Rust (ms ; haute / équilibrée / éco) :
 | Presse-papiers (compteur de copies) | 250 | 400 | 1 000 | |
 | Musique (SMTC) | 500 | 1 000 | 2 000 | la barre avance côté front entre deux lectures |
 | Système : processeur, mémoire | 1 000 | 2 000 | 5 000 | « très occupé » = ≈ 20 s dans tous les modes (`busy_ticks`) |
-| Système : disques, batterie | 30 000 | 30 000 | 60 000 | |
+| Système : disques | 30 000 | 30 000 | 60 000 | la batterie est lue à chaque tour (processeur), c'est très léger |
 | Contrôles : micro / caméra utilisés, micro coupé | 1 000 | 2 000 | 3 000 | le raccourci micro réagit tout de suite (raccourci global) |
 | Étagère : Téléchargements | 2 000 | 3 000 | 6 000 | |
 | Règles : fichiers en attente « stables » | 250 | 500 | 1 000 | sans fichier en attente, le fil dort jusqu'au prochain coup d'œil aux lecteurs |
@@ -1961,6 +2040,8 @@ Rust (ms ; haute / équilibrée / éco) :
 | Lanceur : raccourci réservé | 1 000 | 1 000 | 3 000 | |
 | Profils automatiques | 30 000 | 30 000 | 60 000 | |
 | Météo : « l'heure de redemander ? » | 10 000 | 10 000 | 30 000 | |
+| Animations de l'île : touches (Verr Maj, Ctrl+C/X/V, volume) | 40 | 50 | 100 | seulement si une de ces cases est cochée |
+| Animations de l'île : veille, Wi-Fi (sinon) | 1 000 | 1 000 | 3 000 | le Wi-Fi est lu toutes les 10 s |
 
 Front (ms) :
 
@@ -1979,6 +2060,9 @@ Front (ms) :
 | Bilan de la semaine : l'heure du bilan ? | 60 000 | 60 000 | 120 000 | une première fois 20 s après le démarrage |
 | Dessins continus (mascotte, anneau du minuteur, chrono) | 60 im/s | 60 im/s | 30 im/s | `frameLoop` |
 | Forme de l'île en gelée (pendant une animation seulement) | 60 im/s | 60 im/s | 30 im/s | `jelly.ts`, arrêtée au repos |
+| Halo de l'île (pendant un halo seulement) | 60 im/s | 60 im/s | 30 im/s | `halo.ts` ; 30 im/s pour les halos lents ; arrêté sans halo ou île cachée |
+| Animations de l'île : heure de partir, bonjour, ciel | 30 000 | 30 000 | 60 000 | `halosClock` |
+| Animations de l'île : niveau du micro / de la musique | 66 | 80 | 160 | `halosLevel`, seulement micro utilisé ou musique (réglage) |
 
 En éco, en plus : les effets « Studio » (flou → net) sont remplacés par ceux de
 « Classique », et les cartes de verre des Contrôles perdent leur flou

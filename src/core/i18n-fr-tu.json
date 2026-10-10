@@ -198,7 +198,9 @@
 "cette demande n'est plus valable : renvoyez votre message": "cette demande n'est plus valable : renvoie ton message",
 "Ondine peut aussi régler le PC quand vous le lui demandez. Pour ouvrir une application ou un site, elle vous demande d'abord.": "Ondine peut aussi régler le PC quand tu le lui demandes. Pour ouvrir une application ou un site, elle te demande d'abord.",
 "Sans Wi-Fi, Ondine ne pourra plus vous répondre.": "Sans Wi-Fi, Ondine ne pourra plus te répondre.",
-"Elle regarde l'état du PC, l'agenda, la météo, la musique et vos notes, et agit quand vous le lui demandez : volume, luminosité, mode sombre, musique, minuteur, note. Pour ouvrir une application ou un site, poser un fichier sur l'Étagère ou toucher au Wi-Fi et au Bluetooth, elle attend votre accord. Elle ne peut rien supprimer ni lancer de commande.": "Elle regarde l'état du PC, l'agenda, la météo, la musique et tes notes, et agit quand tu le lui demandes : volume, luminosité, mode sombre, musique, minuteur, note. Pour ouvrir une application ou un site, poser un fichier sur l'Étagère ou toucher au Wi-Fi et au Bluetooth, elle attend ton accord. Elle ne peut rien supprimer ni lancer de commande."
+"Elle regarde l'état du PC, l'agenda, la météo, la musique et vos notes, et agit quand vous le lui demandez : volume, luminosité, mode sombre, musique, minuteur, note. Pour ouvrir une application ou un site, poser un fichier sur l'Étagère ou toucher au Wi-Fi et au Bluetooth, elle attend votre accord. Elle ne peut rien supprimer ni lancer de commande.": "Elle regarde l'état du PC, l'agenda, la météo, la musique et tes notes, et agit quand tu le lui demandes : volume, luminosité, mode sombre, musique, minuteur, note. Pour ouvrir une application ou un site, poser un fichier sur l'Étagère ou toucher au Wi-Fi et au Bluetooth, elle attend ton accord. Elle ne peut rien supprimer ni lancer de commande.",
+"Un halo de lumière autour de l'île, en dégradés qui bougent : vert quand le chargeur est branché, orange quand un agent attend, un lever de soleil à la sortie de veille, une goutte qui tombe quand un téléchargement finit, trois gouttes qui se courent après quand Ondine réfléchit… Désactivez ce module pour éteindre tous les halos. Si Windows réduit les animations, ou avec le réglage Calme de la mascotte, le halo reste fixe.": "Un halo de lumière autour de l'île, en dégradés qui bougent : vert quand le chargeur est branché, orange quand un agent attend, un lever de soleil à la sortie de veille, une goutte qui tombe quand un téléchargement finit, trois gouttes qui se courent après quand Ondine réfléchit… Désactive ce module pour éteindre tous les halos. Si Windows réduit les animations, ou avec le réglage Calme de la mascotte, le halo reste fixe.",
+"Visio : le halo suit votre voix": "Visio : le halo suit ta voix"
 },
 "patterns": [
 [
@@ -344,6 +346,9 @@
 [
 "^Pas de (clé API \\w+) : ajoutez-la dans Réglages → Identifiants\\.$",
 "Pas de $1 : ajoute-la dans Réglages → Identifiants."
+],
+["^Plus que (.+?) % : branchez le chargeur maintenant\\.$",
+"Plus que $1 % : branche le chargeur maintenant."
 ]
 ]
 }

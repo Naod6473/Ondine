@@ -22,7 +22,7 @@ export function demoOn(): boolean {
 }
 
 /** Les scènes que la fenêtre de réglages peut demander (sujet « demo.scene »). */
-export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new"] as const;
+export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour"] as const;
 export type DemoScene = (typeof DEMO_SCENES)[number];
 
 /**
@@ -32,7 +32,7 @@ export type DemoScene = (typeof DEMO_SCENES)[number];
 const REAL_DATA = [
   "agenda.", "agents.", "claude.", "capture.", "clipboard.changed", "clipboard.link-cleaned", "controls.",
   "media.", "nettools.", "notes.", "remote.", "rules.notify", "shelf.", "system.", "task.",
-  "weather.",
+  "weather.", "halos.",
 ];
 
 export function hidesRealData(msg: BusMessage): boolean {
@@ -760,6 +760,12 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     case "weather.current":
       // Une fausse météo : un bel après-midi à Lyon.
       return { place: "Lyon", temp: 21.4, min: 12.1, max: 23.6, wind: 9, code: 1, isDay: true, icon: "🌤️", label: "Plutôt dégagé", unit: "c", at: "15:00" };
+    case "halos.levels": {
+      // Le halo qui suit la voix (visio) : une voix inventée qui monte et descend.
+      const t = Date.now() / 1000;
+      const v = Math.max(0, 0.08 + 0.3 * Math.sin(t * 5.3) * Math.sin(t * 1.7) + 0.12 * Math.sin(t * 11));
+      return { mic: args.mic ? v : null, out: args.out ? v : null };
+    }
     case "weekly.peek":
       // « Voir le bilan maintenant » : une belle semaine inventée (« due » reste null : pas de vrai bilan en démo).
       return { pomodoros: 9, focusMinutes: 215, todos: 14, until: "", agents: agentsWeek() };
@@ -819,7 +825,51 @@ function playScene(bus: Bus, scene: string) {
       // Le panneau « Quoi de neuf » de la version installée (core/whats-new.ts).
       bus.inject("app.whats-new", null, "demo");
       break;
+    case "halos-battery":
+      play(bus, HALOS_BATTERY);
+      break;
+    case "halos-tour":
+      play(bus, HALOS_TOUR);
+      break;
   }
+}
+
+// ── Les halos de l'île (src/island/halo.ts) : des moments qui défilent ────────
+
+type Step = [ms: number, topic: string, payload: unknown];
+
+/** Les halos de batterie : branché, chargée, débranché, faible, critique, branché (soulagement). */
+const HALOS_BATTERY: Step[] = [
+  [0, "system.battery-plug", { plugged: true, percent: 56, charging: true }],
+  [5000, "system.battery-full", {}],
+  [9000, "system.battery-plug", { plugged: false, percent: 82, charging: false }],
+  [12500, "system.battery-low", { percent: 18 }],
+  [20000, "system.battery-critical", { percent: 8 }],
+  [28000, "system.battery-plug", { plugged: true, percent: 9, charging: true }],
+];
+
+/** Les autres halos, l'un après l'autre. */
+const HALOS_TOUR: Step[] = [
+  [0, "halos.wake", { secs: 3600 }],
+  [5500, "controls.usb-added", { root: "E:\\", letter: "E:", label: "CLÉ", removable: true }],
+  [8500, "shelf.downloaded", { name: "Facture-octobre.pdf" }],
+  [12000, "system.disk-low", { mount: "C:\\", freePct: 3, freeGb: 14.2 }],
+  [18500, "halos.wifi", { quality: 22 }],
+  [23500, "weather.updated", { icon: "⛈️", temp: "16°C", label: "Orage", place: "Lyon", detail: "" }],
+  [32000, "island.halo", { action: "think", on: true }],
+  [37000, "island.halo", { action: "think", on: false }],
+  [37500, "agents.event", { at: 0, source: "claude-code", kind: "waiting", title: "Claude attend votre permission", body: "npm run build", project: "site-ondine" }],
+  [42000, "agents.event", { at: 0, source: "claude-code", kind: "done", title: "Claude a fini", body: "Le site est à jour", project: "site-ondine" }],
+  [46500, "halos.lock-key", { key: "caps", on: true }],
+  [48500, "halos.clip", { action: "copy", text: "Bonjour tout le monde" }],
+  [50500, "halos.volume", { volume: 45, muted: false }],
+  [51200, "halos.volume", { volume: 60, muted: false }],
+  [53000, "controls.media-use", { mic: ["Teams"], cam: [] }],
+  [60000, "controls.media-use", { mic: [], cam: [] }],
+];
+
+function play(bus: Bus, steps: Step[]) {
+  for (const [ms, topic, payload] of steps) window.setTimeout(() => demoOn() && bus.inject(topic, payload, "demo"), ms);
 }
 
 /** Branche le mode démo sur l'île (fenêtre principale). */

@@ -94,7 +94,7 @@ const MODULE_CATEGORIES: { id: string; label: string; modules: string[] }[] = [
   { id: "files", label: "Fichiers", modules: ["shelf", "clipboard", "capture", "launcher"] },
   { id: "organize", label: "Organisation", modules: ["timer", "notes", "agenda", "pauses", "weekly"] },
   { id: "it", label: "Outils IT", modules: ["terminal", "system", "remote", "nettools"] },
-  { id: "daily", label: "Le PC au quotidien", modules: ["media", "controls", "weather"] },
+  { id: "daily", label: "Le PC au quotidien", modules: ["media", "controls", "weather", "halos"] },
   { id: "other", label: "Autres modules", modules: [] },
 ];
 
@@ -119,6 +119,14 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
     { id: "perms", label: "Autorisations et MCP", keys: ["mcp", "permissions", "permissionWait"] },
     { id: "tokens", label: "Jetons et budget", keys: ["usage", "prices", "dailyBudget"] },
     { id: "github", label: "GitHub", keys: ["githubLogin", "githubToken"] },
+  ],
+  // Animations de l'île : une case par moment, rangées par famille.
+  halos: [
+    { id: "general", label: "Général", keys: ["intensity", "colors"] },
+    { id: "pc", label: "Événements du PC", keys: ["wake", "usb", "download", "disk", "wifi", "weather", "network", "capture", "shelfDrop", "cpu", "update"] },
+    { id: "ondine", label: "Ondine et agents", keys: ["think", "agents", "voice", "focus", "meeting", "streak", "dance"] },
+    { id: "keys", label: "Clavier et presse-papiers", keys: ["capsLock", "numLock", "clipboard", "clipText", "volumeKeys"] },
+    { id: "day", label: "Moments de la journée", keys: ["leaveTime", "morning", "sky", "music"] },
   ],
   askclaude: [
     { id: "general", label: "Général", keys: [] },
@@ -167,7 +175,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "🎨",
     label: "Apparence",
     sub: "La couleur de l'île et ses petits sons.",
-    keywords: ["Thème", "Icônes", "Style des icônes", "Animations", "Style des animations", "Studio", "Élasticité de l'île", "Couleur de l'île", "Couleur personnalisée", "Sons de clic", "Volume des sons"],
+    keywords: ["Thème", "Icônes", "Style des icônes", "Animations", "Style des animations", "Studio", "Élasticité de l'île", "Halo autour de l'île", "Couleur de l'île", "Couleur personnalisée", "Sons de clic", "Volume des sons"],
     render: look,
   },
   {
@@ -1030,6 +1038,8 @@ function demoGroup(): HTMLElement {
                 scene("download", "Fichier téléchargé"),
                 scene("next-track", "Morceau suivant"),
                 scene("whats-new", "Quoi de neuf"),
+                scene("halos-battery", "Halos de batterie"),
+                scene("halos-tour", "Autres halos"),
               ),
               "La notification arrive dans l'île : lancez l'enregistrement avant de cliquer.",
             ),
@@ -1089,6 +1099,12 @@ function look(main: HTMLElement) {
         "Élasticité de l'île",
         segmented(s.island.elasticity ?? "normal", [["soft", "Doux"], ["normal", "Normal"], ["jelly", "Gelée"]], (v) => save((d) => (d.island.elasticity = v as Settings["island"]["elasticity"]))),
         "Doux : l'île se pose sans rebondir. Normal : un petit rebond. Gelée : elle tremblote, se creuse sous vos clics et s'étire comme de la guimauve. Si Windows réduit les animations, rien ne bouge.",
+      ),
+      // Le halo de lumière autour de l'île : ses réglages sont ceux du module « Animations de l'île ».
+      row(
+        "Halo autour de l'île",
+        el("button", { class: "btn small", onclick: () => go("module:halos") }, "Régler les animations de l'île"),
+        "Un liseré de lumière en couleurs qui bougent : batterie, agents, sortie de veille, téléchargements… Chaque moment se coupe à part.",
       ),
     ]),
     group("Sons", [

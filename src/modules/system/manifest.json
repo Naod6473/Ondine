@@ -3,7 +3,7 @@
   "name": "Système",
   "tip": "Cliquez sur « Copier pour le support » : tout est prêt à coller dans un ticket.",
   "icon": "📊",
-  "description": "L'état du PC d'un coup d'œil : processeur, mémoire, disques, adresses IP et MAC, batterie, version de Windows, redémarrage en attente. Un bouton copie un résumé à coller dans un ticket de support. Prévient quand un disque est presque plein, quand la batterie est faible ou chargée. Ondine transpire quand le processeur est à fond. Tout est lu sur le PC : rien ne part sur Internet.",
+  "description": "L'état du PC d'un coup d'œil : processeur, mémoire, disques, adresses IP et MAC, batterie, version de Windows, redémarrage en attente. Un bouton copie un résumé à coller dans un ticket de support. Prévient quand un disque est presque plein, quand la batterie est faible ou chargée, avec un halo de couleur autour de l'île (vert en charge, orange faible, rouge critique). Ondine transpire quand le processeur est à fond. Tout est lu sur le PC : rien ne part sur Internet.",
   "version": "0.1.0",
   "permissions": [
     "clipboard",
@@ -39,6 +39,67 @@
         "default": true
       },
       {
+        "key": "batteryCriticalPct",
+        "type": "number",
+        "label": "Batterie critique à (%, 0 = jamais)",
+        "help": "Sous ce seuil : halo rouge qui bat vite et Ondine panique, jusqu'au branchement du chargeur (ou un clic sur « Compris »).",
+        "default": 10,
+        "min": 0,
+        "max": 30,
+        "step": 1
+      },
+      {
+        "key": "chargeHalo",
+        "type": "select",
+        "label": "Halo pendant la charge",
+        "default": "brief",
+        "options": [
+          {
+            "value": "always",
+            "label": "Toujours"
+          },
+          {
+            "value": "brief",
+            "label": "Quelques secondes"
+          },
+          {
+            "value": "never",
+            "label": "Jamais"
+          }
+        ]
+      },
+      {
+        "key": "haloPlug",
+        "type": "boolean",
+        "label": "Halo au branchement du chargeur",
+        "help": "Une vague verte remplit le contour de l'île jusqu'au niveau de charge.",
+        "default": true
+      },
+      {
+        "key": "haloUnplug",
+        "type": "boolean",
+        "label": "Halo au débranchement du chargeur",
+        "default": true
+      },
+      {
+        "key": "haloFull",
+        "type": "boolean",
+        "label": "Halo quand la batterie est chargée",
+        "default": true
+      },
+      {
+        "key": "haloLow",
+        "type": "boolean",
+        "label": "Halo de batterie faible",
+        "default": true
+      },
+      {
+        "key": "haloCritical",
+        "type": "boolean",
+        "label": "Halo de batterie critique",
+        "default": true
+      },
+      {
         "key": "ondineMood",
         "type": "boolean",
         "label": "L'humeur d'Ondine suit le PC (processeur à fond, batterie faible, heure tardive)",
@@ -71,21 +132,27 @@
     "copy_support",
     "ticket",
     "reboot",
-    "open_update"
+    "open_update",
+    "battery"
   ],
   "events": {
     "emits": [
       "system.disk-low",
       "system.battery-low",
       "system.battery-full",
-      "system.cpu-busy"
+      "system.cpu-busy",
+      "system.battery-plug",
+      "system.battery-critical",
+      "mascot.emote"
     ],
     "listens": [
       "system.disk-low",
       "system.battery-low",
       "system.battery-full",
       "weather.updated",
-      "controls.media-use"
+      "controls.media-use",
+      "system.battery-plug",
+      "system.battery-critical"
     ]
   }
 }
