@@ -20,6 +20,9 @@ pub struct NowPlaying {
     pub title: String,
     pub artist: String,
     pub album: String,
+    /// Le genre donné par le lecteur (« Rock », « Hip-Hop, Rap »…), souvent vide :
+    /// beaucoup de lecteurs ne le remplissent pas. Sert au style de la danse de la mascotte.
+    pub genre: String,
     /// "playing", "paused", "stopped" ou "changing".
     pub status: &'static str,
     /// Position et durée en millisecondes, si l'appli les donne.
@@ -139,6 +142,7 @@ mod win {
             title: text(props.Title()),
             artist: text(props.Artist()),
             album: text(props.AlbumTitle()),
+            genre: genres(&props),
             status,
             position_ms,
             duration_ms,
@@ -147,6 +151,18 @@ mod win {
             can_previous: can(&|c| c.IsPreviousEnabled()),
             can_seek: can(&|c| c.IsPlaybackPositionEnabled()) && duration_ms.is_some(),
         }))
+    }
+
+    /// Les genres du morceau (trois au plus), séparés par des virgules ; vide si le lecteur n'en donne pas.
+    fn genres(props: &windows::Media::Control::GlobalSystemMediaTransportControlsSessionMediaProperties) -> String {
+        let Ok(list) = props.Genres() else { return String::new() };
+        let n = list.Size().unwrap_or(0).min(3);
+        (0..n)
+            .filter_map(|i| list.GetAt(i).ok())
+            .map(|h| h.to_string().trim().to_string())
+            .filter(|g| !g.is_empty())
+            .collect::<Vec<_>>()
+            .join(", ")
     }
 
     /// Millisecondes écoulées depuis une date Windows (ticks de 100 ns depuis 1601).

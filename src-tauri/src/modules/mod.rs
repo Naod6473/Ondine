@@ -32,6 +32,8 @@ mod controls;
 mod controls_remote;
 mod launcher;
 mod media;
+// Le tempo de la musique (estimation locale à partir du niveau sonore) : la danse de la mascotte.
+mod media_tempo;
 mod nettools;
 // Réseau → surveillance des services IA (pages d'état de Claude, ChatGPT, Gemini).
 mod nettools_ai;

@@ -2,6 +2,7 @@
 // mascotte. Aujourd'hui : un dessin en Canvas 2D. Demain : planches de sprites,
 // Lottie ou Rive, en ajoutant un renderer ici, sans toucher au reste.
 
+import type { Beat } from "./beat";
 import type { AnimationSpec, MascotExtras, MascotManifest, MascotState, Mood } from "./types";
 import { PlaceholderCanvasRenderer } from "./renderers/canvas-placeholder";
 import { GumRenderer } from "./renderers/gum";
@@ -33,6 +34,11 @@ export interface MascotRenderer {
    * question d'agent ouverte), le parapluie (la Météo annonce la pluie).
    */
   setExtras?(extras: MascotExtras): void;
+  /**
+   * Facultatif : le temps de la musique pour les danses (bpm et l'instant
+   * d'un temps, performance.now()) ; null : le tempo typique du style (src/mascot/beat.ts).
+   */
+  setBeat?(beat: Beat | null): void;
   /**
    * Facultatif : dose l'émotion qui vient de commencer (`intensity` 0 à 1),
    * la mélange à une autre animation (`mix`, part `mixK`), ou la joue de

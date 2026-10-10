@@ -22,7 +22,7 @@ export function demoOn(): boolean {
 }
 
 /** Les scènes que la fenêtre de réglages peut demander (sujet « demo.scene »). */
-export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "timer-ring", "voice", "voice-error", "mascot-talk", "ai-outage", "team-visit", "island-dodge"] as const;
+export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "timer-ring", "voice", "voice-error", "mascot-talk", "ai-outage", "team-visit", "island-dodge", "dances"] as const;
 export type DemoScene = (typeof DEMO_SCENES)[number];
 
 /**
@@ -74,8 +74,8 @@ function cover(n: number): string {
 }
 
 const TRACKS = [
-  { title: "Lumière d'été", artist: "Les Vagues", album: "Marées", durationMs: 214_000 },
-  { title: "Nuit bleue", artist: "Corail", album: "Profondeurs", durationMs: 187_000 },
+  { title: "Lumière d'été", artist: "Les Vagues", album: "Marées", durationMs: 214_000, genre: "Pop", bpm: 116 },
+  { title: "Nuit bleue", artist: "Corail", album: "Profondeurs", durationMs: 187_000, genre: "Électro", bpm: 128 },
 ];
 
 const state = {
@@ -106,7 +106,7 @@ function position(): number {
 }
 
 function mediaState() {
-  const t = TRACKS[state.track];
+  const t = { ...TRACKS[state.track], ...(danceTrack ?? {}) };
   return {
     playing: {
       app: "Spotify.exe",
@@ -121,6 +121,60 @@ function mediaState() {
     // Un numéro de pochette à part (1000+) : il ne se confond pas avec les vrais.
     artwork: 1000 + state.track,
   };
+}
+
+// ── Le tempo inventé (la danse de la mascotte, src/eggs/dance.ts) ────────────
+
+/** Le morceau de la scène « Danses selon la musique » (un style après l'autre), à la place du morceau de démo. */
+let danceTrack: { title: string; artist: string; genre: string; bpm: number } | null = null;
+let tempoTimer = 0;
+const tempoClock = performance.now();
+
+/**
+ * Ce que le Rust mesurerait (« media.tempo » une fois par seconde tant que la
+ * mascotte danse) : le tempo du morceau de démo, des temps réguliers depuis
+ * le chargement de la page.
+ */
+function demoTempo(bus: Bus, on: boolean) {
+  window.clearInterval(tempoTimer);
+  tempoTimer = 0;
+  if (!on) return;
+  const tick = () => {
+    if (!demoOn() || !state.playing) return;
+    const bpm = danceTrack?.bpm ?? TRACKS[state.track].bpm;
+    const phase = ((performance.now() - tempoClock) / (60_000 / bpm)) % 1;
+    bus.inject("media.tempo", { bpm, phase: Math.round(phase * 1000) / 1000, confidence: 0.6, energy: 0.4 }, "media");
+  };
+  tick();
+  tempoTimer = window.setInterval(tick, 1000);
+}
+
+/** Les styles de la scène « Danses selon la musique » : le genre que donnerait le lecteur, et le tempo. */
+const DANCE_TOUR: [genre: string, bpm: number][] = [
+  ["Rock", 124],
+  ["Heavy Metal", 150],
+  ["Hip-Hop", 92],
+  ["R&B", 76],
+  ["Pop", 116],
+  ["Electronic", 128],
+  ["Reggae", 78],
+  ["Jazz", 96],
+];
+const DANCE_STEP_MS = 6500;
+
+function danceTour(bus: Bus) {
+  state.playing = true;
+  DANCE_TOUR.forEach(([genre, bpm], i) =>
+    window.setTimeout(() => {
+      if (!demoOn()) return;
+      danceTrack = { title: `Démo ${genre}`, artist: `${bpm} BPM`, genre, bpm };
+      bus.inject("media.changed", mediaState(), "demo");
+    }, i * DANCE_STEP_MS),
+  );
+  window.setTimeout(() => {
+    danceTrack = null;
+    if (demoOn()) bus.inject("media.changed", mediaState(), "demo");
+  }, DANCE_TOUR.length * DANCE_STEP_MS);
 }
 
 function setPosition(ms: number) {
@@ -446,6 +500,9 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return mediaState();
     case "media.artwork":
       return { url: cover(state.track) };
+    case "media.tempo":
+      demoTempo(bus, args.on === true);
+      return null;
     case "media.toggle":
       setPosition(position());
       state.playing = !state.playing;
@@ -911,6 +968,11 @@ function playScene(bus: Bus, scene: string) {
     case "team-visit":
       // La mascotte d'une collègue traverse l'île (module Équipe).
       bus.inject("team.event", { kind: "visit", from: TEAM_PEERS[0], note: "Le café est prêt !" }, "demo");
+      break;
+    case "dances":
+      // Un style après l'autre (6,5 s chacun), au tempo inventé : la mascotte danse
+      // si l'île est en mini-île (ou sur le bureau), avec le halo sur les temps.
+      danceTour(bus);
       break;
     case "island-dodge":
       // L'île s'écarte de la fenêtre de réglages (forme et peur d'Ondine ; la

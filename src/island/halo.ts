@@ -28,6 +28,9 @@
 //   level      0 à 1, pour la forme "level"
 //   endsAt     forme "progress" : l'heure de fin (Date.now()), le liseré se vide jusque-là
 //   total      forme "progress" : la durée complète (ms)
+//   beatAt     forme "breathe" : l'instant (performance.now()) d'un temps de la
+//              musique : la lueur bat sur les temps (période = rhythm), au lieu de respirer
+//   flash      avec beatAt : un éclat vif et court sur chaque temps (la danse électro)
 //
 // ── Les formes ───────────────────────────────────────────────────────────────
 //   aurora     les couleurs coulent en continu autour de l'île
@@ -85,6 +88,7 @@ import {
   PALETTES,
   progressLeft,
   progressWarn,
+  beatPulse,
   pulse,
   rgba,
   rgbToHex,
@@ -129,6 +133,8 @@ export interface HaloOptions {
   level?: number;
   endsAt?: number | null;
   total?: number;
+  beatAt?: number | null;
+  flash?: boolean;
 }
 
 /** Une demande en cours. */
@@ -149,6 +155,9 @@ interface Halo {
   /** Forme "progress" : heure de fin (Date.now()) et durée complète ; null = figé à `fill`. */
   endsAt: number | null;
   total: number;
+  /** Forme "breathe" sur la musique : l'instant d'un temps (performance.now()), et l'éclat de l'électro. */
+  beatAt: number | null;
+  flash: boolean;
   start: number;
   /** Fondu d'entrée / de sortie (ressort : l'entrée dépasse un peu, ça « embrase »). */
   env: Spring;
@@ -394,6 +403,8 @@ class HaloLayer {
       levelS: { x: 0, v: 0 },
       endsAt: typeof o.endsAt === "number" && Number.isFinite(o.endsAt) ? o.endsAt : null,
       total: Math.max(0, Number(o.total) || 0),
+      beatAt: typeof o.beatAt === "number" && Number.isFinite(o.beatAt) ? o.beatAt : null,
+      flash: o.flash === true,
       // Même forme qu'avant (le volume qu'on monte, touche après touche) : elle continue.
       start: old && old.shape === shape ? old.start : now,
       // Une demande qui remplace la même garde sa lumière (pas de trou noir entre les deux).
@@ -680,6 +691,12 @@ class HaloLayer {
         break;
       }
       case "breathe": {
+        // Sur la musique (la danse) : elle bat sur les temps ; sinon elle respire.
+        if (h.beatAt !== null) {
+          const p = beatPulse(now - h.beatAt, period, h.flash);
+          this.glowStroke(ctx, path, grad, glow * (h.flash ? 0.35 + 1.05 * p : 0.45 + 0.75 * p), alpha * (0.4 + 0.6 * p));
+          break;
+        }
         const p = pulse(h.rhythm, t);
         this.glowStroke(ctx, path, grad, glow * (0.45 + 0.75 * p), alpha * (0.45 + 0.55 * p));
         break;

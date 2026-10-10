@@ -11,13 +11,15 @@
     "fields": [
       { "key": "announceTracks", "essential": true, "type": "boolean", "label": "Montrer l'île quand un nouveau morceau commence", "default": true },
       { "key": "showCompact", "essential": true, "type": "boolean", "label": "Afficher le morceau dans la pilule de l'île", "default": true },
-      { "key": "compactControls", "type": "boolean", "label": "Boutons précédent / lecture / suivant dans la pilule", "help": "Un clic sur un bouton ne déplie pas l'île.", "default": true }
+      { "key": "compactControls", "type": "boolean", "label": "Boutons précédent / lecture / suivant dans la pilule", "help": "Un clic sur un bouton ne déplie pas l'île.", "default": true },
+      { "key": "danceTempo", "type": "boolean", "label": "La mascotte danse au tempo de la musique", "help": "Ondine écoute seulement le niveau du son qui sort des haut-parleurs (un nombre, jamais le son lui-même) pour trouver le rythme. Tout se fait sur l'ordinateur : rien n'est enregistré ni envoyé.", "default": true },
+      { "key": "danceStyle", "type": "select", "label": "Style de danse", "help": "Automatique : le genre donné par le lecteur s'il le donne, sinon d'après le tempo et l'énergie du son.", "default": "auto", "options": [{ "value": "auto", "label": "Automatique" }, { "value": "rock", "label": "Rock" }, { "value": "metal", "label": "Metal" }, { "value": "rap", "label": "Rap" }, { "value": "rnb", "label": "RnB" }, { "value": "pop", "label": "Pop" }, { "value": "electro", "label": "Électro" }, { "value": "reggae", "label": "Reggae" }, { "value": "jazz", "label": "Jazz et chill" }] }
     ]
   },
   "views": ["compact", "expanded"],
-  "commands": ["state", "artwork", "toggle", "next", "previous", "seek"],
+  "commands": ["state", "artwork", "toggle", "next", "previous", "seek", "tempo"],
   "events": {
-    "emits": ["media.changed"],
+    "emits": ["media.changed", "media.tempo"],
     "listens": ["media.changed", "media.pause"]
   }
 }
