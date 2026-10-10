@@ -729,6 +729,11 @@ export class Island {
    * module la hauteur (1 = une alerte). Pas avec « Réduire les animations »
    * ni en économie d'énergie ; la propriété `translate` ne gêne pas les
    * transformations de la gelée (jelly.ts).
+   *
+   * `composite: "add"` : le saut s'AJOUTE au `translate` posé par la feuille
+   * de style (-50 % pour l'île centrée, island.css). Sans lui, l'animation le
+   * remplaçait par « 0 0 » et l'île sautait d'une demi-largeur sur le côté
+   * le temps du saut (Verr Maj, Collé…).
    */
   private hop(amount: number) {
     if (reducedMotion() || perfMode() === "eco" || !motionOn()) return;
@@ -746,7 +751,7 @@ export class Island {
         { translate: back, offset: 0.7, easing: "ease-in-out" },
         { translate: "0 0", offset: 1 },
       ],
-      { duration: 420, easing: "ease-out" },
+      { duration: 420, easing: "ease-out", composite: "add" },
     );
   }
 
