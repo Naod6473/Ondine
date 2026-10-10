@@ -256,6 +256,13 @@
         "help": "Pendant la lecture, le halo pulse avec le son qui sort des haut-parleurs (seulement son niveau)."
       },
       {
+        "key": "musicCover",
+        "type": "boolean",
+        "label": "Couleurs de la pochette",
+        "default": true,
+        "help": "Le halo de la musique (et celui de la danse) prend les couleurs de la pochette du morceau en lecture. Calculé dans l'île, rien n'est envoyé."
+      },
+      {
         "key": "liquid",
         "type": "boolean",
         "label": "Animations à l'intérieur de l'île",

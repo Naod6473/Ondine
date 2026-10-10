@@ -44,7 +44,7 @@ import { icon } from "../island/icon";
 import { GLIDE } from "../island/jelly";
 import { springAtRest, stepSpring, type Spring } from "../island/spring";
 import { reducedMotion } from "../island/tab-pill";
-import { applyTheme } from "../island/themes";
+import { applyIslandTheme } from "../island/light-island";
 import { findMascot } from "../mascot/catalog";
 import { MascotController } from "../mascot/mascot-state";
 import { createRenderer, type MascotRenderer } from "../mascot/renderer";
@@ -157,7 +157,7 @@ class Pet {
   // ── Réglages et mascotte ───────────────────────────────────────────────────
 
   private applySettings(s: Settings) {
-    applyTheme(s.island.theme ?? "nuit", s.island.color ?? "");
+    applyIslandTheme(s);
     this.box.dataset.mascotSize = s.mascot.size ?? "normal";
     // Hors du bureau, pas de mascotte qui tourne pour rien (la fenêtre est cachée).
     const wanted = petOn(s) ? s.mascot.id : "";

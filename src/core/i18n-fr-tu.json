@@ -285,7 +285,10 @@
 "Rien de spécial pour l'instant : Ondine vous préviendra.": "Rien de spécial pour l'instant : Ondine te préviendra.",
 "vous attend": "t'attend",
 "Dictée hors ligne choisie, mais la reconnaissance vocale de votre langue n'est pas installée dans Windows : Paramètres Windows → Heure et langue → Langue et région → votre langue → Options de langue → Reconnaissance vocale.": "Dictée hors ligne choisie, mais la reconnaissance vocale de ta langue n'est pas installée dans Windows : Paramètres Windows → Heure et langue → Langue et région → ta langue → Options de langue → Reconnaissance vocale.",
-"Quand vous parlez à Ondine, le moteur de reconnaissance installé dans Windows écrit vos mots sur le PC : rien ne le quitte, rien n'est enregistré sur le disque.": "Quand tu parles à Ondine, le moteur de reconnaissance installé dans Windows écrit tes mots sur le PC : rien ne le quitte, rien n'est enregistré sur le disque."
+"Quand vous parlez à Ondine, le moteur de reconnaissance installé dans Windows écrit vos mots sur le PC : rien ne le quitte, rien n'est enregistré sur le disque.": "Quand tu parles à Ondine, le moteur de reconnaissance installé dans Windows écrit tes mots sur le PC : rien ne le quitte, rien n'est enregistré sur le disque.",
+"Une petite encoche avec Ondine sur chacun de vos autres écrans. Approchez la souris du reflet : l'île vient s'ouvrir sur cet écran.": "Une petite encoche avec Ondine sur chacun de tes autres écrans. Approche la souris du reflet : l'île vient s'ouvrir sur cet écran.",
+"Tournez la molette au-dessus de la mini-île (ou de la mascotte, île ouverte) : le son monte ou baisse, sans cliquer. Une petite jauge montre le niveau.": "Tourne la molette au-dessus de la mini-île (ou de la mascotte, île ouverte) : le son monte ou baisse, sans cliquer. Une petite jauge montre le niveau.",
+"Activez-le dans les Réglages, ou choisissez une autre action du double-clic.": "Active-le dans les Réglages, ou choisis une autre action du double-clic."
 },
 "patterns": [
 [

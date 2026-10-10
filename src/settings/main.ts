@@ -196,7 +196,7 @@ const ONDINE_PAGES: Page[] = [
     icon: "💧",
     label: "Mascotte",
     sub: "Qui vit dans l'île, et quand elle s'ennuie ou s'endort.",
-    keywords: ["Afficher la mascotte", "Mascotte", "Taille", "Couleur", "Roue de couleur", "Couleur personnalisée de la mascotte", "Mains", "Sur la tête", "Lunettes", "Au cou", "S'ennuie après", "S'endort après", "Calme : moins de gestes spontanés", "Ondine vient pendre au bord", "Au plus une visite toutes les", "Faire venir Ondine", "Surprises cachées", "Le goûter d'Ondine", "Carnet des trésors", "Tester les animations", "Ondine vit sur le bureau", "Au-dessus des fenêtres", "Raccourci pour ouvrir sa bulle", "Elle se promène quand vous ne touchez plus au PC"],
+    keywords: ["Afficher la mascotte", "Mascotte", "Taille", "Couleur", "Roue de couleur", "Couleur personnalisée de la mascotte", "Mains", "Sur la tête", "Lunettes", "Au cou", "S'ennuie après", "S'endort après", "Calme : moins de gestes spontanés", "Ondine vient pendre au bord", "Au plus une visite toutes les", "Faire venir Ondine", "Surprises cachées", "Le goûter d'Ondine", "Carnet des trésors", "Tester les animations", "Ondine vit sur le bureau", "Au-dessus des fenêtres", "Raccourci pour ouvrir sa bulle", "Elle se promène quand vous ne touchez plus au PC", "Double-clic sur Ondine"],
     render: mascot,
     subs: () => [
       { id: "look", label: "Apparence" },
@@ -218,7 +218,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "🎨",
     label: "Apparence",
     sub: "La couleur de l'île, ses icônes, son élasticité et ses petits sons.",
-    keywords: ["Thème", "Icônes", "Style des icônes", "Animations", "Style des animations", "Studio", "Élasticité de l'île", "Halo autour de l'île", "Couleur de l'île", "Taille de la mini-île", "Nano", "Style de l'île", "Bouche d'Ondine", "Couleur personnalisée", "Sons de clic", "Volume des sons"],
+    keywords: ["Thème", "Givre", "Verre clair", "Icônes", "Style des icônes", "Animations", "Style des animations", "Studio", "Élasticité de l'île", "Halo autour de l'île", "Couleur de l'île", "Taille de la mini-île", "Nano", "Style de l'île", "Bouche d'Ondine", "Couleur personnalisée", "Sons de clic", "Volume des sons"],
     render: look,
   },
   {
@@ -227,7 +227,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "🪟",
     label: "Comportement",
     sub: "Où vit l'île, quand elle se replie, et comment Ondine vit avec vos fenêtres.",
-    keywords: ["Sur quel écran ?", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Ondine évite la fenêtre de réglages", "Mode présentation", ...fieldLabels("windowlife")],
+    keywords: ["Sur quel écran ?", "Reflet sur les autres écrans", "Toujours en mini", "Replier l'île", "Durée des notifications", "Raccourci pour ouvrir l'île", "Bord de l'écran", "Ondine évite la fenêtre de réglages", "Mode présentation", ...fieldLabels("windowlife")],
     render: behavior,
     essentials: behaviorEssentials(),
     subs: () => [
@@ -1030,6 +1030,12 @@ function behavior(main: HTMLElement) {
         choice(s.general.screen, [["primary", "Écran principal"], ["cursor", "Suit la souris"]], (v) => save((d) => (d.general.screen = v as Settings["general"]["screen"]))),
         "Seulement si vous avez plusieurs écrans : l'île reste sur l'écran principal, ou suit l'écran où se trouve votre souris.",
       ),
+      // Plusieurs écrans : un reflet de l'île sur les autres (src-tauri/src/island/mirrors.rs, 1.2.3).
+      row(
+        "Reflet sur les autres écrans",
+        toggle(s.island.otherScreens ?? false, (v) => save((d) => (d.island.otherScreens = v)), "Reflet sur les autres écrans"),
+        "Une petite encoche avec Ondine sur chacun de vos autres écrans. Approchez la souris du reflet : l'île vient s'ouvrir sur cet écran.",
+      ),
       row(
         "Toujours en mini",
         toggle(s.island.alwaysMini ?? true, (v) => save((d) => (d.island.alwaysMini = v)), "Toujours en mini"),
@@ -1811,6 +1817,22 @@ function mascot(main: HTMLElement) {
         "Calme : moins de gestes spontanés",
         toggle(s.mascot.calm ?? false, (v) => save((d) => (d.mascot.calm = v)), "Calme : moins de gestes spontanés"),
         "Plus d'ennui, de goûter, de visites au bord de l'écran ni de réactions aux modules ; en musique, un simple hochement de tête au lieu de la danse. Elle réagit toujours aux agents IA (attente, question), aux erreurs, aux réussites, aux alertes, et elle dort.",
+      ),
+      // Double-clic sur Ondine dans l'île (src/island/mascot-double-click.ts, 1.2.3).
+      row(
+        "Double-clic sur Ondine",
+        choice(
+          s.mascot.doubleClick ?? "ask",
+          [
+            ["ask", "Parler à Ondine"],
+            ["launcher", "Lanceur"],
+            ["capture", "Capture"],
+            ["note", "Note rapide"],
+            ["none", "Rien"],
+          ],
+          (v) => save((d) => (d.mascot.doubleClick = v as NonNullable<Settings["mascot"]["doubleClick"]>)),
+        ),
+        "Dans l'île. Un clic simple garde ses réactions (elle sourit, rit, s'agace si on insiste).",
       ),
     ])),
     inSub("desk", petGroup()),

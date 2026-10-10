@@ -2454,7 +2454,19 @@
 "Un mot court, levé au-dessus de sa tête pendant 8 s : « Occupé », « En réunion », « Pause », « ? »… (14 caractères au plus sur la pancarte). Un clic sur elle la baisse.": "A short word, held up above her head for 8 s: « Busy », « In a meeting », « Pause », « ? »… (14 characters at most on the sign). A click on her lowers it.",
 "Ondine regarde doucement le réseau local de ce PC (un ping toutes les 3 secondes, rien d'autre), seulement tant que la règle est active. La première fois, elle apprend les appareils présents sans prévenir. {nom} = l'appareil. Rien ne quitte le PC.": "Ondine gently looks at this PC's local network (one ping every 3 seconds, nothing else), only while the rule is on. The first time, she learns the devices already there without warning. {nom} = the device. Nothing leaves the PC.",
 "un nouvel appareil apparaît sur le réseau local": "a new device appears on the local network",
-"Occupé": "Busy"
+"Occupé": "Busy",
+"Givre": "Frost",
+"Verre clair": "Light glass",
+"Note rapide": "Quick note",
+"Double-clic sur Ondine": "Double-click on Ondine",
+"Dans l'île. Un clic simple garde ses réactions (elle sourit, rit, s'agace si on insiste).": "In the island. A single click keeps its reactions (she smiles, laughs, gets annoyed if you insist).",
+"Reflet sur les autres écrans": "Reflection on other screens",
+"Une petite encoche avec Ondine sur chacun de vos autres écrans. Approchez la souris du reflet : l'île vient s'ouvrir sur cet écran.": "A small notch with Ondine on each of your other screens. Move the mouse to the reflection: the island comes and opens on that screen.",
+"Molette sur l'île = volume": "Mouse wheel on the island = volume",
+"Tournez la molette au-dessus de la mini-île (ou de la mascotte, île ouverte) : le son monte ou baisse, sans cliquer. Une petite jauge montre le niveau.": "Turn the mouse wheel over the mini island (or over the mascot when the island is open): the sound goes up or down, no click needed. A small gauge shows the level.",
+"Couleurs de la pochette": "Album art colors",
+"Le halo de la musique (et celui de la danse) prend les couleurs de la pochette du morceau en lecture. Calculé dans l'île, rien n'est envoyé.": "The music halo (and the dance halo) takes the colors of the album art of the track playing. Computed in the island, nothing is sent.",
+"Activez-le dans les Réglages, ou choisissez une autre action du double-clic.": "Turn it on in Settings, or choose another double-click action."
 },
 "patterns": [
 [
@@ -4352,6 +4364,10 @@
 [
 "^la dictée hors ligne n'a pas démarré \\((.+)\\)$",
 "offline dictation did not start ($1)"
+],
+[
+"^Module « (.+) » désactivé$",
+"$1 module is off"
 ]
 ]
 }

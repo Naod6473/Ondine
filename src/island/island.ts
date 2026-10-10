@@ -36,7 +36,9 @@ import { Jelly } from "./jelly";
 import { elasticityOf } from "./spring";
 import { sounds, setSoundPrefs } from "./sounds";
 import { enableTabDrag, flip } from "./tab-drag";
-import { applyTheme } from "./themes";
+import { applyIslandTheme } from "./light-island";
+import { attachWheelVolume } from "./volume-wheel";
+import { ACTION_MODULE, CONFIRM_MS, DoubleClick, doubleClickActionOf } from "./mascot-double-click";
 import { reducedMotion, TabPill } from "./tab-pill";
 import { Tips } from "./tips";
 
@@ -101,6 +103,8 @@ export class Island {
   private fsm: IslandStateMachine;
   private shell = el("div", { class: "island", "data-state": "hidden" });
   private mascotSlot = el("div", { class: "mascot-slot", title: "" });
+  /** Les clics sur la mascotte, pour reconnaître un double-clic (réglage mascot.doubleClick). */
+  private doubleClick = new DoubleClick();
   private content = el("div", { class: "island-content" });
   /** Le petit point orange (micro) ou vert (caméra) quand une appli s'en sert. */
   private privacyDot = el("span", { class: "privacy-dot", "aria-hidden": "true" });
@@ -187,6 +191,8 @@ export class Island {
     attachHalo(this.root, this.shell, this.bus, () => this.fsm.state);
     // Le liquide À L'INTÉRIEUR de l'île (liquid.ts) : derrière le contenu.
     attachLiquid(this.shell, this.bus, () => this.fsm.state);
+    // La molette sur l'île règle le volume, avec une petite jauge (volume-wheel.ts, 1.2.3).
+    attachWheelVolume(this.shell, this.mascotSlot, this.bus, () => this.fsm.state);
     this.jelly = new Jelly(this.shell, {
       edge: () => this.edge(),
       align: () => document.body.dataset.align ?? "center",
@@ -326,7 +332,8 @@ export class Island {
     // (Sauf si elle s'écarte en ce moment d'une fenêtre : sa place provisoire.)
     document.body.dataset.edge = this.dodgePlace?.edge ?? s.island.edge ?? "top";
     document.body.dataset.align = this.dodgePlace?.align ?? s.island.align ?? "center";
-    applyTheme(s.island.theme ?? "nuit", s.island.color ?? "");
+    // Le thème (un thème clair retourne les couleurs d'island.css, light-island.ts).
+    applyIslandTheme(s);
     setSoundPrefs(s.island.sounds ?? true, s.island.soundVolume ?? 0.5);
     this.reorderTabs();
     this.drawPrivacy();
@@ -462,6 +469,8 @@ export class Island {
     // souris et prévient quand elle touche cette bande.
     void onTauriEvent("wake-enter", () => this.fsm.state === "hidden" && !this.presenting && !this.forms.away && this.fsm.pointerEnter());
     void onTauriEvent("wake-leave", () => this.fsm.state === "hidden" && this.fsm.pointerLeave());
+    // La souris a touché le reflet de l'île sur un autre écran (src-tauri/src/island/mirrors.rs) : l'île y est venue, en mini-île.
+    void onTauriEvent("mirror-arrive", () => !this.presenting && this.fsm.showCompact());
 
     // Étirer l'île par son bord intérieur, la déplacer par son bord extérieur (gestures.ts).
     this.wasGesture = enableGestures(this.shell, {
@@ -524,6 +533,10 @@ export class Island {
         return;
       }
       this.bus.emit("mascot.clicked");
+      // Double-clic : l'action choisie, un instant après, si aucun 3e clic ne vient (mascot-double-click.ts).
+      if (this.doubleClick.click(performance.now())) {
+        window.setTimeout(() => this.doubleClick.confirm(performance.now()) && this.mascotDoubleClick(), CONFIRM_MS);
+      }
     });
 
     window.addEventListener("keydown", (e) => {
@@ -638,6 +651,7 @@ export class Island {
       slot.style.translate = "";
       if (!wasMoving) return;
       this.carried = true;
+      this.doubleClick.reset();
       window.setTimeout(() => (this.carried = false), 300);
       if (e.type !== "pointercancel" && outside(last.x, last.y)) {
         log.info("Ondine sortie de l'île vers le bureau");
@@ -650,6 +664,26 @@ export class Island {
     slot.addEventListener("pointercancel", end);
     // Windows a repris la souris (fenêtre devenue transparente aux clics) : c'est un lâcher.
     slot.addEventListener("lostpointercapture", end);
+  }
+
+  /**
+   * Double-clic sur Ondine (1.2.3) : l'action des réglages (Parler à Ondine
+   * par défaut, Lanceur, Capture, Note rapide, Rien). Chaque action passe par
+   * le module qui la fait ; un module désactivé le dit en une ligne.
+   */
+  private mascotDoubleClick() {
+    const action = doubleClickActionOf(settingsStore.current.mascot.doubleClick);
+    if (action === "none") return;
+    if (!settingsStore.moduleEnabled(ACTION_MODULE[action])) {
+      const names = { ask: "Parler à Ondine", launcher: "Lanceur", capture: "Capture", note: "Notes" };
+      this.notifications.push({ moduleId: "island", title: `Module « ${names[action]} » désactivé`, body: "Activez-le dans les Réglages, ou choisissez une autre action du double-clic.", icon: "💧", priority: "low", key: "mascot-dblclick" });
+      return;
+    }
+    log.info(`double-clic sur Ondine : ${action}`);
+    if (action === "ask") this.registry.onOpenRequest("askclaude");
+    else if (action === "launcher") this.bus.emit("launcher.open");
+    else if (action === "capture") this.bus.emit("capture.request", { then: "save" });
+    else this.bus.emit("notes.quick");
   }
 
   /** Un point de la fenêtre, en px depuis le centre de la mascotte (pour ses réactions). */

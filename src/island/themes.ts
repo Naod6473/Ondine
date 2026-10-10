@@ -8,6 +8,10 @@
 // Lisibilité (WCAG AA) : le texte principal (#eef0f6) et le texte secondaire
 // (--muted) ont un contraste d'au moins 4,5:1 sur chaque fond (vérifié par
 // contrastRatio ; les thèmes tout faits sont tous au-dessus de 6:1).
+//
+// Un thème clair (« Givre », 1.2.3) donne aussi son texte (`fg`, sombre) et
+// porte `light` : la page passe alors les couleurs claires d'island.css en
+// sombre (light-island.ts) et l'habille en verre dépoli (island-design.css).
 
 export interface Theme {
   id: string;
@@ -16,6 +20,10 @@ export interface Theme {
   accent: string;
   /** Le texte secondaire, s'il doit différer de celui par défaut (MUTED). */
   muted?: string;
+  /** Le texte principal, s'il doit différer de celui par défaut (FG) : un thème clair. */
+  fg?: string;
+  /** Un fond clair : texte sombre, couleurs d'island.css retournées (light-island.ts). */
+  light?: boolean;
 }
 
 /** Texte principal et secondaire par défaut (doivent suivre island.css). */
@@ -36,6 +44,10 @@ export const THEMES: Theme[] = [
   { id: "verre", name: "Verre", bg: "rgba(18, 20, 28, 0.78)", accent: "#9fd8ff", muted: "#b8bdcc" },
   // Façon vidéo de présentation : noir profond, texte blanc, un seul accent blanc cassé.
   { id: "studio", name: "Studio", bg: "#000000", accent: "#f2f2f5" },
+  // Verre clair (1.2.3) : un blanc dépoli, texte encre, accent bleu gomme foncé.
+  // Le fond laisse un peu voir le bureau : au pire au-dessus d'un bureau noir
+  // (≈ #dcdde0), le texte secondaire garde 5,3:1 et l'accent 4,5:1.
+  { id: "givre", name: "Givre", bg: "rgba(250, 251, 253, 0.88)", accent: "#145a9e", muted: "#4b5165", fg: "#1b1e2b", light: true },
 ];
 
 /** #rrggbb → [r, g, b] (0-255), ou null. */
@@ -92,6 +104,14 @@ export function themeFor(id: string, color: string): Theme {
   return THEMES.find((t) => t.id === id) ?? THEMES[0];
 }
 
+/**
+ * Le thème vraiment appliqué : le style « Bouche d'Ondine » (`island.style`
+ * = "mouth") est une bouche, donc sombre ; un thème clair y redevient « Nuit ».
+ */
+export function effectiveThemeId(id: string, style?: string): string {
+  return style === "mouth" && THEMES.find((t) => t.id === id)?.light ? "nuit" : id;
+}
+
 /** Applique un thème à la page de l'île. */
 export function applyTheme(id: string, color: string) {
   const t = themeFor(id, color);
@@ -99,5 +119,9 @@ export function applyTheme(id: string, color: string) {
   root.setProperty("--island-bg", t.bg);
   root.setProperty("--accent", t.accent);
   root.setProperty("--muted", t.muted ?? MUTED);
+  // Le texte principal : seulement pour un thème qui le change (sinon celui d'island.css).
+  if (t.fg) root.setProperty("--island-fg", t.fg);
+  else root.removeProperty("--island-fg");
   document.documentElement.dataset.theme = t.id;
+  document.documentElement.dataset.themeTone = t.light ? "light" : "dark";
 }

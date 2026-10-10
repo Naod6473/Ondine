@@ -522,6 +522,98 @@ une seule notification visible ; tri par priorité (`critical` > `high` > `norma
 compacte (ou en bandeau dans l'île ouverte) ; même `key` = remplacement ;
 `sticky` = reste jusqu'à fermeture ; 20 en attente au plus.
 
+### Version 1.2.3 : verre clair, molette, double-clic, halo pochette, reflets
+
+**L'île en verre clair** (thème « Givre », `src/island/themes.ts`,
+`light-island.ts`, `light-rules.ts`, `src/styles/island-design.css`). Un
+thème peut être clair (`light: true`) et donner son texte (`fg`) :
+`applyTheme` pose alors `--island-fg` et `<html data-theme-tone="light">`.
+island.css est écrit pour une île sombre (texte clair, surfaces en blanc
+translucide) ; plutôt que de dupliquer ses règles, `applyIslandTheme` relit
+une fois les feuilles de la page (CSSOM) et insère, **juste après chaque
+règle qui a des couleurs**, la même règle limitée au thème clair :
+`:where(:root[data-theme-tone="light"]) <sélecteur>`. `:where` n'ajoute pas
+de spécificité et l'insertion juste après garde l'ordre : la cascade reste
+exactement celle de l'île sombre. Les couleurs (`flipColor`) : une couleur
+neutre suit l'échelle papier (#fafbfd) → encre (#1b1e2b) à l'envers (le
+blanc translucide d'une pastille devient de l'encre translucide, même
+opacité) ; un texte (ou un trait d'icône) est foncé juste assez pour 4,5:1
+sur le pire fond du verre (son blanc à 88 % au-dessus d'un bureau noir,
+#dcdde0) ; un élément de couleur vive (pastille rouge, `var(--glow)`) est
+laissé tel quel, texte compris ; le texte d'une surface qui devient sombre
+(bouton `var(--accent)`, foncé en clair) est seulement retourné
+(`ownBackground`) ; une ombre reste une ombre ; ni les masques ni les images
+`url(…)` ne changent. Un raccourci qui contient `var(…)` est lu entier (le
+navigateur ne le découpe pas). Pas retournés : les `@keyframes`, les couleurs
+posées en JS dans `style`, les canvas (halo et liquide lisent le fond de
+l'île : `readablePaint` éclaircit le liquide au lieu de le foncer sur une île
+claire, et `cssToHex` voit un fond clair translucide au-dessus d'un bureau
+noir). La matière (grain SVG en `data:`, reflet, liseré) est dans
+island-design.css. Le style île-bouche (`island.style = "mouth"`) garde une
+île sombre (`effectiveThemeId`). La bulle d'Ondine sur le bureau suit le même
+thème (src/pet/main.ts).
+
+**Molette = volume** (`src/island/volume-wheel.ts`, `wheel-volume.ts`,
+`src/modules/controls/wheel.ts`). Au simple survol, sans clic : la fenêtre ne
+prend pas le focus, mais Windows envoie la molette à la fenêtre sous la souris
+(« Faire défiler les fenêtres inactives », actif par défaut) et la forme de
+l'île prend la souris dès qu'elle la survole. Mini-île, trait, alerte et
+format nano : partout ; île ouverte : seulement sur la mascotte (ailleurs, la
+molette fait défiler). L'île compte les crans (2 % par cran, petits pas d'un
+pavé tactile additionnés) et publie `island.wheel {delta}` ; le module
+Contrôles (réglage `wheelVolume`, oui) change le volume des haut-parleurs par
+défaut (un envoi à la fois, les crans arrivés entre-temps partent ensemble ;
+monter rétablit le son coupé) et répond `controls.volume {volume, muted,
+source: "wheel"}` ; une capsule (haut-parleur au trait + jauge) apparaît sur
+le bord intérieur de l'île, en gelée, et s'efface 1,3 s après le dernier cran.
+
+**Double-clic sur Ondine** (`src/island/mascot-double-click.ts`, réglage
+`mascot.doubleClick` : `ask` (Parler à Ondine, défaut), `launcher`, `capture`,
+`note`, `none` ; Réglages → Mascotte → Humeur). Les clics gardent leurs
+réactions (`mascot.clicked` part à chaque clic : sourire, rire, agacement,
+étourdissement, surprise « split ») ; l'action ne part que 260 ms après le
+deuxième clic si aucun troisième n'est venu (`DoubleClick`, testé). Une
+pancarte « ? » (agent qui attend) et Ondine qu'on tire hors de l'île gardent
+la priorité. Actions : `registry.onOpenRequest("askclaude")`,
+`launcher.open`, `capture.request {then: "save"}`, `notes.quick` (nouveau :
+l'onglet Notes s'ouvre sur une note neuve). Module de l'action désactivé :
+une ligne dans l'île.
+
+**Halo aux couleurs de la pochette** (`src/island/cover-palette.ts`,
+`src/mascot/env-tint.ts`, module halos). La pochette déjà réduite à 12 × 12
+pour les reflets de la mascotte donne aussi 2 ou 3 couleurs : pixels rangés
+en 12 tranches de teinte (pondérés par la saturation), les trois plus
+présentes, rendues vives (`coverPalette` ; une pochette grise : null).
+`onCoverColors` prévient le module halos : le halo de la musique (forme
+`level`) et celui de la danse prennent ces couleurs, et les changent sans
+s'éteindre au morceau suivant. Réglage `musicCover` (oui) dans « Son et
+clavier » ; le choix « Arc-en-ciel » / « Couleur de ma mascotte » l'emporte.
+Rien ne quitte la fenêtre.
+
+**Plusieurs écrans : les reflets** (`src-tauri/src/island/mirrors.rs`,
+`mirror.html`, `src/mirror/main.ts`, `src/styles/mirror.css`). Réglage
+`island.otherScreens` (coupé par défaut ; L'île → Comportement). Choix : l'île
+reste UNE fenêtre (un seul état : une notification, un minuteur, une page) et
+chaque autre écran reçoit un « reflet », une petite fenêtre (76 × 24 px
+logiques, au même bord et à la même place que l'île, `mirror_frame` sur
+`frame_sized`) qui montre une encoche aux couleurs du thème avec Ondine qui
+somnole (SVG + respiration CSS, rien sans « Réduire les animations »). Une
+île qui suit seulement la souris (`general.screen = "cursor"`, qui existait)
+ne montre rien sur les autres écrans et saute d'écran même ouverte ; une île
+complète par écran multiplierait l'état et le coût. Les reflets sont
+transparents aux clics, hors Alt+Tab et barre des tâches ; c'est la boucle de
+la souris qui regarde s'il en touche un (`hover`, une liste vide quand c'est
+coupé) : l'écran touché devient l'écran de l'île (`chosen_monitor`, lu par
+`target_monitor`, oublié au redémarrage), la fenêtre y va, l'île s'ouvre en
+mini-île (`mirror-arrive` → `showCompact`), un reflet apparaît sur l'écran
+quitté. La vérification des écrans (2 fois par seconde) place, montre ou cache
+les reflets (`sync` : écran débranché, présentation en cours, réglage coupé)
+et leur renvoie l'apparence quand elle change (`eval` de
+`window.__ondineMirror`). Une fenêtre de reflet est créée à la demande (hors
+du fil principal), et montrée seulement après que sa page a demandé son
+apparence (`mirror_look`) : jamais un rectangle blanc. Capacité : `mirror-*`
+dans `capabilities/default.json`.
+
 ## Le système de modules
 
 Chaque fonction est un module indépendant, activable dans Réglages → Modules.

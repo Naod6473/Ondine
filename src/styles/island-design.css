@@ -1,0 +1,145 @@
+/* Version 1.2.3, thème « design » : l'île en verre clair (thème Givre) et le
+   petit retour du volume réglé à la molette. Chargé par light-island.ts et
+   volume-hud.ts (après island.css). */
+
+/* ── L'île en verre clair (thème Givre, themes.ts) ───────────────────────────
+   Les couleurs d'island.css sont retournées par light-island.ts ; ici,
+   seulement la matière : un blanc dépoli (un grain très fin, un reflet en
+   haut à gauche) et un liseré d'encre très léger, comme une vitre givrée.
+   Le grain est une petite image SVG en data: (aucun fichier, aucun calcul
+   par image). Pas de flou du bureau : la fenêtre est transparente, Windows ne
+   donne pas à la page ce qu'il y a derrière. */
+:root[data-theme-tone="light"] {
+  --line: rgba(27, 30, 43, 0.1);
+  color-scheme: light;
+}
+:root[data-theme-tone="light"] .island {
+  background-image:
+    radial-gradient(120% 90% at 18% 0%, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0) 60%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1  0 0 0 0 0.12  0 0 0 0 0.2  0 0 0 0.055 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  box-shadow:
+    inset 0 0 0 1px rgba(27, 30, 43, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -10px 24px -18px rgba(20, 90, 158, 0.18);
+}
+/* Le point micro / caméra garde ses couleurs vives, avec un fin contour pour
+   se détacher du blanc. */
+:root[data-theme-tone="light"] .privacy-dot {
+  outline: 1px solid rgba(27, 30, 43, 0.25);
+}
+
+/* ── Le volume à la molette (volume-hud.ts) ──────────────────────────────────
+   Une petite capsule posée sur le bord intérieur de l'île : une icône de
+   haut-parleur au trait et une jauge. Elle arrive en gelée (--ease), repart
+   en fondu ; « Réduire les animations » : un simple fondu. Elle ne prend
+   jamais la souris (la molette continue de passer à l'île). */
+.volume-hud {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  bottom: 4px;
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  width: min(72%, 168px);
+  min-width: 48px;
+  height: 18px;
+  padding: 0 8px 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--island-bg) 70%, var(--island-fg) 12%);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--island-fg);
+  pointer-events: none;
+  opacity: 0;
+  scale: 0.6 0.4;
+  transition:
+    opacity 180ms var(--ease-out),
+    scale var(--speed) var(--ease);
+}
+.volume-hud.in {
+  opacity: 1;
+  scale: 1;
+}
+.volume-hud svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.volume-hud .vh-bar {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--island-fg) 18%, transparent);
+  overflow: hidden;
+}
+.volume-hud .vh-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--vh, 0) * 100%);
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 140ms var(--ease-out);
+}
+.volume-hud.muted .vh-fill {
+  background: var(--muted);
+}
+/* Les ondes du haut-parleur : une, deux ou aucune selon le niveau. */
+.volume-hud .vh-w1,
+.volume-hud .vh-w2 {
+  transition: opacity 140ms var(--ease-out);
+}
+.volume-hud[data-level="0"] .vh-w1,
+.volume-hud[data-level="0"] .vh-w2,
+.volume-hud[data-level="1"] .vh-w2 {
+  opacity: 0;
+}
+.volume-hud .vh-x {
+  opacity: 0;
+}
+.volume-hud.muted .vh-x {
+  opacity: 1;
+}
+/* Mini-île très petite (format nano, île-bouche…) ou trait : la jauge seule. */
+.island[data-state="peek"] .volume-hud,
+.island[data-state="compact"][data-form="nano"] .volume-hud {
+  height: 8px;
+  bottom: 2px;
+  padding: 0 3px;
+  min-width: 28px;
+}
+.island[data-state="peek"] .volume-hud svg,
+.island[data-state="compact"][data-form="nano"] .volume-hud svg {
+  display: none;
+}
+/* Sur les autres bords : contre le bord intérieur. */
+body[data-edge="bottom"] .volume-hud {
+  bottom: auto;
+  top: 4px;
+}
+body[data-edge="left"] .volume-hud,
+body[data-edge="right"] .volume-hud {
+  bottom: 6px;
+  width: min(84%, 120px);
+  padding: 0 4px;
+}
+body[data-edge="left"] .volume-hud svg,
+body[data-edge="right"] .volume-hud svg {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .volume-hud {
+    scale: 1;
+    transition: opacity 160ms linear;
+  }
+  .volume-hud .vh-fill {
+    transition: none;
+  }
+}

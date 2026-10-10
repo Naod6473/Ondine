@@ -58,6 +58,8 @@ export interface Settings {
     iconPack: "color" | "line";
     /** L'île reste en mini au lieu de disparaître. */
     alwaysMini: boolean;
+    /** Plusieurs écrans : un reflet de l'île sur chaque autre écran, qui y fait venir l'île (src-tauri/src/island/mirrors.rs). */
+    otherScreens?: boolean;
     /** Style des animations : "classic" (sobre) ou "studio" (flou → net, chiffres qui roulent, gélatine). */
     motion: "classic" | "studio";
     /** L'île en gelée (src/island/spring.ts) : "soft" (doux, presque sans rebond),
@@ -123,6 +125,8 @@ export interface Settings {
     petHotkey: string;
     /** Elle se promène un peu quand personne ne touche le PC. */
     petWander: boolean;
+    /** Double-clic sur Ondine dans l'île (src/island/mascot-double-click.ts). */
+    doubleClick?: "ask" | "launcher" | "capture" | "note" | "none";
   };
   privacy: {
     excludedFolders: string[];
@@ -190,6 +194,7 @@ export function defaultSettings(): Settings {
       presentationQuiet: true,
       iconPack: "color",
       alwaysMini: true,
+      otherScreens: false,
       motion: "classic",
       elasticity: "normal",
       tips: true,
@@ -203,7 +208,7 @@ export function defaultSettings(): Settings {
       style: "classic",
       mouthFollow: true,
     },
-    mascot: { enabled: true, id: "goutte-gomme", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5, surprises: "all", treasures: [], color: "auto", hands: "always", wearHead: "none", wearEyes: "none", wearNeck: "none", customColor: "#4da3ff", size: "normal", calm: false, pet: false, petX: -1, petY: -1, petOnTop: true, petTabs: ["askclaude", "launcher", "agents"], petHotkey: "Ctrl+Alt+B", petWander: true },
+    mascot: { enabled: true, id: "goutte-gomme", boredAfterSecs: 60, sleepAfterSecs: 180, peek: true, peekEveryMins: 5, surprises: "all", treasures: [], color: "auto", hands: "always", wearHead: "none", wearEyes: "none", wearNeck: "none", customColor: "#4da3ff", size: "normal", calm: false, pet: false, petX: -1, petY: -1, petOnTop: true, petTabs: ["askclaude", "launcher", "agents"], petHotkey: "Ctrl+Alt+B", petWander: true, doubleClick: "ask" },
     privacy: { excludedFolders: [] },
     modules: {},
     profiles: { list: [], active: "", auto: false, base: {} },
