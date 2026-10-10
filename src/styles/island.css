@@ -4874,3 +4874,181 @@ body.retro .island .btn {
     transition: none;
   }
 }
+
+/* ── Équipe : le chat (src/modules/team/chat.ts) ────────────────────────────
+   Les bulles sont celles de Parler à Ondine (.ask-bubble) ; ici, la liste des
+   conversations, le fil, la zone de saisie, les réactions et « Lu ». */
+.team-chat-btn {
+  position: relative;
+}
+.team-chat-badge {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #ff5e6b;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.team-chat-btn .team-chat-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+}
+.team-chat,
+.team-chat-rooms {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.team-chat-rooms {
+  gap: 2px;
+}
+.team-chat-room {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--island-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    transform 300ms var(--ease);
+}
+.team-chat-room:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.team-chat-room:active {
+  transform: scale(0.98);
+}
+.team-chat-room.off {
+  opacity: 0.6;
+}
+.team-chat-avatar {
+  width: 12px;
+  text-align: center;
+  font-size: 12px;
+}
+.team-chat-room-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.team-chat-prev {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.team-chat-foot {
+  font-size: 11px;
+}
+.team-chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 190px;
+  min-height: 60px;
+  overflow-y: auto;
+  padding: 2px;
+}
+.team-chat-recent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.team-chat-author {
+  font-size: 11px;
+  font-weight: 600;
+}
+.team-chat-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+/* Les réactions : la barre apparaît au survol (ou au clavier) d'une bulle. */
+.team-chat-react {
+  display: inline-flex;
+  gap: 1px;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.team-chat-bubble:hover .team-chat-react,
+.team-chat-bubble:focus-within .team-chat-react {
+  opacity: 1;
+}
+.team-chat-react .icon-btn {
+  min-width: 0;
+  padding: 0 3px;
+  font-size: 12px;
+}
+.team-chat-count {
+  padding: 0 5px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.team-chat-count.mine {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.team-chat-read {
+  color: var(--accent);
+}
+.team-chat-note {
+  align-self: center;
+  font-size: 11px;
+  opacity: 0.75;
+}
+.team-chat-typing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.team-chat-empty {
+  align-self: center;
+}
+.team-chat-compose {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+.team-chat-input {
+  flex: 1;
+  min-height: 30px;
+  max-height: 90px;
+  resize: none;
+  field-sizing: content;
+}
+/* Calme ou animations réduites : les trois gouttes de « … écrit » ne sautillent pas. */
+.ask-bubble.typing.still span {
+  animation: none;
+}
+.team-chat-note.fresh {
+  animation: soft-in 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .team-chat-room,
+  .team-chat-react {
+    transition: none;
+  }
+  .team-chat-note.fresh {
+    animation: none;
+  }
+}

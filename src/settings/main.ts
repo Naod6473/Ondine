@@ -141,6 +141,7 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
     { id: "general", label: "Général", keys: ["visible", "name", "visits", "autoStatus"] },
     { id: "files", label: "Fichiers et IT", keys: ["maxMb", "shareInventory"] },
     { id: "mine", label: "Entre mes PC", keys: ["clipboardSync", "mascotSync"] },
+    { id: "chat", label: "Chat", keys: ["chatReceipts", "chatKeep"] },
   ],
 };
 
@@ -1058,6 +1059,7 @@ function demoGroup(): HTMLElement {
                 scene("voice-error", "La dictée échoue"),
                 scene("mascot-talk", "Ondine parle"),
                 scene("team-visit", "Visite d'une collègue"),
+                scene("team-chat", "Message d'une collègue"),
                 scene("ai-outage", "Panne d'un service IA"),
                 scene("island-dodge", "L'île s'écarte"),
               ),

@@ -106,10 +106,15 @@ pub(super) struct Chat {
     typing: HashMap<(String, String), Instant>,
     /// Dernier « … écrit » envoyé, par conversation.
     typed: HashMap<String, Instant>,
+    /// Dernier « Lu » envoyé, par conversation (pour ne pas le renvoyer).
+    told_read: HashMap<String, u64>,
     /// L'historique gardé a-t-il été relu ? (une fois, quand « chatKeep » est allumé)
     loaded: bool,
     /// « chatKeep » au dernier tour (pour voir quand on l'éteint).
     keep: bool,
+    /// Au premier tour, réglage éteint : un vieil historique est effacé (réglage
+    /// éteint pendant qu'Ondine était fermée, réglages importés…).
+    checked: bool,
     dirty: bool,
     saved: Option<Instant>,
 }
@@ -140,18 +145,26 @@ impl Chat {
     }
 
     /// J'ai lu la conversation : plus rien de non lu. Renvoie le numéro du
-    /// dernier message du collègue (pour lui dire « Lu »).
+    /// dernier message du collègue (pour lui dire « Lu » : de son côté, c'est
+    /// le numéro de SON message).
     pub fn read(&mut self, room: &str) -> Option<u64> {
         self.unread.remove(room);
         self.rooms.get(room)?.iter().rev().find(|l| !l.from.is_empty() && l.kind == "text").map(|l| l.id)
     }
 
-    /// Le collègue a lu jusqu'à son message `id` : mes messages d'avant sont « Lu ».
+    /// « Lu » à envoyer : seulement s'il y a du nouveau depuis le dernier.
+    fn read_to_tell(&mut self, room: &str) -> Option<u64> {
+        let id = self.read(room)?;
+        (self.told_read.insert(room.to_string(), id) != Some(id)).then_some(id)
+    }
+
+    /// Le collègue a lu jusqu'à mon message `id` (le dernier qu'il a reçu) :
+    /// celui-ci et mes messages d'avant sont « Lu ».
     pub fn read_by_peer(&mut self, room: &str, id: u64) -> bool {
         let Some(lines) = self.rooms.get_mut(room) else { return false };
-        let Some(upto) = lines.iter().position(|l| l.id == id && !l.from.is_empty()) else { return false };
+        let Some(upto) = lines.iter().position(|l| l.id == id && l.from.is_empty()) else { return false };
         let mut changed = false;
-        for l in lines[..upto].iter_mut().filter(|l| l.from.is_empty() && !l.read) {
+        for l in lines[..=upto].iter_mut().filter(|l| l.from.is_empty() && !l.read) {
             l.read = true;
             changed = true;
         }
@@ -368,6 +381,10 @@ pub(super) fn tick(app: &AppHandle, inner: &Inner) {
             chat = inner.chat.locked();
         }
     }
+    if !keep && !chat.checked && store_file().exists() {
+        wipe_stored();
+    }
+    chat.checked = true;
     if chat.keep && !keep {
         chat.loaded = false;
         wipe_stored();
@@ -399,15 +416,6 @@ fn receipts_on(app: &AppHandle) -> bool {
 }
 
 // ── Ce qui arrive ────────────────────────────────────────────────────────────
-
-/// L'expression de la mascotte pour une réaction reçue.
-pub(super) fn reaction_emotion(kind: &str) -> &'static str {
-    match kind {
-        "thumb" => "proud",
-        "laugh" => "laugh",
-        _ => "love",
-    }
-}
 
 fn room_of(peer: &Peer, group: bool) -> String {
     if group {
@@ -447,11 +455,8 @@ pub(super) fn on_message(app: &AppHandle, inner: &Inner, peer: &Peer, msg: Msg) 
             let room = room_of(peer, group);
             let added = inner.chat.locked().react(&room, id, &peer.id, &kind);
             if let Some(added) = added {
-                // La mascotte de l'île joue la réaction, sauf en concentration ou en réunion.
-                let (status, _) = team::my_status(app, inner);
-                if added && !matches!(status.as_str(), "focus" | "meeting") {
-                    team::emit(app, "mascot.emote", json!({ "emotion": reaction_emotion(&kind) }));
-                }
+                // La mascotte de l'île joue la réaction : c'est le front qui s'en charge
+                // (il connaît Calme et les animations réduites).
                 team::emit(app, "team.chat", json!({ "kind": "react", "room": room, "id": id, "reaction": kind, "added": added, "from": card(peer) }));
             }
             Msg::Ok
@@ -552,7 +557,7 @@ pub(super) fn invoke(ctx: &ModuleContext, inner: &Arc<Inner>, command: &str, arg
         // { room } : j'ai lu (et je le dis à l'autre, conversation à deux).
         "chat_read" => {
             check_room(&room)?;
-            let last = inner.chat.locked().read(&room);
+            let last = inner.chat.locked().read_to_tell(&room);
             if let Some(id) = last.filter(|_| room != GROUP && receipts_on(ctx.app)) {
                 send_quietly(inner, &room, Msg::ChatRead { id });
             }
@@ -632,7 +637,8 @@ mod tests {
         assert!(!c.push("bob", line(1, "bob", "Salut")), "le même message deux fois : une seule ligne");
         assert!(c.push("bob", line(2, "", "Coucou")));
         assert_eq!(c.unread.get("bob"), Some(&1));
-        assert_eq!(c.read("bob"), Some(1));
+        assert_eq!(c.read_to_tell("bob"), Some(1));
+        assert_eq!(c.read_to_tell("bob"), None, "« Lu » ne part qu'une fois");
         assert_eq!(c.unread.get("bob"), None);
         for i in 0..(MAX_PER_ROOM as u64 + 20) {
             c.push("all", line(100 + i, "x", "m"));
@@ -647,12 +653,15 @@ mod tests {
         c.push("bob", line(2, "", "On commence"));
         c.push("bob", line(3, "bob", "J'arrive"));
         c.push("bob", line(4, "", "Super"));
-        assert!(c.read_by_peer("bob", 3));
+        // Bob a lu jusqu'à mon message 2 (le dernier qu'il avait reçu).
+        assert!(c.read_by_peer("bob", 2));
         let read: Vec<bool> = c.rooms["bob"].iter().map(|l| l.read).collect();
         assert_eq!(read, vec![true, true, false, false]);
-        // Un numéro inconnu, ou un de MES messages : rien ne change.
+        // Un numéro inconnu, ou un message de Bob : rien ne change.
         assert!(!c.read_by_peer("bob", 99));
-        assert!(!c.read_by_peer("bob", 4));
+        assert!(!c.read_by_peer("bob", 3));
+        assert!(c.read_by_peer("bob", 4));
+        assert!(c.rooms["bob"][3].read);
     }
 
     #[test]
@@ -665,9 +674,6 @@ mod tests {
         assert_eq!(c.react("all", 1, "", "heart"), Some(false));
         assert!(c.rooms["all"][0].reactions.is_empty());
         assert_eq!(c.react("all", 42, "", "thumb"), None);
-        for k in proto::REACTIONS {
-            assert!(!reaction_emotion(k).is_empty());
-        }
     }
 
     #[test]

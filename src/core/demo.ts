@@ -22,7 +22,7 @@ export function demoOn(): boolean {
 }
 
 /** Les scènes que la fenêtre de réglages peut demander (sujet « demo.scene »). */
-export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "timer-ring", "voice", "voice-error", "mascot-talk", "ai-outage", "team-visit", "island-dodge"] as const;
+export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "timer-ring", "voice", "voice-error", "mascot-talk", "ai-outage", "team-visit", "team-chat", "island-dodge"] as const;
 export type DemoScene = (typeof DEMO_SCENES)[number];
 
 /**
@@ -615,6 +615,24 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return teamDemo();
     case "team.show_code":
       return { code: "482913", seconds: 180, ip: "192.168.1.20" };
+    // Le chat (1.2.2) : une fausse conversation, rien ne part.
+    case "team.chat_state":
+      return chatDemoState();
+    case "team.chat_history":
+      return { lines: CHAT_DEMO[String(args.room)] ?? [], typing: Date.now() < (chatTyping.get(String(args.room)) ?? 0) ? [TEAM_PEERS[0].id] : [] };
+    case "team.chat_send":
+      return chatDemoSend(bus, String(args.room), String(args.text ?? ""));
+    case "team.chat_react": {
+      const line = (CHAT_DEMO[String(args.room)] ?? []).find((l) => l.id === Number(args.id));
+      if (!line) return { added: false };
+      const had = line.reactions.some(([w, k]) => w === "" && k === args.kind);
+      line.reactions = line.reactions.filter(([w]) => w !== "");
+      if (!had) line.reactions.push(["", String(args.kind)]);
+      return { added: !had };
+    }
+    case "team.chat_read":
+      chatUnread.set(String(args.room), 0);
+      return null;
     case "rules.list":
       return {
         rules: [
@@ -912,6 +930,14 @@ function playScene(bus: Bus, scene: string) {
       // La mascotte d'une collègue traverse l'île (module Équipe).
       bus.inject("team.event", { kind: "visit", from: TEAM_PEERS[0], note: "Le café est prêt !" }, "demo");
       break;
+    case "team-chat": {
+      // Un message du chat Équipe : la notification avec « Répondre ».
+      const line = chatLine(TEAM_PEERS[0].id, "On se fait une pause dans 10 min ? ☕", 0);
+      (CHAT_DEMO[TEAM_PEERS[0].id] ??= []).push(line);
+      chatUnread.set(TEAM_PEERS[0].id, (chatUnread.get(TEAM_PEERS[0].id) ?? 0) + 1);
+      bus.inject("team.chat", { kind: "message", room: TEAM_PEERS[0].id, line, from: TEAM_PEERS[0] }, "demo");
+      break;
+    }
     case "island-dodge":
       // L'île s'écarte de la fenêtre de réglages (forme et peur d'Ondine ; la
       // fenêtre, elle, ne bouge pas dans un navigateur), puis rentre chez elle.
@@ -1019,6 +1045,65 @@ function teamDemo() {
     code: null,
     polls: [],
   };
+}
+
+// Le chat : une conversation avec Léa, et le salon « Toute l'équipe ».
+interface DemoLine {
+  id: number;
+  from: string;
+  kind: "text";
+  text: string;
+  at: number;
+  read: boolean;
+  reactions: [string, string][];
+}
+let chatId = 1;
+function chatLine(from: string, text: string, minutesAgo: number, read = false): DemoLine {
+  return { id: chatId++, from, kind: "text", text, at: Date.now() - minutesAgo * MIN, read, reactions: [] };
+}
+const CHAT_DEMO: Record<string, DemoLine[]> = {
+  [TEAM_PEERS[0].id]: [
+    chatLine(TEAM_PEERS[0].id, "Tu as vu la nouvelle maquette du site ?", 14),
+    chatLine("", "Oui ! Elle est superbe, surtout la page d'accueil.", 12, true),
+    chatLine(TEAM_PEERS[0].id, "Je t'envoie le lien : https://exemple.fr/maquette", 11),
+    chatLine("", "Merci, je regarde ça après la réunion 👍", 9, true),
+  ],
+  all: [
+    chatLine(TEAM_PEERS[1].id, "Le serveur de test redémarre à 18 h.", 40),
+    chatLine(TEAM_PEERS[0].id, "Merci Karim !", 38),
+  ],
+};
+CHAT_DEMO[TEAM_PEERS[0].id][1].reactions = [[TEAM_PEERS[0].id, "heart"]];
+const chatUnread = new Map<string, number>([["all", 1]]);
+/** « Léa écrit… » jusqu'à cette heure. */
+const chatTyping = new Map<string, number>();
+
+function chatDemoState() {
+  return {
+    rooms: Object.entries(CHAT_DEMO).map(([room, lines]) => ({ room, unread: chatUnread.get(room) ?? 0, last: lines[lines.length - 1] ?? null, typing: [] })),
+    keep: false,
+    receipts: true,
+  };
+}
+
+/** Mon message part (pour de faux) ; Léa « écrit… » puis répond. */
+function chatDemoSend(bus: Bus, room: string, text: string) {
+  const line = chatLine("", text, 0);
+  (CHAT_DEMO[room] ??= []).push(line);
+  if (room === TEAM_PEERS[0].id) {
+    window.setTimeout(() => {
+      line.read = true;
+      chatTyping.set(room, Date.now() + 2400);
+      bus.inject("team.chat", { kind: "typing", room, from: TEAM_PEERS[0] }, "demo");
+    }, 1200);
+    window.setTimeout(() => {
+      const reply = chatLine(TEAM_PEERS[0].id, "Parfait, à tout à l'heure !", 0);
+      CHAT_DEMO[room].push(reply);
+      chatTyping.delete(room);
+      bus.inject("team.chat", { kind: "message", room, line: reply, from: TEAM_PEERS[0] }, "demo");
+    }, 3600);
+  }
+  return line;
 }
 
 /** Branche le mode démo sur l'île (fenêtre principale). */

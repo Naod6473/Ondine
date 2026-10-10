@@ -244,7 +244,16 @@
 "choisissez de 1 à 100 éléments": "choisis de 1 à 100 éléments",
 "clé du collègue abîmée : retirez-le puis ajoutez-le de nouveau": "clé du collègue abîmée : retire-le puis ajoute-le de nouveau",
 "dossier trop gros (200 Mo au plus) : envoyez plutôt une archive faite à la main": "dossier trop gros (200 Mo au plus) : envoie plutôt une archive faite à la main",
-"la dictée de Windows n'a pas marché sans dire pourquoi : vérifiez dans Paramètres Windows que « Reconnaissance vocale en ligne » est activée (Confidentialité → Voix), que le micro est permis aux applications de bureau (Confidentialité → Microphone) et que la voix de votre langue est installée (Heure et langue → Voix)": "la dictée de Windows n'a pas marché sans dire pourquoi : vérifie dans Paramètres Windows que « Reconnaissance vocale en ligne » est activée (Confidentialité → Voix), que le micro est permis aux applications de bureau (Confidentialité → Microphone) et que la voix de ta langue est installée (Heure et langue → Voix)"
+"la dictée de Windows n'a pas marché sans dire pourquoi : vérifiez dans Paramètres Windows que « Reconnaissance vocale en ligne » est activée (Confidentialité → Voix), que le micro est permis aux applications de bureau (Confidentialité → Microphone) et que la voix de votre langue est installée (Heure et langue → Voix)": "la dictée de Windows n'a pas marché sans dire pourquoi : vérifie dans Paramètres Windows que « Reconnaissance vocale en ligne » est activée (Confidentialité → Voix), que le micro est permis aux applications de bureau (Confidentialité → Microphone) et que la voix de ta langue est installée (Heure et langue → Voix)",
+"Votre réponse…": "Ta réponse…",
+"Votre réponse": "Ta réponse",
+"Glissez un fichier sur l'île pour le proposer (toujours à accepter).": "Glisse un fichier sur l'île pour le proposer (toujours à accepter).",
+"Écrivez à tous les collègues en ligne.": "Écris à tous les collègues en ligne.",
+"🔒 Chiffré de bout en bout. Historique en mémoire seulement : effacé quand vous quittez Ondine.": "🔒 Chiffré de bout en bout. Historique en mémoire seulement : effacé quand tu quittes Ondine.",
+"Discuter avec vos collègues": "Discuter avec tes collègues",
+"Vos collègues voient quand vous écrivez et quand vous avez lu leurs messages, et vous voyez les leurs. Éteint : ni l'un ni l'autre, dans les deux sens.": "Tes collègues voient quand tu écris et quand tu as lu leurs messages, et tu vois les leurs. Éteint : ni l'un ni l'autre, dans les deux sens.",
+"Éteint (recommandé) : les conversations restent en mémoire et s'effacent quand vous quittez Ondine. Allumé : elles sont gardées 7 jours sur ce PC, chiffrées (clé dans le Gestionnaire d'identifiants de Windows) ; l'éteindre les efface du disque.": "Éteint (recommandé) : les conversations restent en mémoire et s'effacent quand tu quittes Ondine. Allumé : elles sont gardées 7 jours sur ce PC, chiffrées (clé dans le Gestionnaire d'identifiants de Windows) ; l'éteindre les efface du disque.",
+"glissez le fichier dans une conversation à deux": "glisse le fichier dans une conversation à deux"
 },
 "patterns": [
 ["^L'audio de votre voix partira vers (.+), avec votre clé\\.$", "L'audio de ta voix partira vers $1, avec ta clé."],

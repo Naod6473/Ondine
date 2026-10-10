@@ -12,6 +12,8 @@
 // Envoyer des fichiers : glisser sur l'île (une cible par collègue en ligne),
 // ou « Fichier… » / « Dossier… » dans la fiche d'un collègue. Un texte est
 // toujours montré dans sa zone avant l'envoi.
+//
+// Le chat (icône 💬, 1.2.2) : chat.ts.
 
 import manifest from "./manifest.json";
 import { Bridge } from "../../core/bridge";
@@ -22,6 +24,7 @@ import { el } from "../../island/dom";
 import { sizeText } from "../shelf/phone-text";
 import { ANSWER_LABEL, codeText, diskLow, isLink, isPrivateIp, lookColor, PINGS, pingText, pollChoices, sortPeers, STATUS_LABEL, type PeerView, type Status } from "./logic";
 import { mountVisit } from "./visit";
+import { chatButton, chatDropTarget, chatPane, chatSetup, onChatChange, setChatOpener, takePendingRoom, type ChatContext, type ChatPane } from "./chat";
 
 interface Me {
   id: string;
@@ -92,6 +95,12 @@ async function run<T>(api: ModuleApi, command: string, args?: unknown): Promise<
     return null;
   }
 }
+
+/** Ce que le chat (chat.ts) demande au module. */
+const chatCtx: ChatContext = {
+  peers: () => state?.peers ?? [],
+  myStatus: () => state?.me.status ?? "available",
+};
 
 function peerName(id: string): string {
   return state?.peers.find((p) => p.id === id)?.name ?? "Un collègue";
@@ -305,10 +314,12 @@ async function decide(api: ModuleApi, id: number, ok: boolean) {
 // ── Les cibles de dépôt : une par collègue en ligne ─────────────────────────
 
 function dropTargets(): DropTarget[] {
-  return sortPeers(state?.peers ?? [])
-    .filter((p) => p.online)
-    .slice(0, 6)
-    .map((p) => ({
+  // Une conversation à deux ouverte (chat) : ce collègue d'abord.
+  const chat = chatDropTarget(chatCtx);
+  const peers = sortPeers(state?.peers ?? [])
+    .filter((p) => p.online && `team-chat-${p.id}` !== chat?.id)
+    .slice(0, chat ? 5 : 6)
+    .map((p): DropTarget => ({
       id: `team-${p.id}`,
       label: p.name,
       icon: "🤝",
@@ -317,6 +328,7 @@ function dropTargets(): DropTarget[] {
         if (r) api.notify({ title: "Proposé", body: `${p.name} · ${r.name}`, icon: "📤", priority: "low", key: `team-file-${p.id}` });
       },
     }));
+  return chat ? [chat, ...peers] : peers;
 }
 
 // ── L'onglet ────────────────────────────────────────────────────────────────
@@ -331,8 +343,16 @@ function expanded(root: HTMLElement, api: ModuleApi): () => void {
   const body = el("div", { class: "team" });
   root.append(body);
   /** La fiche ouverte (un collègue), ou le formulaire d'ajout. */
-  let open: { kind: "peer"; id: string } | { kind: "add"; addr: string; name: string } | { kind: "group"; what: string } | null = null;
+  let open: { kind: "peer"; id: string } | { kind: "add"; addr: string; name: string } | { kind: "group"; what: string } | { kind: "chat" } | null = null;
   let tick = 0;
+  /** Le chat (créé à la première ouverture, gardé tant que l'onglet est affiché). */
+  let chat: ChatPane | null = null;
+  const openChat = (room: string | null) => {
+    chat ??= chatPane(api, chatCtx, () => ((open = null), draw()));
+    open = { kind: "chat" };
+    chat.show(room);
+    draw();
+  };
 
   const draw = () => {
     if (!state) {
@@ -340,7 +360,10 @@ function expanded(root: HTMLElement, api: ModuleApi): () => void {
       return;
     }
     const s = state;
+    // La zone de saisie du chat garde le clavier quand la liste se redessine (présence…).
+    const focused = document.activeElement;
     body.replaceChildren(head(s), ...codePanel(s), ...pendingList(s), main(s));
+    if (focused instanceof HTMLElement && focused !== document.activeElement && body.contains(focused)) focused.focus({ preventScroll: true });
   };
 
   // ── En-tête : mon statut, visible, mon code, ajouter ──
@@ -365,6 +388,7 @@ function expanded(root: HTMLElement, api: ModuleApi): () => void {
       el("b", { "data-no-i18n": true }, s.me.name),
       select,
       el("span", { class: "team-grow" }),
+      chatButton(api, () => openChat(null)),
       visible,
       el("button", { class: "btn small", title: "Afficher un code à taper sur l'autre PC", onclick: api.handler(() => showCode(api, false)) }, "🔢 Mon code"),
       el("button", { class: "btn small", onclick: api.handler(() => ((open = { kind: "add", addr: "", name: "" }), draw())) }, "＋ Ajouter"),
@@ -416,6 +440,10 @@ function expanded(root: HTMLElement, api: ModuleApi): () => void {
 
   // ── La partie principale : la fiche ouverte, ou la liste ──
   const main = (s: TeamState) => {
+    if (open?.kind === "chat" && chat) {
+      chat.refresh();
+      return chat.node;
+    }
     if (open?.kind === "add") return addForm(s, open);
     if (open?.kind === "peer") {
       const id = open.id;
@@ -672,8 +700,17 @@ function expanded(root: HTMLElement, api: ModuleApi): () => void {
 
   const redraw = () => draw();
   redraws.add(redraw);
+  // Le bouton 💬 suit les non lus (sans toucher au fil ouvert).
+  const stopChat = onChatChange(() => {
+    const btn = body.querySelector(".team-chat-btn");
+    if (btn) btn.replaceWith(chatButton(api, () => openChat(null)));
+  });
   void refresh(api);
-  draw();
+  setChatOpener(openChat);
+  // « Ouvrir la conversation » (notification) : l'onglet s'ouvre dessus.
+  const pending = takePendingRoom();
+  if (pending !== null) openChat(pending);
+  else draw();
   // Le compte à rebours du code : une fois par seconde, seulement le chiffre.
   tick = window.setInterval(() => {
     const clock = body.querySelector(".team-clock");
@@ -685,6 +722,9 @@ function expanded(root: HTMLElement, api: ModuleApi): () => void {
   return () => {
     redraws.delete(redraw);
     window.clearInterval(tick);
+    stopChat();
+    setChatOpener(null);
+    chat?.destroy();
   };
 }
 
@@ -745,10 +785,14 @@ export const team: IslandModule = {
 
   setup(api) {
     listen(api);
+    const stopChat = chatSetup(api, chatCtx);
     sendLook(api);
     const stop = settingsStore.onChange(() => sendLook(api));
     void refresh(api);
-    return stop;
+    return () => {
+      stop();
+      stopChat();
+    };
   },
 
   views: {
