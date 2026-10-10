@@ -450,6 +450,13 @@ impl RustModule for AskClaude {
                 speech::stop(args.get("cancel").and_then(Value::as_bool) == Some(true));
                 Ok(Value::Null)
             }
+            // { fix } : la dictée a échoué, ouvre la page des Paramètres Windows
+            // qui la règle (liste fixe : voix, micro, langue ; jamais une adresse reçue).
+            "voice_fix" => {
+                let fix = args.get("fix").and_then(Value::as_str).and_then(crate::platform::voice::Fix::from_id).ok_or("page des Paramètres inconnue")?;
+                crate::platform::shell_open(fix.uri())?;
+                Ok(Value::Null)
+            }
             // L'écoute en cours, et s'il faut rester discrète (plops muets).
             "voice_state" => Ok(json!({ "listening": speech::listening(), "discreet": speech::discreet(ctx.app) })),
             // { text } : une commande rapide (sans IA) ? Faite tout de suite,

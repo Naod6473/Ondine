@@ -8,7 +8,7 @@
 3. ☐ Réglages → Parler à Ondine → Personnalité et affichage : « Voir la consigne exacte » montre la consigne complète (personnalité + humeurs + outils).
 
 ## Recherche web
-4. ☐ Lanceur (Alt+Espace), taper « météo lyon » : dernière ligne « Rechercher « météo lyon » sur Google ». ↓ jusqu'à elle puis Entrée : le navigateur par défaut ouvre `https://www.google.com/search?q=m%C3%A9t%C3%A9o+lyon`.
+4. ☐ Lanceur (Alt+Espace), taper « météo lyon » : dernière ligne « Recherche web : « météo lyon » sur Google », avec un globe. ↓ jusqu'à elle puis Entrée : le navigateur par défaut ouvre `https://www.google.com/search?q=m%C3%A9t%C3%A9o+lyon`.
 5. ☐ Réglages → Lanceur → Moteur de recherche = DuckDuckGo, Bing, Qwant, Ecosia : la ligne et l'adresse suivent.
 6. ☐ Taper un texte qui ne trouve rien : « Rien trouvé. » puis la ligne de recherche web, Entrée l'ouvre directement.
 7. ☐ Demander à Ondine « cherche sur le web les horaires de la piscine » : carte « Ondine voudrait chercher « … » sur le web » ; Faire ouvre le navigateur, Annuler n'ouvre rien.
@@ -44,3 +44,13 @@
 29. ☐ Ondine sur le bureau avec l'onglet Parler à Ondine dans sa bulle : Ctrl+Alt+V ouvre SA bulle (pas l'île), une seule question part.
 30. ☐ Raccourci déjà pris par un autre logiciel : notification claire.
 31. ☐ Aucun fichier audio ou image n'apparaît sur le disque (%APPDATA%\Ondine, %TEMP%) après ces tests.
+
+## Retours de test (2e passe) : dictée de Windows en échec, recherche web
+32. ☐ Lanceur, taper « météo lyon » : la dernière ligne dit « Recherche web : « météo lyon » sur Google » avec une icône globe (pack couleur et pack au trait) ; en anglais « Web search: « météo lyon » on Google ».
+33. ☐ `npm run tauri dev`, « Reconnaissance vocale en ligne » COUPÉE : 🎙️ Parler → message « la dictée de Windows est coupée… » (plus d'« état 6 ») et bouton « ⚙️ Ouvrir les paramètres Windows » qui ouvre Confidentialité → Voix.
+34. ☐ Micro refusé aux applications de bureau (Confidentialité → Microphone) : message « Windows refuse le micro… », le bouton ouvre la page Microphone.
+35. ☐ Si l'échec revient malgré tout (tout est activé) : message « la dictée de Windows n'a pas marché sans dire pourquoi : vérifiez… » + bouton. Ouvrir `%LOCALAPPDATA%\Ondine\logs\ondine.log` : une ligne « parler à Ondine : … [étape « … », état 6 (…) ou HRESULT 0x…, langue voulue fr-FR, voix de Windows …, dictée possible en [...], utilisée …, reconnaissance en ligne : oui/non/?, micro des applis de bureau : oui/non/?] ». **Me renvoyer cette ligne** : elle dit à quelle étape Windows refuse.
+36. ☐ Même échec avec une clé OpenAI (ou Gemini) rangée : bouton « 🎙️ Passer à la transcription par l'API » et la petite ligne « L'audio de votre voix partira vers api.openai.com, avec votre clé. ». Rien ne part avant le clic. Au clic : Réglages → Voix et sons → Reconnaissance = « Transcription par l'API », l'écoute reprend, « J'écris ce que vous avez dit… », puis la question part.
+37. ☐ Sans clé OpenAI ni Gemini : pas de bouton API (seulement celui des paramètres).
+38. ☐ Mode démo (Chromium) : Réglages → scène « La dictée échoue » montre le message et les deux boutons.
+39. ☐ Transcription par l'API, micro de portable à voix normale à 50 cm : la voix est bien entendue (seuil abaissé à −40 dB) ; pièce silencieuse 6 s → « Je n'ai rien entendu. », rien n'est envoyé.

@@ -57,7 +57,7 @@
         "key": "searchEngine",
         "type": "select",
         "label": "Moteur de recherche",
-        "help": "La dernière ligne propose « Rechercher « … » sur Google » : Entrée ouvre la page de résultats dans votre navigateur. Rien ne part avant.",
+        "help": "La dernière ligne propose « Recherche web : « … » sur Google » : Entrée ouvre la page de résultats dans votre navigateur. Rien ne part avant.",
         "default": "google",
         "options": [
           {

@@ -17,8 +17,9 @@
 //     clé déjà rangée. Claude n'écoute pas l'audio : avec Claude, on prend la
 //     clé OpenAI, sinon Gemini, sinon on le dit. Si personne n'a parlé, rien
 //     ne part.
-// Rien n'est jamais écrit sur le disque, ni noté dans le journal (seulement
-// « écoute : N caractères »).
+// Rien de ce qui est dit n'est écrit sur le disque, ni noté dans le journal
+// (seulement « écoute : N caractères ») ; un échec de Windows y laisse son
+// détail technique (étape, HRESULT, langues, réglages lus) pour le diagnostic.
 //
 // Discrétion (réglage « discreet », activé par défaut) : en visio (le micro
 // est déjà pris par une autre appli), en présentation ou en concentration
@@ -30,7 +31,11 @@
 //   - `voice.level {level}` : le niveau du micro, 0..1, ~15 fois par seconde ;
 //   - `askclaude.voice {kind, …}` pour le front du module : `open {look, hold}`,
 //     `partial {text}`, `transcribing`, `final {text, look}`, `empty`,
-//     `cancel`, `blocked {why}`, `error {message}`.
+//     `cancel`, `blocked {why}`, `error {message, fix?, apiTo?}` : `fix`, la
+//     page des Paramètres Windows qui règle le problème (commande `voice_fix`) ;
+//     `apiTo`, la destination de la transcription par l'API, proposée en un
+//     clic quand la dictée de Windows échoue et qu'une clé OpenAI ou Gemini
+//     est rangée.
 
 use crate::sync::LockExt;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
@@ -289,7 +294,18 @@ pub fn listen(app: &AppHandle, opts: Options) -> Result<(), String> {
                 log::info(format!("parler à Ondine : écoute finie ({} caractères)", text.chars().count()));
                 voice_event(&app2, "final", json!({ "text": text.trim(), "look": look, "id": id }));
             }
-            Ok(Err(e)) => voice_event(&app2, "error", json!({ "message": e, "id": id })),
+            Ok(Err(f)) => {
+                // Le détail (étape, HRESULT, langues, réglages de Windows lus) va
+                // dans le journal : jamais ce qui a été dit.
+                if !f.detail.is_empty() {
+                    log::warn(format!("parler à Ondine : {} [{}]", f.message, f.detail));
+                }
+                // La dictée de Windows a échoué : proposer la transcription par
+                // l'API si une clé OpenAI ou Gemini est rangée (rien ne part sans le clic).
+                let windows_failed = !f.detail.is_empty() && settings(&app2).get("voiceEngine").and_then(Value::as_str) != Some("api");
+                let api_to = if windows_failed { api_offer(&app2) } else { None };
+                voice_event(&app2, "error", json!({ "message": f.message, "fix": f.fix.map(voice::Fix::id), "apiTo": api_to, "id": id }));
+            }
             Err(_) => voice_event(&app2, "error", json!({ "message": "erreur inattendue pendant l'écoute", "id": id })),
         }
     });
@@ -311,7 +327,7 @@ fn set_escape(app: &AppHandle, on: bool) {
 }
 
 /// L'écoute elle-même : renvoie le texte dit ("" si rien).
-fn run(app: &AppHandle, s: &Session, opts: Options) -> Result<String, String> {
+fn run(app: &AppHandle, s: &Session, opts: Options) -> Result<String, voice::Failure> {
     let settings = settings(app);
     let lang = super::with_context(app, ID, |ctx| {
         use tauri::Manager;
@@ -348,7 +364,7 @@ fn run(app: &AppHandle, s: &Session, opts: Options) -> Result<String, String> {
         voice_event(app, "transcribing", json!({}));
         let wav = wav_16k(&pcm.samples, pcm.rate);
         log::info(format!("parler à Ondine : audio envoyé à {} ({} octets)", provider.destination(), wav.len()));
-        return transcribe(provider, &key, &model, &wav, lang);
+        return transcribe(provider, &key, &model, &wav, lang).map_err(voice::Failure::from);
     }
     let mut last_partial = String::new();
     let mut partial = |t: &str| {
@@ -402,6 +418,13 @@ fn stt_key(app: &AppHandle, settings: &serde_json::Map<String, Value>) -> Result
         })
     })
     .unwrap_or_else(|| Err("module indisponible".into()))
+}
+
+/// La destination de la transcription par l'API si elle est possible (une clé
+/// OpenAI ou Gemini rangée), pour la proposer quand la dictée de Windows échoue.
+/// Lit seulement le Gestionnaire d'identifiants : rien ne part.
+fn api_offer(app: &AppHandle) -> Option<&'static str> {
+    stt_key(app, &settings(app)).ok().map(|(p, _, _)| p.destination())
 }
 
 /// Envoie l'audio (WAV) et renvoie le texte.
@@ -498,7 +521,8 @@ impl SilenceGate {
     fn push(&mut self, rms: f32, ms: u64) -> bool {
         self.elapsed_ms += ms;
         self.floor = self.floor.min(rms.max(0.0005));
-        let speaking = rms > (self.floor * 3.0).max(0.015);
+        // Seuil bas (−40 dB) : un micro de portable capte souvent la voix assez faiblement.
+        let speaking = rms > (self.floor * 3.0).max(0.01);
         if speaking {
             self.heard = true;
             self.quiet_ms = 0;

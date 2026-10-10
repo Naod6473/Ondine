@@ -15,7 +15,7 @@
 // en premier ; Entrée la copie (commande Rust "copy", permission clipboard).
 // « guid » propose un GUID neuf, copié de la même façon.
 //
-// Recherche web : la dernière ligne, « Rechercher « … » sur Google » (moteur
+// Recherche web : la dernière ligne, « Recherche web : « … » sur Google » (moteur
 // au choix dans les réglages). Entrée ou clic : le Rust (`web_search`) ouvre
 // la page de résultats dans le navigateur par défaut. Rien ne part avant.
 
@@ -266,9 +266,9 @@ function webResult(api: ModuleApi, query: string): Result {
   const engine = ENGINE_NAMES[String(api.settings().searchEngine ?? "")] ?? ENGINE_NAMES.google;
   return {
     key: "web",
-    name: `Rechercher « ${query} » sur ${engine}`,
+    name: `Recherche web : « ${query} » sur ${engine}`,
     detail: "",
-    icon: "🔎",
+    icon: "🌍",
     tag: "Web",
     score: 0,
     run: async () => {

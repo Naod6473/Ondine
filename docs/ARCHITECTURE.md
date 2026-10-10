@@ -1325,7 +1325,7 @@ qui surveille dossiers et lecteurs).
 - « guid » / « uuid » : « Nouveau GUID » (`crypto.randomUUID`) et sa version
   Windows `{MAJUSCULES}`, copiés de la même façon.
 - **Recherche web** (1.2.2) : la dernière ligne, dès qu'on tape quelque chose,
-  est « Rechercher « … » sur Google » (réglage `searchEngine` : Google par
+  est « Recherche web : « … » sur Google » (réglage `searchEngine` : Google par
   défaut, DuckDuckGo, Bing, Qwant, Ecosia ; `launcher::ENGINES`). Entrée ou
   clic → commande `web_search {query}` : le Rust construit l'adresse
   (`search_url` : blancs regroupés, 500 caractères, encodage `%XX`, espace
@@ -2187,13 +2187,22 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
   - reconnaissance `voiceEngine` : `windows` (défaut) = `SpeechRecognizer`
     (WinRT, marche sans paquet MSIX ; dictée libre = service en ligne de
     Microsoft, réglage Windows « Reconnaissance vocale en ligne », erreur
-    0x80045509 traduite), langue de l'appli (fr-FR / en-US, sinon celle de
+    0x80045509 traduite), langue de l'appli (fr-FR / en-US) si elle est dans
+    `SupportedTopicLanguages` (sinon une variante, sinon celle de la voix de
     Windows), sous-titres par `HypothesisGenerated`, niveau par
     `IAudioMeterInformation` ; `api` = capture WASAPI en mémoire (mono),
     fin au silence (`SilenceGate`), WAV 16 kHz, puis OpenAI
     `audio/transcriptions` (gpt-4o-mini-transcribe) ou Gemini (audio en
     `inline_data`) ; avec Claude : clé OpenAI, sinon Gemini, sinon une
     erreur claire. Personne n'a parlé : rien ne part. Rien sur le disque ;
+  - échec de la dictée : `voice::Failure {message, fix, detail}`. L'état
+    « Unknown » (6) et les HRESULT inconnus sont expliqués par les réglages
+    de Windows LUS dans le registre (reconnaissance en ligne, stratégie
+    `InputPersonalization`, micro des applis de bureau) ; `detail` (étape,
+    code, langues, réglages) va dans le journal. L'événement `error` porte
+    `fix` (page ms-settings d'une liste fixe, ouverte par `voice_fix`) et
+    `apiTo` (une clé OpenAI ou Gemini est rangée : bouton « Passer à la
+    transcription par l'API », qui change `voiceEngine` puis réécoute) ;
   - discrétion (`discreet`) : micro pris par une autre appli
     (`media_use`), `presentation_busy`, `timer.focus` / `agents.quiet` →
     `blocked`, et `voice_state.discreet` coupe les plops ;

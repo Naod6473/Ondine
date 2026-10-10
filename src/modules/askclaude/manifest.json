@@ -119,7 +119,7 @@
     ]
   },
   "views": ["expanded", "drop"],
-  "commands": ["status", "prepare", "unprepare", "send", "confirm", "open_card", "reset", "copy", "listen", "voice_stop", "voice_state", "quick"],
+  "commands": ["status", "prepare", "unprepare", "send", "confirm", "open_card", "reset", "copy", "listen", "voice_stop", "voice_state", "voice_fix", "quick"],
   "events": {
     "emits": ["mascot.emote", "mascot.talk", "timer.start", "shelf.add", "voice.listening", "voice.level", "askclaude.voice"],
     "listens": ["askclaude.voice", "timer.focus", "agents.quiet"]

@@ -22,7 +22,7 @@ export function demoOn(): boolean {
 }
 
 /** Les scènes que la fenêtre de réglages peut demander (sujet « demo.scene »). */
-export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "voice", "mascot-talk", "ai-outage", "team-visit", "island-dodge"] as const;
+export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "voice", "voice-error", "mascot-talk", "ai-outage", "team-visit", "island-dodge"] as const;
 export type DemoScene = (typeof DEMO_SCENES)[number];
 
 /**
@@ -739,6 +739,8 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     case "askclaude.listen":
       demoVoice(bus);
       return null;
+    case "askclaude.voice_fix":
+      return null;
     case "askclaude.voice_state":
       return { listening: false, discreet: null };
     // Un message qui parle de volume ou d'application : Ondine règle, puis demande avant d'ouvrir.
@@ -877,6 +879,19 @@ function playScene(bus: Bus, scene: string) {
       break;
     case "voice":
       demoVoice(bus);
+      break;
+    case "voice-error":
+      // La dictée de Windows échoue (1.2.2) : le message dit quoi régler, avec les
+      // boutons « Ouvrir les paramètres Windows » et « Passer à la transcription par l'API ».
+      bus.inject("askclaude.voice", { kind: "open", look: false, hold: false }, "askclaude");
+      window.setTimeout(() => {
+        bus.inject("askclaude.voice", {
+          kind: "error",
+          message: "la dictée de Windows n'a pas marché sans dire pourquoi : vérifiez dans Paramètres Windows que « Reconnaissance vocale en ligne » est activée (Confidentialité → Voix), que le micro est permis aux applications de bureau (Confidentialité → Microphone) et que la voix de votre langue est installée (Heure et langue → Voix)",
+          fix: "speech",
+          apiTo: "api.openai.com",
+        }, "askclaude");
+      }, 900);
       break;
     case "mascot-talk":
       talkScene(bus);

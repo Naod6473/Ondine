@@ -1657,7 +1657,7 @@
 "Discrétion en visio, présentation et concentration": "Discretion in video calls, presentations and focus",
 "Le micro ne s'ouvre pas et les petits sons se taisent quand une autre appli utilise le micro, pendant une présentation ou une séance de concentration.": "The microphone does not open and the little sounds go quiet when another app uses the microphone, during a presentation or a focus session.",
 "Une conversation avec Ondine, qui répond grâce à l'API de Claude (par défaut), d'OpenAI (GPT) ou de Gemini, avec sa petite personnalité (modifiable) et ses humeurs, que la mascotte joue sur l'île. Vous pouvez joindre un fichier texte ou une capture, ou en déposer un sur l'île. Ondine peut aussi chercher vos fichiers par leur nom (les noms trouvés partent avec la conversation), en lire un ou en créer un dans son dossier (Documents\\Ondine par défaut) après votre accord, et vous proposer d'en ouvrir un. Elle peut regarder l'état du PC, l'agenda, la météo ou la musique, et agir quand vous le lui demandez : volume, luminosité, mode sombre, musique, minuteur, note ; ouvrir une application, un site ou une recherche web, poser un fichier sur l'Étagère, Wi-Fi et Bluetooth après votre accord. Elle ne peut rien supprimer ni lancer de commande. ENVOIE DU CONTENU À L'API CHOISIE (api.anthropic.com, api.openai.com ou generativelanguage.googleapis.com) : à chaque message partent la personnalité, les derniers messages de la conversation (20 au plus, avec leurs fichiers joints) et le nouveau. Un fichier joint vous est montré en entier avant l'envoi, et rien ne part sans votre clic. Les dossiers exclus sont refusés. La conversation reste en mémoire, jamais sur le disque : elle s'efface quand vous la recommencez ou quittez l'île. Les clés API restent dans le Gestionnaire d'identifiants Windows. Les réponses sont seulement affichées : rien n'est exécuté. Vous pouvez aussi lui parler à voix haute (raccourci Ctrl+Alt+V ou bouton 🎙️) : la reconnaissance vocale de Windows écrit vos mots, ou, en option, l'audio part vers OpenAI ou Gemini pour être transcrit. Rien n'est enregistré sur le disque. Les commandes simples (« volume 30 », « minuteur 10 minutes », « note : … ») sont faites sans IA ni clé.": "A conversation with Ondine, who answers using the API of Claude (default), OpenAI (GPT) or Gemini, with her own little personality (editable) and moods, which the mascot acts out on the island. You can attach a text file or a screenshot, or drop one on the island. Ondine can also search your files by name (the names found go out with the conversation), read one or create one in her folder (Documents\\Ondine by default) once you agree, and offer to open one. She can look at the PC status, calendar, weather or music, and act when you ask her: volume, brightness, dark mode, music, timer, note; open an app, a website or a web search, put a file on the Shelf, Wi-Fi and Bluetooth once you agree. She cannot delete anything or run commands. SENDS CONTENT TO THE CHOSEN API (api.anthropic.com, api.openai.com or generativelanguage.googleapis.com): each message sends the personality, the latest messages of the conversation (20 at most, with their attached files) and the new one. An attached file is shown to you in full before sending, and nothing leaves without your click. Excluded folders are refused. The conversation stays in memory, never on disk: it is erased when you start over or quit the island. API keys stay in the Windows Credential Manager. Answers are only displayed: nothing is executed. You can also talk to her out loud (Ctrl+Alt+V shortcut or the 🎙️ button): Windows speech recognition writes your words or, as an option, the audio goes to OpenAI or Gemini to be transcribed. Nothing is recorded on disk. Simple commands (« volume 30 », « timer 10 minutes », « note: … ») are done without AI or key.",
-"La dernière ligne propose « Rechercher « … » sur Google » : Entrée ouvre la page de résultats dans votre navigateur. Rien ne part avant.": "The last line offers « Search « … » on Google »: Enter opens the results page in your browser. Nothing goes out before.",
+"La dernière ligne propose « Recherche web : « … » sur Google » : Entrée ouvre la page de résultats dans votre navigateur. Rien ne part avant.": "The last line offers « Web search: « … » on Google »: Enter opens the results page in your browser. Nothing goes out before.",
 "Moteur de recherche": "Search engine",
 "Voir la consigne exacte": "Show the exact instructions",
 "Masquer la consigne exacte": "Hide the exact instructions",
@@ -2176,9 +2176,16 @@
 "Fichiers et IT": "Files and IT",
 "Entre mes PC": "Between my PCs",
 "Visite d'une collègue": "A teammate drops by",
-"Panne d'un service IA": "An AI service goes down"
+"Panne d'un service IA": "An AI service goes down",
+"la dictée de Windows n'a pas marché sans dire pourquoi : vérifiez dans Paramètres Windows que « Reconnaissance vocale en ligne » est activée (Confidentialité → Voix), que le micro est permis aux applications de bureau (Confidentialité → Microphone) et que la voix de votre langue est installée (Heure et langue → Voix)": "Windows dictation failed without saying why: check in Windows Settings that « Online speech recognition » is on (Privacy → Speech), that desktop apps may use the microphone (Privacy → Microphone) and that speech for your language is installed (Time & language → Speech)",
+"⚙️ Ouvrir les paramètres Windows": "⚙️ Open Windows Settings",
+"🎙️ Passer à la transcription par l'API": "🎙️ Switch to transcription by the API",
+"page des Paramètres inconnue": "unknown Settings page",
+"La dictée échoue": "Dictation fails"
 },
 "patterns": [
+["^L'audio de votre voix partira vers (.+), avec votre clé\\.$", "The audio of your voice will go to $1, with your key."],
+["^micro indisponible \\((.+)\\)$", "microphone unavailable ($1)"],
 ["^Vous ne l'avez pas utilisée depuis (\\d+) minutes\\. Ondine peut la réduire dans la barre des tâches \\(elle ne sera pas fermée\\)\\.$", "You have not used it for $1 minutes. Ondine can minimize it to the taskbar (it will not be closed)."],
 ["^Ranger « (.+) » \\?$", "Tidy up “$1”?"],
 [
@@ -2186,8 +2193,8 @@
 "$1 is already taken by another program: choose another shortcut in the Talk to Ondine settings"
 ],
 [
-"^Rechercher « (.+) » sur (.+)$",
-"Search « $1 » on $2"
+"^Recherche web : « (.+) » sur (.+)$",
+"Web search: « $1 » on $2"
 ],
 [
 "^A cherché « (.+) » sur le web$",
