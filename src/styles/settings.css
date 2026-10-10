@@ -1280,6 +1280,25 @@ code.cals-source {
   text-align: left;
   justify-content: flex-start;
 }
+/* Règles : jours, plage horaire, réglages d'une action, compteur. */
+.rule-days,
+.rule-hours,
+.rule-param {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.rule-day {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 13px;
+}
+.rule-count {
+  margin: 2px 0 0;
+  font-size: 12px;
+}
 
 /* ── Fenêtre étroite : la barre ne garde que les icônes ───────────────────── */
 

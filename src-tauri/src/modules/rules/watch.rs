@@ -5,7 +5,9 @@
 //     taille pendant 1,5 s) : un téléchargement ou une copie en cours ne
 //     déclenche rien avant d'être fini ;
 //   - les lecteurs (toutes les 2 s) : une nouvelle lettre = lecteur branché,
-//     une lettre disparue = lecteur débranché.
+//     une lettre disparue = lecteur débranché ;
+//   - les autres déclencheurs « regardés » (heure, réseau, batterie, session,
+//     presse-papiers) : sense.rs, à chaque tour.
 //
 // Tout passe par `modules::with_context` : module désactivé = rien ne se passe.
 
@@ -19,7 +21,7 @@ use notify::event::{ModifyKind, RenameMode};
 use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use tauri::AppHandle;
 
-use super::{model, Msg, Shared, ID};
+use super::{model, sense, Msg, Shared, ID};
 use crate::platform::{self, DriveInfo};
 use crate::services::log;
 use crate::services::perf::{self, Loop};
@@ -41,6 +43,7 @@ pub fn run(app: AppHandle, state: Shared, tx: Sender<Msg>, rx: Receiver<Msg>) {
     let mut drives: Option<Vec<DriveInfo>> = None;
     let mut last_drives: Option<Instant> = None;
     let mut was_active = false;
+    let mut senses = sense::Senses::default();
     // On démarre en construisant la surveillance.
     let _ = tx.send(Msg::Rebuild);
 
@@ -67,6 +70,7 @@ pub fn run(app: AppHandle, state: Shared, tx: Sender<Msg>, rx: Receiver<Msg>) {
                 watchers = if active { build(&state, &tx) } else { Vec::new() };
                 pending.clear();
                 drives = None;
+                senses.reset();
                 super::apply_hotkeys(&app, &state);
             }
             match msg {
@@ -84,6 +88,7 @@ pub fn run(app: AppHandle, state: Shared, tx: Sender<Msg>, rx: Receiver<Msg>) {
                 last_drives = Some(Instant::now());
                 check_drives(&app, &state, &mut drives);
             }
+            sense::tick(&app, &state, &mut senses);
             true
         }));
         match step {

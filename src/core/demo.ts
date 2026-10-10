@@ -22,7 +22,7 @@ export function demoOn(): boolean {
 }
 
 /** Les scènes que la fenêtre de réglages peut demander (sujet « demo.scene »). */
-export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "voice", "mascot-talk"] as const;
+export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "halos-battery", "halos-tour", "voice", "mascot-talk", "ai-outage"] as const;
 export type DemoScene = (typeof DEMO_SCENES)[number];
 
 /**
@@ -327,6 +327,15 @@ function agentsHistory() {
   };
 }
 
+/** Les services IA surveillés (Réseau). */
+const DEMO_AI = [
+  { id: "claude", name: "Claude" },
+  { id: "chatgpt", name: "ChatGPT" },
+  { id: "gemini", name: "Gemini" },
+];
+
+/** « Bureau propre » du mode démo : les icônes du bureau sont-elles cachées ? */
+let demoDeskHidden = false;
 const RULE_EMPTY = { extensions: [], nameContains: "", minKb: null, maxKb: null };
 
 /** La clé USB inventée de l'onglet Contrôles. */
@@ -497,6 +506,18 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return { title: "Présentation.pptx - PowerPoint", pinned: true };
     case "controls.theme":
       return { dark: state.dark, mixed: false, night: { supported: true, on: state.night } };
+    // Batteries Bluetooth et « Bureau propre » (bande du bas).
+    case "controls.bt_batteries":
+      return [
+        { name: "Casque Bluetooth", percent: 62, connected: true },
+        { name: "Souris MX", percent: 11, connected: true },
+      ];
+      break;
+    case "controls.desktop_icons":
+      return { hidden: demoDeskHidden };
+    case "controls.set_desktop_icons":
+      demoDeskHidden = args.hidden === true;
+      return { hidden: demoDeskHidden };
     case "controls.set_dark":
       state.dark = args.on === true;
       return null;
@@ -572,6 +593,13 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return { ip: "93.184.215.14", state: "open", ms: 21 };
     case "nettools.dns":
       return { reverse: false, addrs: ["93.184.215.14", "2606:2800:21f:cb07::1"], ms: 12 };
+    // Services IA (réglage aiStatus) : tout va bien, une petite panne hier.
+    case "nettools.ai_status":
+      return {
+        services: DEMO_AI.map((s) => ({ ...s, level: "ok", description: "All Systems Operational", checkedAt: Date.now() })),
+        history: [{ id: "chatgpt", from: Date.now() - 26 * 3600_000, to: Date.now() - 25 * 3600_000 - 20 * MIN, level: "degraded" }],
+      };
+      break;
     case "remote.list":
       return {
         favorites: [
@@ -595,11 +623,18 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
         rules: [
           { id: 1, name: "Ranger les PDF", enabled: true, trigger: { type: "file", folder: `${HOME}\\Downloads` }, conditions: { ...RULE_EMPTY, extensions: ["pdf"] }, actions: [{ type: "move", to: `${HOME}\\Documents\\PDF` }] },
           { id: 2, name: "Clé USB branchée", enabled: true, trigger: { type: "drive" }, conditions: RULE_EMPTY, actions: [{ type: "reveal" }] },
+          { id: 3, name: "Agent fini", enabled: true, trigger: { type: "agent", waiting: false }, conditions: RULE_EMPTY, actions: [{ type: "mascot", gesture: "dance" }] },
+          { id: 4, name: "Pause déjeuner", enabled: true, trigger: { type: "schedule", time: "12:30", days: [0, 1, 2, 3, 4] }, conditions: RULE_EMPTY, actions: [{ type: "notify", text: "C'est l'heure de manger !" }, { type: "quiet", minutes: 45 }] },
+          { id: 5, name: "Vieux téléchargements", enabled: true, trigger: { type: "schedule", time: "17:00", days: [4], folder: `${HOME}\\Downloads` }, conditions: { ...RULE_EMPTY, olderThanDays: 30 }, actions: [{ type: "trash" }] },
         ],
         paused: false,
-        history: [{ at: Date.now() - 12 * MIN, rule: "Ranger les PDF", subject: "Facture-octobre.pdf", ok: true, message: "Déplacé dans PDF" }],
+        history: [
+          { at: Date.now() - 4 * MIN, rule: "Agent fini", subject: "site-ondine", ok: true, message: "la mascotte danse" },
+          { at: Date.now() - 12 * MIN, rule: "Ranger les PDF", subject: "Facture-octobre.pdf", ok: true, message: "Déplacé dans PDF" },
+        ],
         errors: {},
         topics: [],
+        counts: { "1": 7, "3": 12, "4": 4 },
       };
       break;
     case "launcher.entries":
@@ -859,6 +894,13 @@ function playScene(bus: Bus, scene: string) {
     case "mascot-talk":
       talkScene(bus);
       break;
+    case "ai-outage": {
+      // Claude tombe (Réseau → services IA) : notification, pastille rouge sur l'île, la mascotte grimace.
+      const services = DEMO_AI.map((s) => ({ ...s, level: s.id === "claude" ? "down" : "ok", description: s.id === "claude" ? "Elevated errors on Claude.ai" : "", checkedAt: now }));
+      bus.inject("nettools.ai-status", { services, change: services[0] }, "demo");
+      bus.inject("mascot.emote", { emotion: "worried" }, "demo");
+      break;
+    }
   }
 }
 

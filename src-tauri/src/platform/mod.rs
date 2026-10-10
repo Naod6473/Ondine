@@ -41,6 +41,14 @@ pub mod record;
 pub mod halos;
 // Parler à Ondine à voix haute : dictée de Windows, micro en mémoire, fenêtre active. Contient sa propre version Linux.
 pub mod voice;
+// Règles : la session est-elle verrouillée (« je reviens devant le PC ») ? Contient sa propre version Linux.
+pub mod session;
+// Contrôles : la batterie des appareils Bluetooth (propriété lue par Windows). Contient sa propre version Linux.
+pub mod bt_battery;
+// Contrôles : cacher / montrer les icônes du bureau. Contient sa propre version Linux.
+pub mod desktop_icons;
+// Contrôles → télécommande sur le téléphone : Page suivante / précédente. Contient sa propre version Linux.
+pub mod keys;
 
 #[cfg(windows)]
 mod drop_target;

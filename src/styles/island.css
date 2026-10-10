@@ -3466,6 +3466,36 @@ body[data-perf="eco"] .gh-today.gh-zero {
   flex: none;
   border-radius: 999px;
 }
+/* Batteries Bluetooth : une petite jauge, rouge sous le seuil ; grisée si l'appareil est éteint. */
+.ctl-bt-meter {
+  flex: none;
+  width: 22px;
+  height: 8px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: linear-gradient(90deg, #4cd964 var(--p, 0%), transparent var(--p, 0%));
+}
+.ctl-bt-item.low .ctl-bt-meter {
+  background: linear-gradient(90deg, #ff5a4e var(--p, 0%), transparent var(--p, 0%));
+}
+.ctl-bt-item.low .ctl-usb-letter {
+  color: #ffb4a8;
+}
+.ctl-bt-item.off {
+  opacity: 0.55;
+}
+.ctl-bt-none {
+  font-size: 11px;
+  align-self: center;
+}
+.ctl-bt > .btn {
+  flex: none;
+  border-radius: 999px;
+}
+.ctl-bt > .btn[hidden],
+.ctl-root[hidden] {
+  display: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .ctl-dot,
   .ctl-pill,
@@ -3877,6 +3907,80 @@ body[data-edge="right"] .privacy-dot {
 }
 .net-status:empty {
   display: none;
+}
+/* Services IA (Réseau, réglage aiStatus) : une pastille par service. */
+.net-ai {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+}
+.net-ai[hidden] {
+  display: none;
+}
+.net-ai-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+.net-ai-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.net-ai-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ai, #8e8e93);
+  box-shadow: 0 0 6px var(--ai, transparent);
+}
+.net-ai-pill.ok {
+  --ai: #30d158;
+}
+.net-ai-pill.degraded {
+  --ai: #ff9f0a;
+}
+.net-ai-pill.down {
+  --ai: #ff453a;
+}
+.net-ai-history {
+  margin: 0;
+  padding-left: 16px;
+}
+p.net-ai-history {
+  padding-left: 0;
+}
+
+/* Un service IA en panne (Réseau → services IA) : une pastille rouge dans le
+   coin de l'île, même réduite (mini-île), comme le point du micro. */
+.ai-dot {
+  position: absolute;
+  top: 7px;
+  left: 12px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ff453a;
+  box-shadow: 0 0 8px #ff453a;
+  opacity: 0;
+  scale: 0.3;
+  pointer-events: none;
+  transition:
+    opacity var(--speed) var(--ease),
+    scale var(--speed) var(--ease);
+}
+.island[data-ai-outage="1"]:not([data-state="hidden"], [data-state="peek"]) .ai-dot {
+  opacity: 1;
+  scale: 1;
+  pointer-events: auto;
+}
+body[data-edge="left"] .ai-dot,
+body[data-edge="right"] .ai-dot {
+  top: auto;
+  bottom: 22px;
+  left: calc(50% - 3.5px);
 }
 
 /* Presse-papiers : le bouton « Aa » et ses quatre casses. */

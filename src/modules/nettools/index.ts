@@ -10,6 +10,7 @@ import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
 import { setLabel } from "../../island/icon";
+import { aiCard, wireAi } from "./ai";
 
 interface PingReply {
   ip: string;
@@ -63,6 +64,8 @@ export const nettools: IslandModule = {
         const p = (msg.payload ?? {}) as { ip?: string; previous?: string };
         api.notify({ title: "Votre adresse IP publique a changé", body: `${p.previous ?? "?"} → ${p.ip ?? "?"}`, icon: "🌍", priority: "low", key: "net-public-ip" });
       }),
+      // Services IA (ai.ts) : un service tombe ou revient, et la note pendant un incident.
+      wireAi(api),
     ];
     return () => offs.forEach((off) => off());
   },
@@ -91,7 +94,9 @@ export const nettools: IslandModule = {
       const out = el("div", { class: "net-out" });
       // L'état surveillé en fond : Internet, VPN, IP publique (si activée).
       const status = el("div", { class: "net-status muted" });
-      root.append(el("div", { class: "net" }, el("div", { class: "net-head" }, host, port, pingBtn, portBtn, dnsBtn), chips, status, out));
+      // Services IA (réglage aiStatus) : une pastille par service, et les pannes de la semaine.
+      const ai = aiCard(api);
+      root.append(el("div", { class: "net" }, el("div", { class: "net-head" }, host, port, pingBtn, portBtn, dnsBtn), chips, status, ai.node, out));
       api
         .invoke<{ internet: boolean | null; vpns: string[]; publicIp: string | null }>("status")
         .then((st) => {
@@ -208,7 +213,10 @@ export const nettools: IslandModule = {
         }),
       );
       out.append(el("p", { class: "muted" }, "Tapez une adresse, puis Ping, Port ou DNS."));
-      return stopPing;
+      return () => {
+        stopPing();
+        ai.stop();
+      };
     },
   },
 };

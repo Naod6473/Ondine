@@ -21,7 +21,8 @@
 // le téléphone n'arrive pas jusqu'au PC.
 //
 // Le serveur est écrit à la main avec std::net : il n'a qu'une demande à
-// comprendre (« GET /jeton/nom »), pas besoin d'une bibliothèque. Chaque
+// comprendre (« GET /jeton/nom »), pas besoin d'une bibliothèque. (La
+// télécommande de Contrôles, controls_remote.rs, réutilise ces petits outils.) Chaque
 // connexion a son petit fil ; le fichier part par morceaux (un gros fichier ne
 // remplit pas la mémoire).
 
@@ -425,7 +426,7 @@ fn reply(stream: &mut TcpStream, status: &str, extra: &str) {
 
 /// Lit l'en-tête de la demande, jusqu'à la ligne vide. None : trop long, trop
 /// lent (10 s en tout) ou connexion fermée avant la fin.
-fn read_head(stream: &mut impl Read) -> Option<Vec<u8>> {
+pub(super) fn read_head(stream: &mut impl Read) -> Option<Vec<u8>> {
     let started = Instant::now();
     let mut head = Vec::new();
     let mut buf = [0u8; 1024];
@@ -455,14 +456,14 @@ pub fn new_token() -> Result<String, String> {
 
 /// La première ligne d'une demande HTTP : « GET /chemin HTTP/1.1 ».
 #[derive(Debug, PartialEq)]
-struct Request {
-    method: String,
+pub(super) struct Request {
+    pub(super) method: String,
     /// Le chemin, sans « ?… » ni « #… ».
-    path: String,
+    pub(super) path: String,
 }
 
 /// Lit la première ligne de la demande. None si elle est mal formée.
-fn parse_request(head: &[u8]) -> Option<Request> {
+pub(super) fn parse_request(head: &[u8]) -> Option<Request> {
     let end = head.windows(2).position(|w| w == b"\r\n")?;
     let line = std::str::from_utf8(&head[..end]).ok()?;
     let mut parts = line.split(' ');
@@ -508,7 +509,7 @@ fn route(request: &Request, token: &str, name: &str) -> Route {
 
 /// Compare deux jetons sans s'arrêter au premier caractère différent : on ne
 /// peut pas deviner le jeton petit à petit en mesurant le temps de réponse.
-fn same(a: &[u8], b: &[u8]) -> bool {
+pub(super) fn same(a: &[u8], b: &[u8]) -> bool {
     a.len() == b.len() && a.iter().zip(b).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
 }
 

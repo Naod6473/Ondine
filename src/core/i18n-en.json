@@ -296,7 +296,6 @@
 "Règle": "Rule",
 "＋ Nouvelle règle": "＋ New rule",
 "Tout mettre en pause": "Pause all",
-"Aucune règle. Exemples : ranger les PDF téléchargés, Ctrl+Alt+V pour coller sans mise en forme, ouvrir une clé USB dès qu'elle est branchée.": "No rules. Examples: sort downloaded PDFs, Ctrl+Alt+V to paste without formatting, open a USB drive as soon as it's plugged in.",
 "Désactiver": "Disable",
 "Récemment": "Recent",
 "Déplacer dans un dossier": "Move to a folder",
@@ -509,7 +508,6 @@
 "aucun dossier choisi": "no folder chosen",
 "Choisir un dossier": "Choose a folder",
 "Cliquer ici puis appuyer sur le raccourci": "Click here then press the shortcut",
-"« Quand… alors… » : l'île agit toute seule quand un fichier arrive, qu'une clé USB est branchée ou que vous appuyez sur un raccourci. Déplacer ou renommer propose toujours « Annuler », et rien n'est supprimé définitivement.": "“When… then…”: the island acts on its own when a file arrives, a USB drive is plugged in or you press a shortcut. Moving or renaming always offers “Undo”, and nothing is permanently deleted.",
 "(désactivée)": "(disabled)",
 "Modèles": "Templates",
 "Un point de départ à adapter avant d'enregistrer.": "A starting point to adapt before saving.",
@@ -603,13 +601,11 @@
 "Afficher le morceau dans la pilule de l'île": "Show the track in the island's pill",
 "Boutons précédent / lecture / suivant dans la pilule": "Previous / play / next buttons in the pill",
 "Un clic sur un bouton ne déplie pas l'île.": "Clicking a button doesn't expand the island.",
-"Ping en continu, test d'un port (ouvert, fermé ou bloqué) et recherche DNS, sans ouvrir de console. Surveille aussi Internet, les VPN et une liste de serveurs, et prévient quand ça coupe. Seuls les paquets de test partent, vers les adresses que vous donnez. Si vous l'activez, l'adresse IP publique est demandée à api.ipify.org toutes les 10 minutes (ce site voit alors votre adresse IP).": "Continuous ping, port test (open, closed or blocked) and DNS lookup, without opening a console. Also monitors the Internet, VPNs and a list of servers, and warns you when something drops. Only test packets are sent, to the addresses you give. If you enable it, the public IP address is requested from api.ipify.org every 10 minutes (that site then sees your IP address).",
 "Prévenir quand Internet coupe ou revient": "Notify when the Internet goes down or comes back",
 "Prévenir quand un VPN se coupe ou se branche": "Notify when a VPN disconnects or connects",
 "Surveiller ces serveurs (séparés par des virgules ; nom ou nom:port)": "Monitor these servers (comma-separated; name or name:port)",
 "Vérifiés toutes les minutes : ping, ou connexion au port s'il est donné. 10 au plus. Exemple : nas.local, 192.168.1.10:443": "Checked every minute: ping, or port connection if given. 10 at most. Example: nas.local, 192.168.1.10:443",
 "Surveiller mon adresse IP publique (contacte api.ipify.org toutes les 10 min)": "Monitor my public IP address (contacts api.ipify.org every 10 min)",
-"Désactivé par défaut : c'est le seul réglage qui contacte un site extérieur. Ce site reçoit votre adresse IP, rien d'autre.": "Off by default: it's the only setting that contacts an outside site. That site receives your IP address, nothing else.",
 "Notes rapides et liste de choses à faire. Tout est enregistré sur votre ordinateur (%APPDATA%\\Ondine\\notes.json). Supprimer propose « Annuler ».": "Quick notes and a to-do list. Everything is saved on your computer (%APPDATA%\\Ondine\\notes.json). Deleting offers “Undo”.",
 "Rappeler les tâches à faire au démarrage": "Remind me of pending tasks at startup",
 "Pauses": "Breaks",
@@ -619,7 +615,6 @@
 "Ouvrir SSH dans": "Open SSH in",
 "Bureau à distance en plein écran": "Remote Desktop in full screen",
 "Tester les serveurs à l'ouverture de l'onglet": "Test servers when the tab opens",
-"Automatisations « Quand… alors… » : un fichier arrive dans un dossier, une clé USB est branchée, un raccourci clavier est pressé, ou un événement de l'île. Tout déplacement propose « Annuler », rien n'est supprimé définitivement, et aucune règle ne peut lancer de programme.": "“When… then…” automations: a file arrives in a folder, a USB drive is plugged in, a keyboard shortcut is pressed, or an island event. Every move offers “Undo”, nothing is permanently deleted, and no rule can launch a program.",
 "Glissez des fichiers sur l'île pour les poser sur l'étagère, les envoyer à la Corbeille, les copier ou les déplacer (dossiers favoris compris), copier leur chemin, les compresser, calculer leur empreinte (SHA-256, ou comparer à une empreinte copiée), convertir ou réduire des images, ou renommer plusieurs fichiers d'un coup (avec aperçu). Toute action sur les fichiers est annulable quelques secondes. « Vers le téléphone » envoie un fichier à un téléphone du même Wi-Fi par un QR code : réseau local seulement, 5 minutes au plus, rien ne passe par Internet.": "Drag files onto the island to drop them on the shelf, send them to the Recycle Bin, copy or move them (favorite folders included), copy their path, compress them, compute their hash (SHA-256, or compare it with a copied hash), convert or shrink images, or rename several files at once (with preview). Every file action can be undone for a few seconds. “To the phone” sends a file to a phone on the same Wi-Fi with a QR code: local network only, 5 minutes at most, nothing goes over the Internet.",
 "Dossiers favoris": "Favorite folders",
 "Chacun devient une cible quand vous glissez des fichiers sur l'île.": "Each one becomes a target when you drag files onto the island.",
@@ -1294,7 +1289,6 @@
 "Voir le bilan maintenant": "See the summary now",
 "Ce qui est compté depuis le dernier bilan : la notification s'affiche dans l'île. Le vrai bilan arrivera quand même à l'heure dite.": "What's been counted since the last summary: the notification shows in the island. The real summary will still come at the set time.",
 "Activez d'abord le module.": "Turn the module on first.",
-"Le volume des haut-parleurs et du micro, la luminosité des écrans, le Wi-Fi, le Bluetooth, le mode avion, le mode sombre et l'éclairage nocturne de Windows, sans ouvrir Windows. Les clés et disques USB s'éjectent d'un clic. Un point orange (micro) ou vert (caméra) sur l'île montre quand une appli s'en sert, et un raccourci coupe le micro de partout. Agit sur les périphériques que Windows utilise par défaut ; les écrans externes doivent accepter le réglage DDC/CI (souvent activé dans leur menu). Rien n'est écouté ni enregistré : on lit seulement ce que Windows note pour sa page Confidentialité.": "Speaker and microphone volume, screen brightness, Wi-Fi, Bluetooth, airplane mode, and Windows dark mode and night light, without opening Windows. USB drives and disks eject in one click. An orange (microphone) or green (camera) dot on the island shows when an app is using them, and a shortcut mutes the mic everywhere. Acts on the devices Windows uses by default; external screens must support DDC/CI adjustment (often enabled in their menu). Nothing is listened to or recorded: it only reads what Windows logs for its Privacy page.",
 "L'état du PC d'un coup d'œil : processeur, mémoire, disques, adresses IP et MAC, batterie, version de Windows, redémarrage en attente. Un bouton copie un résumé à coller dans un ticket de support. Prévient quand un disque est presque plein, quand la batterie est faible ou chargée. Ondine transpire quand le processeur est à fond. Tout est lu sur le PC : rien ne part sur Internet.": "Your PC's status at a glance: processor, memory, disks, IP and MAC addresses, battery, Windows version, pending restart. One button copies a summary to paste into a support ticket. Warns you when a disk is almost full, when the battery is low or charged. Ondine sweats when the processor is maxed out. Everything is read on the PC: nothing is sent over the Internet.",
 "Sombre": "Dark",
 "Veilleuse": "Night light",
@@ -1833,7 +1827,172 @@
 "Autres halos": "Other halos",
 "Halo autour de l'île": "Halo around the island",
 "Régler les animations de l'île": "Set up island animations",
-"Un liseré de lumière en couleurs qui bougent : batterie, agents, sortie de veille, téléchargements… Chaque moment se coupe à part.": "A rim of light in moving colors: battery, agents, waking from sleep, downloads… Each moment can be turned off on its own."
+"Un liseré de lumière en couleurs qui bougent : batterie, agents, sortie de veille, téléchargements… Chaque moment se coupe à part.": "A rim of light in moving colors: battery, agents, waking from sleep, downloads… Each moment can be turned off on its own.",
+"Aucune règle. Exemples : ranger les PDF téléchargés, Ctrl+Alt+V pour coller sans mise en forme, la mascotte qui danse quand un agent IA a fini.": "No rules. Examples: sort downloaded PDFs, Ctrl+Alt+V to paste without formatting, the mascot dancing when an AI agent has finished.",
+"« Quand… alors… » : l'île agit toute seule quand un fichier arrive, qu'une clé USB est branchée, que vous appuyez sur un raccourci, à une heure donnée, quand un agent IA a fini, qu'Internet coupe… Déplacer ou renommer propose toujours « Annuler », et rien n'est supprimé définitivement.": "“When… then…”: the island acts on its own when a file arrives, a USB drive is plugged in, you press a shortcut, at a set time, when an AI agent has finished, when the Internet goes down… Moving or renaming always offers “Undo”, and nothing is permanently deleted.",
+"Ping en continu, test d'un port (ouvert, fermé ou bloqué) et recherche DNS, sans ouvrir de console. Surveille aussi Internet, les VPN et une liste de serveurs, et prévient quand ça coupe. Seuls les paquets de test partent, vers les adresses que vous donnez. Si vous l'activez, l'adresse IP publique est demandée à api.ipify.org toutes les 10 minutes (ce site voit alors votre adresse IP). Si vous l'activez aussi, l'état de Claude, ChatGPT et Gemini est lu sur leurs pages d'état publiques toutes les 5 minutes.": "Continuous ping, port test (open, closed or blocked) and DNS lookup, without opening a console. Also monitors the Internet, VPNs and a list of servers, and warns you when something drops. Only test packets are sent, to the addresses you give. If you enable it, the public IP address is requested from api.ipify.org every 10 minutes (that site then sees your IP address). If you also turn it on, the status of Claude, ChatGPT and Gemini is read from their public status pages every 5 minutes.",
+"Désactivé par défaut : ce réglage contacte un site extérieur. Ce site reçoit votre adresse IP, rien d'autre.": "Off by default: this setting contacts an outside site. That site receives your IP address, nothing else.",
+"Automatisations « Quand… alors… » : un fichier arrive dans un dossier, une clé USB est branchée, un raccourci clavier, une heure donnée, un agent IA qui a fini, Internet qui coupe, la batterie, le retour devant le PC, le presse-papiers, une musique qui démarre, ou un événement de l'île. Tout déplacement propose « Annuler », rien n'est supprimé définitivement, et aucune règle ne peut lancer de programme.": "“When… then…” automations: a file arrives in a folder, a USB drive is plugged in, a keyboard shortcut, a set time, an AI agent that has finished, the Internet going down, the battery, coming back to the PC, the clipboard, music starting, or an island event. Every move offers “Undo”, nothing is permanently deleted, and no rule can launch a program.",
+"Le volume des haut-parleurs et du micro, la luminosité des écrans, le Wi-Fi, le Bluetooth, le mode avion, le mode sombre et l'éclairage nocturne de Windows, sans ouvrir Windows. Les clés et disques USB s'éjectent d'un clic, la batterie des appareils Bluetooth s'affiche, les icônes du bureau se cachent d'un clic, et le téléphone peut servir de télécommande (si vous l'activez). Un point orange (micro) ou vert (caméra) sur l'île montre quand une appli s'en sert, et un raccourci coupe le micro de partout. Agit sur les périphériques que Windows utilise par défaut ; les écrans externes doivent accepter le réglage DDC/CI (souvent activé dans leur menu). Rien n'est écouté ni enregistré : on lit seulement ce que Windows note pour sa page Confidentialité.": "Speaker and microphone volume, screen brightness, Wi-Fi, Bluetooth, airplane mode, and Windows dark mode and night light, without opening Windows. USB drives and disks eject in one click, Bluetooth device batteries are shown, desktop icons hide in one click, and your phone can act as a remote control (if you turn it on). An orange (microphone) or green (camera) dot on the island shows when an app is using them, and a shortcut mutes the mic everywhere. Acts on the devices Windows uses by default; external screens must support DDC/CI adjustment (often enabled in their menu). Nothing is listened to or recorded: it only reads what Windows logs for its Privacy page.",
+"Comme to-do": "As a to-do",
+"Puis le poser sur l'étagère": "Then put it on the shelf",
+"Agent fini": "Agent finished",
+"Agir sur les fichiers d'un dossier (facultatif)": "Act on the files of a folder (optional)",
+"Ajouter une note ou une to-do": "Add a note or a to-do",
+"Amoureuse": "In love",
+"Aucun jour coché = tous les jours.": "No day ticked = every day.",
+"Avec un dossier, la règle agit sur chaque fichier qui remplit les conditions (par exemple « plus vieux que 30 jours »).": "With a folder, the rule acts on each file that meets the conditions (for example “older than 30 days”).",
+"Bâille": "Yawns",
+"C'est l'heure de manger !": "Time to eat!",
+"Calme / Ne pas déranger": "Calm / Do not disturb",
+"Changement": "Change",
+"Clin d'œil": "Wink",
+"Contente": "Happy",
+"Copier le chemin ou le nom": "Copy the path or the name",
+"Dans un nouveau dossier au nom de l'archive : rien n'est écrasé, « Annuler » le met à la Corbeille.": "Into a new folder named after the archive: nothing is overwritten, “Undo” moves it to the Recycle Bin.",
+"Danser": "Dance",
+"Des étoiles dans les yeux": "Stars in the eyes",
+"Dort": "Sleeps",
+"Décompresser une archive .zip": "Extract a .zip archive",
+"Exemple : de 09:00 à 18:00. De 22:00 à 06:00 passe minuit.": "Example: from 09:00 to 18:00. From 22:00 to 06:00 goes past midnight.",
+"Extensions": "Extensions",
+"Fait la fête": "Celebrates",
+"Inquiète": "Worried",
+"Internet coupé": "Internet down",
+"Internet est coupé": "The Internet is down",
+"Internet revient": "The Internet is back",
+"Internet revenu": "Internet back",
+"Je copie un lien, une adresse e-mail, un code…": "I copy a link, an e-mail address, a code…",
+"Je reviens devant le PC (session déverrouillée)": "I come back to the PC (session unlocked)",
+"L'île garde ses notifications pour plus tard et la mascotte se calme. Les alertes importantes passent quand même.": "The island keeps its notifications for later and the mascot calms down. Important alerts still get through.",
+"La batterie passe sous un seuil": "The battery drops below a threshold",
+"Le PC est branché sur secteur": "The PC is plugged in",
+"Le PC est débranché du secteur": "The PC is unplugged",
+"Le chemin complet": "The full path",
+"Le presse-papiers contient": "The clipboard contains",
+"Le réseau change (Internet, VPN)": "The network changes (Internet, VPN)",
+"Mascotte : danser, expression, pancarte": "Mascot: dance, expression, sign",
+"Ondine demande à Windows, rien n'est envoyé sur Internet.": "Ondine asks Windows, nothing is sent over the Internet.",
+"Panique": "Panics",
+"Pas modifié depuis ce nombre de jours.": "Not modified for this many days.",
+"Pause !": "Break!",
+"Pause déjeuner": "Lunch break",
+"Plus vieux que (jours)": "Older than (days)",
+"Quand je reviens devant le PC": "When I come back to the PC",
+"Quand le PC est branché sur secteur": "When the PC is plugged in",
+"Quand le PC est débranché du secteur": "When the PC is unplugged",
+"Quand un agent IA m'attend": "When an AI agent is waiting for me",
+"Quand un agent IA a fini": "When an AI agent has finished",
+"Quand une musique démarre": "When music starts",
+"Rit": "Laughs",
+"S'étire": "Stretches",
+"Seuil (%)": "Threshold (%)",
+"Seulement ces jours": "Only these days",
+"Seulement entre": "Only between",
+"Seulement le nom": "Only the name",
+"Seulement quand le PC est sur batterie.": "Only when the PC is on battery.",
+"Soulagée": "Relieved",
+"Surprise": "Surprised",
+"Tend l'oreille": "Listens closely",
+"Texte cherché": "Text to find",
+"Triste": "Sad",
+"Un agent IA a fini": "An AI agent has finished",
+"Un agent IA m'attend": "An AI agent is waiting for me",
+"Une expression": "An expression",
+"Une musique démarre": "Music starts",
+"Une pancarte avec un texte": "A sign with some text",
+"Vieux téléchargements à la Corbeille (récupérables)": "Old downloads moved to the Recycle Bin (recoverable)",
+"Vieux téléchargements": "Old downloads",
+"déclenchée 1 fois cette semaine": "triggered once this week",
+"un lien": "a link",
+"une adresse e-mail": "an e-mail address",
+"un code de vérification (4 à 8 chiffres)": "a verification code (4 to 8 digits)",
+"un texte précis": "a specific text",
+"zip, exe (vide = toutes)": "zip, exe (empty = all)",
+"{nom} = ce qui a été trouvé (le lien, l'adresse, le code). Rien n'est gardé ni envoyé, et les copies d'un gestionnaire de mots de passe sont ignorées.": "{nom} = what was found (the link, the address, the code). Nothing is kept or sent, and copies from a password manager are ignored.",
+"{nom} = le nom du fichier, du lecteur ou de l'agent ; {date} et {heure} aussi.": "{nom} = the name of the file, drive or agent; {date} and {heure} too.",
+"À une heure donnée": "At a set time",
+"💃 Agent fini → la mascotte danse": "💃 Agent finished → the mascot dances",
+"📡 Internet coupé → me prévenir": "📡 Internet down → tell me",
+"🥪 Pause déjeuner": "🥪 Lunch break",
+"🧹 Ranger les vieux téléchargements": "🧹 Tidy up old downloads",
+"tous les jours": "every day",
+"en semaine": "on weekdays",
+"le week-end": "at the weekend",
+"lun.": "Mon",
+"mar.": "Tue",
+"mer.": "Wed",
+"jeu.": "Thu",
+"ven.": "Fri",
+"sam.": "Sat",
+"dim.": "Sun",
+"un agent IA a fini": "an AI agent has finished",
+"la mascotte danse": "the mascot dances",
+"expression de la mascotte": "mascot expression",
+"copier le nom": "copy the name",
+"copier le chemin": "copy the path",
+"to-do ajoutée": "to-do added",
+"note ajoutée": "note added",
+"nom copié": "name copied",
+"chemin copié": "path copied",
+"pancarte": "sign",
+"presse-papiers": "clipboard",
+"secteur branché": "plugged in",
+"secteur débranché": "unplugged",
+"ce n'est pas une archive .zip": "this is not a .zip archive",
+"archive trop grande une fois décompressée (plus de 4 Go)": "archive too big once extracted (more than 4 GB)",
+"choisissez où décompresser l'archive": "choose where to extract the archive",
+"choisissez le dossier de destination": "choose the destination folder",
+"expression inconnue": "unknown expression",
+"le texte de la pancarte doit faire de 1 à 40 caractères": "the sign text must be 1 to 40 characters long",
+"Calme : de 1 à 240 minutes": "Calm: 1 to 240 minutes",
+"heure invalide (exemple : 12:00)": "invalid time (example: 12:00)",
+"jour invalide": "invalid day",
+"batterie : un seuil de 5 à 95 %": "battery: a threshold from 5 to 95%",
+"plage horaire invalide (exemple : de 09:00 à 18:00)": "invalid time range (example: from 09:00 to 18:00)",
+"âge du fichier : de 1 à 3650 jours": "file age: 1 to 3650 days",
+"l'âge du fichier va avec le déclencheur « à une heure donnée » sur un dossier": "file age goes with the “at a set time” trigger on a folder",
+"déplacer, copier, renommer, décompresser ou mettre à la Corbeille : seulement avec un fichier": "move, copy, rename, extract or move to the Recycle Bin: only with a file",
+"le dossier choisi n'est pas un dossier": "the chosen folder is not a folder",
+"l'archive serait décompressée dans le dossier surveillé : la règle tournerait en boucle": "the archive would be extracted into the watched folder: the rule would loop",
+"dossier exclu ou introuvable": "excluded or missing folder",
+"Copier le nom du fichier": "Copy the file name",
+"Copier le chemin du fichier": "Copy the file path",
+"La mascotte danse": "The mascot dances",
+"Cacher les icônes du bureau": "Hide desktop icons",
+"Montrer les icônes du bureau": "Show desktop icons",
+"Batteries Bluetooth": "Bluetooth batteries",
+"Bluetooth et bureau": "Bluetooth and desktop",
+"Aucun appareil ne donne sa batterie": "No device reports its battery",
+"Icônes du bureau cachées": "Desktop icons hidden",
+"Icônes du bureau de retour": "Desktop icons are back",
+"Prévenir quand un appareil Bluetooth passe sous (%, 0 = jamais)": "Warn when a Bluetooth device drops below (%, 0 = never)",
+"Écouteurs, casque, souris, clavier : le niveau que Windows connaît (celui de Paramètres → Bluetooth et appareils). Vérifié toutes les 5 minutes. Certains appareils ne donnent leur batterie qu'à l'appli de leur fabricant.": "Earbuds, headset, mouse, keyboard: the level Windows knows (the one in Settings → Bluetooth & devices). Checked every 5 minutes. Some devices only report their battery to their maker's app.",
+"bureau introuvable (l'Explorateur est-il lancé ?)": "desktop not found (is Explorer running?)",
+"l'Explorateur ne répond pas": "Explorer is not responding",
+"état du bureau inconnu": "unknown desktop state",
+"seulement sous Windows": "Windows only",
+"📱 Télécommande": "📱 Remote control",
+"Piloter la musique, le volume et les diapositives depuis le téléphone": "Control music, volume and slides from your phone",
+"Téléphone connecté à la télécommande": "Phone connected to the remote control",
+"Télécommande arrêtée (10 minutes sans s'en servir)": "Remote control stopped (10 minutes unused)",
+"Télécommande impossible": "Remote control unavailable",
+"Téléphone connecté.": "Phone connected.",
+"Musique, volume, minuteur, diapositive suivante ou précédente. Un seul téléphone, sur le même Wi-Fi ; elle s'arrête toute seule après 10 minutes sans s'en servir.": "Music, volume, timer, next or previous slide. One phone only, on the same Wi-Fi; it stops by itself after 10 minutes unused.",
+"Fermer la télécommande tout de suite": "Close the remote control now",
+"Télécommande sur le téléphone (réseau local)": "Remote control on your phone (local network)",
+"Un QR code ouvre sur le téléphone une petite page : musique, volume, minuteur, diapositive suivante ou précédente. Seulement sur le Wi-Fi de la maison ou du bureau, pour un seul téléphone ; elle s'arrête toute seule après 10 minutes sans s'en servir. Rien ne passe par Internet.": "A QR code opens a small page on your phone: music, volume, timer, next or previous slide. Only on your home or office Wi-Fi, for a single phone; it stops by itself after 10 minutes unused. Nothing goes through the Internet.",
+"la télécommande est désactivée (Réglages → Contrôles)": "the remote control is turned off (Settings → Controls)",
+"Windows a refusé la touche (fenêtre d'un programme lancé en administrateur ?)": "Windows refused the key (a window of a program run as administrator?)",
+"Services IA": "AI services",
+"Premier coup d'œil dans quelques instants…": "First check in a moment…",
+"Aucune panne ces 7 derniers jours.": "No outage in the last 7 days.",
+"fonctionne": "working",
+"perturbé": "degraded",
+"en panne": "down",
+"état inconnu": "unknown status",
+"Surveiller Claude, ChatGPT et Gemini (contacte leurs pages d'état toutes les 5 min)": "Monitor Claude, ChatGPT and Gemini (contacts their status pages every 5 min)",
+"Désactivé par défaut. Ondine lit les pages d'état publiques d'Anthropic, d'OpenAI et de Google Cloud, et vous prévient quand un service tombe ou revient. En pause pendant une présentation ou une séance de concentration. Ces sites voient votre adresse IP, rien d'autre.": "Off by default. Ondine reads the public status pages of Anthropic, OpenAI and Google Cloud, and tells you when a service goes down or comes back. Paused during a presentation or a focus session. These sites see your IP address, nothing else."
 },
 "patterns": [
 [
@@ -3356,29 +3515,205 @@
 "^Refusé : poser « (.+) » sur l'Étagère$",
 "Refused: put « $1 » on the Shelf"
 ],
-["^En charge · (\\d+) %$",
+[
+"^En charge · (\\d+) %$",
 "Charging · $1%"
 ],
-["^Sur batterie · (\\d+) %$",
+[
+"^Sur batterie · (\\d+) %$",
 "On battery · $1%"
 ],
-["^Plus que (.+?) % : branchez le chargeur maintenant\\.$",
+[
+"^Plus que (.+?) % : branchez le chargeur maintenant\\.$",
 "Only $1% left: plug in the charger now."
 ],
-["^Verr Maj · Activé$",
+[
+"^Verr Maj · Activé$",
 "Caps Lock · On"
 ],
-["^Verr Maj · Désactivé$",
+[
+"^Verr Maj · Désactivé$",
 "Caps Lock · Off"
 ],
-["^Verr Num · Activé$",
+[
+"^Verr Num · Activé$",
 "Num Lock · On"
 ],
-["^Verr Num · Désactivé$",
+[
+"^Verr Num · Désactivé$",
 "Num Lock · Off"
 ],
-["^Volume · (\\d+) %$",
+[
+"^Volume · (\\d+) %$",
 "Volume · $1%"
+],
+[
+"^déclenchée (\\d+) fois cette semaine$",
+"triggered $1 times this week"
+],
+[
+"^(\\d+) notifications pendant le mode Calme$",
+"$1 notifications during Calm mode"
+],
+[
+"^Quand Internet est coupé$",
+"When the Internet is down"
+],
+[
+"^Quand Internet revient$",
+"When the Internet is back"
+],
+[
+"^Quand un VPN se branche$",
+"When a VPN connects"
+],
+[
+"^Quand un VPN se coupe$",
+"When a VPN disconnects"
+],
+[
+"^Quand je copie un lien$",
+"When I copy a link"
+],
+[
+"^Quand je copie une adresse e-mail$",
+"When I copy an e-mail address"
+],
+[
+"^Quand je copie un code de vérification \\(4 à 8 chiffres\\)$",
+"When I copy a verification code (4 to 8 digits)"
+],
+[
+"^Quand je copie un texte avec « (.*) »$",
+"When I copy a text containing “$1”"
+],
+[
+"^Quand la batterie passe sous (\\d+) %$",
+"When the battery drops below $1%"
+],
+[
+"^Calme (\\d+) min$",
+"Calm $1 min"
+],
+[
+"^Calme pendant (\\d+) min$",
+"Calm for $1 min"
+],
+[
+"^Calme et Ne pas déranger pendant (\\d+) min$",
+"Calm and Do not disturb for $1 min"
+],
+[
+"^décompressé dans (.+)$",
+"extracted into $1"
+],
+[
+"^décompresser dans (.+)$",
+"extract into $1"
+],
+[
+"^pancarte « (.*) »$",
+"sign “$1”"
+],
+[
+"^(\\d+) fichier\\(s\\) traité\\(s\\)$",
+"$1 file(s) processed"
+],
+[
+"^(\\d+) fichier\\(s\\)$",
+"$1 file(s)"
+],
+[
+"^expression « (.+) »$",
+"expression “$1”"
+],
+[
+"^Ajouter la note « (.*) »$",
+"Add the note “$1”"
+],
+[
+"^Ajouter la to-do « (.*) »$",
+"Add the to-do “$1”"
+],
+[
+"^La mascotte tient une pancarte « (.*) »$",
+"The mascot holds a sign “$1”"
+],
+[
+"^La mascotte montre l'expression « (.+) »$",
+"The mascot shows the expression “$1”"
+],
+[
+"^Décompresser l'archive \\.zip dans (.+), puis la poser sur l'étagère$",
+"Extract the .zip archive into $1, then put it on the shelf"
+],
+[
+"^Décompresser l'archive \\.zip dans (.+)$",
+"Extract the .zip archive into $1"
+],
+[
+"^presse-papiers : un texte de 2 à (\\d+) caractères$",
+"clipboard: a text of 2 to $1 characters"
+],
+[
+"^le texte de la note doit faire de 1 à (\\d+) caractères$",
+"the note text must be 1 to $1 characters long"
+],
+[
+"^archive trop grande \\(plus de (\\d+) éléments\\)$",
+"archive too big (more than $1 items)"
+],
+[
+"^Batterie faible : (.+) \\((\\d+) %\\)$",
+"Low battery: $1 ($2%)"
+],
+[
+"^(Claude|ChatGPT|Gemini) : fonctionne$",
+"$1: working"
+],
+[
+"^(Claude|ChatGPT|Gemini) : perturbé$",
+"$1: degraded"
+],
+[
+"^(Claude|ChatGPT|Gemini) : en panne$",
+"$1: down"
+],
+[
+"^(Claude|ChatGPT|Gemini) : état inconnu$",
+"$1: unknown status"
+],
+[
+"^(Claude|ChatGPT|Gemini) est en panne$",
+"$1 is down"
+],
+[
+"^(Claude|ChatGPT|Gemini) a un incident en cours$",
+"$1 has an ongoing incident"
+],
+[
+"^(Claude|ChatGPT|Gemini) fonctionne à nouveau$",
+"$1 is working again"
+],
+[
+"^(Claude|ChatGPT|Gemini) · en panne · en cours depuis (.+)$",
+"$1 · down · ongoing for $2"
+],
+[
+"^(Claude|ChatGPT|Gemini) · perturbé · en cours depuis (.+)$",
+"$1 · degraded · ongoing for $2"
+],
+[
+"^(Claude|ChatGPT|Gemini) · en panne · (.+)$",
+"$1 · down · $2"
+],
+[
+"^(Claude|ChatGPT|Gemini) · perturbé · (.+)$",
+"$1 · degraded · $2"
+],
+[
+"^En panne : (.+)$",
+"Down: $1"
 ]
 ]
 }

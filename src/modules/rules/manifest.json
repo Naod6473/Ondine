@@ -3,13 +3,13 @@
   "name": "Règles",
   "tip": "Créez vos règles dans Réglages → Règles ; ici, vous les suivez et pouvez tout mettre en pause.",
   "icon": "⚡",
-  "description": "Automatisations « Quand… alors… » : un fichier arrive dans un dossier, une clé USB est branchée, un raccourci clavier est pressé, ou un événement de l'île. Tout déplacement propose « Annuler », rien n'est supprimé définitivement, et aucune règle ne peut lancer de programme.",
+  "description": "Automatisations « Quand… alors… » : un fichier arrive dans un dossier, une clé USB est branchée, un raccourci clavier, une heure donnée, un agent IA qui a fini, Internet qui coupe, la batterie, le retour devant le PC, le presse-papiers, une musique qui démarre, ou un événement de l'île. Tout déplacement propose « Annuler », rien n'est supprimé définitivement, et aucune règle ne peut lancer de programme.",
   "version": "0.1.0",
   "permissions": ["files"],
   "views": ["expanded"],
   "commands": ["list", "save", "delete", "toggle", "pause", "preview"],
   "events": {
-    "emits": ["rules.edit", "rules.changed", "rules.notify", "rules.open-island", "shelf.add", "terminal.open", "timer.start", "clipboard.paste-plain"],
-    "listens": ["rules.changed", "rules.notify", "rules.open-island", "capture.done", "timer.done", "agenda.reminder", "task.finished"]
+    "emits": ["rules.edit", "rules.changed", "rules.notify", "rules.open-island", "shelf.add", "terminal.open", "timer.start", "clipboard.paste-plain", "notes.add", "mascot.emote", "mascot.dance", "mascot.sign", "rules.quiet"],
+    "listens": ["rules.changed", "rules.notify", "rules.open-island", "capture.done", "timer.done", "agenda.reminder", "task.finished", "agents.event", "media.changed", "mascot.sign"]
   }
 }

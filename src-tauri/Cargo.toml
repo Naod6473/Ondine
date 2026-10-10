@@ -149,6 +149,10 @@ windows = { version = "0.61", features = [
   "Win32_System_EventLog",
   # Parler à Ondine à voix haute : la reconnaissance vocale de Windows (platform/voice.rs).
   "Media_SpeechRecognition",
+  # Règles : la session est-elle verrouillée (WTSQuerySessionInformationW) ?
+  "Win32_System_RemoteDesktop",
+  # Contrôles : batterie des appareils Bluetooth (SetupDiGetDevicePropertyW, DEVPROPTYPE).
+  "Win32_Devices_Properties",
 ] }
 
 [profile.release]
