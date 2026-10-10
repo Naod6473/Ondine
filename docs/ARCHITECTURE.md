@@ -1325,7 +1325,7 @@ qui surveille dossiers et lecteurs).
 - « guid » / « uuid » : « Nouveau GUID » (`crypto.randomUUID`) et sa version
   Windows `{MAJUSCULES}`, copiés de la même façon.
 - **Recherche web** (1.2.2) : la dernière ligne, dès qu'on tape quelque chose,
-  est « Rechercher « … » sur Google » (réglage `searchEngine` : Google par
+  est « Recherche web : « … » sur Google » (réglage `searchEngine` : Google par
   défaut, DuckDuckGo, Bing, Qwant, Ecosia ; `launcher::ENGINES`). Entrée ou
   clic → commande `web_search {query}` : le Rust construit l'adresse
   (`search_url` : blancs regroupés, 500 caractères, encodage `%XX`, espace

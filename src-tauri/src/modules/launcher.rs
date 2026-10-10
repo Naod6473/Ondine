@@ -11,7 +11,7 @@
 //     qui vérifie qu'il est activé) et renvoie 5 résultats au plus ;
 //   - les calculs et les GUID (trouvés par le front, src/modules/launcher/calc.ts) :
 //     ici, seulement la copie du résultat (commande "copy", permission clipboard) ;
-//   - « Rechercher « … » sur Google » (dernière ligne) : `web_search` ouvre la
+//   - « Recherche web : « … » sur Google » (dernière ligne) : `web_search` ouvre la
 //     page de résultats du moteur choisi (réglage « searchEngine ») dans le
 //     navigateur par défaut. Rien ne part avant Entrée ou le clic ; l'adresse
 //     est construite ici (texte encodé, `search_url`) et revalidée par `web_url`.
@@ -238,7 +238,7 @@ impl RustModule for Launcher {
                 files::copy_text(text)?;
                 Ok(Value::Null)
             }
-            // { query } : « Rechercher « … » sur Google » (Entrée ou clic) :
+            // { query } : « Recherche web : « … » sur Google » (Entrée ou clic) :
             // la page de résultats s'ouvre dans le navigateur par défaut.
             "web_search" => {
                 let engine = engine_of(&ctx.settings());
