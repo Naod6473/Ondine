@@ -22,7 +22,7 @@ export function demoOn(): boolean {
 }
 
 /** Les scènes que la fenêtre de réglages peut demander (sujet « demo.scene »). */
-export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new"] as const;
+export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "team-visit"] as const;
 export type DemoScene = (typeof DEMO_SCENES)[number];
 
 /**
@@ -32,7 +32,7 @@ export type DemoScene = (typeof DEMO_SCENES)[number];
 const REAL_DATA = [
   "agenda.", "agents.", "claude.", "capture.", "clipboard.changed", "clipboard.link-cleaned", "controls.",
   "media.", "nettools.", "notes.", "remote.", "rules.notify", "shelf.", "system.", "task.",
-  "weather.",
+  "weather.", "team.",
 ];
 
 export function hidesRealData(msg: BusMessage): boolean {
@@ -584,6 +584,11 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       window.setTimeout(() => bus.inject("remote.wake-done", { ...fav, awake: true, secs: 4, ms: 3 }, "remote"), 4000);
       return { sent: 3 };
     }
+    // Équipe : de faux collègues, aucun réseau.
+    case "team.state":
+      return teamDemo();
+    case "team.show_code":
+      return { code: "482913", seconds: 180, ip: "192.168.1.20" };
     case "rules.list":
       return {
         rules: [
@@ -819,7 +824,35 @@ function playScene(bus: Bus, scene: string) {
       // Le panneau « Quoi de neuf » de la version installée (core/whats-new.ts).
       bus.inject("app.whats-new", null, "demo");
       break;
+    case "team-visit":
+      // La mascotte d'une collègue traverse l'île (module Équipe).
+      bus.inject("team.event", { kind: "visit", from: TEAM_PEERS[0], note: "Le café est prêt !" }, "demo");
+      break;
   }
+}
+
+// ── Équipe ───────────────────────────────────────────────────────────────────
+
+const TEAM_PEERS = [
+  { id: "a1b2c3d4e5f60718", name: "Léa", color: "#ff8f78", mascot: "goutte-gomme", mine: false, it: false },
+  { id: "0f1e2d3c4b5a6978", name: "Karim", color: "#62e6c4", mascot: "goutte-gomme", mine: false, it: true },
+  { id: "1122334455667788", name: "Portable", color: "#b98cff", mascot: "goutte-gomme", mine: true, it: false },
+];
+
+function teamDemo() {
+  const live = [
+    { status: "available", statusText: "", battery: null },
+    { status: "meeting", statusText: "Point hebdo", battery: null },
+    { status: "focus", statusText: "", battery: { percent: 64, charging: false } },
+  ];
+  return {
+    me: { id: "9988776655443322", fingerprint: "9988 7766 5544 3322", name: "Simon", ip: "192.168.1.20", status: "available", statusText: "", auto: true, visible: true },
+    peers: TEAM_PEERS.map((p, i) => ({ ...p, ...live[i], addr: `192.168.1.${30 + i}`, online: true, version: "1.2.2", visits: true, fingerprint: p.id.replace(/(.{4})(?!$)/g, "$1 ") })),
+    nearby: [{ id: "5566778899aabbcc", name: "Camille", color: "#ffd24a", addr: "192.168.1.44" }],
+    pending: [{ id: 1, peer: TEAM_PEERS[0].id, kind: "file", text: "", name: "Planning-octobre.xlsx", size: 48_640, folder: false, at: Date.now() - MIN }],
+    code: null,
+    polls: [],
+  };
 }
 
 /** Branche le mode démo sur l'île (fenêtre principale). */

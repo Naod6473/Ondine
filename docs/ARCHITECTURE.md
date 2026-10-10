@@ -407,6 +407,9 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `shelf.hash-progress` `{job, percent}` | Étagère (Rust, cible « Empreinte ») | la notification « Empreinte SHA-256 : 45 % » (une fois par seconde, au-delà de 64 Mo) |
 | `shelf.hashed` `{job, algo, compared, cancelled, results: [{name, hex, matches} ou {name, error}]}` | Étagère (Rust) | notification « Identique ✓ » / « Différente ✗ » ou l'empreinte, avec « Copier » (`hash_copy {job}`) ; le texte copié n'est jamais dans le message |
 | `capture.gif` `{state: recording / encoding / done / cancelled / error, …}` | Capture (Rust) | notification avec « Arrêter », puis « Création du GIF… », puis « GIF enregistré » (« Montrer dans l'Explorateur ») ; le bouton de l'onglet suit l'état |
+| `team.changed` | Équipe (Rust) | l'onglet redemande l'état (`state`) : collègues, présence, demandes, voisines |
+| `team.event` `{kind, from, …}` | Équipe (Rust) | ce qui arrive d'un collègue : `ping`, `ask`, `answer`, `visit`, `incoming` (à accepter), `received`, `sent`, `declined`, `invite`, `invite-reply`, `poll`, `vote`, `pomodoro`, `announce`, `status-report`, `rdp-reply`, `paired`, `pair-failed`… → notifications |
+| `team.progress` `{id, name, percent, dir}` | Équipe (Rust) | la notification « Envoi / Réception en cours » remplacée à chaque étape |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -1323,6 +1326,75 @@ s'il n'existe pas ou est désactivé).
   `controls.usb-added` pour chaque nouvelle (pas celles déjà là au
   démarrage), si le réglage `usbNotify` est coché. Le journal ne note jamais
   le nom d'un volume ni d'un programme.
+
+### Module Équipe (`src/modules/team/`, `src-tauri/src/modules/team.rs`, `team_net.rs`, `team_proto.rs`)
+
+Les Ondine d'un même réseau local se parlent directement : aucun serveur,
+aucun compte, rien sur Internet. **Désactivé par défaut**
+(`MODULES_OFF_BY_DEFAULT`, dans services/settings.rs et core/settings-store.ts) :
+éteint, aucun port n'est ouvert.
+
+- **Ports fixes** : UDP **47820** (découverte), TCP **47821** (appairage et
+  échanges). L'écoute TCP est sur toutes les cartes, mais une connexion qui ne
+  vient pas d'une adresse privée / locale au lien est fermée tout de suite
+  (16 à la fois au plus). Comme « Vers le téléphone », on laisse le pare-feu
+  de Windows demander l'autorisation la première fois (réseaux privés).
+- **Découverte** : « je suis là » (nom, couleur, empreinte de la clé) toutes
+  les 30 s sur l'adresse de diffusion de chaque carte, seulement si
+  « Visible » ; « qui est là ? » sur « Chercher ». Rien n'est jamais accepté
+  sur la foi d'une annonce. Repli : l'adresse IP tapée à la main.
+- **Appairage** : B affiche un code à 6 chiffres (3 min, UN essai : le code
+  est consommé dès la connexion). A le tape. SPAKE2 (crate `spake2`) en tire
+  une clé sans l'envoyer (un intrus au milieu n'a qu'un essai, pas d'attaque
+  hors ligne), puis Noise `XXpsk3` (crate `snow`) avec cette clé : chacun
+  apprend la clé publique X25519 de l'autre, puis sa fiche (nom, couleur,
+  mascotte, « mon PC »), chiffrée. Pas de QR : un PC ne lit pas facilement
+  un QR affiché sur un autre.
+- **Échanges** : une connexion TCP par message ; poignée de main Noise `IK`
+  (l'appelant connaît la clé de l'autre et prouve la sienne ; l'appelé refuse
+  toute clé hors de « Mes collègues »), puis ChaCha20-Poly1305, clé neuve à
+  chaque connexion. Trames : 2 octets de longueur + message Noise (≤ 65 535) ;
+  dans le canal, 1 octet (0 = JSON, 1 = morceau de fichier) + le contenu.
+  Chaque message (`Msg`, JSON de 60 Ko au plus) est vérifié champ par champ
+  (`Msg::check`) : longueurs, valeurs connues, pas de caractère de contrôle ni
+  d'inversion de texte. Tests : deux pairs simulés en mémoire
+  (team_proto.rs, en bas).
+- **Clés** : la clé privée X25519 est dans le Gestionnaire d'identifiants
+  (`team-identity-key`, hors de `KNOWN_KEYS` : le front ne peut ni la lire,
+  ni l'écrire, ni demander si elle existe). Les clés publiques des collègues
+  sont dans `%APPDATA%\Ondine\team.json` (avec l'empreinte, vérifiée à la
+  lecture ; un fichier abîmé est mis de côté).
+- **Rien n'est exécuté** : texte, fichier, demande d'aide, demande de l'IT
+  (état du PC, Bureau à distance) attendent « Accepter » (`pending`, 50 au
+  plus, 30 min). Un fichier accepté : c'est le destinataire qui vient le
+  chercher (`Pull`), dans `Téléchargements\Ondine`, sous un nom assaini
+  (`safe_file_name` : pas de chemin, de `:`, de nom réservé), jamais
+  d'écrasement (`unique_dest`), empreinte SHA-256 vérifiée, marque du Web
+  (`Zone.Identifier`) ; un fichier à moitié reçu va à la Corbeille. Taille
+  maximale : réglage `maxMb`. Un dossier est zippé en mémoire (200 Mo au plus,
+  dossiers exclus passés).
+- **Présence** : toutes les 60 s (et dès que le statut change) à chaque
+  collègue connu ; hors ligne après 2 min 30 sans nouvelles. Statut
+  automatique : `timer.focus` → concentration, rendez-vous à heure fixe en
+  cours (`agenda::in_meeting`, plages seulement) → en réunion, 10 min sans
+  activité → absent. Modifiable à la main.
+- **Collègues** : geste (la mascotte de l'île du destinataire fait
+  `mascot.emote`), « Tu es dispo ? », visite (visit.ts : la mascotte du
+  collègue, à sa couleur, traverse la carte de l'alerte avec un ressort ;
+  posée d'emblée avec « Réduire les animations » ou Calme ; une fenêtre de
+  traversée de tout l'écran aurait été trop lourde), texte (montré avant
+  l'envoi, copié à l'acceptation), fichiers (glisser sur l'île : une cible
+  par collègue en ligne), café / déjeuner, sondage (2 à 4 choix), Pomodoro
+  d'équipe (chacun « Rejoint » : `timer.start`), annonce.
+- **IT** : « Demander de l'aide » (le résumé de `system::support_text` et
+  l'image copiée), état du PC et Bureau à distance (`mstsc /v:<IPv4 locale>`)
+  seulement après « Autoriser » à chaque fois, inventaire seulement des PC
+  qui ont allumé `shareInventory` et marqué le demandeur « IT ».
+- **Mes PC** (appairage « mon PC ») : la batterie passe dans la présence ;
+  presse-papiers partagé (`clipboardSync`, texte seulement, jamais un élément
+  marqué sensible, sans écho) ; même mascotte (`mascotSync`).
+- **Pas de file d'attente** : un collègue éteint ne reçoit rien (« ne répond
+  pas »).
 
 ## Agents IA (`src/modules/agents/`, `src-tauri/src/modules/agents.rs`, `src-tauri/src/cli.rs`)
 

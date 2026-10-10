@@ -727,7 +727,7 @@ fn broadcast(ctx: &ModuleContext, inner: &Inner, ids: &[String], msg: &Msg) -> R
         let all = inner.peers();
         let s = inner.state.locked();
         all.into_iter()
-            .filter(|p| if ids.is_empty() { s.live.get(&p.id).is_some_and(|l| team_net::online(l)) } else { ids.contains(&p.id) })
+            .filter(|p| if ids.is_empty() { s.live.get(&p.id).is_some_and(team_net::online) } else { ids.contains(&p.id) })
             .collect()
     };
     if peers.is_empty() {

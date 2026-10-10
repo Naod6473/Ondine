@@ -221,7 +221,7 @@ fn handle(app: &AppHandle, inner: &Arc<Inner>, mut s: TcpStream, ip: Ipv4Addr) {
 // ── Les fichiers ─────────────────────────────────────────────────────────────
 
 fn progress(app: &AppHandle, id: u64, name: &str, peer: &Peer, done: u64, size: u64, dir: &str) {
-    let percent = if size == 0 { 100 } else { (done.saturating_mul(100) / size).min(100) };
+    let percent = done.saturating_mul(100).checked_div(size).map_or(100, |p| p.min(100));
     team::emit(app, "team.progress", json!({ "id": id, "name": name, "percent": percent, "dir": dir, "peer": peer.id, "peerName": peer.name }));
 }
 
@@ -535,7 +535,7 @@ fn housekeeping(app: AppHandle, inner: Arc<Inner>) {
                 team::emit(&app, "team.changed", Value::Null);
             }
             sync_clipboard(&app, &inner);
-            if tick % 5 == 0 {
+            if tick.is_multiple_of(5) {
                 sync_mascot(&app, &inner);
             }
         }));

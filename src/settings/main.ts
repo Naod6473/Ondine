@@ -126,6 +126,12 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
     { id: "persona", label: "Personnalité et affichage", keys: ["personality", "autoGrow", "emotions", "showDrop"] },
     { id: "files", label: "Fichiers et PC", keys: ["fileTools", "pcTools", "filesFolder"] },
   ],
+  // Équipe (réseau local).
+  team: [
+    { id: "general", label: "Général", keys: ["visible", "name", "visits", "autoStatus"] },
+    { id: "files", label: "Fichiers et IT", keys: ["maxMb", "shareInventory"] },
+    { id: "mine", label: "Entre mes PC", keys: ["clipboardSync", "mascotSync"] },
+  ],
 };
 
 /**
@@ -1030,6 +1036,7 @@ function demoGroup(): HTMLElement {
                 scene("download", "Fichier téléchargé"),
                 scene("next-track", "Morceau suivant"),
                 scene("whats-new", "Quoi de neuf"),
+                scene("team-visit", "Visite d'une collègue"),
               ),
               "La notification arrive dans l'île : lancez l'enregistrement avant de cliquer.",
             ),
