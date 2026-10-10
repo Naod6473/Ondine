@@ -22,7 +22,7 @@ export function demoOn(): boolean {
 }
 
 /** Les scènes que la fenêtre de réglages peut demander (sujet « demo.scene »). */
-export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new"] as const;
+export const DEMO_SCENES = ["claude-done", "claude-permission", "download", "next-track", "whats-new", "ai-outage"] as const;
 export type DemoScene = (typeof DEMO_SCENES)[number];
 
 /**
@@ -327,6 +327,13 @@ function agentsHistory() {
   };
 }
 
+/** Les services IA surveillés (Réseau). */
+const DEMO_AI = [
+  { id: "claude", name: "Claude" },
+  { id: "chatgpt", name: "ChatGPT" },
+  { id: "gemini", name: "Gemini" },
+];
+
 /** « Bureau propre » du mode démo : les icônes du bureau sont-elles cachées ? */
 let demoDeskHidden = false;
 const RULE_EMPTY = { extensions: [], nameContains: "", minKb: null, maxKb: null };
@@ -581,6 +588,12 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return { ip: "93.184.215.14", state: "open", ms: 21 };
     case "nettools.dns":
       return { reverse: false, addrs: ["93.184.215.14", "2606:2800:21f:cb07::1"], ms: 12 };
+    // Services IA (réglage aiStatus) : tout va bien, une petite panne hier.
+    case "nettools.ai_status":
+      return {
+        services: DEMO_AI.map((s) => ({ ...s, level: "ok", description: "All Systems Operational", checkedAt: Date.now() })),
+        history: [{ id: "chatgpt", from: Date.now() - 26 * 3600_000, to: Date.now() - 25 * 3600_000 - 20 * MIN, level: "degraded" }],
+      };
     case "remote.list":
       return {
         favorites: [
@@ -839,6 +852,13 @@ function playScene(bus: Bus, scene: string) {
       // Le panneau « Quoi de neuf » de la version installée (core/whats-new.ts).
       bus.inject("app.whats-new", null, "demo");
       break;
+    case "ai-outage": {
+      // Claude tombe (Réseau → services IA) : notification, pastille rouge sur l'île, la mascotte grimace.
+      const services = DEMO_AI.map((s) => ({ ...s, level: s.id === "claude" ? "down" : "ok", description: s.id === "claude" ? "Elevated errors on Claude.ai" : "", checkedAt: now }));
+      bus.inject("nettools.ai-status", { services, change: services[0] }, "demo");
+      bus.inject("mascot.emote", { emotion: "worried" }, "demo");
+      break;
+    }
   }
 }
 

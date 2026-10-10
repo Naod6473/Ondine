@@ -29,6 +29,8 @@ mod controls_remote;
 mod launcher;
 mod media;
 mod nettools;
+// Réseau → surveillance des services IA (pages d'état de Claude, ChatGPT, Gemini).
+mod nettools_ai;
 mod rules;
 mod notes;
 mod remote;

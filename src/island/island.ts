@@ -97,6 +97,8 @@ export class Island {
   private content = el("div", { class: "island-content" });
   /** Le petit point orange (micro) ou vert (caméra) quand une appli s'en sert. */
   private privacyDot = el("span", { class: "privacy-dot", "aria-hidden": "true" });
+  /** Un service IA en panne (Réseau → services IA) : pastille rouge dans le coin. */
+  private aiDot = el("span", { class: "ai-dot" });
   /** Qui utilise le micro et la caméra (message "controls.media-use" du module Contrôles). */
   private mediaUse: { mic: string[]; cam: string[] } = { mic: [], cam: [] };
   private mascot: MascotController | null = null;
@@ -157,7 +159,7 @@ export class Island {
   ) {
     this.fsm = new IslandStateMachine(timingsFrom(settingsStore.current));
     this.fsm.onTransition = (from, to) => this.onTransition(from, to);
-    this.shell.append(this.mascotSlot, this.content, this.privacyDot);
+    this.shell.append(this.mascotSlot, this.content, this.privacyDot, this.aiDot);
     this.root.append(this.shell);
     this.jelly = new Jelly(this.shell, {
       edge: () => this.edge(),
@@ -255,6 +257,7 @@ export class Island {
     this.wirePrivacy();
     this.wireFocus();
     this.wireRulesQuiet();
+    this.wireAiDot();
     // On porte Ondine (sur le bureau) au-dessus de l'île : elle se montre pour l'accueillir.
     void onTauriEvent<boolean>("pet-over-island", (over) => (over ? this.fsm.pointerEnter() : this.fsm.pointerLeave()));
     // Des fichiers lâchés sur Ondine (sur le bureau) : l'île connaît les cibles,
@@ -783,6 +786,16 @@ export class Island {
       if (n > 1 && !this.notifications.isPaused()) {
         this.notifications.push({ moduleId: "island", title: `${n} notifications pendant le mode Calme`, icon: "🌙", priority: "low", key: "rules-quiet-summary" });
       }
+    });
+  }
+
+  /** "nettools.ai-status" : une pastille rouge tant qu'un service IA est en panne. */
+  private wireAiDot() {
+    this.bus.on("nettools.ai-status", (msg) => {
+      const list = ((msg.payload as { services?: { name: string; level: string }[] } | null)?.services ?? []).filter((s) => s.level === "down");
+      this.shell.dataset.aiOutage = list.length ? "1" : "";
+      this.aiDot.title = list.length ? `En panne : ${list.map((s) => s.name).join(", ")}` : "";
+      this.aiDot.setAttribute("aria-label", this.aiDot.title);
     });
   }
 

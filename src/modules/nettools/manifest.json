@@ -3,7 +3,7 @@
   "name": "Réseau",
   "tip": "Tapez un nom ou une adresse, puis Entrée pour un ping en continu.",
   "icon": "🌐",
-  "description": "Ping en continu, test d'un port (ouvert, fermé ou bloqué) et recherche DNS, sans ouvrir de console. Surveille aussi Internet, les VPN et une liste de serveurs, et prévient quand ça coupe. Seuls les paquets de test partent, vers les adresses que vous donnez. Si vous l'activez, l'adresse IP publique est demandée à api.ipify.org toutes les 10 minutes (ce site voit alors votre adresse IP).",
+  "description": "Ping en continu, test d'un port (ouvert, fermé ou bloqué) et recherche DNS, sans ouvrir de console. Surveille aussi Internet, les VPN et une liste de serveurs, et prévient quand ça coupe. Seuls les paquets de test partent, vers les adresses que vous donnez. Si vous l'activez, l'adresse IP publique est demandée à api.ipify.org toutes les 10 minutes (ce site voit alors votre adresse IP). Si vous l'activez aussi, l'état de Claude, ChatGPT et Gemini est lu sur leurs pages d'état publiques toutes les 5 minutes.",
   "version": "0.1.0",
   "permissions": [
     "network"
@@ -15,20 +15,27 @@
     "ping",
     "port",
     "dns",
-    "status"
+    "status",
+    "ai_status"
   ],
   "events": {
     "emits": [
       "nettools.internet",
       "nettools.vpn",
       "nettools.host",
-      "nettools.public-ip"
+      "nettools.public-ip",
+      "nettools.ai-status",
+      "mascot.emote"
     ],
     "listens": [
       "nettools.internet",
       "nettools.vpn",
       "nettools.host",
-      "nettools.public-ip"
+      "nettools.public-ip",
+      "nettools.ai-status",
+      "timer.focus",
+      "agents.quiet",
+      "agents.event"
     ]
   },
   "settings": {
@@ -60,7 +67,14 @@
         "key": "publicIp",
         "type": "boolean",
         "label": "Surveiller mon adresse IP publique (contacte api.ipify.org toutes les 10 min)",
-        "help": "Désactivé par défaut : c'est le seul réglage qui contacte un site extérieur. Ce site reçoit votre adresse IP, rien d'autre.",
+        "help": "Désactivé par défaut : ce réglage contacte un site extérieur. Ce site reçoit votre adresse IP, rien d'autre.",
+        "default": false
+      },
+      {
+        "key": "aiStatus",
+        "type": "boolean",
+        "label": "Surveiller Claude, ChatGPT et Gemini (contacte leurs pages d'état toutes les 5 min)",
+        "help": "Désactivé par défaut. Ondine lit les pages d'état publiques d'Anthropic, d'OpenAI et de Google Cloud, et vous prévient quand un service tombe ou revient. En pause pendant une présentation ou une séance de concentration. Ces sites voient votre adresse IP, rien d'autre.",
         "default": false
       }
     ]

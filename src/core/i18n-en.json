@@ -603,13 +603,13 @@
 "Afficher le morceau dans la pilule de l'île": "Show the track in the island's pill",
 "Boutons précédent / lecture / suivant dans la pilule": "Previous / play / next buttons in the pill",
 "Un clic sur un bouton ne déplie pas l'île.": "Clicking a button doesn't expand the island.",
-"Ping en continu, test d'un port (ouvert, fermé ou bloqué) et recherche DNS, sans ouvrir de console. Surveille aussi Internet, les VPN et une liste de serveurs, et prévient quand ça coupe. Seuls les paquets de test partent, vers les adresses que vous donnez. Si vous l'activez, l'adresse IP publique est demandée à api.ipify.org toutes les 10 minutes (ce site voit alors votre adresse IP).": "Continuous ping, port test (open, closed or blocked) and DNS lookup, without opening a console. Also monitors the Internet, VPNs and a list of servers, and warns you when something drops. Only test packets are sent, to the addresses you give. If you enable it, the public IP address is requested from api.ipify.org every 10 minutes (that site then sees your IP address).",
+"Ping en continu, test d'un port (ouvert, fermé ou bloqué) et recherche DNS, sans ouvrir de console. Surveille aussi Internet, les VPN et une liste de serveurs, et prévient quand ça coupe. Seuls les paquets de test partent, vers les adresses que vous donnez. Si vous l'activez, l'adresse IP publique est demandée à api.ipify.org toutes les 10 minutes (ce site voit alors votre adresse IP). Si vous l'activez aussi, l'état de Claude, ChatGPT et Gemini est lu sur leurs pages d'état publiques toutes les 5 minutes.": "Continuous ping, port test (open, closed or blocked) and DNS lookup, without opening a console. Also monitors the Internet, VPNs and a list of servers, and warns you when something drops. Only test packets are sent, to the addresses you give. If you enable it, the public IP address is requested from api.ipify.org every 10 minutes (that site then sees your IP address). If you also turn it on, the status of Claude, ChatGPT and Gemini is read from their public status pages every 5 minutes.",
 "Prévenir quand Internet coupe ou revient": "Notify when the Internet goes down or comes back",
 "Prévenir quand un VPN se coupe ou se branche": "Notify when a VPN disconnects or connects",
 "Surveiller ces serveurs (séparés par des virgules ; nom ou nom:port)": "Monitor these servers (comma-separated; name or name:port)",
 "Vérifiés toutes les minutes : ping, ou connexion au port s'il est donné. 10 au plus. Exemple : nas.local, 192.168.1.10:443": "Checked every minute: ping, or port connection if given. 10 at most. Example: nas.local, 192.168.1.10:443",
 "Surveiller mon adresse IP publique (contacte api.ipify.org toutes les 10 min)": "Monitor my public IP address (contacts api.ipify.org every 10 min)",
-"Désactivé par défaut : c'est le seul réglage qui contacte un site extérieur. Ce site reçoit votre adresse IP, rien d'autre.": "Off by default: it's the only setting that contacts an outside site. That site receives your IP address, nothing else.",
+"Désactivé par défaut : ce réglage contacte un site extérieur. Ce site reçoit votre adresse IP, rien d'autre.": "Off by default: this setting contacts an outside site. That site receives your IP address, nothing else.",
 "Notes rapides et liste de choses à faire. Tout est enregistré sur votre ordinateur (%APPDATA%\\Ondine\\notes.json). Supprimer propose « Annuler ».": "Quick notes and a to-do list. Everything is saved on your computer (%APPDATA%\\Ondine\\notes.json). Deleting offers “Undo”.",
 "Rappeler les tâches à faire au démarrage": "Remind me of pending tasks at startup",
 "Pauses": "Breaks",
@@ -1851,7 +1851,16 @@
 "Télécommande sur le téléphone (réseau local)": "Remote control on your phone (local network)",
 "Un QR code ouvre sur le téléphone une petite page : musique, volume, minuteur, diapositive suivante ou précédente. Seulement sur le Wi-Fi de la maison ou du bureau, pour un seul téléphone ; elle s'arrête toute seule après 10 minutes sans s'en servir. Rien ne passe par Internet.": "A QR code opens a small page on your phone: music, volume, timer, next or previous slide. Only on your home or office Wi-Fi, for a single phone; it stops by itself after 10 minutes unused. Nothing goes through the Internet.",
 "la télécommande est désactivée (Réglages → Contrôles)": "the remote control is turned off (Settings → Controls)",
-"Windows a refusé la touche (fenêtre d'un programme lancé en administrateur ?)": "Windows refused the key (a window of a program run as administrator?)"
+"Windows a refusé la touche (fenêtre d'un programme lancé en administrateur ?)": "Windows refused the key (a window of a program run as administrator?)",
+"Services IA": "AI services",
+"Premier coup d'œil dans quelques instants…": "First check in a moment…",
+"Aucune panne ces 7 derniers jours.": "No outage in the last 7 days.",
+"fonctionne": "working",
+"perturbé": "degraded",
+"en panne": "down",
+"état inconnu": "unknown status",
+"Surveiller Claude, ChatGPT et Gemini (contacte leurs pages d'état toutes les 5 min)": "Monitor Claude, ChatGPT and Gemini (contacts their status pages every 5 min)",
+"Désactivé par défaut. Ondine lit les pages d'état publiques d'Anthropic, d'OpenAI et de Google Cloud, et vous prévient quand un service tombe ou revient. En pause pendant une présentation ou une séance de concentration. Ces sites voient votre adresse IP, rien d'autre.": "Off by default. Ondine reads the public status pages of Anthropic, OpenAI and Google Cloud, and tells you when a service goes down or comes back. Paused during a presentation or a focus session. These sites see your IP address, nothing else."
 },
 "patterns": [
 [
@@ -3477,6 +3486,54 @@
 [
 "^Batterie faible : (.+) \\((\\d+) %\\)$",
 "Low battery: $1 ($2%)"
+],
+[
+"^(Claude|ChatGPT|Gemini) : fonctionne$",
+"$1: working"
+],
+[
+"^(Claude|ChatGPT|Gemini) : perturbé$",
+"$1: degraded"
+],
+[
+"^(Claude|ChatGPT|Gemini) : en panne$",
+"$1: down"
+],
+[
+"^(Claude|ChatGPT|Gemini) : état inconnu$",
+"$1: unknown status"
+],
+[
+"^(Claude|ChatGPT|Gemini) est en panne$",
+"$1 is down"
+],
+[
+"^(Claude|ChatGPT|Gemini) a un incident en cours$",
+"$1 has an ongoing incident"
+],
+[
+"^(Claude|ChatGPT|Gemini) fonctionne à nouveau$",
+"$1 is working again"
+],
+[
+"^(Claude|ChatGPT|Gemini) · en panne · en cours depuis (.+)$",
+"$1 · down · ongoing for $2"
+],
+[
+"^(Claude|ChatGPT|Gemini) · perturbé · en cours depuis (.+)$",
+"$1 · degraded · ongoing for $2"
+],
+[
+"^(Claude|ChatGPT|Gemini) · en panne · (.+)$",
+"$1 · down · $2"
+],
+[
+"^(Claude|ChatGPT|Gemini) · perturbé · (.+)$",
+"$1 · degraded · $2"
+],
+[
+"^En panne : (.+)$",
+"Down: $1"
 ]
 ]
 }
