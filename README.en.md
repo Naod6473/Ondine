@@ -42,8 +42,28 @@ The intro video is on the website: [ondine.pissits.com](https://ondine.pissits.c
 
 ## What's new
 
-New in version 1.2.2 (the full list is in the
+What's new in version 1.2.3 (the full list is in the
 [CHANGELOG](CHANGELOG.md)):
+
+- **The mouth island** (optional): Ondine hangs upside down from the edge of
+  the screen and the island is her mouth, made of gum. Nano, her mouth is
+  shut; mini, she opens it a little and stretches; open, she is just a thin
+  rim. On the desktop, she opens her mouth right where she is.
+- **Home**: the first page of the open island, made of live cards (music,
+  agents, events, weather, battery, tasks…), a sentence from Ondine summing up
+  the day, a "Pick up" card and 4 quick actions. Drag cards to arrange them,
+  click to open them in place.
+- **Ondine moves around the island**: she pushes the file you remove from the
+  shelf, crumples the deleted note, runs along the progress bar, hops from tab
+  to tab… then goes back to her spot.
+- **Nano size**: a tiny notch that only shows Ondine and widens on hover or
+  when something happens.
+- **And also**: "Frost" light-glass theme, wheel = volume, double-click on
+  Ondine, halo in the album art's colours, island reflections on other
+  screens, ambient sounds, screensaver, speed test, offline dictation, Team
+  pairing by QR code, Ondine's sign, new "new device on the network" rule.
+
+### In 1.2.2
 
 - **Talk to Ondine out loud**: Ctrl+Alt+V (or 🎙️), live captions, the island's
   halo trembles with your voice. She answers with « plop plip » in time with

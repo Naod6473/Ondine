@@ -42,8 +42,29 @@ La vidéo de présentation est sur le site : [ondine.pissits.com](https://ondine
 
 ## Nouveautés
 
-Les nouveautés de la version 1.2.2 (la liste complète est dans le
+Les nouveautés de la version 1.2.3 (la liste complète est dans le
 [CHANGELOG](CHANGELOG.md)) :
+
+- **L'île-bouche** (au choix) : Ondine est suspendue tête en bas au bord de
+  l'écran et l'île est sa bouche, en gomme. Nano, elle a la bouche fermée ;
+  mini, elle l'entrouvre et s'étire ; ouverte, elle n'est plus qu'un liseré.
+  Sur le bureau, c'est elle qui ouvre la bouche là où elle se trouve.
+- **Accueil** : la première page de l'île ouverte, faite de cartes vivantes
+  (musique, agents, rendez-vous, météo, batterie, tâches…), une phrase
+  d'Ondine qui résume la journée, une carte « Reprendre » et 4 actions
+  rapides. On range les cartes en les glissant, un clic les ouvre sur place.
+- **Ondine se déplace dans l'île** : elle pousse le fichier retiré de
+  l'étagère, froisse la note supprimée, court le long de la barre de
+  progression, saute d'onglet en onglet… puis revient à sa place.
+- **Format nano** : une toute petite encoche qui ne montre qu'Ondine et
+  s'élargit au survol ou quand il se passe quelque chose.
+- **Et aussi** : thème « Givre » en verre clair, molette = volume, double-clic
+  sur Ondine, halo aux couleurs de la pochette, reflets de l'île sur les
+  autres écrans, sons d'ambiance, écran de veille, test de débit, dictée hors
+  ligne, appairage Équipe par QR code, pancarte d'Ondine, nouvelle règle
+  « nouvel appareil sur le réseau ».
+
+### Dans la 1.2.2
 
 - **Parlez à Ondine à voix haute** : Ctrl+Alt+V (ou 🎙️), sous-titres en
   direct, le halo de l'île tremble avec votre voix. Elle répond en « plop
