@@ -105,7 +105,7 @@ describe("liquide : couleurs et lisibilité", () => {
           const p = readablePaint(c, bg, muted, 0.8, additive);
           const seen = seenThrough(bg, p.color, p.alpha, p.additive);
           assert.ok(contrastRatio(muted, seen) >= TEXT_CONTRAST - 0.01, `${theme.id} ${c} ${additive}`);
-          assert.ok(contrastRatio(FG, seen) >= TEXT_CONTRAST, `${theme.id} ${c} texte principal`);
+          assert.ok(contrastRatio(theme.fg ?? FG, seen) >= TEXT_CONTRAST, `${theme.id} ${c} texte principal`);
           assert.ok(p.alpha > 0.1, `${theme.id} ${c} : le liquide se voit encore`);
         }
       }

@@ -64,6 +64,15 @@ export interface PetLayout {
   maxH?: number;
 }
 
+/** L'apparence d'un reflet de l'île (src-tauri/src/island/mirrors.rs). */
+export interface MirrorLook {
+  edge: string;
+  theme: string;
+  color: string;
+  mascot: boolean;
+  style: string;
+}
+
 export interface UpdateInfo {
   version: string;
   current: string;
@@ -100,6 +109,8 @@ export const Bridge = {
   islandReposition: () => call<void>("island_reposition"),
   /** On attrape l'île : la fenêtre suit la souris jusqu'au lâcher, puis s'aimante à un bord. */
   islandDragStart: () => call<void>("island_drag_start"),
+  /** Page d'un reflet de l'île (autre écran) : son apparence ; la demander dit aussi qu'elle est chargée. */
+  mirrorLook: () => call<MirrorLook>("mirror_look"),
   // Ondine sur le bureau (src-tauri/src/pet.rs)
   /** Ouvre ou ferme la bulle à côté d'elle ; renvoie de quel côté elle s'ouvre. */
   petOpen: (open: boolean, size?: { w: number; h: number }) => call<PetLayout>("pet_open", { open, w: size?.w ?? null, h: size?.h ?? null }),

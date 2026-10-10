@@ -2386,7 +2386,19 @@
 "Halos": "Halos",
 "Liseré des minuteurs": "Timer outline",
 "Pour comparer les modes : la ligne « Ressources utilisées », dans la page À propos.": "To compare modes: the “Resources used” line, on the About page.",
-"Le module Système est désactivé : ces halos reviendront quand vous le rallumerez (Modules → Système).": "The System module is off: these halos will come back when you turn it back on (Modules → System)."
+"Le module Système est désactivé : ces halos reviendront quand vous le rallumerez (Modules → Système).": "The System module is off: these halos will come back when you turn it back on (Modules → System).",
+"Givre": "Frost",
+"Verre clair": "Light glass",
+"Note rapide": "Quick note",
+"Double-clic sur Ondine": "Double-click on Ondine",
+"Dans l'île. Un clic simple garde ses réactions (elle sourit, rit, s'agace si on insiste).": "In the island. A single click keeps its reactions (she smiles, laughs, gets annoyed if you insist).",
+"Reflet sur les autres écrans": "Reflection on other screens",
+"Une petite encoche avec Ondine sur chacun de vos autres écrans. Approchez la souris du reflet : l'île vient s'ouvrir sur cet écran.": "A small notch with Ondine on each of your other screens. Move the mouse to the reflection: the island comes and opens on that screen.",
+"Molette sur l'île = volume": "Mouse wheel on the island = volume",
+"Tournez la molette au-dessus de la mini-île (ou de la mascotte, île ouverte) : le son monte ou baisse, sans cliquer. Une petite jauge montre le niveau.": "Turn the mouse wheel over the mini island (or over the mascot when the island is open): the sound goes up or down, no click needed. A small gauge shows the level.",
+"Couleurs de la pochette": "Album art colors",
+"Le halo de la musique (et celui de la danse) prend les couleurs de la pochette du morceau en lecture. Calculé dans l'île, rien n'est envoyé.": "The music halo (and the dance halo) takes the colors of the album art of the track playing. Computed in the island, nothing is sent.",
+"Activez-le dans les Réglages, ou choisissez une autre action du double-clic.": "Turn it on in Settings, or choose another double-click action."
 },
 "patterns": [
 [
@@ -4220,6 +4232,10 @@
 [
 "^Le module (.+) est désactivé : ces halos reviendront quand vous le rallumerez \\(Modules → (.+)\\)\\.$",
 "The $1 module is off: these halos will come back when you turn it back on (Modules → $2)."
+],
+[
+"^Module « (.+) » désactivé$",
+"$1 module is off"
 ]
 ]
 }

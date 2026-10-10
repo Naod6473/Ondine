@@ -189,14 +189,19 @@ export function seenThrough(bg: string, color: string, alpha: number, additive: 
  */
 export function readablePaint(color: string, bg: string, fg: string, opacity: number, additive: boolean, min = TEXT_CONTRAST): { color: string; alpha: number; additive: boolean } {
   const want = clamp01(opacity);
+  // Une île claire (thème Givre) : texte sombre, donc le liquide s'éclaircit
+  // au lieu de foncer, et une lumière ne s'additionne pas (du blanc sur du blanc).
+  const lightIsland = contrastRatio(fg, "#000000") < contrastRatio(bg, "#000000");
+  if (lightIsland) additive = false;
+  const toward = lightIsland ? "#ffffff" : "#000000";
   const okFor = (c: string, a: number) => contrastRatio(fg, seenThrough(bg, c, a, additive)) >= min;
   // Un fond déjà trop clair pour son texte : on ne peut pas faire mieux que lui.
   if (contrastRatio(fg, bg) < min) return { color, alpha: Math.min(want, 0.15), additive: false };
   for (let k = 1; k >= 0.2; k -= 0.05) {
-    const c = mix("#000000", color, k);
+    const c = mix(toward, color, k);
     if (okFor(c, want)) return { color: c, alpha: want, additive };
   }
-  const dark = mix("#000000", color, 0.2);
+  const dark = mix(toward, color, 0.2);
   let a = want;
   while (a > 0.02 && !okFor(dark, a)) a -= 0.02;
   if (additive && a < want / 2) return readablePaint(color, bg, fg, opacity, false, min);
@@ -206,7 +211,8 @@ export function readablePaint(color: string, bg: string, fg: string, opacity: nu
 /**
  * Lecture tolérante d'une couleur CSS calculée (« rgb(…) », « rgba(…) »,
  * « #rrggbb ») → « #rrggbb ». Une couleur en partie transparente (le fond du
- * thème Verre) est vue au pire au-dessus d'un bureau blanc.
+ * thème Verre) est vue au pire au-dessus d'un bureau blanc ; une claire
+ * (thème Givre), au-dessus d'un bureau noir.
  */
 export function cssToHex(css: string, fallback: string): string {
   const s = (css ?? "").trim();
@@ -216,5 +222,9 @@ export function cssToHex(css: string, fallback: string): string {
   const alpha = m[4] === undefined ? 1 : m[4].endsWith("%") ? Number(m[4].slice(0, -1)) / 100 : Number(m[4]);
   if (!(alpha > 0.01)) return fallback;
   const hex = rgbToHex(Number(m[1]), Number(m[2]), Number(m[3]));
-  return alpha < 1 ? mix(hex, "#ffffff", 1 - alpha) : hex;
+  if (alpha >= 1) return hex;
+  // Un fond sombre translucide est vu au pire sur un bureau blanc ; un fond
+  // clair translucide (thème Givre), au pire sur un bureau noir.
+  const light = contrastRatio(hex, "#000000") > contrastRatio(hex, "#ffffff");
+  return mix(hex, light ? "#000000" : "#ffffff", 1 - alpha);
 }

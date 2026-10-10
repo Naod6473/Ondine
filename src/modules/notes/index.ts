@@ -39,7 +39,7 @@ let data: Data = { notes: [], todos: [] };
 let pane: "todo" | "notes" = "todo";
 const redraws = new Set<() => void>();
 /** Ce que le Lanceur a demandé d'ouvrir, en attendant que la vue soit là. */
-let wanted: { kind: "note" | "todo"; id: number } | null = null;
+let wanted: { kind: "note" | "todo"; id: number | "new" } | null = null;
 /** La vue affichée, si elle l'est : pour suivre une demande du Lanceur sur place. */
 let jump: (() => void) | null = null;
 
@@ -112,6 +112,14 @@ export const notes: IslandModule = {
       wanted = { kind: p.kind === "todo" ? "todo" : "note", id: p.id };
       pane = wanted.kind === "todo" ? "todo" : "notes";
       jump?.(); // l'onglet était déjà affiché
+    });
+    // Double-clic sur Ondine, action « Note rapide » (1.2.3) : l'onglet s'ouvre
+    // sur une note neuve, prête à écrire.
+    api.on("notes.quick", () => {
+      wanted = { kind: "note", id: "new" };
+      pane = "notes";
+      api.openIsland("notes");
+      jump?.();
     });
     void refresh(api).then(() => {
       const open = data.todos.filter((t) => !t.done).length;
@@ -370,14 +378,14 @@ export const notes: IslandModule = {
         if (!w) return;
         wanted = null;
         if (w.kind === "note") {
-          openNote = data.notes.some((n) => n.id === w.id) ? w.id : null;
+          openNote = w.id === "new" ? "new" : data.notes.some((n) => n.id === w.id) ? w.id : null;
           show("notes", false);
           pill.jumpTo(segButtons.notes);
           return;
         }
         show("todo", false);
         pill.jumpTo(segButtons.todo);
-        highlight(w.id);
+        if (typeof w.id === "number") highlight(w.id);
       };
 
       /** Fait clignoter doucement une tâche et la fait défiler jusqu'à elle. */

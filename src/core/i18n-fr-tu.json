@@ -277,7 +277,10 @@
 "Votre prénom, la langue et le démarrage avec Windows.": "Ton prénom, la langue et le démarrage avec Windows.",
 "Où vit l'île, quand elle se replie, et comment Ondine vit avec vos fenêtres.": "Où vit l'île, quand elle se replie, et comment Ondine vit avec tes fenêtres.",
 "Ondine regarde sur GitHub s'il existe une nouvelle version. Rien ne s'installe sans votre accord.": "Ondine regarde sur GitHub s'il existe une nouvelle version. Rien ne s'installe sans ton accord.",
-"Désactivé, Ondine ne réagit plus à vos fenêtres.": "Désactivé, Ondine ne réagit plus à tes fenêtres."
+"Désactivé, Ondine ne réagit plus à vos fenêtres.": "Désactivé, Ondine ne réagit plus à tes fenêtres.",
+"Une petite encoche avec Ondine sur chacun de vos autres écrans. Approchez la souris du reflet : l'île vient s'ouvrir sur cet écran.": "Une petite encoche avec Ondine sur chacun de tes autres écrans. Approche la souris du reflet : l'île vient s'ouvrir sur cet écran.",
+"Tournez la molette au-dessus de la mini-île (ou de la mascotte, île ouverte) : le son monte ou baisse, sans cliquer. Une petite jauge montre le niveau.": "Tourne la molette au-dessus de la mini-île (ou de la mascotte, île ouverte) : le son monte ou baisse, sans cliquer. Une petite jauge montre le niveau.",
+"Activez-le dans les Réglages, ou choisissez une autre action du double-clic.": "Active-le dans les Réglages, ou choisis une autre action du double-clic."
 },
 "patterns": [
 [

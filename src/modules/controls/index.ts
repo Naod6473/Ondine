@@ -23,6 +23,7 @@ import { pacedInterval } from "../../core/perf";
 import { usbStrip, wireUsbNotifications } from "./usb";
 import { btStrip, wireBtNotifications } from "./bt";
 import { onRemoteChange, remotePanel, remoteSession, wireRemote } from "./remote";
+import { wireWheelVolume } from "./wheel";
 import type { UsbDrive } from "./usb-text";
 
 type DeviceId = "speakers" | "microphone";
@@ -519,7 +520,10 @@ export const controls: IslandModule = {
     const offBt = wireBtNotifications(api);
     // Télécommande sur le téléphone : téléphone connecté, arrêt automatique.
     const offRemote = wireRemote(api);
+    // La molette sur l'île règle le volume (wheel.ts, 1.2.3).
+    const offWheel = wireWheelVolume(api);
     return () => {
+      offWheel();
       offRemote();
       offMuted();
       offError();

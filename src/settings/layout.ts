@@ -68,7 +68,7 @@ export const ANIMATION_SUBS: AnimationSub[] = [
     ],
   },
   { id: "agents", label: "Ondine et les agents", blocks: [{ title: "Moments", module: "halos", keys: ["think", "agents", "update", "streak"] }] },
-  { id: "keys", label: "Son et clavier", blocks: [{ title: "Moments", module: "halos", keys: ["music", "voice", "dance", "volumeKeys", "capsLock", "numLock", "clipboard", "clipText"] }] },
+  { id: "keys", label: "Son et clavier", blocks: [{ title: "Moments", module: "halos", keys: ["music", "musicCover", "voice", "dance", "volumeKeys", "capsLock", "numLock", "clipboard", "clipText"] }] },
   { id: "day", label: "Ma journée", blocks: [{ title: "Moments", module: "halos", keys: ["morning", "leaveTime", "meeting", "weather", "sky", "focus", "timerRing"] }] },
   // Le liquide à l'intérieur de l'île (src/island/liquid.ts, modules/halos/liquid-moments.ts).
   {

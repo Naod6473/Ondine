@@ -6,11 +6,33 @@
 // n'est pas lu : il faudrait le demander au système.)
 
 import type { Rgb } from "./renderers/gum-draw";
+import { coverPalette } from "../island/cover-palette";
 
 let tint: Rgb | null = null;
 /** Le numéro de la dernière pochette demandée (une ancienne qui finit de charger après est ignorée). */
 let asked = 0;
 let lastUrl: string | null = null;
+
+/** Les couleurs du halo d'après la même pochette (1.2.3, cover-palette.ts), et qui veut les suivre. */
+let palette: string[] | null = null;
+const paletteListeners = new Set<(p: string[] | null) => void>();
+
+/** Les couleurs de la pochette en cours pour le halo, ou null. */
+export function coverColors(): string[] | null {
+  return palette;
+}
+
+/** Suit les couleurs de la pochette (appelé à chaque nouvelle pochette, null quand il n'y en a plus). */
+export function onCoverColors(fn: (p: string[] | null) => void): () => void {
+  paletteListeners.add(fn);
+  return () => paletteListeners.delete(fn);
+}
+
+function setPalette(p: string[] | null) {
+  if (JSON.stringify(p) === JSON.stringify(palette)) return;
+  palette = p;
+  for (const fn of paletteListeners) fn(p);
+}
 
 /** La couleur de la pochette en cours, ou null (rien en lecture, pas de pochette). */
 export function coverTint(): Rgb | null {
@@ -51,6 +73,7 @@ export function setCover(url: string | null) {
   const id = ++asked;
   if (!url || typeof Image === "undefined") {
     tint = null;
+    setPalette(null);
     return;
   }
   const img = new Image();
@@ -62,11 +85,18 @@ export function setCover(url: string | null) {
       const x = c.getContext("2d", { willReadFrequently: true });
       if (!x) return;
       x.drawImage(img, 0, 0, 12, 12);
-      tint = averageColor(x.getImageData(0, 0, 12, 12).data);
+      const data = x.getImageData(0, 0, 12, 12).data;
+      tint = averageColor(data);
+      setPalette(coverPalette(data));
     } catch {
       tint = null; // une image d'ailleurs (illisible) : pas de teinte
+      setPalette(null);
     }
   };
-  img.onerror = () => id === asked && (tint = null);
+  img.onerror = () => {
+    if (id !== asked) return;
+    tint = null;
+    setPalette(null);
+  };
   img.src = url;
 }
