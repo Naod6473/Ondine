@@ -61,6 +61,8 @@ pub struct PlacementEvent {
     pub align: String,
     /// "flee" (elle s'écarte), "cornered" (acculée), "home" (rentrée chez elle).
     pub phase: &'static str,
+    /// Seulement des fenêtres « douces » (premier plan, bulles) : pas de peur.
+    pub soft: bool,
 }
 
 #[derive(Default)]
@@ -84,6 +86,9 @@ pub struct Dodge {
     /// La place provisoire (None : la place réglée).
     place: Mutex<Option<Placement>>,
     cornered: Mutex<bool>,
+    /// La place provisoire vient de la fenêtre de réglages (Ondine a eu peur :
+    /// elle sera soulagée en rentrant).
+    frightened: Mutex<bool>,
     last_shake: Mutex<Option<Instant>>,
     mover: Mutex<Mover>,
     /// Posée sur la barre de titre d'une fenêtre (module Ondine et les
@@ -101,6 +106,7 @@ impl Dodge {
     pub fn forget(&self) {
         *self.place.locked() = None;
         *self.cornered.locked() = false;
+        *self.frightened.locked() = false;
         let mut m = self.mover.locked();
         m.running = false;
     }
@@ -269,7 +275,13 @@ pub fn recompute(app: &AppHandle) {
     // La fenêtre de réglages compte avec la grande marge, les autres avec la petite.
     let mut walls: Vec<Rect> = hard.iter().map(|w| w.grow(avoid::MARGIN - SOFT_MARGIN)).collect();
     walls.extend(soft);
-    let esc = avoid::escape(&screen, size, &home, &current, &walls, SOFT_MARGIN);
+    let mut esc = avoid::escape(&screen, size, &home, &current, &walls, SOFT_MARGIN);
+    // Plus doux pour une fenêtre au premier plan ou une bulle : si elle ne
+    // peut pas s'écarter, elle reste chez elle (ni coin, ni tremblement).
+    let soft = hard.is_empty();
+    if soft && esc.cornered {
+        esc = avoid::Escape { place: home.clone(), cornered: false };
+    }
 
     let was_cornered = std::mem::replace(&mut *gate.dodge.cornered.locked(), esc.cornered);
     let back_home = esc.place == home && !esc.cornered;
@@ -289,10 +301,15 @@ pub fn recompute(app: &AppHandle) {
     } else {
         "flee"
     };
+    // Rentrée chez elle : soulagée seulement si elle avait eu peur.
+    let soft = if back_home { !std::mem::replace(&mut *gate.dodge.frightened.locked(), false) } else { soft };
+    if !back_home && !soft {
+        *gate.dodge.frightened.locked() = true;
+    }
     if phase != "flee" || previous.is_none() || was_cornered != esc.cornered {
         log::info(format!("île : {phase} (bord {}, place {})", esc.place.edge, esc.place.align));
     }
-    let _ = app.emit_to(WINDOW_LABEL, "island-placement", PlacementEvent { edge: esc.place.edge.clone(), align: esc.place.align.clone(), phase });
+    let _ = app.emit_to(WINDOW_LABEL, "island-placement", PlacementEvent { edge: esc.place.edge.clone(), align: esc.place.align.clone(), phase, soft });
     move_to(app, &esc.place);
     if esc.cornered {
         shake(app, &esc.place, scale);

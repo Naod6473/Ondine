@@ -500,9 +500,9 @@ export class Island {
     void onTauriEvent<string>("hotkey-error", (text) => this.notifications.push({ moduleId: "island", title: text, icon: "⌨️", priority: "normal" }));
     void onTauriEvent("screen-changed", () => void Bridge.islandReposition());
     // L'île s'écarte d'une fenêtre (les réglages…), acculée, ou rentre chez elle.
-    void onTauriEvent<{ edge: Edge; align: string; phase: "flee" | "cornered" | "home" }>("island-placement", (p) => this.onDodge(p));
+    void onTauriEvent<{ edge: Edge; align: string; phase: "flee" | "cornered" | "home"; soft?: boolean }>("island-placement", (p) => this.onDodge(p));
     // Mode démo (scène « L'île s'écarte », core/demo.ts).
-    this.bus.on("island.dodge-demo", (msg) => this.onDodge(msg.payload as { edge: Edge; align: string; phase: "flee" | "cornered" | "home" }));
+    this.bus.on("island.dodge-demo", (msg) => this.onDodge(msg.payload as { edge: Edge; align: string; phase: "flee" | "cornered" | "home"; soft?: boolean }));
     // Fin d'un déplacement : l'île s'est posée sur un bord.
     void onTauriEvent("island-drag-end", () => {
       this.shell.classList.remove("moving");
@@ -766,14 +766,14 @@ export class Island {
    * retour chez elle, elle soupire de soulagement. La peur n'est pas rejouée à
    * chaque pas quand on pousse la fenêtre vers elle.
    */
-  private onDodge(p: { edge: Edge; align: string; phase: "flee" | "cornered" | "home" }) {
+  private onDodge(p: { edge: Edge; align: string; phase: "flee" | "cornered" | "home"; soft?: boolean }) {
     const s = settingsStore.current;
     if (p.phase === "home") {
       if (!this.dodgePlace) return;
       this.dodgePlace = null;
       document.body.dataset.edge = s.island.edge ?? "top";
       document.body.dataset.align = s.island.align ?? "center";
-      this.bus.emit("mascot.emote", { emotion: "relieved" });
+      if (!p.soft) this.bus.emit("mascot.emote", { emotion: "relieved" });
       return;
     }
     const first = !this.dodgePlace;
@@ -781,6 +781,8 @@ export class Island {
     document.body.dataset.edge = p.edge;
     document.body.dataset.align = p.align;
     const now = Date.now();
+    // Une fenêtre au premier plan, une bulle de Windows : elle s'écarte sans avoir peur.
+    if (p.soft) return;
     if (first || p.phase === "cornered" || now - this.lastFright > FRIGHT_EVERY_MS) {
       this.lastFright = now;
       this.bus.emit("mascot.emote", { emotion: p.phase === "cornered" ? "panic" : "scared" });
