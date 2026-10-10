@@ -272,7 +272,7 @@ impl RustModule for AskClaude {
                 let (name, text, image) = match (args.get("text").and_then(Value::as_str), args.get("path").and_then(Value::as_str)) {
                     // « Regarde ça » : l'image de la fenêtre active, prise au raccourci.
                     _ if look => {
-                        let (name, png) = speech::take_look().ok_or("l'image de la fenêtre n'est plus là : refaites « Regarde ça »")?;
+                        let (name, png) = speech::take_look().ok_or("l'image de la fenêtre n'est plus là : reprenez-la avec « Regarde ça »")?;
                         (name, None, Some(("image/png", png)))
                     }
                     (Some(t), _) => {
