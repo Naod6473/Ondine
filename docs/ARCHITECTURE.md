@@ -407,6 +407,10 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `shelf.hash-progress` `{job, percent}` | Étagère (Rust, cible « Empreinte ») | la notification « Empreinte SHA-256 : 45 % » (une fois par seconde, au-delà de 64 Mo) |
 | `shelf.hashed` `{job, algo, compared, cancelled, results: [{name, hex, matches} ou {name, error}]}` | Étagère (Rust) | notification « Identique ✓ » / « Différente ✗ » ou l'empreinte, avec « Copier » (`hash_copy {job}`) ; le texte copié n'est jamais dans le message |
 | `capture.gif` `{state: recording / encoding / done / cancelled / error, …}` | Capture (Rust) | notification avec « Arrêter », puis « Création du GIF… », puis « GIF enregistré » (« Montrer dans l'Explorateur ») ; le bouton de l'onglet suit l'état |
+| `voice.listening` `{on, look}` | Parler à Ondine (Rust) | début / fin de l'écoute à voix haute : le halo de l'île (zone halos) et la mascotte peuvent s'y brancher |
+| `voice.level` `{level}` | Parler à Ondine (Rust, ~15 fois par seconde pendant l'écoute, 0 à la fin) | niveau du micro 0..1 : le halo tremble avec la voix |
+| `askclaude.voice` `{kind, …}` | Parler à Ondine (Rust) | pour le front du module : `open {look, hold}`, `partial {text}`, `transcribing`, `final {text, look}`, `empty`, `cancel`, `blocked {why: call / presentation / focus}`, `error {message}` |
+| `mascot.talk` `{open, brow?}` | Parler à Ondine (front) | à chaque syllabe de la réponse qui s'écrit : la bouche s'ouvre (0..1) et se referme seule (~120 ms) ; `{open: 0}` à la fin ; `brow` : `"question"` sur « ? », `"exclaim"` sur « ! » (animation : zone mascottes) |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -1914,6 +1918,44 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
   consigne demande d'agir seulement à la demande de la personne, jamais
   parce qu'un document le dit. L'activité est `{kind: "did", what, value}` ;
   le front en fait une phrase (`doneText`, `askText`).
+- **Voix** (1.2.2, `askclaude_voice.rs`, `platform/voice.rs`, front
+  `index.ts` + `plops.ts`) :
+  - raccourci global `voiceHotkey` (Ctrl+Alt+V par défaut, liste fixe
+    `HOTKEYS`, ou aucun) ; `micMode` : `once` (appuyer, arrêt au silence ou
+    au 2e appui) ou `hold` (maintenir, arrêt au relâchement) ; Échap = un
+    raccourci global posé seulement pendant l'écoute ; bouton 🎙️ dans
+    l'onglet (commande `listen`, `voice_stop`). Un fil vérifie chaque
+    seconde que les raccourcis suivent les réglages ;
+  - reconnaissance `voiceEngine` : `windows` (défaut) = `SpeechRecognizer`
+    (WinRT, marche sans paquet MSIX ; dictée libre = service en ligne de
+    Microsoft, réglage Windows « Reconnaissance vocale en ligne », erreur
+    0x80045509 traduite), langue de l'appli (fr-FR / en-US, sinon celle de
+    Windows), sous-titres par `HypothesisGenerated`, niveau par
+    `IAudioMeterInformation` ; `api` = capture WASAPI en mémoire (mono),
+    fin au silence (`SilenceGate`), WAV 16 kHz, puis OpenAI
+    `audio/transcriptions` (gpt-4o-mini-transcribe) ou Gemini (audio en
+    `inline_data`) ; avec Claude : clé OpenAI, sinon Gemini, sinon une
+    erreur claire. Personne n'a parlé : rien ne part. Rien sur le disque ;
+  - discrétion (`discreet`) : micro pris par une autre appli
+    (`media_use`), `presentation_busy`, `timer.focus` / `agents.quiet` →
+    `blocked`, et `voice_state.discreet` coupe les plops ;
+  - « Regarde ça » (`lookHotkey`, aucun par défaut) : image de la fenêtre
+    active (pas une fenêtre d'Ondine ; `record::Grabber`, 1600 px au plus,
+    PNG en mémoire), reprise par `prepare {look: true}` et montrée comme
+    un fichier joint : elle ne part qu'au clic ;
+  - front : une seule fenêtre « s'en occupe » (`owner` : la bulle d'Ondine
+    sur le bureau si l'onglet y est, sinon l'île) : ouvrir l'onglet,
+    `mascot.emote` surprised puis listening, envoyer le texte. La réponse
+    s'écrit petit à petit (`speak`, ~55 caractères/s, 7 s au plus) avec une
+    goutte par syllabe (Web Audio, timbre par mascotte `TIMBRES`, hauteur
+    `moodShift`), `mascot.emote talk` au début, `mascot.talk` à chaque
+    syllabe, l'humeur à la fin ; animations réduites / Calme : texte d'un
+    coup. Mains libres (`handsFree`) : `listen {handsFree}` après la réponse ;
+  - commandes rapides (`askclaude_quick.rs`, `quick {text}`, réglage
+    `quickCommands`) : minuteur, volume, son, luminosité, musique, note,
+    mode sombre, FR et EN, en `Call` d'outil du PC faits par
+    `askclaude_pc::plan` ; le tour est gardé dans la conversation (« C'est
+    fait ! », note pour l'IA). Une question (« ? ») n'en est jamais une.
 - Boucle des outils (`AskClaude::run`) : la réponse donne ses appels sous une
   seule forme (`calls`) et telle que l'API veut la relire (`native` :
   contenu Claude, sortie OpenAI avec la réflexion chiffrée, contenu Gemini
