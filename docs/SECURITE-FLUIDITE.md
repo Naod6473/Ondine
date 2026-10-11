@@ -58,6 +58,17 @@ Les mesures natives WebView2, la dictée avec un vrai micro, l'appairage réel
 entre PC et avec un téléphone, les reflets sur plusieurs écrans et les essais
 de l'installateur restent à effectuer. L'aperçu navigateur ne les remplace pas.
 
+## Corrections après revue (11 octobre 2026)
+
+| Correction | Comportement obtenu |
+| --- | --- |
+| Pastille des onglets | Elle reprend sa vraie largeur à chaque image au lieu d'être étirée : les bouts arrondis et le liseré gardent leur forme, et les points de l'assistant restent ronds. |
+| Certificat du téléphone | L'autorité d'Ondine porte des contraintes de nom : elle ne vaut que pour 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 (et 127.0.0.0/8 pour les tests), sans aucun nom de domaine. Même avec sa clé, personne ne peut imiter un site d'Internet. Une autorité créée avant cette limite est remplacée : refaire « Préparer mon téléphone ». |
+| Accès aux outils de Parler à Ondine | Tant que « fileTools » ou « pcTools » n'est pas choisi, le premier appel d'un outil affiche une carte « Autoriser / Refuser » ; le choix est enregistré et modifiable dans les réglages. Un refus explicite retire les outils. Les personnes qui n'avaient jamais touché ces réglages sont donc interrogées au lieu de perdre les outils sans prévenir. |
+| Accords à chaque action | Les petites actions locales (volume, son, luminosité, mode sombre, musique, minuteur, note, expression) redeviennent immédiates. Partager une information du PC avec l'IA, lire ou créer un fichier, ouvrir une application ou un site, l'Étagère, le Wi-Fi et le Bluetooth demandent toujours un accord. Une fois l'accès aux fichiers autorisé, la recherche par le nom est immédiate (les noms partent, jamais le contenu). |
+| Préparer le téléphone | Le bouton « Première connexion » de l'Étagère et de la télécommande ouvre les réglages sur la page Confidentialité. |
+| Points mineurs | Activer le profil déjà actif n'écrit plus le fichier de réglages. Le petit serveur du certificat ne laisse plus une connexion lente l'occuper plus de 5 s. Changer son prénom rafraîchit à nouveau les vues des modules. |
+
 ## Inventaire de la première passe, conservé en 1.2.3
 
 ### Changements appliqués

@@ -3,8 +3,8 @@
 use crate::sync::LockExt;
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use rcgen::{
-    BasicConstraints, CertificateParams, DnType, ExtendedKeyUsagePurpose, IsCa, Issuer, KeyPair,
-    KeyUsagePurpose,
+    BasicConstraints, CertificateParams, CidrSubnet, DnType, ExtendedKeyUsagePurpose,
+    GeneralSubtree, IsCa, Issuer, KeyPair, KeyUsagePurpose, NameConstraints,
 };
 use rustls::pki_types::{CertificateDer, PrivatePkcs8KeyDer};
 use rustls::{ServerConfig, ServerConnection, StreamOwned};
@@ -28,12 +28,31 @@ struct Identity {
     cert: String,
     created: i64,
     name: String,
+    /// Autorité limitée au réseau local (voir `ca_params`). Une autorité créée
+    /// avant cette limite est remplacée : il faut refaire « Préparer mon téléphone ».
+    #[serde(default)]
+    local_only: bool,
 }
 
 fn ca_params(identity: &Identity) -> Result<CertificateParams, String> {
     let mut p = CertificateParams::default();
     p.is_ca = IsCa::Ca(BasicConstraints::Constrained(0));
     p.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
+    // Le téléphone ne lui fait confiance QUE pour les adresses du réseau local :
+    // même avec sa clé, personne ne peut s'en servir pour imiter un vrai site
+    // (banque, messagerie…). Aucun nom de domaine n'est permis, hormis un nom
+    // réservé qui n'existe pas sur Internet (RFC 6761).
+    p.name_constraints = Some(NameConstraints {
+        permitted_subtrees: vec![
+            GeneralSubtree::IpAddress(CidrSubnet::from_v4_prefix([10, 0, 0, 0], 8)),
+            GeneralSubtree::IpAddress(CidrSubnet::from_v4_prefix([172, 16, 0, 0], 12)),
+            GeneralSubtree::IpAddress(CidrSubnet::from_v4_prefix([192, 168, 0, 0], 16)),
+            // Les tests du serveur tournent sur 127.0.0.1.
+            GeneralSubtree::IpAddress(CidrSubnet::from_v4_prefix([127, 0, 0, 0], 8)),
+            GeneralSubtree::DnsName("ondine.invalid".into()),
+        ],
+        excluded_subtrees: vec![],
+    });
     p.distinguished_name
         .push(DnType::CommonName, identity.name.clone());
     p.not_before =
@@ -51,6 +70,7 @@ fn generate() -> Result<Identity, String> {
         cert: String::new(),
         created: OffsetDateTime::now_utc().unix_timestamp(),
         name: format!("Ondine réseau local {}", &hash[..12]),
+        local_only: true,
     };
     let cert = ca_params(&identity)?
         .self_signed(&key)
@@ -63,10 +83,14 @@ fn generate() -> Result<Identity, String> {
 fn identity() -> Result<Identity, String> {
     let _saving = SAVING.locked();
     let saved = super::credentials::phone_identity_get()?;
-    let identity = match saved {
-        Some(text) => {
-            serde_json::from_str(&text).map_err(|_| "certificat local illisible".to_string())?
-        }
+    let saved: Option<Identity> = match saved {
+        Some(text) => Some(
+            serde_json::from_str(&text).map_err(|_| "certificat local illisible".to_string())?,
+        ),
+        None => None,
+    };
+    let identity = match saved.filter(|identity| identity.local_only) {
+        Some(identity) => identity,
         None => {
             let identity = generate()?;
             super::credentials::phone_identity_set(
@@ -235,8 +259,10 @@ pub fn setup() -> Result<Value, String> {
             let _ = socket.set_write_timeout(Some(Duration::from_secs(2)));
             let mut head = Vec::new();
             let mut byte = [0];
+            // Une connexion lente ne garde pas le lien pour elle : 5 s au plus.
+            let deadline = (Instant::now() + Duration::from_secs(5)).min(until);
             while head.len() < 8192
-                && Instant::now() < until
+                && Instant::now() < deadline
                 && !stop.load(Ordering::SeqCst)
                 && !head.ends_with(b"\r\n\r\n")
             {
@@ -360,6 +386,9 @@ mod tests {
         assert!(profile.contains("<string>com.apple.security.root</string>"));
     }
     fn exchange(ip: Ipv4Addr, trust: bool) -> io::Result<Vec<u8>> {
+        exchange_as(ip, Ipv4Addr::LOCALHOST, trust)
+    }
+    fn exchange_as(ip: Ipv4Addr, asked: Ipv4Addr, trust: bool) -> io::Result<Vec<u8>> {
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
         let address = listener.local_addr().unwrap();
         let tls = server(ip).unwrap();
@@ -390,7 +419,7 @@ mod tests {
         .with_no_client_auth();
         let connection = rustls::ClientConnection::new(
             Arc::new(config),
-            rustls::pki_types::ServerName::IpAddress(Ipv4Addr::LOCALHOST.into()),
+            rustls::pki_types::ServerName::IpAddress(asked.into()),
         )
         .unwrap();
         let mut stream = StreamOwned::new(connection, socket);
@@ -410,6 +439,44 @@ mod tests {
     #[test]
     fn an_untrusted_certificate_is_rejected() {
         assert!(exchange(Ipv4Addr::LOCALHOST, false).is_err());
+    }
+    #[test]
+    fn the_authority_cannot_vouch_for_a_public_address() {
+        // Même avec la clé de l'autorité, un certificat pour une adresse
+        // d'Internet est refusé par le téléphone.
+        let public = Ipv4Addr::new(1, 1, 1, 1);
+        assert!(exchange_as(public, public, true).is_err());
+        let local = Ipv4Addr::new(192, 168, 1, 20);
+        assert!(exchange_as(local, local, true).is_ok());
+    }
+    #[test]
+    fn the_authority_cannot_vouch_for_a_domain_name() {
+        use rustls::client::danger::ServerCertVerifier;
+        let identity = identity().unwrap();
+        let key = KeyPair::from_pem(&identity.key).unwrap();
+        let issuer = Issuer::new(ca_params(&identity).unwrap(), key);
+        let leaf_key = KeyPair::generate().unwrap();
+        let mut p = CertificateParams::new(vec!["banque.example".to_string()]).unwrap();
+        p.extended_key_usages = vec![ExtendedKeyUsagePurpose::ServerAuth];
+        let leaf = p.signed_by(&leaf_key, &issuer).unwrap();
+        let root = CertificateDer::from(B64.decode(&identity.cert).unwrap());
+        let mut roots = rustls::RootCertStore::empty();
+        roots.add(root).unwrap();
+        let verifier = rustls::client::WebPkiServerVerifier::builder_with_provider(
+            Arc::new(roots),
+            Arc::new(rustls::crypto::ring::default_provider()),
+        )
+        .build()
+        .unwrap();
+        let name = rustls::pki_types::ServerName::try_from("banque.example").unwrap();
+        let checked = verifier.verify_server_cert(
+            leaf.der(),
+            &[],
+            &name,
+            &[],
+            rustls::pki_types::UnixTime::now(),
+        );
+        assert!(checked.is_err());
     }
     #[test]
     fn the_certificate_must_match_the_address() {

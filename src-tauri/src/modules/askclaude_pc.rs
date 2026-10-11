@@ -5,7 +5,8 @@
 //   - regarder (après accord, le résultat part vers l'IA) : l'état du
 //     PC, l'agenda, la météo, la musique en cours, le son et l'écran, les
 //     notes qui correspondent à une recherche ;
-//   - agir, après accord : volume, son coupé, luminosité, mode sombre, musique, minuteur,
+//   - agir tout de suite (rien ne part vers l'IA, et tout se défait d'un
+//     clic) : volume, son coupé, luminosité, mode sombre, musique, minuteur,
 //     note, expression de la mascotte ;
 //   - agir APRÈS votre accord (askclaude.rs, `pending`) : ouvrir une
 //     application, un site ou une recherche web (moteur du Lanceur), poser un
@@ -164,6 +165,9 @@ pub fn plan_local(ctx: &ModuleContext, call: &Call, found: &Found) -> Step {
     }
 }
 
+/// Ce qui ferait partir des données du PC vers l'IA demande un accord.
+/// Les petites actions locales (volume, minuteur, expression…) restent
+/// immédiates : elles n'envoient rien et se défont d'un clic.
 fn approval_label(name: &str) -> Option<&'static str> {
     Some(match name {
         "etat_pc" => "partager l'état du PC avec l'IA",
@@ -172,14 +176,6 @@ fn approval_label(name: &str) -> Option<&'static str> {
         "musique_en_cours" => "partager la musique en cours avec l'IA",
         "etat_son_ecran" => "partager l'état du son et des écrans avec l'IA",
         "chercher_notes" => "chercher et partager des notes avec l'IA",
-        "regler_volume" => "régler le volume",
-        "couper_son" => "couper ou rétablir le son",
-        "regler_luminosite" => "régler la luminosité",
-        "mode_sombre" => "changer le thème de Windows",
-        "controler_musique" => "contrôler la musique",
-        "lancer_minuteur" => "lancer un minuteur",
-        "creer_note" => "créer une note",
-        "jouer_expression" => "jouer une expression",
         _ => return None,
     })
 }
@@ -383,9 +379,12 @@ pub fn perform(ctx: &ModuleContext, act: &Act) -> Result<(Value, Value), String>
 mod tests {
     use super::*;
     #[test]
-    fn every_previously_automatic_tool_requires_approval() {
-        for name in ["etat_pc", "agenda", "meteo", "musique_en_cours", "etat_son_ecran", "chercher_notes", "regler_volume", "couper_son", "regler_luminosite", "mode_sombre", "controler_musique", "lancer_minuteur", "creer_note", "jouer_expression"] {
+    fn sharing_data_needs_approval_but_small_local_actions_do_not() {
+        for name in ["etat_pc", "agenda", "meteo", "musique_en_cours", "etat_son_ecran", "chercher_notes"] {
             assert!(approval_label(name).is_some(), "{name}");
+        }
+        for name in ["regler_volume", "couper_son", "regler_luminosite", "mode_sombre", "controler_musique", "lancer_minuteur", "creer_note", "jouer_expression"] {
+            assert!(approval_label(name).is_none(), "{name}");
         }
     }
 

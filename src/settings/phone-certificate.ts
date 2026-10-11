@@ -22,6 +22,7 @@ export function phoneCertificate(): HTMLElement {
         el("p", {}, "iPhone : Réglages → Général → VPN et gestion de l'appareil, installez le profil téléchargé. Puis Général → Informations → Réglages des certificats : activez la confiance pour ce certificat Ondine."),
         el("p", {}, "Le profil iPhone doit contenir uniquement un certificat, aucun autre réglage."),
         el("p", {}, "3. Revenez dans l'Étagère ou les Contrôles et scannez le QR code HTTPS. N'ignorez jamais une alerte de certificat dans le navigateur."),
+        el("p", { class: "muted" }, "Ce certificat ne vaut que pour les adresses du réseau local : il ne peut servir pour aucun site d'Internet."),
         el("p", { class: "muted" }, "Ce certificat donne confiance à ce PC sur le téléphone. Retirez-le des réglages du téléphone si vous n'utilisez plus Ondine ou si le PC est compromis."),
       );
     } catch (error) { result.textContent = errorText(error); }

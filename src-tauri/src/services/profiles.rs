@@ -292,6 +292,10 @@ pub fn pick(list: &[Profile], weekday: u8, minutes: u32, ssid: Option<&str>) -> 
 /// Active un profil ("" = aucun), enregistre et prévient les fenêtres.
 pub fn activate(app: &AppHandle, id: &str) -> Result<(), String> {
     let shared = app.state::<crate::Shared>();
+    // Déjà actif, ou profil inconnu : rien à enregistrer.
+    if !switch(&mut shared.settings.locked().clone(), id) {
+        return Ok(());
+    }
     let next = crate::update_settings(app, &shared, |current| {
         let mut next = current.clone();
         switch(&mut next, id);

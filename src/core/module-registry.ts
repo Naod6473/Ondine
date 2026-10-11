@@ -274,9 +274,10 @@ export class ModuleRegistry {
       },
       settings: () => settingsStore.moduleValues(m),
       onSettingsChange(fn) {
-        // Le mode démo et la langue font aussi partie du contexte des vues.
+        // Le mode démo, la langue et le prénom font aussi partie du contexte des vues.
         const key = (values: Record<string, unknown>) => JSON.stringify([values,
-          settingsStore.current.general.demo, settingsStore.current.general.language, settingsStore.current.general.address]);
+          settingsStore.current.general.demo, settingsStore.current.general.language, settingsStore.current.general.address,
+          settingsStore.current.general.firstName]);
         let previous = key(settingsStore.moduleValues(m));
         const off = settingsStore.onChange(() => {
           const values = settingsStore.moduleValues(m);

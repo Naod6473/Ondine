@@ -2093,7 +2093,7 @@ function privacy(main: HTMLElement) {
       "Ce que l'île promet",
       [
         row("Télémétrie", chip("Aucune", "ok"), "Rien n'est envoyé sur Internet sans que vous le demandiez."),
-        row("Envoi à une IA", chip("Accord pour les outils", "ok"), "Dans Parler à Ondine, les fichiers joints sont présentés avant l'envoi. Chaque recherche, accès aux données ou action demandé par l'IA nécessite votre accord ; les résultats acceptés peuvent partir vers le fournisseur choisi."),
+        row("Envoi à une IA", chip("Accord pour les outils", "ok"), "Dans Parler à Ondine, les fichiers joints sont présentés avant l'envoi. Les outils de fichiers et du PC demandent votre autorisation à la première utilisation ; ensuite, lire un fichier, partager une information du PC ou ouvrir quelque chose demande encore votre accord."),
       ],
     ),
     group("Dossiers exclus", [...rows, wideRow(null, el("div", { class: "inline" }, input, el("button", { class: "btn", onclick: () => void add() }, "Exclure")))], "Aucun module ne lira ni n'enverra un fichier situé dans ces dossiers."),

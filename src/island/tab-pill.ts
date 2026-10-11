@@ -49,8 +49,6 @@ export class TabPill {
     this.el = document.createElement("span");
     this.el.className = "tab-pill";
     container.prepend(this.el);
-    this.el.style.width = "100px";
-    this.el.style.transformOrigin = "left center";
     this.sizeObserver = new ResizeObserver(() => { this.dirty = true; });
     const observe = () => {
       this.sizeObserver.disconnect();
@@ -138,7 +136,10 @@ export class TabPill {
   private paint(speed: number) {
     const width = Math.max(8, this.right.x - this.left.x);
     const squash = Math.min(0.14, speed / 9000); // au plus 14 % plus plate
-    this.el.style.transform = `translateX(${this.left.x}px) scale(${width / 100}, ${1 - squash})`;
+    // La vraie largeur, pas un étirement : les bouts arrondis et le liseré
+    // gardent leur forme, même sur les petits points de l'assistant.
+    this.el.style.width = `${width}px`;
+    this.el.style.transform = `translateX(${this.left.x}px) scaleY(${1 - squash})`;
   }
 }
 

@@ -96,7 +96,7 @@ interface Card {
 /** Une demande d'accord : lire un fichier (son texte partira) ou en créer un. */
 interface Ask {
   id: number;
-  kind: "read" | "create" | "action";
+  kind: "read" | "create" | "action" | "grant";
   what?: string;
   value?: string;
   name: string;
@@ -577,6 +577,10 @@ function doneText(what: string, value: string): string {
 /** Une action qui attend votre accord, à l'infinitif. */
 function askText(what: string, value: string): string {
   switch (what) {
+    case "fileTools":
+      return "utiliser vos fichiers";
+    case "pcTools":
+      return "agir sur le PC";
     case "file-search":
       return `chercher les fichiers « ${value} » et partager leurs noms avec l'IA`;
     case "tool":
@@ -675,6 +679,28 @@ export const askclaude: IslandModule = {
       // La demande d'accord : tout ce qui partira (lire) ou sera écrit (créer).
       const askCard = (p: { ask: Ask; activity: Activity[] }): HTMLElement => {
         const a = p.ask;
+        if (a.kind === "grant") {
+          // Première utilisation : votre choix est enregistré (modifiable dans les réglages).
+          const files = a.what === "fileTools";
+          return el(
+            "div",
+            { class: "ask-bubble ondine ask-confirm fresh" },
+            p.activity.length ? activityList(p.activity) : null,
+            el("p", { class: "ask-confirm-title" }, files
+              ? "Ondine a besoin de votre autorisation pour utiliser vos fichiers."
+              : "Ondine a besoin de votre autorisation pour agir sur le PC."),
+            el("small", { class: "muted" }, files
+              ? "Elle pourra chercher vos fichiers par leur nom, puis vous demandera avant de lire ou de créer un fichier. Les dossiers exclus restent intouchables."
+              : "Elle pourra régler le son, la luminosité, la musique, un minuteur ou une note, et vous demandera avant de partager une information ou d'ouvrir quelque chose."),
+            el("small", { class: "muted" }, "Votre choix est gardé. Vous pourrez le changer dans les réglages de Parler à Ondine."),
+            el(
+              "div",
+              { class: "btn-row" },
+              el("button", { class: "btn small primary", disabled: state.busy, onclick: api.handler(() => confirm(api, true)) }, "Autoriser"),
+              el("button", { class: "btn small", disabled: state.busy, onclick: api.handler(() => confirm(api, false)) }, "Refuser"),
+            ),
+          );
+        }
         if (a.kind === "action") {
           return el(
             "div",

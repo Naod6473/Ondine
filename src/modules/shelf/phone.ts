@@ -1,4 +1,3 @@
-import { Bridge } from '../../core/bridge';
 // « Vers le téléphone » (Étagère) : envoyer un fichier de l'étagère à un
 // téléphone du même Wi-Fi.
 //
@@ -9,6 +8,7 @@ import { Bridge } from '../../core/bridge';
 // en texte, le compte à rebours et « Arrêter ». La fin (« le téléphone l'a
 // reçu », « lien expiré ») arrive par le sujet « shelf.phone ».
 
+import { openPhoneSetup } from "../../settings/phone-setup-link";
 import { errorText } from "../../core/log";
 import type { ModuleApi } from "../../core/module-types";
 import { el } from "../../island/dom";
@@ -128,7 +128,7 @@ export function phonePanel(api: ModuleApi): HTMLElement | null {
     el(
       "div",
       { class: "phone-side" },
-      el("button", { class: "btn small", onclick: () => Bridge.openSettingsWindow() }, "Première connexion : préparez le certificat dans Réglages → Confidentialité."),
+      el("button", { class: "btn small", onclick: () => openPhoneSetup() }, "Première connexion : préparez le certificat dans Réglages → Confidentialité."),
       el("b", { class: "phone-title" }, "📱 Vers le téléphone"),
       el(
         "p",

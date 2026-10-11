@@ -54,14 +54,14 @@
         "key": "fileTools",
         "type": "boolean",
         "label": "Ondine peut chercher et créer des fichiers",
-        "help": "Elle demande votre accord avant une recherche : les noms trouvés dans Documents, Bureau, Téléchargements, Images et les fichiers récents peuvent partir vers l'IA. Pour lire ou créer un fichier, elle présente un aperçu et attend votre accord. Les dossiers exclus sont toujours sautés.",
+        "help": "À la première utilisation, Ondine vous demande d'autoriser ou de refuser l'accès. Elle cherche par le nom dans Documents, Bureau, Téléchargements, Images et vos fichiers récents : les noms trouvés partent vers l'IA, jamais leur contenu. Pour lire ou créer un fichier, elle vous montre tout et attend votre accord. Les dossiers exclus sont toujours sautés.",
         "default": false
       },
       {
         "key": "pcTools",
         "type": "boolean",
         "label": "Ondine peut agir sur le PC",
-        "help": "Chaque accès aux données ou action sur le PC demande votre accord avant son exécution. Les données acceptées sont envoyées à votre fournisseur d'IA. Ondine ne peut rien supprimer ni lancer de commande.",
+        "help": "À la première utilisation, Ondine vous demande d'autoriser ou de refuser l'accès. Elle règle le volume, la luminosité, le mode sombre, la musique, un minuteur ou une note quand vous le lui demandez. Pour partager une information du PC avec l'IA (état, agenda, météo, notes), ouvrir une application ou un site, poser un fichier sur l'Étagère ou toucher au Wi-Fi et au Bluetooth, elle attend votre accord. Elle ne peut rien supprimer ni lancer de commande.",
         "default": false
       },
       {
