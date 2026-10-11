@@ -30,7 +30,8 @@ pub fn unique_dest(dir: &Path, name: &std::ffi::OsStr) -> PathBuf {
 /// Copie un fichier ou un dossier (avec tout son contenu) vers `dest`, qui ne doit
 /// pas exister. Les liens symboliques sont ignorés : on ne suit pas un lien vers
 /// un endroit que l'utilisateur n'a pas choisi.
-pub fn copy_recursive(src: &Path, dest: &Path) -> io::Result<()> {
+fn copy_recursive_checked(src: &Path, dest: &Path, validate: &dyn Fn(&Path) -> Result<(), String>) -> io::Result<()> {
+    validate(src).map_err(io::Error::other)?;
     let meta = fs::symlink_metadata(src)?;
     if meta.file_type().is_symlink() {
         return Ok(());
@@ -39,7 +40,7 @@ pub fn copy_recursive(src: &Path, dest: &Path) -> io::Result<()> {
         fs::create_dir(dest)?;
         for entry in fs::read_dir(src)? {
             let entry = entry?;
-            copy_recursive(&entry.path(), &dest.join(entry.file_name()))?;
+            copy_recursive_checked(&entry.path(), &dest.join(entry.file_name()), validate)?;
         }
         Ok(())
     } else {
@@ -48,13 +49,19 @@ pub fn copy_recursive(src: &Path, dest: &Path) -> io::Result<()> {
 }
 
 /// Copie `src` dans le dossier `dir`. Renvoie le chemin créé.
+#[cfg(test)]
 pub fn copy_into(src: &Path, dir: &Path) -> Result<PathBuf, String> {
+    copy_into_checked(src, dir, &|_| Ok(()))
+}
+
+/// Réapplique la politique à chaque lecture, après le contrôle du périmètre.
+pub fn copy_into_checked(src: &Path, dir: &Path, validate: &dyn Fn(&Path) -> Result<(), String>) -> Result<PathBuf, String> {
     let name = src.file_name().ok_or("chemin sans nom")?;
     if dir.starts_with(src) {
         return Err("impossible de copier un dossier dans lui-même".into());
     }
     let dest = unique_dest(dir, name);
-    copy_recursive(src, &dest).map_err(|e| format!("copie de {} impossible : {e}", name.to_string_lossy()))?;
+    copy_recursive_checked(src, &dest, validate).map_err(|e| format!("copie de {} impossible : {e}", name.to_string_lossy()))?;
     Ok(dest)
 }
 
@@ -63,18 +70,28 @@ pub fn copy_into(src: &Path, dir: &Path) -> Result<PathBuf, String> {
 /// Sur le même disque, c'est un simple renommage. D'un disque à l'autre, Windows
 /// refuse le renommage : on copie, puis on envoie l'original à la Corbeille (et
 /// non à la poubelle définitive).
+#[cfg(test)]
 pub fn move_into(src: &Path, dir: &Path) -> Result<PathBuf, String> {
+    move_into_checked(src, dir, &|_| Ok(()))
+}
+
+pub fn move_into_checked(src: &Path, dir: &Path, validate: &dyn Fn(&Path) -> Result<(), String>) -> Result<PathBuf, String> {
     let name = src.file_name().ok_or("chemin sans nom")?;
     if dir.starts_with(src) {
         return Err("impossible de déplacer un dossier dans lui-même".into());
     }
     let dest = unique_dest(dir, name);
-    move_to(src, &dest)?;
+    move_to_checked(src, &dest, validate)?;
     Ok(dest)
 }
 
 /// Déplace `src` exactement vers `dest` (qui ne doit pas exister).
 pub fn move_to(src: &Path, dest: &Path) -> Result<(), String> {
+    move_to_checked(src, dest, &|_| Ok(()))
+}
+
+pub fn move_to_checked(src: &Path, dest: &Path, validate: &dyn Fn(&Path) -> Result<(), String>) -> Result<(), String> {
+    validate(src)?;
     if dest.exists() {
         return Err(format!("{} existe déjà", dest.display()));
     }
@@ -87,7 +104,7 @@ pub fn move_to(src: &Path, dest: &Path) -> Result<(), String> {
             if !crate::platform::has_recycle_bin(src) {
                 return Err(no_bin(src));
             }
-            if let Err(e) = copy_recursive(src, dest) {
+            if let Err(e) = copy_recursive_checked(src, dest, validate) {
                 // Copie ratée (disque plein…) : l'original n'a pas bougé. Notre
                 // copie incomplète part à la Corbeille si son lecteur en a une ;
                 // sinon on la laisse et on le dit (jamais de suppression définitive).
@@ -99,6 +116,7 @@ pub fn move_to(src: &Path, dest: &Path) -> Result<(), String> {
                 }
                 return Err(format!("déplacement impossible : {e}"));
             }
+            validate(src)?;
             trash::delete(src).map_err(|e| format!("copié, mais l'original n'a pas pu aller à la Corbeille : {e}"))
         }
         Err(e) => Err(format!("déplacement impossible : {e}")),
@@ -157,7 +175,12 @@ pub fn restore_from_trash(_original: &Path) -> Result<(), String> {
 
 /// Crée une archive .zip contenant `paths`, dans le dossier du premier élément.
 /// Renvoie le chemin de l'archive.
+#[cfg(test)]
 pub fn zip(paths: &[PathBuf]) -> Result<PathBuf, String> {
+    zip_checked(paths, &|_| Ok(()))
+}
+
+pub fn zip_checked(paths: &[PathBuf], validate: &dyn Fn(&Path) -> Result<(), String>) -> Result<PathBuf, String> {
     use std::io::Write;
     use zip::write::SimpleFileOptions;
 
@@ -180,7 +203,9 @@ pub fn zip(paths: &[PathBuf]) -> Result<PathBuf, String> {
         name: &str,
         options: SimpleFileOptions,
         out: &Path,
+        validate: &dyn Fn(&Path) -> Result<(), String>,
     ) -> Result<(), String> {
+        validate(path)?;
         let meta = fs::symlink_metadata(path).map_err(|e| e.to_string())?;
         if meta.file_type().is_symlink() || path == out {
             return Ok(());
@@ -190,7 +215,7 @@ pub fn zip(paths: &[PathBuf]) -> Result<PathBuf, String> {
             for entry in fs::read_dir(path).map_err(|e| e.to_string())? {
                 let entry = entry.map_err(|e| e.to_string())?;
                 let child = format!("{name}/{}", entry.file_name().to_string_lossy());
-                add(writer, &entry.path(), &child, options, out)?;
+                add(writer, &entry.path(), &child, options, out, validate)?;
             }
         } else {
             writer.start_file(name, options).map_err(|e| e.to_string())?;
@@ -203,7 +228,7 @@ pub fn zip(paths: &[PathBuf]) -> Result<PathBuf, String> {
     let result = (|| {
         for p in paths {
             let name = p.file_name().map(|n| n.to_string_lossy().to_string()).ok_or("chemin sans nom")?;
-            add(&mut writer, p, &name, options, &out)?;
+            add(&mut writer, p, &name, options, &out, validate)?;
         }
         let mut f = writer.finish().map_err(|e| e.to_string())?;
         f.flush().map_err(|e| e.to_string())

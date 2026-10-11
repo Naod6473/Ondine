@@ -37,6 +37,7 @@ use services::{credentials, log, privacy};
 /// L'état partagé entre les commandes (Tauri le garde pour nous : `app.manage`).
 pub struct Shared {
     pub settings: Mutex<Settings>,
+    pub settings_effects: Mutex<()>,
     pub gate: Arc<PollGate>,
 }
 
@@ -81,76 +82,91 @@ fn apply_autostart(on: bool) {
 }
 
 pub(crate) fn apply_settings(app: &AppHandle, shared: &Shared, new: Settings) -> Result<(), String> {
-    let screen_changed = {
+    update_settings(app, shared, |_| Ok(new)).map(|_| ())
+}
+
+pub(crate) fn update_settings(app: &AppHandle, shared: &Shared, change: impl FnOnce(&Settings) -> Result<Settings, String>) -> Result<Settings, String> {
+    // Les effets Windows suivent le même ordre que les écritures sur le disque.
+    let _effects = shared.settings_effects.locked();
+    let (new, effects) = {
         let mut current = shared.settings.locked();
-        // L'écran, ou la place de l'île sur l'écran : il faut replacer la fenêtre.
-        let changed = current.general.screen != new.general.screen
-            || current.island.edge != new.island.edge
-            || current.island.align != new.island.align
-            || current.island.offset != new.island.offset;
-        *current = new.clone();
+        let mut new = change(&current)?;
+        new.sanitize();
+        let effects = services::settings_patch::Effects::between(&current, &new);
         // Enregistré sous le verrou : une autre sauvegarde (fin de déplacement
         // de l'île…) ne peut pas passer entre la mémoire et le fichier.
-        settings::save(&new).map(|_| changed)
-    }?;
-    apply_autostart(new.general.autostart);
-    log::set_min_level(log::Level::parse(&new.general.log_level));
-    island::apply_hotkey(app, &new.island.hotkey);
-    if screen_changed {
+        services::settings_patch::commit(&mut current, new, settings::save)?;
+        (current.clone(), effects)
+    };
+    if effects.autostart { apply_autostart(new.general.autostart); }
+    if effects.log { log::set_min_level(log::Level::parse(&new.general.log_level)); }
+    if effects.hotkey { island::apply_hotkey(app, &new.island.hotkey); }
+    if effects.geometry {
         island::apply_geometry(app, &new.general.screen, shared.gate.collapsed.load(Ordering::Relaxed));
     }
     // Le menu de l'icône montre les profils et coche l'actif.
     tray::sync_profiles(app, &new.profiles);
-    let _ = app.emit("settings-changed", new);
+    let _ = app.emit("settings-changed", &new);
     // Ondine sur le bureau : montrée, cachée, au-dessus ou derrière les fenêtres.
-    pet::apply(app);
+    if effects.pet { pet::apply(app); }
     // Le mode de performance a peut-être changé : les boucles le lisent au tour suivant.
-    services::perf::refresh(app);
+    if effects.perf { services::perf::refresh(app); }
     // La place réglée ou « éviter les réglages » a pu changer : l'île revérifie.
-    island::dodge::recompute(app);
-    Ok(())
+    if effects.dodge { island::dodge::recompute(app); }
+    Ok(new)
+}
+
+#[tauri::command]
+async fn settings_patch(app: AppHandle, window: Window, patch: Vec<services::settings_patch::Patch>) -> Result<Settings, String> {
+    let pet = window.label() == "pet";
+    tauri::async_runtime::spawn_blocking(move || {
+        let shared = app.state::<Shared>();
+        update_settings(&app, &shared, |current| if pet {
+            services::settings_patch::apply_pet(current, &patch)
+        } else { services::settings_patch::apply(current, &patch) })
+    }).await.map_err(|e| format!("sauvegarde interrompue : {e}"))?
 }
 
 /// Active un profil ("" = aucun) : voir services/profiles.rs.
 #[tauri::command]
-fn profile_activate(app: AppHandle, id: String) -> Result<(), String> {
-    services::profiles::activate(&app, &id)
+async fn profile_activate(app: AppHandle, id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || services::profiles::activate(&app, &id))
+        .await.map_err(|e| e.to_string())?
 }
 
 /// Le nom du Wi-Fi connecté (bouton « Wi-Fi actuel » de la page Profils).
 #[tauri::command]
-fn profile_wifi_name() -> Option<String> {
-    platform::wifi::current_ssid()
-}
-
-#[tauri::command]
-fn settings_save(app: AppHandle, shared: State<Shared>, mut settings: Settings) -> Result<(), String> {
-    settings.sanitize();
-    apply_settings(&app, &shared, settings)
+async fn profile_wifi_name() -> Option<String> {
+    tauri::async_runtime::spawn_blocking(platform::wifi::current_ssid).await.ok().flatten()
 }
 
 /// Écrit une copie des réglages dans %APPDATA%\Ondine\exports et ouvre ce dossier.
 #[tauri::command]
-fn settings_export(shared: State<Shared>) -> Result<String, String> {
-    let current = shared.settings.locked().clone();
-    let file = settings::export(&current)?;
-    if let Some(dir) = file.parent() {
-        platform::reveal_folder(dir);
-    }
-    log::info("réglages exportés");
-    Ok(file.to_string_lossy().to_string())
+async fn settings_export(app: AppHandle) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let current = app.state::<Shared>().settings.locked().clone();
+        let file = settings::export(&current)?;
+        if let Some(dir) = file.parent() {
+            platform::reveal_folder(dir);
+        }
+        log::info("réglages exportés");
+        Ok(file.to_string_lossy().to_string())
+    }).await.map_err(|e| e.to_string())?
 }
 
 /// Reçoit le TEXTE d'un fichier de réglages (lu par la fenêtre de réglages).
 #[tauri::command]
-fn settings_import(app: AppHandle, shared: State<Shared>, text: String) -> Result<(), String> {
+async fn settings_import(app: AppHandle, text: String) -> Result<(), String> {
     if text.len() > 1_000_000 {
         return Err("fichier trop gros pour être un fichier de réglages".into());
     }
-    let imported = settings::parse(&text)?;
-    apply_settings(&app, &shared, imported)?;
-    log::info("réglages importés");
-    Ok(())
+    tauri::async_runtime::spawn_blocking(move || {
+        let shared = app.state::<Shared>();
+        let imported = settings::parse(&text)?;
+        apply_settings(&app, &shared, imported)?;
+        log::info("réglages importés");
+        Ok(())
+    }).await.map_err(|e| e.to_string())?
 }
 
 /// « Reprendre la configuration de mon autre PC » (assistant de premier
@@ -159,27 +175,29 @@ fn settings_import(app: AppHandle, shared: State<Shared>, text: String) -> Resul
 /// `Ok(false)` si on annule.
 #[tauri::command]
 async fn settings_import_pick(app: AppHandle, window: Window, title: Option<String>) -> Result<bool, String> {
-    use tauri_plugin_dialog::DialogExt;
-    let picked = window
-        .dialog()
-        .file()
-        .set_parent(&window)
-        .set_title(title.unwrap_or_else(|| "Choisir un fichier de réglages".into()))
-        .add_filter("Réglages d'Ondine", &["json"])
-        .blocking_pick_file();
-    let Some(path) = picked.and_then(|p| p.into_path().ok()) else { return Ok(false) };
-    let shared = app.state::<Shared>();
-    // Les dossiers exclus (Confidentialité) restent intouchables, même ici.
-    let path = privacy::check_path(&shared.settings.locked().clone(), &path.to_string_lossy())?;
-    let meta = std::fs::metadata(&path).map_err(|e| e.to_string())?;
-    if meta.len() > 1_000_000 {
-        return Err("fichier trop gros pour être un fichier de réglages".into());
-    }
-    let text = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    let imported = settings::parse(&text)?;
-    apply_settings(&app, &shared, imported)?;
-    log::info("réglages importés (assistant de premier lancement)");
-    Ok(true)
+    tauri::async_runtime::spawn_blocking(move || {
+        use tauri_plugin_dialog::DialogExt;
+        let picked = window
+            .dialog()
+            .file()
+            .set_parent(&window)
+            .set_title(title.unwrap_or_else(|| "Choisir un fichier de réglages".into()))
+            .add_filter("Réglages d'Ondine", &["json"])
+            .blocking_pick_file();
+        let Some(path) = picked.and_then(|p| p.into_path().ok()) else { return Ok(false) };
+        let shared = app.state::<Shared>();
+        // Les dossiers exclus (Confidentialité) restent intouchables, même ici.
+        let path = privacy::check_path(&shared.settings.locked().clone(), &path.to_string_lossy())?;
+        let meta = std::fs::metadata(&path).map_err(|e| e.to_string())?;
+        if meta.len() > 1_000_000 {
+            return Err("fichier trop gros pour être un fichier de réglages".into());
+        }
+        let text = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+        let imported = settings::parse(&text)?;
+        apply_settings(&app, &shared, imported)?;
+        log::info("réglages importés (assistant de premier lancement)");
+        Ok(true)
+    }).await.map_err(|e| e.to_string())?
 }
 
 /// Les logiciels connus installés sur ce PC (ids d'une liste fixe : « vscode »,
@@ -196,20 +214,47 @@ fn privacy_check_folder(path: String) -> Result<String, String> {
     privacy::check_folder(&path)
 }
 
+/// Ajoute un téléphone (sans `id`) ou remontre le QR code d'un téléphone déjà
+/// préparé (`id`). Voir Réglages → Téléphones.
+#[tauri::command]
+async fn phone_certificate_setup(id: Option<String>, name: Option<String>) -> Result<Value, String> {
+    tauri::async_runtime::spawn_blocking(move || services::phone_tls::setup(id, name)).await.map_err(|e| e.to_string())?
+}
+
+/// Les téléphones préparés (partie publique seulement).
+#[tauri::command]
+fn phone_list() -> Value {
+    services::phone_tls::list()
+}
+
+/// Révoque un téléphone : sa clé est effacée pour de bon.
+#[tauri::command]
+fn phone_revoke(id: String) -> Result<(), String> {
+    services::phone_tls::revoke(&id)
+}
+
+/// Le téléphone pour lequel l'Étagère et la télécommande ouvrent leur lien.
+#[tauri::command]
+fn phone_activate(id: String) -> Result<(), String> {
+    services::phone_tls::activate(&id)
+}
+
 /// Boîte « Choisir un dossier » de Windows. Renvoie None si on annule.
 /// `async` : la boîte bloque jusqu'au choix, il ne faut pas bloquer le thread
 /// principal (doc du plugin dialog). Elle est rattachée à la fenêtre qui la
 /// demande, pour s'afficher devant elle (l'île est « toujours au premier plan »).
 #[tauri::command]
 async fn dialog_pick_folder(window: Window, title: Option<String>) -> Option<String> {
-    use tauri_plugin_dialog::DialogExt;
-    let picked = window
-        .dialog()
-        .file()
-        .set_parent(&window)
-        .set_title(title.unwrap_or_else(|| "Choisir un dossier".into()))
-        .blocking_pick_folder()?;
-    picked.into_path().ok().map(|p| p.to_string_lossy().to_string())
+    tauri::async_runtime::spawn_blocking(move || {
+        use tauri_plugin_dialog::DialogExt;
+        let picked = window
+            .dialog()
+            .file()
+            .set_parent(&window)
+            .set_title(title.unwrap_or_else(|| "Choisir un dossier".into()))
+            .blocking_pick_folder()?;
+        picked.into_path().ok().map(|p| p.to_string_lossy().to_string())
+    }).await.ok().flatten()
 }
 
 /// Boîte « Ouvrir un fichier », filtrée par extensions (ex. ["ics"]). Mêmes
@@ -217,22 +262,24 @@ async fn dialog_pick_folder(window: Window, title: Option<String>) -> Option<Str
 /// on ne garde que des lettres et des chiffres.
 #[tauri::command]
 async fn dialog_pick_file(window: Window, title: Option<String>, extensions: Vec<String>) -> Option<String> {
-    use tauri_plugin_dialog::DialogExt;
-    let clean: Vec<String> = extensions
-        .into_iter()
-        .filter(|e| !e.is_empty() && e.len() < 10 && e.chars().all(|c| c.is_ascii_alphanumeric()))
-        .collect();
-    let mut dialog = window
-        .dialog()
-        .file()
-        .set_parent(&window)
-        .set_title(title.unwrap_or_else(|| "Choisir un fichier".into()));
-    if !clean.is_empty() {
-        let refs: Vec<&str> = clean.iter().map(String::as_str).collect();
-        dialog = dialog.add_filter(clean.join(", ").to_uppercase(), &refs);
-    }
-    let picked = dialog.blocking_pick_file()?;
-    picked.into_path().ok().map(|p| p.to_string_lossy().to_string())
+    tauri::async_runtime::spawn_blocking(move || {
+        use tauri_plugin_dialog::DialogExt;
+        let clean: Vec<String> = extensions
+            .into_iter()
+            .filter(|e| !e.is_empty() && e.len() < 10 && e.chars().all(|c| c.is_ascii_alphanumeric()))
+            .collect();
+        let mut dialog = window
+            .dialog()
+            .file()
+            .set_parent(&window)
+            .set_title(title.unwrap_or_else(|| "Choisir un fichier".into()));
+        if !clean.is_empty() {
+            let refs: Vec<&str> = clean.iter().map(String::as_str).collect();
+            dialog = dialog.add_filter(clean.join(", ").to_uppercase(), &refs);
+        }
+        let picked = dialog.blocking_pick_file()?;
+        picked.into_path().ok().map(|p| p.to_string_lossy().to_string())
+    }).await.ok().flatten()
 }
 
 // ── Fenêtre de l'île ─────────────────────────────────────────────────────────
@@ -431,13 +478,32 @@ fn bus_publish(app: AppHandle, window: Window, topic: String, payload: Value, so
 /// LA porte d'entrée vers le code Rust des modules (voir modules/mod.rs).
 /// `async` : Tauri l'exécute hors du thread principal, un module lent ne fige pas l'île.
 #[tauri::command]
-async fn module_invoke(app: AppHandle, module: String, command: String, args: Value) -> Result<Value, String> {
-    modules::invoke(&app, &module, &command, args)
+async fn module_invoke(app: AppHandle, window: Window, module: String, command: String, args: Value, work: State<'_, services::work::WorkGates>) -> Result<Value, String> {
+    if window.label() == "annotate" && !(module == "capture" && matches!(command.as_str(), "annotate_image" | "annotate_export")) {
+        return Err("commande refusée depuis la fenêtre d'annotation".into());
+    }
+    if window.label() == "pet" && !app.state::<Shared>().settings.locked().mascot.pet_tabs.contains(&module) {
+        return Err("cet onglet n'est pas disponible sur la mascotte".into());
+    }
+    let permit = work.enter(&module, &command).await?;
+    // HTTP, Win32, fichiers et ZIP sont synchrones : ils ne doivent pas occuper
+    // les workers async qui livrent les événements et les autres commandes.
+    tauri::async_runtime::spawn_blocking(move || {
+        let _permit = permit;
+        // La sélection peut avoir changé pendant l'attente dans la file.
+        if window.label() == "pet" && !app.state::<Shared>().settings.locked().mascot.pet_tabs.contains(&module) {
+            return Err("cet onglet n'est pas disponible sur la mascotte".into());
+        }
+        modules::invoke(&app, &module, &command, args)
+    })
+        .await
+        .map_err(|e| format!("opération interrompue : {e}"))?
 }
 
 #[tauri::command]
-fn undo_run(app: AppHandle, undo: State<UndoService>, id: u64) -> Result<String, String> {
-    undo.run(&app, id)
+async fn undo_run(app: AppHandle, id: u64) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || app.state::<UndoService>().run(&app, id))
+        .await.map_err(|e| e.to_string())?
 }
 
 // ── Fenêtre de réglages ──────────────────────────────────────────────────────
@@ -602,18 +668,23 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         // Mises à jour : appelé seulement depuis le Rust (voir update.rs).
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .manage(Shared { settings: Mutex::new(loaded.clone()), gate: gate.clone() })
+        .manage(Shared { settings: Mutex::new(loaded.clone()), settings_effects: Mutex::new(()), gate: gate.clone() })
         .manage(Registry::new())
+        .manage(services::work::WorkGates::default())
         .manage(UndoService::default())
         .manage(pet::PetState::default())
         .invoke_handler(tauri::generate_handler![
             boot,
-            settings_save,
+            settings_patch,
             settings_export,
             settings_import,
             settings_import_pick,
             apps_detect,
             privacy_check_folder,
+            phone_certificate_setup,
+            phone_list,
+            phone_revoke,
+            phone_activate,
             dialog_pick_folder,
             dialog_pick_file,
             island_set_collapsed,

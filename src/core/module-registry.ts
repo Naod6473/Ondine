@@ -11,6 +11,7 @@
 // `satellite` au lieu de `setup` (le travail de fond reste dans l'île).
 
 import { Bridge } from "./bridge";
+import { CleanupBag } from "./cleanup-bag";
 import { Bus, topicMatches } from "./bus";
 import { errorText, logger } from "./log";
 import type { DropTarget, IslandModule, ModuleApi, ViewKind } from "./module-types";
@@ -33,7 +34,7 @@ interface Running {
   module: IslandModule;
   api: ModuleApi;
   /** Nettoyages à faire à l'arrêt (setup, abonnements…). */
-  cleanups: (() => void)[];
+  cleanups: CleanupBag;
 }
 
 export class ModuleRegistry {
@@ -166,11 +167,11 @@ export class ModuleRegistry {
   private start(module: IslandModule) {
     const id = module.manifest.id;
     const api = this.makeApi(module);
-    const running: Running = { module, api, cleanups: [] };
+    const running: Running = { module, api, cleanups: new CleanupBag() };
     this.running.set(id, running);
     try {
       const cleanup = this.opts.satellite ? module.satellite?.(api) : module.setup?.(api);
-      if (cleanup) running.cleanups.push(cleanup);
+      if (cleanup) running.cleanups.add(cleanup);
       log.info(`module démarré : ${id}`);
     } catch (err) {
       this.fail(id, err, "démarrage");
@@ -181,7 +182,7 @@ export class ModuleRegistry {
     const r = this.running.get(id);
     if (!r) return;
     this.running.delete(id);
-    for (const c of r.cleanups) this.guard(id, "arrêt", c);
+    this.guard(id, "arrêt", () => r.cleanups.flush());
     log.info(`module arrêté : ${id}`);
   }
 
@@ -240,7 +241,12 @@ export class ModuleRegistry {
     const m = module.manifest;
     const id = m.id;
     const self = this;
-    const own = () => self.running.get(id)?.cleanups ?? [];
+    const track = (off: () => void): (() => void) => {
+      const bag = self.running.get(id)?.cleanups;
+      if (bag) return bag.add(off);
+      off();
+      return () => {};
+    };
     return {
       manifest: m,
       emit(topic, payload = null) {
@@ -258,8 +264,7 @@ export class ModuleRegistry {
           return () => {};
         }
         const off = self.bus.on(pattern, handler, id);
-        own().push(off);
-        return off;
+        return track(off);
       },
       async invoke<T>(command: string, args?: unknown) {
         if (!m.commands.includes(command)) throw new Error(`commande non déclarée : ${command}`);
@@ -269,9 +274,19 @@ export class ModuleRegistry {
       },
       settings: () => settingsStore.moduleValues(m),
       onSettingsChange(fn) {
-        const off = settingsStore.onChange(() => self.guard(id, "réglages", () => fn(settingsStore.moduleValues(m))));
-        own().push(off);
-        return off;
+        // Le mode démo, la langue et le prénom font aussi partie du contexte des vues.
+        const key = (values: Record<string, unknown>) => JSON.stringify([values,
+          settingsStore.current.general.demo, settingsStore.current.general.language, settingsStore.current.general.address,
+          settingsStore.current.general.firstName]);
+        let previous = key(settingsStore.moduleValues(m));
+        const off = settingsStore.onChange(() => {
+          const values = settingsStore.moduleValues(m);
+          const next = key(values);
+          if (next === previous) return;
+          previous = next;
+          self.guard(id, "réglages", () => fn(values));
+        });
+        return track(off);
       },
       notify: (req) => self.notifications.push({ ...req, moduleId: id }),
       handler(fn) {
@@ -304,8 +319,8 @@ export class ModuleRegistry {
             }
           },
         });
-        own().push(remove);
-        return { refresh: () => homeCards.changed(), remove };
+        const removeTracked = track(remove);
+        return { refresh: () => homeCards.changed(), remove: removeTracked };
       },
       log: logger(id),
     };

@@ -80,6 +80,15 @@ mod store {
         Some(old)
     }
 
+    #[cfg(not(test))]
+    pub fn get_checked(key: &str) -> Result<Option<String>, String> {
+        match entry(key)?.get_password() {
+            Ok(value) => Ok(Some(value)),
+            Err(keyring::Error::NoEntry) => Ok(None),
+            Err(error) => Err(error.to_string()),
+        }
+    }
+
     pub fn set(key: &str, value: &str) -> Result<(), String> {
         entry(key)?.set_password(value).map_err(|e| e.to_string())
     }
@@ -101,6 +110,10 @@ mod store {
     pub fn get(_key: &str) -> Option<String> {
         None
     }
+    #[cfg(not(test))]
+    pub fn get_checked(_key: &str) -> Result<Option<String>, String> {
+        Err("le Gestionnaire d'identifiants n'existe que sous Windows".into())
+    }
     pub fn set(_key: &str, _value: &str) -> Result<(), String> {
         Err("le Gestionnaire d'identifiants n'existe que sous Windows".into())
     }
@@ -115,6 +128,28 @@ mod store {
 /// module Équipe la lit et l'écrit (modules/team.rs), et elle ne sort jamais
 /// de ce PC.
 const TEAM_IDENTITY: &str = "team-identity-key";
+
+/// La clé privée de l'autorité HTTPS d'un téléphone (services/phone_tls.rs),
+/// une par téléphone. Comme la clé Équipe : hors de KNOWN_KEYS, le front ne
+/// peut ni la lire, ni l'écrire. La révoquer, c'est l'effacer.
+#[cfg(not(test))]
+fn phone_key(id: &str) -> String {
+    format!("phone-tls-{id}")
+}
+#[cfg(not(test))]
+pub fn phone_key_get(id: &str) -> Result<Option<String>, String> {
+    store::get_checked(&phone_key(id))
+}
+#[cfg(not(test))]
+pub fn phone_key_set(id: &str, value: &str) -> Result<(), String> {
+    // L'ancienne autorité unique (avant la page Téléphones) ne sert plus.
+    let _ = store::delete("phone-tls-identity");
+    store::set(&phone_key(id), value)
+}
+#[cfg(not(test))]
+pub fn phone_key_delete(id: &str) -> Result<(), String> {
+    store::delete(&phone_key(id))
+}
 
 pub fn team_identity_get() -> Option<String> {
     store::get(TEAM_IDENTITY)

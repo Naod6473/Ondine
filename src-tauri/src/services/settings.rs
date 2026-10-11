@@ -22,6 +22,8 @@ pub const CURRENT_VERSION: u32 = 2;
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
     pub version: u32,
+    /// Ordre des sauvegardes ; les fenêtres ignorent les événements plus anciens.
+    pub revision: u64,
     pub general: General,
     pub island: IslandPrefs,
     pub mascot: MascotPrefs,
@@ -223,6 +225,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             version: CURRENT_VERSION,
+            revision: 0,
             general: General::default(),
             island: IslandPrefs::default(),
             mascot: MascotPrefs::default(),

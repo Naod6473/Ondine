@@ -43,6 +43,7 @@ import { mascotPodium, type Podium } from "./podium";
 import { aboutGroup } from "./about";
 import { askclaudeGroups } from "./askclaude-page";
 import { perfGroup } from "./perf-group";
+import { phonesPage } from "./phone-certificate";
 import { startPerf } from "../core/perf";
 import { applyMode, hiddenByMode, modeSwitch } from "./mode";
 import { isHidden, modeOf, moduleEssentialKeys, pageEssentials, WHOLE_PAGE, type SettingsMode } from "./visibility";
@@ -298,9 +299,18 @@ const SYSTEM_PAGES: Page[] = [
     group: "Sécurité et système",
     icon: "🛡️",
     label: "Confidentialité",
-    sub: "Aucune télémétrie. Ce qui part vers une IA est toujours montré avant.",
+    sub: "Aucune télémétrie. Les outils de l'IA demandent votre accord.",
     keywords: ["Télémétrie", "Dossiers exclus", "Exclure un dossier"],
     render: privacy,
+  },
+  {
+    id: "phones",
+    group: "Sécurité et système",
+    icon: "📱",
+    label: "Téléphones",
+    sub: "Les téléphones appairés pour l'Étagère et la télécommande.",
+    keywords: ["Téléphone", "Appairer", "Révoquer", "Certificat", "QR code", "Ajouter un téléphone"],
+    render: phonesPage,
   },
   {
     id: "credentials",
@@ -411,6 +421,9 @@ const app = document.getElementById("app")!;
 const nav = el("nav", { class: "sidebar", "aria-label": "Pages des réglages" });
 const content = el("main", { class: "content" });
 
+/** La page est construite : on peut changer de page (followGoto). */
+let started = false;
+
 async function start() {
   const boot = await Bridge.boot();
   appVersion = boot?.version ?? "";
@@ -423,6 +436,7 @@ async function start() {
   await bus.connect();
   try {
     current = localStorage.getItem("settings.page") ?? current;
+    localStorage.removeItem("settings.goto");
   } catch {
     // stockage indisponible : on démarre sur « Général »
   }
@@ -469,6 +483,15 @@ async function start() {
     const typing = document.activeElement instanceof HTMLInputElement && document.activeElement.type !== "checkbox";
     if (!typing) showPage(false);
   });
+  settingsStore.onError((error) => {
+    lastOwnSave = 0;
+    showPage(false);
+    document.getElementById("settings-save-error")?.remove();
+    const alert = el("div", { id: "settings-save-error", class: "settings-save-error", role: "alert" },
+      el("strong", {}, "Réglages non enregistrés"), el("p", {}, errorText(error)),
+      el("button", { type: "button", onclick: () => alert.remove() }, "Fermer"));
+    app.append(alert);
+  });
 
   app.append(backdrop(), nav, content);
   drawNav();
@@ -490,7 +513,7 @@ function save(change: (s: Settings) => void, redraw = false) {
   lastOwnSave = performance.now();
   void settingsStore.update(change).then(() => {
     if (redraw) showPage(false);
-  });
+  }).catch(() => { /* Le message et le retour au réglage enregistré sont gérés par onError. */ });
 }
 
 // ── Mode Simple / Complet (visibility.ts, mode.ts) ────────────────────────────
@@ -1004,7 +1027,7 @@ function general(main: HTMLElement) {
       row(
         "Langue",
         choice(s.general.language ?? "auto", [["auto", "Automatique"], ["fr", "Français"], ["en", "English"]], (v) => save((d) => (d.general.language = v as Settings["general"]["language"]))),
-        "Automatique : la langue choisie à l'installation, sinon celle de Windows. Les fenêtres se rechargent.",
+        "Automatique : la langue choisie à l'installation, sinon celle de Windows. Le changement s'applique sans recharger les fenêtres.",
       ),
       addressRow(s),
       ...firstRunRows(s),
@@ -2046,6 +2069,12 @@ function treasureBook(ids: string[]): HTMLElement {
 }
 
 function privacy(main: HTMLElement) {
+  main.append(
+    group("Téléphones", [wideRow(null, el("div", {},
+      el("p", {}, "Les téléphones qui ouvrent l'Étagère ou la télécommande ont chacun leur certificat. Vous pouvez les voir et les révoquer dans la page Téléphones."),
+      el("button", { type: "button", class: "btn", onclick: () => go("phones") }, "Voir les téléphones"),
+    ))]),
+  );
   const s = settingsStore.current;
   const rows: HTMLElement[] = s.privacy.excludedFolders.map((folder) =>
     row(
@@ -2082,7 +2111,7 @@ function privacy(main: HTMLElement) {
       "Ce que l'île promet",
       [
         row("Télémétrie", chip("Aucune", "ok"), "Rien n'est envoyé sur Internet sans que vous le demandiez."),
-        row("Envoi à une IA", chip("Toujours montré avant", "ok"), "Un module qui envoie du contenu à une API d'IA (Claude, GPT, Gemini) le déclare et vous montre ce qui part."),
+        row("Envoi à une IA", chip("Accord pour les outils", "ok"), "Dans Parler à Ondine, les fichiers joints sont présentés avant l'envoi. Les outils de fichiers et du PC demandent votre autorisation à la première utilisation ; ensuite, lire un fichier, partager une information du PC ou ouvrir quelque chose demande encore votre accord."),
       ],
     ),
     group("Dossiers exclus", [...rows, wideRow(null, el("div", { class: "inline" }, input, el("button", { class: "btn", onclick: () => void add() }, "Exclure")))], "Aucun module ne lira ni n'enverra un fichier situé dans ces dossiers."),
@@ -2185,4 +2214,31 @@ function backup(main: HTMLElement) {
   );
 }
 
-void start();
+/**
+ * Une autre fenêtre (l'île) demande une page : « settings.goto ». La fenêtre de
+ * réglages est souvent déjà ouverte et seulement cachée, elle ne relirait pas
+ * « settings.page » : on regarde quand elle revient et quand le stockage change.
+ */
+function followGoto() {
+  if (!started) return;
+  let target: string | null = null;
+  try {
+    target = localStorage.getItem("settings.goto");
+    if (target) localStorage.removeItem("settings.goto");
+  } catch {
+    // Stockage indisponible : on reste sur la page actuelle.
+  }
+  if (target && allPages().some((p) => p.id === target)) go(target);
+}
+window.addEventListener("storage", (e) => {
+  if (e.key === "settings.goto" && e.newValue) followGoto();
+});
+window.addEventListener("focus", followGoto);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) followGoto();
+});
+
+void start().then(() => {
+  started = true;
+  followGoto();
+});

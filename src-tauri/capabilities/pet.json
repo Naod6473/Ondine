@@ -1,0 +1,29 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "pet",
+  "description": "Mascotte : vues des onglets choisis, placement et ouverture des réglages.",
+  "windows": [
+    "pet"
+  ],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "allow-boot",
+    "allow-settings-patch",
+    "allow-ui-language",
+    "allow-perf-state",
+    "allow-log-write",
+    "allow-bus-publish",
+    "allow-module-invoke",
+    "allow-dialog-pick-file",
+    "allow-dialog-pick-folder",
+    "allow-settings-open-window",
+    "allow-pet-open",
+    "allow-pet-bubble",
+    "allow-pet-drag-start",
+    "allow-pet-set-hit",
+    "allow-pet-back",
+    "allow-desk-state",
+    "allow-undo-run"
+  ]
+}

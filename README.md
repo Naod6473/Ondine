@@ -317,6 +317,14 @@ déplacer). Toute action sur les fichiers est annulable quelques secondes.
 **📱 Vers le téléphone** (sur un fichier de l'étagère) : l'île montre un QR code ;
 visez-le avec l'appareil photo du téléphone, et le navigateur du téléphone
 télécharge le fichier. Le téléphone doit être sur **le même Wi-Fi** que le PC :
+la connexion utilise HTTPS. Avant le premier partage ou l'utilisation de la
+télécommande, ouvrez **Réglages → Confidentialité → Préparer mon téléphone**
+dans Ondine. Téléchargez le certificat public, comparez son empreinte avec celle
+affichée sur le PC et installez-le sur le téléphone selon les instructions.
+Aucune application mobile supplémentaire. N'ignorez pas les alertes de
+certificat du navigateur ; retirez ce certificat si vous n'utilisez plus Ondine
+ou si le PC est compromis.
+
 Ondine ouvre un tout petit serveur sur le réseau local seulement (jamais sur
 Internet), qui sert ce seul fichier à une adresse secrète (un jeton au hasard de
 128 bits), puis se ferme après un téléchargement complet, au bout de 5 minutes
@@ -883,7 +891,7 @@ tout seul**, selon les jours et les heures, ou le nom du Wi-Fi.
 
 ### Confidentialité, Identifiants, Sauvegarde
 
-- **Confidentialité** : le rappel de ce que l'île promet (aucune télémétrie, ce qui part vers une IA toujours montré avant) et les **dossiers exclus** : aucun module ne lira ni n'enverra un fichier situé dans ces dossiers (ni le lanceur, ni l'étagère, ni « Parler à Ondine »).
+- **Confidentialité** : aucune télémétrie, aperçu des fichiers joints et accord avant les recherches, accès aux données et actions demandés par l'IA de « Parler à Ondine ». Les **dossiers exclus** restent protégés, y compris lorsqu'on sélectionne leur dossier parent pour une copie, un déplacement ou une archive. La préparation HTTPS du téléphone se trouve aussi sur cette page.
 - **Identifiants** : les **clés API** Anthropic, OpenAI et Google (Gemini), rangées dans le Gestionnaire d'identifiants de Windows. L'île peut seulement savoir si une clé existe : elle ne peut jamais la réafficher.
 - **Sauvegarde** : **exporter** vos réglages dans un fichier .json (`%APPDATA%\Ondine\exports`) ou en **importer**. Les clés ne font jamais partie de l'export.
 
@@ -930,7 +938,7 @@ TypeScript sans framework pour l'interface.
 
 **Prérequis (Windows 10 ou 11)**
 
-- [Node.js](https://nodejs.org) 20 ou plus récent
+- [Node.js](https://nodejs.org) 22 ou plus récent
 - [Rust](https://rustup.rs) (stable)
 - Visual Studio Build Tools avec la charge de travail **« Développement Desktop en C++ »** (outils de build MSVC)
 - WebView2 (déjà présent sur Windows 11 et sur Windows 10 à jour ; sinon, le [runtime Evergreen](https://developer.microsoft.com/microsoft-edge/webview2/))

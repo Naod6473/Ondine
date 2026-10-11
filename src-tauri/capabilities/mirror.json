@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "mirror",
+  "description": "Reflets : lecture de leur apparence uniquement.",
+  "windows": ["mirror-*"],
+  "permissions": ["allow-mirror-look"]
+}

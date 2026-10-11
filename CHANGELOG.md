@@ -1,6 +1,6 @@
 # Changements · Changelog
 
-## 1.2.3 · à venir
+## 1.2.3 · 2026-10-11
 
 - Nouveau style d'île « Bouche d'Ondine » (au choix) : Ondine est suspendue
   tête en bas et l'île est sa bouche, en gomme de la couleur de votre
@@ -108,6 +108,28 @@
   de la visite. · Fix: Ondine hangs from the screen edge again (and "Bring
   Ondine" works): with the mini island shown, the default, the visit never
   happened; the mini island now slides up during the visit.
+- Nouvelle page Réglages → Téléphones, toujours visible : la liste des
+  téléphones appairés (date d'ajout, certificat téléchargé, validité,
+  empreinte), avec « Révoquer », « Utiliser ce téléphone » et « Ajouter un
+  téléphone ». Chaque téléphone a son propre certificat, limité au réseau
+  local ; en révoquer un ne touche pas aux autres. Il faut ajouter de nouveau
+  un téléphone préparé avant cette version. · New Settings → Phones page,
+  always visible: the list of paired phones (date added, certificate
+  downloaded, validity, fingerprint), with "Revoke", "Use this phone" and "Add
+  a phone". Each phone has its own certificate, limited to the local network;
+  revoking one leaves the others alone. A phone prepared before this version
+  must be added again.
+- Parler à Ondine demande à la première utilisation d'autoriser ou de refuser
+  l'accès à vos fichiers et au PC ; les petites actions locales (volume,
+  minuteur, note…) restent immédiates. · Talk to Ondine asks, the first time,
+  to allow or refuse access to your files and the PC; small local actions
+  (volume, timer, note…) stay immediate.
+- Fluidité et sécurité : réglages enregistrés sans bloquer l'île, animations
+  qui s'arrêtent quand l'île est cachée, dictionnaires chargés à la demande,
+  dossiers exclus mieux protégés, permissions de chaque fenêtre séparées. ·
+  Smoothness and security: settings saved without blocking the island,
+  animations that stop when the island is hidden, dictionaries loaded on
+  demand, better-protected excluded folders, separate permissions per window.
 
 ## 1.2.2 · 2026-10-10
 

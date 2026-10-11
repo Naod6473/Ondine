@@ -22,6 +22,7 @@
 // n'y a pas d'île dessous, la bouche est remplie (`fill`).
 
 import { ECO_FPS, perfMode } from "../core/perf";
+import { FrameBudget } from "../core/frame-budget";
 import { settingsStore } from "../core/settings-store";
 import { isHexColor, palette, TINT_NAMES, DEFAULT_CUSTOM, type GumTint, type Palette } from "../mascot/renderers/gum-draw";
 import { drawMouthBody } from "./mouth-draw";
@@ -61,7 +62,7 @@ export class MouthBody {
   readonly canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D | null;
   private raf = 0;
-  private timer = 0;
+  private readonly budget = new FrameBudget();
   private last = 0;
   private stable = 0;
   private lastKey = "";
@@ -88,6 +89,7 @@ export class MouthBody {
     host.prepend(this.canvas);
     this.ctx = this.canvas.getContext("2d");
     window.addEventListener("resize", this.onResize);
+    document.addEventListener("visibilitychange", this.onVisibility);
     this.onResize();
     this.scheduleBlink();
   }
@@ -97,13 +99,16 @@ export class MouthBody {
     this.stop();
     window.clearTimeout(this.blinkTimer);
     window.removeEventListener("resize", this.onResize);
+    document.removeEventListener("visibilitychange", this.onVisibility);
     this.canvas.remove();
   }
 
   private onResize = () => {
     const dpr = window.devicePixelRatio || 1;
-    this.canvas.width = Math.max(1, Math.round(window.innerWidth * dpr));
-    this.canvas.height = Math.max(1, Math.round(window.innerHeight * dpr));
+    const w = Math.max(1, Math.round(window.innerWidth * dpr));
+    const h = Math.max(1, Math.round(window.innerHeight * dpr));
+    if (this.canvas.width !== w) this.canvas.width = w;
+    if (this.canvas.height !== h) this.canvas.height = h;
     this.lastKey = "";
     this.wake();
   };
@@ -113,10 +118,16 @@ export class MouthBody {
   /** Quelque chose a peut-être bougé : la boucle repart. */
   wake() {
     this.stable = 0;
-    if (this.raf || this.timer || this.destroyed) return;
+    if (this.raf || this.destroyed || document.hidden) return;
     this.last = performance.now();
+    this.budget.reset();
     this.raf = requestAnimationFrame((t) => this.frame(t));
   }
+
+  private onVisibility = () => {
+    if (document.hidden) this.stop();
+    else this.wake();
+  };
 
   /** Visible, aperçu (seule la pointe dépasse) ou cachée derrière le bord. */
   setRetreat(r: Retreat) {
@@ -223,14 +234,16 @@ export class MouthBody {
 
   private stop() {
     cancelAnimationFrame(this.raf);
-    window.clearTimeout(this.timer);
     this.raf = 0;
-    this.timer = 0;
   }
 
   private frame(now: number) {
     this.raf = 0;
-    this.timer = 0;
+    if (this.destroyed || document.hidden) return;
+    if (perfMode() === "eco" && !this.budget.due(now, ECO_FPS)) {
+      this.raf = requestAnimationFrame((t) => this.frame(t));
+      return;
+    }
     const dt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
     const reduce = reducedMotion();
@@ -254,8 +267,7 @@ export class MouthBody {
     else this.stable++;
     // L'île peut encore bouger sans nous prévenir (sa gelée) : quelques images de marge.
     if (this.stable > 24 || this.destroyed) return;
-    if (perfMode() === "eco") this.timer = window.setTimeout(() => (this.raf = requestAnimationFrame((t) => this.frame(t))), 1000 / ECO_FPS - 4);
-    else this.raf = requestAnimationFrame((t) => this.frame(t));
+    this.raf = requestAnimationFrame((t) => this.frame(t));
   }
 
   /** Dessine si quelque chose a changé ; renvoie vrai dans ce cas. */
@@ -267,7 +279,7 @@ export class MouthBody {
     const blink = now < this.blinkUntil ? 1 : 0;
     const [l, r] = eyeOpenness(this.dozing, this.mouseNear.d, this.mouseNear.left);
     const key = m
-      ? [m.x, m.y, m.w, m.h, dir, this.retreat.x, this.swell.x, this.eyesIn.x, blink, l, r, this.look?.x ?? 0, this.look?.y ?? 0, this.hooks.mouthR(), this.hooks.openness?.() ?? -1]
+      ? [m.x, m.y, m.w, m.h, dir, this.retreat.x, this.swell.x, this.eyesIn.x, blink, l, r, this.look?.x ?? 0, this.look?.y ?? 0, this.hooks.mouthR(), this.hooks.openness?.() ?? -1, settingsStore.current.mascot.color, settingsStore.current.mascot.customColor]
           .map((v) => (typeof v === "number" ? v.toFixed(1) : v))
           .join(",")
       : "none";

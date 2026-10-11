@@ -250,7 +250,7 @@ impl Shelf {
 
     /// Corbeille. Annuler = ressortir chaque élément de la Corbeille.
     fn trash(&self, ctx: &ModuleContext, args: &Value) -> Result<Value, String> {
-        let paths = checked_paths(ctx, args)?;
+        let paths = checked_trees(ctx, args)?;
         files::to_trash(&paths)?;
         ctx.log_info(format!("{} élément(s) envoyé(s) à la Corbeille", paths.len()));
         // Ce qui était sur l'étagère en part, et y revient si on annule.
@@ -279,13 +279,13 @@ impl Shelf {
 
     /// Copie dans un dossier. Annuler = envoyer les copies à la Corbeille.
     fn copy_to(&self, ctx: &ModuleContext, args: &Value) -> Result<Value, String> {
-        let paths = checked_paths(ctx, args)?;
+        let paths = checked_trees(ctx, args)?;
         let dest = checked_dest(ctx, args)?;
         ctx.emit("task.started", json!({ "label": "Copie" }));
         let mut created = Vec::new();
         let mut error = None;
         for p in &paths {
-            match files::copy_into(p, &dest) {
+            match files::copy_into_checked(p, &dest, &|path| ctx.check_path(&path.to_string_lossy()).map(|_| ())) {
                 Ok(c) => created.push(c),
                 Err(e) => {
                     error = Some(e);
@@ -308,14 +308,14 @@ impl Shelf {
 
     /// Déplace dans un dossier. Annuler = remettre chaque élément à sa place.
     fn move_to(&self, ctx: &ModuleContext, args: &Value) -> Result<Value, String> {
-        let paths = checked_paths(ctx, args)?;
+        let paths = checked_trees(ctx, args)?;
         let dest = checked_dest(ctx, args)?;
         ctx.emit("task.started", json!({ "label": "Déplacement" }));
         // (ancien chemin, nouveau chemin) pour pouvoir revenir en arrière.
         let mut moves: Vec<(PathBuf, PathBuf)> = Vec::new();
         let mut error = None;
         for p in &paths {
-            match files::move_into(p, &dest) {
+            match files::move_into_checked(p, &dest, &|source| ctx.check_path(&source.to_string_lossy()).map(|_| ())) {
                 Ok(new) => moves.push((p.clone(), new)),
                 Err(e) => {
                     error = Some(e);
@@ -358,7 +358,7 @@ impl Shelf {
     /// C'est la cible qui copie ou déplace ; ensuite, ce qui a quitté sa place
     /// quitte aussi l'étagère (on ne sait pas où la cible l'a mis).
     fn drag_out(&self, ctx: &ModuleContext, args: &Value) -> Result<Value, String> {
-        let paths = checked_paths(ctx, args)?;
+        let paths = checked_trees(ctx, args)?;
         let effect = drag_out::effect_name(crate::platform::drag_out::drag_files(ctx.app, &paths)?);
         ctx.log_info(format!("{} élément(s) glissé(s) hors de l'île ({effect})", paths.len()));
         let removed = forget_gone(&self.items, &paths, |p| p.exists());
@@ -386,9 +386,9 @@ impl Shelf {
 
     /// Crée une archive .zip à côté du premier élément. Annuler = archive à la Corbeille.
     fn compress(&self, ctx: &ModuleContext, args: &Value) -> Result<Value, String> {
-        let paths = checked_paths(ctx, args)?;
+        let paths = checked_trees(ctx, args)?;
         ctx.emit("task.started", json!({ "label": "Compression" }));
-        let result = files::zip(&paths);
+        let result = files::zip_checked(&paths, &|path| ctx.check_path(&path.to_string_lossy()).map(|_| ()));
         finish_task(ctx, "Compression", &result.as_ref().err().cloned());
         let archive = result?;
         let name = archive.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
@@ -425,6 +425,10 @@ fn checked_paths(ctx: &ModuleContext, args: &Value) -> Result<Vec<PathBuf>, Stri
         return Err("aucun fichier".into());
     }
     Ok(out)
+}
+
+fn checked_trees(ctx: &ModuleContext, args: &Value) -> Result<Vec<PathBuf>, String> {
+    checked_paths(ctx, args)?.iter().map(|p| ctx.check_tree(&p.to_string_lossy())).collect()
 }
 
 /// Le dossier de destination `args.dest`, validé comme les autres chemins.

@@ -337,7 +337,7 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     0 0 0 1px var(--line);
   transform-origin: center;
-  will-change: transform, width;
+  will-change: transform;
   pointer-events: none;
 }
 
@@ -3313,6 +3313,17 @@ body[data-perf="eco"] .gh-today.gh-zero {
 .ask-confirm-title {
   margin: 0;
   overflow-wrap: anywhere;
+}
+/* La première utilisation des outils : une ligne par accès à choisir. */
+.ask-grant {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ask-grant-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 .ask-outgoing {
   padding: 8px 10px;

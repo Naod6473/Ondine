@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "annotate",
+  "description": "Annotation : exporter uniquement la capture en cours ; aucune commande de réglages ou d’identifiants.",
+  "windows": [
+    "annotate"
+  ],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "allow-module-invoke",
+    "allow-window-hide",
+    "allow-ui-language",
+    "allow-log-write"
+  ]
+}

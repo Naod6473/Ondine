@@ -25,8 +25,23 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write # pour créer le brouillon de version
+      actions: read # vérifier la CI du commit exact avant toute construction
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Exiger une CI réussie sur ce commit de main
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ($env:GITHUB_REF -ne 'refs/heads/main') { throw 'Une version doit partir de main.' }
+          $endpoint = "repos/$env:GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$env:GITHUB_SHA&per_page=10"
+          $response = gh api $endpoint | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'Impossible de vérifier la CI.' }
+          $run = $response.workflow_runs | Where-Object { $_.head_sha -eq $env:GITHUB_SHA -and $_.head_branch -eq 'main' -and $_.event -eq 'push' } | Sort-Object created_at -Descending | Select-Object -First 1
+          if (-not $run -or $run.status -ne 'completed' -or $run.conclusion -ne 'success') {
+            throw 'La dernière CI de ce commit doit être terminée et réussie (tests, Clippy et audits).'
+          }
 
       - name: Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0

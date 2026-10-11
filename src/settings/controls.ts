@@ -9,6 +9,7 @@
 import { el } from "../island/dom";
 
 type Child = Node | string | null | undefined | false;
+let labelId = 0;
 
 /** Un bloc de lignes, avec un titre (et une note sous le bloc, si besoin). */
 export function group(title: string | null, rows: Child[], note?: string): HTMLElement {
@@ -33,12 +34,19 @@ export function inSub<T extends HTMLElement>(sub: string, node: T): T {
  * faire briller.
  */
 export function row(label: string, control: Child, help?: string, key?: string): HTMLElement {
-  return el(
+  const id = `setting-label-${++labelId}`;
+  const out = el(
     "div",
     { class: "row", "data-key": key ?? label },
-    el("div", { class: "row-text" }, el("div", { class: "row-label" }, label), help ? el("div", { class: "row-help" }, help) : null),
+    el("div", { class: "row-text" }, el("div", { class: "row-label", id }, label), help ? el("div", { class: "row-help", id: `${id}-help` }, help) : null),
     control ? el("div", { class: "row-control" }, control) : null,
   );
+  // Le groupe porte le libellé ; chaque bouton radio garde son propre nom.
+  for (const field of out.querySelectorAll<HTMLElement>('input, select, textarea, [role="radiogroup"]')) {
+    if (!field.getAttribute("aria-label") && !field.getAttribute("aria-labelledby")) field.setAttribute("aria-labelledby", id);
+    if (help) field.setAttribute("aria-describedby", `${id}-help`);
+  }
+  return out;
 }
 
 /** Une ligne pleine largeur (liste de dossiers, boutons…), sous un libellé. */
@@ -82,12 +90,23 @@ export function segmented(value: string, options: [string, string][], onChange: 
     for (const [v, b] of buttons) {
       b.setAttribute("aria-checked", String(v === value));
       b.classList.toggle("on", v === value);
+      b.tabIndex = v === value ? 0 : -1;
     }
     const on = buttons.find(([v]) => v === value)?.[1];
     if (!on) return;
     thumb.style.width = `${on.offsetWidth}px`;
     thumb.style.transform = `translateX(${on.offsetLeft}px)`;
   };
+  box.addEventListener("keydown", (event) => {
+    const keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"];
+    if (!keys.includes(event.key) || !buttons.length) return;
+    event.preventDefault();
+    const index = Math.max(0, buttons.findIndex(([v]) => v === value));
+    const next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1
+      : (index + (event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 1) + buttons.length) % buttons.length;
+    buttons[next][1].click();
+    buttons[next][1].focus();
+  });
   // La taille des boutons n'est connue qu'une fois la page affichée.
   requestAnimationFrame(() => {
     thumb.classList.add("instant");

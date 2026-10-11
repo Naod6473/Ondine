@@ -1877,3 +1877,28 @@ html:not([lang="fr"]) .fr-only {
   background: rgba(255, 255, 255, 0.55);
   flex: 1;
 }
+
+.settings-save-error {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  max-width: min(440px, calc(100vw - 40px));
+  padding: 18px;
+  border: 1px solid #b75050;
+  border-radius: 16px;
+  background: var(--panel, #252532);
+  color: var(--text, #fff);
+  box-shadow: 0 8px 28px #0005;
+  z-index: 1000;
+}
+
+.certificate-qr { width: 180px; height: 180px; background: white; padding: 12px; border-radius: 12px; margin-top: 16px; }
+.phone-card { padding: 12px 0; border-bottom: 1px solid var(--border, rgba(127,127,127,.2)); }
+.phone-card:last-child { border-bottom: 0; }
+.phone-card p { margin: 2px 0; }
+.phone-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.phone-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.phone-name { margin-right: 8px; min-width: 260px; }
+.phone-notice:not(:empty) { margin-bottom: 8px; }
+.btn.danger { color: var(--danger); }
+.certificate-fingerprint { display: block; overflow-wrap: anywhere; margin: 12px 0; font-size: 12px; user-select: text; }

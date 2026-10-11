@@ -2,10 +2,10 @@
 // proposés à l'IA quand le réglage « Ondine peut agir sur le PC » est activé
 // (les outils de fichiers sont dans askclaude_tools.rs).
 //
-//   - regarder (fait tout de suite, le résultat part vers l'IA) : l'état du
+//   - regarder (après accord, le résultat part vers l'IA) : l'état du
 //     PC, l'agenda, la météo, la musique en cours, le son et l'écran, les
 //     notes qui correspondent à une recherche ;
-//   - agir, tout de suite (vous l'avez demandé, et tout se défait d'un
+//   - agir tout de suite (rien ne part vers l'IA, et tout se défait d'un
 //     clic) : volume, son coupé, luminosité, mode sombre, musique, minuteur,
 //     note, expression de la mascotte ;
 //   - agir APRÈS votre accord (askclaude.rs, `pending`) : ouvrir une
@@ -47,6 +47,7 @@ enum Op {
     Site(String),
     Shelf(PathBuf),
     Radio(&'static str, bool),
+    Tool(Call),
 }
 
 /// Un appel d'outil du PC : fait (résultat pour l'IA, ligne d'activité
@@ -148,10 +149,35 @@ fn did(what: &str, value: impl Into<String>) -> Option<Value> {
 
 /// Traite un appel d'outil du PC. `found` : les fichiers déjà numérotés.
 pub fn plan(ctx: &ModuleContext, call: &Call, found: &Found) -> Step {
+    if let Some(label) = approval_label(&call.name) {
+        // Aucun appel à un module avant l'accord : le texte d'un document ou
+        // d'une réponse IA ne vaut jamais autorisation de lire ou d'agir.
+        return Step::Ask(Act { what: "tool", value: format!("{label} : {}", call.args), op: Op::Tool(call.clone()) });
+    }
+    plan_local(ctx, call, found)
+}
+
+/// Seulement les commandes rapides reconnues dans le message humain, sans IA.
+pub fn plan_local(ctx: &ModuleContext, call: &Call, found: &Found) -> Step {
     match run(ctx, call, found) {
         Ok(step) => step,
         Err(e) => Step::Done(json!({ "erreur": e }), None),
     }
+}
+
+/// Ce qui ferait partir des données du PC vers l'IA demande un accord.
+/// Les petites actions locales (volume, minuteur, expression…) restent
+/// immédiates : elles n'envoient rien et se défont d'un clic.
+fn approval_label(name: &str) -> Option<&'static str> {
+    Some(match name {
+        "etat_pc" => "partager l'état du PC avec l'IA",
+        "agenda" => "partager les prochains rendez-vous avec l'IA",
+        "meteo" => "partager la météo et la localisation avec l'IA",
+        "musique_en_cours" => "partager la musique en cours avec l'IA",
+        "etat_son_ecran" => "partager l'état du son et des écrans avec l'IA",
+        "chercher_notes" => "chercher et partager des notes avec l'IA",
+        _ => return None,
+    })
 }
 
 fn invoke(ctx: &ModuleContext, module: &str, command: &str, args: Value) -> Result<Value, String> {
@@ -184,7 +210,7 @@ fn run(ctx: &ModuleContext, call: &Call, found: &Found) -> Result<Step, String> 
             let query = call.args.get("requete").and_then(Value::as_str).unwrap_or("");
             Step::Done(short(invoke(ctx, "notes", "search", json!({ "query": query, "limit": 8 }))?), None)
         }
-        // ── Agir tout de suite ──
+        // ── Actions exécutées après accord, ou commandes locales explicites ──
         "regler_volume" => {
             let n = level(call)?;
             invoke(ctx, "controls", "set_volume", json!({ "device": "speakers", "volume": n }))?;
@@ -321,7 +347,14 @@ fn best_app(list: &[Value], query: &str) -> Option<(u64, String)> {
 
 /// Fait une action acceptée. Renvoie le résultat pour l'IA et la ligne d'activité.
 pub fn perform(ctx: &ModuleContext, act: &Act) -> Result<(Value, Value), String> {
+    if !ctx.settings().get("pcTools").and_then(Value::as_bool).unwrap_or(false) {
+        return Err("les outils du PC sont désactivés dans les réglages".into());
+    }
     match &act.op {
+        Op::Tool(call) => match run(ctx, call, &Found::default())? {
+            Step::Done(value, line) => return Ok((value, line.unwrap_or_else(|| json!({ "kind": "did", "what": act.what, "value": act.value })))),
+            Step::Ask(_) => return Err("cette action nécessite un nouvel accord".into()),
+        },
         Op::App(id) => {
             invoke(ctx, "launcher", "launch", json!({ "id": id }))?;
         }
@@ -345,6 +378,15 @@ pub fn perform(ctx: &ModuleContext, act: &Act) -> Result<(Value, Value), String>
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn sharing_data_needs_approval_but_small_local_actions_do_not() {
+        for name in ["etat_pc", "agenda", "meteo", "musique_en_cours", "etat_son_ecran", "chercher_notes"] {
+            assert!(approval_label(name).is_some(), "{name}");
+        }
+        for name in ["regler_volume", "couper_son", "regler_luminosite", "mode_sombre", "controler_musique", "lancer_minuteur", "creer_note", "jouer_expression"] {
+            assert!(approval_label(name).is_none(), "{name}");
+        }
+    }
 
     #[test]
     fn every_tool_has_an_object_schema() {

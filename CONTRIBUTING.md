@@ -7,7 +7,7 @@ du code est décrite dans [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 ## Prérequis
 
 - Windows 10 ou 11 (WebView2 est déjà installé)
-- [Rust](https://rustup.rs), [Node 20+](https://nodejs.org)
+- [Rust](https://rustup.rs), [Node 22+](https://nodejs.org)
 - Visual Studio Build Tools avec « Développement Desktop en C++ »
 
 ## Lancer

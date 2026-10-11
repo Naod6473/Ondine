@@ -621,13 +621,16 @@ fn run_action(
     label: &str,
     undo: &mut Vec<UndoStep>,
 ) -> Result<String, String> {
-    let path = || current.clone().ok_or_else(|| "aucun fichier".to_string());
+    let path = || {
+        let path = current.clone().ok_or_else(|| "aucun fichier".to_string())?;
+        ctx.check_tree(&path.to_string_lossy())
+    };
     let name = if label.is_empty() { current.as_deref().map(file_name).unwrap_or_default() } else { label.to_string() };
     match action {
         Action::Move { to } => {
             let dest_dir = ctx.check_path(to)?;
             let src = path()?;
-            let new = files::move_into(&src, &dest_dir)?;
+            let new = files::move_into_checked(&src, &dest_dir, &|source| ctx.check_path(&source.to_string_lossy()).map(|_| ()))?;
             mark_produced(state, &new);
             undo.push(UndoStep::MoveBack { from: new.clone(), to: src });
             *current = Some(new);
@@ -635,7 +638,7 @@ fn run_action(
         }
         Action::Copy { to } => {
             let dest_dir = ctx.check_path(to)?;
-            let copy = files::copy_into(&path()?, &dest_dir)?;
+            let copy = files::copy_into_checked(&path()?, &dest_dir, &|p| ctx.check_path(&p.to_string_lossy()).map(|_| ()))?;
             mark_produced(state, &copy);
             undo.push(UndoStep::TrashCopy(copy));
             Ok(format!("copié dans {}", file_name(&dest_dir)))

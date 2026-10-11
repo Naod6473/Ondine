@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "screensaver",
+  "description": "Écran de veille : lecture du contexte et événements, sans accès aux outils ou identifiants.",
+  "windows": ["screensaver"],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "allow-boot",
+    "allow-ui-language",
+    "allow-perf-state",
+    "allow-log-write"
+  ]
+}

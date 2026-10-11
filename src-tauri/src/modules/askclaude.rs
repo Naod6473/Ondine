@@ -21,6 +21,10 @@
 //   - la réponse est du TEXTE À AFFICHER : rien n'est exécuté ;
 //   - le journal ne note que la taille de l'envoi, jamais son contenu.
 //
+// Accès aux outils : tant que « fileTools » ou « pcTools » n'est pas choisi,
+// le premier appel d'un de ces outils montre une carte « Autoriser /
+// Refuser » (`Action::Grant`), et la réponse est enregistrée dans les réglages.
+//
 // Les outils de fichiers (askclaude_tools.rs, réglage « fileTools ») : l'IA
 // peut demander à chercher des fichiers par leur nom (fait tout de suite, les
 // noms partent), à en lire un ou à en créer un (l'échange s'arrête alors sur
@@ -28,10 +32,11 @@
 // proposer un (une carte « Ouvrir / Montrer », `open_card`). Au plus
 // MAX_ROUNDS allers-retours par message.
 //
-// Les outils du PC (askclaude_pc.rs, réglage « pcTools ») : regarder l'état
-// du PC, l'agenda, la météo…, régler le son, l'écran, la musique, lancer un
-// minuteur ou créer une note tout de suite ; ouvrir une application ou un
-// site, poser un fichier sur l'Étagère ou toucher au Wi-Fi après votre accord.
+// Les outils du PC (askclaude_pc.rs, réglage « pcTools ») : régler le son,
+// l'écran, la musique, lancer un minuteur ou créer une note tout de suite ;
+// regarder l'état du PC, l'agenda, la météo… (ce qui part vers l'IA), ouvrir
+// une application ou un site, poser un fichier sur l'Étagère ou toucher au
+// Wi-Fi après votre accord.
 //
 // La voix (askclaude_voice.rs) : un raccourci ouvre l'écoute ; le texte dit
 // revient au front, qui l'envoie comme un message tapé (ou fait une commande
@@ -199,6 +204,9 @@ struct Pending {
 }
 
 enum Action {
+    /// Première utilisation des outils : autoriser ou refuser l'accès
+    /// (« fileTools » ou « pcTools »). Le choix est enregistré dans les réglages.
+    Grant { key: &'static str },
     Read { numero: u64, name: String, text: String },
     Create { name: String, content: String },
     Pc(pc::Act),
@@ -260,8 +268,8 @@ impl RustModule for AskClaude {
                     "system": system(ctx),
                     "history": history,
                     "maxTurns": MAX_TURNS,
-                    "fileTools": file_tools(ctx),
-                    "pcTools": pc_tools(ctx),
+                    "fileTools": tools_allowed(ctx, FILE_TOOLS),
+                    "pcTools": tools_allowed(ctx, PC_TOOLS),
                     "filesFolder": tools::folder(ctx).map(|p| p.display().to_string()),
                     "voice": voice_status(ctx),
                 }))
@@ -368,8 +376,31 @@ impl RustModule for AskClaude {
                     }
                 };
                 let key = ctx.credential(exchange.provider.credential_key())?.ok_or("la clé API a disparu")?;
+                if let Action::Grant { key: setting } = action {
+                    // Votre choix vaut pour la suite : la carte ne revient pas.
+                    let id = ctx.id().to_string();
+                    crate::update_settings(ctx.app, &tauri::Manager::state::<crate::Shared>(ctx.app), |current| {
+                        let mut next = current.clone();
+                        next.modules.entry(id.clone()).or_default().values.insert(setting.into(), json!(ok));
+                        Ok(next)
+                    })?;
+                    ctx.log_info(format!("outils {} : {}", if setting == FILE_TOOLS { "de fichiers" } else { "du PC" }, if ok { "autorisés" } else { "refusés" }));
+                    if ok {
+                        // Le même appel repart, cette fois avec l'accès.
+                        return self.run(ctx, &key, exchange);
+                    }
+                    exchange.activity.push(json!({ "kind": "refused-act", "what": setting, "value": "" }));
+                    let call = exchange.calls[exchange.next].clone();
+                    exchange.results.push((call, json!({ "refus": "la personne a refusé l'accès à ces outils ; elle peut changer d'avis dans les réglages" })));
+                    exchange.next += 1;
+                    return self.run(ctx, &key, exchange);
+                }
+                if ok && matches!(action, Action::Read { .. } | Action::Create { .. }) && !tools_allowed(ctx, FILE_TOOLS) {
+                    return Err("les outils de fichiers sont désactivés dans les réglages".into());
+                }
                 let call = exchange.calls[exchange.next].clone();
                 let result = match (ok, action) {
+                    (_, Action::Grant { .. }) => unreachable!("traité plus haut"),
                     (false, Action::Read { name, .. }) => {
                         exchange.activity.push(json!({ "kind": "refused", "name": name }));
                         json!({ "refus": "la personne a refusé de partager ce fichier" })
@@ -379,6 +410,9 @@ impl RustModule for AskClaude {
                         json!({ "refus": "la personne a refusé de créer ce fichier" })
                     }
                     (true, Action::Read { numero, name, text }) => {
+                        // Une exclusion peut avoir été ajoutée pendant l'aperçu.
+                        let path = self.found.locked().get(numero).cloned().ok_or("ce fichier n'est plus disponible")?;
+                        ctx.check_path(&path.display().to_string())?;
                         ctx.log_info(format!("fichier lu pour {} ({} octets)", exchange.provider.destination(), text.len()));
                         exchange.activity.push(json!({ "kind": "read", "name": name }));
                         exchange.notes.push(format!("#{numero} {name} (lu)"));
@@ -467,7 +501,7 @@ impl RustModule for AskClaude {
                     return Ok(json!({ "handled": false }));
                 }
                 let Some(call) = quick::parse(&text) else { return Ok(json!({ "handled": false })) };
-                let step = pc::plan(ctx, &call, &self.found.locked());
+                let step = pc::plan_local(ctx, &call, &self.found.locked());
                 let (result, line) = match step {
                     pc::Step::Done(result, line) => (result, line),
                     // Les commandes rapides n'ouvrent rien : jamais d'accord à demander.
@@ -567,8 +601,10 @@ impl AskClaude {
         let numero = call.args.get("numero").and_then(Value::as_u64).unwrap_or(0);
         let err = |e: String| Step::Done(json!({ "erreur": e }));
         if pc::owns(&call.name) {
-            if !pc_tools(ctx) {
-                return err("les outils du PC sont désactivés dans les réglages".into());
+            match tool_choice(ctx, PC_TOOLS) {
+                Some(false) => return err("les outils du PC sont désactivés dans les réglages".into()),
+                None => return Step::Ask(Action::Grant { key: PC_TOOLS }),
+                Some(true) => {}
             }
             let found = self.found.locked();
             return match pc::plan(ctx, call, &found) {
@@ -579,13 +615,17 @@ impl AskClaude {
                 pc::Step::Ask(act) => Step::Ask(Action::Pc(act)),
             };
         }
-        if !file_tools(ctx) {
-            return err("les outils de fichiers sont désactivés dans les réglages".into());
+        match tool_choice(ctx, FILE_TOOLS) {
+            Some(false) => return err("les outils de fichiers sont désactivés dans les réglages".into()),
+            None => return Step::Ask(Action::Grant { key: FILE_TOOLS }),
+            Some(true) => {}
         }
         match call.name.as_str() {
             tools::SEARCH => {
-                let query = call.args.get("requete").and_then(Value::as_str).unwrap_or("").to_string();
-                let result = tools::search_files(ctx, &mut self.found.locked(), &query);
+                // L'accès aux fichiers a été autorisé : la recherche par le nom
+                // se fait tout de suite (les noms partent, jamais le contenu).
+                let query = call.args.get("requete").and_then(Value::as_str).unwrap_or("");
+                let result = tools::search_files(ctx, &mut self.found.locked(), query);
                 let list = result["fichiers"].as_array().cloned().unwrap_or_default();
                 for f in &list {
                     x.notes.push(format!("#{} {} ({})", f["numero"], f["nom"].as_str().unwrap_or(""), f["dossier"].as_str().unwrap_or("")));
@@ -671,6 +711,7 @@ fn push_card(cards: &mut Vec<Value>, mut card: Value, created: bool) {
 /// La demande d'accord montrée à la personne : tout ce qui partira ou sera écrit.
 fn ask_json(id: u64, action: &Action, destination: &str, ctx: &ModuleContext) -> Value {
     match action {
+        Action::Grant { key } => json!({ "id": id, "kind": "grant", "what": key, "destination": destination }),
         Action::Read { name, text, .. } => {
             let cut = text.chars().count() > READ_PREVIEW_CHARS;
             json!({
@@ -683,7 +724,7 @@ fn ask_json(id: u64, action: &Action, destination: &str, ctx: &ModuleContext) ->
                 "destination": destination,
             })
         }
-        Action::Pc(act) => json!({ "id": id, "kind": "action", "what": act.what, "value": act.value }),
+        Action::Pc(act) => json!({ "id": id, "kind": "action", "what": act.what, "value": act.value, "destination": destination }),
         Action::Create { name, content } => json!({
             "id": id,
             "kind": "create",
@@ -709,15 +750,32 @@ fn voice_status(ctx: &ModuleContext) -> Value {
     json!({ "engine": engine.id(), "destination": destination, "offline": offline.map(|o| json!({ "ready": o.is_some(), "name": o })) })
 }
 
-/// Le réglage « Ondine peut agir sur le PC ».
-fn pc_tools(ctx: &ModuleContext) -> bool {
-    ctx.settings().get("pcTools").and_then(Value::as_bool).unwrap_or(true)
+const FILE_TOOLS: &str = "fileTools";
+const PC_TOOLS: &str = "pcTools";
+
+/// Le réglage « Ondine peut chercher et créer des fichiers » (`fileTools`) ou
+/// « Ondine peut agir sur le PC » (`pcTools`) : None tant que la personne n'a
+/// pas choisi. La première utilisation lui demande alors d'autoriser ou de
+/// refuser (`Action::Grant`).
+fn tool_choice(ctx: &ModuleContext, key: &str) -> Option<bool> {
+    ctx.settings().get(key).and_then(Value::as_bool)
 }
 
-/// Le réglage « Ondine peut chercher et créer des fichiers ».
-fn file_tools(ctx: &ModuleContext) -> bool {
-    ctx.settings().get("fileTools").and_then(Value::as_bool).unwrap_or(true)
+/// Accès donné : les outils servent sans nouvelle question d'accès.
+fn tools_allowed(ctx: &ModuleContext, key: &str) -> bool {
+    tool_choice(ctx, key) == Some(true)
 }
+
+/// Proposés à l'IA : autorisés, ou pas encore choisis (la carte d'accès
+/// viendra au premier appel). Jamais après un refus.
+fn pc_tools(ctx: &ModuleContext) -> bool {
+    tool_choice(ctx, PC_TOOLS) != Some(false)
+}
+
+fn file_tools(ctx: &ModuleContext) -> bool {
+    tool_choice(ctx, FILE_TOOLS) != Some(false)
+}
+
 
 fn lowercase_first(s: &str) -> String {
     let mut c = s.chars();

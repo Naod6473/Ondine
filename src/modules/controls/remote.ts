@@ -7,6 +7,7 @@
 // télécommande tourne, et les notifications de "controls.remote" (téléphone
 // connecté, arrêt après 10 minutes sans s'en servir).
 
+import { openPhoneSetup } from "../../settings/phone-setup-link";
 import { errorText } from "../../core/log";
 import type { ModuleApi } from "../../core/module-types";
 import { el } from "../../island/dom";
@@ -16,6 +17,8 @@ export interface RemoteSession {
   qr: string;
   paired: boolean;
   idleMinutes: number;
+  /** Le téléphone dont le certificat sert (Réglages → Téléphones). */
+  phone?: string | null;
 }
 
 let session: RemoteSession | null = null;
@@ -83,6 +86,8 @@ export function remotePanel(api: ModuleApi, s: RemoteSession): HTMLElement {
     el(
       "div",
       { class: "phone-side" },
+      ...(s.phone ? [el("p", { class: "muted phone-for" }, el("span", {}, "Pour le téléphone :"), " ", el("b", { "data-no-i18n": true }, s.phone))] : []),
+      el("button", { class: "btn small", onclick: () => openPhoneSetup() }, s.phone ? "Autre téléphone ou première connexion : Réglages → Téléphones." : "Première connexion : ajoutez votre téléphone dans Réglages → Téléphones."),
       el("b", { class: "phone-title" }, "📱 Télécommande"),
       el(
         "p",

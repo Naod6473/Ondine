@@ -65,8 +65,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Dépendances npm de l'appli (hors outils de construction)
-        run: npm audit --omit=dev --audit-level=high
+      - name: Dépendances npm, outils de construction compris
+        run: npm audit --audit-level=high
 
       - name: Installer cargo-audit
         run: cargo install cargo-audit --locked --version 0.22.2

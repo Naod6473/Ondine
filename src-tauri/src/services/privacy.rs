@@ -30,15 +30,64 @@ pub fn check_path(settings: &Settings, raw: &str) -> Result<PathBuf, String> {
     Ok(real)
 }
 
+/// Valide tout le périmètre AVANT une opération récursive : sélectionner un
+/// parent n'autorise jamais à lire, déplacer ou jeter ses descendants exclus.
+/// Avec des exclusions actives, les liens internes sont refusés : on ne suit
+/// pas un alias vers un autre périmètre. Une erreur de lecture refuse tout.
+pub fn check_tree(settings: &Settings, raw: &str) -> Result<PathBuf, String> {
+    let root = check_path(settings, raw)?;
+    if settings.privacy.excluded_folders.is_empty() { return Ok(root); }
+    // Le cas courant se décide sans parcourir tout un gros dossier.
+    if settings.privacy.excluded_folders.iter().filter_map(|p| std::fs::canonicalize(p).ok()).any(|p| contains_path(&root, &simplify(p))) {
+        return Err("opération refusée : le dossier contient un dossier exclu".into());
+    }
+    let mut pending = vec![root.clone()];
+    while let Some(path) = pending.pop() {
+        let meta = std::fs::symlink_metadata(&path).map_err(|e| format!("vérification impossible : {e}"))?;
+        if meta.file_type().is_symlink() {
+            return Err("opération refusée : le dossier contient un lien symbolique".into());
+        }
+        check_path(settings, &path.to_string_lossy())?;
+        if meta.is_dir() {
+            for child in std::fs::read_dir(&path).map_err(|e| format!("dossier illisible : {e}"))? {
+                pending.push(child.map_err(|e| e.to_string())?.path());
+            }
+        }
+    }
+    Ok(root)
+}
+
 /// Vrai si `real` (déjà canonisé) est dans un des dossiers exclus.
 pub fn is_excluded(settings: &Settings, real: &Path) -> bool {
     settings.privacy.excluded_folders.iter().any(|folder| {
         // Un dossier exclu qui n'existe plus ne peut rien contenir.
         match std::fs::canonicalize(folder) {
-            Ok(excluded) => real.starts_with(simplify(excluded)),
+            Ok(excluded) => contains_path(&simplify(excluded), real),
             Err(_) => false,
         }
     })
+}
+
+/// Comparaison par composants : « Secret2 » n'est pas dans « Secret ».
+/// Sous Windows, on emploie sa comparaison Unicode sans tenir compte de la casse.
+pub fn contains_path(folder: &Path, path: &Path) -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::ffi::OsStrExt;
+        use windows::Win32::Globalization::{CompareStringOrdinal, CSTR_EQUAL};
+        let mut parts = path.components();
+        for expected in folder.components() {
+            let Some(actual) = parts.next() else { return false };
+            let a: Vec<u16> = expected.as_os_str().encode_wide().collect();
+            let b: Vec<u16> = actual.as_os_str().encode_wide().collect();
+            // Les tranches restent valides pendant l'appel et leurs longueurs
+            // proviennent des composants d'un chemin Windows canonique.
+            if unsafe { CompareStringOrdinal(&a, &b, true) } != CSTR_EQUAL { return false; }
+        }
+        true
+    }
+    #[cfg(not(windows))]
+    path.starts_with(folder)
 }
 
 /// Sous Windows, `canonicalize` renvoie des chemins « étendus » (`\\?\C:\…`) que
@@ -71,6 +120,12 @@ pub fn check_folder(raw: &str) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn excluded_prefix_respects_components_and_windows_case() {
+        assert!(!contains_path(Path::new("/secret"), Path::new("/secret2/file")));
+        #[cfg(windows)]
+        assert!(contains_path(Path::new(r"C:\Données\Secret"), Path::new(r"c:\DONNÉES\secret\file.txt")));
+    }
 
     #[test]
     fn extended_paths_are_simplified() {
@@ -82,6 +137,20 @@ mod tests {
     #[test]
     fn relative_paths_are_refused() {
         assert!(check_path(&Settings::default(), "docs/a.txt").is_err());
+    }
+
+    #[test]
+    fn selecting_a_parent_does_not_bypass_a_nested_exclusion() {
+        let base = std::env::temp_dir().join(format!("ondine-privacy-parent-{}", std::process::id()));
+        let secret = base.join("public").join("secret");
+        std::fs::create_dir_all(&secret).unwrap();
+        std::fs::write(secret.join("private.txt"), "private").unwrap();
+        let mut settings = Settings::default();
+        settings.privacy.excluded_folders.push(secret.to_string_lossy().to_string());
+        assert!(check_path(&settings, &base.to_string_lossy()).is_ok());
+        assert!(check_tree(&settings, &base.to_string_lossy()).is_err());
+        assert!(!base.with_extension("zip").exists());
+        std::fs::remove_dir_all(base).unwrap();
     }
 
     #[test]

@@ -9,6 +9,7 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { PerfMode, Settings } from "./types";
+import type { SettingsPatch } from "./settings-transactions";
 
 export const IS_TAURI = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
@@ -79,11 +80,41 @@ export interface UpdateInfo {
   notes: string | null;
 }
 
+/** Le QR code qui fait télécharger le certificat d'un téléphone. */
+export interface PhoneSetup {
+  id: string;
+  /** Le nom choisi pour le téléphone. */
+  phone: string;
+  url: string;
+  qr: string;
+  fingerprint: string;
+  /** Le nom de l'autorité, celui que le téléphone affiche. */
+  name: string;
+  seconds: number;
+}
+
+/** Un téléphone appairé (partie publique seulement). Dates en secondes. */
+export interface PhoneInfo {
+  id: string;
+  name: string;
+  authority: string;
+  created: number;
+  installed: number | null;
+  expires: number;
+  fingerprint: string;
+  active: boolean;
+}
+
 export const Bridge = {
+  // Réglages → Téléphones (src-tauri/src/services/phone_tls.rs).
+  phoneCertificateSetup: (id?: string, name?: string) => callOrThrow<PhoneSetup>("phone_certificate_setup", { id: id ?? null, name: name ?? null }),
+  phoneList: () => callOrThrow<{ phones: PhoneInfo[] }>("phone_list"),
+  phoneRevoke: (id: string) => callOrThrow<void>("phone_revoke", { id }),
+  phoneActivate: (id: string) => callOrThrow<void>("phone_activate", { id }),
   boot: () => call<BootInfo>("boot"),
 
   // Réglages
-  settingsSave: (settings: Settings) => callOrThrow<void>("settings_save", { settings }),
+  settingsPatch: (patch: SettingsPatch[]) => callOrThrow<Settings>("settings_patch", { patch }),
   settingsExport: () => callOrThrow<string>("settings_export"),
   settingsImport: (text: string) => callOrThrow<void>("settings_import", { text }),
   /** Assistant de premier lancement : choisir un fichier de réglages exporté et l'importer (false si on annule). */

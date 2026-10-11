@@ -8,6 +8,7 @@
 // en texte, le compte à rebours et « Arrêter ». La fin (« le téléphone l'a
 // reçu », « lien expiré ») arrive par le sujet « shelf.phone ».
 
+import { openPhoneSetup } from "../../settings/phone-setup-link";
 import { errorText } from "../../core/log";
 import type { ModuleApi } from "../../core/module-types";
 import { el } from "../../island/dom";
@@ -24,6 +25,8 @@ interface PhoneShare {
   size: number;
   /** Secondes avant que le lien expire. */
   seconds: number;
+  /** Le téléphone dont le certificat sert (Réglages → Téléphones). */
+  phone?: string | null;
 }
 
 /** Le partage affiché, avec l'heure de fin (horloge du front). */
@@ -127,6 +130,8 @@ export function phonePanel(api: ModuleApi): HTMLElement | null {
     el(
       "div",
       { class: "phone-side" },
+      ...(s.phone ? [el("p", { class: "muted phone-for" }, el("span", {}, "Pour le téléphone :"), " ", el("b", { "data-no-i18n": true }, s.phone))] : []),
+      el("button", { class: "btn small", onclick: () => openPhoneSetup() }, s.phone ? "Autre téléphone ou première connexion : Réglages → Téléphones." : "Première connexion : ajoutez votre téléphone dans Réglages → Téléphones."),
       el("b", { class: "phone-title" }, "📱 Vers le téléphone"),
       el(
         "p",

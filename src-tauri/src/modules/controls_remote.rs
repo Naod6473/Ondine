@@ -38,7 +38,7 @@ use super::shelf_phone::{new_token, parse_request, read_head, same};
 use crate::platform::audio::{self, Device};
 use crate::platform::keys::{self, Nav};
 use crate::platform::media::{self, Control};
-use crate::services::{bus, lan, log};
+use crate::services::{bus, lan, log, phone_tls::{self, SecureStream}};
 use crate::sync::LockExt;
 
 const ID: &str = "controls";
@@ -145,12 +145,13 @@ impl Remote {
     /// Ouvre la télécommande (la précédente s'arrête). → { url, qr, idleMinutes }
     pub fn start(&self, app: &AppHandle) -> Result<Value, String> {
         let ip = lan::private_ipv4().ok_or(NO_LAN)?;
+        let tls = phone_tls::server(ip)?;
         self.stop();
         let token = new_token()?;
         let listener = TcpListener::bind((ip, 0)).map_err(|e| format!("impossible d'ouvrir la télécommande sur le réseau local ({e})"))?;
         let port = listener.local_addr().map_err(|e| e.to_string())?.port();
         listener.set_nonblocking(true).map_err(|e| e.to_string())?;
-        let url = format!("http://{ip}:{port}/{token}/");
+        let url = format!("https://{ip}:{port}/{token}/");
         let qr = clipboard_qr::make(&url).map(|qr| format!("data:image/svg+xml;base64,{}", BASE64.encode(clipboard_qr::svg(&qr))))?;
         let stop = Arc::new(AtomicBool::new(false));
         let finished = Arc::new(AtomicBool::new(false));
@@ -159,7 +160,7 @@ impl Remote {
             let (stop, finished, paired, app) = (stop.clone(), finished.clone(), paired.clone(), app.clone());
             std::thread::spawn(move || {
                 media::init_thread();
-                let end = catch_unwind(AssertUnwindSafe(|| serve(&app, &listener, &token, &stop, &paired))).unwrap_or("stopped");
+                let end = catch_unwind(AssertUnwindSafe(|| serve(&app, &listener, &token, &stop, &paired, tls))).unwrap_or("stopped");
                 drop(listener);
                 stop.store(true, Ordering::SeqCst);
                 finished.store(true, Ordering::SeqCst);
@@ -169,7 +170,7 @@ impl Remote {
         }
         // Ni l'adresse ni le jeton dans le journal.
         log::info("télécommande : serveur ouvert sur le réseau local");
-        let value = json!({ "url": url, "qr": qr, "paired": false, "idleMinutes": IDLE_STOP.as_secs() / 60 });
+        let value = json!({ "url": url, "qr": qr, "paired": false, "idleMinutes": IDLE_STOP.as_secs() / 60, "phone": phone_tls::active_name() });
         *self.current.locked() = Some(Session { url, qr, stop, finished, paired });
         Ok(value)
     }
@@ -196,6 +197,7 @@ impl Remote {
 // ── Le serveur ───────────────────────────────────────────────────────────────
 
 struct Shared {
+    tls: Arc<rustls::ServerConfig>,
     token: String,
     /// Le seul appareil admis (le premier qui a ouvert la page).
     owner: Mutex<Option<IpAddr>>,
@@ -205,9 +207,9 @@ struct Shared {
     actions: Mutex<Vec<Instant>>,
 }
 
-fn serve(app: &AppHandle, listener: &TcpListener, token: &str, stop: &AtomicBool, paired: &Arc<AtomicBool>) -> &'static str {
+fn serve(app: &AppHandle, listener: &TcpListener, token: &str, stop: &AtomicBool, paired: &Arc<AtomicBool>, tls: Arc<rustls::ServerConfig>) -> &'static str {
     let started = Instant::now();
-    let shared = Arc::new(Shared { token: token.to_string(), owner: Mutex::new(None), last: AtomicU64::new(0), active: AtomicUsize::new(0), actions: Mutex::new(Vec::new()) });
+    let shared = Arc::new(Shared { tls, token: token.to_string(), owner: Mutex::new(None), last: AtomicU64::new(0), active: AtomicUsize::new(0), actions: Mutex::new(Vec::new()) });
     let mut checked = Instant::now();
     loop {
         if stop.load(Ordering::SeqCst) {
@@ -243,8 +245,8 @@ fn serve(app: &AppHandle, listener: &TcpListener, token: &str, stop: &AtomicBool
     }
 }
 
-fn handle(app: &AppHandle, mut stream: TcpStream, peer: IpAddr, shared: &Shared, started: Instant, paired: &AtomicBool) {
-    let _ = stream.set_nonblocking(false);
+fn handle(app: &AppHandle, stream: TcpStream, peer: IpAddr, shared: &Shared, started: Instant, paired: &AtomicBool) {
+    let Ok(mut stream) = SecureStream::accept(stream, shared.tls.clone()) else { return };
     let _ = stream.set_read_timeout(Some(READ_TIMEOUT));
     let _ = stream.set_write_timeout(Some(READ_TIMEOUT));
     let Some(req) = read_head(&mut stream).and_then(|h| parse_request(&h)) else {
@@ -333,7 +335,7 @@ fn status() -> Value {
     })
 }
 
-fn reply(stream: &mut TcpStream, status: &str, headers: &str, body: &str) {
+fn reply(stream: &mut SecureStream, status: &str, headers: &str, body: &str) {
     let _ = write!(stream, "HTTP/1.1 {status}\r\nContent-Length: {}\r\n{headers}{COMMON}\r\n{body}", body.len());
     let _ = stream.flush();
     let _ = stream.shutdown(Shutdown::Write);
@@ -419,13 +421,15 @@ mod tests {
         // Un petit serveur à la main, pour vérifier la réponse complète (sans AppHandle).
         let listener = TcpListener::bind((LOCAL, 0)).unwrap();
         let port = listener.local_addr().unwrap().port();
+        let tls = phone_tls::server(LOCAL).unwrap();
         std::thread::spawn(move || {
-            let (mut s, _) = listener.accept().unwrap();
+            let (socket, _) = listener.accept().unwrap();
+            let mut s = SecureStream::accept(socket, tls).unwrap();
             let req = read_head(&mut s).and_then(|h| parse_request(&h)).unwrap();
             assert_eq!(route(&req.method, &req.path, TOKEN), Route::Page);
             reply(&mut s, "200 OK", &format!("Content-Type: text/html; charset=utf-8\r\n{CSP}"), PAGE);
         });
-        let mut c = TcpStream::connect((LOCAL, port)).unwrap();
+        let mut c = phone_tls::test_client(TcpStream::connect((LOCAL, port)).unwrap());
         c.write_all(format!("GET /{TOKEN}/ HTTP/1.1\r\nHost: x\r\n\r\n").as_bytes()).unwrap();
         let mut out = String::new();
         c.read_to_string(&mut out).unwrap();

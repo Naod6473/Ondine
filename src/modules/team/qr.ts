@@ -11,6 +11,7 @@
 //     est lu, qu'on ferme, ou au bout d'une minute.
 
 import { errorText } from "../../core/log";
+import { AsyncResource } from "../../core/async-resource";
 import type { ModuleApi } from "../../core/module-types";
 import { el } from "../../island/dom";
 import { bytesToBase64, frameSize, toGray, type PairQr } from "./logic";
@@ -25,44 +26,57 @@ const CAMERA_FOR_MS = 60_000;
  */
 export function qrReader(api: ModuleApi, found: (q: PairQr) => void, status: (text: string) => void): { node: HTMLElement; stop: () => void } {
   const cam = el("div", { class: "team-qr-cam", hidden: true });
-  let stream: MediaStream | null = null;
+  const cameraStream = new AsyncResource<MediaStream>((s) => s.getTracks().forEach((t) => t.stop()));
+  let disposed = false;
+  let generation = 0;
   let timer = 0;
   let until = 0;
   let busy = false;
 
   const stopCamera = () => {
+    generation++;
+    busy = false;
     window.clearInterval(timer);
     timer = 0;
-    stream?.getTracks().forEach((t) => t.stop());
-    stream = null;
+    cameraStream.close();
     cam.hidden = true;
     cam.replaceChildren();
   };
 
   const scan = async (source: "screen" | "clipboard") => {
+    if (disposed) return;
     stopCamera();
+    const ticket = generation;
     status(source === "screen" ? "Recherche d'un QR code sur l'écran…" : "Lecture de l'image copiée…");
     try {
       const q = await api.invoke<PairQr | null>("qr_scan", { source });
+      if (disposed || ticket !== generation) return;
       if (q) found(q);
       else status(source === "screen" ? "Aucun QR code d'Ondine à l'écran. Affichez-le en grand (partage d'écran, Bureau à distance…) puis réessayez." : "Aucun QR code d'Ondine dans l'image copiée.");
     } catch (err) {
+      if (disposed || ticket !== generation) return;
       status(errorText(err));
     }
   };
 
   const camera = async () => {
-    if (stream) return stopCamera();
+    if (disposed) return;
+    if (cameraStream.value || cameraStream.loading) return stopCamera();
+    stopCamera();
+    const ticket = generation;
     if (!navigator.mediaDevices?.getUserMedia) {
       status("Pas de webcam disponible ici.");
       return;
     }
+    let stream: MediaStream | null;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+      stream = await cameraStream.open(() => navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }));
     } catch {
+      if (disposed || ticket !== generation) return;
       status("Webcam indisponible ou refusée.");
       return;
     }
+    if (!stream) return;
     const video = el("video", { class: "team-qr-video", muted: true, playsinline: true, "aria-label": "Webcam" }) as HTMLVideoElement;
     video.muted = true;
     video.srcObject = stream;
@@ -81,8 +95,8 @@ export function qrReader(api: ModuleApi, found: (q: PairQr) => void, status: (te
       if (busy || video.readyState < 2) return;
       const { w, h } = frameSize(video.videoWidth, video.videoHeight);
       if (!w || !h) return;
-      canvas.width = w;
-      canvas.height = h;
+      if (canvas.width !== w) canvas.width = w;
+      if (canvas.height !== h) canvas.height = h;
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
       if (!ctx) return;
       ctx.drawImage(video, 0, 0, w, h);
@@ -91,13 +105,13 @@ export function qrReader(api: ModuleApi, found: (q: PairQr) => void, status: (te
       api
         .invoke<PairQr | null>("qr_frame", { w, h, gray: bytesToBase64(gray) })
         .then((q) => {
-          if (q && stream) {
+          if (q && !disposed && ticket === generation && cameraStream.value) {
             stopCamera();
             found(q);
           }
         })
         .catch(() => undefined)
-        .finally(() => (busy = false));
+        .finally(() => { if (ticket === generation) busy = false; });
     }, FRAME_EVERY_MS);
   };
 
@@ -114,5 +128,5 @@ export function qrReader(api: ModuleApi, found: (q: PairQr) => void, status: (te
     ),
     cam,
   );
-  return { node, stop: stopCamera };
+  return { node, stop: () => { disposed = true; stopCamera(); cameraStream.destroy(); } };
 }

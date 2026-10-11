@@ -560,10 +560,11 @@ fn drag_end(app: &AppHandle, gate: &PollGate) {
         // une sauvegarde venue de la page ne peut pas se glisser entre les deux.
         let new = {
             let mut s = shared.settings.locked();
-            s.island.edge = place.edge.clone();
-            s.island.align = place.align.clone();
-            s.island.offset = place.offset;
-            if let Err(e) = crate::services::settings::save(&s) {
+            let mut next = s.clone();
+            next.island.edge = place.edge.clone();
+            next.island.align = place.align.clone();
+            next.island.offset = place.offset;
+            if let Err(e) = crate::services::settings_patch::commit(&mut s, next, crate::services::settings::save) {
                 log::warn(format!("réglages non enregistrés : {e}"));
             }
             s.clone()

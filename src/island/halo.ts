@@ -450,7 +450,21 @@ class HaloLayer {
   private place: HaloPlace | null = null;
   /** La lueur de base de l'image en cours (px), pour tasser les formes qui gonflent (swell). */
   private glowBase = 1;
-  private readonly onResize = () => this.wake();
+  private geometryDirty = true;
+  private geometryUntil = 0;
+  private canvasDirty = true;
+  private readonly onResize = () => { this.invalidate(); this.wake(); };
+  private readonly onTheme = () => { this.invalidate(); this.settingsChanged(); };
+  private readonly onPoke = (e: PointerEvent) => this.poke(e.clientX, e.clientY);
+  private readonly darkQuery = window.matchMedia?.("(prefers-color-scheme: dark)");
+  private readonly sizeObserver: ResizeObserver;
+  private readonly styleObserver: MutationObserver;
+
+  private invalidate() {
+    this.geometryDirty = this.canvasDirty = true;
+    // Une transition CSS peut déplacer les arrondis sans modifier la taille.
+    this.geometryUntil = performance.now() + 500;
+  }
 
   constructor(
     private readonly root: HTMLElement,
@@ -468,9 +482,16 @@ class HaloLayer {
     root.prepend(this.canvas);
     this.ctx = this.canvas.getContext("2d");
     window.addEventListener("resize", this.onResize);
+    this.sizeObserver = new ResizeObserver(() => { this.invalidate(); this.wake(); });
+    this.sizeObserver.observe(shell);
+    if (preview) this.sizeObserver.observe(root);
+    this.styleObserver = new MutationObserver(() => { this.geometryDirty = true; this.geometryUntil = performance.now() + 500; });
+    for (const node of new Set([shell, root, document.body])) {
+      this.styleObserver.observe(node, { attributes: true, attributeFilter: ["class", "style", "data-edge", "data-theme", "data-state"] });
+    }
     // Toucher l'île pendant un halo : la couleur part de là (forme « onde »).
-    if (!preview) shell.addEventListener("pointerdown", (e) => this.poke(e.clientX, e.clientY));
-    window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change", () => this.settingsChanged());
+    if (!preview) shell.addEventListener("pointerdown", this.onPoke);
+    this.darkQuery?.addEventListener?.("change", this.onTheme);
   }
 
   /** L'aperçu fermé : plus de boucle, plus de calque. */
@@ -480,6 +501,10 @@ class HaloLayer {
     window.clearTimeout(this.stillTimer);
     for (const h of this.stack.all()) window.clearTimeout(h.timer);
     window.removeEventListener("resize", this.onResize);
+    this.shell.removeEventListener("pointerdown", this.onPoke);
+    this.darkQuery?.removeEventListener?.("change", this.onTheme);
+    this.sizeObserver.disconnect();
+    this.styleObserver.disconnect();
     this.canvas.remove();
   }
 
@@ -577,6 +602,7 @@ class HaloLayer {
 
   /** Réglages changés (couleurs, module coupé), ou fond clair / sombre. */
   settingsChanged() {
+    this.invalidate();
     if (!halosEnabled()) {
       for (const h of this.stack.all()) this.hide(h.id);
       return;
@@ -684,6 +710,8 @@ class HaloLayer {
 
   private measure(): NonNullable<HaloLayer["geo"]> | null {
     const ov = !this.preview ? shapeOverride?.() : null;
+    if (!ov && !this.geometryDirty && performance.now() > this.geometryUntil && this.geo) return this.geo;
+    this.geometryDirty = false;
     const sb = ov ? { x: ov.x, y: ov.y, width: ov.w, height: ov.h } : this.shell.getBoundingClientRect();
     if (sb.width < 2 || sb.height < 1) return null;
     // L'aperçu : en coordonnées de sa boîte.
@@ -732,6 +760,8 @@ class HaloLayer {
   }
 
   private fitCanvas() {
+    if (!this.canvasDirty) return;
+    this.canvasDirty = false;
     const dpr = window.devicePixelRatio || 1;
     const w = Math.round((this.preview ? this.root.clientWidth : window.innerWidth) * dpr);
     const h = Math.round((this.preview ? this.root.clientHeight : window.innerHeight) * dpr);

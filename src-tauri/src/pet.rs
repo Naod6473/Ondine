@@ -588,10 +588,12 @@ fn save_place(app: &AppHandle, mx: i32, my: i32) {
     let Some(shared) = app.try_state::<crate::Shared>() else { return };
     let new = {
         let mut s = shared.settings.locked();
-        s.mascot.pet_x = mx as f64;
-        s.mascot.pet_y = my as f64;
-        if let Err(e) = crate::services::settings::save(&s) {
+        let mut next = s.clone();
+        next.mascot.pet_x = mx as f64;
+        next.mascot.pet_y = my as f64;
+        if let Err(e) = crate::services::settings_patch::commit(&mut s, next, crate::services::settings::save) {
             log::warn(format!("place d'Ondine non enregistrée : {e}"));
+            return;
         }
         s.clone()
     };
@@ -604,16 +606,18 @@ pub fn place_on_desk(app: &AppHandle, at: Option<(f64, f64)>) {
     let Some(shared) = app.try_state::<crate::Shared>() else { return };
     let new = {
         let mut s = shared.settings.locked();
-        s.mascot.pet = true;
-        s.mascot.enabled = true;
+        let mut next = s.clone();
+        next.mascot.pet = true;
+        next.mascot.enabled = true;
         if let Some((x, y)) = at {
             let scale = monitor_at(app, x, y).map(|m| m.scale_factor()).unwrap_or(1.0);
             // Le point lâché devient le centre de la mascotte.
-            s.mascot.pet_x = (x - PET_BOX * scale / 2.0).max(0.0).round();
-            s.mascot.pet_y = (y - PET_BOX * scale / 2.0).max(0.0).round();
+            next.mascot.pet_x = (x - PET_BOX * scale / 2.0).max(0.0).round();
+            next.mascot.pet_y = (y - PET_BOX * scale / 2.0).max(0.0).round();
         }
-        if let Err(e) = crate::services::settings::save(&s) {
+        if let Err(e) = crate::services::settings_patch::commit(&mut s, next, crate::services::settings::save) {
             log::warn(format!("réglages non enregistrés : {e}"));
+            return;
         }
         s.clone()
     };
@@ -633,9 +637,11 @@ pub fn back_to_island(app: &AppHandle) {
     let Some(shared) = app.try_state::<crate::Shared>() else { return };
     let new = {
         let mut s = shared.settings.locked();
-        s.mascot.pet = false;
-        if let Err(e) = crate::services::settings::save(&s) {
+        let mut next = s.clone();
+        next.mascot.pet = false;
+        if let Err(e) = crate::services::settings_patch::commit(&mut s, next, crate::services::settings::save) {
             log::warn(format!("réglages non enregistrés : {e}"));
+            return;
         }
         s.clone()
     };

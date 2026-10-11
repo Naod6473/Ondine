@@ -16,6 +16,11 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 # "tray-icon" : l'icône de la zone de notification.
 tauri = { version = "2", features = ["tray-icon"] }
+tokio = { version = "1", features = ["sync"] }
+# HTTPS du réseau local. La clé privée reste dans le Gestionnaire d'identifiants.
+rustls = { version = "0.23", default-features = false, features = ["std", "ring", "tls12"] }
+rcgen = { version = "0.14", default-features = false, features = ["crypto", "ring", "pem"] }
+time = "0.3"
 # Une seule île à la fois : relancer l'appli ouvre l'île existante.
 tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
