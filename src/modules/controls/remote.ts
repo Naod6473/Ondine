@@ -1,3 +1,4 @@
+import { Bridge } from '../../core/bridge';
 // Contrôles → « Télécommande sur le téléphone » (réglage phoneRemote, désactivé
 // par défaut) : un QR code ouvre, sur le téléphone, une petite page du réseau
 // local pour la musique, le volume, un minuteur et les diapositives.
@@ -83,6 +84,7 @@ export function remotePanel(api: ModuleApi, s: RemoteSession): HTMLElement {
     el(
       "div",
       { class: "phone-side" },
+      el("button", { class: "btn small", onclick: () => Bridge.openSettingsWindow() }, "Première connexion : préparez le certificat dans Réglages → Confidentialité."),
       el("b", { class: "phone-title" }, "📱 Télécommande"),
       el(
         "p",

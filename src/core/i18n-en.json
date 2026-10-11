@@ -1,5 +1,22 @@
 {
 "exact": {
+"Aucune télémétrie. Les outils de l'IA demandent votre accord.": "No telemetry. AI tools ask for your approval.",
+"Accord pour les outils": "Approval for tools",
+"Dans Parler à Ondine, les fichiers joints sont présentés avant l'envoi. Chaque recherche, accès aux données ou action demandé par l'IA nécessite votre accord ; les résultats acceptés peuvent partir vers le fournisseur choisi.": "In Talk to Ondine, attachments are shown before sending. Every search, data access or action requested by the AI needs your approval; approved results may be sent to your selected provider.",
+"Automatique : la langue choisie à l'installation, sinon celle de Windows. Le changement s'applique sans recharger les fenêtres.": "Automatic: the language chosen during installation, otherwise Windows' language. Changes apply without reloading windows.",
+"Le profil iPhone doit contenir uniquement un certificat, aucun autre réglage.": "The iPhone profile must contain only a certificate and no other settings.",
+"Téléphone · HTTPS": "Phone · HTTPS",
+"Préparer mon téléphone": "Set up my phone",
+"Le partage et la télécommande sont chiffrés. Installez une fois le certificat de ce PC sur le téléphone pour utiliser son navigateur.": "File sharing and the remote control are encrypted. Install this PC's certificate once on your phone to use its browser.",
+"1. Scannez ce QR code pour télécharger le certificat public. Le lien dure trois minutes.": "1. Scan this QR code to download the public certificate. The link lasts three minutes.",
+"2. Comparez le nom et l'empreinte ci-dessous avec les détails du certificat sur le téléphone. S'ils diffèrent, n'installez pas le certificat.": "2. Compare the name and fingerprint below with the certificate details on your phone. If they differ, do not install the certificate.",
+"Android : Réglages → Sécurité → Chiffrement et identifiants → Installer un certificat → Certificat CA. Les noms peuvent varier selon le téléphone.": "Android: Settings → Security → Encryption and credentials → Install a certificate → CA certificate. Names may vary depending on your phone.",
+"iPhone : Réglages → Général → VPN et gestion de l'appareil, installez le profil téléchargé. Puis Général → Informations → Réglages des certificats : activez la confiance pour ce certificat Ondine.": "iPhone: Settings → General → VPN & Device Management, install the downloaded profile. Then General → About → Certificate Trust Settings: enable trust for this Ondine certificate.",
+"3. Revenez dans l'Étagère ou les Contrôles et scannez le QR code HTTPS. N'ignorez jamais une alerte de certificat dans le navigateur.": "3. Return to the Shelf or Controls and scan the HTTPS QR code. Never bypass a certificate warning in the browser.",
+"Ce certificat donne confiance à ce PC sur le téléphone. Retirez-le des réglages du téléphone si vous n'utilisez plus Ondine ou si le PC est compromis.": "This certificate makes your phone trust this PC. Remove it from your phone's settings if you stop using Ondine or if the PC is compromised.",
+"Première connexion : préparez le certificat dans Réglages → Confidentialité.": "First connection: set up the certificate in Settings → Privacy.",
+"Réglages non enregistrés": "Settings could not be saved",
+"Chaque accès aux données ou action sur le PC demande votre accord avant son exécution. Les données acceptées sont envoyées à votre fournisseur d'IA. Ondine ne peut rien supprimer ni lancer de commande.": "Every data access or PC action asks for your approval before running. Approved data is sent to your AI provider. Ondine cannot delete anything or run commands.",
 "Simple": "Simple",
 "Complet": "Full",
 "Mode des réglages": "Settings mode",
@@ -249,6 +266,7 @@
 "Les ressources internes ne sont plus joignables.": "Internal resources are no longer reachable.",
 "Pas de réponse depuis deux minutes.": "No response for two minutes.",
 "Votre adresse IP publique a changé": "Your public IP address changed",
+"Nom ou adresse": "Name or address",
 "Nom ou adresse (google.fr, 192.168.1.1…)": "Name or address (google.com, 192.168.1.1…)",
 "Ping chaque seconde (Entrée)": "Ping every second (Enter)",
 "Le port répond-il ?": "Is the port responding?",
@@ -516,7 +534,6 @@
 "Dossier à exclure": "Folder to exclude",
 "Ce que l'île promet": "What the island promises",
 "Rien n'est envoyé sur Internet sans que vous le demandiez.": "Nothing is sent over the Internet unless you ask for it.",
-"Toujours montré avant": "Always shown first",
 "Aucun module ne lira ni n'enverra un fichier situé dans ces dossiers.": "No module will read or send a file located in these folders.",
 "Coller la clé ici": "Paste the key here",
 "Coller l'adresse secrète iCal (https://…)": "Paste the secret iCal address (https://…)",
@@ -867,7 +884,6 @@
 "Ouvrir le dossier du journal": "Open the log folder",
 "Langue": "Language",
 "Automatique": "Automatic",
-"Automatique : la langue choisie à l'installation, sinon celle de Windows. Les fenêtres se rechargent.": "Automatic: the language chosen during installation, otherwise Windows' language. Windows reload.",
 "Apparence": "Appearance",
 "Onglets": "Tabs",
 "Mascotte": "Mascot",
@@ -1692,9 +1708,7 @@
 "Montrer un fichier à Ondine": "Show a file to Ondine",
 "Copier la réponse": "Copy the answer",
 "Envoie à une API d'IA": "Sends to an AI API",
-"Aucune télémétrie. Ce qui part vers une IA est toujours montré avant.": "No telemetry. What is sent to an AI is always shown first.",
 "Envoi à une IA": "Sending to an AI",
-"Un module qui envoie du contenu à une API d'IA (Claude, GPT, Gemini) le déclare et vous montre ce qui part.": "A module that sends content to an AI API (Claude, GPT, Gemini) declares it and shows you what's going out.",
 "le fichier joint a changé : vérifiez ce qui part, puis renvoyez": "the attached file has changed: check what is going out, then send again",
 "Ramener Ondine dans l'île": "Bring Ondine back to the island",
 "Aucun onglet choisi : Réglages → Mascotte → Ondine sur le bureau.": "No tab chosen: Settings → Mascot → Ondine on the desktop.",
@@ -1747,7 +1761,7 @@
 "Refuser": "Refuse",
 "Créer": "Create",
 "Ondine peut chercher et créer des fichiers": "Ondine can search and create files",
-"Elle cherche par le nom dans Documents, Bureau, Téléchargements, Images et vos fichiers récents : les noms trouvés partent vers l'IA, jamais leur contenu. Pour lire un fichier ou en créer un, elle vous montre tout et attend votre accord. Les dossiers exclus sont toujours sautés.": "She searches by name in Documents, Desktop, Downloads, Pictures and your recent files: the names found go to the AI, never their content. To read or create a file, she shows you everything and waits for your OK. Excluded folders are always skipped.",
+"Elle demande votre accord avant une recherche : les noms trouvés dans Documents, Bureau, Téléchargements, Images et les fichiers récents peuvent partir vers l'IA. Pour lire ou créer un fichier, elle présente un aperçu et attend votre accord. Les dossiers exclus sont toujours sautés.": "She asks for your approval before a search: names found in Documents, Desktop, Downloads, Pictures and recent files may be sent to the AI. To read or create a file, she shows a preview and waits for your approval. Excluded folders are always skipped.",
 "Dossier des fichiers créés par Ondine": "Folder for the files Ondine creates",
 "Un chemin complet, par exemple D:\\Mes fichiers\\Ondine. Vide = Documents\\Ondine. Un fichier existant n'est jamais écrasé.": "A full path, for example D:\\My files\\Ondine. Empty = Documents\\Ondine. An existing file is never overwritten.",
 "cette demande n'est plus valable : renvoyez votre message": "this request is no longer valid: send your message again",
@@ -1756,7 +1770,6 @@
 "Faire": "Do it",
 "Ondine peut aussi régler le PC quand vous le lui demandez. Pour ouvrir une application ou un site, elle vous demande d'abord.": "Ondine can also adjust the PC when you ask her. To open an app or a website, she asks you first.",
 "Ondine peut agir sur le PC": "Ondine can act on the PC",
-"Elle regarde l'état du PC, l'agenda, la météo, la musique et vos notes, et agit quand vous le lui demandez : volume, luminosité, mode sombre, musique, minuteur, note. Pour ouvrir une application, un site ou une recherche web, poser un fichier sur l'Étagère ou toucher au Wi-Fi et au Bluetooth, elle attend votre accord. Elle ne peut rien supprimer ni lancer de commande.": "She looks at the PC status, calendar, weather, music and your notes, and acts when you ask her: volume, brightness, dark mode, music, timer, note. To open an app, a website or a web search, put a file on the Shelf or change Wi-Fi and Bluetooth, she waits for your OK. She cannot delete anything or run commands.",
 "Fichiers et PC": "Files and PC",
 "Son coupé": "Sound muted",
 "Son rétabli": "Sound restored",
@@ -2583,6 +2596,14 @@
 "Ondine quitte sa case, va jusqu'à l'élément de l'île et agit. Le dépôt de fichier demande un vrai glisser.": "Ondine leaves her spot, goes to the island element and acts. The file drop needs a real drag."
 },
 "patterns": [
+[
+"^Les résultats autorisés pourront partir vers (.+)\\.$",
+"Approved results may be sent to $1."
+],
+[
+"^Ondine voudrait chercher les fichiers « (.*) » et partager leurs noms avec l'IA\\.$",
+"Ondine would like to search for files matching “$1” and share their names with the AI."
+],
 [
 "^L'audio de votre voix partira vers (.+), avec votre clé\\.$",
 "The audio of your voice will go to $1, with your key."

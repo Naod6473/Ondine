@@ -419,14 +419,7 @@ impl RustModule for Team {
             }
             // { w, h, gray (base64, w × h octets) } : une image de la webcam (jamais gardée).
             "qr_frame" => {
-                let (w, h) = (u64_arg("w") as usize, u64_arg("h") as usize);
-                if w == 0 || h == 0 || w * h > 1920 * 1080 {
-                    return Err("image de la webcam trop grande".into());
-                }
-                let gray = base64::engine::general_purpose::STANDARD.decode(str_arg("gray")).map_err(|_| "image de la webcam illisible")?;
-                if gray.len() != w * h {
-                    return Err("image de la webcam illisible".into());
-                }
+                let (w, h, gray) = team_qr::decode_frame(u64_arg("w"), u64_arg("h"), &str_arg("gray"))?;
                 Ok(json!(team_qr::find_in_gray(w, h, &gray, &inner.my_id()?)))
             }
             "remove" => {

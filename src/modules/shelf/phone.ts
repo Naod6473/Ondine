@@ -1,3 +1,4 @@
+import { Bridge } from '../../core/bridge';
 // « Vers le téléphone » (Étagère) : envoyer un fichier de l'étagère à un
 // téléphone du même Wi-Fi.
 //
@@ -127,6 +128,7 @@ export function phonePanel(api: ModuleApi): HTMLElement | null {
     el(
       "div",
       { class: "phone-side" },
+      el("button", { class: "btn small", onclick: () => Bridge.openSettingsWindow() }, "Première connexion : préparez le certificat dans Réglages → Confidentialité."),
       el("b", { class: "phone-title" }, "📱 Vers le téléphone"),
       el(
         "p",

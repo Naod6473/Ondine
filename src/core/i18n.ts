@@ -24,8 +24,6 @@
 
 import { Bridge } from "./bridge";
 import { settingsStore } from "./settings-store";
-import english from "./i18n-en.json";
-import frenchTu from "./i18n-fr-tu.json";
 
 /** Un dictionnaire : français → autre langue. */
 interface Dictionary {
@@ -34,12 +32,17 @@ interface Dictionary {
 }
 
 /** Les langues traduites, par code (le français est la langue d'origine). */
-const DICTIONARIES: Record<string, Dictionary> = {
-  en: english as unknown as Dictionary,
+const LOADERS: Record<string, () => Promise<Dictionary>> = {
+  en: () => import("./i18n-en.json").then(m => m.default as unknown as Dictionary),
+  "fr-tu": () => import("./i18n-fr-tu.json").then(m => m.default as unknown as Dictionary),
 };
 
 /** Vouvoiement → tutoiement (en français seulement, réglage general.address). */
-const FRENCH_TU = frenchTu as unknown as Dictionary;
+const DICTIONARIES: Record<string, Dictionary> = {};
+async function ensureDictionary(code: Lang, tu: boolean) {
+  const key = code === "fr" ? (tu ? "fr-tu" : "") : code;
+  if (key && !DICTIONARIES[key]) DICTIONARIES[key] = await LOADERS[key]();
+}
 
 /** "fr", ou un code de DICTIONARIES ("en"…). */
 export type Lang = string;
@@ -55,7 +58,7 @@ let patterns: [RegExp, string][] = [];
 
 /** Le dictionnaire à utiliser : celui de la langue, ou le tutoiement en français. */
 function dictionaryFor(code: Lang): Dictionary | undefined {
-  if (code === "fr") return tutoie ? FRENCH_TU : undefined;
+  if (code === "fr") return tutoie ? DICTIONARIES["fr-tu"] : undefined;
   return DICTIONARIES[code];
 }
 
@@ -96,7 +99,7 @@ const TRAIL_PICTO = /(?:\s*\p{Extended_Pictographic}\uFE0F?)+$/u;
 
 /** Les langues qu'on sait afficher. */
 export function knownLang(code: string | null | undefined): code is Lang {
-  return code === "fr" || (!!code && code in DICTIONARIES);
+  return code === "fr" || (!!code && code !== "fr-tu" && Object.hasOwn(LOADERS, code));
 }
 
 export function currentLang(): Lang {
@@ -219,19 +222,25 @@ function switchTo(next: Lang) {
 export async function startI18n(): Promise<void> {
   originalTitle = document.title;
   let setting = settingsStore.current.general.language ?? "auto";
-  tutoie = settingsStore.current.general.address === "tu";
-  switchTo(await wantedLang(setting));
+  let address = settingsStore.current.general.address === "tu";
+  let request = 0;
+  const applyWanted = async () => {
+    const version = ++request;
+    const tu = address;
+    const next = await wantedLang(setting);
+    await ensureDictionary(next, tu);
+    if (version !== request) return; // Une sélection plus récente a priorité.
+    tutoie = tu;
+    switchTo(next);
+  };
+  await applyWanted();
   settingsStore.onChange((s) => {
     const now = s.general.language ?? "auto";
     const tu = s.general.address === "tu";
-    if (now === setting && tu === tutoie) return;
-    const addressChanged = tu !== tutoie;
+    if (now === setting && tu === address) return;
     setting = now;
-    tutoie = tu;
-    void wantedLang(now).then((next) => {
-      // Le tutoiement ne change que le français.
-      if (next !== lang || (addressChanged && next === "fr")) switchTo(next);
-    });
+    address = tu;
+    void applyWanted().catch(error => console.error("[langue] traduction indisponible", error));
   });
   // Tout ce qui arrive ensuite dans la page (en français vouvoyé, rien ne change).
   new MutationObserver((records) => {

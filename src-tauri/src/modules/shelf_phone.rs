@@ -7,7 +7,7 @@
 //     10.x.x.x ou 172.16-31.x.x, voir services/lan.rs), sur un port choisi au
 //     hasard par Windows. Pas de réseau local : on refuse, avec un message clair.
 //   - Il ne sert QUE ce fichier, à une adresse secrète :
-//       http://192.168.1.20:51234/<jeton>/<nom du fichier>
+//       https://192.168.1.20:51234/<jeton>/<nom du fichier>
 //     où <jeton> est un nombre tiré au hasard sur 128 bits (32 chiffres
 //     hexadécimaux) : impossible à deviner. Toute autre adresse reçoit « 404 »,
 //     sans rien dire de plus.
@@ -41,7 +41,7 @@ use serde_json::{json, Value};
 
 use super::clipboard_qr;
 use super::ModuleContext;
-use crate::services::{bus, lan, log};
+use crate::services::{bus, lan, log, phone_tls::{self, SecureStream}};
 use crate::sync::LockExt;
 
 /// Le lien marche 5 minutes au plus.
@@ -223,6 +223,7 @@ impl Share {
 
 /// Ce que le serveur sert : un seul fichier, à une seule adresse.
 struct Served {
+    tls: Arc<rustls::ServerConfig>,
     path: PathBuf,
     token: String,
     /// Le nom tel qu'il apparaît (décodé) dans l'adresse.
@@ -254,6 +255,7 @@ pub fn start(
     alive: impl Fn() -> bool + Send + 'static,
     on_event: impl Fn(Event) + Send + Sync + 'static,
 ) -> Result<Share, String> {
+    let tls = phone_tls::server(ip)?;
     let meta = std::fs::metadata(path).map_err(|e| format!("fichier illisible : {e}"))?;
     if !meta.is_file() {
         return Err("seul un fichier peut être envoyé au téléphone (pas un dossier)".into());
@@ -265,8 +267,8 @@ pub fn start(
     let port = listener.local_addr().map_err(|e| e.to_string())?.port();
     // Sans attente : le fil regarde régulièrement s'il doit s'arrêter.
     listener.set_nonblocking(true).map_err(|e| e.to_string())?;
-    let url = format!("http://{ip}:{port}/{token}/{}", encode(&url_name));
-    let served = Arc::new(Served { path: path.to_path_buf(), token, url_name, content_type: content_type(&name), disposition: disposition(&name) });
+    let url = format!("https://{ip}:{port}/{token}/{}", encode(&url_name));
+    let served = Arc::new(Served { tls, path: path.to_path_buf(), token, url_name, content_type: content_type(&name), disposition: disposition(&name) });
     let stop = Arc::new(AtomicBool::new(false));
     let finished = Arc::new(AtomicBool::new(false));
     let until = Instant::now() + lasts;
@@ -330,9 +332,9 @@ fn serve(listener: &TcpListener, served: &Arc<Served>, stop: &Arc<AtomicBool>, u
 }
 
 /// Une connexion : lit la demande, répond 404 / 405 / 400, ou envoie le fichier.
-fn handle(mut stream: TcpStream, served: &Served, stop: &AtomicBool, until: Instant, counters: &Counters, on_event: &OnEvent) {
+fn handle(stream: TcpStream, served: &Served, stop: &AtomicBool, until: Instant, counters: &Counters, on_event: &OnEvent) {
     // Une connexion acceptée peut hériter du « sans attente » du serveur (Windows).
-    let _ = stream.set_nonblocking(false);
+    let Ok(mut stream) = SecureStream::accept(stream, served.tls.clone()) else { return };
     let _ = stream.set_read_timeout(Some(READ_TIMEOUT));
     let _ = stream.set_write_timeout(Some(WRITE_TIMEOUT));
     let Some(request) = read_head(&mut stream).and_then(|head| parse_request(&head)) else {
@@ -354,7 +356,7 @@ fn handle(mut stream: TcpStream, served: &Served, stop: &AtomicBool, until: Inst
 }
 
 /// Envoie le fichier. true = le téléphone l'a reçu en entier.
-fn send_file(stream: &mut TcpStream, served: &Served, head_only: bool, stop: &AtomicBool, counters: &Counters, on_event: &OnEvent) -> bool {
+fn send_file(stream: &mut SecureStream, served: &Served, head_only: bool, stop: &AtomicBool, counters: &Counters, on_event: &OnEvent) -> bool {
     let Ok(mut file) = File::open(&served.path) else {
         reply(stream, "404 Not Found", "");
         return false;
@@ -398,7 +400,7 @@ fn send_file(stream: &mut TcpStream, served: &Served, head_only: bool, stop: &At
 /// Tout est parti : on dit « fini » au téléphone et on attend qu'il ferme de
 /// son côté. Il ferme proprement quand il a tout reçu ; s'il avait abandonné
 /// (navigateur qui annule), la connexion est « réinitialisée » à la place.
-fn closed_cleanly(stream: &mut TcpStream) -> bool {
+fn closed_cleanly(stream: &mut SecureStream) -> bool {
     if stream.shutdown(Shutdown::Write).is_err() {
         return false;
     }
@@ -418,7 +420,7 @@ fn closed_cleanly(stream: &mut TcpStream) -> bool {
 }
 
 /// Une réponse sans contenu (404, 405, 400). Rien d'autre n'est révélé.
-fn reply(stream: &mut TcpStream, status: &str, extra: &str) {
+fn reply(stream: &mut SecureStream, status: &str, extra: &str) {
     let _ = write!(stream, "HTTP/1.1 {status}\r\nContent-Length: 0\r\n{extra}{COMMON}\r\n");
     let _ = stream.flush();
     let _ = stream.shutdown(Shutdown::Write);
@@ -720,11 +722,15 @@ mod tests {
 
     /// Envoie une demande brute, renvoie la réponse entière.
     fn ask(url_port: u16, raw: &str) -> Vec<u8> {
-        let mut s = TcpStream::connect((Ipv4Addr::LOCALHOST, url_port)).unwrap();
-        s.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+        let socket = TcpStream::connect((Ipv4Addr::LOCALHOST, url_port)).unwrap();
+        socket.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+        let mut s = phone_tls::test_client(socket);
         s.write_all(raw.as_bytes()).unwrap();
         let mut out = Vec::new();
         let _ = s.read_to_end(&mut out);
+        s.conn.send_close_notify();
+        let _ = s.flush();
+        let _ = s.sock.shutdown(Shutdown::Write);
         out
     }
 
@@ -760,7 +766,7 @@ mod tests {
         let log = events.clone();
         let share = start(&path, Ipv4Addr::LOCALHOST, Duration::from_secs(30), || true, move |e| log.locked().push(e)).unwrap();
         assert_eq!(share.size, content.len() as u64);
-        let rest = share.url.strip_prefix("http://127.0.0.1:").unwrap();
+        let rest = share.url.strip_prefix("https://127.0.0.1:").unwrap();
         let (port, path_part) = rest.split_once('/').unwrap();
         let port: u16 = port.parse().unwrap();
         let file_path = format!("/{path_part}");
@@ -827,7 +833,7 @@ mod tests {
         let log = events.clone();
         let share = start(&path, Ipv4Addr::LOCALHOST, Duration::from_millis(150), || true, move |e| log.locked().push(e)).unwrap();
         assert!(wait_for(&events, Event::Ended(End::Expired)));
-        let port: u16 = share.url.strip_prefix("http://127.0.0.1:").unwrap().split_once('/').unwrap().0.parse().unwrap();
+        let port: u16 = share.url.strip_prefix("https://127.0.0.1:").unwrap().split_once('/').unwrap().0.parse().unwrap();
         assert!(TcpStream::connect((Ipv4Addr::LOCALHOST, port)).is_err());
         assert!(!events.locked().contains(&Event::Sending));
         let _ = std::fs::remove_dir_all(path.parent().unwrap());

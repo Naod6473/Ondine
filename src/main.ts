@@ -41,6 +41,10 @@ async function start() {
   await bus.connect();
 
   const notifications = new NotificationQueue();
+  settingsStore.onError((error) => notifications.push({
+    moduleId: "island", title: "Réglages non enregistrés", body: errorText(error),
+    icon: "⚠️", priority: "high", key: "settings-save-error",
+  }));
   const registry = new ModuleRegistry(ALL_MODULES, bus, notifications);
   new Island(document.getElementById("root")!, bus, registry, notifications);
 

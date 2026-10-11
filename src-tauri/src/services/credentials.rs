@@ -80,6 +80,15 @@ mod store {
         Some(old)
     }
 
+    #[cfg(not(test))]
+    pub fn get_checked(key: &str) -> Result<Option<String>, String> {
+        match entry(key)?.get_password() {
+            Ok(value) => Ok(Some(value)),
+            Err(keyring::Error::NoEntry) => Ok(None),
+            Err(error) => Err(error.to_string()),
+        }
+    }
+
     pub fn set(key: &str, value: &str) -> Result<(), String> {
         entry(key)?.set_password(value).map_err(|e| e.to_string())
     }
@@ -101,6 +110,10 @@ mod store {
     pub fn get(_key: &str) -> Option<String> {
         None
     }
+    #[cfg(not(test))]
+    pub fn get_checked(_key: &str) -> Result<Option<String>, String> {
+        Err("le Gestionnaire d'identifiants n'existe que sous Windows".into())
+    }
     pub fn set(_key: &str, _value: &str) -> Result<(), String> {
         Err("le Gestionnaire d'identifiants n'existe que sous Windows".into())
     }
@@ -115,6 +128,11 @@ mod store {
 /// module Équipe la lit et l'écrit (modules/team.rs), et elle ne sort jamais
 /// de ce PC.
 const TEAM_IDENTITY: &str = "team-identity-key";
+
+#[cfg(not(test))]
+pub fn phone_identity_get() -> Result<Option<String>, String> { store::get_checked("phone-tls-identity") }
+#[cfg(not(test))]
+pub fn phone_identity_set(value: &str) -> Result<(), String> { store::set("phone-tls-identity", value) }
 
 pub fn team_identity_get() -> Option<String> {
     store::get(TEAM_IDENTITY)

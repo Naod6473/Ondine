@@ -46,7 +46,7 @@ mod remote;
 mod remote_wol;
 mod shelf;
 // « Vers le téléphone » de l'Étagère : un petit serveur web le temps d'un envoi.
-mod shelf_phone;
+pub(crate) mod shelf_phone;
 // Étagère → cible « Empreinte » : SHA-256 (ou l'algorithme d'une empreinte copiée).
 mod shelf_hash;
 mod shelf_tools;
@@ -66,7 +66,7 @@ mod team_net;
 // Son protocole (messages, chiffrement, appairage), en code pur testé.
 mod team_proto;
 mod terminal;
-mod clipboard_qr;
+pub(crate) mod clipboard_qr;
 mod weather;
 // Le bilan de la semaine (Pomodoros, concentration, tâches cochées).
 mod weekly;
@@ -201,6 +201,13 @@ impl ModuleContext<'_> {
         let shared = self.app.state::<crate::Shared>();
         let s = shared.settings.locked();
         privacy::check_path(&s, raw)
+    }
+
+    /// Le périmètre entier d'une copie, compression ou modification de dossier.
+    pub fn check_tree(&self, raw: &str) -> Result<std::path::PathBuf, String> {
+        self.require("files")?;
+        let settings = self.app.state::<crate::Shared>().settings.locked().clone();
+        privacy::check_tree(&settings, raw)
     }
 
     /// Lit un identifiant (permission "credentials"). Ne jamais le renvoyer au front.

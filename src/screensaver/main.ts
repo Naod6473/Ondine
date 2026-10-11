@@ -16,6 +16,7 @@
 
 import { Bridge, IS_TAURI, onTauriEvent } from "../core/bridge";
 import { Bus } from "../core/bus";
+import { FrameBudget } from "../core/frame-budget";
 import { currentLang, startI18n } from "../core/i18n";
 import { logger } from "../core/log";
 import { perfMode, startPerf } from "../core/perf";
@@ -61,6 +62,7 @@ class Saver {
   private raf = 0;
   private timer = 0;
   private last = 0;
+  private readonly budget = new FrameBudget();
   private on = false;
   private walkOn = true;
   private shownMinute = "";
@@ -68,6 +70,14 @@ class Saver {
   constructor(root: HTMLElement) {
     root.append(this.canvas, this.clock, this.slot);
     window.addEventListener("resize", () => this.fit());
+    document.addEventListener("visibilitychange", () => {
+      window.cancelAnimationFrame(this.raf);
+      window.clearTimeout(this.timer);
+      this.raf = this.timer = 0;
+      this.last = 0;
+      this.budget.reset();
+      if (this.on && !document.hidden) this.frame();
+    });
     settingsStore.onChange(() => this.loadMascot());
   }
 
@@ -78,6 +88,8 @@ class Saver {
     this.walkOn = n.walk !== false;
     window.cancelAnimationFrame(this.raf);
     window.clearTimeout(this.timer);
+    this.raf = this.timer = 0;
+    this.budget.reset();
     if (!n.on) {
       this.mascot?.destroy();
       this.mascot = null;
@@ -116,16 +128,23 @@ class Saver {
 
   private fit() {
     const dpr = window.devicePixelRatio || 1;
-    this.canvas.width = Math.round(window.innerWidth * dpr);
-    this.canvas.height = Math.round(window.innerHeight * dpr);
+    const w = Math.round(window.innerWidth * dpr);
+    const h = Math.round(window.innerHeight * dpr);
+    if (this.canvas.width !== w) this.canvas.width = w;
+    if (this.canvas.height !== h) this.canvas.height = h;
   }
 
   private frame() {
-    if (!this.on) return;
+    this.raf = this.timer = 0;
+    if (!this.on || document.hidden) return;
     const now = performance.now();
-    const dt = this.last ? (now - this.last) / 1000 : 0;
-    this.last = now;
     const still = reducedMotion();
+    if (!still && !this.budget.due(now, perfMode() === "eco" ? 20 : 30)) {
+      this.raf = requestAnimationFrame(() => this.frame());
+      return;
+    }
+    const dt = this.last ? Math.min(0.1, (now - this.last) / 1000) : 0;
+    this.last = now;
     const t = still ? 0 : now / 1000;
     if (!still && this.walkOn) this.walker = stepWalker(this.walker, dt, now, Math.random, calmMode());
     this.drawWater(t);
@@ -136,8 +155,7 @@ class Saver {
       this.timer = window.setTimeout(() => this.frame(), 1000);
       return;
     }
-    const fps = perfMode() === "eco" ? 20 : 30;
-    this.timer = window.setTimeout(() => (this.raf = requestAnimationFrame(() => this.frame())), 1000 / fps - 4);
+    this.raf = requestAnimationFrame(() => this.frame());
   }
 
   private drawWater(t: number) {
@@ -193,7 +211,7 @@ class Saver {
   private drawClock() {
     const d = new Date();
     const english = currentLang() === "en";
-    const minute = `${d.getHours()}:${d.getMinutes()}`;
+    const minute = `${english}:${d.toDateString()}:${d.getHours()}:${d.getMinutes()}`;
     if (minute === this.shownMinute) return;
     this.shownMinute = minute;
     this.time.textContent = clockText(d, english);

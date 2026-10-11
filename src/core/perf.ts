@@ -15,6 +15,7 @@ import { Bridge, IS_TAURI, onTauriEvent, type PerfState } from "./bridge";
 import { settingsStore } from "./settings-store";
 import type { PerfMode } from "./types";
 import { setLabel } from "../island/icon";
+import { FrameBudget } from "./frame-budget";
 
 /**
  * Les rythmes en millisecondes : [haute, équilibrée, éco]. La colonne
@@ -163,25 +164,20 @@ export function pacedInterval(fn: () => void, c: Cadence, onlyWhenVisible = fals
  */
 export function frameLoop(target: Element, draw: (now: number) => void): () => void {
   let raf = 0;
-  let timer = 0;
+  const budget = new FrameBudget();
   let stopped = false;
   let sized = true;
   const tick = () => {
     raf = 0;
-    if (stopped || !sized) return; // repartira quand la taille revient
+    if (stopped || !sized || document.hidden) return; // repartira quand la taille revient
     // performance.now() plutôt que l'heure de l'image : les dessins comparent
     // avec des instants pris par performance.now() (début d'animation).
-    draw(performance.now());
-    if (mode === "eco") {
-      // On saute une image sur deux : un réveil de moins, un dessin de moins.
-      timer = window.setTimeout(() => {
-        timer = 0;
-        schedule();
-      }, 1000 / ECO_FPS - 1000 / 60);
-    } else schedule();
+    const now = performance.now();
+    if (mode !== "eco" || budget.due(now, ECO_FPS)) draw(now);
+    schedule();
   };
   const schedule = () => {
-    if (!raf && !timer && !stopped) raf = requestAnimationFrame(tick);
+    if (!raf && !stopped && sized && !document.hidden) raf = requestAnimationFrame(tick);
   };
   const observer = new ResizeObserver((entries) => {
     const r = entries[entries.length - 1].contentRect;
@@ -191,11 +187,13 @@ export function frameLoop(target: Element, draw: (now: number) => void): () => v
     if (now && !wasSized) schedule();
   });
   observer.observe(target);
+  const visible = () => { budget.reset(); schedule(); };
+  document.addEventListener("visibilitychange", visible);
   schedule();
   return () => {
     stopped = true;
     cancelAnimationFrame(raf);
-    window.clearTimeout(timer);
+    document.removeEventListener("visibilitychange", visible);
     observer.disconnect();
   };
 }

@@ -9,6 +9,7 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { PerfMode, Settings } from "./types";
+import type { SettingsPatch } from "./settings-transactions";
 
 export const IS_TAURI = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
@@ -80,10 +81,11 @@ export interface UpdateInfo {
 }
 
 export const Bridge = {
+  phoneCertificateSetup: () => callOrThrow<{ url: string; qr: string; fingerprint: string; name: string; seconds: number }>("phone_certificate_setup"),
   boot: () => call<BootInfo>("boot"),
 
   // Réglages
-  settingsSave: (settings: Settings) => callOrThrow<void>("settings_save", { settings }),
+  settingsPatch: (patch: SettingsPatch[]) => callOrThrow<Settings>("settings_patch", { patch }),
   settingsExport: () => callOrThrow<string>("settings_export"),
   settingsImport: (text: string) => callOrThrow<void>("settings_import", { text }),
   /** Assistant de premier lancement : choisir un fichier de réglages exporté et l'importer (false si on annule). */

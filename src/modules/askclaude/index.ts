@@ -577,6 +577,10 @@ function doneText(what: string, value: string): string {
 /** Une action qui attend votre accord, à l'infinitif. */
 function askText(what: string, value: string): string {
   switch (what) {
+    case "file-search":
+      return `chercher les fichiers « ${value} » et partager leurs noms avec l'IA`;
+    case "tool":
+      return value;
     case "app":
       return `ouvrir l'application « ${value} »`;
     case "site":
@@ -677,6 +681,7 @@ export const askclaude: IslandModule = {
             { class: "ask-bubble ondine ask-confirm fresh" },
             p.activity.length ? activityList(p.activity) : null,
             el("p", { class: "ask-confirm-title" }, `Ondine voudrait ${askText(a.what ?? "", a.value ?? "")}.`),
+            a.destination ? el("small", { class: "muted" }, `Les résultats autorisés pourront partir vers ${a.destination}.`) : null,
             a.what === "wifi-off" ? el("small", { class: "muted" }, "Sans Wi-Fi, Ondine ne pourra plus vous répondre.") : null,
             el(
               "div",

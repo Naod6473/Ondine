@@ -60,6 +60,7 @@
 // prend directement sa forme.
 
 import { ECO_FPS, perfMode } from "../core/perf";
+import { FrameBudget } from "../core/frame-budget";
 import {
   EdgeChain,
   nearestU,
@@ -419,6 +420,8 @@ export class Jelly {
     this.raf = requestAnimationFrame(this.tick);
   }
 
+  private budget = new FrameBudget();
+
   private stop() {
     cancelAnimationFrame(this.raf);
     window.clearTimeout(this.timer);
@@ -432,6 +435,10 @@ export class Jelly {
       return;
     }
     const t = performance.now();
+    if (perfMode() === "eco" && !this.budget.due(t, ECO_FPS)) {
+      this.schedule();
+      return;
+    }
     const dt = Math.min(1 / 20, Math.max(0, (t - this.last) / 1000));
     this.last = t;
     const resting = this.step(dt);
@@ -440,13 +447,7 @@ export class Jelly {
       return;
     }
     this.paint();
-    if (perfMode() === "eco") {
-      // Économie d'énergie : une image sur deux (comme frameLoop dans perf.ts).
-      this.timer = window.setTimeout(() => {
-        this.timer = 0;
-        this.schedule();
-      }, 1000 / ECO_FPS - 1000 / 60);
-    } else this.schedule();
+    this.schedule();
   };
 
   /** Avance tous les ressorts de `dt` s ; vrai si tout est posé. */

@@ -101,7 +101,10 @@ export class IslandForms {
     });
     // Un clic sur le corps d'Ondine (autour de la bouche) ouvre l'île, comme un clic sur l'île.
     h.root.addEventListener("click", (e) => {
-      if (!this.mouth || this.away || (e.target as HTMLElement).closest(".island, .hang")) return;
+      // Une fermeture retire le bouton avant que son clic remonte ici. Le
+      // chemin d'origine reste fiable même si l'ancienne vue est démontée.
+      const inside = e.composedPath().some((node) => node instanceof Element && node.matches(".island, .hang"));
+      if (!this.mouth || this.away || inside) return;
       const b = this.mouth.bounds();
       if (b && e.clientX >= b.x && e.clientX <= b.x + b.w && e.clientY >= b.y && e.clientY <= b.y + b.h) h.fsm.click();
     });

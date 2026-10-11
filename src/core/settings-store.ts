@@ -1,9 +1,10 @@
 // Les réglages côté front : une copie locale, tenue à jour quand l'autre fenêtre
 // (ou un import) les modifie. L'enregistrement se fait toujours dans le Rust.
 
-import { Bridge, onTauriEvent } from "./bridge";
+import { Bridge, IS_TAURI, onTauriEvent } from "./bridge";
 import { defaultSettings, type Settings } from "./types";
 import type { CalendarEntry, ModuleManifest, SettingField } from "./module-types";
+import { applySettingsPatch, SettingsTransactions } from "./settings-transactions";
 
 /**
  * Les modules désactivés tant qu'on ne les a pas allumés (ceux qui ouvrent un
@@ -11,38 +12,18 @@ import type { CalendarEntry, ModuleManifest, SettingField } from "./module-types
  */
 export const MODULES_OFF_BY_DEFAULT: readonly string[] = ["team", "screensaver"];
 
-type Listener = (s: Settings) => void;
-
-class SettingsStore {
-  current: Settings = defaultSettings();
-  private listeners: Listener[] = [];
+class SettingsStore extends SettingsTransactions<Settings> {
+  constructor() {
+    super(defaultSettings(), async (patch, base) => IS_TAURI
+      ? Bridge.settingsPatch(patch)
+      : { ...applySettingsPatch(base, patch), revision: (base.revision ?? 0) + 1 });
+  }
 
   async connect(initial: Settings | null) {
-    if (initial) this.current = initial;
+    if (initial) this.accept(initial);
     await onTauriEvent<Settings>("settings-changed", (s) => {
-      this.current = s;
-      this.notify();
+      this.accept(s);
     });
-  }
-
-  onChange(fn: Listener): () => void {
-    this.listeners.push(fn);
-    return () => {
-      this.listeners = this.listeners.filter((l) => l !== fn);
-    };
-  }
-
-  /** Modifie une copie, l'applique tout de suite ici, puis l'enregistre. */
-  async update(change: (draft: Settings) => void) {
-    const draft = structuredClone(this.current);
-    change(draft);
-    this.current = draft;
-    this.notify();
-    try {
-      await Bridge.settingsSave(draft);
-    } catch (err) {
-      console.warn("[réglages] non enregistrés", err);
-    }
   }
 
   moduleEnabled(id: string): boolean {
@@ -59,15 +40,6 @@ class SettingsStore {
     return out;
   }
 
-  private notify() {
-    for (const l of this.listeners) {
-      try {
-        l(this.current);
-      } catch (err) {
-        console.error("[réglages] abonné en erreur", err);
-      }
-    }
-  }
 }
 
 /** Ramène une valeur enregistrée à quelque chose de valide pour ce champ. */

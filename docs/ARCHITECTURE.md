@@ -1355,9 +1355,9 @@ Front : `src/modules/shelf/index.ts`. Rust : `src-tauri/src/modules/shelf.rs`.
   `network`) : sur un fichier de l'étagère (`phone_share {path}`, chemin validé
   et présent sur l'étagère). Le Rust choisit l'adresse privée du PC
   (`services/lan.rs` ; aucune → refus avec un message clair), ouvre un
-  `TcpListener` (std, aucune crate) sur cette adresse et un port donné par
+  `TcpListener` (std) protégé par TLS (`services/phone_tls.rs`, rustls) sur cette adresse et un port donné par
   Windows, et tire un jeton de 128 bits (`getrandom`). Seule l'adresse
-  `http://IP:port/<jeton>/<nom encodé>` sert le fichier (GET ; HEAD = en-têtes
+  `https://IP:port/<jeton>/<nom encodé>` sert le fichier (GET ; HEAD = en-têtes
   seulement ; autre méthode = 405) ; toute autre adresse = 404 vide, une demande
   illisible = 400. Comparaison du jeton en temps constant ; nom trop long →
   `fichier.ext` dans l'adresse (le vrai nom part dans `Content-Disposition:
@@ -1371,6 +1371,11 @@ Front : `src/modules/shelf/index.ts`. Rust : `src-tauri/src/modules/shelf.rs`.
   « Arrêter » ; `phone_status` le retrouve si l'île redémarre. Le journal ne
   contient ni l'adresse ni le jeton. Pare-feu : Windows demande la première
   fois d'autoriser Ondine (réseaux privés).
+  Le certificat de ce PC est préparé dans Réglages → Confidentialité : clé
+  privée dans le Gestionnaire d'identifiants, certificat public à installer sur
+  le téléphone après comparaison de l'empreinte. Le lien HTTP de préparation
+  ne sert que le certificat public, pendant trois minutes. Fichiers et
+  télécommande restent exclusivement en HTTPS. Voir `SECURITE-FLUIDITE.md`.
 - **Empreinte** (cible de dépôt, réglage `showHash` ; `src/modules/shelf/hash.ts`,
   `src-tauri/src/modules/shelf_hash.rs`) : `hash {paths}` calcule dans un thread
   (fichiers seulement, 5 au plus, un calcul à la fois), en lisant par blocs de
@@ -1916,7 +1921,7 @@ s'il n'existe pas ou est désactivé).
   `btBatteryLow` (15 %), réarmée à +5 % ; `desktop_icons` /
   `set_desktop_icons` (« Bureau propre », `platform/desktop_icons.rs`) ;
   télécommande sur le téléphone (`controls_remote.rs`, réglage `phoneRemote`
-  **désactivé** par défaut, permission `network`) : serveur HTTP du réseau
+  **désactivé** par défaut, permission `network`) : serveur HTTPS du réseau
   local avec jeton de 128 bits, un seul téléphone, actions fixes (musique,
   volume, minuteur, diapositive par Page suivante / précédente), arrêt après
   10 min sans action ou 3 h ; publie `controls.remote {state}`.
@@ -2743,7 +2748,7 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
   (`src/settings/askclaude-page.ts`, sous-menus Général et Personnalité).
   Le premier mot d'Ondine est écrit en local (gratuit).
 - Dépôt sur l'île : « Parler à Ondine » prépare le fichier et ouvre l'onglet.
-- Outils de fichiers (`askclaude_tools.rs`, réglage `fileTools`, activé par
+- Outils de fichiers (`askclaude_tools.rs`, réglage `fileTools`, désactivé par
   défaut) : quatre outils proposés à l'IA, décrits dans le format de chaque
   API (`Request.tools`) :
   - `chercher_fichiers {requete}` : par le NOM seulement, dans Documents,
@@ -2751,7 +2756,7 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
     récents ; parcours en largeur, sans liens, sans dossiers techniques
     (`SKIP_DIRS`), ni exécutables, ni dossiers exclus, borné (40 000 entrées,
     profondeur 7, 2,5 s) ; 12 résultats au plus, chacun repassé par
-    `check_path`. Fait sans demander : les noms partent (choix de Simon) ;
+    `check_path`. Attend l'accord avant la recherche et le partage des noms ;
   - `lire_fichier {numero}` : un fichier texte trouvé (`read_file` : 100 Ko,
     UTF-8), après votre accord ;
   - `creer_fichier {nom, contenu}` : un fichier texte (`CREATE_EXTENSIONS`,
@@ -2764,15 +2769,15 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
   pour la conversation, vidé par `reset`). Les fichiers d'un échange sont
   notés à la fin de la réponse d'Ondine (`Turn.notes`) pour les tours
   suivants.
-- Outils du PC (`askclaude_pc.rs`, réglage `pcTools`, activé par défaut) :
+- Outils du PC (`askclaude_pc.rs`, réglage `pcTools`, désactivé par défaut) :
   chaque outil passe par la commande du module concerné (`modules::invoke`,
   qui vérifie qu'il est activé) ou par son sujet du bus, comme son onglet :
-  - regarder, fait tout de suite : `etat_pc` (system.snapshot), `agenda`
+  - regarder, après accord : `etat_pc` (system.snapshot), `agenda`
     (agenda.upcoming), `meteo` (weather.current), `musique_en_cours`
     (media.state sans pochette), `etat_son_ecran` (controls : state, screens,
     theme, radios), `chercher_notes` (notes.search) ; résultat coupé à
     6 000 caractères ;
-  - agir tout de suite (demandé par la personne, défait d'un clic) :
+  - agir après accord :
     `regler_volume`, `couper_son`, `regler_luminosite` (tous les écrans),
     `mode_sombre`, `controler_musique`, `lancer_minuteur` (bus
     `timer.start`, écouté par l'onglet Minuteur ; le module n'a pas de
@@ -2790,6 +2795,10 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
   consigne demande d'agir seulement à la demande de la personne, jamais
   parce qu'un document le dit. L'activité est `{kind: "did", what, value}` ;
   le front en fait une phrase (`doneText`, `askText`).
+  Les commandes rapides reconnues directement dans le message humain, sans
+  appel à l'IA, gardent leur exécution locale immédiate (`plan_local`). Les
+  anciens réglages explicitement activés restent conservés ; une désactivation
+  pendant une demande d'accord est revérifiée au moment de confirmer.
 - **Voix** (1.2.2, `askclaude_voice.rs`, `platform/voice.rs`, front
   `index.ts` + `plops.ts`) :
   - raccourci global `voiceHotkey` (Ctrl+Alt+V par défaut, liste fixe

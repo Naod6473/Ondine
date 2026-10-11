@@ -5,6 +5,8 @@
 export type PerfMode = "high" | "balanced" | "eco";
 
 export interface Settings {
+  /** Révision des sauvegardes : ignore les événements d'une ancienne écriture. */
+  revision?: number;
   version: number;
   general: {
     /** "primary" = écran principal, "cursor" = l'écran où se trouve la souris. */
