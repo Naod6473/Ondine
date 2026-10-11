@@ -129,10 +129,27 @@ mod store {
 /// de ce PC.
 const TEAM_IDENTITY: &str = "team-identity-key";
 
+/// La clé privée de l'autorité HTTPS d'un téléphone (services/phone_tls.rs),
+/// une par téléphone. Comme la clé Équipe : hors de KNOWN_KEYS, le front ne
+/// peut ni la lire, ni l'écrire. La révoquer, c'est l'effacer.
 #[cfg(not(test))]
-pub fn phone_identity_get() -> Result<Option<String>, String> { store::get_checked("phone-tls-identity") }
+fn phone_key(id: &str) -> String {
+    format!("phone-tls-{id}")
+}
 #[cfg(not(test))]
-pub fn phone_identity_set(value: &str) -> Result<(), String> { store::set("phone-tls-identity", value) }
+pub fn phone_key_get(id: &str) -> Result<Option<String>, String> {
+    store::get_checked(&phone_key(id))
+}
+#[cfg(not(test))]
+pub fn phone_key_set(id: &str, value: &str) -> Result<(), String> {
+    // L'ancienne autorité unique (avant la page Téléphones) ne sert plus.
+    let _ = store::delete("phone-tls-identity");
+    store::set(&phone_key(id), value)
+}
+#[cfg(not(test))]
+pub fn phone_key_delete(id: &str) -> Result<(), String> {
+    store::delete(&phone_key(id))
+}
 
 pub fn team_identity_get() -> Option<String> {
     store::get(TEAM_IDENTITY)

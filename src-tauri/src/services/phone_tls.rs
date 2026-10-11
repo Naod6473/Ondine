@@ -22,16 +22,42 @@ const ROOT_LIFE: i64 = 2 * 365 * 24 * 3600;
 static SAVING: Mutex<()> = Mutex::new(());
 static BOOTSTRAP: Mutex<Option<Arc<AtomicBool>>> = Mutex::new(None);
 
-#[derive(Clone, Serialize, Deserialize)]
+/// Ce qu'il faut pour signer : l'autorité d'UN téléphone (clé privée comprise).
+#[derive(Clone)]
 struct Identity {
     key: String,
     cert: String,
     created: i64,
     name: String,
-    /// Autorité limitée au réseau local (voir `ca_params`). Une autorité créée
-    /// avant cette limite est remplacée : il faut refaire « Préparer mon téléphone ».
+}
+
+/// Un téléphone préparé. Chaque téléphone a SA propre autorité : en révoquer
+/// un efface sa clé, et plus rien ne peut produire un certificat qu'il croit,
+/// sans toucher aux autres. Seule la partie publique est dans ce fichier
+/// (phones.json) ; la clé privée reste dans le Gestionnaire d'identifiants.
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Phone {
+    id: String,
+    /// Le nom choisi (« iPhone de Simon »).
+    name: String,
+    /// Le nom de l'autorité, celui que le téléphone affiche.
+    authority: String,
+    cert: String,
+    created: i64,
+    /// Quand le téléphone a téléchargé le certificat.
     #[serde(default)]
-    local_only: bool,
+    installed: Option<i64>,
+}
+
+#[derive(Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Phones {
+    #[serde(default)]
+    list: Vec<Phone>,
+    /// Le téléphone pour lequel l'Étagère et la télécommande ouvrent leur lien.
+    #[serde(default)]
+    active: String,
 }
 
 fn ca_params(identity: &Identity) -> Result<CertificateParams, String> {
@@ -62,15 +88,14 @@ fn ca_params(identity: &Identity) -> Result<CertificateParams, String> {
     Ok(p)
 }
 
-fn generate() -> Result<Identity, String> {
+fn generate(created: i64) -> Result<Identity, String> {
     let key = KeyPair::generate().map_err(|e| e.to_string())?;
     let hash = format!("{:x}", Sha256::digest(key.public_key_raw()));
     let mut identity = Identity {
         key: key.serialize_pem(),
         cert: String::new(),
-        created: OffsetDateTime::now_utc().unix_timestamp(),
+        created,
         name: format!("Ondine réseau local {}", &hash[..12]),
-        local_only: true,
     };
     let cert = ca_params(&identity)?
         .self_signed(&key)
@@ -79,43 +104,215 @@ fn generate() -> Result<Identity, String> {
     Ok(identity)
 }
 
+// ── Où sont rangés les téléphones ───────────────────────────────────────────
+// Les tests ne touchent jamais au fichier ni aux identifiants de l'utilisateur.
+
 #[cfg(not(test))]
-fn identity() -> Result<Identity, String> {
-    let _saving = SAVING.locked();
-    let saved = super::credentials::phone_identity_get()?;
-    let saved: Option<Identity> = match saved {
-        Some(text) => Some(
-            serde_json::from_str(&text).map_err(|_| "certificat local illisible".to_string())?,
-        ),
-        None => None,
-    };
-    let identity = match saved.filter(|identity| identity.local_only) {
-        Some(identity) => identity,
-        None => {
-            let identity = generate()?;
-            super::credentials::phone_identity_set(
-                &serde_json::to_string(&identity).map_err(|e| e.to_string())?,
-            )?;
-            identity
-        }
-    };
-    Ok(identity)
+fn phones_path() -> std::path::PathBuf {
+    crate::platform::config_dir().join("phones.json")
+}
+
+#[cfg(not(test))]
+fn load() -> Phones {
+    std::fs::read_to_string(phones_path())
+        .ok()
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or_default()
+}
+
+#[cfg(not(test))]
+fn store(phones: &Phones) -> Result<(), String> {
+    let path = phones_path();
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
+    let text = serde_json::to_string_pretty(phones).map_err(|e| e.to_string())?;
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, text).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, &path).map_err(|e| e.to_string())
+}
+
+#[cfg(not(test))]
+fn key_get(id: &str) -> Result<Option<String>, String> {
+    super::credentials::phone_key_get(id)
+}
+#[cfg(not(test))]
+fn key_set(id: &str, pem: &str) -> Result<(), String> {
+    super::credentials::phone_key_set(id, pem)
+}
+#[cfg(not(test))]
+fn key_delete(id: &str) -> Result<(), String> {
+    super::credentials::phone_key_delete(id)
 }
 
 #[cfg(test)]
-fn identity() -> Result<Identity, String> {
-    // Les tests ne touchent jamais aux identifiants du véritable utilisateur.
+static TEST_PHONES: Mutex<Option<Phones>> = Mutex::new(None);
+#[cfg(test)]
+static TEST_KEYS: Mutex<Vec<(String, String)>> = Mutex::new(Vec::new());
+#[cfg(test)]
+fn load() -> Phones {
+    TEST_PHONES.locked().as_ref().map(|p| Phones { list: p.list.clone(), active: p.active.clone() }).unwrap_or_default()
+}
+#[cfg(test)]
+fn store(phones: &Phones) -> Result<(), String> {
+    *TEST_PHONES.locked() = Some(Phones { list: phones.list.clone(), active: phones.active.clone() });
+    Ok(())
+}
+#[cfg(test)]
+fn key_get(id: &str) -> Result<Option<String>, String> {
+    Ok(TEST_KEYS.locked().iter().find(|(k, _)| k == id).map(|(_, v)| v.clone()))
+}
+#[cfg(test)]
+fn key_set(id: &str, pem: &str) -> Result<(), String> {
+    TEST_KEYS.locked().push((id.to_string(), pem.to_string()));
+    Ok(())
+}
+#[cfg(test)]
+fn key_delete(id: &str) -> Result<(), String> {
+    TEST_KEYS.locked().retain(|(k, _)| k != id);
+    Ok(())
+}
+
+fn now() -> i64 {
+    OffsetDateTime::now_utc().unix_timestamp()
+}
+
+fn fingerprint(cert_b64: &str) -> String {
+    B64.decode(cert_b64)
+        .map(|der| format!("{:X}", Sha256::digest(der)))
+        .unwrap_or_default()
+}
+
+/// L'autorité du téléphone actif (celui de l'Étagère et de la télécommande).
+fn active_identity() -> Result<Identity, String> {
+    #[cfg(test)]
+    test_phone();
+    let phones = load();
+    let phone = phones
+        .list
+        .iter()
+        .find(|p| p.id == phones.active)
+        .or_else(|| phones.list.iter().max_by_key(|p| p.created))
+        .ok_or("aucun téléphone préparé : Réglages → Téléphones → Ajouter un téléphone")?;
+    let key = key_get(&phone.id)?.ok_or("clé de ce téléphone introuvable : révoquez-le puis préparez-le à nouveau dans Réglages → Téléphones")?;
+    Ok(Identity { key, cert: phone.cert.clone(), created: phone.created, name: phone.authority.clone() })
+}
+
+/// Le nom du téléphone actif, montré à côté des QR codes HTTPS.
+pub fn active_name() -> Option<String> {
+    let phones = load();
+    phones
+        .list
+        .iter()
+        .find(|p| p.id == phones.active)
+        .or_else(|| phones.list.iter().max_by_key(|p| p.created))
+        .map(|p| p.name.clone())
+}
+
+/// Les téléphones préparés, pour la page Réglages → Téléphones.
+pub fn list() -> Value {
+    let phones = load();
+    let active = active_name_id(&phones);
+    let list: Vec<Value> = phones
+        .list
+        .iter()
+        .map(|p| {
+            json!({
+                "id": p.id,
+                "name": p.name,
+                "authority": p.authority,
+                "created": p.created,
+                "installed": p.installed,
+                "expires": p.created + ROOT_LIFE,
+                "fingerprint": fingerprint(&p.cert),
+                "active": Some(&p.id) == active.as_ref(),
+            })
+        })
+        .collect();
+    json!({ "phones": list })
+}
+
+fn active_name_id(phones: &Phones) -> Option<String> {
+    phones
+        .list
+        .iter()
+        .find(|p| p.id == phones.active)
+        .or_else(|| phones.list.iter().max_by_key(|p| p.created))
+        .map(|p| p.id.clone())
+}
+
+/// Le téléphone pour lequel l'Étagère et la télécommande ouvrent leur lien.
+pub fn activate(id: &str) -> Result<(), String> {
     let _saving = SAVING.locked();
-    static TEST_ROOT: std::sync::OnceLock<Identity> = std::sync::OnceLock::new();
-    Ok(TEST_ROOT
-        .get_or_init(|| generate().expect("certificat de test"))
-        .clone())
+    let mut phones = load();
+    if !phones.list.iter().any(|p| p.id == id) {
+        return Err("ce téléphone n'est plus dans la liste".into());
+    }
+    phones.active = id.to_string();
+    store(&phones)
+}
+
+/// Révoque un téléphone : sa clé est effacée, Ondine ne pourra plus jamais
+/// produire un certificat qu'il accepte. Les autres téléphones continuent.
+pub fn revoke(id: &str) -> Result<(), String> {
+    let _saving = SAVING.locked();
+    let mut phones = load();
+    let before = phones.list.len();
+    phones.list.retain(|p| p.id != id);
+    if phones.list.len() == before {
+        return Err("ce téléphone n'est plus dans la liste".into());
+    }
+    if phones.active == id {
+        phones.active = phones.list.iter().max_by_key(|p| p.created).map(|p| p.id.clone()).unwrap_or_default();
+    }
+    // La clé d'abord : même si le fichier ne s'écrit pas, plus rien ne signe.
+    key_delete(id)?;
+    store(&phones)
+}
+
+/// Ajoute un téléphone (nouvelle autorité), ou reprend un téléphone existant
+/// (`id`) pour montrer de nouveau son QR code.
+fn prepare(id: Option<&str>, name: Option<&str>) -> Result<Phone, String> {
+    let _saving = SAVING.locked();
+    let mut phones = load();
+    if let Some(id) = id.filter(|id| !id.is_empty()) {
+        let phone = phones.list.iter().find(|p| p.id == id).cloned().ok_or("ce téléphone n'est plus dans la liste")?;
+        if now() < phone.created + ROOT_LIFE && key_get(&phone.id)?.is_some() {
+            return Ok(phone);
+        }
+        return Err("ce téléphone a expiré : révoquez-le puis ajoutez-le de nouveau".into());
+    }
+    let name: String = name.unwrap_or("").trim().chars().filter(|c| !c.is_control()).take(40).collect();
+    let name = if name.is_empty() { format!("Téléphone {}", phones.list.len() + 1) } else { name };
+    let identity = generate(now())?;
+    let phone = Phone {
+        id: crate::modules::shelf_phone::new_token()?[..12].to_string(),
+        name,
+        authority: identity.name.clone(),
+        cert: identity.cert.clone(),
+        created: identity.created,
+        installed: None,
+    };
+    key_set(&phone.id, &identity.key)?;
+    phones.list.push(phone.clone());
+    phones.active = phone.id.clone();
+    store(&phones)?;
+    Ok(phone)
+}
+
+fn mark_installed(id: &str) {
+    let _saving = SAVING.locked();
+    let mut phones = load();
+    if let Some(p) = phones.list.iter_mut().find(|p| p.id == id) {
+        p.installed = Some(now());
+        let _ = store(&phones);
+    }
 }
 
 fn config(identity: &Identity, ip: Ipv4Addr) -> Result<Arc<ServerConfig>, String> {
     let now = OffsetDateTime::now_utc();
     if now.unix_timestamp() >= identity.created + ROOT_LIFE {
-        return Err("certificat téléphone expiré : retirez l'ancien certificat et préparez un nouvel appairage dans Ondine".into());
+        return Err("certificat de ce téléphone expiré : révoquez-le puis ajoutez-le de nouveau dans Réglages → Téléphones".into());
     }
     let key = KeyPair::from_pem(&identity.key).map_err(|_| "clé du certificat local illisible")?;
     let issuer = Issuer::new(ca_params(identity)?, key);
@@ -148,8 +345,9 @@ fn config(identity: &Identity, ip: Ipv4Addr) -> Result<Arc<ServerConfig>, String
     Ok(Arc::new(config))
 }
 
+/// Le serveur HTTPS de l'Étagère ou de la télécommande, pour le téléphone actif.
 pub fn server(ip: Ipv4Addr) -> Result<Arc<ServerConfig>, String> {
-    config(&identity()?, ip)
+    config(&active_identity()?, ip)
 }
 
 /// La seule forme de transport des fichiers privés et de la télécommande.
@@ -223,10 +421,12 @@ impl Write for SecureStream {
 /// HTTP sert UNIQUEMENT le certificat public, jamais un fichier ni une action.
 /// L'empreinte doit être comparée avec celle affichée dans Ondine avant de
 /// lui accorder confiance sur le téléphone (le réseau initial n'est pas fiable).
-pub fn setup() -> Result<Value, String> {
+pub fn setup(id: Option<String>, name: Option<String>) -> Result<Value, String> {
     let ip =
         super::lan::private_ipv4().ok_or("connectez le PC et le téléphone au même réseau local")?;
-    let identity = setup_identity()?;
+    let phone = prepare(id.as_deref(), name.as_deref())?;
+    let phone_id = phone.id.clone();
+    let identity = Identity { key: String::new(), cert: phone.cert.clone(), created: phone.created, name: phone.authority.clone() };
     let cert = B64
         .decode(identity.cert)
         .map_err(|_| "certificat local illisible")?;
@@ -247,6 +447,7 @@ pub fn setup() -> Result<Value, String> {
         previous.store(true, Ordering::SeqCst);
     }
     let profile = mobile_profile(&cert, &identity.name, &fingerprint)?;
+    let phone_name = phone.name.clone();
     std::thread::spawn(move || {
         let until = Instant::now() + Duration::from_secs(180);
         while Instant::now() < until && !stop.load(Ordering::SeqCst) {
@@ -295,27 +496,14 @@ pub fn setup() -> Result<Value, String> {
                 .is_ok()
             {
                 let _ = socket.flush();
+                mark_installed(&phone_id);
                 break;
             }
         }
     });
     Ok(
-        json!({ "url": url, "qr": qr, "fingerprint": fingerprint, "name": identity.name, "seconds": 180 }),
+        json!({ "id": phone.id, "phone": phone_name, "url": url, "qr": qr, "fingerprint": fingerprint, "name": identity.name, "seconds": 180 }),
     )
-}
-
-fn setup_identity() -> Result<Identity, String> {
-    let current = identity()?;
-    #[cfg(not(test))]
-    if OffsetDateTime::now_utc().unix_timestamp() >= current.created + ROOT_LIFE {
-        let _saving = SAVING.locked();
-        let renewed = generate()?;
-        super::credentials::phone_identity_set(
-            &serde_json::to_string(&renewed).map_err(|e| e.to_string())?,
-        )?;
-        return Ok(renewed);
-    }
-    Ok(current)
 }
 
 fn mobile_profile(cert: &[u8], name: &str, fingerprint: &str) -> Result<String, String> {
@@ -351,6 +539,19 @@ fn mobile_profile(cert: &[u8], name: &str, fingerprint: &str) -> Result<String, 
         cert_uuid = uuid()?,
         data = B64.encode(cert)
     ))
+}
+
+/// Les tests ont un seul téléphone actif, créé à la première demande.
+#[cfg(test)]
+fn test_phone() {
+    static READY: std::sync::Once = std::sync::Once::new();
+    READY.call_once(|| {
+        prepare(None, Some("Téléphone de test")).unwrap();
+    });
+}
+#[cfg(test)]
+fn identity() -> Result<Identity, String> {
+    active_identity()
 }
 
 #[cfg(test)]
@@ -477,6 +678,33 @@ mod tests {
             rustls::pki_types::UnixTime::now(),
         );
         assert!(checked.is_err());
+    }
+    #[test]
+    fn a_revoked_phone_loses_its_key_and_leaves_the_others() {
+        let kept = identity().unwrap();
+        // Un deuxième téléphone, ajouté sans devenir le téléphone actif.
+        let other = generate(now()).unwrap();
+        {
+            let _saving = SAVING.locked();
+            let mut phones = load();
+            phones.list.push(Phone {
+                id: "autre".into(),
+                name: "Autre".into(),
+                authority: other.name.clone(),
+                cert: other.cert.clone(),
+                created: other.created,
+                installed: None,
+            });
+            store(&phones).unwrap();
+            key_set("autre", &other.key).unwrap();
+        }
+        assert!(list()["phones"].as_array().unwrap().iter().any(|p| p["id"] == "autre"));
+        revoke("autre").unwrap();
+        assert_eq!(key_get("autre").unwrap(), None);
+        assert!(!list()["phones"].as_array().unwrap().iter().any(|p| p["id"] == "autre"));
+        assert!(revoke("autre").is_err());
+        // Le téléphone actif n'a pas bougé.
+        assert_eq!(active_identity().unwrap().cert, kept.cert);
     }
     #[test]
     fn the_certificate_must_match_the_address() {

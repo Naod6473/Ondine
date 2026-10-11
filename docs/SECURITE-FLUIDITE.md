@@ -63,10 +63,11 @@ de l'installateur restent à effectuer. L'aperçu navigateur ne les remplace pas
 | Correction | Comportement obtenu |
 | --- | --- |
 | Pastille des onglets | Elle reprend sa vraie largeur à chaque image au lieu d'être étirée : les bouts arrondis et le liseré gardent leur forme, et les points de l'assistant restent ronds. |
-| Certificat du téléphone | L'autorité d'Ondine porte des contraintes de nom : elle ne vaut que pour 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 (et 127.0.0.0/8 pour les tests), sans aucun nom de domaine. Même avec sa clé, personne ne peut imiter un site d'Internet. Une autorité créée avant cette limite est remplacée : refaire « Préparer mon téléphone ». |
+| Certificat du téléphone | L'autorité d'Ondine porte des contraintes de nom : elle ne vaut que pour 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 (et 127.0.0.0/8 pour les tests), sans aucun nom de domaine. Même avec sa clé, personne ne peut imiter un site d'Internet. |
+| Page Téléphones | Une page **Réglages → Téléphones**, toujours visible (même en mode Simple), liste les téléphones appairés : nom, date de préparation, date du téléchargement du certificat, fin de validité, empreinte. Chaque téléphone a **sa propre autorité** : « Révoquer » efface sa clé privée, Ondine ne peut plus produire un certificat qu'il accepte, et les autres téléphones continuent. « Utiliser ce téléphone » choisit celui de l'Étagère et de la télécommande, qui affichent son nom. Les clés sont rangées une par téléphone dans le Gestionnaire d'identifiants (`phone-tls-<id>`) ; la partie publique est dans `phones.json`. L'ancienne autorité unique est effacée : il faut ajouter de nouveau son téléphone. |
 | Accès aux outils de Parler à Ondine | Tant que « fileTools » ou « pcTools » n'est pas choisi, le premier appel d'un outil affiche une carte « Autoriser / Refuser » ; le choix est enregistré et modifiable dans les réglages. Un refus explicite retire les outils. Les personnes qui n'avaient jamais touché ces réglages sont donc interrogées au lieu de perdre les outils sans prévenir. |
 | Accords à chaque action | Les petites actions locales (volume, son, luminosité, mode sombre, musique, minuteur, note, expression) redeviennent immédiates. Partager une information du PC avec l'IA, lire ou créer un fichier, ouvrir une application ou un site, l'Étagère, le Wi-Fi et le Bluetooth demandent toujours un accord. Une fois l'accès aux fichiers autorisé, la recherche par le nom est immédiate (les noms partent, jamais le contenu). |
-| Préparer le téléphone | Le bouton « Première connexion » de l'Étagère et de la télécommande ouvre les réglages sur la page Confidentialité. |
+| Préparer le téléphone | Le bouton « Première connexion » de l'Étagère et de la télécommande ouvre les réglages sur la page Téléphones, même si la fenêtre des réglages était déjà ouverte en arrière-plan. |
 | Points mineurs | Activer le profil déjà actif n'écrit plus le fichier de réglages. Le petit serveur du certificat ne laisse plus une connexion lente l'occuper plus de 5 s. Changer son prénom rafraîchit à nouveau les vues des modules. |
 
 ## Inventaire de la première passe, conservé en 1.2.3
@@ -92,8 +93,8 @@ de l'installateur restent à effectuer. L'aperçu navigateur ne les remplace pas
 Le navigateur mobile reste le client du partage et de la télécommande. Les
 deux utilisent HTTPS, sans repli vers HTTP pour les fichiers ou les actions.
 
-La première connexion se prépare dans **Réglages → Confidentialité → Préparer
-mon téléphone**. Ondine fournit un QR pour télécharger le certificat public
+La première connexion se prépare dans **Réglages → Téléphones → Ajouter un
+téléphone**. Ondine fournit un QR pour télécharger le certificat public
 de ce PC. Comparer son nom et son empreinte avec les détails du certificat sur
 le téléphone avant de l'installer. Le guide distingue Android et iPhone ; le
 profil iPhone contient uniquement le certificat. Revenir ensuite dans
@@ -104,7 +105,8 @@ minutes et se ferme après un téléchargement. Son intégrité est vérifiée p
 la comparaison de l'empreinte sur les deux appareils. La clé privée reste dans
 le Gestionnaire d'identifiants Windows, hors des clés exposées à l'interface
 et des exports. L'autorité dure deux ans ; les certificats de session durent
-au plus sept jours. L'expiration demande un nouvel appairage.
+au plus sept jours. L'expiration demande un nouvel appairage. Révoquer un téléphone efface la
+clé de son autorité : il faut aussi retirer le certificat du téléphone.
 
 Installer une autorité ajoute une confiance sur le téléphone. N'utiliser cette
 fonction qu'avec son propre PC et retirer l'autorité si le PC est compromis,

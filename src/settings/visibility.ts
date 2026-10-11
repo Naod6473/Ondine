@@ -41,6 +41,7 @@ export const ISLAND_ESSENTIALS: Record<string, string[] | typeof WHOLE_PAGE> = {
   rules: WHOLE_PAGE,
   profiles: ["Profil actif"],
   privacy: WHOLE_PAGE,
+  phones: WHOLE_PAGE,
   credentials: WHOLE_PAGE,
   backup: WHOLE_PAGE,
   updates: WHOLE_PAGE,

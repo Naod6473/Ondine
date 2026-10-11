@@ -1,6 +1,9 @@
 // Les commandes de l'application passent aussi par les capacités Tauri.
 const COMMANDS: &[&str] = &[
     "phone_certificate_setup",
+    "phone_list",
+    "phone_revoke",
+    "phone_activate",
     "boot",
     "settings_patch",
     "settings_export",

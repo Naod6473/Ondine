@@ -170,7 +170,7 @@ impl Remote {
         }
         // Ni l'adresse ni le jeton dans le journal.
         log::info("télécommande : serveur ouvert sur le réseau local");
-        let value = json!({ "url": url, "qr": qr, "paired": false, "idleMinutes": IDLE_STOP.as_secs() / 60 });
+        let value = json!({ "url": url, "qr": qr, "paired": false, "idleMinutes": IDLE_STOP.as_secs() / 60, "phone": phone_tls::active_name() });
         *self.current.locked() = Some(Session { url, qr, stop, finished, paired });
         Ok(value)
     }

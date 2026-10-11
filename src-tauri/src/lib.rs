@@ -214,9 +214,29 @@ fn privacy_check_folder(path: String) -> Result<String, String> {
     privacy::check_folder(&path)
 }
 
+/// Ajoute un téléphone (sans `id`) ou remontre le QR code d'un téléphone déjà
+/// préparé (`id`). Voir Réglages → Téléphones.
 #[tauri::command]
-async fn phone_certificate_setup() -> Result<Value, String> {
-    tauri::async_runtime::spawn_blocking(services::phone_tls::setup).await.map_err(|e| e.to_string())?
+async fn phone_certificate_setup(id: Option<String>, name: Option<String>) -> Result<Value, String> {
+    tauri::async_runtime::spawn_blocking(move || services::phone_tls::setup(id, name)).await.map_err(|e| e.to_string())?
+}
+
+/// Les téléphones préparés (partie publique seulement).
+#[tauri::command]
+fn phone_list() -> Value {
+    services::phone_tls::list()
+}
+
+/// Révoque un téléphone : sa clé est effacée pour de bon.
+#[tauri::command]
+fn phone_revoke(id: String) -> Result<(), String> {
+    services::phone_tls::revoke(&id)
+}
+
+/// Le téléphone pour lequel l'Étagère et la télécommande ouvrent leur lien.
+#[tauri::command]
+fn phone_activate(id: String) -> Result<(), String> {
+    services::phone_tls::activate(&id)
 }
 
 /// Boîte « Choisir un dossier » de Windows. Renvoie None si on annule.
@@ -662,6 +682,9 @@ pub fn run() {
             apps_detect,
             privacy_check_folder,
             phone_certificate_setup,
+            phone_list,
+            phone_revoke,
+            phone_activate,
             dialog_pick_folder,
             dialog_pick_file,
             island_set_collapsed,

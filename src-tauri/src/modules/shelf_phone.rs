@@ -152,6 +152,8 @@ fn status_json(id: u64, share: &Share, qr: &str) -> Value {
         "name": share.name,
         "size": share.size,
         "seconds": share.seconds_left(),
+        // Le téléphone dont le certificat sert (Réglages → Téléphones).
+        "phone": phone_tls::active_name(),
     })
 }
 

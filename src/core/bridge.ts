@@ -80,8 +80,37 @@ export interface UpdateInfo {
   notes: string | null;
 }
 
+/** Le QR code qui fait télécharger le certificat d'un téléphone. */
+export interface PhoneSetup {
+  id: string;
+  /** Le nom choisi pour le téléphone. */
+  phone: string;
+  url: string;
+  qr: string;
+  fingerprint: string;
+  /** Le nom de l'autorité, celui que le téléphone affiche. */
+  name: string;
+  seconds: number;
+}
+
+/** Un téléphone appairé (partie publique seulement). Dates en secondes. */
+export interface PhoneInfo {
+  id: string;
+  name: string;
+  authority: string;
+  created: number;
+  installed: number | null;
+  expires: number;
+  fingerprint: string;
+  active: boolean;
+}
+
 export const Bridge = {
-  phoneCertificateSetup: () => callOrThrow<{ url: string; qr: string; fingerprint: string; name: string; seconds: number }>("phone_certificate_setup"),
+  // Réglages → Téléphones (src-tauri/src/services/phone_tls.rs).
+  phoneCertificateSetup: (id?: string, name?: string) => callOrThrow<PhoneSetup>("phone_certificate_setup", { id: id ?? null, name: name ?? null }),
+  phoneList: () => callOrThrow<{ phones: PhoneInfo[] }>("phone_list"),
+  phoneRevoke: (id: string) => callOrThrow<void>("phone_revoke", { id }),
+  phoneActivate: (id: string) => callOrThrow<void>("phone_activate", { id }),
   boot: () => call<BootInfo>("boot"),
 
   // Réglages

@@ -43,7 +43,7 @@ import { mascotPodium, type Podium } from "./podium";
 import { aboutGroup } from "./about";
 import { askclaudeGroups } from "./askclaude-page";
 import { perfGroup } from "./perf-group";
-import { phoneCertificate } from "./phone-certificate";
+import { phonesPage } from "./phone-certificate";
 import { startPerf } from "../core/perf";
 import { applyMode, hiddenByMode, modeSwitch } from "./mode";
 import { isHidden, modeOf, moduleEssentialKeys, pageEssentials, WHOLE_PAGE, type SettingsMode } from "./visibility";
@@ -304,6 +304,15 @@ const SYSTEM_PAGES: Page[] = [
     render: privacy,
   },
   {
+    id: "phones",
+    group: "Sécurité et système",
+    icon: "📱",
+    label: "Téléphones",
+    sub: "Les téléphones appairés pour l'Étagère et la télécommande.",
+    keywords: ["Téléphone", "Appairer", "Révoquer", "Certificat", "QR code", "Ajouter un téléphone"],
+    render: phonesPage,
+  },
+  {
     id: "credentials",
     group: "Sécurité et système",
     icon: "🔑",
@@ -412,6 +421,9 @@ const app = document.getElementById("app")!;
 const nav = el("nav", { class: "sidebar", "aria-label": "Pages des réglages" });
 const content = el("main", { class: "content" });
 
+/** La page est construite : on peut changer de page (followGoto). */
+let started = false;
+
 async function start() {
   const boot = await Bridge.boot();
   appVersion = boot?.version ?? "";
@@ -424,6 +436,7 @@ async function start() {
   await bus.connect();
   try {
     current = localStorage.getItem("settings.page") ?? current;
+    localStorage.removeItem("settings.goto");
   } catch {
     // stockage indisponible : on démarre sur « Général »
   }
@@ -2056,7 +2069,12 @@ function treasureBook(ids: string[]): HTMLElement {
 }
 
 function privacy(main: HTMLElement) {
-  main.append(phoneCertificate());
+  main.append(
+    group("Téléphones", [wideRow(null, el("div", {},
+      el("p", {}, "Les téléphones qui ouvrent l'Étagère ou la télécommande ont chacun leur certificat. Vous pouvez les voir et les révoquer dans la page Téléphones."),
+      el("button", { type: "button", class: "btn", onclick: () => go("phones") }, "Voir les téléphones"),
+    ))]),
+  );
   const s = settingsStore.current;
   const rows: HTMLElement[] = s.privacy.excludedFolders.map((folder) =>
     row(
@@ -2196,4 +2214,31 @@ function backup(main: HTMLElement) {
   );
 }
 
-void start();
+/**
+ * Une autre fenêtre (l'île) demande une page : « settings.goto ». La fenêtre de
+ * réglages est souvent déjà ouverte et seulement cachée, elle ne relirait pas
+ * « settings.page » : on regarde quand elle revient et quand le stockage change.
+ */
+function followGoto() {
+  if (!started) return;
+  let target: string | null = null;
+  try {
+    target = localStorage.getItem("settings.goto");
+    if (target) localStorage.removeItem("settings.goto");
+  } catch {
+    // Stockage indisponible : on reste sur la page actuelle.
+  }
+  if (target && allPages().some((p) => p.id === target)) go(target);
+}
+window.addEventListener("storage", (e) => {
+  if (e.key === "settings.goto" && e.newValue) followGoto();
+});
+window.addEventListener("focus", followGoto);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) followGoto();
+});
+
+void start().then(() => {
+  started = true;
+  followGoto();
+});

@@ -3314,6 +3314,17 @@ body[data-perf="eco"] .gh-today.gh-zero {
   margin: 0;
   overflow-wrap: anywhere;
 }
+/* La première utilisation des outils : une ligne par accès à choisir. */
+.ask-grant {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ask-grant-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 .ask-outgoing {
   padding: 8px 10px;
   border-radius: 11px;

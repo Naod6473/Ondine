@@ -574,6 +574,49 @@ function doneText(what: string, value: string): string {
   }
 }
 
+/** Les outils dont l'accès n'a encore été ni autorisé ni refusé. */
+function toolsNotChosen(): ("fileTools" | "pcTools")[] {
+  const values = settingsStore.current.modules.askclaude?.values ?? {};
+  return (["fileTools", "pcTools"] as const).filter((key) => typeof values[key] !== "boolean");
+}
+
+/** Enregistre votre choix pour un outil (« fileTools » ou « pcTools »). */
+async function chooseTools(key: "fileTools" | "pcTools", allow: boolean) {
+  await settingsStore.update((s) => {
+    const module = (s.modules.askclaude ??= { enabled: true, values: {} });
+    module.values = { ...module.values, [key]: allow };
+  });
+}
+
+/** La carte « Autoriser / Refuser » de la première utilisation. */
+function grantPanel(api: ModuleApi, keys: ("fileTools" | "pcTools")[], redraw: () => void): HTMLElement {
+  const row = (key: "fileTools" | "pcTools") => {
+    const files = key === "fileTools";
+    return el(
+      "div",
+      { class: "ask-grant-row" },
+      el("p", { class: "ask-confirm-title" }, files
+        ? "Ondine a besoin de votre autorisation pour utiliser vos fichiers."
+        : "Ondine a besoin de votre autorisation pour agir sur le PC."),
+      el("small", { class: "muted" }, files
+        ? "Elle pourra chercher vos fichiers par leur nom, puis vous demandera avant de lire ou de créer un fichier. Les dossiers exclus restent intouchables."
+        : "Elle pourra régler le son, la luminosité, la musique, un minuteur ou une note, et vous demandera avant de partager une information ou d'ouvrir quelque chose."),
+      el(
+        "div",
+        { class: "btn-row" },
+        el("button", { class: "btn small primary", onclick: api.handler(async () => { await chooseTools(key, true); redraw(); }) }, "Autoriser"),
+        el("button", { class: "btn small", onclick: api.handler(async () => { await chooseTools(key, false); redraw(); }) }, "Refuser"),
+      ),
+    );
+  };
+  return el(
+    "div",
+    { class: "ask-bubble ondine ask-confirm ask-grant" },
+    ...keys.map(row),
+    el("small", { class: "muted" }, "Votre choix est gardé. Vous pourrez le changer dans les réglages de Parler à Ondine."),
+  );
+}
+
 /** Une action qui attend votre accord, à l'infinitif. */
 function askText(what: string, value: string): string {
   switch (what) {
@@ -824,6 +867,11 @@ export const askclaude: IslandModule = {
             ),
           );
         }
+
+        // Première utilisation : autoriser ou refuser l'accès aux outils, une fois
+        // pour toutes (le choix se change ensuite dans les réglages du module).
+        const unset = toolsNotChosen();
+        if (unset.length && !state.pending) parts.push(grantPanel(api, unset, redraw));
 
         // La conversation. Le premier mot d'Ondine est écrit ici : il ne coûte rien.
         list = el(

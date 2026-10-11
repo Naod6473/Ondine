@@ -51,6 +51,9 @@
     "allow-bug-report-open",
     "allow-self-usage",
     "allow-perf-state",
-    "allow-phone-certificate-setup"
+    "allow-phone-certificate-setup",
+    "allow-phone-list",
+    "allow-phone-revoke",
+    "allow-phone-activate"
   ]
 }
