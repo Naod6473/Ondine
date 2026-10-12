@@ -857,6 +857,9 @@ hours, or by Wi-Fi network name.
 ## Privacy and security
 
 - **No telemetry**: no analytics, no crash reports, no account.
+- The **website** [ondine.pissits.com](https://ondine.pissits.com) (not the app)
+  counts its visits with [Umami](https://umami.is), hosted on stats.pissits.com:
+  anonymous statistics, no cookies.
 - The only automatic connection: once a day, Ondine asks GitHub whether a new
   version exists (can be turned off). Everything else (Talk to Ondine, iCal links,
   weather, public IP, ping…) only happens when you enable or request it. The
