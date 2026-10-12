@@ -902,6 +902,9 @@ tout seul**, selon les jours et les heures, ou le nom du Wi-Fi.
 ## Vie privée et sécurité
 
 - **Aucune télémétrie** : pas de statistiques, pas de rapport de plantage, pas de compte.
+- Le **site** [ondine.pissits.com](https://ondine.pissits.com) (pas l'appli) compte
+  ses visites avec [Umami](https://umami.is), hébergé sur stats.pissits.com :
+  statistiques anonymes, sans cookie.
 - La seule connexion automatique : une fois par jour, Ondine demande à GitHub
   s'il existe une nouvelle version (désactivable). Tout le reste (Parler à
   Ondine, liens iCal, météo, IP publique, ping…) n'a lieu que si vous l'activez
