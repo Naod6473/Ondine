@@ -324,14 +324,15 @@ Dans l'onglet 🤖, ouvre « Brancher Claude Code, Codex ou Gemini ».
 
 ### 3.3 ✉️ Mail (prototype, désactivé par défaut)
 
-Il faut d'abord un client OAuth à vous : pour Outlook, l'« ID d'application
-(client) » d'une inscription d'application Azure (comptes personnels et
-professionnels, plateforme « Applications mobiles et de bureau », redirection
-`http://localhost`, flux de clients publics autorisés, autorisations Mail.Read,
-Mail.Send, offline_access, User.Read) ; pour Gmail, un ID client « Application
-de bureau » de Google Cloud (API Gmail activée, écran de consentement en mode
-Test avec votre adresse en utilisateur test) et son code secret.
+Le guide de connexion, avec les liens vers Google et Microsoft :
+[docs/MAIL.md](../MAIL.md). Le plus simple : Gmail avec un mot de passe
+d'application.
 
+0. ☐ Gmail (mot de passe d'application) : adresse et mot de passe saisis dans
+   les réglages → l'onglet montre directement les derniers mails. Une lettre
+   fausse dans le mot de passe : message clair « mot de passe d'application
+   refusé ». Faire ensuite les étapes 5 à 13 avec ce compte (l'envoi passe par
+   smtp.gmail.com, le mail est dans « Messages envoyés »).
 1. ☐ Réglages → Modules → Organisation → Mail : activer, choisir la
    messagerie, coller l'identifiant client (Gmail : le code secret aussi).
 2. ☐ Onglet ✉️ Mail → « Se connecter » : le navigateur ouvre la page de Google

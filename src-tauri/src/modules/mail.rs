@@ -29,6 +29,7 @@ use tauri::{AppHandle, Manager};
 
 use super::askclaude_providers::{self as providers, Attachment as AiDoc, Request, Turn};
 use super::mail_api::{self as api, Attachment, Kind, Message, Outgoing, Summary};
+use super::mail_imap::{self as imap, Login};
 use super::mail_oauth as oauth;
 use super::{ModuleContext, RustModule};
 use crate::services::{credentials, log};
@@ -89,15 +90,18 @@ impl RustModule for Mail {
             }
             "disconnect" => {
                 let kind = kind(ctx);
-                credentials::mail_token_delete(kind.id())?;
+                if kind == Kind::GmailPass {
+                    credentials::delete(credentials::MAIL_GMAIL_PASSWORD)?;
+                } else {
+                    credentials::mail_token_delete(kind.id())?;
+                }
                 *self.state.locked() = State::default();
                 ctx.log_info(format!("compte {} déconnecté", kind.label()));
                 ctx.emit("mail.changed", json!({}));
                 Ok(status(ctx, &self.state))
             }
             "list" => {
-                let (kind, token) = access(ctx, &self.state)?;
-                let items = api::list(kind, &token).inspect_err(|e| self.state.locked().error = Some(e.clone()))?;
+                let items = fetch_list(ctx, &self.state).inspect_err(|e| self.state.locked().error = Some(e.clone()))?;
                 let mut s = self.state.locked();
                 s.error = None;
                 remember(&mut s, &items);
@@ -119,9 +123,7 @@ impl RustModule for Mail {
                     Some((pid, out)) if pid == id => out,
                     _ => return Err("cet envoi n'est plus en attente : préparez-le de nouveau".into()),
                 };
-                let (kind, token) = access(ctx, &self.state)?;
-                let from = self.state.locked().account.clone();
-                api::send(kind, &token, &from, &out)?;
+                deliver(ctx, &self.state, &out)?;
                 ctx.log_info(format!("mail envoyé ({} destinataire(s), pièce jointe : {})", out.to.len(), out.attachment.is_some()));
                 Ok(json!({ "ok": true }))
             }
@@ -155,18 +157,99 @@ fn poll_every(ctx: &ModuleContext) -> Duration {
     Duration::from_secs(min * 60)
 }
 
+/// L'adresse Gmail (connexion par mot de passe d'application).
+fn gmail_address(ctx: &ModuleContext) -> String {
+    ctx.settings().get("gmailAddress").and_then(Value::as_str).unwrap_or("").trim().to_string()
+}
+
+/// Le compte est-il connecté ? (Gmail par mot de passe : adresse et mot de
+/// passe présents ; sinon : un jeton de renouvellement rangé.)
+fn connected(ctx: &ModuleContext, kind: Kind) -> bool {
+    match kind {
+        Kind::GmailPass => api::valid_address(&gmail_address(ctx)) && credentials::exists(credentials::MAIL_GMAIL_PASSWORD),
+        _ => credentials::mail_token_get(kind.id()).is_some(),
+    }
+}
+
+/// L'adresse et le mot de passe d'application de Gmail.
+fn with_login<R>(ctx: &ModuleContext, f: impl FnOnce(&Login) -> Result<R, String>) -> Result<R, String> {
+    let address = gmail_address(ctx);
+    if !api::valid_address(&address) {
+        return Err("indiquez votre adresse Gmail dans les réglages du module Mail".into());
+    }
+    let password = ctx
+        .credential(credentials::MAIL_GMAIL_PASSWORD)?
+        .ok_or("ajoutez le mot de passe d'application Gmail dans les réglages du module Mail")?;
+    f(&Login { address: &address, password: &password })
+}
+
+/// Oublie l'état si le fournisseur a changé dans les réglages.
+fn sync_kind(state: &Mutex<State>, kind: Kind) {
+    let mut s = state.locked();
+    if s.kind != Some(kind) {
+        *s = State { kind: Some(kind), ..State::default() };
+    }
+}
+
+/// Les derniers mails, par le bon chemin (IMAP ou API).
+fn fetch_list(ctx: &ModuleContext, state: &Mutex<State>) -> Result<Vec<Summary>, String> {
+    match kind(ctx) {
+        Kind::GmailPass => {
+            sync_kind(state, Kind::GmailPass);
+            with_login(ctx, imap::list)
+        }
+        _ => {
+            let (kind, token) = access(ctx, state)?;
+            api::list(kind, &token)
+        }
+    }
+}
+
+fn fetch_message(ctx: &ModuleContext, state: &Mutex<State>, id: &str) -> Result<Message, String> {
+    match kind(ctx) {
+        Kind::GmailPass => {
+            sync_kind(state, Kind::GmailPass);
+            with_login(ctx, |l| imap::message(l, id))
+        }
+        _ => {
+            let (kind, token) = access(ctx, state)?;
+            api::message(kind, &token, id)
+        }
+    }
+}
+
+fn deliver(ctx: &ModuleContext, state: &Mutex<State>, out: &Outgoing) -> Result<(), String> {
+    match kind(ctx) {
+        Kind::GmailPass => with_login(ctx, |l| imap::send(l, out)),
+        _ => {
+            let (kind, token) = access(ctx, state)?;
+            let from = state.locked().account.clone();
+            api::send(kind, &token, &from, out)
+        }
+    }
+}
+
 fn status(ctx: &ModuleContext, state: &Mutex<State>) -> Value {
     let kind = kind(ctx);
     let id = client_id(ctx, kind);
+    let connected = connected(ctx, kind);
     let s = state.locked();
     let same = s.kind == Some(kind);
+    let (configured, secret_missing, account) = match kind {
+        Kind::GmailPass => (api::valid_address(&gmail_address(ctx)), !credentials::exists(credentials::MAIL_GMAIL_PASSWORD), gmail_address(ctx)),
+        _ => (
+            oauth::valid_client_id(&id),
+            kind == Kind::Gmail && !credentials::exists(credentials::MAIL_GOOGLE_SECRET),
+            if same { s.account.clone() } else { String::new() },
+        ),
+    };
     json!({
         "provider": kind.id(),
         "label": kind.label(),
-        "configured": oauth::valid_client_id(&id),
-        "secretMissing": kind == Kind::Gmail && !credentials::exists(credentials::MAIL_GOOGLE_SECRET),
-        "connected": credentials::mail_token_get(kind.id()).is_some(),
-        "account": if same { s.account.clone() } else { String::new() },
+        "configured": configured,
+        "secretMissing": secret_missing,
+        "connected": connected,
+        "account": account,
         "connecting": s.connecting,
         "error": s.error,
         "destination": kind.destination(),
@@ -188,6 +271,9 @@ fn askclaude_settings(app: &AppHandle) -> Option<Map<String, Value>> {
 /// Un jeton d'accès valable (renouvelé si besoin).
 fn access(ctx: &ModuleContext, state: &Mutex<State>) -> Result<(Kind, String), String> {
     let kind = kind(ctx);
+    if kind == Kind::GmailPass {
+        return Err("Gmail par mot de passe d'application n'a pas de jeton".into());
+    }
     {
         let mut s = state.locked();
         if s.kind != Some(kind) {
@@ -218,6 +304,9 @@ fn access(ctx: &ModuleContext, state: &Mutex<State>) -> Result<(Kind, String), S
 /// Lance la connexion dans un fil (elle attend la personne dans le navigateur).
 fn connect(ctx: &ModuleContext, state: Arc<Mutex<State>>) -> Result<(), String> {
     let kind = kind(ctx);
+    if kind == Kind::GmailPass {
+        return connect_password(ctx, state);
+    }
     let id = client_id(ctx, kind);
     if !oauth::valid_client_id(&id) {
         return Err(format!("collez d'abord l'identifiant client {} dans les réglages du module Mail", kind.label()));
@@ -260,6 +349,40 @@ fn connect(ctx: &ModuleContext, state: Arc<Mutex<State>>) -> Result<(), String> 
     Ok(())
 }
 
+/// Gmail par mot de passe d'application : une connexion d'essai, dans un fil.
+fn connect_password(ctx: &ModuleContext, state: Arc<Mutex<State>>) -> Result<(), String> {
+    let address = gmail_address(ctx);
+    let password = with_login(ctx, |l| Ok(l.password.to_string()))?;
+    {
+        let mut s = state.locked();
+        if s.connecting {
+            return Err("une connexion est déjà en cours".into());
+        }
+        *s = State { kind: Some(Kind::GmailPass), connecting: true, ..State::default() };
+    }
+    let app = ctx.app.clone();
+    std::thread::spawn(move || {
+        let result = catch_unwind(AssertUnwindSafe(|| imap::check(&Login { address: &address, password: &password })))
+            .unwrap_or_else(|_| Err("la connexion a planté".into()));
+        let mut s = state.locked();
+        s.connecting = false;
+        match result {
+            Ok(()) => {
+                s.account = address;
+                s.error = None;
+                log::info("mail : Gmail connecté (mot de passe d'application)");
+            }
+            Err(e) => {
+                log::warn(format!("mail : connexion Gmail échouée : {e}"));
+                s.error = Some(e);
+            }
+        }
+        drop(s);
+        super::with_context(&app, ID, |ctx| ctx.emit("mail.changed", json!({})));
+    });
+    Ok(())
+}
+
 /// Retient les mails vus ; renvoie les nouveaux non lus (après la première liste).
 fn remember(s: &mut State, items: &[Summary]) -> Vec<Summary> {
     let fresh: Vec<Summary> = items.iter().filter(|m| !s.seen.contains(&m.id)).cloned().collect();
@@ -274,8 +397,7 @@ fn read(ctx: &ModuleContext, state: &Mutex<State>, id: &str) -> Result<Message, 
     if let Some(m) = state.locked().open.iter().find(|m| m.id == id) {
         return Ok(m.clone());
     }
-    let (kind, token) = access(ctx, state)?;
-    let m = api::message(kind, &token, id)?;
+    let m = fetch_message(ctx, state, id)?;
     let mut s = state.locked();
     s.open.push(m.clone());
     if s.open.len() > OPEN_KEEP {
@@ -290,14 +412,14 @@ fn tick(app: &AppHandle, state: &Mutex<State>) {
     let _ = super::with_context(app, ID, |ctx| {
         let kind = kind(ctx);
         let notify = ctx.settings().get("notify").and_then(Value::as_bool).unwrap_or(true);
-        if !notify || state.locked().connecting || credentials::mail_token_get(kind.id()).is_none() {
+        if !notify || state.locked().connecting || !connected(ctx, kind) {
             return;
         }
         if state.locked().last_poll.is_some_and(|t| t.elapsed() < poll_every(ctx)) {
             return;
         }
         state.locked().last_poll = Some(Instant::now());
-        let fresh = match access(ctx, state).and_then(|(k, t)| api::list(k, &t)) {
+        let fresh = match fetch_list(ctx, state) {
             Ok(items) => {
                 let mut s = state.locked();
                 s.error = None;

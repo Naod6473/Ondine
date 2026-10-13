@@ -21,7 +21,7 @@ import { el } from "../../island/dom";
 import { fileName, shortDate, sizeText } from "./format";
 
 interface Status {
-  provider: "gmail" | "outlook";
+  provider: "gmail" | "gmailpass" | "outlook";
   label: string;
   configured: boolean;
   secretMissing: boolean;
@@ -438,7 +438,9 @@ export const mail: IslandModule = {
 /** Pas encore de compte : ce qu'il manque, et « Se connecter ». */
 function connectPane(api: ModuleApi, s: Status): HTMLElement[] {
   const out: HTMLElement[] = [el("p", { class: "ask-confirm-title" }, `Connecter ${s.label}`)];
-  if (!s.configured) {
+  if (s.provider === "gmailpass") {
+    out.push(el("p", { class: "muted" }, "Indiquez votre adresse Gmail et un mot de passe d'application dans les réglages du module Mail (⚙). Le guide est sous le champ."));
+  } else if (!s.configured) {
     out.push(el("p", { class: "muted" }, "Collez d'abord l'identifiant client dans les réglages du module Mail (⚙). Les étapes sont décrites sous le champ."));
   } else if (s.secretMissing) {
     out.push(el("p", { class: "muted" }, "Google demande aussi le code secret du client : ajoutez-le dans les réglages du module Mail."));

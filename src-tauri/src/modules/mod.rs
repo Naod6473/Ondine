@@ -37,6 +37,8 @@ mod mail;
 mod mail_api;
 // Sa connexion au compte (OAuth 2, PKCE, retour sur 127.0.0.1).
 mod mail_oauth;
+// Gmail par mot de passe d'application : IMAP et SMTP chiffrés.
+mod mail_imap;
 mod media;
 // Le tempo de la musique (estimation locale à partir du niveau sonore) : la danse de la mascotte.
 mod media_tempo;

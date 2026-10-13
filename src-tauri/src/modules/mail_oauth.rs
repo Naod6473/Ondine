@@ -31,21 +31,21 @@ const LOGIN_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 /// (ni supprimer, ni modifier, ni les contacts).
 fn scopes(kind: Kind) -> &'static str {
     match kind {
-        Kind::Gmail => "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send",
+        Kind::Gmail | Kind::GmailPass => "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send",
         Kind::Outlook => "offline_access User.Read Mail.Read Mail.Send",
     }
 }
 
 fn auth_url(kind: Kind) -> &'static str {
     match kind {
-        Kind::Gmail => "https://accounts.google.com/o/oauth2/v2/auth",
+        Kind::Gmail | Kind::GmailPass => "https://accounts.google.com/o/oauth2/v2/auth",
         Kind::Outlook => "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
     }
 }
 
 fn token_url(kind: Kind) -> &'static str {
     match kind {
-        Kind::Gmail => "https://oauth2.googleapis.com/token",
+        Kind::Gmail | Kind::GmailPass => "https://oauth2.googleapis.com/token",
         Kind::Outlook => "https://login.microsoftonline.com/common/oauth2/v2.0/token",
     }
 }
@@ -54,7 +54,7 @@ fn token_url(kind: Kind) -> &'static str {
 /// le portail Azure, le port est libre) ; Google, l'adresse 127.0.0.1.
 pub fn redirect_uri(kind: Kind, port: u16) -> String {
     match kind {
-        Kind::Gmail => format!("http://127.0.0.1:{port}"),
+        Kind::Gmail | Kind::GmailPass => format!("http://127.0.0.1:{port}"),
         Kind::Outlook => format!("http://localhost:{port}"),
     }
 }

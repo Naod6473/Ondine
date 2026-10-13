@@ -8,7 +8,7 @@
 
 /// Toutes les clés que l'île accepte de stocker. Les autres sont refusées
 /// (sauf celles des agendas en ligne, voir `calendar_key`).
-pub const KNOWN_KEYS: &[&str] = &["anthropic-api-key", OPENAI_KEY, GEMINI_KEY, ICAL_URL, GITHUB_TOKEN, MAIL_GOOGLE_SECRET];
+pub const KNOWN_KEYS: &[&str] = &["anthropic-api-key", OPENAI_KEY, GEMINI_KEY, ICAL_URL, GITHUB_TOKEN, MAIL_GOOGLE_SECRET, MAIL_GMAIL_PASSWORD];
 
 /// Les clés des autres fournisseurs d'IA de « Parler à Ondine »
 /// (modules/askclaude_providers.rs). Facultatives.
@@ -24,6 +24,10 @@ pub const GITHUB_TOKEN: &str = "github-token";
 /// rien de plus que l'identifiant client : il reste quand même hors du dépôt
 /// et des réglages. Facultatif (Outlook n'en a pas besoin).
 pub const MAIL_GOOGLE_SECRET: &str = "mail-google-client-secret";
+
+/// Le mot de passe d'application Gmail du module Mail (connexion IMAP / SMTP,
+/// modules/mail_imap.rs), saisi dans les réglages du module. Facultatif.
+pub const MAIL_GMAIL_PASSWORD: &str = "mail-gmail-app-password";
 
 /// L'adresse secrète iCal d'un agenda en ligne (Google Agenda…) : c'est un
 /// mot de passe déguisé (qui l'a peut lire tout l'agenda), donc rangée ici.

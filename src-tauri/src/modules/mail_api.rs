@@ -15,26 +15,34 @@ use serde_json::{json, Value};
 /// Le fournisseur de messagerie.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
+    /// Gmail par l'API Gmail (OAuth, client Google Cloud).
     Gmail,
+    /// Gmail par IMAP / SMTP avec un mot de passe d'application (mail_imap.rs).
+    GmailPass,
     Outlook,
 }
 
 impl Kind {
     pub fn from_id(id: &str) -> Kind {
-        if id == "outlook" { Kind::Outlook } else { Kind::Gmail }
+        match id {
+            "outlook" => Kind::Outlook,
+            "gmailpass" => Kind::GmailPass,
+            _ => Kind::Gmail,
+        }
     }
 
     /// Le nom du jeton rangé dans le Gestionnaire d'identifiants.
     pub fn id(self) -> &'static str {
         match self {
             Kind::Gmail => "gmail",
+            Kind::GmailPass => "gmailpass",
             Kind::Outlook => "outlook",
         }
     }
 
     pub fn label(self) -> &'static str {
         match self {
-            Kind::Gmail => "Gmail",
+            Kind::Gmail | Kind::GmailPass => "Gmail",
             Kind::Outlook => "Outlook",
         }
     }
@@ -43,6 +51,7 @@ impl Kind {
     pub fn destination(self) -> &'static str {
         match self {
             Kind::Gmail => "gmail.googleapis.com",
+            Kind::GmailPass => "imap.gmail.com et smtp.gmail.com",
             Kind::Outlook => "graph.microsoft.com",
         }
     }
@@ -173,12 +182,16 @@ pub fn post_form(url: &str, form: &[(&str, String)]) -> Result<Value, String> {
 
 // ── Les appels ───────────────────────────────────────────────────────────────
 
+/// Gmail par mot de passe d'application passe par mail_imap.rs, jamais par ici.
+const IMAP_ONLY: &str = "Gmail par mot de passe d'application passe par IMAP";
+
 const GMAIL: &str = "https://gmail.googleapis.com/gmail/v1/users/me";
 const GRAPH: &str = "https://graph.microsoft.com/v1.0/me";
 
 /// L'adresse du compte connecté.
 pub fn account(kind: Kind, token: &str) -> Result<String, String> {
     match kind {
+        Kind::GmailPass => Err(IMAP_ONLY.into()),
         Kind::Gmail => Ok(get(&format!("{GMAIL}/profile"), token)?["emailAddress"].as_str().unwrap_or("").to_string()),
         Kind::Outlook => {
             let v = get(&format!("{GRAPH}?$select=mail,userPrincipalName"), token)?;
@@ -190,6 +203,7 @@ pub fn account(kind: Kind, token: &str) -> Result<String, String> {
 /// Les derniers mails de la boîte de réception, du plus récent au plus ancien.
 pub fn list(kind: Kind, token: &str) -> Result<Vec<Summary>, String> {
     match kind {
+        Kind::GmailPass => Err(IMAP_ONLY.into()),
         Kind::Gmail => {
             let ids = get(&format!("{GMAIL}/messages?labelIds=INBOX&maxResults={LIST_SIZE}"), token)?;
             let mut out = Vec::new();
@@ -218,6 +232,7 @@ pub fn message(kind: Kind, token: &str, id: &str) -> Result<Message, String> {
         return Err("identifiant de mail invalide".into());
     }
     match kind {
+        Kind::GmailPass => Err(IMAP_ONLY.into()),
         Kind::Gmail => Ok(gmail_message(&get(&format!("{GMAIL}/messages/{id}?format=full"), token)?)),
         Kind::Outlook => Ok(graph_message(&get(
             &format!("{GRAPH}/messages/{id}?$select=id,subject,from,toRecipients,receivedDateTime,body"),
@@ -229,6 +244,7 @@ pub fn message(kind: Kind, token: &str, id: &str) -> Result<Message, String> {
 /// Envoie (ou répond).
 pub fn send(kind: Kind, token: &str, from: &str, out: &Outgoing) -> Result<(), String> {
     match kind {
+        Kind::GmailPass => Err(IMAP_ONLY.into()),
         Kind::Gmail => {
             let raw = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(mime(from, out));
             let mut body = json!({ "raw": raw });
@@ -371,7 +387,7 @@ pub fn graph_message(v: &Value) -> Message {
 }
 
 /// Coupe à MAX_BODY_CHARS, lignes vides en trop retirées.
-fn clip(text: &str) -> (String, bool) {
+pub fn clip(text: &str) -> (String, bool) {
     let mut out = String::new();
     let mut blank = 0;
     for line in text.replace("\r\n", "\n").lines() {
@@ -495,6 +511,7 @@ pub fn mime(from: &str, out: &Outgoing) -> Vec<u8> {
         m.push_str(&format!("From: {}\r\n", encode_header(from)));
     }
     m.push_str(&format!("To: {}\r\n", out.to.join(", ")));
+    m.push_str(&format!("Date: {}\r\n", chrono::Local::now().to_rfc2822()));
     m.push_str(&format!("Subject: {}\r\n", encode_header(&out.subject)));
     if let Some(r) = out.reply_to.as_ref().filter(|r| !r.message_id.is_empty()) {
         let id = encode_header(&r.message_id);
