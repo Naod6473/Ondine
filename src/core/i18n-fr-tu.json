@@ -310,9 +310,13 @@
 "Montrez le QR code de l'autre PC à la caméra.": "Montre le QR code de l'autre PC à la caméra.",
 "Aucun QR code d'Ondine à l'écran. Affichez-le en grand (partage d'écran, Bureau à distance…) puis réessayez.": "Aucun QR code d'Ondine à l'écran. Affiche-le en grand (partage d'écran, Bureau à distance…) puis réessaie.",
 "le presse-papiers ne contient pas d'image : copiez la capture du QR code": "le presse-papiers ne contient pas d'image : copie la capture du QR code",
-"Quand personne ne touche le PC, un fond sombre couvre l'écran de l'île : Ondine s'y promène au bord d'une eau qui ondule, l'heure au centre. Il se ferme dès que vous bougez la souris ou touchez le clavier. Jamais pendant une présentation, une appli en plein écran ou un appel. Windows se verrouille et éteint l'écran à l'heure prévue, comme d'habitude.": "Quand personne ne touche le PC, un fond sombre couvre l'écran de l'île : Ondine s'y promène au bord d'une eau qui ondule, l'heure au centre. Il se ferme dès que tu bouges la souris ou touches le clavier. Jamais pendant une présentation, une appli en plein écran ou un appel. Windows se verrouille et éteint l'écran à l'heure prévue, comme d'habitude."
+"Quand personne ne touche le PC, un fond sombre couvre l'écran de l'île : Ondine s'y promène au bord d'une eau qui ondule, l'heure au centre. Il se ferme dès que vous bougez la souris ou touchez le clavier. Jamais pendant une présentation, une appli en plein écran ou un appel. Windows se verrouille et éteint l'écran à l'heure prévue, comme d'habitude.": "Quand personne ne touche le PC, un fond sombre couvre l'écran de l'île : Ondine s'y promène au bord d'une eau qui ondule, l'heure au centre. Il se ferme dès que tu bouges la souris ou touches le clavier. Jamais pendant une présentation, une appli en plein écran ou un appel. Windows se verrouille et éteint l'écran à l'heure prévue, comme d'habitude.",
+"Je prépare votre île…": "Je prépare ton île…",
+"Une nouveauté vous attend.": "Une nouveauté t'attend.",
+"Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine vous dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement.": "Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine te dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement."
 },
 "patterns": [
+["^(\\d+) nouveautés vous attendent\\.$", "$1 nouveautés t'attendent."],
 [
 "^L'audio de votre voix partira vers (.+), avec votre clé\\.$",
 "L'audio de ta voix partira vers $1, avec ta clé."

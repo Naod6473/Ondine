@@ -17,6 +17,7 @@ import { startWhatsNew } from "./core/whats-new";
 import { startPerf } from "./core/perf";
 import { startScrollbars } from "./island/scrollbars";
 import { startSetup } from "./core/setup";
+import { startHatch } from "./core/hatch-start";
 import { startSuggestions } from "./core/suggestions";
 import { ALL_MODULES } from "./modules";
 
@@ -46,7 +47,7 @@ async function start() {
     icon: "⚠️", priority: "high", key: "settings-save-error",
   }));
   const registry = new ModuleRegistry(ALL_MODULES, bus, notifications);
-  new Island(document.getElementById("root")!, bus, registry, notifications);
+  const island = new Island(document.getElementById("root")!, bus, registry, notifications);
 
   registry.sync();
   startDemo(bus);
@@ -65,13 +66,17 @@ async function start() {
   bus.emit("app.ready", { version: boot?.version ?? "dev" });
   // Une nouvelle version sur GitHub ? Proposée dans une notification (core/updates.ts).
   startUpdates(notifications);
+  const g = settingsStore.current.general;
+  const firstRun = !!boot && !g.welcomed && g.demo !== true;
+  // Premier lancement ou nouvelle version : l'éclosion de l'île d'abord
+  // (core/hatch-start.ts), puis « Quoi de neuf » ou l'assistant.
+  await startHatch(island, bus, registry, boot?.version ?? null, firstRun);
   // Juste après une mise à jour : « Quoi de neuf » (core/whats-new.ts). Avant
   // l'assistant de premier lancement, qui marque general.welcomed.
   startWhatsNew(bus, notifications, boot?.version ?? null);
   // Premier démarrage (dans l'appli, pas dans le navigateur, hors démo) :
   // l'assistant, dans l'île (core/setup.ts). Réglages → Général le relance.
-  const g = settingsStore.current.general;
-  startSetup(bus, notifications, !!boot && !g.welcomed && g.demo !== true);
+  startSetup(bus, notifications, firstRun);
   // Les propositions d'onglets (bon moment, onglet oublié) : core/suggestions.ts.
   startSuggestions(bus, notifications, registry);
   log.info(`île prête (${boot?.version ?? "navigateur"})`);
