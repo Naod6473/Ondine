@@ -1,5 +1,18 @@
 # Changements · Changelog
 
+## Pas encore publié · Unreleased
+
+- L'éclosion de l'île : au premier lancement et après une mise à jour, une
+  goutte sort du haut de l'écran et s'étire en île, l'île éclate en
+  paillettes, Ondine dit bonjour, les aspire et les souffle dans trois anneaux
+  de ce qui est prêt, puis l'île se replie en mini-île dans un liseré de
+  lumière. Avec ses sons, coupable dans Réglages → Apparence. · Island
+  hatching: on first launch and after an update, a drop comes out of the top
+  of the screen and stretches into the island, which bursts into glitter;
+  Ondine says hello, swallows the glitter and blows it into three rings of
+  what's ready, then the island folds back into the mini island inside a ring
+  of light. With sounds; can be turned off in Settings → Appearance.
+
 ## 1.2.3 · 2026-10-11
 
 - Nouveau style d'île « Bouche d'Ondine » (au choix) : Ondine est suspendue

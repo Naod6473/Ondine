@@ -147,6 +147,10 @@ pub struct IslandPrefs {
     /// Île-bouche : quand Ondine est sur le bureau, l'île part avec elle (sa
     /// fenêtre fait la bouche) ; sinon une bouche vide reste au bord.
     pub mouth_follow: bool,
+    /// L'éclosion de l'île au premier lancement et après une mise à jour
+    /// (src/island/hatch.ts) : une goutte sort du haut de l'écran, s'étire en
+    /// île, Ondine dit bonjour. Oui par défaut.
+    pub hatch: bool,
 }
 
 fn default_motion() -> String {
@@ -272,6 +276,7 @@ impl Default for IslandPrefs {
             size: "normal".into(),
             style: "classic".into(),
             mouth_follow: true,
+            hatch: true,
         }
     }
 }

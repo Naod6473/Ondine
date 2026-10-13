@@ -2638,6 +2638,44 @@ quelque chose à dire, la phrase d'Ondine en haut, la carte « Reprendre », et
 - Réglages → Onglets → Astuces : `island.tips` (oui) et « Revoir les
   astuces » (vide `tipsSeen`).
 
+## L'éclosion de l'île (`src/island/hatch.ts`, `hatch-plan.ts`, `src/core/hatch-start.ts`)
+
+Au premier lancement (avant l'assistant) et après une mise à jour (avant
+« Quoi de neuf »), `main.ts` attend `startHatch` : une animation de 9,2 s à
+vitesse réelle, réglage `island.hatch` (oui par défaut, Réglages → Apparence →
+Animations, avec un bouton « Voir » qui publie `app.hatch`).
+
+- *Le déroulé* (hatch-plan.ts, pur, testé par tests/front/hatch.test.ts) :
+  une goutte sort du haut de l'écran et s'étire en île (ressorts) ; éclat de
+  paillettes (tirage fixe : le même à chaque fois) ; Ondine sort, fait coucou,
+  écrit bonjour ; elle aspire les paillettes en spirale (bouche grande
+  ouverte, elle gonfle), puis les souffle dans trois anneaux : chaque
+  paillette arrive pile quand la courbe de son anneau atteint sa part ; fête ;
+  repli en goutte (l'île s'affine en s'allongeant, puis se rétracte en
+  mini-île, Ondine y glisse en tournant) ; boing et deux respirations ; deux
+  lumières partent des coins du haut et se rejoignent en bas dans une
+  étincelle. Un clic passe au repli.
+- *Le dessin* (hatch.ts) : deux canvas sur toute la fenêtre (derrière et
+  devant Ondine) et, entre les deux, la vraie mascotte gomme
+  (`GumRenderer`, avec ses réglages) dans une case de 120 px déplacée et
+  étirée par `transform` ; ses expressions viennent du moteur (wake, coucou,
+  surpris, eating, parle, celebrate, happy). Seule la bouche grande ouverte
+  de l'aspiration est dessinée par-dessus, comme `drawMouth` de gum-draw.ts.
+  Couleurs de l'île : celles du thème (un thème trop transparent est rendu
+  presque opaque). En Studio, un voile sombre autour de l'île.
+- *Dans l'île* (island.ts, `hatch()`) : `body.hatching` cache la vraie île et
+  son halo ; la fenêtre reste grande (720 × 320, pas de repli en bande
+  pendant ce temps) ; c'est l'éclosion qui envoie le rectangle des clics. À
+  la fin, la vraie île revient en fondu (`body.hatched`).
+- *Jamais* : réglage coupé, Réduire les animations, mode Calme, mode démo,
+  île sur un autre bord que le haut, île-bouche, Ondine sur le bureau.
+- *Les anneaux* (hatch-start.ts) : premier lancement → Onglets, Modules,
+  Batterie (Mascottes sur un PC sans batterie, ou si le module Système ne
+  répond pas en 600 ms) ; mise à jour → Nouveautés (les puces du CHANGELOG),
+  Mascottes, Réglages gardés.
+- *Sons* : `sounds.hatch(cue)` (sounds.ts), aux moments de `soundCues()`.
+- Idée tirée de notch-launch-animation de Bora Kurt (MIT), aucun code repris.
+
 ## Premier lancement (`src/core/setup.ts`, `setup-plan.ts`, `suggestions.ts`, `src/island/setup-panel.ts`)
 
 - **L'assistant** remplace l'ancien mot de bienvenue : au premier démarrage

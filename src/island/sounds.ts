@@ -90,4 +90,35 @@ export const sounds = {
   chomp: () => blip(420, 260, 0.06, 0.45, 0, "triangle"),
   /** Une gerbe de feu d'artifice : un « pof » assourdi. */
   pop: () => blip(140, 60, 0.18, 0.5, 0, "triangle"),
+
+  // ── L'éclosion de l'île (hatch.ts) ──
+
+  /** Un moment de l'éclosion, par son nom (hatch-plan.ts, soundCues). */
+  hatch: (cue: string) => {
+    switch (cue) {
+      case "drop": return blip(220, 440, 0.18, 0.8);
+      case "stretch": return blip(300, 160, 0.22, 0.55);
+      case "burst":
+        blip(180, 720, 0.18, 1);
+        for (let k = 0; k < 5; k++) blip(1400 + k * 260, 1900 + k * 300, 0.09, 0.25, 0.05 + k * 0.045, "triangle");
+        return;
+      case "pop": return blip(420, 860, 0.12, 0.9);
+      case "suck": return blip(180, 900, 1.0, 0.45, 0, "triangle");
+      case "gulp": return blip(500, 260, 0.12, 0.9);
+      case "blow": return blip(900, 250, 0.9, 0.35, 0, "triangle");
+      case "ring0": return blip(523, 534, 0.28, 0.8, 0, "triangle");
+      case "ring1": return blip(659, 672, 0.28, 0.8, 0, "triangle");
+      case "ring2": return blip(784, 800, 0.28, 0.8, 0, "triangle");
+      case "fold": return blip(700, 240, 0.22, 0.65);
+      case "boing":
+        blip(300, 600, 0.1, 0.9);
+        blip(600, 380, 0.14, 0.55, 0.09);
+        return;
+      case "chime":
+        blip(1047, 1047, 0.35, 0.35);
+        blip(1319, 1319, 0.35, 0.35, 0.08);
+        return;
+      case "spark": return blip(1568, 2093, 0.18, 0.4, 0, "triangle");
+    }
+  },
 };

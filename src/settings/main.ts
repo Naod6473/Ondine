@@ -1332,6 +1332,17 @@ function look(main: HTMLElement) {
         segmented(s.island.elasticity ?? "normal", [["soft", "Doux"], ["normal", "Normal"], ["jelly", "Gelée"]], (v) => save((d) => (d.island.elasticity = v as Settings["island"]["elasticity"]))),
         "Doux : l'île se pose sans rebondir. Normal : un petit rebond. Gelée : elle tremblote, se creuse sous vos clics et s'étire comme de la guimauve. Si Windows réduit les animations, rien ne bouge.",
       ),
+      // L'éclosion de l'île au premier lancement et après une mise à jour (src/island/hatch.ts).
+      row(
+        "Éclosion au démarrage",
+        el(
+          "div",
+          { class: "inline" },
+          toggle(s.island.hatch !== false, (v) => save((d) => (d.island.hatch = v)), "Éclosion au démarrage"),
+          el("button", { class: "btn small", onclick: () => bus.emit("app.hatch", { kind: "first" }, "settings") }, "Voir"),
+        ),
+        "Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine vous dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement.",
+      ),
       // Le halo de lumière autour de l'île : ses réglages sont ceux du module « Animations de l'île ».
       row(
         "Halo autour de l'île",

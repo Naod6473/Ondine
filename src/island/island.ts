@@ -6,7 +6,7 @@
 //   island.ts (ici)   dessine l'état, écoute la souris, le clavier, le glisser-déposer
 //   Rust (island/)    place la fenêtre, gère les clics traversants, lit la souris
 
-import { jellyButtons, motionOn, popIn, setStudio, spotlight, staggerIn, tabOut, watchContent } from "./motion";
+import { jellyButtons, motionOn, popIn, setStudio, spotlight, staggerIn, studioOn, tabOut, watchContent } from "./motion";
 import { Bridge, IS_TAURI, onDragDrop, onTauriEvent, type DragDropEvent } from "../core/bridge";
 import type { Bus } from "../core/bus";
 import { logger } from "../core/log";
@@ -42,6 +42,8 @@ import { ACTION_MODULE, CONFIRM_MS, DoubleClick, doubleClickActionOf } from "./m
 import { attachScenes, type Scenes } from "./scenes/scenes";
 import { reducedMotion, TabPill } from "./tab-pill";
 import { Tips } from "./tips";
+import { playHatch, type HatchTexts } from "./hatch";
+import type { Ring } from "./hatch-plan";
 
 const log = logger("island");
 
@@ -65,6 +67,13 @@ const LONG_HOVER_MS = 2500;
 /** Ondine vit sur le bureau (src/pet/) : elle n'est plus dans l'île. */
 function petOn(s: Settings): boolean {
   return s.mascot.enabled && !!s.mascot.pet;
+}
+/** La couleur de l'île pour l'éclosion : un thème trop transparent (Verre) est rendu presque opaque. */
+function solidColor(css: string): string {
+  const m = /rgba?\(([^)]+)\)/.exec(css);
+  if (!m) return css || "#0c0d12";
+  const [r, g, b, a = "1"] = m[1].split(",").map((x) => x.trim());
+  return Number(a) < 0.6 ? `rgba(${r}, ${g}, ${b}, 0.92)` : css;
 }
 /** Ondine vient pendre au bord seulement si personne n'a touché le PC depuis… */
 const PEEK_IDLE_MS = 20_000;
@@ -179,6 +188,8 @@ export class Island {
   private tips = new Tips();
   /** Ondine se déplace dans l'île (scenes/scenes.ts). */
   private scenes: Scenes;
+  /** L'éclosion joue (hatch.ts) : la vraie île est cachée, la fenêtre reste grande. */
+  private hatching = false;
 
   constructor(
     private readonly root: HTMLElement,
@@ -458,7 +469,7 @@ export class Island {
       // fenêtre : quand les ressorts sont posés (render() vient de leur donner
       // la nouvelle forme), ou au plus tard après SETTLE_FALLBACK_MS.
       const collapse = () => {
-        if (token !== this.collapseToken || this.fsm.state !== "hidden") return;
+        if (token !== this.collapseToken || this.fsm.state !== "hidden" || this.hatching) return;
         this.collapseToken++;
         if (this.collapseTimer != null) clearTimeout(this.collapseTimer);
         this.collapseTimer = null;
@@ -1002,15 +1013,58 @@ export class Island {
     });
   }
 
+  /**
+   * L'éclosion peut-elle jouer ? L'île en haut de l'écran (elle sort du haut),
+   * au style classique (pas l'île-bouche) et Ondine dans l'île.
+   */
+  canHatch(): boolean {
+    const s = settingsStore.current;
+    return this.edge() === "top" && islandStyle(s) !== "mouth" && !petOn(s) && !this.forms.away;
+  }
+
+  /** Joue l'éclosion de l'île (hatch.ts), puis rend la main à la vraie île. */
+  async hatch(texts: HatchTexts, rings: Ring[]): Promise<void> {
+    if (this.hatching || !this.canHatch()) return;
+    this.hatching = true;
+    document.body.classList.add("hatching");
+    this.hanger.hide();
+    const cs = getComputedStyle(this.shell);
+    try {
+      await Bridge.islandSetCollapsed(false);
+      await playHatch(this.root, {
+        texts,
+        rings,
+        mascotId: settingsStore.current.mascot.id,
+        islandColor: solidColor(cs.backgroundColor),
+        textColor: cs.color || "#fff",
+        studio: studioOn(),
+        onRect: (x, y, w, h) => void Bridge.islandSetRect(x, y, w, h),
+      });
+    } catch (err) {
+      log.warn(`éclosion interrompue : ${String(err)}`);
+    } finally {
+      this.hatching = false;
+      document.body.classList.remove("hatching");
+      // La vraie île arrive en fondu, là où la mini-île dessinée vient de se poser.
+      document.body.classList.add("hatched");
+      window.setTimeout(() => document.body.classList.remove("hatched"), 450);
+      if (this.fsm.state === "hidden" && !this.hanger.showing) void Bridge.islandSetCollapsed(true);
+      this.jelly.retarget();
+      this.pushRect();
+    }
+  }
+
   /** Ondine arrive au bord (la fenêtre doit être assez grande) ou repart. */
   private onHangChange(on: boolean) {
     if (on) sounds.drop();
-    if (this.fsm.state === "hidden") void Bridge.islandSetCollapsed(!on);
+    if (this.fsm.state === "hidden" && !this.hatching) void Bridge.islandSetCollapsed(!on);
     if (!on) this.endPeekHide();
     requestAnimationFrame(() => this.pushRect());
   }
 
   private pushRect() {
+    // Pendant l'éclosion, c'est elle qui donne le rectangle (hatch.ts).
+    if (this.hatching) return;
     this.forms.reshaped();
     // Île-bouche : l'île et le corps d'Ondine autour (rien quand elle est partie avec Ondine).
     const body = this.forms.hitRect();
