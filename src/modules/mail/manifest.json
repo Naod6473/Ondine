@@ -1,0 +1,124 @@
+{
+  "id": "mail",
+  "name": "Mail",
+  "tip": "Vos derniers mails, un résumé et une réponse proposés par Ondine, et l'envoi d'un mail avec une pièce jointe.",
+  "icon": "✉️",
+  "description": "PROTOTYPE. Les derniers mails de Gmail ou d'Outlook / Office 365 dans l'île, et une notification quand un nouveau mail arrive (expéditeur et objet seulement). Ouvrez un mail pour le lire ; Ondine peut le résumer ou proposer une réponse avec l'IA choisie dans Parler à Ondine. Vous pouvez aussi écrire un mail et joindre un fichier (3 Mo au plus). ENVOIE DU CONTENU SUR INTERNET : la liste des derniers mails est demandée à Google (gmail.googleapis.com) ou à Microsoft (graph.microsoft.com), ou lue par IMAP chez Gmail (imap.gmail.com, envoi par smtp.gmail.com) avec un mot de passe d'application, toutes les quelques minutes, et un mail entier quand vous l'ouvrez. Le mail ouvert part vers l'IA de Parler à Ondine seulement quand vous cliquez sur « Résumer » ou « Proposer une réponse ». Rien n'est envoyé sans votre clic sur « Envoyer », après un aperçu de tout ce qui part. Ondine ne peut ni supprimer, ni déplacer, ni modifier vos mails. La connexion se fait dans votre navigateur ; le jeton du compte (ou le mot de passe d'application) reste dans le Gestionnaire d'identifiants Windows, les mails ne sont jamais écrits sur le disque.",
+  "version": "0.1.0",
+  "permissions": [
+    "network",
+    "credentials",
+    "claude-api",
+    "files"
+  ],
+  "settings": {
+    "version": 1,
+    "fields": [
+      {
+        "key": "provider",
+        "essential": true,
+        "type": "select",
+        "label": "Messagerie",
+        "default": "gmailpass",
+        "options": [
+          {
+            "value": "gmailpass",
+            "label": "Gmail (mot de passe d'application, le plus simple)"
+          },
+          {
+            "value": "gmail",
+            "label": "Gmail (client Google Cloud)"
+          },
+          {
+            "value": "outlook",
+            "label": "Outlook / Office 365"
+          }
+        ],
+        "help": "Le guide pas à pas, avec les liens : github.com/Naod6473/Ondine/blob/main/docs/MAIL.md"
+      },
+      {
+        "key": "gmailAddress",
+        "essential": true,
+        "type": "string",
+        "label": "Adresse Gmail",
+        "help": "Pour « Gmail (mot de passe d'application) ».",
+        "default": "",
+        "maxLength": 254
+      },
+      {
+        "key": "gmailAppPassword",
+        "essential": true,
+        "type": "secret",
+        "label": "Mot de passe d'application Gmail",
+        "help": "16 lettres, à créer sur myaccount.google.com/apppasswords (la validation en deux étapes doit être activée). Ce n'est pas le mot de passe de votre compte. Rangé dans le Gestionnaire d'identifiants Windows.",
+        "credential": "mail-gmail-app-password",
+        "placeholder": "abcd efgh ijkl mnop"
+      },
+      {
+        "key": "microsoftClientId",
+        "type": "string",
+        "label": "Identifiant client Microsoft",
+        "help": "L'« ID d'application (client) » de votre inscription d'application dans le portail Azure (comptes personnels et professionnels, plateforme « Applications mobiles et de bureau », redirection http://localhost, flux de clients publics autorisés ; autorisations Mail.Read, Mail.Send, offline_access, User.Read).",
+        "default": "",
+        "maxLength": 200
+      },
+      {
+        "key": "googleClientId",
+        "type": "string",
+        "label": "Identifiant client Google",
+        "help": "L'ID client OAuth de type « Application de bureau » de votre projet Google Cloud (API Gmail activée). Son code secret va dans le champ suivant.",
+        "default": "",
+        "maxLength": 200
+      },
+      {
+        "key": "googleClientSecret",
+        "type": "secret",
+        "label": "Code secret du client Google",
+        "help": "Rangé dans le Gestionnaire d'identifiants Windows, jamais dans les réglages. Outlook n'en a pas besoin.",
+        "credential": "mail-google-client-secret"
+      },
+      {
+        "key": "notify",
+        "type": "boolean",
+        "label": "Prévenir quand un mail arrive",
+        "help": "Une notification avec l'expéditeur et l'objet. Le texte du mail n'est lu que si vous l'ouvrez.",
+        "default": true
+      },
+      {
+        "key": "pollMinutes",
+        "type": "number",
+        "label": "Regarder les nouveaux mails toutes les (minutes)",
+        "default": 2,
+        "min": 1,
+        "max": 60,
+        "step": 1
+      }
+    ]
+  },
+  "views": [
+    "expanded",
+    "drop"
+  ],
+  "commands": [
+    "status",
+    "connect",
+    "disconnect",
+    "list",
+    "read",
+    "summarize",
+    "draft",
+    "prepare",
+    "send",
+    "cancel"
+  ],
+  "events": {
+    "emits": [
+      "mail.new",
+      "mail.changed"
+    ],
+    "listens": [
+      "mail.new",
+      "mail.changed"
+    ]
+  }
+}

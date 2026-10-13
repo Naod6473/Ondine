@@ -8,7 +8,7 @@
 
 /// Toutes les clés que l'île accepte de stocker. Les autres sont refusées
 /// (sauf celles des agendas en ligne, voir `calendar_key`).
-pub const KNOWN_KEYS: &[&str] = &["anthropic-api-key", OPENAI_KEY, GEMINI_KEY, ICAL_URL, GITHUB_TOKEN];
+pub const KNOWN_KEYS: &[&str] = &["anthropic-api-key", OPENAI_KEY, GEMINI_KEY, ICAL_URL, GITHUB_TOKEN, MAIL_GOOGLE_SECRET, MAIL_GMAIL_PASSWORD];
 
 /// Les clés des autres fournisseurs d'IA de « Parler à Ondine »
 /// (modules/askclaude_providers.rs). Facultatives.
@@ -18,6 +18,16 @@ pub const GEMINI_KEY: &str = "gemini-api-key";
 /// Le jeton GitHub (lecture seule, read:user) du calendrier de contributions
 /// de l'onglet Agents IA (modules/agents_github.rs). Facultatif.
 pub const GITHUB_TOKEN: &str = "github-token";
+
+/// Le « code secret » du client OAuth Google du module Mail (modules/mail.rs).
+/// Google le demande pour une « application de bureau », même s'il ne protège
+/// rien de plus que l'identifiant client : il reste quand même hors du dépôt
+/// et des réglages. Facultatif (Outlook n'en a pas besoin).
+pub const MAIL_GOOGLE_SECRET: &str = "mail-google-client-secret";
+
+/// Le mot de passe d'application Gmail du module Mail (connexion IMAP / SMTP,
+/// modules/mail_imap.rs), saisi dans les réglages du module. Facultatif.
+pub const MAIL_GMAIL_PASSWORD: &str = "mail-gmail-app-password";
 
 /// L'adresse secrète iCal d'un agenda en ligne (Google Agenda…) : c'est un
 /// mot de passe déguisé (qui l'a peut lire tout l'agenda), donc rangée ici.
@@ -177,6 +187,53 @@ pub fn team_chat_key_delete() -> Result<(), String> {
     store::delete(TEAM_CHAT)
 }
 
+/// Le jeton de renouvellement OAuth du module Mail (« gmail » ou « outlook »).
+/// Comme la clé Équipe : hors de KNOWN_KEYS, le front ne peut ni le lire, ni
+/// l'écrire. Un jeton Microsoft dépasse souvent la taille d'un identifiant
+/// Windows (2 560 octets) : il est rangé en morceaux de 1 000 caractères,
+/// « mail-token-<compte>-0 », « -1 »… (8 au plus).
+const MAIL_TOKEN_PARTS: usize = 8;
+const MAIL_TOKEN_CHUNK: usize = 1000;
+
+fn mail_token_key(account: &str, part: usize) -> String {
+    format!("mail-token-{account}-{part}")
+}
+
+pub fn mail_token_get(account: &str) -> Option<String> {
+    let mut token = String::new();
+    for part in 0..MAIL_TOKEN_PARTS {
+        match store::get(&mail_token_key(account, part)) {
+            Some(chunk) => token.push_str(&chunk),
+            None => break,
+        }
+    }
+    (!token.is_empty()).then_some(token)
+}
+
+pub fn mail_token_set(account: &str, token: &str) -> Result<(), String> {
+    let chunks = mail_token_chunks(token)?;
+    mail_token_delete(account)?;
+    for (part, chunk) in chunks.iter().enumerate() {
+        store::set(&mail_token_key(account, part), chunk)?;
+    }
+    Ok(())
+}
+
+pub fn mail_token_delete(account: &str) -> Result<(), String> {
+    for part in 0..MAIL_TOKEN_PARTS {
+        store::delete(&mail_token_key(account, part))?;
+    }
+    Ok(())
+}
+
+/// Le jeton coupé en morceaux (ASCII : un caractère = un octet).
+fn mail_token_chunks(token: &str) -> Result<Vec<String>, String> {
+    if token.is_empty() || !token.is_ascii() || token.len() > MAIL_TOKEN_PARTS * MAIL_TOKEN_CHUNK {
+        return Err("jeton de messagerie inattendu".into());
+    }
+    Ok(token.as_bytes().chunks(MAIL_TOKEN_CHUNK).map(|c| String::from_utf8_lossy(c).into_owned()).collect())
+}
+
 /// La clé existe-t-elle ? (la seule question que le front peut poser)
 pub fn exists(key: &str) -> bool {
     check_key(key).is_ok() && store::get(key).is_some()
@@ -229,6 +286,20 @@ pub fn delete(key: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mail_token_is_cut_in_parts() {
+        let long = "a".repeat(2500);
+        let parts = mail_token_chunks(&long).unwrap();
+        assert_eq!(parts.len(), 3);
+        assert_eq!(parts.concat(), long);
+        assert!(mail_token_chunks("").is_err());
+        assert!(mail_token_chunks("é").is_err());
+        assert!(mail_token_chunks(&"a".repeat(8001)).is_err());
+        // Le front ne peut ni lire ni écrire ce jeton.
+        assert!(check_key("mail-token-gmail-0").is_err());
+        assert!(check_key(MAIL_GOOGLE_SECRET).is_ok());
+    }
 
     #[test]
     fn ical_url_must_be_https() {

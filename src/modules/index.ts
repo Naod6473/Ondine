@@ -19,6 +19,7 @@ import { remote } from "./remote";
 import { nettools } from "./nettools";
 import { agents } from "./agents";
 import { askclaude } from "./askclaude";
+import { mail } from "./mail";
 import { terminal } from "./terminal";
 import { timerModule } from "./timer";
 import { weather } from "./weather";
@@ -31,5 +32,5 @@ import { screensaver } from "./screensaver";
 // L'Accueil (home) en premier, puis « Parler à Ondine » (askclaude) : les deux
 // premiers onglets au premier lancement. Pour une île déjà rangée, l'Accueil
 // se met en tête sans bousculer le reste (LEAD_TABS, src/core/tab-order.ts).
-export const ALL_MODULES: IslandModule[] = [home, askclaude, shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, team, agents, launcher, rules, media, controls, pauses, weather, weekly, halos, windowlife, screensaver];
+export const ALL_MODULES: IslandModule[] = [home, askclaude, mail, shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, team, agents, launcher, rules, media, controls, pauses, weather, weekly, halos, windowlife, screensaver];
 

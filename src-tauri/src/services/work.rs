@@ -50,6 +50,8 @@ fn is_slow(module: &str, command: &str) -> bool {
         ),
         "team" => matches!(command, "qr_scan" | "qr_frame" | "pair"),
         "agents" | "capture" | "weather" => true,
+        // Mail : réseau (Gmail, Graph) et IA. « connect » rend la main tout de suite.
+        "mail" => matches!(command, "list" | "read" | "summarize" | "draft" | "send"),
         _ => false,
     }
 }

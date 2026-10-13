@@ -5598,3 +5598,132 @@ body.retro .island .btn {
     display: none;
   }
 }
+
+/* ── Mail (prototype) ───────────────────────────────────────────────────── */
+.mail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+.mail-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mail-top small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mail-spacer {
+  flex: 1;
+}
+.mail-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 210px;
+  overflow: auto;
+}
+.mail-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 8px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mail-row:hover,
+.mail-row:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+}
+.mail-from,
+.mail-subject {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mail-subject {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  opacity: 0.75;
+}
+.mail-date {
+  font-size: 11px;
+  opacity: 0.6;
+}
+/* Non lu : l'expéditeur en gras et un petit point devant. */
+.mail-row.unread .mail-from {
+  font-weight: 600;
+}
+.mail-row.unread .mail-from::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #4fb8ff;
+  vertical-align: middle;
+}
+.mail-read,
+.mail-compose,
+.mail-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mail-head {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.mail-body {
+  margin: 0;
+  max-height: 150px;
+  overflow: auto;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  font: inherit;
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.mail-ai {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(124, 196, 255, 0.3);
+  background: rgba(124, 196, 255, 0.08);
+}
+.mail-preview small {
+  white-space: pre-line;
+}
+.mail-text {
+  resize: vertical;
+  min-height: 90px;
+}
+.mail-attach {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+.mail-error {
+  margin: 0;
+  font-size: 12px;
+  color: #ff9b8a;
+  overflow-wrap: anywhere;
+}

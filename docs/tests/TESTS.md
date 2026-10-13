@@ -322,6 +322,49 @@ Dans l'onglet 🤖, ouvre « Brancher Claude Code, Codex ou Gemini ».
 13. ☐ Décoche « Ondine peut agir sur le PC » : elle ne règle plus rien et
     explique comment faire.
 
+### 3.3 ✉️ Mail (prototype, désactivé par défaut)
+
+Le guide de connexion, avec les liens vers Google et Microsoft :
+[docs/MAIL.md](../MAIL.md). Le plus simple : Gmail avec un mot de passe
+d'application.
+
+0. ☐ Gmail (mot de passe d'application) : adresse et mot de passe saisis dans
+   les réglages → l'onglet montre directement les derniers mails. Une lettre
+   fausse dans le mot de passe : message clair « mot de passe d'application
+   refusé ». Faire ensuite les étapes 5 à 13 avec ce compte (l'envoi passe par
+   smtp.gmail.com, le mail est dans « Messages envoyés »).
+1. ☐ Réglages → Modules → Organisation → Mail : activer, choisir la
+   messagerie, coller l'identifiant client (Gmail : le code secret aussi).
+2. ☐ Onglet ✉️ Mail → « Se connecter » : le navigateur ouvre la page de Google
+   ou de Microsoft ; après l'accord, la page dit « Ondine est connectée… » et
+   l'onglet montre vos derniers mails (non lus en gras, avec un point bleu).
+3. ☐ Gestionnaire d'identifiants Windows → Informations d'identification
+   Windows : des entrées `mail-token-gmail-0` (ou `outlook`) existent ; rien
+   dans `%APPDATA%\Ondine\settings.json`.
+4. ☐ Quittez et relancez Ondine : l'onglet montre les mails sans se
+   reconnecter.
+5. ☐ Envoyez-vous un mail depuis un autre compte : en quelques minutes
+   (réglage « Regarder les nouveaux mails toutes les… »), notification
+   « Mail de … » avec l'objet ; « Ouvrir » ouvre ce mail dans l'île.
+6. ☐ Ouvrir un mail HTML (une newsletter) : le texte est lisible, sans balises.
+7. ☐ « ✨ Résumer » : un résumé en quelques phrases (avec la clé de Parler à
+   Ondine) ; la petite ligne dit vers où le mail part.
+8. ☐ « 💬 Proposer une réponse » (avec ou sans consigne) puis « Relire et
+   envoyer » : le brouillon est prérempli, modifiable.
+9. ☐ « ✏️ Écrire » → destinataire, objet, texte, « 📎 Joindre un fichier » →
+   « Voir avant l'envoi » : l'aperçu montre tout (De, À, Objet, pièce jointe et
+   sa taille, texte). « Modifier » revient sans rien envoyer.
+10. ☐ « Envoyer » : notification « Mail envoyé » ; le mail arrive, avec la
+    pièce jointe, et il est dans les éléments envoyés. Une réponse reste dans
+    la même conversation.
+11. ☐ Une pièce jointe de plus de 3 Mo, ou dans un dossier exclu : refusée
+    avec un message clair. Une adresse invalide : refusée.
+12. ☐ Glisser un fichier sur l'île → « Joindre à un mail » : la rédaction
+    s'ouvre avec ce fichier joint.
+13. ☐ ⏏ (Déconnecter) : les entrées `mail-token-…` disparaissent du
+    Gestionnaire d'identifiants, l'onglet propose de se reconnecter.
+14. ☐ Les autres modules (Parler à Ondine surtout) marchent comme avant.
+
 ## 4. 💧 Ondine sur le bureau
 
 1. ☐ Dans l'île ouverte, attrape la mascotte et tire-la hors de l'île : elle

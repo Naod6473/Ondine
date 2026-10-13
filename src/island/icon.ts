@@ -40,6 +40,8 @@ const BY_EMOJI: Record<string, string> = {
   "🎚️": "controls",
   "🤖": "agents",
   "💬": "askclaude",
+  // Mail (prototype) : au trait seulement, l'emoji en couleur.
+  "✉️": "mail",
   "✂️": "capture",
   "📋": "clipboard",
   "🚀": "launcher",

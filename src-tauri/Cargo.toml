@@ -54,6 +54,11 @@ tauri-plugin-global-shortcut = "2"
 # Appeler l'API Claude (Demander à Claude). TLS de Windows (SChannel) et ses
 # certificats racines (ceux d'une entreprise aussi) : pas de code C à compiler.
 ureq = { version = "3", default-features = false, features = ["json", "gzip", "native-tls"] }
+# Mail (Gmail par mot de passe d'application) : IMAP et SMTP chiffrés avec le
+# TLS de Windows (déjà compilé pour ureq), et la lecture des mails reçus
+# (MIME, encodages, pièces) par mail-parser, pur Rust.
+native-tls = "0.2"
+mail-parser = "0.11"
 # Mises à jour automatiques : lit latest.json sur GitHub, vérifie la signature
 # de l'installateur (clé publique dans tauri.conf.json), puis le lance.
 # TLS de Windows comme ureq (certificats d'entreprise compris).
