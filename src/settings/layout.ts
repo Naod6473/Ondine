@@ -19,7 +19,7 @@ export type NavGroup = (typeof NAV_GROUPS)[number];
 export const MODULE_CATEGORIES: { id: string; label: string; modules: string[] }[] = [
   { id: "ai", label: "IA", modules: ["agents"] },
   { id: "files", label: "Fichiers", modules: ["shelf", "clipboard", "capture", "launcher"] },
-  { id: "organize", label: "Organisation", modules: ["timer", "notes", "agenda", "pauses", "weekly"] },
+  { id: "organize", label: "Organisation", modules: ["timer", "notes", "agenda", "pauses", "weekly", "mail"] },
   { id: "it", label: "Outils IT", modules: ["terminal", "system", "remote", "nettools", "team"] },
   { id: "daily", label: "Le PC au quotidien", modules: ["home", "media", "controls", "weather", "screensaver"] },
   { id: "other", label: "Autres modules", modules: [] },

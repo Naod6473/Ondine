@@ -821,7 +821,19 @@ fn provider(ctx: &ModuleContext) -> Provider {
 }
 
 pub(super) fn model(ctx: &ModuleContext, provider: Provider) -> Result<String, String> {
-    let get = |k: &str| ctx.settings().get(k).and_then(Value::as_str).unwrap_or("").trim().to_string();
+    model_in(&ctx.settings(), provider)
+}
+
+/// Le fournisseur et le modèle choisis dans les réglages de « Parler à Ondine »
+/// (`settings` = ses réglages). Le module Mail s'en sert pour ses résumés et
+/// ses brouillons : une seule intégration de l'IA, les mêmes clés.
+pub(super) fn chosen(settings: &serde_json::Map<String, Value>) -> Result<(Provider, String), String> {
+    let provider = Provider::from_id(settings.get("provider").and_then(Value::as_str).unwrap_or(""));
+    Ok((provider, model_in(settings, provider)?))
+}
+
+fn model_in(settings: &serde_json::Map<String, Value>, provider: Provider) -> Result<String, String> {
+    let get = |k: &str| settings.get(k).and_then(Value::as_str).unwrap_or("").trim().to_string();
     match provider {
         Provider::Claude => {
             let m = get("model");

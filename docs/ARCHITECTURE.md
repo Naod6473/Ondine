@@ -61,6 +61,7 @@ ondine/
 │  │  ├─ capture/             Captures d'écran et OCR (phase 5)
 │  │  ├─ timer/               Minuteur, Pomodoro, chrono (phase 6, front seulement)
 │  │  ├─ notes/               Notes rapides et to-do (phase 6)
+│  │  ├─ mail/                Mail (prototype) : Gmail / Outlook, résumé et réponse par l'IA, envoi
 │  │  ├─ agenda/              Prochain rendez-vous depuis un .ics (phase 6)
 │  │  ├─ terminal/            Ouvrir cmd / PowerShell en un clic (phase 7)
 │  │  ├─ media/               Musique en cours de lecture (phase 3)
@@ -77,7 +78,7 @@ ondine/
       ├─ island/mod.rs        placement multi-écrans/DPI, clics traversants, souris
       ├─ platform/            tout le Win32 (windows.rs) ; other.rs = bouchons ; media.rs = SMTC ; ocr.rs = OCR
       ├─ services/            réglages, journal, identifiants, bus, annulation, confidentialité, fichiers, ics, réseau local
-      └─ modules/             registre des modules Rust + shelf.rs, clipboard.rs, capture.rs, notes.rs, agenda.rs, terminal.rs, media.rs
+      └─ modules/             registre des modules Rust + mail.rs (mail_api.rs, mail_oauth.rs), shelf.rs, clipboard.rs, capture.rs, notes.rs, agenda.rs, terminal.rs, media.rs
 ```
 
 ## L'île

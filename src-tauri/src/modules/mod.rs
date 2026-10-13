@@ -31,6 +31,12 @@ mod controls;
 // Contrôles → télécommande sur le téléphone : une petite page sur le réseau local.
 mod controls_remote;
 mod launcher;
+// Mail (prototype) : Gmail et Outlook, résumé et réponse par l'IA, envoi.
+mod mail;
+// Ses appels à Gmail et Microsoft Graph, et la fabrication des envois.
+mod mail_api;
+// Sa connexion au compte (OAuth 2, PKCE, retour sur 127.0.0.1).
+mod mail_oauth;
 mod media;
 // Le tempo de la musique (estimation locale à partir du niveau sonore) : la danse de la mascotte.
 mod media_tempo;
@@ -275,6 +281,7 @@ impl Registry {
             Box::new(team::Team::default()),
             Box::new(windowlife::WindowLife),
             Box::new(screensaver::Screensaver),
+            Box::new(mail::Mail::default()),
         ];
 
         let mut entries = Vec::new();
