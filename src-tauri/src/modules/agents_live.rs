@@ -2,7 +2,7 @@
 //
 // Pendant qu'un agent travaille, chaque fichier qu'il modifie apparaît sous sa
 // session, avec « +12 −3 » ; un clic montre le changement (lecture seule).
-// Technique reprise de coucou (MIT, DiffEngine), réécrite.
+// Technique d'un projet MIT, réécrite (voir THIRD-PARTY.md).
 //
 // Chemin : le hook PostToolUse de Claude Code (outils Edit, MultiEdit, Write)
 // ou AfterTool de Gemini CLI (replace, write_file) → « ondine.exe notify »

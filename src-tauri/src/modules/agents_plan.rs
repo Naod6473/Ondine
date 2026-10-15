@@ -1,6 +1,6 @@
 // Les limites du forfait (onglet Agents IA, 1.2.4) : la fenêtre de 5 h et la
 // semaine de Claude (Pro, Max) et de Codex, en % utilisé, avec l'heure de la
-// remise à zéro. Technique reprise de coucou (MIT), réécrite.
+// remise à zéro. Technique d'un projet MIT, réécrite (voir THIRD-PARTY.md).
 //
 // Claude : Claude Code donne à sa « ligne d'état » (réglage `statusLine` de
 // ~/.claude/settings.json) un JSON sur l'entrée standard, avec `rate_limits`

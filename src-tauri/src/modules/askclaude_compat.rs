@@ -256,8 +256,8 @@ mod tests {
         assert_eq!(b["messages"][0], json!({ "role": "system", "content": "sys" }));
         assert_eq!(b["messages"].as_array().unwrap().len(), 3);
         assert_eq!((b["stream"].as_bool(), b["tools"][0]["function"]["name"].as_str()), (Some(false), Some("chercher_fichiers")));
-        let a = parse(&json!({ "model": "llama3.2", "choices": [{ "finish_reason": "stop", "message": { "content": "<think>hmm</think>Coucou", "reasoning_content": "secret" } }], "usage": { "prompt_tokens": 9, "completion_tokens": 3 } }));
-        assert_eq!((a["answer"].as_str(), a["inputTokens"].as_u64(), a["truncated"].as_bool()), (Some("Coucou"), Some(9), Some(false)));
+        let a = parse(&json!({ "model": "llama3.2", "choices": [{ "finish_reason": "stop", "message": { "content": "<think>hmm</think>Bonjour", "reasoning_content": "secret" } }], "usage": { "prompt_tokens": 9, "completion_tokens": 3 } }));
+        assert_eq!((a["answer"].as_str(), a["inputTokens"].as_u64(), a["truncated"].as_bool()), (Some("Bonjour"), Some(9), Some(false)));
         assert!(!a.to_string().contains("secret"));
         let a = parse(&json!({ "choices": [{ "finish_reason": "tool_calls", "message": { "content": "<think>x</think>", "tool_calls": [{ "id": "c1", "type": "function", "function": { "name": "meteo", "arguments": "{\"ville\":\"Lyon\"}" } }] } }] }));
         assert_eq!(a["calls"][0], json!({ "id": "c1", "name": "meteo", "args": { "ville": "Lyon" } }));
