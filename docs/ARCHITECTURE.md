@@ -2923,8 +2923,8 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
   pendant une demande d'accord est revérifiée au moment de confirmer.
 - **Voix** (1.2.2, `askclaude_voice.rs`, `platform/voice.rs`, front
   `index.ts` + `plops.ts`) :
-  - raccourci global `voiceHotkey` (Ctrl+Alt+V par défaut, liste fixe
-    `HOTKEYS`, ou aucun) ; `micMode` : `once` (appuyer, arrêt au silence ou
+  - raccourci global `voiceHotkey` (Ctrl+Alt+V par défaut, choix proposés
+    `HOTKEYS`, personnalisé depuis 1.2.4, ou aucun) ; `micMode` : `once` (appuyer, arrêt au silence ou
     au 2e appui) ou `hold` (maintenir, arrêt au relâchement) ; Échap = un
     raccourci global posé seulement pendant l'écoute ; bouton 🎙️ dans
     l'onglet (commande `listen`, `voice_stop`). Un fil vérifie chaque
@@ -3742,6 +3742,70 @@ Coucou (MIT) et adaptée ; textes, dessins et goutte sont ceux d'Ondine.
   Soigné par appli, remise au propre et ce qui part). Logique pure dans
   `dictation-format.ts`, testée.
 
+
+## 1.2.4 : le micro choisi, le raccourci personnalisé, « Dis Ondine » (`platform/voice.rs`, `askclaude_voice.rs`, `askclaude_wake.rs`, `src/core/hotkey.ts`, `src/settings/hotkey-input.ts`, `mic-block.ts`, `mic-logic.ts`)
+
+- **Le micro** : réglage `micDevice` de Parler à Ondine (vide = micro par
+  défaut de Windows), dessiné par `mic-block.ts` (Réglages → Parler à Ondine →
+  Voix et sons, bloc « Micro », visible aussi en mode Simple). Commande `mics` :
+  `IMMDeviceEnumerator::EnumAudioEndpoints(eCapture, DEVICE_STATE_ACTIVE)`, id
+  et `PKEY_Device_FriendlyName`, celui par défaut (`eConsole`) et celui de
+  communication (`eCommunications`). Le fil des raccourcis recopie le réglage
+  chaque seconde dans `voice::set_mic` (même module coupé) ; toutes les
+  captures WASAPI l'ouvrent (`open_stream` / `pick_device`) : Parler à Ondine
+  en Parakeet et en API (`record_info`), bulles et Parakeet de la dictée
+  (`monitor`, `record`), côté micro des notes d'appel (`capture`), mot
+  d'appel (`watch`). Débranché : le micro par défaut, et une ligne au journal.
+  La reconnaissance de Windows (WinRT) écoute toujours le micro par défaut :
+  la page le dit (`micEngineWarning`) avec « Ouvrir les paramètres du son de
+  Windows » (`Fix::Sound`, `ms-settings:sound`) et « Passer à Parakeet ». Le
+  moteur hors ligne (SAPI) prend le micro choisi : son numéro waveIn
+  (`waveInMessage(DRV_QUERYFUNCTIONINSTANCEID)` = l'id de l'appareil) passe à
+  `ISpMMSysAudio::SetDeviceId`.
+- **Formats** : le format de mixage est lu tel quel (`SampleKind` : virgule
+  flottante 32 bits, entiers 8, 16, 24, 32 bits ; `mix_to_mono`, testé), puis
+  ramené à 16 kHz avant Parakeet (`speech::to_16k_mono`).
+- **Un micro muet est expliqué** (`silent_mic`, testé) : coupé ou volume à 0
+  dans Windows (`IAudioEndpointVolume`), que des zéros (bloqué par la
+  confidentialité, ou pas le bon micro), à peine un son. Parakeet / API : quand
+  le seuil de silence n'a rien entendu ; Windows / hors ligne : quand rien
+  n'est reconnu et que le niveau max (`IAudioMeterInformation`) est resté
+  plat. L'île propose alors « 🎙️ Choisir le micro ». Seuil de parole abaissé à
+  −44 dBFS ; avec Parakeet, une voix faible (crête ≥ 0,02) est écrite quand
+  même. Le journal note le micro ouvert, son format, son volume, s'il est
+  coupé, et le niveau max à la fermeture (jamais ce qui est dit).
+- **Tester le micro** : commande `mic_test {device}` (4 s, compte comme une
+  capture d'Ondine), événement Tauri `mic-test` : `{level}` ~15 fois par
+  seconde, puis `{done, info, problem, fix}`. Rien n'est gardé.
+- **Raccourci personnalisé** : type de champ `hotkey` des manifestes
+  (`module-types.ts`, `coerce` → `coerceHotkey`, `form.ts` →
+  `hotkeyInput`) : choix proposés + « Personnalisé… » (on clique, on appuie,
+  Échap annule, « Effacer »). Forme `Shortcut` du greffon (« Ctrl+Alt+K »,
+  modificateurs Ctrl, Alt, Shift, Super). Lettres et chiffres lus par
+  `keyCode` (touche virtuelle de Windows : bon sur AZERTY). Règles
+  identiques des deux côtés (`hotkeyProblem` / `check_hotkey`, testées) : un
+  modificateur sauf F1–F24, pas Maj seule, pas F12 seule, pas Alt+F4,
+  Ctrl+Alt+Suppr, Win+L…, ni Ctrl+C/V/X/Z/S…. Un refus du Rust (déjà pris)
+  est gardé (`hotkey_errors`, commande `hotkeys`) et écrit sous le champ
+  (`showHotkeyProblem`, après l'événement DOM `hotkey-saved`).
+- **« Dis Ondine »** (`askclaude_wake.rs`, réglage `wakeWord`, COUPÉ par
+  défaut, confirmation explicite dans les Réglages) : `voice::watch` garde le
+  micro choisi ouvert (en mémoire), `Downsampler` → 16 kHz, `WakeGate` (trames
+  de 30 ms, seuil d'énergie au-dessus du bruit de fond qui s'adapte, testé)
+  découpe les passages parlés ; seulement alors Parakeet écrit les 2,4
+  premières secondes, dans un autre fil (file de 2, le reste oublié) ;
+  `wake_rest` (testé) reconnaît « dis / hey / hé / ok Ondine » (distance
+  d'édition 1, « on dîne » collé) au début. Mot seul : `listen` (comme le
+  raccourci) ; suivi d'une question : `heard_text` (événements `open` puis
+  `final`). Pause (micro fermé) : réglage ou module coupé, hors Windows,
+  Parakeet absent, Ondine écoute déjà (`voice::ondine_capturing`, compteur des
+  captures), discrétion, PC verrouillé (`session::locked`), mode Économie
+  d'énergie (`perf::mode`). L'état part sur le bus (`voice.wake {on,
+  paused}`) : point rouge `wake` de l'île (nano-rules.ts, montré en premier,
+  aussi sur l'île de taille normale en compact) ; commande `wake_state` pour
+  les Réglages. Pas de VAD silero ni de keyword spotter de sherpa-onnx : il
+  faudrait un modèle de plus à télécharger (et le spotter n'a pas de modèle
+  français).
 
 ## 1.2.4 : limites du forfait, fichiers modifiés en direct, modèles locaux, vos propres sons
 

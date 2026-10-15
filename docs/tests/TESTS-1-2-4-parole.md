@@ -38,11 +38,52 @@ Face n'est pas joignable d'ici) : jamais une vraie phrase reconnue.
 - [ ] En anglais : appli en anglais, dire une phrase en anglais : bien écrite. Puis dire une phrase en espagnol ou en allemand : Parakeet la reconnaît seul (25 langues).
 - [ ] Mode « Maintenir pour parler » : tant que les touches sont tenues, ça écoute ; au relâchement, le texte arrive.
 - [ ] Échap pendant l'écoute : annulé, rien n'est écrit.
-- [ ] Ne rien dire : « Je n'ai rien entendu. », et rien n'est transcrit.
+- [ ] Ne rien dire dans une pièce calme, bon micro : « Je n'ai rien entendu. » (ou, si le micro capte très peu, « Le micro « … » capte à peine un son… »), et rien n'est transcrit.
 - [ ] Mode avion (aucun réseau) : la dictée Parakeet marche quand même.
 - [ ] Moteur « Windows » choisi, dictée de Windows qui échoue (reconnaissance en ligne coupée dans Paramètres) avec le modèle Parakeet téléchargé : le bouton « 🔒 Passer à Parakeet sur le PC » apparaît ; un clic change le réglage et réécoute.
 - [ ] Réglages → Parler à Ondine → Général → « Ce qui part » avec Parakeet choisi : « Quand vous parlez à Ondine, le modèle Parakeet écrit vos mots sur le PC : rien ne le quitte… ».
 
+## Choisir le micro (Réglages → Parler à Ondine → Voix et sons → bloc « Micro »)
+- [ ] Le bloc « Micro » est visible aussi en mode Simple. La liste montre « Micro par défaut de Windows (<nom>) » puis chaque micro branché, avec « · communication » pour le micro de communication par défaut (souvent le casque) quand il n'est pas celui par défaut.
+- [ ] Brancher un casque USB pendant que la page est ouverte, cliquer « Actualiser » : il apparaît. Le débrancher, « Actualiser » : s'il était choisi, la ligne « Micro choisi (débranché : celui par défaut en attendant) » reste.
+- [ ] « Tester le micro » avec le micro par défaut, en parlant : la barre bouge pendant ~4 s, puis « Ondine vous entend avec « <nom> » (niveau max N %). » et le format en petit (« 48000 Hz, 2 voies, virgule flottante 32 bits » par exemple). Noter le nom, le format et N.
+- [ ] Même test en choisissant le casque (ou un autre micro) dans la liste : le nom du casque s'affiche, la barre bouge quand on parle dans le casque, pas quand on parle loin de lui.
+- [ ] Micro coupé dans Windows (Paramètres → Système → Son → Entrée → le micro → Désactiver le son, ou volume à 0) : « Tester le micro » dit « Le micro « … » est coupé dans Windows… » (ou « Le volume du micro « … » est à 0… ») et propose « Ouvrir les paramètres du son de Windows », qui ouvre la bonne page.
+- [ ] Paramètres Windows → Confidentialité → Microphone → « Autoriser les applications de bureau » coupé : « Tester le micro » donne la phrase « Windows refuse le micro… » ou « Le micro « … » ne donne aucun son : Windows le bloque peut-être… », avec un bouton vers les Paramètres Windows. Le remettre.
+- [ ] Parakeet choisi + micro du casque choisi : Ctrl+Alt+V, parler dans le casque : la question est bien écrite. Journal : une ligne « écoute : micro « <nom du casque> » ouvert, 48000 Hz, … » puis « écoute : micro « … » fermé, niveau max N % en X s ». Rien de ce qui a été dit n'est dans le journal.
+- [ ] Micro choisi débranché, Ctrl+Alt+V : ça marche avec celui par défaut ; journal « (micro choisi introuvable : celui par défaut de Windows) ».
+- [ ] Parakeet + micro coupé dans Windows : Ctrl+Alt+V → l'île dit « Le micro « … » est coupé dans Windows… » avec « ⚙️ Ouvrir les paramètres Windows » (page Son) et « 🎙️ Choisir le micro » (ouvre les Réglages sur Voix et sons).
+- [ ] Parakeet + voix faible (parler loin du micro, à voix basse) : la phrase est quand même écrite (avant : « Je n'ai rien entendu »).
+- [ ] Moteur « Reconnaissance vocale de Windows » + un micro choisi qui n'est pas celui par défaut : sous la liste, l'avertissement « La reconnaissance vocale de Windows écoute toujours le micro par défaut de Windows… » avec « Ouvrir les paramètres du son de Windows » et « Passer à Parakeet ». Choisir « Micro par défaut de Windows » : l'avertissement disparaît. Passer le moteur à « Hors ligne » : il disparaît aussi.
+- [ ] Moteur « Windows », micro par défaut muet (coupé) : Ctrl+Alt+V, attendre : « Le micro « … » est coupé dans Windows… » au lieu de « Je n'ai rien entendu ».
+- [ ] Moteur « Hors ligne » + micro du casque choisi (pas celui par défaut) : parler dans le casque, la dictée hors ligne l'écrit (le moteur de bureau prend le micro choisi). Si ça écoute quand même le micro par défaut, noter la ligne du journal « dictée hors ligne : le micro choisi … ».
+- [ ] Dictée (module Dictée, moteur Parakeet) et Notes d'appel (côté micro) : avec le casque choisi ici, ils écoutent le casque (journal : « bulles : micro « … » ouvert », « notes d'appel : micro « … » ouvert »).
+
+## Raccourci personnalisé
+- [ ] Voix et sons → « Raccourci pour parler à Ondine » : la liste propose Ctrl + Alt + V, Alt + Maj + V, Ctrl + Alt + Entrée, Aucun et « Personnalisé… ».
+- [ ] « Personnalisé… » : le bouton dit « Appuyez sur la combinaison (Échap pour annuler) ». Appuyer sur Ctrl+Alt+K : « Ctrl + Alt + K » s'affiche, le raccourci marche tout de suite (dans la seconde), Ctrl+Alt+V ne fait plus rien.
+- [ ] Clavier AZERTY : Ctrl+Alt+A s'affiche « Ctrl + Alt + A » et c'est bien la touche A qui déclenche (pas Q).
+- [ ] Pendant l'enregistrement, Échap annule (l'ancien raccourci reste). « Effacer » retire le raccourci (plus aucun).
+- [ ] Refusés avec une phrase sous le champ, sans rien changer : K seul, Maj+K, Alt+F4, Ctrl+C, Ctrl+Alt+Suppr (Windows l'avale sans doute : rien ne se passe), Win+L (idem). F9 seul est accepté ; F12 seul est refusé.
+- [ ] Un raccourci déjà pris par un autre logiciel (par exemple celui d'un logiciel de capture, ou Ctrl+Alt+V réglé dans un autre outil) : dans les 2 s, sous le champ, « Ctrl + Alt + … est déjà pris par un autre logiciel : choisissez un autre raccourci… ». Choisir un autre raccourci : la phrase disparaît.
+- [ ] « Raccourci « Regarde ça » » : même champ, mêmes règles ; le même raccourci que pour parler est ignoré pour « Regarde ça ».
+- [ ] Réglage enregistré, fermer et rouvrir Ondine : le raccourci personnalisé marche toujours.
+
+## « Dis Ondine » (mot d'appel)
+- [ ] Mode Complet, Voix et sons → bloc « « Dis Ondine » » : l'interrupteur est COUPÉ ; la ligne dit « Coupé : le micro ne s'ouvre qu'avec le raccourci ou le bouton 🎙️. » ; aucun point rouge sur l'île, Windows ne montre pas le micro utilisé par Ondine.
+- [ ] Sans le modèle Parakeet : l'interrupteur est grisé et la ligne renvoie au bloc « Parakeet sur le PC ».
+- [ ] Modèle téléchargé, allumer : un encadré explique (micro ouvert en permanence, tout sur le PC, rien d'enregistré ni d'envoyé avant le mot, point rouge, pauses). « Annuler » : rien ne change. « Activer l'écoute permanente » : la ligne passe à « À l'écoute du mot d'appel… » ; un petit point rouge apparaît à côté de l'île (taille normale et mini) ; l'icône micro de Windows montre Ondine.
+- [ ] Dire « Dis Ondine » (pause) : Parler à Ondine s'ouvre et écoute ; dire la question : elle part comme d'habitude.
+- [ ] Dire d'une traite « Hey Ondine, quel temps fait-il demain ? » : l'onglet s'ouvre et la question « Quel temps fait-il demain ? » part directement.
+- [ ] Essayer aussi « Hé Ondine », « OK Ondine », et en anglais « Hey Ondine ». Noter ceux qui ne marchent pas.
+- [ ] Parler normalement 5 minutes sans dire le mot (ou une vidéo qui parle) : rien ne se déclenche. Noter toute fausse alerte (ce qui a été dit).
+- [ ] Au repos, silence : le Gestionnaire des tâches montre un processeur ~0 % pour Ondine ; la mémoire ne monte de ~700 Mo qu'après la première phrase entendue (Parakeet chargé), et redescend 5 à 6 min après la dernière.
+- [ ] Pauses : lancer une visio (Teams / Zoom / Meet qui prend le micro) → la ligne dit « En pause : discrétion… », le point rouge disparaît ; raccrocher → il revient. Pareil avec un diaporama PowerPoint en plein écran, Win+L (verrouillé), le mode Économie d'énergie (Réglages → Performances), et pendant une dictée ou des notes d'appel (« Ondine écoute déjà »).
+- [ ] Couper l'interrupteur : le point rouge disparaît dans la seconde, Windows ne montre plus Ondine sur le micro.
+- [ ] Journal : « mot d'appel : micro « … » ouvert », « mot d'appel reconnu », jamais ce qui a été dit.
+
 ## Textes
 - [ ] « S'adresser à moi » = tutoiement : « Rien n'est téléchargé avant ton clic », « rien de ce que tu dis n'est envoyé », « télécharge-le dans les Réglages ».
+- [ ] Tutoiement : « Appuie sur la combinaison », « Parle quelques secondes… », « Ondine t'entend avec « … » », « tant que tu n'as pas dit « Dis Ondine » ».
+- [ ] Langue anglaise : « Test the microphone », « Record a shortcut », « Custom… », « Ctrl + Shift + K » (Shift, pas Maj), « « Hey Ondine » to talk to her ».
 - [ ] Langue anglaise : tout le bloc est en anglais (« Not downloaded yet », « Downloading: 42% », « Download », « Cancel », « Delete », « Confirm deletion »). Seul le détail technique d'un échec reste en français.
