@@ -21,7 +21,12 @@
 //     Parakeet l'écrit sur le PC (services/speech.rs, sherpa-onnx). Rien ne
 //     quitte le PC. Sans le modèle (~700 Mo, téléchargé au clic dans les
 //     Réglages), l'erreur le dit et porte `models: true` (bouton vers le
-//     téléchargement) ;
+//     téléchargement). Mots en direct (`LivePartials`) : tant que vous
+//     parlez, un fil à part réécrit le son déjà capté toutes les ~0,9 s
+//     (jamais deux à la fois, un tour sauté si la précédente n'a pas fini,
+//     rien pendant le silence, pas plus de la moitié du temps de calcul) et
+//     publie `partial`. Le texte final reste la transcription complète.
+//     Coupé en mode Économie (services/perf.rs) ;
 //   - « api » : le micro est capté en mémoire (WASAPI), puis l'audio part
 //     vers OpenAI (audio/transcriptions) ou Gemini (audio en entrée), avec la
 //     clé déjà rangée. Claude n'écoute pas l'audio : avec Claude, on prend la
@@ -52,8 +57,8 @@
 //     modèle manque : « Télécharger le modèle » ouvre les Réglages.
 
 use crate::sync::LockExt;
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicU8, Ordering};
+use std::sync::{mpsc, Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use base64::Engine;
@@ -64,6 +69,7 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use super::askclaude_providers::{self as providers, Provider};
 use crate::platform::{self, voice};
 use crate::services::log;
+use crate::services::perf;
 use crate::services::speech as stt;
 
 const ID: &str = "askclaude";
@@ -588,14 +594,22 @@ fn run(app: &AppHandle, s: &Session, opts: Options) -> Result<String, voice::Fai
             return Err(voice::Failure::from(stt::MISSING.to_string()));
         }
         let mut gate = SilenceGate::new(opts.hold, silence as u64);
+        // Parakeet : vos mots en direct pendant que vous parlez (pas en mode Économie).
+        let mut live = (engine == VoiceEngine::Parakeet && perf::mode() != perf::Mode::Eco).then(|| LivePartials::start(app.clone(), lang));
         let (pcm, info) = voice::record_info(&s.stop, &mut |chunk, rate| {
             let rms = rms(chunk);
             level((rms * 6.0).sqrt().min(1.0));
             if started.elapsed() > max {
                 return false;
             }
-            gate.push(rms, chunk.len() as u64 * 1000 / u64::from(rate.max(1)))
+            let go = gate.push(rms, chunk.len() as u64 * 1000 / u64::from(rate.max(1)));
+            if let Some(live) = live.as_mut() {
+                live.feed(chunk, rate, gate.talking());
+            }
+            go
         })?;
+        // Plus aucun mot en direct après ça (le fil finit sa transcription en cours).
+        drop(live);
         if s.stop.load(Ordering::SeqCst) == voice::CANCEL {
             return Ok(String::new());
         }
@@ -826,9 +840,16 @@ struct SilenceGate {
 impl SilenceGate {
     /// Fin de phrase : ce silence après avoir parlé.
     const END_MS: u64 = 1200;
+    /// Mots en direct : on ne réécrit plus après ce silence.
+    const TALKING_MS: u64 = 500;
 
     fn new(hold: bool, initial_ms: u64) -> SilenceGate {
         SilenceGate { hold, initial_ms, floor: 1.0, elapsed_ms: 0, quiet_ms: 0, heard: false }
+    }
+
+    /// La personne parle en ce moment (ou vient de s'arrêter, depuis moins de TALKING_MS).
+    fn talking(&self) -> bool {
+        self.heard && self.quiet_ms < Self::TALKING_MS
     }
 
     /// Un morceau de `ms` millisecondes, de niveau `rms`. Faux = on s'arrête.
@@ -851,6 +872,118 @@ impl SilenceGate {
             return self.elapsed_ms < self.initial_ms;
         }
         self.quiet_ms < Self::END_MS
+    }
+}
+
+// ── Parakeet : vos mots en direct (1.2.4) ────────────────────────────────────
+
+/// Mots en direct : on réécrit au plus souvent toutes les… (ms de son capté).
+const LIVE_EVERY_MS: u64 = 900;
+/// … et au moins toutes les… (même si la transcription est lente).
+const LIVE_MAX_EVERY_MS: u64 = 4000;
+
+/// Quand réécrire le son déjà capté (sans horloge ni modèle : testé sous Linux).
+struct LiveSchedule {
+    /// Son capté depuis la dernière transcription en direct (ms).
+    since_ms: u64,
+}
+
+impl LiveSchedule {
+    /// Un morceau de `ms` : vrai = lancer une transcription maintenant. Rien
+    /// pendant le silence (`talking` faux) ; si la précédente n'est pas finie
+    /// (`busy`), on saute ce tour. `every_ms` : le pas actuel (`live_every`).
+    fn tick(&mut self, ms: u64, talking: bool, busy: bool, every_ms: u64) -> bool {
+        self.since_ms += ms;
+        if self.since_ms < every_ms || !talking {
+            return false;
+        }
+        self.since_ms = 0;
+        !busy
+    }
+}
+
+/// Le pas des mots en direct après une transcription qui a pris `took_ms` :
+/// au moins deux fois sa durée (le calcul n'occupe jamais plus de la moitié
+/// du temps), entre LIVE_EVERY_MS et LIVE_MAX_EVERY_MS.
+fn live_every(took_ms: u64) -> u64 {
+    took_ms.saturating_mul(2).clamp(LIVE_EVERY_MS, LIVE_MAX_EVERY_MS)
+}
+
+/// Les mots en direct de Parakeet : le son capté est gardé ici, et un fil à
+/// part le réécrit en entier de temps en temps (LiveSchedule), une
+/// transcription à la fois. Rien n'est écrit sur le disque. À la fin
+/// (`drop`), le fil termine sa transcription en cours et n'envoie plus rien.
+struct LivePartials {
+    audio: Arc<Mutex<Vec<f32>>>,
+    rate: Arc<AtomicU32>,
+    busy: Arc<AtomicBool>,
+    done: Arc<AtomicBool>,
+    every: Arc<AtomicU64>,
+    schedule: LiveSchedule,
+    tx: Option<mpsc::Sender<()>>,
+    worker: Option<std::thread::JoinHandle<()>>,
+}
+
+impl LivePartials {
+    fn start(app: AppHandle, lang: &'static str) -> LivePartials {
+        let (tx, rx) = mpsc::channel::<()>();
+        let audio = Arc::new(Mutex::new(Vec::new()));
+        let rate = Arc::new(AtomicU32::new(stt::SAMPLE_RATE));
+        let busy = Arc::new(AtomicBool::new(false));
+        let done = Arc::new(AtomicBool::new(false));
+        let every = Arc::new(AtomicU64::new(LIVE_EVERY_MS));
+        let worker = {
+            let (audio, rate, busy, done, every) = (audio.clone(), rate.clone(), busy.clone(), done.clone(), every.clone());
+            std::thread::spawn(move || {
+                let mut last = String::new();
+                while rx.recv().is_ok() {
+                    if done.load(Ordering::SeqCst) {
+                        break;
+                    }
+                    let samples = audio.locked().clone();
+                    let started = Instant::now();
+                    let text = stt::transcribe(&stt::to_16k_mono(&samples, 1, rate.load(Ordering::SeqCst)), Some(lang));
+                    every.store(live_every(started.elapsed().as_millis() as u64), Ordering::SeqCst);
+                    busy.store(false, Ordering::SeqCst);
+                    if done.load(Ordering::SeqCst) {
+                        break;
+                    }
+                    let Ok(text) = text else { continue };
+                    let text = text.trim();
+                    if !text.is_empty() && text != last {
+                        last = text.to_string();
+                        voice_event(&app, "partial", json!({ "text": text }));
+                    }
+                }
+            })
+        };
+        LivePartials { audio, rate, busy, done, every, schedule: LiveSchedule { since_ms: 0 }, tx: Some(tx), worker: Some(worker) }
+    }
+
+    /// Un morceau de son capté (mono, à la fréquence du micro).
+    fn feed(&mut self, chunk: &[f32], rate: u32, talking: bool) {
+        self.rate.store(rate, Ordering::SeqCst);
+        self.audio.locked().extend_from_slice(chunk);
+        let ms = chunk.len() as u64 * 1000 / u64::from(rate.max(1));
+        let busy = self.busy.load(Ordering::SeqCst);
+        if self.schedule.tick(ms, talking, busy, self.every.load(Ordering::SeqCst)) {
+            if let Some(tx) = &self.tx {
+                self.busy.store(true, Ordering::SeqCst);
+                if tx.send(()).is_err() {
+                    self.busy.store(false, Ordering::SeqCst);
+                }
+            }
+        }
+    }
+}
+
+impl Drop for LivePartials {
+    fn drop(&mut self) {
+        self.done.store(true, Ordering::SeqCst);
+        self.tx.take();
+        if let Some(w) = self.worker.take() {
+            let _ = w.join();
+        }
     }
 }
 
@@ -998,6 +1131,42 @@ mod tests {
         // « hold » : jamais arrêté par le silence.
         let mut g = SilenceGate::new(true, 100);
         assert!((0..100).all(|_| g.push(0.0, 50)));
+    }
+
+    #[test]
+    fn live_words_are_paced() {
+        // Toutes les ~0,9 s de son, seulement pendant qu'on parle.
+        let mut s = LiveSchedule { since_ms: 0 };
+        let ticks: Vec<bool> = (0..20).map(|_| s.tick(100, true, false, LIVE_EVERY_MS)).collect();
+        assert_eq!(ticks.iter().filter(|t| **t).count(), 2);
+        assert!(ticks[8] && ticks[17]);
+        // Le silence : rien, puis tout de suite quand on reparle.
+        let mut s = LiveSchedule { since_ms: 0 };
+        assert!((0..30).all(|_| !s.tick(100, false, false, LIVE_EVERY_MS)));
+        assert!(s.tick(20, true, false, LIVE_EVERY_MS));
+        // La précédente n'est pas finie : ce tour est sauté (et le compte repart).
+        let mut s = LiveSchedule { since_ms: 0 };
+        assert!(!s.tick(1000, true, true, LIVE_EVERY_MS));
+        assert!(!s.tick(500, true, false, LIVE_EVERY_MS));
+        assert!(s.tick(400, true, false, LIVE_EVERY_MS));
+        // Une transcription lente espace les suivantes (au plus la moitié du temps de calcul).
+        assert_eq!(live_every(100), LIVE_EVERY_MS);
+        assert_eq!(live_every(700), 1400);
+        assert_eq!(live_every(60_000), LIVE_MAX_EVERY_MS);
+    }
+
+    #[test]
+    fn talking_follows_the_voice() {
+        let mut g = SilenceGate::new(false, 6000);
+        assert!(!g.talking());
+        g.push(0.001, 100);
+        assert!(!g.talking(), "rien entendu encore");
+        g.push(0.2, 100);
+        assert!(g.talking());
+        g.push(0.001, 300);
+        assert!(g.talking(), "une petite pause");
+        g.push(0.001, 300);
+        assert!(!g.talking(), "le silence");
     }
 
     #[test]
