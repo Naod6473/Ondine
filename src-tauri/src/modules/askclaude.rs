@@ -49,6 +49,7 @@ use std::sync::Mutex;
 use base64::Engine;
 use serde_json::{json, Value};
 
+use super::askclaude_compat as compat;
 use super::askclaude_providers::{self as providers, Attachment, Call, Provider, Request, Turn};
 use super::askclaude_pc as pc;
 use super::askclaude_quick as quick;
@@ -68,6 +69,8 @@ const MAX_TURNS: usize = 20;
 const CLAUDE_MODELS: &[&str] = &["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-4-5-20251001"];
 const DEFAULT_OPENAI_MODEL: &str = "gpt-6-luna";
 const DEFAULT_GEMINI_MODEL: &str = "gemini-3.8-flash";
+/// OpenRouter choisit lui-même un modèle tant qu'aucun n'est choisi.
+const DEFAULT_OPENROUTER_MODEL: &str = "openrouter/auto";
 /// Allers-retours avec l'IA pour un seul message (outils compris).
 const MAX_ROUNDS: usize = 6;
 /// L'aperçu d'un fichier à lire, dans la demande d'accord.
@@ -173,6 +176,10 @@ const IMAGE_TYPES: &[(&str, &str)] = &[("png", "image/png"), ("jpg", "image/jpeg
 /// Un message en cours d'échange avec l'IA (les allers-retours des outils).
 struct Exchange {
     provider: Provider,
+    /// Serveur local, OpenRouter : l'adresse de base vérifiée (sinon vide).
+    base: String,
+    /// Où part l'échange (montré dans les demandes d'accord, journalisé).
+    dest: String,
     model: String,
     system: String,
     /// La conversation, avec le nouveau message de la personne à la fin.
@@ -229,6 +236,9 @@ pub struct AskClaude {
     found: Mutex<Found>,
     /// L'échange qui attend votre accord.
     pending: Mutex<Option<Pending>>,
+    /// Serveur local, OpenRouter : les modèles (« fournisseur:modèle ») qui
+    /// ne gèrent pas les outils. Avec eux, conversation simple.
+    no_tools: Mutex<std::collections::HashSet<String>>,
 }
 
 impl RustModule for AskClaude {
@@ -254,7 +264,8 @@ impl RustModule for AskClaude {
                 let provider = provider(ctx);
                 let mut keys = serde_json::Map::new();
                 for p in Provider::ALL {
-                    keys.insert(p.id().into(), json!(ctx.credential(p.credential_key())?.is_some()));
+                    // Un serveur local n'a pas besoin de clé.
+                    keys.insert(p.id().into(), json!(!p.needs_key() || ctx.credential(p.credential_key())?.is_some()));
                 }
                 let turns = self.turns.locked();
                 let history: Vec<Value> = turns.iter().map(|t| json!({ "user": t.user, "text": t.text, "attachment": t.attachment.as_ref().map(|a| &a.name) })).collect();
@@ -263,7 +274,9 @@ impl RustModule for AskClaude {
                     "hasKey": keys.get(provider.id()).cloned().unwrap_or(json!(false)),
                     "keys": keys,
                     "model": model(ctx, provider)?,
-                    "destination": provider.destination(),
+                    "destination": destination(ctx, provider),
+                    // Serveur sur ce PC : rien ne sort sur Internet.
+                    "onThisPc": provider == Provider::Local && base(ctx, provider).is_ok_and(|b| compat::on_this_pc(&b)),
                     "keyLabel": provider.key_label(),
                     "system": system(ctx),
                     "history": history,
@@ -303,7 +316,7 @@ impl RustModule for AskClaude {
                 };
                 let prepared = Prepared { id, attachment: Attachment { name, text, image } };
                 let provider = provider(ctx);
-                let preview = preview(&prepared, provider.destination());
+                let preview = preview(&prepared, &destination(ctx, provider));
                 *self.prepared.locked() = Some(prepared);
                 Ok(preview)
             }
@@ -318,6 +331,10 @@ impl RustModule for AskClaude {
                 ctx.require("claude-api")?;
                 let provider = provider(ctx);
                 let model = model(ctx, provider)?;
+                if model.is_empty() {
+                    return Err("choisissez un modèle du serveur local (Réglages → Parler à Ondine → Modèles)".into());
+                }
+                let base = if provider.compat() { base(ctx, provider)? } else { String::new() };
                 let attachment = match args.get("attachment").and_then(Value::as_u64) {
                     Some(id) => Some(
                         self.prepared
@@ -334,7 +351,12 @@ impl RustModule for AskClaude {
                     return Err("le message est vide".into());
                 }
                 let message = if message.is_empty() { default_question(voice(ctx)).to_string() } else { message };
-                let key = ctx.credential(provider.credential_key())?.ok_or(format!("Pas de {} : ajoutez-la dans Réglages → Identifiants.", lowercase_first(provider.key_label())))?;
+                let key = match ctx.credential(provider.credential_key())? {
+                    Some(k) => k,
+                    None if !provider.needs_key() => String::new(),
+                    None => return Err(format!("Pas de {} : ajoutez-la dans Réglages → Identifiants.", lowercase_first(provider.key_label()))),
+                };
+                let tools_ok = !self.no_tools.locked().contains(&format!("{}:{model}", provider.id()));
 
                 let mut turns = self.turns.locked().clone();
                 turns.push(Turn { user: true, text: message, attachment, notes: None });
@@ -343,8 +365,10 @@ impl RustModule for AskClaude {
                 *self.pending.locked() = None;
                 let exchange = Exchange {
                     provider,
+                    base,
+                    dest: destination(ctx, provider),
                     model,
-                    system: system(ctx),
+                    system: system_for(ctx, tools_ok),
                     turns,
                     extra: Vec::new(),
                     native: Vec::new(),
@@ -375,7 +399,11 @@ impl RustModule for AskClaude {
                         }
                     }
                 };
-                let key = ctx.credential(exchange.provider.credential_key())?.ok_or("la clé API a disparu")?;
+                let key = match ctx.credential(exchange.provider.credential_key())? {
+                    Some(k) => k,
+                    None if !exchange.provider.needs_key() => String::new(),
+                    None => return Err("la clé API a disparu".into()),
+                };
                 if let Action::Grant { key: setting } = action {
                     // Votre choix vaut pour la suite : la carte ne revient pas.
                     let id = ctx.id().to_string();
@@ -413,7 +441,7 @@ impl RustModule for AskClaude {
                         // Une exclusion peut avoir été ajoutée pendant l'aperçu.
                         let path = self.found.locked().get(numero).cloned().ok_or("ce fichier n'est plus disponible")?;
                         ctx.check_path(&path.display().to_string())?;
-                        ctx.log_info(format!("fichier lu pour {} ({} octets)", exchange.provider.destination(), text.len()));
+                        ctx.log_info(format!("fichier lu pour {} ({} octets)", exchange.dest, text.len()));
                         exchange.activity.push(json!({ "kind": "read", "name": name }));
                         exchange.notes.push(format!("#{numero} {name} (lu)"));
                         json!({ "numero": numero, "nom": name, "contenu": text })
@@ -522,6 +550,31 @@ impl RustModule for AskClaude {
                 ctx.log_info(format!("commande rapide : {}", call.name));
                 Ok(json!({ "handled": true, "answer": done, "activity": line.into_iter().collect::<Vec<_>>() }))
             }
+            // Serveur local, OpenRouter : la liste des modèles, demandée au
+            // serveur sur votre clic (GET <adresse>/models, sans la conversation).
+            "models" => {
+                let provider = Provider::from_id(args.get("provider").and_then(Value::as_str).unwrap_or(""));
+                if !provider.compat() {
+                    return Err("liste des modèles : serveur local ou OpenRouter seulement".into());
+                }
+                ctx.require("claude-api")?;
+                let base = base(ctx, provider)?;
+                let key = ctx.credential(provider.credential_key())?.unwrap_or_default();
+                let (status, v) = providers::get_raw(provider, &key, &format!("{base}/models"))?;
+                if status != 200 {
+                    return Err(providers::api_error(provider, status, &v));
+                }
+                let list = compat::models(&v);
+                // Ceux qui disent ne pas gérer les outils : conversation simple.
+                let mut no = self.no_tools.locked();
+                for m in &list {
+                    if m["tools"] == json!(false) {
+                        no.insert(format!("{}:{}", provider.id(), m["id"].as_str().unwrap_or("")));
+                    }
+                }
+                ctx.log_info(format!("liste des modèles lue auprès de {} ({})", destination(ctx, provider), list.len()));
+                Ok(json!({ "models": list, "destination": destination(ctx, provider) }))
+            }
             // { text } : copie une réponse.
             "copy" => {
                 ctx.require("clipboard")?;
@@ -552,7 +605,7 @@ impl AskClaude {
                             *n += 1;
                             *n
                         };
-                        let ask = ask_json(id, &action, x.provider.destination(), ctx);
+                        let ask = ask_json(id, &action, &x.dest, ctx);
                         let reply = json!({ "pending": ask, "activity": x.activity, "cards": x.cards });
                         *self.pending.locked() = Some(Pending { id, exchange: x, action });
                         return Ok(reply);
@@ -570,18 +623,36 @@ impl AskClaude {
             // Les outils restent décrits jusqu'au bout (une API refuse des
             // appels passés sans eux) ; au dernier tour, leurs appels sont ignorés.
             let mut offered = Vec::new();
-            if file_tools(ctx) || !x.extra.is_empty() {
+            // Serveur local, OpenRouter : seulement si le modèle gère les outils.
+            let no_tools = x.provider.compat() && self.no_tools.locked().contains(&format!("{}:{}", x.provider.id(), x.model));
+            if (file_tools(ctx) || !x.extra.is_empty()) && !no_tools {
                 offered.extend(tools::tools());
             }
-            if pc_tools(ctx) || !x.extra.is_empty() {
+            if (pc_tools(ctx) || !x.extra.is_empty()) && !no_tools {
                 offered.extend(pc::tools());
             }
             let (url, body) = providers::request(
                 x.provider,
                 &Request { model: &x.model, max_tokens: max_tokens(ctx), system: &x.system, turns: window(&x.turns), tools: &offered, extra: &x.extra },
             );
-            ctx.log_info(format!("message envoyé à {} ({} octets)", x.provider.destination(), body.to_string().len()));
-            let mut answer = providers::call(x.provider, key, &url, &body)?;
+            ctx.log_info(format!("message envoyé à {} ({} octets)", x.dest, body.to_string().len()));
+            let mut answer = if x.provider.compat() {
+                let url = format!("{}{url}", x.base);
+                let (status, v) = providers::call_raw(x.provider, key, &url, &body)?;
+                if status != 200 && compat::refuses_tools(status, &v) && !offered.is_empty() && x.extra.is_empty() {
+                    // Ce modèle ne gère pas les outils : la même question, en conversation simple.
+                    ctx.log_info(format!("{} : le modèle ne gère pas les outils, conversation simple", x.dest));
+                    self.no_tools.locked().insert(format!("{}:{}", x.provider.id(), x.model));
+                    x.system = system_for(ctx, false);
+                    continue;
+                }
+                if status != 200 {
+                    return Err(providers::api_error(x.provider, status, &v));
+                }
+                providers::parse(x.provider, &v)
+            } else {
+                providers::call(x.provider, key, &url, &body)?
+            };
             x.rounds += 1;
             x.input_tokens += answer["inputTokens"].as_u64().unwrap_or(0);
             x.output_tokens += answer["outputTokens"].as_u64().unwrap_or(0);
@@ -839,6 +910,37 @@ pub(super) fn model_from(values: &serde_json::Map<String, Value>, provider: Prov
             let m = if m.is_empty() { default.to_string() } else { m };
             if providers::valid_model(&m) { Ok(m) } else { Err(format!("nom de modèle invalide : « {} »", m.chars().take(64).collect::<String>())) }
         }
+        // Serveur local : pas de modèle par défaut (vide tant qu'il n'est pas choisi).
+        Provider::Local | Provider::OpenRouter => {
+            let m = get(if provider == Provider::Local { "localModel" } else { "openrouterModel" });
+            let m = if m.is_empty() && provider == Provider::OpenRouter { DEFAULT_OPENROUTER_MODEL.to_string() } else { m };
+            if m.is_empty() || compat::valid_model(&m) { Ok(m) } else { Err(format!("nom de modèle invalide : « {} »", m.chars().take(64).collect::<String>())) }
+        }
+    }
+}
+
+/// Serveur local, OpenRouter : l'adresse de base, vérifiée (http seulement
+/// pour ce PC). Les autres fournisseurs n'en ont pas.
+fn base(ctx: &ModuleContext, provider: Provider) -> Result<String, String> {
+    match provider {
+        Provider::OpenRouter => Ok(compat::OPENROUTER_BASE.into()),
+        Provider::Local => {
+            let raw = ctx.settings().get("localUrl").and_then(Value::as_str).map(str::trim).filter(|s| !s.is_empty()).unwrap_or(compat::DEFAULT_LOCAL_BASE).to_string();
+            compat::server_base(&raw).map(|(b, _)| b)
+        }
+        _ => Err("pas d'adresse pour ce fournisseur".into()),
+    }
+}
+
+/// Où partent les messages : l'adresse du fournisseur, ou celle du serveur
+/// local (« localhost:11434 »).
+fn destination(ctx: &ModuleContext, provider: Provider) -> String {
+    match provider {
+        Provider::Local => match base(ctx, provider).and_then(|b| compat::server_base(&b)) {
+            Ok((_, authority)) => authority,
+            Err(_) => "serveur local (adresse invalide)".into(),
+        },
+        p => p.destination().into(),
     }
 }
 
@@ -849,6 +951,12 @@ fn max_tokens(ctx: &ModuleContext) -> u64 {
 /// La consigne complète : la personnalité (la vôtre, sinon celle d'Ondine),
 /// puis, si les émotions sont activées, la consigne de la balise d'humeur.
 fn system(ctx: &ModuleContext) -> String {
+    system_for(ctx, true)
+}
+
+/// La consigne, avec (ou sans, pour un modèle qui ne gère pas les outils) la
+/// description des outils.
+fn system_for(ctx: &ModuleContext, with_tools: bool) -> String {
     let (personality, hint) = defaults(voice(ctx));
     let custom = ctx.settings().get("personality").and_then(Value::as_str).unwrap_or("").trim().chars().take(1500).collect::<String>();
     let mut s = if custom.is_empty() { personality.to_string() } else { custom };
@@ -856,12 +964,12 @@ fn system(ctx: &ModuleContext) -> String {
         s.push_str("\n\n");
         s.push_str(hint);
     }
-    if file_tools(ctx) {
+    if file_tools(ctx) && with_tools {
         s.push_str("\n\n");
         let folder = tools::folder(ctx).map(|p| p.display().to_string()).unwrap_or_else(|| "Documents\\Ondine".into());
         s.push_str(&tools_hint(voice(ctx)).replace("{dossier}", &folder));
     }
-    if pc_tools(ctx) {
+    if pc_tools(ctx) && with_tools {
         s.push_str("\n\n");
         s.push_str(pc_hint(voice(ctx)));
     }

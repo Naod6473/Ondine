@@ -17,9 +17,11 @@
 // - hints       : les bons moments pour proposer un onglet (première clé USB, première visio)
 // - speech      : la reconnaissance vocale sur le PC (Parakeet, 1.2.4) ;
 //                 speech_models (téléchargement vérifié), speech_audio (calculs)
+// - custom_sounds : vos propres sons (%APPDATA%\Ondine\sounds, 1.2.4)
 
 pub mod bus;
 pub mod credentials;
+pub mod custom_sounds;
 pub mod files;
 pub mod ics;
 pub mod ics_calendars;

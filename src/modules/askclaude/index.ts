@@ -159,7 +159,7 @@ interface Bubble {
   cards?: Card[];
 }
 
-const PROVIDER_NAMES: Record<string, string> = { claude: "Claude", openai: "GPT", gemini: "Gemini" };
+const PROVIDER_NAMES: Record<string, string> = { claude: "Claude", openai: "GPT", gemini: "Gemini", local: "Modèle local", openrouter: "OpenRouter" };
 
 /** L'état de l'onglet, gardé tant que l'île tourne (l'onglet peut se redessiner). */
 const state: {
@@ -851,7 +851,7 @@ export const askclaude: IslandModule = {
             "div",
             { class: "ask-head" },
             el("b", {}, "💬 Ondine"),
-            el("small", { class: "muted" }, s ? `${who} · ${s.model}` : ""),
+            el("small", { class: "muted" }, s ? (s.model ? `${who} · ${s.model}` : who) : ""),
             el(
               "button",
               {
@@ -879,6 +879,18 @@ export const askclaude: IslandModule = {
               `🔑 Pas encore de ${s.keyLabel.charAt(0).toLowerCase()}${s.keyLabel.slice(1)}. `,
               el("button", { class: "btn small", onclick: api.handler(() => Bridge.openSettingsWindow()) }, "Ouvrir les réglages"),
               el("small", { class: "muted" }, ` (Identifiants → ${s.keyLabel})`),
+            ),
+          );
+        }
+
+        // Serveur local : un modèle à choisir (Réglages → Fournisseur et modèles).
+        if (s && s.provider === "local" && !s.model) {
+          parts.push(
+            el(
+              "div",
+              { class: "ask-warn" },
+              "🧩 Choisissez le modèle du serveur local. ",
+              el("button", { class: "btn small", onclick: api.handler(() => Bridge.openSettingsWindow()) }, "Ouvrir les réglages"),
             ),
           );
         }

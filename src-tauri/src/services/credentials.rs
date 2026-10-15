@@ -8,12 +8,16 @@
 
 /// Toutes les clés que l'île accepte de stocker. Les autres sont refusées
 /// (sauf celles des agendas en ligne, voir `calendar_key`).
-pub const KNOWN_KEYS: &[&str] = &["anthropic-api-key", OPENAI_KEY, GEMINI_KEY, ICAL_URL, GITHUB_TOKEN];
+pub const KNOWN_KEYS: &[&str] = &["anthropic-api-key", OPENAI_KEY, GEMINI_KEY, OPENROUTER_KEY, LOCAL_LLM_KEY, ICAL_URL, GITHUB_TOKEN];
 
 /// Les clés des autres fournisseurs d'IA de « Parler à Ondine »
 /// (modules/askclaude_providers.rs). Facultatives.
 pub const OPENAI_KEY: &str = "openai-api-key";
 pub const GEMINI_KEY: &str = "gemini-api-key";
+/// OpenRouter, et la clé (facultative) d'un serveur local compatible OpenAI
+/// (modules/askclaude_compat.rs).
+pub const OPENROUTER_KEY: &str = "openrouter-api-key";
+pub const LOCAL_LLM_KEY: &str = "local-llm-api-key";
 
 /// Le jeton GitHub (lecture seule, read:user) du calendrier de contributions
 /// de l'onglet Agents IA (modules/agents_github.rs). Facultatif.

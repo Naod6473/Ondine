@@ -25,10 +25,13 @@ import type { NotificationAction } from "../../core/notifications";
 import { Bridge } from "../../core/bridge";
 import { el } from "../../island/dom";
 import { pacedInterval } from "../../core/perf";
+import { diffPanel, liveOn, liveRow } from "./live-view";
+import type { LiveFile } from "./live-logic";
 import { agentIcon, icon } from "../../island/icon";
 import { mountGithub } from "./github-view";
 import { changesLine, namesLine, since, type ChangeSummary } from "./texts";
 import { usageSection, watchBudget } from "./usage-view";
+import { planSection } from "./plan-view";
 import { HOOK_TOOLS, LAUNCH, launchName, sourceName, summaryLine } from "./tools";
 import { mountFilesPanel, requestFiles } from "./report-view";
 import { startWaitWatch } from "./wait-watch";
@@ -363,6 +366,8 @@ export const agents: IslandModule = {
       // Le compteur de jetons (journaux locaux de Claude Code et Codex) : usage-view.ts.
       const usage = usageSection(api);
       const usageBox = usage.box;
+      // Les limites du forfait de Claude et Codex (plan-view.ts, 1.2.4), au-dessus du compteur.
+      const plan = planSection(api);
       // Le calendrier de contributions GitHub (github-view.ts), sous le compteur.
       const githubBox = el("section", { class: "agents-usage agents-github" });
       const list = el("ul", { class: "agents-list" });
@@ -372,8 +377,11 @@ export const agents: IslandModule = {
       const projectRows = el("ul", { class: "agents-projects" });
       // La liste des fichiers d'un bilan (report-view.ts), vide le reste du temps.
       const filesBox = el("section", { class: "agents-files-box" });
+      // Le changement d'un fichier modifié en direct (live-view.ts, 1.2.4), en lecture seule.
+      const diffBox = el("section", { class: "agents-diff-box" });
+      const diff = diffPanel(api, diffBox);
       root.append(
-        el("div", { class: "agents" }, launch, projectRows, asks, filesBox, status, quiet, board, usageBox, githubBox, el("div", { class: "muted agents-subtitle" }, "Derniers messages"), list, guide),
+        el("div", { class: "agents" }, launch, projectRows, asks, filesBox, status, quiet, board, diffBox, plan.box, usageBox, githubBox, el("div", { class: "muted agents-subtitle" }, "Derniers messages"), list, guide),
       );
       const stopFiles = mountFilesPanel(api, filesBox);
       /** Le nom de l'agent choisi (« Autre outil » : le mot du réglage). */
@@ -768,12 +776,16 @@ export const agents: IslandModule = {
         // Une session vient peut-être de finir : sa dernière phrase a changé.
         void loadLast();
         void usage.load();
+        void plan.load();
         let data: { events: AgentEvent[]; working: number; sessions: Session[]; asks: Ask[]; quiet: { until: number | null; held: number } | null };
         try {
           data = await api.invoke("history");
         } catch {
           return; // hors de l'appli
         }
+        // Les fichiers modifiés en direct (réglage « liveFiles »).
+        let live: LiveFile[] = [];
+        if (liveOn(api)) live = await api.invoke<{ files: LiveFile[] }>("live").then((r) => r.files ?? [], () => []);
         const waiting = data.sessions.filter((x) => x.state === "waiting").length;
         // Un morceau par élément : chacun garde son pictogramme et sa traduction.
         const parts = [data.working ? `🧠 ${data.working} au travail` : "", waiting ? `✋ ${waiting} vous attend${waiting > 1 ? "ent" : ""}` : ""].filter(Boolean);
@@ -805,6 +817,7 @@ export const agents: IslandModule = {
                 el("small", { class: "muted" }, what),
                 el("span", { class: "agents-go" }, "↗"),
               ),
+              live.some((f) => f.session === x.id) ? liveRow(live, x.id, (f) => void diff.show(f)) : null,
             );
           }),
         );
@@ -843,7 +856,14 @@ export const agents: IslandModule = {
       redraws.add(draw);
       void draw();
       const stopTimer = pacedInterval(() => void draw(), "agentsList", true); // pour « il y a 5 min »
+      // Un fichier vient d'être modifié : un seul redessin pour une rafale.
+      let liveTimer = 0;
+      const stopLive = api.on("agents.live", () => {
+        if (!liveTimer) liveTimer = window.setTimeout(() => ((liveTimer = 0), void draw()), 300);
+      });
       return () => {
+        stopLive();
+        window.clearTimeout(liveTimer);
         redraws.delete(draw);
         stopTimer();
         usage.stop();

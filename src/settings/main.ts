@@ -42,6 +42,7 @@ import { profilesPage, profileSubs } from "./profiles-page";
 import { mascotPodium, type Podium } from "./podium";
 import { aboutGroup } from "./about";
 import { askclaudeGroups } from "./askclaude-page";
+import { customSoundRows } from "./sounds-page";
 import { perfGroup } from "./perf-group";
 import { phonesPage } from "./phone-certificate";
 import { startPerf } from "../core/perf";
@@ -128,14 +129,14 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
       label: "Outils proposés",
       keys: ["launchClaude", "launchCodex", "launchGemini", "launchCopilot", "launchCursor", "launchQwen", "launchGoose", "launchOpencode", "launchKiro", "launchHermes", "launchAider", "launchAmp", "otherTool"],
     },
-    { id: "notify", label: "Notifications", keys: ["notifyWaiting", "notifyDone", "remindWaiting", "showChanges", "doneSummary", "resumePreview", "mascot"] },
+    { id: "notify", label: "Notifications", keys: ["notifyWaiting", "notifyDone", "remindWaiting", "showChanges", "liveFiles", "doneSummary", "resumePreview", "mascot"] },
     { id: "perms", label: "Autorisations et MCP", keys: ["mcp", "permissions", "permissionWait"] },
-    { id: "tokens", label: "Jetons et budget", keys: ["usage", "prices", "dailyBudget"] },
+    { id: "tokens", label: "Jetons et budget", keys: ["usage", "planLimits", "prices", "dailyBudget"] },
     { id: "github", label: "GitHub", keys: ["githubLogin", "githubToken"] },
   ],
   askclaude: [
     { id: "general", label: "Général", keys: [] },
-    { id: "models", label: "Fournisseur et modèles", keys: ["provider", "model", "openaiModel", "geminiModel", "maxTokens"] },
+    { id: "models", label: "Fournisseur et modèles", keys: ["provider", "model", "openaiModel", "geminiModel", "localUrl", "localModel", "openrouterModel", "maxTokens"] },
     { id: "persona", label: "Personnalité et affichage", keys: ["personality", "autoGrow", "emotions", "showDrop"] },
     { id: "voice", label: "Voix et sons", keys: ["voiceHotkey", "micMode", "voiceEngine", "lookHotkey", "handsFree", "quickCommands", "plops", "plopVolume", "discreet"] },
     { id: "files", label: "Fichiers et PC", keys: ["fileTools", "pcTools", "filesFolder"] },
@@ -1452,7 +1453,7 @@ function look(main: HTMLElement) {
       row("Fond des Réglages", backdropChoice(), "Noir profond : un fond sombre et calme derrière les pages. Dégradés : les taches de couleur d'avant, derrière du verre."),
     ]),
     group("Sons", [
-      row("Sons de clic", toggle(s.island.sounds, (v) => save((d) => (d.island.sounds = v)), "Sons de clic"), "De petits « plop » à l'ouverture, à la fermeture et sur les boutons. Fabriqués sur place, sans fichier."),
+      row("Sons de clic", toggle(s.island.sounds, (v) => save((d) => (d.island.sounds = v)), "Sons de clic"), "De petits « plop » à l'ouverture, à la fermeture et sur les boutons. Fabriqués sur place, ou vos propres fichiers (ci-dessous)."),
       row(
         "Volume des sons",
         stepper(Math.round(s.island.soundVolume * 100), 5, 100, (v) => save((d) => (d.island.soundVolume = v / 100)), 5, "%"),
@@ -1476,6 +1477,8 @@ function look(main: HTMLElement) {
           "▶ Essayer",
         ),
       ),
+      // Vos propres sons (sounds-page.ts, 1.2.4).
+      ...customSoundRows(() => bus.emit("sounds.reload", null, "settings")),
     ]),
   );
 }
@@ -1709,7 +1712,7 @@ function modulePage(main: HTMLElement, man: ModuleManifest, compact = false) {
   if (!compact && man.id === "weekly") main.append(weeklyGroup(man));
   // Animations de l'île : l'aperçu du halo, en direct, avec les réglages choisis.
   // Parler à Ondine : ce qui part et la consigne exacte (askclaude-page.ts).
-  if (!compact && man.id === "askclaude") main.append(...askclaudeGroups());
+  if (!compact && man.id === "askclaude") main.append(...askclaudeGroups((key, value) => save((d) => ((d.modules.askclaude ??= { enabled: settingsStore.moduleEnabled("askclaude"), values: {} }).values[key] = value), true)));
   if (!compact) main.append(el("p", { class: "version" }, `${man.name} · version ${man.version}`));
 }
 
@@ -2238,6 +2241,8 @@ function credentials(main: HTMLElement) {
     { key: "anthropic-api-key", label: "Clé API Anthropic", placeholder: "Coller la clé ici", help: "Pour parler à Ondine avec Claude (fournisseur par défaut)." },
     { key: "openai-api-key", label: "Clé API OpenAI", placeholder: "Coller la clé ici", help: "Pour parler à Ondine avec GPT. Facultative." },
     { key: "gemini-api-key", label: "Clé API Gemini", placeholder: "Coller la clé ici", help: "Pour parler à Ondine avec Gemini (Google AI Studio). Facultative." },
+    { key: "openrouter-api-key", label: "Clé API OpenRouter", placeholder: "Coller la clé ici", help: "Pour parler à Ondine avec un modèle d'OpenRouter. Facultative." },
+    { key: "local-llm-api-key", label: "Clé du serveur local", placeholder: "Coller la clé ici", help: "Seulement si votre serveur compatible OpenAI en demande une (Ollama et LM Studio : non). Facultative." },
   ];
   for (const k of keys) {
     const status = chip("…");

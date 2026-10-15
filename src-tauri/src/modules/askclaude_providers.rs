@@ -1,4 +1,5 @@
-// « Parler à Ondine » : les trois fournisseurs d'IA (Claude, OpenAI, Gemini).
+// « Parler à Ondine » : les fournisseurs d'IA (Claude, OpenAI, Gemini, et
+// depuis 1.2.4 un serveur local ou OpenRouter : askclaude_compat.rs).
 //
 // Une seule forme de conversation (des tours « vous » / « Ondine », avec
 // éventuellement un document ou une image joints), traduite ici vers l'API de
@@ -18,6 +19,8 @@ use std::time::Duration;
 
 use serde_json::{json, Value};
 
+use super::askclaude_compat as compat;
+
 /// Les fournisseurs : l'identifiant du réglage, la clé dans le Gestionnaire
 /// d'identifiants, et l'adresse montrée avant l'envoi.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,15 +28,20 @@ pub enum Provider {
     Claude,
     OpenAi,
     Gemini,
+    /// Un serveur compatible OpenAI (Ollama, LM Studio…), à l'adresse du réglage `localUrl`.
+    Local,
+    OpenRouter,
 }
 
 impl Provider {
-    pub const ALL: [Provider; 3] = [Provider::Claude, Provider::OpenAi, Provider::Gemini];
+    pub const ALL: [Provider; 5] = [Provider::Claude, Provider::OpenAi, Provider::Gemini, Provider::Local, Provider::OpenRouter];
 
     pub fn from_id(id: &str) -> Provider {
         match id {
             "openai" => Provider::OpenAi,
             "gemini" => Provider::Gemini,
+            "local" => Provider::Local,
+            "openrouter" => Provider::OpenRouter,
             _ => Provider::Claude,
         }
     }
@@ -43,6 +51,8 @@ impl Provider {
             Provider::Claude => "claude",
             Provider::OpenAi => "openai",
             Provider::Gemini => "gemini",
+            Provider::Local => "local",
+            Provider::OpenRouter => "openrouter",
         }
     }
 
@@ -51,15 +61,31 @@ impl Provider {
             Provider::Claude => "anthropic-api-key",
             Provider::OpenAi => crate::services::credentials::OPENAI_KEY,
             Provider::Gemini => crate::services::credentials::GEMINI_KEY,
+            Provider::Local => crate::services::credentials::LOCAL_LLM_KEY,
+            Provider::OpenRouter => crate::services::credentials::OPENROUTER_KEY,
         }
     }
 
+    /// L'adresse fixe du fournisseur. Serveur local : son adresse vient du
+    /// réglage (askclaude.rs, `destination`) ; ceci n'est qu'un repli.
     pub fn destination(self) -> &'static str {
         match self {
             Provider::Claude => "api.anthropic.com",
             Provider::OpenAi => "api.openai.com",
             Provider::Gemini => "generativelanguage.googleapis.com",
+            Provider::Local => "localhost",
+            Provider::OpenRouter => "openrouter.ai",
         }
+    }
+
+    /// Parle l'API « Chat Completions » (serveur local, OpenRouter).
+    pub fn compat(self) -> bool {
+        matches!(self, Provider::Local | Provider::OpenRouter)
+    }
+
+    /// Une clé est-elle obligatoire ? (Pas pour un serveur local.)
+    pub fn needs_key(self) -> bool {
+        self != Provider::Local
     }
 
     /// Le nom de la clé dans Réglages → Identifiants (pour les messages d'erreur).
@@ -68,6 +94,8 @@ impl Provider {
             Provider::Claude => "Clé API Anthropic",
             Provider::OpenAi => "Clé API OpenAI",
             Provider::Gemini => "Clé API Gemini",
+            Provider::Local => "Clé du serveur local",
+            Provider::OpenRouter => "Clé API OpenRouter",
         }
     }
 }
@@ -147,9 +175,31 @@ fn image_of(t: &Turn) -> Option<&(&'static str, String)> {
     t.attachment.as_ref().and_then(|a| a.image.as_ref())
 }
 
-/// L'URL et le corps de la requête, selon le fournisseur.
+/// L'URL et le corps de la requête, selon le fournisseur. Serveur local et
+/// OpenRouter : l'URL est relative (« /chat/completions »), à mettre après
+/// l'adresse de base (askclaude.rs).
 pub fn request(provider: Provider, r: &Request) -> (String, Value) {
     match provider {
+        Provider::Local | Provider::OpenRouter => {
+            let messages: Vec<Value> = r
+                .turns
+                .iter()
+                .map(|t| {
+                    if !t.user {
+                        return json!({ "role": "assistant", "content": ondine_text(t) });
+                    }
+                    match image_of(t) {
+                        Some((media, data)) => json!({ "role": "user", "content": [
+                            { "type": "text", "text": user_text(t) },
+                            { "type": "image_url", "image_url": { "url": format!("data:{media};base64,{data}") } },
+                        ] }),
+                        None => json!({ "role": "user", "content": user_text(t) }),
+                    }
+                })
+                .collect();
+            let tools: Vec<(&str, &str, &Value)> = r.tools.iter().map(|t| (t.name, t.description, &t.schema)).collect();
+            ("/chat/completions".into(), compat::body(r.model, r.max_tokens + REASONING_MARGIN, r.system, messages, r.extra, &tools))
+        }
         Provider::Claude => {
             let messages: Vec<Value> = r
                 .turns
@@ -243,27 +293,65 @@ pub fn valid_model(m: &str) -> bool {
 
 /// Appelle l'API ; renvoie la réponse sous la forme commune.
 pub fn call(provider: Provider, key: &str, url: &str, body: &Value) -> Result<Value, String> {
-    use ureq::tls::{RootCerts, TlsConfig, TlsProvider};
-    let agent: ureq::Agent = ureq::Agent::config_builder()
-        // Le TLS de Windows et ses certificats (voir Cargo.toml).
-        .tls_config(TlsConfig::builder().provider(TlsProvider::NativeTls).root_certs(RootCerts::PlatformVerifier).build())
-        .http_status_as_error(false) // on lit le message d'erreur de l'API
-        .timeout_global(Some(Duration::from_secs(120)))
-        .build()
-        .into();
-    let req = agent.post(url);
-    let req = match provider {
-        Provider::Claude => req.header("x-api-key", key).header("anthropic-version", "2023-06-01"),
-        Provider::OpenAi => req.header("authorization", &format!("Bearer {key}")),
-        Provider::Gemini => req.header("x-goog-api-key", key),
-    };
-    let mut resp = req.send_json(body).map_err(|e| format!("impossible de joindre l'API : {e}"))?;
-    let status = resp.status().as_u16();
-    let v: Value = resp.body_mut().with_config().limit(2 * 1024 * 1024).read_json().map_err(|_| format!("réponse illisible de l'API (code {status})"))?;
+    let (status, v) = call_raw(provider, key, url, body)?;
     if status != 200 {
         return Err(api_error(provider, status, &v));
     }
     Ok(parse(provider, &v))
+}
+
+/// L'agent HTTP : le TLS de Windows. Serveur local et OpenRouter : aucune
+/// redirection suivie (l'adresse vérifiée est la seule contactée) ; un
+/// serveur sur ce PC est joint sans proxy, et a plus de temps (premier
+/// chargement du modèle).
+fn agent(provider: Provider, url: &str) -> ureq::Agent {
+    use ureq::tls::{RootCerts, TlsConfig, TlsProvider};
+    let on_this_pc = provider == Provider::Local && compat::on_this_pc(url);
+    let mut config = ureq::Agent::config_builder()
+        // Le TLS de Windows et ses certificats (voir Cargo.toml).
+        .tls_config(TlsConfig::builder().provider(TlsProvider::NativeTls).root_certs(RootCerts::PlatformVerifier).build())
+        .http_status_as_error(false) // on lit le message d'erreur de l'API
+        .timeout_global(Some(Duration::from_secs(if on_this_pc { 300 } else { 120 })));
+    if provider.compat() {
+        config = config.max_redirects(0);
+    }
+    if on_this_pc {
+        config = config.proxy(None);
+    }
+    config.build().into()
+}
+
+/// Un POST : le code HTTP et la réponse JSON (2 Mo au plus).
+pub fn call_raw(provider: Provider, key: &str, url: &str, body: &Value) -> Result<(u16, Value), String> {
+    let req = agent(provider, url).post(url);
+    let req = match provider {
+        Provider::Claude => req.header("x-api-key", key).header("anthropic-version", "2023-06-01"),
+        Provider::OpenAi | Provider::OpenRouter => req.header("authorization", &format!("Bearer {key}")),
+        Provider::Local if !key.is_empty() => req.header("authorization", &format!("Bearer {key}")),
+        Provider::Local => req,
+        Provider::Gemini => req.header("x-goog-api-key", key),
+    };
+    let mut resp = req.send_json(body).map_err(|e| unreachable_text(provider, &e))?;
+    let status = resp.status().as_u16();
+    let v: Value = resp.body_mut().with_config().limit(2 * 1024 * 1024).read_json().map_err(|_| format!("réponse illisible de l'API (code {status})"))?;
+    Ok((status, v))
+}
+
+/// Un GET (liste des modèles d'un serveur local ou d'OpenRouter).
+pub fn get_raw(provider: Provider, key: &str, url: &str) -> Result<(u16, Value), String> {
+    let req = agent(provider, url).get(url);
+    let req = if key.is_empty() { req } else { req.header("authorization", &format!("Bearer {key}")) };
+    let mut resp = req.call().map_err(|e| unreachable_text(provider, &e))?;
+    let status = resp.status().as_u16();
+    let v: Value = resp.body_mut().with_config().limit(4 * 1024 * 1024).read_json().map_err(|_| format!("réponse illisible du serveur (code {status})"))?;
+    Ok((status, v))
+}
+
+fn unreachable_text(provider: Provider, e: &ureq::Error) -> String {
+    match provider {
+        Provider::Local => format!("impossible de joindre le serveur local : est-il lancé (Ollama, LM Studio…) ? ({e})"),
+        _ => format!("impossible de joindre l'API : {e}"),
+    }
 }
 
 pub fn api_error(provider: Provider, status: u16, v: &Value) -> String {
@@ -274,6 +362,8 @@ pub fn api_error(provider: Provider, status: u16, v: &Value) -> String {
         _ if bad_key => format!("clé API refusée (vérifiez la {} dans Réglages → Identifiants)", provider.key_label()),
         403 => "accès refusé par l'API".into(),
         404 => "modèle introuvable : vérifiez son nom dans les réglages du module".into(),
+        // Une redirection n'est jamais suivie (serveur local, OpenRouter).
+        300..=399 => "le serveur a voulu rediriger la demande ailleurs : refusé, vérifiez son adresse".into(),
         413 => "envoi trop gros".into(),
         429 => "trop de demandes, ou plus de crédit : réessayez dans un moment".into(),
         500..=599 => "l'API est surchargée ou en panne : réessayez dans un moment".into(),
@@ -283,6 +373,9 @@ pub fn api_error(provider: Provider, status: u16, v: &Value) -> String {
 }
 
 pub fn parse(provider: Provider, v: &Value) -> Value {
+    if provider.compat() {
+        return compat::parse(v);
+    }
     let (texts, truncated, input, output): (Vec<&str>, bool, &Value, &Value) = match provider {
         Provider::Claude => (
             v["content"].as_array().into_iter().flatten().filter(|b| b["type"] == "text").filter_map(|b| b["text"].as_str()).collect(),
@@ -317,6 +410,7 @@ pub fn parse(provider: Provider, v: &Value) -> Value {
             &v["usageMetadata"]["promptTokenCount"],
             &v["usageMetadata"]["candidatesTokenCount"],
         ),
+        Provider::Local | Provider::OpenRouter => unreachable!("traité plus haut"),
     };
     let model = match provider {
         Provider::Gemini => &v["modelVersion"],
@@ -360,6 +454,8 @@ fn calls_of(provider: Provider, v: &Value) -> (Vec<Call>, Vec<Value>) {
                 Call { id: f["id"].as_str().map(str::to_string).unwrap_or_else(|| name.clone()), name, args: f["args"].clone() }
             })
             .collect(),
+        // askclaude_compat.rs (parse) : jamais ici.
+        Provider::Local | Provider::OpenRouter => Vec::new(),
     };
     if calls.is_empty() {
         return (calls, Vec::new());
@@ -370,6 +466,7 @@ fn calls_of(provider: Provider, v: &Value) -> (Vec<Call>, Vec<Value>) {
         Provider::OpenAi => v["output"].as_array().cloned().unwrap_or_default(),
         // Le contenu entier, avec ses « signatures de pensée ».
         Provider::Gemini => vec![v["candidates"][0]["content"].clone()],
+        Provider::Local | Provider::OpenRouter => Vec::new(),
     };
     (calls, native)
 }
@@ -392,6 +489,7 @@ pub fn tool_results(provider: Provider, results: &[(Call, Value)]) -> Vec<Value>
             vec![json!({ "role": "user", "content": blocks })]
         }
         Provider::OpenAi => results.iter().map(|(c, r)| json!({ "type": "function_call_output", "call_id": c.id, "output": r.to_string() })).collect(),
+        Provider::Local | Provider::OpenRouter => compat::tool_results(&results.iter().map(|(c, r)| (c.id.clone(), r.clone())).collect::<Vec<_>>()),
         Provider::Gemini => {
             let parts: Vec<Value> = results
                 .iter()
@@ -454,6 +552,27 @@ mod tests {
         assert_eq!(b["systemInstruction"]["parts"][0]["text"], "sys");
         assert_eq!(b["contents"][0]["parts"][1]["inlineData"]["mimeType"], "image/png");
         assert_eq!(b["contents"][1]["role"], "model");
+    }
+
+    #[test]
+    fn local_and_openrouter_body() {
+        let t = turns();
+        let tl = tools();
+        let (url, b) = request(Provider::Local, &Request { model: "llama3.2", max_tokens: 1024, system: "sys", turns: &t, tools: &tl, extra: &[] });
+        assert_eq!(url, "/chat/completions");
+        assert_eq!(b["messages"][0], json!({ "role": "system", "content": "sys" }));
+        assert_eq!(b["messages"][1]["content"][1]["image_url"]["url"], "data:image/png;base64,QUJD");
+        assert_eq!(b["messages"][2]["role"], "assistant");
+        assert_eq!(b["messages"][3], json!({ "role": "user", "content": "Et ça ?" }));
+        assert_eq!(b["tools"][0]["function"]["name"], "chercher_fichiers");
+        assert_eq!(b["stream"], false);
+        let a = parse(Provider::OpenRouter, &json!({ "model": "x/y", "choices": [{ "message": { "content": "<think>…</think>Salut" } }] }));
+        assert_eq!(a["answer"], "Salut");
+        let r = tool_results(Provider::Local, &[(Call { id: "c1".into(), name: "n".into(), args: json!({}) }, json!([1]))]);
+        assert_eq!((r[0]["role"].as_str(), r[0]["tool_call_id"].as_str()), (Some("tool"), Some("c1")));
+        assert!(Provider::OpenRouter.needs_key() && !Provider::Local.needs_key());
+        assert_eq!(Provider::from_id("local"), Provider::Local);
+        assert_eq!(Provider::from_id("openrouter").id(), "openrouter");
     }
 
     #[test]

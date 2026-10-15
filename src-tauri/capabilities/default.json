@@ -55,6 +55,8 @@
     "allow-speech-download",
     "allow-speech-cancel",
     "allow-speech-remove",
+    "allow-sounds-custom",
+    "allow-sounds-open-folder",
     "allow-phone-certificate-setup",
     "allow-phone-list",
     "allow-phone-revoke",

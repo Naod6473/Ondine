@@ -639,6 +639,11 @@ pub fn permission_cli() {
     cli::permission(std::env::args().skip(2).collect());
 }
 
+/// `ondine.exe statusline` : ligne d'état de Claude Code, limites du forfait (voir cli.rs).
+pub fn statusline_cli() {
+    cli::statusline();
+}
+
 /// `ondine.exe mcp` : l'île comme serveur MCP pour les agents (voir cli.rs).
 pub fn mcp_cli() {
     cli::mcp();
@@ -731,6 +736,8 @@ pub fn run() {
             services::speech::speech_download,
             services::speech::speech_cancel,
             services::speech::speech_remove,
+            services::custom_sounds::sounds_custom,
+            services::custom_sounds::sounds_open_folder,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

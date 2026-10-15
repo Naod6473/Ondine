@@ -17,6 +17,8 @@ mod agents;
 mod askclaude;
 // Les fournisseurs d'IA de « Parler à Ondine » : Claude, OpenAI, Gemini.
 mod askclaude_providers;
+// Serveur local (Ollama, LM Studio…) et OpenRouter (API Chat Completions).
+mod askclaude_compat;
 // Ses outils de fichiers : chercher, lire, créer, proposer.
 mod askclaude_tools;
 // Ses outils pour le PC et les onglets : regarder, régler, ouvrir.
@@ -96,6 +98,10 @@ mod agents_tools;
 mod agents_mcp_extra;
 // Les rappels d'attente.
 mod agents_wait;
+// Les limites du forfait de Claude et Codex (1.2.4) ; « ondine.exe statusline » s'en sert.
+pub(crate) mod agents_plan;
+// Les fichiers modifiés en direct par un agent (1.2.4) ; « ondine.exe notify » calcule le diff.
+pub(crate) mod agents_live;
 // Animations de l'île : sortie de veille, Verr Maj, copier / coller, volume, Wi-Fi, niveaux sonores.
 mod halos;
 // Ondine et les fenêtres (public : island/mod.rs lui demande le « lancer »).

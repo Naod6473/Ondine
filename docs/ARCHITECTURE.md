@@ -3742,3 +3742,103 @@ Coucou (MIT) et adaptée ; textes, dessins et goutte sont ceux d'Ondine.
   Soigné par appli, remise au propre et ce qui part). Logique pure dans
   `dictation-format.ts`, testée.
 
+
+## 1.2.4 : limites du forfait, fichiers modifiés en direct, modèles locaux, vos propres sons
+
+### Limites du forfait (`src-tauri/src/modules/agents_plan.rs`, `src/modules/agents/plan.ts`, `plan-view.ts`)
+
+Onglet Agents IA, au-dessus du compteur de jetons : la fenêtre de 5 h et la
+semaine de Claude et de Codex, en % utilisé, avec l'heure de remise à zéro.
+Couleurs : normale, jaune dès 75 %, rouge dès 90 % (`planLevel`, testé).
+Réglage `planLimits` (activé, groupe « Jetons et budget »).
+
+- **Claude** : Claude Code donne `rate_limits.five_hour / seven_day`
+  (`used_percentage`, `resets_at` en secondes) à sa **ligne d'état**, sur
+  l'entrée standard (forfaits Pro et Max). « Brancher la ligne d'état »
+  écrit `"statusLine": { "type": "command", "command": "\"C:/…/ondine.exe\" statusline" }`
+  dans `~/.claude/settings.json` avec la même installation sûre que les
+  hooks (lecture, fusion, copie `.bak`, jamais d'écrasement). Une ligne
+  d'état déjà là est gardée dans `%APPDATA%\Ondine\statusline-previous.json`
+  et relancée par `ondine.exe statusline` (son texte reste affiché) ;
+  « Débrancher » la remet. `ondine.exe statusline` n'envoie à l'île que les
+  chiffres (`source: "plan"`), par le canal nommé des agents ; rien n'est
+  écrit sur le disque. État : installed / stale / other / absent / unreadable.
+- **Codex** : les journaux `~/.codex/sessions/**/rollout-*.jsonl` (événement
+  `token_count`, `rate_limits.primary / secondary`), lus sur le PC, le plus
+  récent d'abord, avec un cache par taille et date. « Demander à Codex »
+  (sur un clic) lance `codex app-server` (JSON-RPC
+  `account/rateLimits/read`, 15 s au plus, puis arrêt de l'arbre) : c'est
+  Codex qui contacte OpenAI, Ondine n'envoie rien.
+
+### Fichiers modifiés en direct (`src-tauri/src/modules/agents_live.rs`, `src/modules/agents/live-logic.ts`, `live-view.ts`)
+
+Sous chaque session du tableau « En cours », les fichiers que l'agent vient de
+modifier, avec `+N −M` ; un clic ouvre le changement dans un panneau de
+l'onglet, en lecture seule. Réglage `liveFiles` (activé, groupe
+Notifications).
+
+- Hooks : `PostToolUse` (matcher `Edit|MultiEdit|Write`) pour Claude Code,
+  `AfterTool` (matcher `write_file|replace`) pour Gemini CLI, ajoutés aux
+  configurations de l'installation automatique (il faut les réinstaller une
+  fois). Codex : pas de hook d'écriture vérifié, rien d'ajouté.
+- Le calcul se fait dans `ondine.exe notify` (lecture de 4 Mo au plus) :
+  diff ligne à ligne (plus longue sous-suite commune, 3 lignes de contexte,
+  « ⋯ » entre deux morceaux ; au-delà de 200 Ko, 4 000 lignes ou 1 M de
+  cases : seulement les nombres). Claude donne `structuredPatch` : il est
+  repris tel quel. Seul un message réduit (chemin, nombres, 300 lignes au
+  plus, toujours sous les 64 Ko du canal) part vers l'île ; le contenu
+  entier du fichier ne traverse jamais le canal.
+- Dans l'île : `check_path` (dossiers exclus) avant de garder quoi que ce
+  soit, puis encore avant de montrer le changement ; 20 messages par seconde
+  au plus ; 24 fichiers en mémoire, rien sur le disque. Les fichiers d'une
+  session sont oubliés à son message suivant (`working`) ou à sa fin.
+- Animation : une petite gelée à l'arrivée d'une puce (seulement les
+  nouvelles), coupée avec « Réduire les animations », Calme et le mode éco.
+
+### Modèles locaux et OpenRouter (`src-tauri/src/modules/askclaude_compat.rs`, `src/settings/askclaude-models.ts`)
+
+Deux fournisseurs de plus dans Parler à Ondine, en API « Chat Completions » :
+`local` (Ollama, LM Studio, tout serveur compatible OpenAI, réglages
+`localUrl` et `localModel`) et `openrouter` (`openrouterModel`, vide =
+`openrouter/auto`).
+
+- Adresse (`server_base`, testée) : http seulement pour localhost,
+  127.0.0.1 ou [::1] ; https pour toute autre machine ; pas d'identifiant
+  (@), de « ? », de « # », d'IPv6 autre que [::1], de « .. ». Aucune
+  redirection suivie ; un serveur sur ce PC est joint sans proxy (300 s pour
+  le premier chargement du modèle).
+- Clés dans le Gestionnaire d'identifiants : `openrouter-api-key`, et
+  `local-llm-api-key` (facultative ; un serveur local n'en demande pas).
+- Réponses non diffusées en continu (le module ne diffuse pas) ; la
+  réflexion du modèle (`<think>…</think>`, `reasoning_content`) est retirée
+  et n'est jamais montrée ni renvoyée.
+- Outils d'Ondine : proposés seulement si le modèle les gère. Si le serveur
+  les refuse (`refuses_tools`), la même question repart sans eux et le
+  modèle est retenu (`no_tools`) pour la suite ; la liste d'OpenRouter
+  (`supported_parameters`) le dit aussi d'avance.
+- « Lister les modèles du serveur » (Réglages → Parler à Ondine → Fournisseur
+  et modèles) : `GET <adresse>/models`, sur un clic ; un clic sur un modèle le
+  choisit.
+- « Ce qui part » donne la vraie destination : `localhost:11434` et « Vos
+  messages restent sur votre PC » pour un serveur local (`onThisPc`).
+- La voix (transcription par l'API) reste à OpenAI ou Gemini, comme avec Claude.
+
+### Vos propres sons (`src-tauri/src/services/custom_sounds.rs`, `src/island/custom-sounds.ts`, `src/settings/sounds-page.ts`)
+
+Un fichier de `%APPDATA%\Ondine\sounds` nommé comme un son d'Ondine (`tap`,
+`open`, `close`, `toggle`, `drop`, `boing`, `plop`, `jingle`, `jingle-down`,
+`glitch`, `whoosh`, `chomp`, `pop`) en `.wav`, `.mp3`, `.ogg` ou `.m4a`
+remplace ce son. Les noms sont les mêmes des deux côtés (test front).
+
+- Le Rust (`resolve`, testé) choisit d'après le nom et la taille : 2 Mo au
+  plus, non vide, un seul fichier par son (ordre .wav, .mp3, .ogg, .m4a). Il
+  vérifie l'en-tête (`looks_like` : RIFF/WAVE, ID3 ou trame MP3, OggS, ftyp)
+  et renvoie les octets en base64 (commande `sounds_custom`). Un fichier
+  ignoré : le son d'origine reste, une ligne au journal.
+- L'île décode avec Web Audio (`decodeAudioData`) ; un fichier illisible est
+  ignoré de même. `sounds.ts` joue votre fichier (4 s au plus, au volume des
+  sons) à la place du son fabriqué. Les sons de l'éclosion ne sont pas
+  remplaçables.
+- Réglages → Apparence → Sons : « Ouvrir le dossier des sons »
+  (`sounds_open_folder`, crée le dossier s'il manque), « Recharger les sons »
+  (ici, et dans l'île par l'événement `sounds.reload`), les noms possibles.
