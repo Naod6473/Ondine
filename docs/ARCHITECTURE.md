@@ -263,7 +263,10 @@ qu'une fois les ressorts posés (au plus tard après 1,5 s).
   Parler à Ondine). La mesure est continue (ResizeObserver sur le contenu
   marqué, texte observé) ; la gelée passe en « glisse » (`Jelly.setGlide` :
   ressort amorti sans rebond, qui garde sa vitesse) et `settle` ne la laisse
-  rétrécir que nettement : pas de saut à chaque mot.
+  rétrécir que nettement : pas de saut à chaque mot. Avec
+  `data-island-fit-hold` sur le contenu marqué (un échange en cours dans
+  Parler à Ondine), elle ne rétrécit pas du tout ; l'attribut retiré, elle
+  reprend la bonne taille (l'observateur suit aussi ces attributs).
 - **Changement d'onglet** (`switchTab`) : on ne redessine pas toute la vue. La
   pastille de l'onglet actif (`src/island/tab-pill.ts`) se déplace avec deux
   ressorts, un par bord : le bord qui mène est raide, celui qui suit est mou,
@@ -2870,6 +2873,47 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
   (`src/settings/askclaude-page.ts`, sous-menus Général et Personnalité).
   Le premier mot d'Ondine est écrit en local (gratuit).
 - Dépôt sur l'île : « Parler à Ondine » prépare le fichier et ouvre l'onglet.
+- Affichage fluide (1.2.4, `flow.ts`, calculs dans `flow-logic.ts`) : la
+  liste des bulles (`.ask-thread`) n'est jamais refaite d'un bloc. `draw()`
+  refait ce qui l'entoure ; `syncThread` met la liste à jour par clés (`hello`,
+  `b<i>`, `pending`, `live`, `typing`) et signatures : une bulle inchangée
+  reste (pas de clignotement), une bulle qui s'en va s'efface sans prendre de
+  place (`leave`, la liste est `position: relative`), les autres glissent à
+  leur nouvelle place (FLIP). Sujets `askclaude.voice` `partial` et
+  `transcribing` : seulement la bulle en direct, regroupés par image
+  (`scheduleLive`, rAF + filet de 120 ms) ; `LiveWords` compare les mots
+  (`diffWords`) : les mots stables ne bougent pas, les nouveaux arrivent en
+  fondu (`.ask-in`), une fin réécrite passe en fondu croisé (`.ask-swap`,
+  deux textes empilés en `inline-grid`). La bulle en direct a toute sa largeur
+  (85 %) : rien ne pousse les mots. À `final`, elle devient votre message
+  (`morphBubble` : lignes du haut et du bas effacées sur place, taille qui
+  glisse, pointillé en `::after` qui s'efface). La réponse : `speak()`
+  (plops.ts) fixe le moment de chaque lettre d'avance (`revealTimes`, un pas
+  régulier + pauses après la ponctuation) et avance image par image (rAF,
+  filet `setTimeout` si la fenêtre ne dessine plus ; ~30 images/s en éco) ;
+  `Typewriter` ajoute chaque morceau en fondu (`.ask-ch`) et garde la fin du
+  mot en cours invisible à sa place (`.ask-ghost`, `wordEnd`). `HeightTween` :
+  la hauteur du texte (`.ask-bubble-text` autour de `.ask-flow`) glisse quand
+  une ligne s'ajoute, donc l'île (fit.ts) grandit ligne par ligne.
+  `ScrollFollow` : défilement amorti vers le bas, seulement si vous étiez en
+  bas. Pendant un échange (écoute, envoi, réponse qui s'écrit) la vue porte
+  `data-island-fit-hold` (`FIT_HOLD_ATTR`) : l'île grandit mais ne rétrécit
+  pas (`settle(…, hold)`), une seule fois à la fin. Aucun texte n'est changé
+  dans un élément sans enfants (les chiffres « rouleraient », motion.ts).
+  « Réduire les animations » ou mascotte Calme (`instant()`) : affichage
+  direct. `voice.level` n'est écouté que par le halo (jamais un redessin de
+  la vue). Jelly (`start()`) pose la forme actuelle des ressorts avant le
+  premier pas : plus d'image où l'île montre d'un coup sa nouvelle taille.
+- Parakeet, mots en direct (`askclaude_voice.rs`, `LivePartials`) : pendant
+  la capture, le son est aussi gardé en mémoire pour un fil à part qui le
+  réécrit en entier (`stt::transcribe`) quand `LiveSchedule::tick` le dit :
+  toutes les ~0,9 s de son, seulement si vous parlez
+  (`SilenceGate::talking`, moins de 500 ms de silence), jamais deux à la fois
+  (un tour sauté si la précédente n'est pas finie), et pas plus de la moitié
+  du temps (`live_every` : au moins 2 × la durée de la dernière, 4 s au plus).
+  Coupé en mode Économie. À la fin de la capture, `drop` attend la
+  transcription en cours et plus rien ne part ; puis `transcribing` et la
+  transcription complète (le texte final).
 - Outils de fichiers (`askclaude_tools.rs`, réglage `fileTools`, désactivé par
   défaut) : quatre outils proposés à l'IA, décrits dans le format de chaque
   API (`Request.tools`) :

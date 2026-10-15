@@ -82,6 +82,27 @@ Face n'est pas joignable d'ici) : jamais une vraie phrase reconnue.
 - [ ] Couper l'interrupteur : le point rouge disparaît dans la seconde, Windows ne montre plus Ondine sur le micro.
 - [ ] Journal : « mot d'appel : micro « … » ouvert », « mot d'appel reconnu », jamais ce qui a été dit.
 
+## Parler à Ondine : un affichage fluide (branche fluide)
+Avec chaque moteur (Parakeet, dictée de Windows, hors ligne, API si une clé est rangée). Réglages par défaut (« Agrandir l'île avec la conversation » activé), puis refaire les cases marquées ⟳ avec ce réglage coupé.
+- [ ] Vos mots en direct (dictée de Windows, hors ligne, et maintenant Parakeet) : la bulle pointillée prend toute sa largeur dès le début ; les mots déjà écrits ne bougent plus quand un mot s'ajoute ; chaque nouveau mot apparaît en fondu doux (léger flou qui s'éclaircit), sans clignotement de toute la vue ni du champ « Écrire à Ondine… ».
+- [ ] Quand le moteur se reprend (fin de phrase réécrite, ex. « il » → « île en ») : l'ancien mot s'efface pendant que le nouveau apparaît au même endroit (fondu croisé), sans saut.
+- [ ] Une phrase longue qui passe à la ligne : la bulle grandit en glissant (≈ ¼ s), l'île grandit avec elle, en douceur, sans à-coups ni rebonds répétés. ⟳
+- [ ] Parakeet : des mots s'écrivent maintenant PENDANT que vous parlez (environ chaque seconde), pas seulement à la fin. Le texte envoyé reste la transcription complète de la fin (s'il diffère un peu des mots en direct, la différence passe en fondu).
+- [ ] Parakeet : pendant une pause dans la phrase, rien ne bouge ; le premier mot en direct peut tarder 2 à 3 s la première fois (le modèle se charge), ensuite ~1 s.
+- [ ] Parakeet, Gestionnaire des tâches : pendant que vous parlez, le processeur d'Ondine monte (noter le pourcentage, attendu : nettement moins de la moitié du PC) ; il retombe à ~0 % dès que vous vous taisez. Noter le modèle de processeur.
+- [ ] Parakeet + Réglages → Performances → Économie : plus de mots en direct (seulement le texte final), comme avant.
+- [ ] Fin de l'écoute : le point rouge s'arrête et « Parlez, je m'arrête… » s'efface en douceur dès « J'écris ce que vous avez dit… » (le libellé change en fondu).
+- [ ] La bulle en direct devient votre message SANS clignoter : le pointillé s'efface, la bulle se resserre à la taille du texte en glissant, le texte remonte en douceur ; « Bonjour ! Je suis Ondine… » (premier message) s'efface sans faire sauter le reste ; les trois gouttes « Ondine réfléchit » arrivent puis s'effacent.
+- [ ] Pendant l'échange (vous parlez → Ondine répond), l'île ne fait pas le yoyo : elle peut grandir, elle ne rétrécit qu'une fois, à la fin, si la réponse est courte. ⟳
+- [ ] La réponse d'Ondine s'écrit à un rythme régulier, lettre par lettre (plus de paquets de lettres), chaque lettre en fondu ; un mot ne saute jamais à la ligne en s'écrivant (il est déjà à sa place). Les « plop » et la bouche suivent comme avant.
+- [ ] Réponse plus longue que la place (réglage coupé, ou 2e/3e question) : la conversation défile vers le bas en glissant, sans sauter à chaque lettre. Remonter avec la molette pendant qu'elle écrit : elle ne vous ramène pas en bas ; redescendre tout en bas : elle suit de nouveau. ⟳
+- [ ] Une commande rapide avec un chiffre (« volume 30 ») : la réponse « Volume réglé à 30 % » s'écrit sans que les chiffres « roulent » à chaque lettre.
+- [ ] Ondine sur le bureau avec l'onglet Parler à Ondine dans sa bulle : même fluidité dans sa bulle.
+- [ ] Windows → Accessibilité → Effets visuels → « Effets d'animation » coupés : vos mots et la réponse s'affichent tout de suite, sans aucun fondu ni glissement, le défilement va en bas d'un coup ; tout marche.
+- [ ] Mascotte « Calme » : pareil (affichage direct, réponse en une fois).
+- [ ] Mode Économie : tout reste fluide mais sans flou sur les mots ; la réponse s'écrit à ~30 images par seconde.
+- [ ] Ouvrir l'onglet pendant une conversation déjà là : on arrive en bas de la conversation, sans défilement animé.
+
 ## Textes
 - [ ] « S'adresser à moi » = tutoiement : « Rien n'est téléchargé avant ton clic », « rien de ce que tu dis n'est envoyé », « télécharge-le dans les Réglages ».
 - [ ] Tutoiement : « Appuie sur la combinaison », « Parle quelques secondes… », « Ondine t'entend avec « … » », « tant que tu n'as pas dit « Dis Ondine » ».
