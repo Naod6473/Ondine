@@ -797,6 +797,9 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `team.changed` | Équipe (Rust) | l'onglet redemande l'état (`state`) : collègues, présence, demandes, voisines |
 | `team.event` `{kind, from, …}` | Équipe (Rust) | ce qui arrive d'un collègue : `ping`, `ask`, `answer`, `visit`, `incoming` (à accepter), `received`, `sent`, `declined`, `invite`, `invite-reply`, `poll`, `vote`, `pomodoro`, `announce`, `status-report`, `rdp-reply`, `paired`, `pair-failed`… → notifications |
 | `team.progress` `{id, name, percent, dir}` | Équipe (Rust) | la notification « Envoi / Réception en cours » remplacée à chaque étape |
+| `callnotes.start` / `callnotes.stop` | pilule de dictée (1.2.4) | Notes d'appel commence / arrête l'enregistrement d'un appel |
+| `callnotes.state` `{recording, startedAt}` | Notes d'appel (Rust) | début / fin d'un enregistrement : la pilule passe au corail avec le temps écoulé ; l'île montre le point rouge |
+| `callnotes.changed` `{id}` / `callnotes.error` `{message}` | Notes d'appel (Rust) | la page redemande la note (jamais de texte dans le message) / un démarrage par la pilule a échoué |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -3578,3 +3581,78 @@ Cinq ajouts indépendants, chacun éteint par défaut ou lancé d'un clic.
 - **Taille** : `ondine.exe` grossit d'environ 20 Mo (la bibliothèque et
   onnxruntime), l'installateur d'environ 6 Mo (compressé). Les modèles ne sont
   jamais dans l'installateur.
+
+## Notes d'appel (1.2.4, `src-tauri/src/modules/callnotes.rs`, `callnotes_audio.rs`, `callnotes_text.rs`, `src/modules/callnotes/`, `src/settings/voice/callnotes-page.ts`)
+
+Un appel enregistré d'un clic (bouton « Enregistrer un appel » de la page
+Notes d'appel du groupe Voix, ou la pilule de dictée par `callnotes.start` /
+`callnotes.stop`), écrit personne par personne, avec un résumé. Inspiré du
+Notetaker de Coucou (MIT, voir THIRD-PARTY.md). Module `callnotes`, activé
+par défaut (rien ne s'enregistre sans clic), sans onglet.
+
+- **Capture** (`platform/voice.rs` `capture(Source, stop, chunk)`, `#[cfg(windows)]`) :
+  deux fils, le micro par défaut (`eCapture`) et la sortie par défaut ouverte
+  en WASAPI partagé avec `AUDCLNT_STREAMFLAGS_LOOPBACK` (`eRender` : ce que
+  jouent les haut-parleurs, la voix des autres ; aucun robot dans la
+  réunion). Le loopback ne donne rien quand le PC se tait : `silence_to_add`
+  complète par du silence dès qu'il manque plus de 200 ms, pour que les deux
+  côtés restent alignés. Un côté qui ne s'ouvre pas : le micro empêche le
+  départ, le son du PC donne seulement un avertissement (`warning`).
+- **Audio** (`callnotes_audio.rs`, pur) : `Downsampler` (fréquence de
+  l'appareil → 16 kHz, moyenne), `WavWriter` / `read_wav` (16 bits mono, un
+  fichier coupé se relit), `Live` (morceaux de 1,5 à 12 s qui finissent sur
+  une pause, pour les mots en direct), `segments` (coupe au plus calme, le
+  silence écarté). Les fichiers sont TEMPORAIRES :
+  `%TEMP%\Ondine-callnotes\<id>-mic.wav` et `-pc.wav`, effacés dès que la
+  transcription est écrite (et jamais mis à la Corbeille). Au démarrage,
+  `stale_audio` efface ceux d'une note écrite ou supprimée.
+- **Pendant l'appel** : un fil par seconde transcrit les morceaux `Live` avec
+  `speech::transcribe` (Parakeet) : les mots en direct (micro = « me », PC =
+  « pc »), gardés en mémoire seulement ; la page les redemande (`get`) sur
+  `callnotes.changed`. Il arrête aussi tout seul : module coupé, micro perdu,
+  4 h passées. L'île montre une vue compacte (point rouge, temps, « Arrêter »)
+  et rappelle « Prévenez les participants que vous enregistrez » à chaque début.
+- **À la fin** (réglage `engine`) :
+  - `parakeet` (défaut) : micro en morceaux de 30 s (`transcribe`) → « Vous » ;
+    son du PC entier par `speech::transcribe_speakers` → tours par voix.
+    Rien du PC mais plusieurs voix dans le micro : tout le monde est
+    « Personne 1 », « Personne 2 »… (`build_room`). Parakeet pas prêt : erreur
+    claire qui renvoie au téléchargement (jamais de passage à l'API tout seul) ;
+  - `api` (choisi par la personne) : morceaux d'une minute vers OpenAI ou
+    Gemini (`askclaude_voice::stt_key` / `transcribe`, clé de Parler à
+    Ondine, module activé). Les voix du PC ne sont pas séparées.
+  `callnotes_text::build` fusionne micro et PC dans l'ordre du temps, retire
+  l'écho des autres capté par le micro (`removing_echo` : 60 % des mots en
+  commun au même moment) et numérote les voix dans l'ordre où elles parlent
+  (« Personne 2 », « Personne 3 »… ; renommables, `rename_speaker`, les
+  choses à faire suivent).
+- **Résumé** (`summarize`) : l'IA de Parler à Ondine (`askclaude::provider` /
+  `model`, sa clé lue par `ctx.credential`), d'un clic ou tout seul si
+  `autoSummary` (coupé par défaut). Part : la transcription écrite, balisée
+  `<transcription>` (200 000 caractères au plus), jamais l'audio. Réponse :
+  du JSON (`parse_summary` : titre, résumé, points clés, choses à faire avec
+  qui et quand), jamais exécuté ; sans JSON, le texte devient le résumé.
+- **Notes** : `%APPDATA%\Ondine\callnotes\<id>.json` (id = chiffres, l'heure
+  de début en ms), écriture via un `.tmp` renommé. Statuts `recording`,
+  `processing`, `ready`, `failed` (« Réessayer » ; Ondine fermée pendant un
+  appel : reprise toute seule avec Parakeet, sinon au clic). Supprimer =
+  Corbeille + « Annuler » (`files::to_trash` / `restore_from_trash`).
+- **Commandes** : `status` (état, moteur, Parakeet prêt, destinations de ce
+  qui part), `list`, `get`, `start`, `stop`, `rename`, `rename_speaker`,
+  `toggle_todo`, `delete`, `summarize`, `retry`, `copy` (Markdown dans le
+  presse-papiers), `export` (boîte « Enregistrer sous » de Windows, dossier
+  vérifié par `check_path` : dossiers exclus refusés), `to_notes` (bus
+  `notes.add` : le résumé et les points clés en note, les choses à faire en
+  tâches).
+- **Page** (`callnotes-page.ts`, logique pure `callnotes-logic.ts`, styles
+  `src/styles/callnotes.css`) : `hero()` et « Enregistrer un appel », bandeau
+  rouge pendant l'appel, liste à gauche, note à droite (titre renommable,
+  « Aujourd'hui, 10:00 · 32 min · 3 personnes », Copier en Markdown,
+  Exporter, Envoyer vers Notes, Supprimer, onglets Résumé / Transcription,
+  points clés, cases à cocher, extrait coloré par personne), puis les
+  réglages du module et « Ce qui part ». Le temps avance par `pacedInterval`
+  (rythme du mode de performance), le point rouge respire en CSS (fixe avec
+  « Réduire les animations »).
+- Tests : Rust (`callnotes_text` : assemblage micro + PC, écho, renommage,
+  Markdown, résumé, nettoyage ; `callnotes_audio` : 16 kHz, WAV, morceaux ;
+  `voice::silence_to_add`), front (`tests/front/callnotes.test.ts`).

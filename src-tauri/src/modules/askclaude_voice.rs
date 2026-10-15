@@ -478,7 +478,7 @@ fn run(app: &AppHandle, s: &Session, opts: Options) -> Result<String, voice::Fai
 // ── La transcription par l'API ───────────────────────────────────────────────
 
 /// Le fournisseur, la clé et le modèle pour transcrire (Claude n'écoute pas l'audio).
-fn stt_key(app: &AppHandle, settings: &serde_json::Map<String, Value>) -> Result<(Provider, String, String), String> {
+pub(super) fn stt_key(app: &AppHandle, settings: &serde_json::Map<String, Value>) -> Result<(Provider, String, String), String> {
     let chosen = Provider::from_id(settings.get("provider").and_then(Value::as_str).unwrap_or(""));
     let order: &[Provider] = match chosen {
         Provider::Gemini => &[Provider::Gemini],
@@ -512,7 +512,7 @@ fn api_offer(app: &AppHandle) -> Option<&'static str> {
 }
 
 /// Envoie l'audio (WAV) et renvoie le texte.
-fn transcribe(provider: Provider, key: &str, model: &str, wav: &[u8], lang: &str) -> Result<String, String> {
+pub(super) fn transcribe(provider: Provider, key: &str, model: &str, wav: &[u8], lang: &str) -> Result<String, String> {
     match provider {
         Provider::Gemini => {
             let prompt = if lang == "en" {
@@ -624,7 +624,7 @@ impl SilenceGate {
 }
 
 /// Le son en WAV mono 16 bits à 16 kHz (ce que les API préfèrent pour la voix).
-fn wav_16k(samples: &[f32], rate: u32) -> Vec<u8> {
+pub(super) fn wav_16k(samples: &[f32], rate: u32) -> Vec<u8> {
     const OUT: u32 = 16_000;
     let rate = rate.max(1);
     let n = (samples.len() as u64 * u64::from(OUT) / u64::from(rate)) as usize;

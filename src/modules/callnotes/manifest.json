@@ -1,0 +1,50 @@
+{
+  "id": "callnotes",
+  "name": "Notes d'appel",
+  "icon": "⏺️",
+  "description": "Enregistre un appel d'un clic : votre micro et le son du PC, écrits personne par personne, avec un résumé et les choses à faire. L'audio est effacé dès que la transcription est écrite ; les notes restent sur votre ordinateur (%APPDATA%\\Ondine\\callnotes). Prévenez les participants que vous enregistrez.",
+  "version": "0.1.0",
+  "permissions": ["files", "clipboard", "claude-api", "credentials"],
+  "settings": {
+    "version": 1,
+    "fields": [
+      {
+        "key": "engine",
+        "essential": true,
+        "type": "select",
+        "label": "Transcription",
+        "help": "Parakeet écrit l'appel sur le PC, rien ne part. Par l'API, l'audio part vers OpenAI ou Gemini avec la clé de Parler à Ondine.",
+        "default": "parakeet",
+        "options": [
+          { "value": "parakeet", "label": "Parakeet, sur le PC" },
+          { "value": "api", "label": "Par l'API (OpenAI ou Gemini)" }
+        ]
+      },
+      {
+        "key": "language",
+        "type": "select",
+        "label": "Langue de l'appel",
+        "default": "auto",
+        "options": [
+          { "value": "auto", "label": "Détecter" },
+          { "value": "fr", "label": "Français" },
+          { "value": "en", "label": "Anglais" }
+        ]
+      },
+      {
+        "key": "autoSummary",
+        "essential": true,
+        "type": "boolean",
+        "label": "Écrire le résumé tout seul à la fin de l'appel",
+        "help": "La transcription (le texte, jamais l'audio) part alors vers l'IA de Parler à Ondine, avec votre clé. Sinon, le résumé s'écrit d'un clic.",
+        "default": false
+      }
+    ]
+  },
+  "views": ["compact"],
+  "commands": ["status", "list", "get", "start", "stop", "rename", "rename_speaker", "toggle_todo", "delete", "summarize", "retry", "copy", "export", "to_notes"],
+  "events": {
+    "emits": ["callnotes.state", "callnotes.changed", "callnotes.error", "notes.add"],
+    "listens": ["callnotes.start", "callnotes.stop", "callnotes.state", "callnotes.changed", "callnotes.error"]
+  }
+}

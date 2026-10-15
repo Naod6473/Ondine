@@ -1,0 +1,267 @@
+/* Notes d'appel (1.2.4) : la page du groupe Voix des Réglages
+ * (src/settings/voice/callnotes-page.ts) et la pilule de l'île pendant un
+ * enregistrement (src/modules/callnotes/index.ts). Couleur de la page :
+ * corail #ff8a6b. Le point rouge respire ; « Réduire les animations » : fixe. */
+
+:root {
+  --cn-coral: #ff8a6b;
+  --cn-rec: #ff5a4f;
+}
+
+/* ── Le point rouge (île et page) ───────────────────────────────────────── */
+.callnotes-dot {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--cn-rec);
+  box-shadow: 0 0 0 0 rgba(255, 90, 79, 0.5);
+  animation: cn-pulse 1.6s var(--ease, ease) infinite;
+}
+@keyframes cn-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 90, 79, 0.55); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 90, 79, 0); }
+}
+
+/* ── L'île : la pilule « appel en cours » ───────────────────────────────── */
+.callnotes-compact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 100%;
+  padding: 0 6px 0 12px;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.callnotes-time {
+  font-weight: 600;
+  font-size: 14px;
+}
+.callnotes-stop {
+  margin-left: auto;
+  height: 26px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 13px;
+  background: rgba(255, 138, 107, 0.22);
+  color: #ffc0ae;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 160ms var(--ease, ease), scale 160ms var(--ease, ease);
+}
+.callnotes-stop:hover { background: rgba(255, 138, 107, 0.34); }
+.callnotes-stop:active { scale: 0.96; }
+
+/* ── La page des Réglages ───────────────────────────────────────────────── */
+.cn-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.cn-record {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--cn-coral);
+  color: #1d0904;
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(255, 138, 107, 0.35);
+  transition: background 180ms var(--ease, ease), scale 180ms var(--spring, ease), box-shadow 180ms var(--ease, ease);
+}
+.cn-record:hover { box-shadow: 0 8px 26px rgba(255, 138, 107, 0.5); }
+.cn-record:active { scale: 0.96; }
+.cn-record:disabled { opacity: 0.55; cursor: default; }
+.cn-record .cn-record-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #1d0904;
+}
+.cn-record.on {
+  background: rgba(255, 90, 79, 0.16);
+  color: var(--cn-rec);
+  box-shadow: inset 0 0 0 1px rgba(255, 90, 79, 0.5);
+  font-variant-numeric: tabular-nums;
+}
+
+.cn-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(255, 90, 79, 0.1);
+  border: 1px solid rgba(255, 90, 79, 0.35);
+  font-size: 13px;
+}
+.cn-banner b { font-variant-numeric: tabular-nums; }
+.cn-notice {
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--warn-soft, rgba(255, 194, 90, 0.14));
+  font-size: 13px;
+  line-height: 1.45;
+}
+.cn-notice.error { background: rgba(255, 90, 79, 0.12); }
+
+.cn-split {
+  display: flex;
+  gap: 16px;
+  min-height: 320px;
+  align-items: flex-start;
+}
+.cn-list {
+  width: 250px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cn-sec {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.cn-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--glass);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: background 180ms var(--ease, ease), border-color 180ms var(--ease, ease), scale 180ms var(--spring, ease);
+}
+.cn-item:active { scale: 0.98; }
+.cn-item.on {
+  background: rgba(255, 138, 107, 0.1);
+  border-color: rgba(255, 138, 107, 0.4);
+}
+.cn-item b { font-size: 13.5px; }
+.cn-item span { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.cn-item .callnotes-dot { width: 7px; height: 7px; }
+.cn-empty { font-size: 13px; color: var(--muted); padding: 10px 4px; line-height: 1.45; }
+
+.cn-detail {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 22px;
+  border-radius: 18px;
+  background: var(--glass);
+  border: 1px solid var(--line);
+  box-shadow: var(--glass-shadow);
+}
+.cn-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cn-head-text { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 4px; }
+.cn-title {
+  font-size: 18px;
+  font-weight: 700;
+  cursor: text;
+  border-radius: 6px;
+}
+.cn-title:hover { background: var(--field); }
+.cn-title-input { font: inherit; font-size: 18px; font-weight: 700; width: 100%; }
+.cn-meta { font-size: 12px; color: var(--muted); }
+.cn-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.cn-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--field);
+  width: max-content;
+}
+.cn-tab {
+  height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 160ms var(--ease, ease), color 160ms var(--ease, ease);
+}
+.cn-tab[aria-selected="true"] { background: var(--glass-strong); color: var(--fg); font-weight: 600; }
+.cn-summary { margin: 0; font-size: 13.5px; line-height: 1.55; }
+.cn-cols { display: flex; gap: 18px; flex-wrap: wrap; }
+.cn-col { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 8px; }
+.cn-point { display: flex; gap: 8px; font-size: 13px; line-height: 1.45; }
+.cn-point::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--cn-coral);
+}
+.cn-todo { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; line-height: 1.45; cursor: pointer; }
+.cn-todo input { accent-color: var(--cn-coral); margin-top: 2px; }
+.cn-todo.done .cn-todo-text { text-decoration: line-through; opacity: 0.6; }
+.cn-owner { color: var(--cn-coral); font-weight: 600; }
+.cn-rule { height: 1px; background: var(--line); }
+.cn-line { display: flex; gap: 12px; font-size: 13px; line-height: 1.45; }
+.cn-who { width: 92px; flex: none; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.cn-clock { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 6px; }
+.cn-people { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.cn-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--field);
+  color: inherit;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.cn-person i { width: 8px; height: 8px; border-radius: 50%; }
+.cn-person-input { font: inherit; font-size: 12.5px; width: 130px; }
+.cn-transcript { display: flex; flex-direction: column; gap: 10px; max-height: 460px; overflow: auto; }
+.cn-leaves { font-size: 12px; color: var(--muted); line-height: 1.45; }
+.cn-fade-in { animation: cn-in 260ms var(--ease, ease) both; }
+@keyframes cn-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (max-width: 720px) {
+  .cn-split { flex-direction: column; }
+  .cn-list { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .callnotes-dot,
+  .cn-fade-in { animation: none; }
+  .cn-record, .cn-item, .callnotes-stop { transition: none; }
+}

@@ -816,7 +816,7 @@ fn default_question(voice: Voice) -> &'static str {
     }
 }
 
-fn provider(ctx: &ModuleContext) -> Provider {
+pub(super) fn provider(ctx: &ModuleContext) -> Provider {
     Provider::from_id(ctx.settings().get("provider").and_then(Value::as_str).unwrap_or(""))
 }
 

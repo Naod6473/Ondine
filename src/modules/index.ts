@@ -4,6 +4,7 @@
 
 import type { IslandModule } from "../core/module-types";
 import { agenda } from "./agenda";
+import { callnotes } from "./callnotes";
 import { capture } from "./capture";
 import { clipboard } from "./clipboard";
 import { controls } from "./controls";
@@ -31,5 +32,8 @@ import { screensaver } from "./screensaver";
 // L'Accueil (home) en premier, puis « Parler à Ondine » (askclaude) : les deux
 // premiers onglets au premier lancement. Pour une île déjà rangée, l'Accueil
 // se met en tête sans bousculer le reste (LEAD_TABS, src/core/tab-order.ts).
-export const ALL_MODULES: IslandModule[] = [home, askclaude, shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, team, agents, launcher, rules, media, controls, pauses, weather, weekly, halos, windowlife, screensaver];
+// Notes d'appel juste après (ni l'un ni l'autre n'a de vue compacte) : la
+// sienne, le point rouge de l'enregistrement, passe avant celle des autres.
+// Il n'a pas d'onglet.
+export const ALL_MODULES: IslandModule[] = [home, askclaude, callnotes, shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, team, agents, launcher, rules, media, controls, pauses, weather, weekly, halos, windowlife, screensaver];
 
