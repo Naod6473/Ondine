@@ -195,7 +195,39 @@ export const Bridge = {
   selfUsage: () => call<SelfUsage | null>("self_usage"),
   /** Le mode de performance qui s'applique (choix + batterie). null hors de l'appli. */
   perfState: () => call<PerfState>("perf_state"),
+  // Reconnaissance sur le PC, modèles Parakeet (src-tauri/src/services/speech.rs, 1.2.4).
+  speechStatus: () => call<SpeechStatus>("speech_status"),
+  /** Lance le téléchargement (au clic seulement) ; le progrès arrive par l'événement « speech-models ». */
+  speechDownload: () => callOrThrow<SpeechStatus>("speech_download"),
+  speechCancel: () => callOrThrow<SpeechStatus>("speech_cancel"),
+  speechRemove: () => callOrThrow<SpeechStatus>("speech_remove"),
+  // Vos propres sons (src-tauri/src/services/custom_sounds.rs, 1.2.4).
+  /** Les sons remplacés par vos fichiers (base64), le dossier et les noms possibles. null hors de l'appli. */
+  soundsCustom: () => call<CustomSounds>("sounds_custom"),
+  /** Crée (si besoin) et ouvre %APPDATA%\Ondine\sounds dans l'Explorateur. */
+  soundsOpenFolder: () => callOrThrow<void>("sounds_open_folder"),
 };
+
+/** L'état des modèles Parakeet (services/speech_models.rs `Status`). */
+export interface SpeechStatus {
+  state: "missing" | "downloading" | "ready" | "failed";
+  /** Octets déjà là (pendant le téléchargement) et taille totale. */
+  done: number;
+  total: number;
+  error: string | null;
+  /** Le moteur existe dans cette version (Windows). */
+  supported: boolean;
+  /** Le modèle est en mémoire en ce moment. */
+  loaded: boolean;
+}
+
+/** Vos propres sons, lus par le Rust (custom_sounds.rs). */
+export interface CustomSounds {
+  folder: string;
+  names: string[];
+  extensions: string[];
+  sounds: { name: string; file: string; mime: string; data: string }[];
+}
 
 /** Le mode de performance vu par le Rust (src-tauri/src/services/perf.rs). */
 export interface PerfState {

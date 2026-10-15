@@ -19,11 +19,13 @@ export interface NanoStatus {
   /** Les minuteurs en cours (ids). */
   timers: string[];
   voice: boolean;
+  /** Le mot d'appel écoute (micro ouvert en permanence, 1.2.4). */
+  wake: boolean;
   /** Le morceau en cours (titre et artiste), pour reconnaître un nouveau morceau. */
   track: string;
 }
 
-export const NANO_START: NanoStatus = { music: false, agent: false, timers: [], voice: false, track: "" };
+export const NANO_START: NanoStatus = { music: false, agent: false, timers: [], voice: false, wake: false, track: "" };
 
 /** Durées des coups d'élargissement (ms). */
 export const PULSE = { track: 4000, resume: 2500, timerStart: 3000, timerDone: 6000, agentStart: 2500, agentEnd: 4500 } as const;
@@ -76,15 +78,17 @@ export function nanoStep(s: NanoStatus, topic: string, payload: Payload): NanoSt
       const on = !!p.on;
       return { status: { ...s, voice: on }, busy: ["voice", on] };
     }
+    case "voice.wake":
+      return { status: { ...s, wake: !!p.on } };
     default:
       return { status: s };
   }
 }
 
 /** Les sujets du bus à écouter. */
-export const NANO_TOPICS = ["media.changed", "timer.progress", "timer.done", "claude.thinking", "claude.done", "agents.event", "agents.ask", "voice.listening"];
+export const NANO_TOPICS = ["media.changed", "timer.progress", "timer.done", "claude.thinking", "claude.done", "agents.event", "agents.ask", "voice.listening", "voice.wake"];
 
 /** L'état pour les points de l'encoche. */
 export function dotStatus(s: NanoStatus): Partial<Record<DotKind, boolean>> {
-  return { music: s.music, agent: s.agent, timer: s.timers.length > 0, voice: s.voice };
+  return { music: s.music, agent: s.agent, timer: s.timers.length > 0, voice: s.voice, wake: s.wake };
 }

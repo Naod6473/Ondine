@@ -1,6 +1,6 @@
 [package]
 name = "ondine"
-version = "1.2.3"
+version = "1.2.4"
 description = "L'île : une interface intelligente en haut de l'écran Windows"
 edition = "2021"
 license = "MIT"
@@ -96,6 +96,14 @@ curve25519-dalek = "4"
 chacha20poly1305 = { version = "0.10", default-features = false, features = ["alloc"] }
 
 [target.'cfg(windows)'.dependencies]
+# La reconnaissance vocale sur le PC (1.2.4, services/speech.rs) : sherpa-onnx
+# (Apache-2.0) pour Parakeet de NVIDIA, lié statiquement dans ondine.exe
+# (onnxruntime compris, runtime C statique « MT » comme le nôtre, voir
+# .cargo/config.toml). Son script de construction télécharge la bibliothèque
+# précompilée de sa version sur github.com/k2-fsa/sherpa-onnx/releases (rien à
+# compiler en C++). Windows seulement : sous Linux (tests), le moteur est absent.
+# Les modèles ne sont téléchargés qu'au clic, vérifiés par SHA-256.
+sherpa-onnx = { version = "1.13.8", default-features = false, features = ["static"] }
 # Gestionnaire d'identifiants Windows. Version 3 volontairement : la 4 a changé d'API.
 keyring = { version = "3", features = ["windows-native"] }
 # Requis par la macro #[implement] (cible de dépôt) : même version que `windows`.
@@ -162,6 +170,8 @@ windows = { version = "0.61", features = [
   "Foundation_Collections",
   # Capture : la pipette (pixels physiques sur chaque écran, fenêtre Win32).
   "Win32_UI_HiDpi",
+  # La dictée : quel élément a le focus (UI Automation).
+  "Win32_UI_Accessibility",
   "Win32_System_LibraryLoader",
   # Profils : le nom du Wi-Fi connecté (wlanapi).
   "Win32_NetworkManagement_WiFi",

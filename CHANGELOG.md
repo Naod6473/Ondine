@@ -1,7 +1,150 @@
 # Changements · Changelog
 
-## Pas encore publié · Unreleased
+## 1.2.4 · à venir
 
+- Nouvelle fenêtre des Réglages : fond noir profond, tout le contenu dans une
+  grande carte, réglages en cartes ; le thème clair suit · New Settings
+  window: deep black background, all content in one large card, settings in
+  cards; the light theme follows
+- Chaque page commence par une bande vivante : sa couleur qui respire, des
+  bulles qui s'écartent de la souris, une vague et des gouttes de la famille
+  gomme qui nagent et sautent quand on clique dessus (image fixe avec
+  « Réduire les animations » et en mode éco) · Every page starts with a living
+  band: its colour breathing, bubbles that move away from the pointer, a wave
+  and gum-family drops that swim and jump when clicked (still image with
+  "Reduce animations" and in eco mode)
+- Les sous-menus d'une page aussi en pilules sous la bande · A page's
+  sub-menus also shown as pills under the band
+- Nouveau groupe « Voix » en tête de la barre : Dictée, Notes d'appel,
+  Statistiques, Dictionnaire, Styles · New "Voice" group at the top of the
+  sidebar: Dictation, Call notes, Statistics, Dictionary, Styles
+- Une pastille d'état en bas de la barre (version et mises à jour, ou « Prête
+  · maintenir Ctrl droit ») · A status pill at the bottom of the sidebar
+  (version and updates, or "Ready · hold Right Ctrl")
+- Apparence → « Fond des Réglages » : Noir profond ou Dégradés · Appearance →
+  "Settings background": Deep black or Gradients
+- Dictée partout : maintenez Ctrl droit (ou une autre touche) dans n'importe
+  quelle appli, parlez, relâchez : le texte est collé. Deux appuis : mains
+  libres. Coupée par défaut. · Dictation everywhere: hold Right Ctrl (or
+  another key) in any app, speak, release: the text is pasted. Two presses:
+  hands-free. Off by default.
+- La pilule de dictée : une petite barre en bas de l'écran (ou sur un côté)
+  avec la goutte qui écoute et neuf bulles qui suivent votre voix, un point
+  rouge tant que le micro est ouvert. · The dictation pill: a small bar at the
+  bottom of the screen (or on a side) with the drop listening and nine bubbles
+  following your voice, and a red dot while the microphone is on.
+- Le presse-papiers retrouve son contenu après une dictée, qui n'entre ni dans
+  l'historique d'Ondine ni dans celui de Windows. · The clipboard gets its
+  content back after a dictation, which never enters Ondine's or Windows'
+  clipboard history.
+- Dictée : historique, dictionnaire (noms, remplacements), snippets à la voix,
+  styles par appli et statistiques, tout sur votre PC. · Dictation: history,
+  dictionary (names, replacements), voice snippets, per-app styles and
+  statistics, all on your PC.
+- Remise au propre de la dictée par l'IA de Parler à Ondine, avec votre clé
+  (coupée par défaut, jamais l'audio). · Dictation clean-up by the Talk to
+  Ondine AI, with your key (off by default, never the audio).
+- Notes d'appel : d'un clic, Ondine enregistre votre micro et le son du PC,
+  montre un point rouge tout du long et rappelle de prévenir les participants.
+  Elle écrit les mots en direct, puis la transcription personne par personne
+  (Vous, Personne 2… à renommer), et sur demande un résumé avec les points
+  clés et les choses à faire. Copier, exporter en .md ou envoyer vers Notes.
+  L'audio est effacé dès la transcription écrite ; tout reste sur le PC avec
+  Parakeet. Réglages → Voix → Notes d'appel. · Call notes: in one click,
+  Ondine records your microphone and the PC's sound, shows a red dot the whole
+  time and reminds you to tell the people in the call. It writes the words
+  live, then a transcript person by person (You, Person 2… renamable), and on
+  request a summary with key points and to-dos. Copy, export as .md or send to
+  Notes. The audio is deleted as soon as the transcript is written; with
+  Parakeet everything stays on the PC. Settings → Voice → Call notes.
+- Parakeet sur le PC : Parler à Ondine, la dictée et les notes d'appel peuvent
+  écrire ce que vous dites avec le modèle Parakeet de NVIDIA (25 langues,
+  ponctuation), entièrement sur le PC : rien ne part sur Internet. Le modèle
+  (environ 700 Mo) se télécharge une seule fois, à votre clic, dans Réglages →
+  Parler à Ondine → Voix et sons, vérifié par son empreinte ; annuler,
+  reprendre et supprimer en un clic. Il se charge au premier usage et libère
+  la mémoire après 5 minutes. · Parakeet on the PC: Talk to Ondine, dictation
+  and call notes can write what you say with NVIDIA's Parakeet model (25
+  languages, punctuation), entirely on the PC: nothing goes to the Internet.
+  The model (about 700 MB) is downloaded once, when you click, in Settings →
+  Talk to Ondine → Voice and sounds, checked against its fingerprint; cancel,
+  resume and delete in one click. It loads on first use and frees the memory
+  after 5 minutes.
+- La carte Musique refaite : icônes au trait, grand bouton lecture, aléatoire
+  et répétition, volume du lecteur seul (pas celui du PC), temps restant,
+  barre qui s'allume sous la souris, couleur et lueur de la pochette ; un clic
+  sur la pochette ouvre le lecteur. · The Music card redone: line icons, a big
+  play button, shuffle and repeat, the player's own volume (not the PC's),
+  time remaining, a bar that lights up under the pointer, the cover's colour
+  and glow; clicking the cover opens the player.
+- Mini-île de la musique : pochette, titre et égaliseur au repos ; lecture et
+  suivant sous la souris. · Music mini island: cover, title and equalizer at
+  rest; play and next on hover.
+- Limites du forfait dans l'onglet Agents IA : la fenêtre de 5 h et la semaine
+  de Claude et de Codex, en % utilisé, avec l'heure de remise à zéro ; jaune
+  dès 75 %, rouge dès 90 %. Claude passe par sa ligne d'état, à brancher d'un
+  clic (la vôtre continue de s'afficher) ; Codex est lu dans ses journaux sur
+  le PC, ou demandé à Codex sur un clic. Ondine n'envoie rien. · Plan limits
+  in the AI Agents tab: Claude's and Codex's 5-hour window and week, as %
+  used, with the reset time; yellow from 75 %, red from 90 %. Claude goes
+  through its status line, connected in one click (yours keeps showing); Codex
+  is read from its logs on the PC, or asked to Codex on a click. Ondine sends
+  nothing.
+- Fichiers modifiés en direct : pendant qu'un agent écrit, chaque fichier
+  apparaît sous sa session avec +N −M, et un clic montre le changement en
+  lecture seule. Calculé sur le PC, dossiers exclus respectés (Claude Code et
+  Gemini CLI, hooks à réinstaller une fois). · Files modified live: while an
+  agent writes, each file appears under its session with +N −M, and a click
+  shows the change, read-only. Computed on the PC, excluded folders respected
+  (Claude Code and Gemini CLI; reinstall the hooks once).
+- Parler à Ondine avec un modèle local (Ollama, LM Studio, tout serveur
+  compatible OpenAI) ou OpenRouter : liste des modèles du serveur en un clic,
+  réflexion du modèle masquée, outils d'Ondine seulement si le modèle les
+  gère. Avec un serveur local, vos messages restent sur votre PC. · Talk to
+  Ondine with a local model (Ollama, LM Studio, any OpenAI-compatible server)
+  or OpenRouter: list the server's models in one click, the model's reasoning
+  is hidden, Ondine's tools only if the model supports them. With a local
+  server, your messages stay on your PC.
+- Vos propres sons : un fichier .wav, .mp3, .ogg ou .m4a posé dans
+  %APPDATA%\Ondine\sounds et nommé comme un son d'Ondine (tap, open, drop…) le
+  remplace. Réglages → Apparence → Sons : ouvrir le dossier, recharger, les
+  noms possibles. · Your own sounds: a .wav, .mp3, .ogg or .m4a file placed in
+  %APPDATA%\Ondine\sounds and named like an Ondine sound (tap, open, drop…)
+  replaces it. Settings → Appearance → Sounds: open the folder, reload, the
+  possible names.
+- Parler à Ondine : choisissez le micro (Réglages → Parler à Ondine → Voix et
+  sons), avec « Tester le micro » pour voir tout de suite si Ondine vous
+  entend. Il sert aussi à la dictée et aux notes d'appel · Talk to Ondine:
+  choose the microphone (Settings → Talk to Ondine → Voice and sounds), with
+  "Test the microphone" to see right away whether Ondine hears you. It is
+  also used for dictation and call notes
+- Un micro coupé, à volume 0, bloqué par Windows ou trop faible est expliqué
+  au lieu de « Je n'ai rien entendu » ; une voix faible est mieux captée avec
+  Parakeet · A microphone that is muted, at volume 0, blocked by Windows or too
+  quiet is explained instead of "I didn't hear anything"; a quiet voice is
+  picked up better with Parakeet
+- Raccourcis de Parler à Ondine et de « Regarde ça » : « Personnalisé… »,
+  appuyez sur la combinaison de votre choix ; un raccourci déjà pris est
+  signalé sous le champ · Talk to Ondine and "Look at this" shortcuts:
+  "Custom…", press the key combination of your choice; a shortcut already
+  taken is shown under the field
+- « Dis Ondine » / « Hey Ondine » pour lui parler sans toucher au clavier, en
+  option (coupé par défaut) : l'écoute se fait entièrement sur le PC, un point
+  rouge reste visible, pause en visio, présentation, PC verrouillé et
+  économie d'énergie · "Hey Ondine" to talk to her without touching the
+  keyboard, optional (off by default): listening happens entirely on the PC,
+  a red dot stays visible, paused during calls, presentations, when the PC is
+  locked and in power saving
+- Parler à Ondine à voix haute sans saccades : vos mots s'écrivent en place
+  et en fondu (une reprise du moteur passe en fondu croisé), la bulle devient
+  votre message sans clignoter, la réponse s'écrit lettre après lettre à un
+  rythme régulier, l'île grandit ligne par ligne en douceur ; avec Parakeet,
+  vos mots s'affichent maintenant pendant que vous parlez (sauf en mode
+  Économie) · Talking to Ondine out loud without stutter: your words appear
+  in place with a soft fade (an engine correction cross-fades), the bubble
+  becomes your message without flashing, the answer is written letter by
+  letter at a steady pace, the island grows smoothly line by line; with
+  Parakeet, your words now show while you speak (except in Eco mode)
 - L'éclosion de l'île : au premier lancement et après une mise à jour, une
   goutte sort du haut de l'écran et s'étire en île, l'île éclate en
   paillettes, Ondine dit bonjour, les aspire et les souffle dans trois anneaux

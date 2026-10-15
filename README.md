@@ -42,8 +42,34 @@ La vidéo de présentation est sur le site : [ondine.pissits.com](https://ondine
 
 ## Nouveautés
 
-Les nouveautés de la version 1.2.3 (la liste complète est dans le
+Les nouveautés de la version 1.2.4 (la liste complète est dans le
 [CHANGELOG](CHANGELOG.md)) :
+
+- **Dictée partout** : maintenez Ctrl droit dans n'importe quelle appli,
+  parlez, relâchez : le texte est collé. Deux appuis : mains libres. Une
+  petite pilule montre la goutte qui écoute et neuf bulles qui suivent votre
+  voix. Dictionnaire, snippets à la voix, styles par appli, historique et
+  statistiques, tout sur votre PC. Coupée par défaut.
+- **Notes d'appel** : d'un clic, Ondine écrit votre appel (micro et son du
+  PC) personne par personne, puis un résumé et les choses à faire si vous le
+  demandez. Point rouge tout du long ; l'audio est effacé dès la transcription
+  écrite.
+- **Parakeet sur le PC** : la reconnaissance vocale de NVIDIA (25 langues),
+  entièrement sur votre ordinateur, pour la dictée, les notes d'appel et
+  Parler à Ondine. Le modèle (environ 700 Mo) se télécharge une fois, à votre
+  clic, depuis Hugging Face.
+- **Nouveaux Réglages** : fond noir profond, une bande vivante en haut de
+  chaque page (couleur qui respire, bulles, vague, gouttes qui nagent), un
+  groupe « Voix » en tête de la barre.
+- **Carte Musique refaite** : icônes au trait, aléatoire et répétition,
+  volume du lecteur seul, couleur et lueur de la pochette.
+- **Et aussi** : l'éclosion de l'île au premier lancement, limites du forfait
+  Claude et Codex dans l'onglet Agents IA, fichiers modifiés par les agents en
+  direct (+N −M, clic pour voir le changement), Parler à Ondine avec un modèle
+  local (Ollama, LM Studio) ou OpenRouter, vos propres sons dans
+  %APPDATA%\Ondine\sounds.
+
+### Dans la 1.2.3
 
 - **L'île-bouche** (au choix) : Ondine est suspendue tête en bas au bord de
   l'écran et l'île est sa bouche, en gomme. Nano, elle a la bouche fermée ;

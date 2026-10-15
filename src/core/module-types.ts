@@ -37,6 +37,13 @@ export type SettingField = FieldCommon &
   | { key: string; type: "number"; label: string; help?: string; default: number; min?: number; max?: number; step?: number }
   | { key: string; type: "boolean"; label: string; help?: string; default: boolean }
   | { key: string; type: "select"; label: string; help?: string; default: string; options: { value: string; label: string }[] }
+  /**
+   * Un raccourci clavier global (1.2.4, src/core/hotkey.ts) : les choix
+   * proposés (`options`, "" = aucun) et « Personnalisé… », qui enregistre la
+   * combinaison pressée (« Ctrl+Alt+K »). Une valeur refusée par les règles
+   * (src/core/hotkey.ts `hotkeyProblem`) reprend la valeur par défaut.
+   */
+  | { key: string; type: "hotkey"; label: string; help?: string; default: string; options?: { value: string; label: string }[] }
   /** Une liste de dossiers, choisis avec la boîte « Choisir un dossier » de Windows. */
   | { key: string; type: "folders"; label: string; help?: string; default: string[]; max?: number }
   /** Une liste de fichiers, choisis avec la boîte « Ouvrir » de Windows (filtrée par extension). */

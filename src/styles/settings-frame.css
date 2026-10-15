@@ -1,0 +1,486 @@
+/* La fenêtre des Réglages, nouveau style (1.2.4), par-dessus settings.css :
+ *   - un fond noir profond, la barre latérale posée dessus sans trait ;
+ *   - tout le contenu dans UNE grande carte arrondie ;
+ *   - des cartes de réglages un ton plus clair ;
+ *   - en tête de chaque page, une bande vivante (hero.ts) toujours sombre,
+ *     et les sous-menus de la page en pilules sous la bande ;
+ *   - une pastille d'état en bas de la barre latérale.
+ * Thème clair : même structure, surfaces claires ; les bandes restent sombres.
+ * « Fond des Réglages » (Apparence) : html[data-backdrop="deep"] (défaut) ou
+ * "blobs" (les taches de couleur d'avant, derrière du verre).
+ */
+
+:root {
+  --win-bg: #e7ebf2;
+  --frame-bg: #f7f9fc;
+  --frame-edge: rgba(20, 30, 60, 0.08);
+  --card-bg: #ffffff;
+  --card-edge: rgba(20, 30, 60, 0.08);
+  --row-line: rgba(20, 30, 60, 0.07);
+  --nav-fg: #2b3242;
+  --section: #5f6a80;
+  --status-bg: rgba(20, 30, 60, 0.04);
+  --status-edge: rgba(20, 30, 60, 0.08);
+  --status-fg: #4a5368;
+  --pill-fg: #3c4558;
+  --pill-bg: rgba(20, 30, 60, 0.03);
+  --pill-edge: rgba(20, 30, 60, 0.12);
+  --page-color: #7cc4ff;
+  --page-ink: #04121a;
+  --muted: #5a6377;
+  --glass: var(--card-bg);
+  --glass-strong: #ffffff;
+  --glass-edge: var(--card-edge);
+  --glass-shadow: 0 1px 2px rgba(30, 45, 80, 0.05);
+  --line: var(--row-line);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --win-bg: #020306;
+    --frame-bg: #070a10;
+    --frame-edge: rgba(255, 255, 255, 0.06);
+    --card-bg: #0b0f16;
+    --card-edge: rgba(255, 255, 255, 0.06);
+    --row-line: rgba(255, 255, 255, 0.05);
+    --nav-fg: #c9d1df;
+    --section: #6f7a90;
+    --status-bg: rgba(255, 255, 255, 0.04);
+    --status-edge: rgba(255, 255, 255, 0.06);
+    --status-fg: #aeb7c8;
+    --pill-fg: #b9c3d4;
+    --pill-bg: rgba(255, 255, 255, 0.03);
+    --pill-edge: rgba(255, 255, 255, 0.08);
+    --fg: #eef2f8;
+    --muted: #8e98ad;
+    --glass: var(--card-bg);
+    --glass-strong: rgba(255, 255, 255, 0.12);
+    --glass-edge: var(--card-edge);
+    --glass-shadow: none;
+    --field: rgba(255, 255, 255, 0.05);
+    --field-edge: rgba(255, 255, 255, 0.12);
+    --line: var(--row-line);
+    --track-off: rgba(255, 255, 255, 0.1);
+  }
+}
+
+body {
+  background: var(--win-bg);
+}
+#app {
+  grid-template-columns: 236px 1fr;
+  gap: 14px;
+  padding: 14px;
+}
+
+/* ── Le fond ─────────────────────────────────────────────────────────────── */
+
+/* Noir profond (défaut) : pas de taches, un fond plein, même avec Mica. */
+html[data-backdrop="deep"] .backdrop {
+  display: none;
+}
+html[data-backdrop="deep"].mica,
+html[data-backdrop="deep"].mica body {
+  background: var(--win-bg);
+}
+/* Dégradés : les taches de couleur d'avant, derrière une carte en verre. */
+html[data-backdrop="blobs"] body {
+  background: var(--bg);
+}
+html[data-backdrop="blobs"].mica body {
+  background: transparent;
+}
+html[data-backdrop="blobs"] .content {
+  background: color-mix(in srgb, var(--frame-bg) 72%, transparent);
+  -webkit-backdrop-filter: blur(26px) saturate(1.5);
+  backdrop-filter: blur(26px) saturate(1.5);
+}
+html[data-backdrop="blobs"] .group-body {
+  background: color-mix(in srgb, var(--card-bg) 82%, transparent);
+}
+body[data-perf="eco"] .content {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* ── La barre latérale : posée sur le fond, sans verre ni trait ──────────── */
+
+.sidebar {
+  background: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 6px 4px 0;
+}
+.brand {
+  gap: 10px;
+  padding: 4px 10px 14px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.brand-drop {
+  font-size: 24px;
+}
+.search {
+  height: 34px;
+  margin: 0 2px 8px;
+  width: calc(100% - 4px);
+  border: 1px solid transparent;
+  background-color: var(--field);
+}
+.mode-switch {
+  margin: 0 2px 6px;
+}
+.mode-switch .segmented {
+  padding: 3px;
+  border-radius: 11px;
+  background: var(--field);
+}
+.nav-group {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--section);
+  padding: 14px 12px 4px;
+}
+.nav-item {
+  min-height: 34px;
+  gap: 12px;
+  padding: 5px 12px;
+  color: var(--nav-fg);
+}
+.nav-item.active {
+  color: var(--fg);
+}
+.nav-icon {
+  width: 20px;
+  font-size: 15px;
+}
+.nav-item:hover,
+.nav-sub:hover,
+.nav-cat:hover {
+  background: var(--status-bg);
+}
+.nav-pill {
+  background: color-mix(in srgb, var(--page-color) 14%, transparent);
+  box-shadow: none;
+  transition: background 300ms var(--ease);
+}
+.nav-sub.active::before {
+  background: var(--page-color);
+}
+.nav-cat.has-active[aria-expanded="false"] .nav-cat-label::after {
+  color: var(--page-color);
+}
+/* Le point de couleur d'une page Voix. */
+.nav-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  box-shadow: 0 0 8px currentColor;
+  background: currentColor;
+}
+
+/* La pastille d'état, en bas de la barre. */
+.nav-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 2px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--status-bg);
+  border: 1px solid var(--status-edge);
+  font-size: 12px;
+  color: var(--status-fg);
+  line-height: 1.3;
+}
+.nav-status-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--status-color, #7cc4ff);
+  box-shadow: 0 0 8px var(--status-color, #7cc4ff);
+}
+.nav-status-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ── La grande carte ─────────────────────────────────────────────────────── */
+
+.content {
+  background: var(--frame-bg);
+  border: 1px solid var(--frame-edge);
+  border-radius: 26px;
+  padding: 22px 22px 0;
+  scrollbar-gutter: stable;
+}
+.page {
+  max-width: 940px;
+}
+.banner {
+  border-radius: 12px;
+}
+
+/* Les blocs : des cartes. */
+.group-body {
+  background: var(--card-bg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: 1px solid var(--card-edge);
+  box-shadow: var(--glass-shadow);
+  border-radius: 18px;
+}
+.page .group-title {
+  margin: 0 0 8px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--section);
+}
+.group {
+  margin-bottom: 20px;
+}
+.row {
+  min-height: 52px;
+  padding: 12px 18px;
+  gap: 16px;
+  border-bottom-color: var(--row-line);
+}
+.row-help {
+  margin-top: 2px;
+}
+.group-note {
+  margin: 8px 6px 0;
+}
+
+/* ── La bande en tête de page (hero.ts) ──────────────────────────────────── */
+
+.page-hero {
+  position: relative;
+  isolation: isolate;
+  min-height: 168px;
+  margin: 0 0 16px;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #03050a;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #eef2f8;
+  color-scheme: dark;
+}
+.page-hero.has-actions {
+  min-height: 200px;
+}
+.page-hero-sea {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+.page-hero-cast {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.page-hero-mascot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 64px;
+  height: 64px;
+  pointer-events: auto;
+  cursor: pointer;
+  transform-origin: 50% 80%;
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.45));
+}
+.page-hero-mascot[hidden] {
+  display: none;
+}
+body[data-perf="eco"] .page-hero-mascot {
+  filter: none;
+}
+.page-hero-front {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 44px;
+  z-index: 2;
+  pointer-events: none;
+}
+.page-hero-copy {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(560px, 60%);
+  padding: 28px 30px 40px;
+  pointer-events: none;
+}
+.page-hero-copy > * {
+  pointer-events: auto;
+}
+.page-hero h1 {
+  margin: 0;
+  font: 700 32px/1.15 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  letter-spacing: -0.02em;
+  color: #f4f7fb;
+  overflow-wrap: anywhere;
+}
+.page-hero p {
+  margin: 0;
+  font-size: 14px;
+  color: #b9c3d4;
+  /* Une phrase courte : deux lignes au plus (la description entière reste dans « À propos »). */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+.page-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+.page-hero .btn {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: #e6ecf5;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: none;
+}
+.page-hero .btn:hover:not(:disabled) {
+  border-color: var(--page-color);
+}
+.page-hero .btn.primary {
+  padding: 0 16px;
+  border: 0;
+  background: var(--page-color);
+  color: var(--page-ink);
+  font-weight: 600;
+  box-shadow: 0 6px 20px var(--page-glow, rgba(124, 196, 255, 0.35));
+}
+.page-hero .btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+@media (max-width: 760px) {
+  .page-hero-copy {
+    max-width: 100%;
+    padding: 22px 22px 56px;
+  }
+  .page-hero h1 {
+    font-size: 26px;
+  }
+}
+
+/* ── Les sous-menus de la page, en pilules sous la bande ─────────────────── */
+
+.page-subs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 18px;
+}
+.page-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--pill-edge);
+  background: var(--pill-bg);
+  color: var(--pill-fg);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background 200ms var(--ease),
+    color 200ms var(--ease),
+    border-color 200ms var(--ease),
+    transform 160ms var(--ease);
+}
+.page-sub:hover {
+  border-color: var(--page-color);
+}
+.page-sub:active {
+  transform: scale(0.96);
+}
+.page-sub.on {
+  background: var(--page-color);
+  border-color: var(--page-color);
+  color: var(--page-ink);
+  font-weight: 600;
+}
+.page-sub:focus-visible {
+  outline: 2px solid var(--page-color);
+  outline-offset: 2px;
+}
+.page-sub.off:not(.on) {
+  opacity: 0.6;
+}
+/* Mode Simple : rien à y montrer, la pilule attend le mode Complet (comme dans la barre). */
+.page-sub.dim {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-sub,
+  .nav-pill {
+    transition: none;
+  }
+}
+
+/* ── Apparence → Fond des Réglages : deux petites vignettes ──────────────── */
+
+.backdrop-choice {
+  display: flex;
+  gap: 10px;
+}
+.backdrop-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--field-edge);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.backdrop-swatch.on {
+  border-color: var(--page-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--page-color) 35%, transparent);
+  font-weight: 600;
+}
+.backdrop-swatch i {
+  display: block;
+  width: 72px;
+  height: 42px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.backdrop-swatch[data-v="deep"] i {
+  background: radial-gradient(60% 80% at 85% 0%, rgba(124, 196, 255, 0.45), transparent 70%), #020306;
+}
+.backdrop-swatch[data-v="blobs"] i {
+  background: radial-gradient(50% 60% at 20% 20%, #1f6fb8, transparent 70%), radial-gradient(50% 60% at 80% 40%, #5b3fa8, transparent 70%), radial-gradient(50% 60% at 40% 100%, #127a63, transparent 70%), #0d0f15;
+}

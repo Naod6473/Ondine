@@ -5,12 +5,13 @@ import { Bridge, IS_TAURI, onTauriEvent } from "./bridge";
 import { defaultSettings, type Settings } from "./types";
 import type { CalendarEntry, ModuleManifest, SettingField } from "./module-types";
 import { applySettingsPatch, SettingsTransactions } from "./settings-transactions";
+import { coerceHotkey } from "./hotkey";
 
 /**
  * Les modules désactivés tant qu'on ne les a pas allumés (ceux qui ouvrent un
  * port sur le réseau local). Même liste dans src-tauri/src/services/settings.rs.
  */
-export const MODULES_OFF_BY_DEFAULT: readonly string[] = ["team", "screensaver"];
+export const MODULES_OFF_BY_DEFAULT: readonly string[] = ["team", "screensaver", "dictation"];
 
 class SettingsStore extends SettingsTransactions<Settings> {
   constructor() {
@@ -56,6 +57,8 @@ export function coerce(field: SettingField, value: unknown): unknown {
     }
     case "select":
       return field.options.some((o) => o.value === value) ? value : field.default;
+    case "hotkey":
+      return coerceHotkey(value, (field.options ?? []).map((o) => o.value), field.default);
     case "string":
       return typeof value === "string" ? value.slice(0, field.maxLength ?? 500) : field.default;
     case "files":

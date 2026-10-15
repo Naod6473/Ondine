@@ -95,6 +95,8 @@ const state = {
   usbKey: true,
   brightness: 70,
   output: "speakers",
+  /** Le lecteur de démo (carte Musique) : aléatoire, répétition, son volume à lui. */
+  player: { shuffle: true, repeat: "none" as "none" | "track" | "list", volume: 68, muted: false },
   pinnedClips: new Set<number>([1]),
   todosDone: new Set<number>([2]),
 };
@@ -117,6 +119,10 @@ function mediaState() {
       canNext: true,
       canPrevious: true,
       canSeek: true,
+      shuffle: state.player.shuffle,
+      repeat: state.player.repeat,
+      canShuffle: true,
+      canRepeat: true,
     },
     // Un numéro de pochette à part (1000+) : il ne se confond pas avec les vrais.
     artwork: 1000 + state.track,
@@ -516,6 +522,18 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     case "media.seek":
       setPosition(Number(args.positionMs) || 0);
       return void bus.inject("media.changed", mediaState(), "media");
+    case "media.shuffle":
+      state.player.shuffle = args.on === true;
+      return void bus.inject("media.changed", mediaState(), "media");
+    case "media.repeat":
+      if (args.mode === "none" || args.mode === "track" || args.mode === "list") state.player.repeat = args.mode;
+      return void bus.inject("media.changed", mediaState(), "media");
+    case "media.volume":
+      if (typeof args.value === "number") state.player.volume = Math.max(0, Math.min(100, Math.round(args.value)));
+      if (typeof args.muted === "boolean") state.player.muted = args.muted;
+      return { volume: state.player.volume, muted: state.player.muted };
+    case "media.open":
+      return null; // en démo, aucun vrai lecteur à montrer
 
     // Contrôles
     case "controls.state":
@@ -1184,7 +1202,10 @@ function demoVoice(bus: Bus) {
     bus.inject("voice.level", { level: Math.round((0.35 + 0.3 * Math.sin(t * 9) * Math.sin(t * 2.3)) * 100) / 100 }, "askclaude");
   }, 80);
   words.forEach((_, i) => {
-    window.setTimeout(() => bus.inject("askclaude.voice", { kind: "partial", text: words.slice(0, i + 1).join(" ").replace(" ?", " ?") }, "askclaude"), 500 + i * 260);
+    // Comme un vrai moteur, il se reprend une fois : « il » devient « île en » (fondu croisé).
+    const said = words.slice(0, i + 1).join(" ");
+    const text = words[i] === "île" ? said.replace(/île$/, "il") : said;
+    window.setTimeout(() => bus.inject("askclaude.voice", { kind: "partial", text }, "askclaude"), 500 + i * 260);
   });
   window.setTimeout(() => {
     window.clearInterval(level);

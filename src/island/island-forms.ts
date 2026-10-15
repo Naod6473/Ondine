@@ -349,8 +349,10 @@ export class IslandForms {
   // ── Les points d'état (idée 3) ─────────────────────────────────────────────
 
   private drawDots() {
-    const show = this.nano && this.h.fsm.state === "compact" && this.h.fsm.shownForm === "nano" && !this.away;
-    const kinds: DotKind[] = show ? nanoDots(dotStatus(this.status)) : [];
+    const compact = this.h.fsm.state === "compact" && !this.away;
+    const show = this.nano && compact && this.h.fsm.shownForm === "nano";
+    // Le mot d'appel écoute : son point rouge reste aussi sur l'île de taille normale.
+    const kinds: DotKind[] = show ? nanoDots(dotStatus(this.status)) : compact && this.status.wake ? ["wake"] : [];
     const key = kinds.join(",");
     if (key !== this.dotKey) {
       this.dotKey = key;

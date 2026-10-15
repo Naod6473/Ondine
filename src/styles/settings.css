@@ -1902,3 +1902,52 @@ html:not([lang="fr"]) .fr-only {
 .phone-notice:not(:empty) { margin-bottom: 8px; }
 .btn.danger { color: var(--danger); }
 .certificate-fingerprint { display: block; overflow-wrap: anywhere; margin: 12px 0; font-size: 12px; user-select: text; }
+
+/* Parakeet sur le PC (1.2.4, settings/voice/parakeet-block.ts). */
+.parakeet-block progress { display: block; width: 100%; height: 8px; margin: 8px 0; accent-color: var(--accent); }
+.parakeet-block .btn-row { margin-top: 8px; }
+
+/* ── Parler à Ondine : micro, « Tester le micro », mot d'appel, raccourci personnalisé (1.2.4) ── */
+.hotkey-input { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.hotkey-recorder { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; }
+.hotkey-recorder[hidden] { display: none; }
+.hotkey-keys {
+  padding: 3px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--field-edge);
+  background: var(--field);
+  font: 600 12px/1.4 inherit;
+  white-space: nowrap;
+}
+.hotkey-record.on { background: var(--accent-soft); border-color: var(--accent); }
+.hotkey-error { text-align: right; max-width: 34ch; }
+.mic-choice { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.mic-choice .select { max-width: 26ch; }
+.mic-test .btn-row { align-items: center; }
+.mic-meter {
+  flex: 1;
+  min-width: 120px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--track-off);
+  overflow: hidden;
+}
+.mic-meter-fill {
+  display: block;
+  height: 100%;
+  background: var(--ok);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 80ms linear;
+}
+.wake-confirm {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--warn-soft);
+}
+.wake-confirm[hidden] { display: none; }
+.wake-confirm p { margin: 0 0 8px; }
+@media (prefers-reduced-motion: reduce) {
+  .mic-meter-fill { transition: none; }
+}

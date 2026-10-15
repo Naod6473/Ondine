@@ -1,0 +1,183 @@
+/* 1.2.4, les extras (importé en tête de island.css) : limites du forfait et
+   fichiers modifiés en direct (Agents IA). Les animations suivent --ease et
+   s'arrêtent avec « Réduire les animations » et en mode éco. */
+
+/* ── Agents IA : limites du forfait (plan-view.ts) ─────────────────────── */
+.agents-plan-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 6px 10px;
+}
+.agents-plan-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.agents-plan-card p {
+  margin: 0;
+  font-size: 12px;
+}
+.agents-plan-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.agents-plan-gauge {
+  display: grid;
+  grid-template-columns: 54px 1fr auto;
+  align-items: center;
+  gap: 0 8px;
+  font-size: 12px;
+}
+.agents-plan-gauge small {
+  grid-column: 2 / 4;
+}
+.agents-plan-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+.agents-plan-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left center;
+  transform: scaleX(var(--pct, 0));
+  transition: transform 600ms var(--ease), background 300ms var(--ease-out);
+}
+/* Jaune dès 75 %, rouge dès 90 % (plan.ts, planLevel). */
+.agents-plan-gauge.warn .agents-plan-fill {
+  background: #f2c14e;
+}
+.agents-plan-gauge.high .agents-plan-fill {
+  background: #ff6b6b;
+}
+.agents-plan-gauge.warn .agents-plan-pct {
+  color: #f2c14e;
+}
+.agents-plan-gauge.high .agents-plan-pct {
+  color: #ff8a8a;
+}
+.agents-plan-pct {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Agents IA : fichiers modifiés en direct (live-view.ts) ────────────── */
+.agents-live {
+  list-style: none;
+  margin: 2px 0 4px 26px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 6px;
+}
+.agents-live:empty {
+  display: none;
+}
+.agents-live-file {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  max-width: 100%;
+  padding: 1px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  animation: agents-live-in 360ms var(--ease) both;
+}
+.agents-live-file:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+.agents-live-file code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+.diff-add {
+  color: #6fdc8c;
+  font-variant-numeric: tabular-nums;
+}
+.diff-del {
+  color: #ff8a8a;
+  font-variant-numeric: tabular-nums;
+}
+@keyframes agents-live-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px) scale(0.96);
+  }
+}
+
+/* La vue du changement (lecture seule). */
+.agents-diff-box:empty {
+  display: none;
+}
+.agents-diff-box {
+  margin: 6px 0;
+  padding: 8px 10px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+}
+.agents-diff-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.agents-diff-head code {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agents-diff-lines {
+  margin: 6px 0 0;
+  max-height: 180px;
+  overflow: auto;
+  font: 11.5px/1.45 ui-monospace, "Cascadia Mono", Consolas, monospace;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+}
+.agents-diff-line {
+  display: flex;
+  white-space: pre;
+  padding: 0 8px 0 0;
+}
+.agents-diff-line .sym {
+  flex: 0 0 18px;
+  text-align: center;
+  opacity: 0.8;
+}
+.agents-diff-line.added {
+  background: rgba(111, 220, 140, 0.12);
+}
+.agents-diff-line.removed {
+  background: rgba(255, 107, 107, 0.12);
+}
+.agents-diff-line.gap {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agents-plan-fill,
+  .agents-live-file {
+    transition: none;
+    animation: none;
+  }
+}
+body[data-perf="eco"] .agents-plan-fill,
+body[data-perf="eco"] .agents-live-file {
+  transition: none;
+  animation: none;
+}

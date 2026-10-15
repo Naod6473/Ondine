@@ -53,9 +53,11 @@ use tauri::AppHandle;
 
 use super::agents_git as git;
 use super::agents_history as history;
+use super::agents_live as live;
 use super::agents_github as github;
 use super::agents_hooks as hooks;
 use super::agents_mcp_extra as extra;
+use super::agents_plan as plan;
 use super::agents_resume as resume;
 use super::agents_tools as tools_more;
 use super::agents_usage as usage;
@@ -163,6 +165,11 @@ struct State {
     /// Une capture d'écran demandée par un agent (outil MCP ondine_capture),
     /// acceptée d'un clic : on attend le module Capture.
     capture: Option<PendingCapture>,
+    /// Les dernières limites du forfait de Claude, données par sa ligne d'état
+    /// (« ondine.exe statusline », agents_plan.rs). En mémoire seulement.
+    plan_claude: Option<plan::Limits>,
+    /// Les fichiers modifiés en direct par les agents (agents_live.rs). En mémoire seulement.
+    live: live::Store,
 }
 
 /// Une capture acceptée : le canal pour rendre son chemin à l'agent.
@@ -216,6 +223,10 @@ pub struct Agents {
     usage: Mutex<usage::Cache>,
     /// Le calendrier de contributions GitHub déjà lu (agents_github.rs).
     github: Mutex<github::Cache>,
+    /// Les journaux de Codex déjà lus pour ses limites (agents_plan.rs).
+    plan_codex: Mutex<plan::CodexCache>,
+    /// La dernière réponse de « Demander à Codex » (agents_plan.rs).
+    plan_asked: Mutex<Option<plan::Limits>>,
 }
 
 impl RustModule for Agents {
@@ -678,6 +689,92 @@ impl RustModule for Agents {
                 files::copy_text(text)?;
                 Ok(Value::Null)
             }
+            // ── Les limites du forfait (agents_plan.rs) ──
+            // Claude : ce qu'a donné sa ligne d'état ; Codex : ses journaux (ou
+            // « Demander à Codex », plus récent). Rien ne part d'Ondine.
+            "plan" => {
+                if ctx.settings().get("planLimits").and_then(Value::as_bool) == Some(false) {
+                    return Err("limites du forfait désactivées dans les réglages".into());
+                }
+                let file = claude_dir().join("settings.json");
+                let line = match hooks::read(&file) {
+                    Ok(text) => plan::statusline_state(text.as_deref(), &exe_path()),
+                    Err(_) => "unreadable",
+                };
+                let claude = self.state.locked().plan_claude.clone();
+                let logs = plan::latest_codex(&mut self.plan_codex.locked(), &codex_dir().join("sessions"), now_ms());
+                let asked = self.plan_asked.locked().clone();
+                // La plus récente des deux sources de Codex.
+                let codex = match (logs, asked) {
+                    (Some(l), Some(a)) => Some(if a.updated_at >= l.updated_at { a } else { l }),
+                    (l, a) => l.or(a),
+                };
+                Ok(json!({
+                    "claude": claude.map(|l| l.json()),
+                    "line": line,
+                    "file": file.display().to_string(),
+                    "codex": codex.map(|l| l.json()),
+                }))
+            }
+            // Met « ondine.exe statusline » comme ligne d'état de Claude Code
+            // (fusion, copie .bak ; votre ligne d'état est gardée et relancée).
+            "plan_install" => {
+                ctx.require("files")?;
+                let exe = exe_path();
+                if exe.is_empty() {
+                    return Err("chemin d'Ondine introuvable".into());
+                }
+                let file = claude_dir().join("settings.json");
+                let existing = hooks::read(&file)?;
+                let (text, previous) = plan::statusline_install(existing.as_deref(), &exe).map_err(|e| format!("{} : {e}", file.display()))?;
+                if let Some(p) = &previous {
+                    let saved = serde_json::to_string_pretty(p).map_err(|e| e.to_string())?;
+                    hooks::write_with_backup(&plan::previous_file(), &saved, &platform::local_time().file_stamp()).map_err(|e| format!("votre ligne d'état n'a pas pu être gardée, rien n'a été modifié ({e})"))?;
+                }
+                let backup = hooks::write_with_backup(&file, &text, &platform::local_time().file_stamp())?;
+                ctx.log_info("limites du forfait : ligne d'état d'Ondine installée pour Claude Code");
+                Ok(json!({ "file": file.display().to_string(), "backup": backup.map(|b| b.display().to_string()), "kept": previous.is_some() }))
+            }
+            // Retire la ligne d'état d'Ondine ; la vôtre revient.
+            "plan_remove" => {
+                ctx.require("files")?;
+                let file = claude_dir().join("settings.json");
+                let existing = hooks::read(&file)?;
+                let Some(text) = plan::statusline_remove(existing.as_deref(), plan::read_previous()).map_err(|e| format!("{} : {e}", file.display()))? else {
+                    return Ok(json!({ "file": file.display().to_string(), "changed": false }));
+                };
+                let backup = hooks::write_with_backup(&file, &text, &platform::local_time().file_stamp())?;
+                let _ = std::fs::remove_file(plan::previous_file());
+                self.state.locked().plan_claude = None;
+                ctx.log_info("limites du forfait : ligne d'état d'Ondine retirée");
+                Ok(json!({ "file": file.display().to_string(), "backup": backup.map(|b| b.display().to_string()), "changed": true }))
+            }
+            // « Demander à Codex » (sur votre clic) : codex app-server, 15 s au plus.
+            "plan_codex" => {
+                let exe = platform::find_program("codex").ok_or("Codex n'est pas installé sur ce PC (commande « codex » introuvable)")?;
+                let limits = plan::ask_codex(&exe)?;
+                ctx.log_info("limites du forfait : lues auprès de Codex");
+                *self.plan_asked.locked() = Some(limits.clone());
+                Ok(limits.json())
+            }
+            // Les fichiers modifiés en direct (sans leurs lignes).
+            "live" => {
+                if ctx.settings().get("liveFiles").and_then(Value::as_bool) == Some(false) {
+                    return Ok(json!({ "files": [] }));
+                }
+                Ok(json!({ "files": self.state.locked().live.list() }))
+            }
+            // Le changement d'un fichier (lecture seule), revalidé par check_path.
+            "live_diff" => {
+                let id = args["id"].as_u64().ok_or("id manquant")?;
+                let entry = self.state.locked().live.get(id).cloned().ok_or("ce changement n'est plus en mémoire")?;
+                ctx.check_path(&entry.path)?;
+                let lines: Vec<Value> = entry.lines.iter().map(|l| json!([l.0.to_string(), l.1])).collect();
+                let mut out = serde_json::to_value(&entry).map_err(|e| e.to_string())?;
+                out["lines"] = json!(lines);
+                out["cut"] = json!(entry.cut);
+                Ok(out)
+            }
             other => Err(format!("commande inconnue : {other}")),
         }
     }
@@ -880,10 +977,47 @@ fn route(app: &AppHandle, state: &Shared, bytes: &[u8], reply: std::fs::File) {
         mcp_request(app, state, &msg, reply);
     } else if msg["source"] == "permission" {
         permission_request(app, state, &msg, reply);
+    } else if msg["source"] == "plan" {
+        // Les limites du forfait de Claude (« ondine.exe statusline ») : seulement des chiffres.
+        drop(reply);
+        if super::is_active(app, ID) {
+            if let Some(l) = plan::claude_limits(&msg["rate_limits"], now_ms()) {
+                state.locked().plan_claude = Some(l);
+            }
+        }
+    } else if msg["live"].is_object() {
+        drop(reply);
+        live_note(app, state, &msg);
     } else {
         drop(reply); // un hook n'attend pas de réponse
         receive(app, state, bytes);
     }
+}
+
+/// Un fichier modifié par un agent (« ondine.exe notify » sur PostToolUse) :
+/// gardé en mémoire si le réglage est actif et que le chemin passe
+/// `check_path` (dossiers exclus respectés). Rien n'est écrit sur le disque.
+fn live_note(app: &AppHandle, state: &Shared, msg: &Value) {
+    if !super::is_active(app, ID) {
+        return;
+    }
+    let path = msg["live"]["path"].as_str().unwrap_or("");
+    let ok = super::with_context(app, ID, |ctx| {
+        ctx.settings().get("liveFiles").and_then(Value::as_bool) != Some(false) && !path.is_empty() && ctx.check_path(path).is_ok()
+    })
+    .unwrap_or(false);
+    if !ok {
+        return;
+    }
+    let (source, session) = source_session(msg);
+    let id = {
+        let mut st = state.locked();
+        if !st.live.allow() {
+            return;
+        }
+        st.live.note(&session, &source, path, &msg["live"], now_ms())
+    };
+    super::with_context(app, ID, |ctx| ctx.emit("agents.live", json!({ "id": id, "session": session })));
 }
 
 // ── Les outils MCP (« ondine.exe mcp ») ──────────────────────────────────────
@@ -1454,6 +1588,10 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
         let was_busy = st.working() > 0;
         // ── L'historique sur le disque : l'état d'avant donne les durées ──
         let previous = st.sessions.get(&event.session).map(|s| (s.state, s.since));
+        // Un nouveau message, ou la fin : la liste des fichiers repart de zéro.
+        if matches!(event.kind, "working" | "ended") {
+            st.live.forget(&event.session);
+        }
         history_note(&mut st, &event, previous);
         if event.kind == "ended" {
             st.sessions.remove(&event.session);
@@ -1617,14 +1755,20 @@ fn report(app: &AppHandle, cwd: &str) -> Option<Report> {
 ///
 /// Les textes de l'utilisateur (prompt) et les réponses de l'IA ne sont
 /// jamais lus.
-fn understand(msg: &Value, at: u64) -> Option<Event> {
-    let text = |v: &Value| clean(v.as_str().unwrap_or(""), MAX_TEXT);
+/// L'outil (« claude-code », « codex »…) et l'identifiant de session d'un message.
+fn source_session(msg: &Value) -> (String, String) {
     let source = {
         let s: String = msg["source"].as_str().unwrap_or("outil").chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-').take(30).collect();
         if s.is_empty() { "outil".to_string() } else { s.to_lowercase() }
     };
+    let session = format!("{source}:{}", clean(tools_more::hook_session(&msg["hook"]).unwrap_or(&source), 80));
+    (source, session)
+}
+
+fn understand(msg: &Value, at: u64) -> Option<Event> {
+    let text = |v: &Value| clean(v.as_str().unwrap_or(""), MAX_TEXT);
+    let (source, session) = source_session(msg);
     let hook = &msg["hook"];
-    let session = tools_more::hook_session(hook).unwrap_or(&source);
     let mut ev = Event {
         at,
         source: source.clone(),
@@ -1632,7 +1776,7 @@ fn understand(msg: &Value, at: u64) -> Option<Event> {
         title: text(&msg["title"]),
         body: text(&msg["message"]),
         project: project_name(tools_more::hook_cwd(hook)),
-        session: format!("{source}:{}", clean(session, 80)),
+        session,
         changes: None,
         summary: None,
     };
@@ -1752,11 +1896,14 @@ fn hook_config(tool: &str, exe: &str) -> Result<String, String> {
 /// PowerShell, donc rien à échapper dans le chemin (même avec des espaces).
 fn claude_config(exe: &str) -> String {
     let entry = json!([{ "hooks": [{ "type": "command", "command": exe, "args": ["notify", "--source", "claude-code"] }] }]);
+    // Fichiers modifiés en direct : seulement après une écriture (agents_live.rs).
+    let edits = json!([{ "matcher": "Edit|MultiEdit|Write", "hooks": [{ "type": "command", "command": exe, "args": ["notify", "--source", "claude-code"] }] }]);
     let config = json!({
         "hooks": {
             "Notification": entry,
             "Stop": entry,
             "UserPromptSubmit": entry,
+            "PostToolUse": edits,
         }
     });
     serde_json::to_string_pretty(&config).unwrap_or_default()
@@ -1847,12 +1994,15 @@ fn our_hooks(tool: &str, exe: &str, permission: bool) -> Result<String, String> 
 fn gemini_config(exe: &str) -> String {
     let command = format!("$input | & '{}' notify --source gemini", exe.replace('\'', "''"));
     let entry = json!([{ "matcher": "*", "hooks": [{ "name": "ondine", "type": "command", "command": command, "timeout": 5000 }] }]);
+    // Fichiers modifiés en direct : seulement après une écriture (agents_live.rs).
+    let edits = json!([{ "matcher": "write_file|replace", "hooks": [{ "name": "ondine", "type": "command", "command": command, "timeout": 5000 }] }]);
     let config = json!({
         "hooks": {
             "BeforeAgent": entry,
             "AfterAgent": entry,
             "Notification": entry,
             "SessionEnd": entry,
+            "AfterTool": edits,
         }
     });
     serde_json::to_string_pretty(&config).unwrap_or_default()
@@ -2182,6 +2332,7 @@ mod tests {
         assert!(c.contains("[[hooks.PermissionRequest.hooks]]"));
         let g: Value = serde_json::from_str(&gemini_config(r"C:\Users\O'Neil\ondine.exe")).unwrap();
         assert_eq!(g["hooks"]["AfterAgent"][0]["hooks"][0]["command"], r"$input | & 'C:\Users\O''Neil\ondine.exe' notify --source gemini");
+        assert_eq!(g["hooks"]["AfterTool"][0]["matcher"], "write_file|replace");
         assert!(hook_config("chatgpt-web", exe).is_err());
     }
 
@@ -2265,5 +2416,8 @@ mod tests {
         let h = &c["hooks"]["Stop"][0]["hooks"][0];
         assert_eq!(h["command"], r"C:\Program Files\Ondine\ondine.exe");
         assert_eq!(h["args"], json!(["notify", "--source", "claude-code"]));
+        // Fichiers modifiés en direct : seulement les outils qui écrivent.
+        assert_eq!(c["hooks"]["PostToolUse"][0]["matcher"], "Edit|MultiEdit|Write");
+        assert_eq!(c["hooks"]["PostToolUse"][0]["hooks"][0]["args"], json!(["notify", "--source", "claude-code"]));
     }
 }

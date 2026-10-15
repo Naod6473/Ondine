@@ -68,8 +68,12 @@ const BY_EMOJI: Record<string, string> = {
   // Pas encore d'image en couleur : l'emoji reste affiché dans ce pack.
   "🌤️": "weather",
   "🧭": "profiles",
+  // Notes d'appel (1.2.4) : le bouton d'enregistrement au trait.
+  "⏺️": "record",
   // Écran de veille (1.2.3) : la lune au trait, l'emoji en couleur.
   "🌙": "moon",
+  // Dictée (1.2.4) : le micro au trait, l'emoji en couleur.
+  "🎙": "microphone",
 };
 
 /**

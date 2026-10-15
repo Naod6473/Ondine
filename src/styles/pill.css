@@ -1,0 +1,328 @@
+/* La pilule de la Dictée (src/pill/main.ts, src-tauri/src/pill.rs).
+   La fenêtre est transparente et laisse passer les clics hors de la pilule et
+   de son message. En bas : la pilule posée au bas de la fenêtre, le message
+   au-dessus. Sur un côté : la pilule debout contre le bord, le message à côté.
+   Pas d'animation au repos ; mouvements réduits (ou Calme) : rien ne pulse. */
+
+:root {
+  color-scheme: dark;
+  --pill-glass: rgba(8, 11, 17, 0.82);
+  --pill-line: rgba(255, 255, 255, 0.1);
+  --pill-text: #eef2f8;
+  --pill-soft: #d6dde8;
+  --pill-accent: #5fd4e6;
+  --pill-coral: #ff8a6b;
+  --pill-red: #ff4d5e;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  color: var(--pill-text);
+  user-select: none;
+}
+
+#root {
+  position: absolute;
+  inset: 0;
+}
+
+.pill-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 6px;
+  box-sizing: border-box;
+}
+.pill-stage[data-edge="left"],
+.pill-stage[data-edge="right"] {
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+}
+.pill-stage[data-edge="left"] {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+}
+
+/* ── La pilule ───────────────────────────────────────────────────────────── */
+
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 8px;
+  border-radius: 22px;
+  background: var(--pill-glass);
+  border: 1px solid var(--pill-line);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  flex: none;
+}
+.pill-stage[data-edge="left"] .pill,
+.pill-stage[data-edge="right"] .pill {
+  flex-direction: column;
+  height: auto;
+  width: 44px;
+  padding: 8px 0;
+}
+
+.pill[data-mode="rest"] {
+  height: 10px;
+  width: 56px;
+  padding: 0;
+  border-radius: 6px;
+  opacity: 0.75;
+}
+.pill-stage[data-edge="left"] .pill[data-mode="rest"],
+.pill-stage[data-edge="right"] .pill[data-mode="rest"] {
+  width: 10px;
+  height: 56px;
+  padding: 0;
+}
+.pill-rest {
+  display: block;
+}
+
+.pill[data-mode="listening"],
+.pill[data-mode="handsFree"],
+.pill[data-mode="thinking"] {
+  border-color: rgba(95, 212, 230, 0.35);
+}
+.pill[data-mode="call"] {
+  border-color: rgba(255, 138, 107, 0.45);
+  background: rgba(40, 14, 10, 0.85);
+  padding: 0 6px 0 14px;
+  gap: 10px;
+}
+
+.pill-ico {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pill-rec-core {
+  fill: var(--pill-coral);
+  stroke: none;
+}
+
+.pill-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 0;
+  background: none;
+  color: var(--pill-soft);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+}
+.pill-btn:hover,
+.pill-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+.pill-btn.small {
+  width: 30px;
+  height: 30px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.pill-btn.small .pill-ico {
+  width: 14px;
+  height: 14px;
+}
+.pill-btn.go {
+  background: var(--pill-accent);
+  color: #04121a;
+}
+.pill-btn.go .pill-ico {
+  stroke-width: 2.4;
+}
+
+/* La goutte (le moteur des mascottes dessine dans ce carré). */
+.pill-gum {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  position: relative;
+}
+
+/* Le point rouge : le micro est ouvert. */
+.pill-red {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pill-red);
+  box-shadow: 0 0 0 3px rgba(255, 77, 94, 0.18);
+  flex: none;
+}
+
+/* Les neuf bulles : graves à gauche, aigus à droite (en haut / en bas debout). */
+.pill-wave {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+}
+.pill-stage[data-edge="left"] .pill-wave,
+.pill-stage[data-edge="right"] .pill-wave {
+  flex-direction: column;
+  height: auto;
+  width: 26px;
+}
+.pill-dot {
+  width: 5px;
+  height: 24px;
+  border-radius: 3px;
+  background: var(--pill-accent);
+  transform: scaleY(0.22);
+  transform-origin: center;
+  will-change: transform;
+}
+.pill-stage[data-edge="left"] .pill-dot,
+.pill-stage[data-edge="right"] .pill-dot {
+  width: 24px;
+  height: 5px;
+}
+
+.pill-thinking {
+  font-size: 13px;
+  color: var(--pill-soft);
+  padding-right: 6px;
+}
+.pill-stage[data-edge="left"] .pill-thinking,
+.pill-stage[data-edge="right"] .pill-thinking {
+  writing-mode: vertical-rl;
+  padding: 6px 0 0;
+}
+
+/* L'appel en cours. */
+.pill-rec {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--pill-coral);
+  animation: pill-pulse 1.6s ease-in-out infinite;
+  flex: none;
+}
+@keyframes pill-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 138, 107, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(255, 138, 107, 0);
+  }
+}
+.pill-clock {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.pill-stop {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 15px;
+  border: 0;
+  background: rgba(255, 138, 107, 0.2);
+  color: #ffc0ae;
+  font: 600 13px/1 inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+.pill-stop:hover {
+  background: rgba(255, 138, 107, 0.3);
+}
+.pill-stage[data-edge="left"] .pill[data-mode="call"],
+.pill-stage[data-edge="right"] .pill[data-mode="call"] {
+  padding: 12px 0 6px;
+}
+.pill-stage[data-edge="left"] .pill-stop,
+.pill-stage[data-edge="right"] .pill-stop {
+  padding: 0 6px;
+  font-size: 11px;
+}
+
+/* ── Le message ──────────────────────────────────────────────────────────── */
+
+.pill-msg {
+  max-width: 260px;
+  border-radius: 14px;
+  background: rgba(8, 11, 17, 0.92);
+  border: 1px solid var(--pill-line);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  font-size: 12.5px;
+  line-height: 1.4;
+  animation: pill-in 0.18s ease-out;
+}
+.pill-msg[hidden] {
+  display: none;
+}
+@keyframes pill-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.pill-msg-row {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.pill-msg-btn {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: none;
+  color: #cfd6e2;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.pill-msg-btn.primary {
+  border: 0;
+  background: var(--pill-accent);
+  color: #04121a;
+  font-weight: 600;
+}
+.pill-msg-btn[hidden] {
+  display: none;
+}
+
+/* Mouvements réduits, ou réglage Calme : rien ne pulse, rien ne glisse. */
+.pill-stage.still .pill-rec,
+.pill-stage.still .pill-msg {
+  animation: none;
+}
+.pill-stage.still .pill {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pill-rec,
+  .pill-msg {
+    animation: none;
+  }
+  .pill {
+    transition: none;
+  }
+}

@@ -42,8 +42,32 @@ The intro video is on the website: [ondine.pissits.com](https://ondine.pissits.c
 
 ## What's new
 
-What's new in version 1.2.3 (the full list is in the
+What's new in version 1.2.4 (the full list is in the
 [CHANGELOG](CHANGELOG.md)):
+
+- **Dictation everywhere**: hold Right Ctrl in any app, speak, release: the
+  text is pasted. Press twice for hands-free. A small pill shows the drop
+  listening and nine bubbles following your voice. Dictionary, voice
+  snippets, per-app styles, history and statistics, all on your PC. Off by
+  default.
+- **Call notes**: in one click, Ondine writes down your call (microphone and
+  PC sound) person by person, then a summary and to-dos if you ask. A red dot
+  the whole time; the audio is deleted as soon as the transcript is written.
+- **Parakeet on the PC**: NVIDIA's speech recognition (25 languages),
+  entirely on your computer, for dictation, call notes and Talk to Ondine.
+  The model (about 700 MB) is downloaded once, when you click, from Hugging
+  Face.
+- **New Settings**: deep black background, a living band at the top of every
+  page (breathing colour, bubbles, wave, swimming drops), a "Voice" group at
+  the top of the sidebar.
+- **Music card redone**: line icons, shuffle and repeat, the player's own
+  volume, the cover's colour and glow.
+- **And also**: the island hatching on first launch, Claude and Codex plan
+  limits in the AI Agents tab, files modified by agents live (+N −M, click to
+  see the change), Talk to Ondine with a local model (Ollama, LM Studio) or
+  OpenRouter, your own sounds in %APPDATA%\Ondine\sounds.
+
+### In 1.2.3
 
 - **The mouth island** (optional): Ondine hangs upside down from the edge of
   the screen and the island is her mouth, made of gum. Nano, her mouth is

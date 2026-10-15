@@ -85,6 +85,13 @@
         "default": true
       },
       {
+        "key": "liveFiles",
+        "type": "boolean",
+        "label": "Montrer les fichiers modifiés en direct",
+        "help": "Pendant qu'un agent écrit, chaque fichier modifié apparaît sous sa session avec +N −M ; un clic montre le changement en lecture seule. Le calcul se fait sur votre PC, rien n'est écrit sur le disque ni envoyé. Dossiers exclus respectés. Il faut (ré)installer les hooks de Claude Code ou de Gemini CLI.",
+        "default": true
+      },
+      {
         "key": "mcp",
         "type": "boolean",
         "label": "Accepter les outils MCP (message, progression, minuteur, question)",
@@ -133,6 +140,13 @@
         "type": "boolean",
         "label": "Compter les jetons des agents",
         "help": "Lu dans les journaux de Claude Code et de Codex sur ce PC, seulement quand l'onglet Agents IA est ouvert : jetons par jour, par modèle et par projet (le nom du dossier). Rien n'est envoyé.",
+        "default": true
+      },
+      {
+        "key": "planLimits",
+        "type": "boolean",
+        "label": "Montrer les limites du forfait de Claude et Codex",
+        "help": "La fenêtre de 5 h et la semaine, en % utilisé, avec l'heure de la remise à zéro. Claude : ses chiffres arrivent par sa ligne d'état, à brancher d'un clic dans l'onglet (forfaits Pro et Max). Codex : lus dans ses journaux sur ce PC. Rien n'est envoyé par Ondine.",
         "default": true
       },
       {
@@ -276,7 +290,13 @@
     "github_calendar",
     "report_files",
     "open_vscode_file",
-    "copy_text"
+    "copy_text",
+    "plan",
+    "plan_install",
+    "plan_remove",
+    "plan_codex",
+    "live",
+    "live_diff"
   ],
   "events": {
     "emits": [
@@ -298,10 +318,12 @@
       "notes.add",
       "shelf.add",
       "capture.request",
-      "mascot.emote"
+      "mascot.emote",
+      "agents.live"
     ],
     "listens": [
       "agents.event",
+      "agents.live",
       "agents.launch",
       "agents.changed",
       "agents.ask",

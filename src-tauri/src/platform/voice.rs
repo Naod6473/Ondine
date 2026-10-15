@@ -30,6 +30,9 @@
 //     listes de phrases fixées d'avance (pas une question libre).
 //   - `record` : la capture du micro en mémoire (WASAPI partagé), pour
 //     l'option « transcription par l'API ». Rien n'est écrit sur le disque.
+//   - `capture` (1.2.4, notes d'appel) : une capture continue du micro OU du
+//     son du PC (WASAPI « loopback » : ce que les haut-parleurs jouent, sans
+//     rien installer), morceau par morceau, sans rien garder en mémoire.
 //   - le niveau du micro pendant la dictée (IAudioMeterInformation), pour que
 //     le halo tremble avec la voix pendant que Windows écoute.
 //   - `foreground_area` : la fenêtre active (pas celle d'Ondine), pour
@@ -40,7 +43,12 @@
 //
 // Sous Linux (vérifications), tout renvoie « seulement sous Windows ».
 
-use std::sync::atomic::AtomicU8;
+use std::sync::atomic::{AtomicU8, AtomicUsize, Ordering};
+use std::sync::Mutex;
+
+use serde::Serialize;
+
+use crate::sync::LockExt;
 
 /// `stop` : la personne a fini de parler (on garde ce qui est dit).
 pub const FINISH: u8 = 1;
@@ -74,6 +82,8 @@ pub enum Fix {
     /// Heure et langue → Langue et région (la reconnaissance vocale hors
     /// ligne s'installe dans les options de la langue).
     Pack,
+    /// Système → Son (le micro par défaut, son volume, micro coupé ; 1.2.4).
+    Sound,
 }
 
 impl Fix {
@@ -83,11 +93,12 @@ impl Fix {
             Fix::Mic => "mic",
             Fix::Language => "language",
             Fix::Pack => "pack",
+            Fix::Sound => "sound",
         }
     }
 
     pub fn from_id(id: &str) -> Option<Fix> {
-        [Fix::Speech, Fix::Mic, Fix::Language, Fix::Pack].into_iter().find(|f| f.id() == id)
+        [Fix::Speech, Fix::Mic, Fix::Language, Fix::Pack, Fix::Sound].into_iter().find(|f| f.id() == id)
     }
 
     /// La page des Paramètres Windows à ouvrir.
@@ -97,6 +108,7 @@ impl Fix {
             Fix::Mic => "ms-settings:privacy-microphone",
             Fix::Language => "ms-settings:speech",
             Fix::Pack => "ms-settings:regionlanguage",
+            Fix::Sound => "ms-settings:sound",
         }
     }
 }
@@ -234,6 +246,243 @@ impl EndGate {
     }
 }
 
+/// D'où vient le son d'une capture continue (`capture`, notes d'appel).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Source {
+    /// Le micro par défaut de Windows.
+    Mic,
+    /// Ce que joue la sortie audio par défaut (WASAPI loopback) : la voix des
+    /// autres pendant un appel.
+    Speakers,
+}
+
+/// Le son du PC qui se tait : WASAPI loopback ne donne alors plus rien du
+/// tout (pas même des zéros). Pour que le son du PC reste aligné sur le micro,
+/// on ajoute ce silence dès qu'il manque plus de 200 ms par rapport au temps
+/// écoulé (en gardant 50 ms de marge pour les paquets en route).
+#[cfg_attr(not(windows), allow(dead_code))] // utilisé seulement sous Windows (et les tests)
+pub(crate) fn silence_to_add(elapsed_ms: u64, rate: u32, emitted: u64) -> u64 {
+    let expected = elapsed_ms * u64::from(rate) / 1000;
+    let behind = expected.saturating_sub(emitted);
+    if behind > u64::from(rate) / 5 {
+        behind - u64::from(rate) / 20
+    } else {
+        0
+    }
+}
+
+// ── Le micro choisi (1.2.4) ─────────────────────────────────────────────────
+//
+// Réglages → Parler à Ondine → Voix et sons → « Micro » (`micDevice` du module
+// askclaude, vide = le micro par défaut de Windows). Le fil des raccourcis de
+// askclaude_voice.rs recopie le réglage ici chaque seconde ; toutes les
+// captures WASAPI d'Ondine (Parler à Ondine en Parakeet et en API, bulles et
+// Parakeet de la dictée, côté micro des notes d'appel, mot d'appel) ouvrent ce
+// micro. Débranché ou introuvable : celui par défaut, avec une ligne au journal.
+// La reconnaissance vocale de Windows (WinRT) écoute toujours le micro par
+// défaut de Windows ; le moteur hors ligne (SAPI) prend le micro choisi par son
+// numéro « waveIn ».
+
+/// Un micro du PC, pour la liste des Réglages.
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct MicDevice {
+    /// L'identifiant de Windows (`IMMDevice::GetId`).
+    pub id: String,
+    /// Le nom lisible (« Microphone (USB Audio) »).
+    pub name: String,
+    /// Le micro par défaut de Windows (rôle « console »).
+    pub default: bool,
+    /// Le micro de communication par défaut (souvent celui du casque).
+    pub communications: bool,
+}
+
+static MIC: Mutex<String> = Mutex::new(String::new());
+
+/// Un identifiant de micro venu des réglages : vide s'il est invalide.
+pub(crate) fn clean_mic_id(id: &str) -> String {
+    let id = id.trim();
+    if id.len() > 512 || id.chars().any(char::is_control) {
+        String::new()
+    } else {
+        id.to_string()
+    }
+}
+
+/// Le micro à ouvrir désormais (vide = celui par défaut de Windows).
+pub fn set_mic(id: &str) {
+    let id = clean_mic_id(id);
+    let mut cur = MIC.locked();
+    if *cur != id {
+        *cur = id;
+    }
+}
+
+/// Le micro choisi (vide = celui par défaut de Windows).
+pub fn chosen_mic() -> String {
+    MIC.locked().clone()
+}
+
+/// Les captures du micro ouvertes par Ondine (sans le mot d'appel) : le mot
+/// d'appel se met en pause pendant ce temps.
+static CAPTURES: AtomicUsize = AtomicUsize::new(0);
+
+/// Ondine capte-t-elle déjà le micro (dictée, notes d'appel, écoute) ?
+pub fn ondine_capturing() -> bool {
+    CAPTURES.load(Ordering::SeqCst) > 0
+}
+
+/// Compte une capture tant qu'il vit.
+#[cfg_attr(not(windows), allow(dead_code))]
+struct Counted(bool);
+
+#[cfg_attr(not(windows), allow(dead_code))]
+impl Counted {
+    fn new(counted: bool) -> Counted {
+        if counted {
+            CAPTURES.fetch_add(1, Ordering::SeqCst);
+        }
+        Counted(counted)
+    }
+}
+
+impl Drop for Counted {
+    fn drop(&mut self) {
+        if self.0 {
+            CAPTURES.fetch_sub(1, Ordering::SeqCst);
+        }
+    }
+}
+
+/// Le format des échantillons donnés par Windows (format de mixage du micro).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum SampleKind {
+    F32,
+    U8,
+    I16,
+    I24,
+    I32,
+}
+
+#[cfg_attr(not(windows), allow(dead_code))]
+impl SampleKind {
+    /// D'après le format : nombres à virgule ou entiers, et la taille d'un
+    /// échantillon. None : format non pris en charge (64 bits…).
+    pub(crate) fn of(float: bool, bits: u16) -> Option<SampleKind> {
+        match (float, bits) {
+            (true, 32) => Some(SampleKind::F32),
+            (false, 8) => Some(SampleKind::U8),
+            (false, 16) => Some(SampleKind::I16),
+            (false, 24) => Some(SampleKind::I24),
+            (false, 32) => Some(SampleKind::I32),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn bytes(self) -> usize {
+        match self {
+            SampleKind::U8 => 1,
+            SampleKind::I16 => 2,
+            SampleKind::I24 => 3,
+            SampleKind::F32 | SampleKind::I32 => 4,
+        }
+    }
+
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            SampleKind::F32 => "virgule flottante 32 bits",
+            SampleKind::U8 => "entiers 8 bits",
+            SampleKind::I16 => "entiers 16 bits",
+            SampleKind::I24 => "entiers 24 bits",
+            SampleKind::I32 => "entiers 32 bits",
+        }
+    }
+
+    /// Un échantillon (petit-boutiste) → -1..1.
+    fn sample(self, b: &[u8]) -> f32 {
+        match self {
+            SampleKind::F32 => f32::from_le_bytes([b[0], b[1], b[2], b[3]]),
+            SampleKind::U8 => (f32::from(b[0]) - 128.0) / 128.0,
+            SampleKind::I16 => f32::from(i16::from_le_bytes([b[0], b[1]])) / 32768.0,
+            SampleKind::I24 => (i32::from_le_bytes([0, b[0], b[1], b[2]]) >> 8) as f32 / 8_388_608.0,
+            SampleKind::I32 => i32::from_le_bytes([b[0], b[1], b[2], b[3]]) as f32 / 2_147_483_648.0,
+        }
+    }
+}
+
+/// Des trames entrelacées (`channels` voies) → mono (moyenne des voies), ajouté à `out`.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub(crate) fn mix_to_mono(data: &[u8], channels: usize, kind: SampleKind, out: &mut Vec<f32>) {
+    let channels = channels.max(1);
+    let size = kind.bytes();
+    for frame in data.chunks_exact(size * channels) {
+        let sum: f32 = frame.chunks_exact(size).map(|b| kind.sample(b)).sum();
+        out.push(sum / channels as f32);
+    }
+}
+
+/// Ce qu'une capture du micro a vu : pour le journal, « Tester le micro » et
+/// pour expliquer un micro muet.
+#[derive(Clone, Debug, Default, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct MicInfo {
+    /// Le nom du micro réellement ouvert.
+    pub name: String,
+    /// Fréquence, voies et format (« 48000 Hz, 2 voies, entiers 16 bits »).
+    pub format: String,
+    /// Le plus fort échantillon capté (0..1).
+    pub peak: f32,
+    /// Coupé dans Windows ? (None : inconnu)
+    pub muted: Option<bool>,
+    /// Le volume du micro dans Windows (0..1).
+    pub volume: Option<f32>,
+    /// Le micro choisi n'a pas été trouvé : c'est celui par défaut.
+    pub fell_back: bool,
+}
+
+/// En dessous : le micro ne donne que des zéros (bloqué, ou pilote muet).
+pub(crate) const PEAK_ZERO: f32 = 0.000_05;
+/// En dessous : le micro capte à peine (−42 dBFS crête), même quand on parle.
+pub(crate) const PEAK_QUIET: f32 = 0.008;
+
+/// Pourquoi le micro n'a rien donné d'utile (None : il a bien capté du son).
+/// `desktop_mic` : le micro est-il permis aux applications de bureau ?
+pub(crate) fn silent_mic(info: &MicInfo, desktop_mic: Option<bool>) -> Option<Failure> {
+    let name = if info.name.is_empty() { "par défaut".to_string() } else { format!("« {} »", info.name) };
+    let (message, fix) = if info.muted == Some(true) {
+        (format!("Le micro {name} est coupé dans Windows : réactivez-le dans Paramètres Windows → Système → Son → Entrée, ou choisissez un autre micro dans Réglages → Parler à Ondine → Voix et sons"), Fix::Sound)
+    } else if info.volume.is_some_and(|v| v < 0.02) {
+        (format!("Le volume du micro {name} est à 0 dans Windows : montez-le dans Paramètres Windows → Système → Son → Entrée"), Fix::Sound)
+    } else if info.peak < PEAK_ZERO && desktop_mic == Some(false) {
+        (MIC_TEXT.to_string(), Fix::Mic)
+    } else if info.peak < PEAK_ZERO {
+        (format!("Le micro {name} ne donne aucun son : Windows le bloque peut-être (Paramètres Windows → Confidentialité → Microphone → « Autoriser les applications de bureau »), ou ce n'est pas le micro dans lequel vous parlez : choisissez-le dans Réglages → Parler à Ondine → Voix et sons"), Fix::Mic)
+    } else if info.peak < PEAK_QUIET {
+        (format!("Le micro {name} capte à peine un son : est-ce le bon micro ? Choisissez-le dans Réglages → Parler à Ondine → Voix et sons, ou montez son volume dans Paramètres Windows → Système → Son → Entrée"), Fix::Sound)
+    } else {
+        return None;
+    };
+    Some(Failure { message, fix: Some(fix), detail: mic_detail(info) })
+}
+
+/// Une ligne de journal sur le micro (jamais ce qui a été dit).
+pub(crate) fn mic_detail(info: &MicInfo) -> String {
+    let opt = |v: Option<bool>| match v {
+        Some(true) => "oui",
+        Some(false) => "non",
+        None => "?",
+    };
+    let volume = info.volume.map(|v| format!("{:.0} %", v * 100.0)).unwrap_or_else(|| "?".into());
+    format!(
+        "micro « {} » ({}){}, niveau max {:.1} %, coupé : {}, volume : {volume}",
+        info.name,
+        info.format,
+        if info.fell_back { ", micro choisi introuvable : celui par défaut" } else { "" },
+        info.peak * 100.0,
+        opt(info.muted)
+    )
+}
+
 #[cfg(windows)]
 pub use self::win::*;
 
@@ -242,7 +491,8 @@ pub use self::stub::*;
 
 #[cfg(windows)]
 mod win {
-    use super::{explain_unknown, pick_language, Failure, Fix, Listen, Pcm, CANCEL, FINISH, MIC_TEXT, PRIVACY_TEXT};
+    use super::{explain_unknown, mic_detail, mix_to_mono, pick_language, silent_mic, Counted, Failure, Fix, Listen, MicDevice, MicInfo, Pcm, SampleKind, Source, CANCEL, FINISH, MIC_TEXT, PRIVACY_TEXT};
+    use crate::services::log;
     use std::sync::atomic::Ordering;
     use std::sync::mpsc;
     use std::time::{Duration, Instant};
@@ -254,11 +504,13 @@ mod win {
         SpeechContinuousRecognitionCompletedEventArgs, SpeechContinuousRecognitionResultGeneratedEventArgs, SpeechContinuousRecognitionSession,
         SpeechRecognitionHypothesisGeneratedEventArgs, SpeechRecognitionResultStatus, SpeechRecognizer,
     };
-    use windows::Win32::Media::Audio::Endpoints::IAudioMeterInformation;
+    use windows::Win32::Foundation::PROPERTYKEY;
+    use windows::Win32::Media::Audio::Endpoints::{IAudioEndpointVolume, IAudioMeterInformation};
     use windows::Win32::Media::Audio::{
-        eCapture, eConsole, IAudioCaptureClient, IAudioClient, IMMDeviceEnumerator, MMDeviceEnumerator, AUDCLNT_BUFFERFLAGS_SILENT, AUDCLNT_SHAREMODE_SHARED,
-        WAVEFORMATEX, WAVEFORMATEXTENSIBLE,
+        eCapture, eCommunications, eConsole, eRender, IAudioCaptureClient, IAudioClient, IMMDevice, IMMDeviceEnumerator, MMDeviceEnumerator, AUDCLNT_BUFFERFLAGS_SILENT,
+        AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_LOOPBACK, DEVICE_STATE_ACTIVE, WAVEFORMATEX, WAVEFORMATEXTENSIBLE,
     };
+    use windows::Win32::System::Com::STGM_READ;
     use windows::Win32::System::Com::{CoCreateInstance, CoTaskMemFree, CLSCTX_ALL};
     use windows::Win32::System::Registry::{RegGetValueW, HKEY, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, RRF_RT_REG_DWORD, RRF_RT_REG_SZ};
 
@@ -386,18 +638,20 @@ mod win {
         Some(Failure { message, fix, detail: detail(step, &what, langs, online, mic) })
     }
 
-    /// Le niveau du micro par défaut (crête, 0..1), tant qu'une appli le capte.
-    struct Meter(Option<IAudioMeterInformation>);
+    /// Le niveau d'un micro (crête, 0..1), tant qu'une appli le capte.
+    struct Meter(Option<IAudioMeterInformation>, MicInfo);
 
     impl Meter {
-        fn open() -> Meter {
-            let meter = unsafe {
-                CoCreateInstance::<_, IMMDeviceEnumerator>(&MMDeviceEnumerator, None, CLSCTX_ALL)
-                    .and_then(|e| e.GetDefaultAudioEndpoint(eCapture, eConsole))
-                    .and_then(|d| d.Activate::<IAudioMeterInformation>(CLSCTX_ALL, None))
-                    .ok()
-            };
-            Meter(meter)
+        /// `wanted` : le micro (vide = celui par défaut de Windows).
+        fn open(wanted: &str) -> Meter {
+            unsafe {
+                let Some((device, fell_back)) = CoCreateInstance::<_, IMMDeviceEnumerator>(&MMDeviceEnumerator, None, CLSCTX_ALL).ok().and_then(|e| pick_device(&e, wanted).ok()) else {
+                    return Meter(None, MicInfo::default());
+                };
+                let (muted, volume) = endpoint_state(&device);
+                let info = MicInfo { name: device_name(&device), format: String::new(), peak: 0.0, muted, volume, fell_back };
+                Meter(device.Activate::<IAudioMeterInformation>(CLSCTX_ALL, None).ok(), info)
+            }
         }
 
         fn peak(&self) -> f32 {
@@ -439,8 +693,22 @@ mod win {
     /// personne ne parle d'ici là.
     pub fn dictate(lang: &str, hold: bool, initial_silence_ms: i64, cb: Listen) -> Result<String, Failure> {
         super::super::media::init_thread();
+        // La reconnaissance de Windows écoute toujours le micro par défaut de Windows.
+        let chosen = super::chosen_mic();
+        if !chosen.is_empty() && !microphones().iter().any(|m| m.id == chosen && m.default) {
+            log::info("parler à Ondine : la reconnaissance vocale de Windows écoute le micro par défaut de Windows, pas celui choisi dans les réglages");
+        }
         let (rec, langs) = recognizer(lang)?;
         let langs = langs.as_str();
+        let meter = Meter::open("");
+        let stop = cb.stop;
+        let mut max = 0f32;
+        let Listen { stop: cb_stop, partial, level } = cb;
+        let mut track = |l: f32| {
+            max = max.max(l);
+            level(l)
+        };
+        let cb = Listen { stop: cb_stop, partial, level: &mut track };
         let run = || -> Result<String, Failure> {
             let t = rec.Timeouts().map_err(|e| hr_failure("délais", langs, &e))?;
             let _ = t.SetInitialSilenceTimeout(span(initial_silence_ms));
@@ -459,14 +727,28 @@ mod win {
                     Ok(())
                 }))
                 .map_err(|e| hr_failure("sous-titres", langs, &e))?;
-            let meter = Meter::open();
             let result = if hold { continuous(&rec, &rx, &meter, langs, cb) } else { once(&rec, &rx, &meter, langs, cb) };
             let _ = rec.RemoveHypothesisGenerated(token);
             result
         };
         let result = run();
         let _ = rec.Close();
-        result
+        explain_silence(result, &meter, max, stop)
+    }
+
+    /// Rien entendu alors que le micro était muet (coupé, volume à 0, bloqué,
+    /// pas le bon micro) : une erreur qui le dit, au lieu de « rien entendu ».
+    fn explain_silence(result: Result<String, Failure>, meter: &Meter, max: f32, stop: &std::sync::atomic::AtomicU8) -> Result<String, Failure> {
+        let empty = matches!(&result, Ok(t) if t.trim().is_empty());
+        if !empty || meter.0.is_none() || stop.load(Ordering::SeqCst) == CANCEL {
+            return result;
+        }
+        let info = MicInfo { peak: max, ..meter.1.clone() };
+        log::info(format!("parler à Ondine : rien entendu, {}", mic_detail(&info)));
+        match silent_mic(&info, mic_for_desktop()) {
+            Some(f) => Err(f),
+            None => result,
+        }
     }
 
     /// Une phrase : Windows s'arrête tout seul au silence.
@@ -681,6 +963,19 @@ mod win {
             let rec: ISpRecognizer = CoCreateInstance(&SpInprocRecognizer, None, CLSCTX_ALL).map_err(|e| fail("création du moteur", e))?;
             rec.SetRecognizer(&token).map_err(|e| fail("choix de la langue", e))?;
             let audio: windows::core::IUnknown = CoCreateInstance(&SpMMAudioIn, None, CLSCTX_ALL).map_err(|e| fail("micro", e))?;
+            // Le micro choisi : le moteur de bureau le prend par son numéro « waveIn ».
+            let chosen = super::chosen_mic();
+            if !chosen.is_empty() {
+                use windows::core::Interface;
+                match wave_in_index(&chosen) {
+                    Some(i) => {
+                        if let Err(e) = audio.cast::<windows::Win32::Media::Speech::ISpMMSysAudio>().and_then(|a| a.SetDeviceId(i)) {
+                            log::warn(format!("dictée hors ligne : le micro choisi est refusé (0x{:08X}) : micro par défaut", e.code().0 as u32));
+                        }
+                    }
+                    None => log::warn("dictée hors ligne : le micro choisi est introuvable : micro par défaut de Windows"),
+                }
+            }
             rec.SetInput(&audio, true).map_err(|e| fail("micro", e))?;
             let ctx = rec.CreateRecoContext().map_err(|e| fail("contexte", e))?;
             let interest = spfei(SPEI_HYPOTHESIS.0) | spfei(SPEI_RECOGNITION.0) | spfei(SPEI_FALSE_RECOGNITION.0);
@@ -691,7 +986,8 @@ mod win {
             grammar.SetDictationState(SPRS_ACTIVE).map_err(|e| fail("dictée", e))?;
             crate::services::log::info(format!("parler à Ondine : dictée hors ligne ({name})"));
 
-            let meter = Meter::open();
+            let meter = Meter::open(&chosen);
+            let mut max = 0f32;
             let started = Instant::now();
             let mut gate = super::EndGate::new(hold, initial_silence_ms.max(0) as u64);
             let mut said: Vec<String> = Vec::new();
@@ -743,7 +1039,9 @@ mod win {
             let finish = loop {
                 let _ = ctx.WaitForNotifyEvent(TICK.as_millis() as u32);
                 drain(&mut said, &mut current, &mut gate, &mut *cb.partial);
-                (cb.level)(meter.peak());
+                let peak = meter.peak();
+                max = max.max(peak);
+                (cb.level)(peak);
                 match cb.stop.load(Ordering::SeqCst) {
                     CANCEL => break false,
                     FINISH => break true,
@@ -767,7 +1065,96 @@ mod win {
             if !current.trim().is_empty() {
                 said.push(current.trim().to_string());
             }
-            Ok(said.join(" "))
+            explain_silence(Ok(said.join(" ")), &meter, max, cb.stop)
+        }
+    }
+
+    /// Le numéro « waveIn » d'un micro (son identifiant de Windows), pour le
+    /// moteur de bureau (`ISpMMSysAudio::SetDeviceId`).
+    fn wave_in_index(endpoint: &str) -> Option<u32> {
+        use windows::Win32::Media::Audio::{waveInGetNumDevs, waveInMessage, HWAVEIN};
+        // DRV_QUERYFUNCTIONINSTANCEID(SIZE) de mmddk.h (DRV_RESERVED + 17 et + 18).
+        const ID: u32 = 0x0811;
+        const ID_SIZE: u32 = 0x0812;
+        unsafe {
+            for i in 0..waveInGetNumDevs() {
+                let h = HWAVEIN(std::ptr::without_provenance_mut(i as usize));
+                let mut size = 0u32;
+                if waveInMessage(Some(h), ID_SIZE, Some(&mut size as *mut u32 as usize), None) != 0 || !(2..=4096).contains(&size) {
+                    continue;
+                }
+                let mut buf = vec![0u16; (size as usize).div_ceil(2)];
+                if waveInMessage(Some(h), ID, Some(buf.as_mut_ptr() as usize), Some(size as usize)) != 0 {
+                    continue;
+                }
+                let id = String::from_utf16_lossy(&buf);
+                if id.trim_end_matches('\0').eq_ignore_ascii_case(endpoint) {
+                    return Some(i);
+                }
+            }
+        }
+        None
+    }
+
+    // ── Les micros du PC et la capture WASAPI ───────────────────────────────
+
+    /// PKEY_Device_FriendlyName : « Microphone (USB Audio) ».
+    const FRIENDLY_NAME: PROPERTYKEY = PROPERTYKEY { fmtid: windows::core::GUID::from_u128(0xa45c254e_df1c_4efd_8020_67d146a850e0), pid: 14 };
+
+    unsafe fn device_id(d: &IMMDevice) -> String {
+        d.GetId()
+            .map(|p| {
+                let s = p.to_string().unwrap_or_default();
+                CoTaskMemFree(Some(p.0 as *const _));
+                s
+            })
+            .unwrap_or_default()
+    }
+
+    unsafe fn device_name(d: &IMMDevice) -> String {
+        d.OpenPropertyStore(STGM_READ).and_then(|store| store.GetValue(&FRIENDLY_NAME)).map(|v| v.to_string()).unwrap_or_default()
+    }
+
+    /// Coupé ? Et le volume du micro dans Windows (0..1).
+    unsafe fn endpoint_state(d: &IMMDevice) -> (Option<bool>, Option<f32>) {
+        match d.Activate::<IAudioEndpointVolume>(CLSCTX_ALL, None) {
+            Ok(v) => (v.GetMute().ok().map(|b| b.as_bool()), v.GetMasterVolumeLevelScalar().ok()),
+            Err(_) => (None, None),
+        }
+    }
+
+    /// Le micro choisi s'il est branché, sinon celui par défaut de Windows
+    /// (et vrai : il a fallu se rabattre).
+    unsafe fn pick_device(devices: &IMMDeviceEnumerator, wanted: &str) -> windows::core::Result<(IMMDevice, bool)> {
+        if !wanted.is_empty() {
+            if let Ok(d) = devices.GetDevice(&HSTRING::from(wanted)) {
+                if d.GetState().is_ok_and(|s| s == DEVICE_STATE_ACTIVE) {
+                    return Ok((d, false));
+                }
+            }
+        }
+        devices.GetDefaultAudioEndpoint(eCapture, eConsole).map(|d| (d, !wanted.is_empty()))
+    }
+
+    /// Les micros branchés et actifs, avec celui par défaut et celui de communication.
+    pub fn microphones() -> Vec<MicDevice> {
+        super::super::media::init_thread();
+        unsafe {
+            let Ok(devices) = CoCreateInstance::<_, IMMDeviceEnumerator>(&MMDeviceEnumerator, None, CLSCTX_ALL) else { return Vec::new() };
+            let default = devices.GetDefaultAudioEndpoint(eCapture, eConsole).map(|d| device_id(&d)).unwrap_or_default();
+            let comms = devices.GetDefaultAudioEndpoint(eCapture, eCommunications).map(|d| device_id(&d)).unwrap_or_default();
+            let Ok(list) = devices.EnumAudioEndpoints(eCapture, DEVICE_STATE_ACTIVE) else { return Vec::new() };
+            let mut out = Vec::new();
+            for i in 0..list.GetCount().unwrap_or(0) {
+                let Ok(d) = list.Item(i) else { continue };
+                let id = device_id(&d);
+                if id.is_empty() {
+                    continue;
+                }
+                let name = device_name(&d);
+                out.push(MicDevice { default: id == default, communications: id == comms, name: if name.is_empty() { "Micro".into() } else { name }, id });
+            }
+            out
         }
     }
 
@@ -776,29 +1163,97 @@ mod win {
     const WAVE_FORMAT_IEEE_FLOAT: u16 = 3;
     const WAVE_FORMAT_EXTENSIBLE: u16 = 0xFFFE;
 
-    /// Capte le micro par défaut, en mémoire, jusqu'à `stop` (ou `chunk`
-    /// qui renvoie faux : le silence est revenu). Chaque morceau (mono)
-    /// passe par `chunk` ; le son entier est rendu à la fin.
-    pub fn record(stop: &std::sync::atomic::AtomicU8, chunk: &mut dyn FnMut(&[f32], u32) -> bool) -> Result<Pcm, Failure> {
-        super::super::media::init_thread();
-        unsafe {
-            let devices: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(|e| mic_failure(&e))?;
-            let device = devices.GetDefaultAudioEndpoint(eCapture, eConsole).map_err(|e| mic_failure(&e))?;
-            let client: IAudioClient = device.Activate(CLSCTX_ALL, None).map_err(|e| mic_failure(&e))?;
-            let format = client.GetMixFormat().map_err(|e| mic_failure(&e))?;
-            let f: WAVEFORMATEX = *format;
-            let float = f.wFormatTag == WAVE_FORMAT_IEEE_FLOAT
-                || (f.wFormatTag == WAVE_FORMAT_EXTENSIBLE && { std::ptr::read_unaligned(format as *const WAVEFORMATEXTENSIBLE).SubFormat } == FLOAT_SUBTYPE);
-            let (channels, rate, bits) = (f.nChannels.max(1) as usize, f.nSamplesPerSec, f.wBitsPerSample);
-            // Une seconde de tampon (en unités de 100 ns).
-            let init = client.Initialize(AUDCLNT_SHAREMODE_SHARED, 0, 10_000_000, 0, format, None);
+    /// Une capture WASAPI ouverte (micro, ou son du PC en « loopback »).
+    struct Stream {
+        client: IAudioClient,
+        capture: IAudioCaptureClient,
+        kind: SampleKind,
+        channels: usize,
+        rate: u32,
+        info: MicInfo,
+    }
+
+    /// Ouvre le micro `wanted` (ou le son du PC) en WASAPI partagé, au format
+    /// de mixage de Windows (virgule flottante 32 bits le plus souvent ; les
+    /// entiers 8, 16, 24 et 32 bits sont lus aussi).
+    unsafe fn open_stream(speakers: bool, wanted: &str, fail: &dyn Fn(&windows::core::Error) -> Failure) -> Result<Stream, Failure> {
+        let devices: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(|e| fail(&e))?;
+        let (device, fell_back) = if speakers { (devices.GetDefaultAudioEndpoint(eRender, eConsole).map_err(|e| fail(&e))?, false) } else { pick_device(&devices, wanted).map_err(|e| fail(&e))? };
+        let name = device_name(&device);
+        let (muted, volume) = if speakers { (None, None) } else { endpoint_state(&device) };
+        let client: IAudioClient = device.Activate(CLSCTX_ALL, None).map_err(|e| fail(&e))?;
+        let format = client.GetMixFormat().map_err(|e| fail(&e))?;
+        let f: WAVEFORMATEX = *format;
+        let float = f.wFormatTag == WAVE_FORMAT_IEEE_FLOAT
+            || (f.wFormatTag == WAVE_FORMAT_EXTENSIBLE && { std::ptr::read_unaligned(format as *const WAVEFORMATEXTENSIBLE).SubFormat } == FLOAT_SUBTYPE);
+        let (channels, rate, bits, tag) = (f.nChannels.max(1) as usize, f.nSamplesPerSec, f.wBitsPerSample, f.wFormatTag);
+        let Some(kind) = SampleKind::of(float, bits) else {
             CoTaskMemFree(Some(format as *const _));
-            init.map_err(|e| mic_failure(&e))?;
-            if !(float && bits == 32) && bits != 16 {
-                return Err(format!("format du micro non pris en charge ({bits} bits)").into());
+            let what = if speakers { "audio" } else { "du micro" };
+            return Err(Failure {
+                message: format!("format {what} non pris en charge ({bits} bits{})", if float { ", virgule flottante" } else { "" }),
+                fix: Some(Fix::Sound),
+                detail: format!("« {name} » : {rate} Hz, {channels} voies, {bits} bits, étiquette 0x{tag:04X}"),
+            });
+        };
+        // Une seconde de tampon (en unités de 100 ns).
+        let flags = if speakers { AUDCLNT_STREAMFLAGS_LOOPBACK } else { 0 };
+        let init = client.Initialize(AUDCLNT_SHAREMODE_SHARED, flags, 10_000_000, 0, format, None);
+        CoTaskMemFree(Some(format as *const _));
+        init.map_err(|e| fail(&e))?;
+        let capture: IAudioCaptureClient = client.GetService().map_err(|e| fail(&e))?;
+        client.Start().map_err(|e| fail(&e))?;
+        let info = MicInfo { name, format: format!("{rate} Hz, {channels} voies, {}", kind.label()), peak: 0.0, muted, volume, fell_back };
+        Ok(Stream { client, capture, kind, channels, rate, info })
+    }
+
+    /// Lit tous les paquets en attente, en mono, à la suite de `mono`.
+    unsafe fn read_packets(s: &Stream, mono: &mut Vec<f32>) -> windows::core::Result<()> {
+        loop {
+            if s.capture.GetNextPacketSize()? == 0 {
+                return Ok(());
             }
-            let capture: IAudioCaptureClient = client.GetService().map_err(|e| mic_failure(&e))?;
-            client.Start().map_err(|e| mic_failure(&e))?;
+            let mut data: *mut u8 = std::ptr::null_mut();
+            let (mut frames, mut flags) = (0u32, 0u32);
+            s.capture.GetBuffer(&mut data, &mut frames, &mut flags, None, None)?;
+            let n = frames as usize;
+            if flags & (AUDCLNT_BUFFERFLAGS_SILENT.0 as u32) != 0 || data.is_null() {
+                mono.extend(std::iter::repeat_n(0.0, n));
+            } else {
+                let bytes = std::slice::from_raw_parts(data as *const u8, n * s.channels * s.kind.bytes());
+                mix_to_mono(bytes, s.channels, s.kind, mono);
+            }
+            let _ = s.capture.ReleaseBuffer(frames);
+        }
+    }
+
+    fn peak_of(samples: &[f32]) -> f32 {
+        samples.iter().fold(0.0f32, |m, &v| m.max(v.abs()))
+    }
+
+    /// Le journal : quel micro est ouvert, en quel format (jamais ce qui est dit).
+    fn log_open(what: &str, info: &MicInfo) {
+        let volume = info.volume.map(|v| format!(", volume {:.0} %", v * 100.0)).unwrap_or_default();
+        let muted = if info.muted == Some(true) { ", COUPÉ dans Windows" } else { "" };
+        let fallback = if info.fell_back { " (micro choisi introuvable : celui par défaut de Windows)" } else { "" };
+        log::info(format!("{what} : micro « {} » ouvert{fallback}, {}{volume}{muted}", info.name, info.format));
+    }
+
+    fn log_close(what: &str, info: &MicInfo, started: Instant) {
+        log::info(format!("{what} : micro « {} » fermé, niveau max {:.1} % en {:.1} s", info.name, info.peak * 100.0, started.elapsed().as_secs_f32()));
+    }
+
+    /// Capte un micro (`wanted`, vide = celui par défaut) jusqu'à `stop` (ou
+    /// `chunk` qui renvoie faux). Chaque morceau (mono) passe par `chunk` ; le
+    /// son entier est rendu à la fin si `keep`. `counted` : compte comme une
+    /// capture d'Ondine (le mot d'appel se met en pause).
+    fn capture_mic_on(what: &str, wanted: &str, stop: &std::sync::atomic::AtomicU8, keep: bool, counted: bool, chunk: &mut dyn FnMut(&[f32], u32) -> bool) -> Result<(Pcm, MicInfo), Failure> {
+        super::super::media::init_thread();
+        let _count = Counted::new(counted);
+        unsafe {
+            let mut s = open_stream(false, wanted, &mic_failure)?;
+            log_open(what, &s.info);
+            let started = Instant::now();
             let mut all: Vec<f32> = Vec::new();
             let mut mono: Vec<f32> = Vec::new();
             let result = loop {
@@ -807,37 +1262,106 @@ mod win {
                     break Ok(());
                 }
                 mono.clear();
-                loop {
-                    match capture.GetNextPacketSize() {
-                        Ok(0) => break,
-                        Ok(_) => {}
-                        Err(e) => return Err(mic_failure(&e)),
-                    }
-                    let mut data: *mut u8 = std::ptr::null_mut();
-                    let (mut frames, mut flags) = (0u32, 0u32);
-                    if let Err(e) = capture.GetBuffer(&mut data, &mut frames, &mut flags, None, None) {
-                        let _ = client.Stop();
-                        return Err(mic_failure(&e));
-                    }
-                    let n = frames as usize;
-                    if flags & (AUDCLNT_BUFFERFLAGS_SILENT.0 as u32) != 0 || data.is_null() {
-                        mono.extend(std::iter::repeat_n(0.0, n));
-                    } else if float {
-                        let s = std::slice::from_raw_parts(data as *const f32, n * channels);
-                        mono.extend(s.chunks(channels).map(|c| c.iter().sum::<f32>() / channels as f32));
-                    } else {
-                        let s = std::slice::from_raw_parts(data as *const i16, n * channels);
-                        mono.extend(s.chunks(channels).map(|c| c.iter().map(|&v| v as f32 / 32768.0).sum::<f32>() / channels as f32));
-                    }
-                    let _ = capture.ReleaseBuffer(frames);
+                if let Err(e) = read_packets(&s, &mut mono) {
+                    break Err(mic_failure(&e));
                 }
-                all.extend_from_slice(&mono);
-                if !chunk(&mono, rate) {
+                s.info.peak = s.info.peak.max(peak_of(&mono));
+                if keep {
+                    all.extend_from_slice(&mono);
+                }
+                if !chunk(&mono, s.rate) {
                     break Ok(());
                 }
             };
-            let _ = client.Stop();
-            result.map(|()| Pcm { samples: all, rate })
+            let _ = s.client.Stop();
+            log_close(what, &s.info, started);
+            result.map(|()| (Pcm { samples: all, rate: s.rate }, s.info))
+        }
+    }
+
+    /// Capte le micro choisi, en mémoire, jusqu'à `stop` (ou `chunk` qui
+    /// renvoie faux : le silence est revenu). Chaque morceau (mono) passe par
+    /// `chunk` ; le son entier est rendu à la fin.
+    pub fn record(stop: &std::sync::atomic::AtomicU8, chunk: &mut dyn FnMut(&[f32], u32) -> bool) -> Result<Pcm, Failure> {
+        record_info(stop, chunk).map(|(pcm, _)| pcm)
+    }
+
+    /// Comme `record`, avec ce que le micro a donné (nom, format, niveau max).
+    pub fn record_info(stop: &std::sync::atomic::AtomicU8, chunk: &mut dyn FnMut(&[f32], u32) -> bool) -> Result<(Pcm, MicInfo), Failure> {
+        capture_mic_on("écoute", &super::chosen_mic(), stop, true, true, chunk)
+    }
+
+    /// Comme `record`, sans rien garder : seulement les morceaux, pour les
+    /// bulles de la dictée pendant que Windows écoute de son côté.
+    pub fn monitor(stop: &std::sync::atomic::AtomicU8, chunk: &mut dyn FnMut(&[f32], u32) -> bool) -> Result<(), Failure> {
+        capture_mic_on("bulles", &super::chosen_mic(), stop, false, true, chunk).map(|_| ())
+    }
+
+    /// Le mot d'appel : le micro choisi, sans rien garder, sans compter comme
+    /// une capture d'Ondine.
+    pub fn watch(stop: &std::sync::atomic::AtomicU8, chunk: &mut dyn FnMut(&[f32], u32) -> bool) -> Result<MicInfo, Failure> {
+        capture_mic_on("mot d'appel", &super::chosen_mic(), stop, false, false, chunk).map(|(_, info)| info)
+    }
+
+    /// « Tester le micro » : `wanted` (vide = celui par défaut), sans rien garder.
+    pub fn mic_test(wanted: &str, stop: &std::sync::atomic::AtomicU8, chunk: &mut dyn FnMut(&[f32], u32) -> bool) -> Result<MicInfo, Failure> {
+        capture_mic_on("test du micro", &super::clean_mic_id(wanted), stop, false, true, chunk).map(|(_, info)| info)
+    }
+
+    /// Une erreur de la capture du son du PC (loopback).
+    fn speakers_failure(e: &windows::core::Error) -> Failure {
+        let code = e.code().0 as u32;
+        let message = match code {
+            NO_DEVICE | NO_ENDPOINT => "aucune sortie audio trouvée (haut-parleurs ou casque)".to_string(),
+            _ => format!("son du PC indisponible ({e})"),
+        };
+        Failure { message, fix: None, detail: format!("étape « capture du son du PC (WASAPI loopback) », HRESULT 0x{code:08X} ({})", e.message()) }
+    }
+
+    /// Notes d'appel (1.2.4) : capte le micro choisi ou le son du PC (WASAPI
+    /// partagé ; pour le son du PC, la sortie par défaut ouverte en
+    /// « loopback »), jusqu'à `stop`. Chaque morceau (mono, à la fréquence de
+    /// l'appareil) passe par `chunk` ; rien n'est gardé ici. Le son du PC qui
+    /// se tait est complété par du silence (`silence_to_add`) pour rester
+    /// aligné sur le micro.
+    pub fn capture(source: Source, stop: &std::sync::atomic::AtomicBool, chunk: &mut dyn FnMut(&[f32], u32)) -> Result<(), Failure> {
+        super::super::media::init_thread();
+        let speakers = source == Source::Speakers;
+        let _count = Counted::new(!speakers);
+        let fail = |e: &windows::core::Error| if speakers { speakers_failure(e) } else { mic_failure(e) };
+        let what = if speakers { "notes d'appel (son du PC)" } else { "notes d'appel" };
+        unsafe {
+            let mut s = open_stream(speakers, &super::chosen_mic(), &fail)?;
+            log_open(what, &s.info);
+            let started = Instant::now();
+            let mut emitted: u64 = 0;
+            let mut mono: Vec<f32> = Vec::new();
+            let result = loop {
+                std::thread::sleep(Duration::from_millis(20));
+                if stop.load(Ordering::SeqCst) {
+                    break Ok(());
+                }
+                mono.clear();
+                let read = read_packets(&s, &mut mono);
+                // L'appareil a disparu (casque débranché…) : on s'arrête, l'appel garde ce qui est pris.
+                if read.is_err() {
+                    if let Err(e) = s.capture.GetNextPacketSize() {
+                        break Err(fail(&e));
+                    }
+                }
+                s.info.peak = s.info.peak.max(peak_of(&mono));
+                if speakers && mono.is_empty() {
+                    let gap = super::silence_to_add(started.elapsed().as_millis() as u64, s.rate, emitted);
+                    mono.extend(std::iter::repeat_n(0.0, gap as usize));
+                }
+                if !mono.is_empty() {
+                    emitted += mono.len() as u64;
+                    chunk(&mono, s.rate);
+                }
+            };
+            let _ = s.client.Stop();
+            log_close(what, &s.info, started);
+            result
         }
     }
 
@@ -866,7 +1390,7 @@ mod win {
 
 #[cfg(not(windows))]
 mod stub {
-    use super::{Failure, Listen, Pcm};
+    use super::{Failure, Listen, MicDevice, MicInfo, Pcm};
 
     const ONLY_WINDOWS: &str = "disponible seulement sous Windows";
 
@@ -887,6 +1411,31 @@ mod stub {
         Err(ONLY_WINDOWS.into())
     }
 
+    pub fn record_info(_stop: &std::sync::atomic::AtomicU8, _chunk: &mut dyn FnMut(&[f32], u32) -> bool) -> Result<(Pcm, MicInfo), Failure> {
+        Err(ONLY_WINDOWS.into())
+    }
+
+    pub fn watch(_stop: &std::sync::atomic::AtomicU8, _chunk: &mut dyn FnMut(&[f32], u32) -> bool) -> Result<MicInfo, Failure> {
+        Err(ONLY_WINDOWS.into())
+    }
+
+    pub fn mic_test(_wanted: &str, _stop: &std::sync::atomic::AtomicU8, _chunk: &mut dyn FnMut(&[f32], u32) -> bool) -> Result<MicInfo, Failure> {
+        Err(ONLY_WINDOWS.into())
+    }
+
+    /// Hors Windows : aucun micro.
+    pub fn microphones() -> Vec<MicDevice> {
+        Vec::new()
+    }
+
+    pub fn capture(_source: super::Source, _stop: &std::sync::atomic::AtomicBool, _chunk: &mut dyn FnMut(&[f32], u32)) -> Result<(), Failure> {
+        Err(ONLY_WINDOWS.into())
+    }
+
+    pub fn monitor(_stop: &std::sync::atomic::AtomicU8, _chunk: &mut dyn FnMut(&[f32], u32) -> bool) -> Result<(), Failure> {
+        Err(ONLY_WINDOWS.into())
+    }
+
     pub fn foreground_area() -> Option<super::super::record::Area> {
         None
     }
@@ -897,8 +1446,84 @@ mod tests {
     use super::*;
 
     #[test]
+    fn quiet_pc_sound_is_filled_with_silence() {
+        // 1 s écoulée à 48 kHz, rien reçu : 1 s moins 50 ms de marge.
+        assert_eq!(silence_to_add(1000, 48_000, 0), 48_000 - 2_400);
+        // 150 ms de retard : rien (des paquets sont peut-être en route).
+        assert_eq!(silence_to_add(1000, 48_000, 48_000 - 7_200), 0);
+        // En avance ou à l'heure : rien.
+        assert_eq!(silence_to_add(1000, 16_000, 20_000), 0);
+    }
+
+    #[test]
+    fn every_sample_format_becomes_mono() {
+        assert_eq!(SampleKind::of(true, 32), Some(SampleKind::F32));
+        assert_eq!(SampleKind::of(false, 24), Some(SampleKind::I24));
+        assert_eq!(SampleKind::of(true, 64), None);
+        let mut out = Vec::new();
+        // Stéréo 16 bits : (0,5 ; -0,5) → 0 ; (0,5 ; 0,5) → 0,5.
+        let mut data = Vec::new();
+        for v in [16384i16, -16384, 16384, 16384] {
+            data.extend_from_slice(&v.to_le_bytes());
+        }
+        mix_to_mono(&data, 2, SampleKind::I16, &mut out);
+        assert_eq!(out, vec![0.0, 0.5]);
+        // 24 bits : moitié haut, moitié bas.
+        out.clear();
+        mix_to_mono(&[0x00, 0x00, 0x40, 0x00, 0x00, 0xC0], 1, SampleKind::I24, &mut out);
+        assert_eq!(out, vec![0.5, -0.5]);
+        // 32 bits entiers, 8 bits non signés, virgule flottante.
+        out.clear();
+        mix_to_mono(&0x4000_0000i32.to_le_bytes(), 1, SampleKind::I32, &mut out);
+        mix_to_mono(&[192u8, 128], 1, SampleKind::U8, &mut out);
+        mix_to_mono(&0.25f32.to_le_bytes(), 1, SampleKind::F32, &mut out);
+        assert_eq!(out, vec![0.5, 0.5, 0.0, 0.25]);
+        // Une trame coupée en route : ignorée.
+        out.clear();
+        mix_to_mono(&[1, 2, 3], 1, SampleKind::I16, &mut out);
+        assert_eq!(out.len(), 1);
+    }
+
+    #[test]
+    fn a_silent_mic_is_explained() {
+        let base = MicInfo { name: "Micro du casque".into(), format: "48000 Hz, 1 voies, entiers 16 bits".into(), peak: 0.3, muted: Some(false), volume: Some(0.8), fell_back: false };
+        assert!(silent_mic(&base, Some(true)).is_none(), "il a bien capté");
+        let muted = silent_mic(&MicInfo { muted: Some(true), ..base.clone() }, None).unwrap();
+        assert!(muted.message.contains("« Micro du casque » est coupé"));
+        assert_eq!(muted.fix, Some(Fix::Sound));
+        let zero = silent_mic(&MicInfo { volume: Some(0.0), ..base.clone() }, None).unwrap();
+        assert!(zero.message.contains("volume"));
+        let blocked = silent_mic(&MicInfo { peak: 0.0, ..base.clone() }, Some(false)).unwrap();
+        assert_eq!((blocked.message.as_str(), blocked.fix), (MIC_TEXT, Some(Fix::Mic)));
+        let nothing = silent_mic(&MicInfo { peak: 0.0, ..base.clone() }, None).unwrap();
+        assert!(nothing.message.contains("ne donne aucun son") && nothing.message.contains("Voix et sons"));
+        let quiet = silent_mic(&MicInfo { peak: 0.004, ..base.clone() }, None).unwrap();
+        assert!(quiet.message.contains("capte à peine"));
+        // Le détail pour le journal : le nom, le format, le niveau (jamais ce qui est dit).
+        let d = mic_detail(&MicInfo { peak: 0.004, fell_back: true, ..base });
+        assert!(d.contains("Micro du casque") && d.contains("48000 Hz") && d.contains("0.4 %") && d.contains("introuvable"), "{d}");
+    }
+
+    #[test]
+    fn chosen_mic_is_cleaned() {
+        assert_eq!(clean_mic_id("  {0.0.1.00000000}.{abc}  "), "{0.0.1.00000000}.{abc}");
+        assert_eq!(clean_mic_id("a\nb"), "");
+        assert_eq!(clean_mic_id(&"x".repeat(600)), "");
+        set_mic("{0.0.1.00000000}.{abc}");
+        assert_eq!(chosen_mic(), "{0.0.1.00000000}.{abc}");
+        set_mic("");
+        assert_eq!(chosen_mic(), "");
+        assert!(!ondine_capturing());
+        {
+            let _c = Counted::new(true);
+            assert!(ondine_capturing());
+        }
+        assert!(!ondine_capturing());
+    }
+
+    #[test]
     fn fix_pages_are_a_fixed_list() {
-        for f in [Fix::Speech, Fix::Mic, Fix::Language, Fix::Pack] {
+        for f in [Fix::Speech, Fix::Mic, Fix::Language, Fix::Pack, Fix::Sound] {
             assert_eq!(Fix::from_id(f.id()), Some(f));
             assert!(f.uri().starts_with("ms-settings:"));
         }

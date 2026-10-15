@@ -1,0 +1,19 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "pill",
+  "description": "Pilule de la Dictée : son état, ses boutons (seulement les commandes « pill_* » du module dictation, voir module_invoke) et l'ouverture des réglages.",
+  "windows": [
+    "pill"
+  ],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "allow-boot",
+    "allow-ui-language",
+    "allow-perf-state",
+    "allow-log-write",
+    "allow-bus-publish",
+    "allow-module-invoke",
+    "allow-settings-open-window"
+  ]
+}

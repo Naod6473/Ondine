@@ -263,7 +263,10 @@ qu'une fois les ressorts posés (au plus tard après 1,5 s).
   Parler à Ondine). La mesure est continue (ResizeObserver sur le contenu
   marqué, texte observé) ; la gelée passe en « glisse » (`Jelly.setGlide` :
   ressort amorti sans rebond, qui garde sa vitesse) et `settle` ne la laisse
-  rétrécir que nettement : pas de saut à chaque mot.
+  rétrécir que nettement : pas de saut à chaque mot. Avec
+  `data-island-fit-hold` sur le contenu marqué (un échange en cours dans
+  Parler à Ondine), elle ne rétrécit pas du tout ; l'attribut retiré, elle
+  reprend la bonne taille (l'observateur suit aussi ces attributs).
 - **Changement d'onglet** (`switchTab`) : on ne redessine pas toute la vue. La
   pastille de l'onglet actif (`src/island/tab-pill.ts`) se déplace avec deux
   ressorts, un par bord : le bord qui mène est raide, celui qui suit est mou,
@@ -738,6 +741,9 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `shelf.add` `{paths}` | Capture (Rust) | l'Étagère valide les chemins et les pose sur l'étagère |
 | `clipboard.changed` `{count}` | Presse-papiers (Rust) | l'onglet redemande la liste (le message ne contient aucun texte copié) |
 | `timer.done` `{title}` | Minuteur (front) | (la notification et le son sont faits par le module) |
+| `dictation.state` `{phase, engine}` | Dictée (Rust) | 1.2.4 : `phase` = `idle`, `listening`, `handsFree` ou `thinking` ; `engine` = `parakeet`, `windows`, `offline` ou `api` |
+| `dictation.history` `{entry}` | Dictée (Rust) | une dictée vient d'être collée (`entry` null si l'historique n'est pas gardé) : les pages Voix se rechargent |
+| `callnotes.start` / `callnotes.stop` | pilule, page Dictée | 1.2.4 : demandent à Notes d'appel de commencer / d'arrêter l'enregistrement |
 | `timer.focus` `{on}` | Minuteur (front), mode concentration | l'île met ses notifications en attente pendant une séance de travail Pomodoro (sauf « critical » et celles du Minuteur), puis un résumé |
 | `notes.changed` `{notes, todos, open}` | Notes (Rust) | l'onglet redemande la liste (que des nombres dans le message) |
 | `agenda.changed` `{count, next, errors, version}` | Agenda (Rust) | l'onglet et la pilule redemandent la liste (`upcoming`) |
@@ -797,6 +803,9 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `team.changed` | Équipe (Rust) | l'onglet redemande l'état (`state`) : collègues, présence, demandes, voisines |
 | `team.event` `{kind, from, …}` | Équipe (Rust) | ce qui arrive d'un collègue : `ping`, `ask`, `answer`, `visit`, `incoming` (à accepter), `received`, `sent`, `declined`, `invite`, `invite-reply`, `poll`, `vote`, `pomodoro`, `announce`, `status-report`, `rdp-reply`, `paired`, `pair-failed`… → notifications |
 | `team.progress` `{id, name, percent, dir}` | Équipe (Rust) | la notification « Envoi / Réception en cours » remplacée à chaque étape |
+| `callnotes.start` / `callnotes.stop` | pilule de dictée (1.2.4) | Notes d'appel commence / arrête l'enregistrement d'un appel |
+| `callnotes.state` `{recording, startedAt}` | Notes d'appel (Rust) | début / fin d'un enregistrement : la pilule passe au corail avec le temps écoulé ; l'île montre le point rouge |
+| `callnotes.changed` `{id}` / `callnotes.error` `{message}` | Notes d'appel (Rust) | la page redemande la note (jamais de texte dans le message) / un démarrage par la pilule a échoué |
 
 ## Services communs (`src-tauri/src/services/`)
 
@@ -844,6 +853,9 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
   la route par défaut si elle est privée et pas virtuelle, sinon une vraie carte
   avant une carte de VPN / machine virtuelle, 192.168 > 172.16 > 10). Utilisé
   par le Wake-on-LAN et « Vers le téléphone ».
+- **Reconnaissance vocale sur le PC** (`speech.rs`, `speech_models.rs`,
+  `speech_audio.rs`, 1.2.4) : Parakeet par sherpa-onnx, modèles téléchargés au
+  clic. Voir « 1.2.4 : reconnaissance vocale sur le PC (Parakeet) ».
 
 ## La mascotte
 
@@ -1432,6 +1444,81 @@ et l'accès à Windows dans `src-tauri/src/platform/media.rs`.
   gardé au-delà de 8 s ni envoyé.
 - Réglages : `danceTempo` (activé), `danceStyle` (`auto`, `rock`, `metal`,
   `rap`, `rnb`, `pop`, `electro`, `reggae`, `jazz`).
+
+### La carte Musique 1.2.4 (`src/modules/media/index.ts`, `logic.ts`)
+
+Refaite d'après la maquette « Musique » (et la carte Spotify de Coucou, MIT,
+pour la mise en page et la technique du volume ; dessins et code à nous).
+
+- **Vue ouverte**, construite une fois puis mise à jour en place (un message du
+  lecteur n'interrompt plus un glissé) : pochette de 84 px dans un bouton
+  (« Ouvrir le lecteur », commande `open`), pastille de couleur devant le titre,
+  artiste · album, nom de l'appli (`appName` : « MSEdge » → Edge, le code de
+  Firefox → Firefox). Progression : écoulé à gauche, restant « -2:13 » à droite
+  (`remaining`, arrondi vers le haut). Boutons : Aléatoire, Précédent, grand
+  bouton lecture rond et plein, Suivant (`data-scene-target="media-next"`
+  gardé), Répétition (rien → liste → morceau, icône « 1 » pour le morceau).
+  Aléatoire et Répétition sont en couleur quand ils sont actifs, grisés quand
+  le lecteur ne les expose pas (`buttons()` dans logic.ts). Volume DU LECTEUR :
+  icône à 4 niveaux (`volumeLevel` : coupé ou 0, < 34, < 67, plus), clic =
+  couper / remettre le son, barre, nombre ; grisé si le lecteur n'a pas de
+  session audio.
+- **Barres glissables** (`slider()`) : grises au repos ; sous la souris, au
+  clavier (focus) ou pendant un glissé, le remplissage prend la couleur et un
+  bouton rond de 14 px apparaît. Flèches : ±5 s (position), ±5 (volume). Le
+  volume part au plus une fois toutes les 120 ms pendant un glissé, la dernière
+  valeur toujours, tout de suite au lâcher (`throttle`, testé avec de fausses
+  minuteries).
+- **Couleur** : `coverTint()` (env-tint.ts), gardée pour le morceau en cours
+  (env-tint l'efface en pause), éclaircie sans changer de teinte (`cardTint` :
+  canal le plus fort à 235, mélange de blanc si elle reste sombre). Posée en
+  `--media-tint` / `--media-tint-soft` sur la carte et la mini-île ; sans
+  pochette colorée, l'accent du thème. Une lueur radiale douce
+  (`.media-glow`) en haut à gauche de la carte, plus forte en lecture.
+  `onCoverColors` fait repeindre quand la couleur arrive.
+- **Mini-île** : au repos pochette + titre · artiste + égaliseur (couleur de
+  la pochette) ; sous la souris (`.island:hover`) ou au clavier
+  (`:focus-within`), pochette et égaliseur se replient et lecture / suivant
+  apparaissent, seulement si `compactControls` est coché. La goutte, à côté,
+  danse déjà tant que la musique joue en mini-île (eggs.ts, inchangé).
+- **Icônes** : SVG au trait (formes pleines pour lecture, pause et les
+  triangles), identiques avec les icônes « Couleur » et « Épurées » : ce sont
+  des commandes, pas des pictogrammes. Les actions de la carte d'Accueil
+  gardent leurs emojis (home-cards).
+- **Animations réduites** : ni égaliseur ni ondulation, apparitions en fondu
+  (transitions limitées à l'opacité et aux couleurs), pas de zoom au survol.
+  Éco : égaliseur et ondulation coupés. La barre avance avec `pacedInterval`
+  (rien quand la page est cachée).
+
+Côté Rust (`modules/media.rs`, `platform/media.rs`) :
+
+- `NowPlaying` gagne `shuffle`, `repeat` (`none` / `track` / `list`),
+  `canShuffle`, `canRepeat` (GSMTC : `IsShuffleActive`, `AutoRepeatMode`,
+  `IsShuffleEnabled`, `IsRepeatEnabled`) ; un changement de l'un d'eux
+  republie `media.changed` (`differs`).
+- Commandes `shuffle` {on} (`TryChangeShuffleActiveAsync`), `repeat` {mode}
+  (`TryChangeAutoRepeatModeAsync`, `parse_repeat`), `volume` {value?, muted?}
+  (sans argument : lecture ; `volume_args` vérifie 0…100), `open`. Un
+  changement accepté est noté tout de suite dans l'état (`remember`) : pas de
+  republication en double.
+- **Volume du lecteur** : Core Audio, sessions de TOUTES les sorties actives
+  (`IAudioSessionManager2` → `IAudioSessionControl2` → `ISimpleAudioVolume`).
+  Le programme d'une session est reconnu par `player_matches(app_id,
+  chemin)` : « Spotify.exe » = même nom de fichier ; alias de navigateurs
+  (« MSEdge », « Chrome », le code hexadécimal de Firefox) ; appli du Store
+  « Paquet_éditeur!Appli » = dossier `WindowsApps\Paquet_…__éditeur` ; sinon le
+  même nom sans « .exe ». Repli quand le programme est illisible :
+  l'identifiant de la session le nomme (`session_matches`). Toutes les
+  sessions du lecteur reçoivent le même niveau ; le volume du PC n'est jamais
+  touché.
+- **Ouvrir le lecteur** : la première fenêtre visible (de premier plan vers
+  l'arrière) d'un programme qui correspond passe devant (restaurée si
+  réduite, astuce de la touche Alt, comme « Y aller » des agents) ; sans
+  fenêtre, une appli du Store est lancée par `explorer.exe
+  shell:AppsFolder\<id>` (identifiant vérifié par `launchable_aumid` :
+  lettres, chiffres, `._-` et un seul `!`).
+- **Démo** (`src/core/demo.ts`) : aléatoire, répétition et volume inventés
+  (`state.player`), `open` ne fait rien.
 
 ## Module Presse-papiers (phase 4)
 
@@ -2786,6 +2873,47 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
   (`src/settings/askclaude-page.ts`, sous-menus Général et Personnalité).
   Le premier mot d'Ondine est écrit en local (gratuit).
 - Dépôt sur l'île : « Parler à Ondine » prépare le fichier et ouvre l'onglet.
+- Affichage fluide (1.2.4, `flow.ts`, calculs dans `flow-logic.ts`) : la
+  liste des bulles (`.ask-thread`) n'est jamais refaite d'un bloc. `draw()`
+  refait ce qui l'entoure ; `syncThread` met la liste à jour par clés (`hello`,
+  `b<i>`, `pending`, `live`, `typing`) et signatures : une bulle inchangée
+  reste (pas de clignotement), une bulle qui s'en va s'efface sans prendre de
+  place (`leave`, la liste est `position: relative`), les autres glissent à
+  leur nouvelle place (FLIP). Sujets `askclaude.voice` `partial` et
+  `transcribing` : seulement la bulle en direct, regroupés par image
+  (`scheduleLive`, rAF + filet de 120 ms) ; `LiveWords` compare les mots
+  (`diffWords`) : les mots stables ne bougent pas, les nouveaux arrivent en
+  fondu (`.ask-in`), une fin réécrite passe en fondu croisé (`.ask-swap`,
+  deux textes empilés en `inline-grid`). La bulle en direct a toute sa largeur
+  (85 %) : rien ne pousse les mots. À `final`, elle devient votre message
+  (`morphBubble` : lignes du haut et du bas effacées sur place, taille qui
+  glisse, pointillé en `::after` qui s'efface). La réponse : `speak()`
+  (plops.ts) fixe le moment de chaque lettre d'avance (`revealTimes`, un pas
+  régulier + pauses après la ponctuation) et avance image par image (rAF,
+  filet `setTimeout` si la fenêtre ne dessine plus ; ~30 images/s en éco) ;
+  `Typewriter` ajoute chaque morceau en fondu (`.ask-ch`) et garde la fin du
+  mot en cours invisible à sa place (`.ask-ghost`, `wordEnd`). `HeightTween` :
+  la hauteur du texte (`.ask-bubble-text` autour de `.ask-flow`) glisse quand
+  une ligne s'ajoute, donc l'île (fit.ts) grandit ligne par ligne.
+  `ScrollFollow` : défilement amorti vers le bas, seulement si vous étiez en
+  bas. Pendant un échange (écoute, envoi, réponse qui s'écrit) la vue porte
+  `data-island-fit-hold` (`FIT_HOLD_ATTR`) : l'île grandit mais ne rétrécit
+  pas (`settle(…, hold)`), une seule fois à la fin. Aucun texte n'est changé
+  dans un élément sans enfants (les chiffres « rouleraient », motion.ts).
+  « Réduire les animations » ou mascotte Calme (`instant()`) : affichage
+  direct. `voice.level` n'est écouté que par le halo (jamais un redessin de
+  la vue). Jelly (`start()`) pose la forme actuelle des ressorts avant le
+  premier pas : plus d'image où l'île montre d'un coup sa nouvelle taille.
+- Parakeet, mots en direct (`askclaude_voice.rs`, `LivePartials`) : pendant
+  la capture, le son est aussi gardé en mémoire pour un fil à part qui le
+  réécrit en entier (`stt::transcribe`) quand `LiveSchedule::tick` le dit :
+  toutes les ~0,9 s de son, seulement si vous parlez
+  (`SilenceGate::talking`, moins de 500 ms de silence), jamais deux à la fois
+  (un tour sauté si la précédente n'est pas finie), et pas plus de la moitié
+  du temps (`live_every` : au moins 2 × la durée de la dernière, 4 s au plus).
+  Coupé en mode Économie. À la fin de la capture, `drop` attend la
+  transcription en cours et plus rien ne part ; puis `transcribing` et la
+  transcription complète (le texte final).
 - Outils de fichiers (`askclaude_tools.rs`, réglage `fileTools`, désactivé par
   défaut) : quatre outils proposés à l'IA, décrits dans le format de chaque
   API (`Request.tools`) :
@@ -2839,8 +2967,8 @@ Elle répond par l'API de Claude, d'OpenAI ou de Gemini, au choix (réglage
   pendant une demande d'accord est revérifiée au moment de confirmer.
 - **Voix** (1.2.2, `askclaude_voice.rs`, `platform/voice.rs`, front
   `index.ts` + `plops.ts`) :
-  - raccourci global `voiceHotkey` (Ctrl+Alt+V par défaut, liste fixe
-    `HOTKEYS`, ou aucun) ; `micMode` : `once` (appuyer, arrêt au silence ou
+  - raccourci global `voiceHotkey` (Ctrl+Alt+V par défaut, choix proposés
+    `HOTKEYS`, personnalisé depuis 1.2.4, ou aucun) ; `micMode` : `once` (appuyer, arrêt au silence ou
     au 2e appui) ou `hold` (maintenir, arrêt au relâchement) ; Échap = un
     raccourci global posé seulement pendant l'écoute ; bouton 🎙️ dans
     l'onglet (commande `listen`, `voice_stop`). Un fil vérifie chaque
@@ -3018,7 +3146,7 @@ fichier vers l'Explorateur).
 
 - **Rangement 1.2.2** (`src/settings/layout.ts`, données pures testées dans
   `tests/front/settings-layout.test.ts`) : cinq groupes dans la barre
-  (`NAV_GROUPS`) :
+  (`NAV_GROUPS`, six depuis 1.2.4 avec **Voix** en premier, voir plus bas) :
   - **Ondine** : Général (prénom, langue, Vous / Tu, Lancer avec Windows,
     Refaire l'assistant), Mascotte, Parler à Ondine (page du module
     `askclaude`, id `module:askclaude` inchangé) ;
@@ -3116,6 +3244,68 @@ fichier vers l'Explorateur).
   ligne cachée) passe en Complet avant de faire briller la ligne.
 - Tests : `tests/front/visibility.test.ts` (champs visibles selon le mode,
   compte « N de plus », 1 à 3 champs essentiels par module, défauts).
+
+## Fenêtre de réglages : nouveau style et bandes vivantes (1.2.4, `src/settings/hero.ts`, `frame.ts`, `src/styles/settings-frame.css`)
+
+- **Style** : `settings-frame.css`, chargé après `settings.css` (settings.html),
+  redéfinit les jetons et la disposition : fond `--win-bg` (#020306 en
+  sombre), barre latérale sans verre ni trait, tout le contenu dans UNE carte
+  (`.content`, #070a10, rayon 26 px), blocs `.group-body` en cartes (#0b0f16,
+  rayon 18 px), titres de groupes en petites capitales espacées. Thème clair :
+  même structure, surfaces claires ; les bandes restent sombres. La pastille
+  de la page active (`.nav-pill`) et les pilules prennent `--page-color`, posée
+  sur `#app` par `showPage`.
+- **Fond des Réglages** (Apparence → « Fenêtre des Réglages ») : `html[data-backdrop]`
+  vaut `deep` (défaut, fond plein même avec Mica) ou `blobs` (les taches
+  d'avant derrière une carte en verre, sans flou en éco). Préférence de cette
+  fenêtre seulement, dans `localStorage` (« settings.backdrop »), comme l'ordre
+  du podium : rien dans le fichier de réglages ni dans le Rust.
+- **Pastille d'état** (bas de la barre, `frame-logic.ts` `statusLine`) : si le
+  module `dictation` existe et est activé, « Prête · maintenir <touche> »
+  (touche lue dans `modules.dictation.values` : `holdKey`, `hotkey`, `key` ou
+  `shortcut`, nom affiché par `keyName`) ; sinon « Ondine <version> · mises à
+  jour automatiques / manuelles », ou ce qu'a répondu « Rechercher maintenant »
+  dans cette fenêtre. Aucune requête réseau pour l'écrire.
+- **La bande** `hero({ title, subtitle?, color, mascots?, actions? })` (contrat
+  inchangé) : un canvas de fond (la couleur de la page qui respire en haut à
+  droite, période 7 s ; des bulles qui montent et que la souris écarte ; la
+  vague de derrière), les mascottes (un `GumEngine` par goutte, dans un
+  `div.page-hero-mascot` déplacé en `transform`), puis un canvas de devant (la
+  vague de devant, au-dessus des gouttes qui y trempent) et le texte.
+  **Une seule boucle** `requestAnimationFrame` pour toutes les bandes ; les
+  moteurs gomme reçoivent cette boucle comme hôte (`GumEnv.frameLoop` qui
+  s'inscrit dans la bande), ils n'ont pas de boucle à eux. La boucle s'arrête
+  fenêtre cachée (`document.hidden`), bande hors écran (IntersectionObserver)
+  ou retirée de la page (la bande est alors jetée : moteurs détruits).
+  `reducedMotion()` ou mode éco (`perfMode()`) : image fixe, redessinée
+  seulement à un changement de taille ou à un clic (l'expression change, sans
+  saut) ; le changement de mode est suivi à chaud (`onPerfChange`, media query).
+  Un clic sur une goutte : `react("poke")`, un geste du manifeste gomme
+  (surprise, rire, coucou…) et un saut qui fait un rond dans l'eau en
+  retombant. De temps en temps : un petit saut, un geste, un regard vers une
+  voisine ; les yeux suivent la souris sur la bande.
+- Logique pure, testée (`tests/front/settings-hero.test.ts`) : `hero-sea.ts`
+  (bulles, poussée de la souris, vague et ronds, nage et saut, zone de nage
+  jamais sous le texte, nombre de gouttes selon la largeur) et `hero-theme.ts`
+  (couleurs par groupe `GROUP_COLORS`, par catégorie de modules
+  `CATEGORY_COLORS`, par page `PAGE_COLORS`, contrastes AA vérifiés contre
+  l'encre #04121a et le fond des bandes ; troupes `PAGE_CASTS` ou tirées de
+  l'id de la page par `castFor` ; une bande Voix sans mascottes retrouve sa
+  troupe par sa couleur, `COLOR_PAGES`).
+- **Dans `main.ts`** : `showPage` pose la bande de la page (titre, `Page.sub`
+  limité à deux lignes, `Page.actions`, `Page.cast`) puis les **pilules** des
+  sous-menus (`subPills`, mêmes choix que la barre : `chosenSubs`, points
+  « désactivé », sous-menus cachés en Simple via `dimSubs`). La bande est
+  gardée (`heroKeep`) quand la même page se redessine (sous-menu, réglage
+  changé) : ses gouttes continuent ; seule la suite de la page glisse.
+- **Groupe Voix** (`NAV_GROUPS[0]`) : `VOICE_NAV` range `VOICE_PAGES` (icônes
+  `VOICE_ICONS` de `voice/pages.ts`) avant Ondine. Leur `render(page)` reçoit
+  la page affichée elle-même (elles dessinent leur bande) ; ce qu'il renvoie
+  est appelé quand on la quitte (autre page, recherche). Une page Voix
+  affichée n'est pas redessinée pour un réglage changé ailleurs. Point
+  « désactivé » via `module`, recherche par leur nom, liens profonds
+  `go("voice:dictation")` / « settings.goto ». `dictation` et `callnotes` sont
+  dans `MODULES_ELSEWHERE` (pas de seconde page dans Modules).
 
 ## 1.2.3 : dictée hors ligne, pancarte, pont de fichier, nouvel appareil
 
@@ -3357,3 +3547,406 @@ Cinq ajouts indépendants, chacun éteint par défaut ou lancé d'un clic.
   `speedBeatMs` 1,6 s → `MIN_PERIOD_MS`). Immobile avec « Réduire les
   animations » ou le réglage Calme.
 
+## 1.2.4 : reconnaissance vocale sur le PC (Parakeet)
+
+`src-tauri/src/services/speech.rs` (contrat et moteur), `speech_models.rs`
+(téléchargement), `speech_audio.rs` (calculs), `src/settings/voice/parakeet-block.ts`
+(+ `parakeet-logic.ts`, `parakeet-link.ts`). Technique reprise de Coucou (MIT).
+
+- **Le moteur** : [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) 1.13.8
+  (Apache-2.0), crate `sherpa-onnx`, fonction `static` : la bibliothèque C++
+  précompilée (onnxruntime compris) est liée dans `ondine.exe`, rien à
+  installer à côté. Son script de construction (`sherpa-onnx-sys/build.rs`)
+  télécharge `sherpa-onnx-v1.13.8-win-x64-static-MT-Release-lib.tar.bz2` sur
+  les « releases » GitHub de k2-fsa au premier `cargo build` (rangé dans
+  `target/sherpa-onnx-prebuilt/`) : pas de cmake ni de compilation C++. La
+  version « MT » (runtime C statique) va avec notre `+crt-static`
+  (`src-tauri/.cargo/config.toml`). Variables utiles : `SHERPA_ONNX_LIB_DIR`
+  (un dossier de bibliothèques déjà là, rien n'est téléchargé) et
+  `SHERPA_ONNX_ARCHIVE_DIR` (l'archive déjà téléchargée, pour un PC derrière
+  un proxy d'entreprise : le script vérifie les certificats avec sa propre
+  liste, pas celle de Windows).
+- **Windows seulement** : la dépendance est dans
+  `[target.'cfg(windows)'.dependencies]`. Sous Linux (tests, CI d'audit),
+  rien n'est compilé ni téléchargé ; `speech::SUPPORTED` est faux, `ready()`
+  aussi, `transcribe` répond « n'existe que dans Ondine pour Windows ».
+  Pour vérifier le code Windows depuis Linux :
+  `SHERPA_ONNX_LIB_DIR=<dossier vide> cargo clippy --target x86_64-pc-windows-msvc`
+  (clippy n'édite pas les liens : un dossier vide suffit).
+- **Les modèles** (`speech_models.rs`) : Parakeet TDT 0.6B v3 int8 (NVIDIA,
+  CC-BY-4.0 : 4 fichiers, 670 Mo) et la séparation des voix (segmentation
+  pyannote 3.0, MIT, 1,5 Mo ; empreinte de voix 3D-Speaker CAM++,
+  Apache-2.0, 28 Mo). Adresses Hugging Face à un commit fixe (`/resolve/<sha1>/`),
+  taille et SHA-256 de chaque fichier écrits dans le code. Rangés dans
+  `%LOCALAPPDATA%\Ondine\Models\<jeu>\`.
+- **Téléchargement** : seulement par la commande `speech_download` (bouton
+  « Télécharger »). Un fil à part, `ureq` (TLS de Windows), 256 Ko à la fois
+  dans `<fichier>.part`, empreinte calculée en route ; à la fin, taille ET
+  SHA-256 comparées, puis renommage. Un fichier qui ne correspond pas est
+  jeté. Un réseau coupé : le « .part » reste, le clic suivant reprend
+  (`Range: bytes=N-`, empreinte recalculée sur ce qui est déjà là ; un
+  serveur qui renvoie tout repart de zéro). « Annuler » (`speech_cancel`)
+  arrête et jette les « .part ». « Supprimer » (`speech_remove`) libère le
+  modèle et efface les dossiers (refusé pendant un téléchargement). Progrès :
+  événement Tauri `speech-models` (4 fois par seconde au plus) avec
+  `{state, done, total, error, supported, loaded}`.
+- **Chargement** : au premier usage (`OfflineRecognizer`, `nemo_transducer`,
+  2 à 4 fils de calcul), gardé dans un `Arc`, une transcription à la fois
+  (verrou `DECODE`). Un fil le libère après 5 minutes sans servir (jamais
+  pendant une transcription), puis s'arrête ; le suivant se charge à nouveau.
+- **Contrat** (appelé par la dictée et les notes d'appel) :
+  `SAMPLE_RATE` (16 kHz), `ready()`, `transcribe(samples, lang)` (le texte),
+  `transcribe_speakers(samples, lang)` (`Vec<Turn>` : voix 0, 1, 2… dans
+  l'ordre où elles parlent, début, fin, texte), `to_16k_mono(son, voies, Hz)`.
+  `lang` n'est pas utilisé : Parakeet v3 reconnaît seul la langue parmi ses
+  25. Sans le modèle : `Err(speech::MISSING)` (phrase claire, traduite).
+- **Calculs** (`speech_audio.rs`, testés sous Linux) : rééchantillonnage
+  « sinc » fenêtré (Blackman, 32 coefficients, coupure à 92 % de la moitié de
+  la plus basse fréquence), moyenne des voies ; découpage en morceaux de 28 s
+  au plus, coupés dans la fenêtre de 0,1 s la plus calme des 8 dernières
+  secondes ; morceaux de mots de Parakeet (« ▁dem », « ande ») recollés avec
+  leur moment ; tours de parole : chaque mot va à la voix qui parle en son
+  milieu (sinon la plus proche à moins de 2 s, sinon celle du mot d'avant),
+  une pause de 1,4 s ou 40 s de parole commencent un nouveau tour. Séparation
+  des voix : `OfflineSpeakerDiarization`, nombre de voix libre, seuil 0,7 ;
+  sans ses modèles ou en cas d'échec, tout est la voix 0.
+- **Parler à Ondine** : `voiceEngine = "parakeet"` (« Parakeet sur le PC »).
+  `askclaude_voice.rs` capte le micro comme pour l'API (WASAPI, `SilenceGate`,
+  point rouge), puis `to_16k_mono` et `speech::transcribe` : rien ne part. Le
+  modèle manque : l'erreur porte `models: true` et l'onglet propose
+  « ⬇️ Télécharger le modèle Parakeet », qui ouvre les Réglages sur
+  `module:askclaude#voice` (`followGoto` de `settings/main.ts` comprend
+  maintenant « page#sous-menu »). La dictée de Windows échoue et le modèle
+  est là : `parakeet: true`, bouton « 🔒 Passer à Parakeet sur le PC ».
+- **Réglages** : `parakeetBlock()` (un `group` à poser où l'on veut ; un seul
+  écouteur de `speech-models` pour toutes ses copies) : état (pas encore
+  téléchargé / téléchargement x % / prêt / échec), barre de progrès,
+  Télécharger, Annuler, Supprimer (2e clic de confirmation), et la phrase
+  « Tout se fait sur le PC : rien de ce que vous dites n'est envoyé », avec le
+  crédit CC-BY de NVIDIA. Posé dans Parler à Ondine → Voix et sons ; les pages
+  Dictée et Notes d'appel l'appellent aussi.
+- **Taille** : `ondine.exe` grossit d'environ 20 Mo (la bibliothèque et
+  onnxruntime), l'installateur d'environ 6 Mo (compressé). Les modèles ne sont
+  jamais dans l'installateur.
+
+## Notes d'appel (1.2.4, `src-tauri/src/modules/callnotes.rs`, `callnotes_audio.rs`, `callnotes_text.rs`, `src/modules/callnotes/`, `src/settings/voice/callnotes-page.ts`)
+
+Un appel enregistré d'un clic (bouton « Enregistrer un appel » de la page
+Notes d'appel du groupe Voix, ou la pilule de dictée par `callnotes.start` /
+`callnotes.stop`), écrit personne par personne, avec un résumé. Inspiré du
+Notetaker de Coucou (MIT, voir THIRD-PARTY.md). Module `callnotes`, activé
+par défaut (rien ne s'enregistre sans clic), sans onglet.
+
+- **Capture** (`platform/voice.rs` `capture(Source, stop, chunk)`, `#[cfg(windows)]`) :
+  deux fils, le micro par défaut (`eCapture`) et la sortie par défaut ouverte
+  en WASAPI partagé avec `AUDCLNT_STREAMFLAGS_LOOPBACK` (`eRender` : ce que
+  jouent les haut-parleurs, la voix des autres ; aucun robot dans la
+  réunion). Le loopback ne donne rien quand le PC se tait : `silence_to_add`
+  complète par du silence dès qu'il manque plus de 200 ms, pour que les deux
+  côtés restent alignés. Un côté qui ne s'ouvre pas : le micro empêche le
+  départ, le son du PC donne seulement un avertissement (`warning`).
+- **Audio** (`callnotes_audio.rs`, pur) : `Downsampler` (fréquence de
+  l'appareil → 16 kHz, moyenne), `WavWriter` / `read_wav` (16 bits mono, un
+  fichier coupé se relit), `Live` (morceaux de 1,5 à 12 s qui finissent sur
+  une pause, pour les mots en direct), `segments` (coupe au plus calme, le
+  silence écarté). Les fichiers sont TEMPORAIRES :
+  `%TEMP%\Ondine-callnotes\<id>-mic.wav` et `-pc.wav`, effacés dès que la
+  transcription est écrite (et jamais mis à la Corbeille). Au démarrage,
+  `stale_audio` efface ceux d'une note écrite ou supprimée.
+- **Pendant l'appel** : un fil par seconde transcrit les morceaux `Live` avec
+  `speech::transcribe` (Parakeet) : les mots en direct (micro = « me », PC =
+  « pc »), gardés en mémoire seulement ; la page les redemande (`get`) sur
+  `callnotes.changed`. Il arrête aussi tout seul : module coupé, micro perdu,
+  4 h passées. L'île montre une vue compacte (point rouge, temps, « Arrêter »)
+  et rappelle « Prévenez les participants que vous enregistrez » à chaque début.
+- **À la fin** (réglage `engine`) :
+  - `parakeet` (défaut) : micro en morceaux de 30 s (`transcribe`) → « Vous » ;
+    son du PC entier par `speech::transcribe_speakers` → tours par voix.
+    Rien du PC mais plusieurs voix dans le micro : tout le monde est
+    « Personne 1 », « Personne 2 »… (`build_room`). Parakeet pas prêt : erreur
+    claire qui renvoie au téléchargement (jamais de passage à l'API tout seul) ;
+  - `api` (choisi par la personne) : morceaux d'une minute vers OpenAI ou
+    Gemini (`askclaude_voice::stt_key` / `transcribe`, clé de Parler à
+    Ondine, module activé). Les voix du PC ne sont pas séparées.
+  `callnotes_text::build` fusionne micro et PC dans l'ordre du temps, retire
+  l'écho des autres capté par le micro (`removing_echo` : 60 % des mots en
+  commun au même moment) et numérote les voix dans l'ordre où elles parlent
+  (« Personne 2 », « Personne 3 »… ; renommables, `rename_speaker`, les
+  choses à faire suivent).
+- **Résumé** (`summarize`) : l'IA de Parler à Ondine (`askclaude::provider` /
+  `model`, sa clé lue par `ctx.credential`), d'un clic ou tout seul si
+  `autoSummary` (coupé par défaut). Part : la transcription écrite, balisée
+  `<transcription>` (200 000 caractères au plus), jamais l'audio. Réponse :
+  du JSON (`parse_summary` : titre, résumé, points clés, choses à faire avec
+  qui et quand), jamais exécuté ; sans JSON, le texte devient le résumé.
+- **Notes** : `%APPDATA%\Ondine\callnotes\<id>.json` (id = chiffres, l'heure
+  de début en ms), écriture via un `.tmp` renommé. Statuts `recording`,
+  `processing`, `ready`, `failed` (« Réessayer » ; Ondine fermée pendant un
+  appel : reprise toute seule avec Parakeet, sinon au clic). Supprimer =
+  Corbeille + « Annuler » (`files::to_trash` / `restore_from_trash`).
+- **Commandes** : `status` (état, moteur, Parakeet prêt, destinations de ce
+  qui part), `list`, `get`, `start`, `stop`, `rename`, `rename_speaker`,
+  `toggle_todo`, `delete`, `summarize`, `retry`, `copy` (Markdown dans le
+  presse-papiers), `export` (boîte « Enregistrer sous » de Windows, dossier
+  vérifié par `check_path` : dossiers exclus refusés), `to_notes` (bus
+  `notes.add` : le résumé et les points clés en note, les choses à faire en
+  tâches).
+- **Page** (`callnotes-page.ts`, logique pure `callnotes-logic.ts`, styles
+  `src/styles/callnotes.css`) : `hero()` et « Enregistrer un appel », bandeau
+  rouge pendant l'appel, liste à gauche, note à droite (titre renommable,
+  « Aujourd'hui, 10:00 · 32 min · 3 personnes », Copier en Markdown,
+  Exporter, Envoyer vers Notes, Supprimer, onglets Résumé / Transcription,
+  points clés, cases à cocher, extrait coloré par personne), puis les
+  réglages du module et « Ce qui part ». Le temps avance par `pacedInterval`
+  (rythme du mode de performance), le point rouge respire en CSS (fixe avec
+  « Réduire les animations »).
+- Tests : Rust (`callnotes_text` : assemblage micro + PC, écho, renommage,
+  Markdown, résumé, nettoyage ; `callnotes_audio` : 16 kHz, WAV, morceaux ;
+  `voice::silence_to_add`), front (`tests/front/callnotes.test.ts`).
+
+## 1.2.4 : la dictée partout (`src-tauri/src/modules/dictation*.rs`, `src-tauri/src/platform/dictation.rs`, `src-tauri/src/pill.rs`, `src/pill/`, `src/settings/voice/`)
+
+Module `dictation`, **coupé par défaut** (`MODULES_OFF_BY_DEFAULT`, des deux
+côtés). Technique de la touche, du collage et de la pilule reprise de Flow de
+Coucou (MIT) et adaptée ; textes, dessins et goutte sont ceux d'Ondine.
+
+- **La touche** (`platform/dictation.rs`) : un crochet clavier bas niveau
+  (`WH_KEYBOARD_LL`) dans son propre fil, qui regarde sans jamais avaler une
+  touche et ignore les frappes simulées (`LLKHF_INJECTED`). Réglage `holdKey` :
+  `rightCtrl` (défaut), `rightAlt`, `rightShift`, `ctrlWin` (Ctrl + Windows ;
+  une touche fantôme 0xE8 empêche le menu Démarrer de s'ouvrir). Le crochet
+  n'existe que module allumé (le fil « sync » le crée et le lâche).
+- **La machine à états** (`dictation_logic.rs`, `KeyLogic`, testée) : appui →
+  l'écoute commence tout de suite (pas de premier mot perdu) ; relâché après
+  0,30 s → colle ; relâché avant → attend 0,40 s un second appui (mains
+  libres jusqu'au prochain appui), sinon annule ; Échap ou une autre touche
+  pendant l'appui (un raccourci) → annule. Une écoute dure 5 min au plus.
+- **Les moteurs** (`Engine::pick`, réglage `engine`) : `auto` = Parakeet
+  (`services::speech`, si `ready()`) sinon la dictée de Windows ; `windows`
+  (`voice::dictate`, session continue), `offline` (`voice::dictate_offline`),
+  `parakeet` (`voice::record` en mémoire → `resample_16k` →
+  `speech::transcribe`), `api` (`voice::record` → `askclaude_voice::wav_16k`
+  → `askclaude_voice::transcribe`, clé OpenAI puis Gemini lue par le module,
+  qui a la permission `credentials`). Pour les moteurs de Windows, une
+  seconde capture WASAPI partagée (`voice::monitor`, rien n'est gardé) sert
+  seulement aux bulles.
+- **Les bulles** : `bands::levels` — fenêtre de Hann, FFT 512 points, neuf
+  bandes logarithmiques de 90 Hz à 7 kHz, en dB ramenés à 0..1 —, envoyées à
+  la pilule (`pill-bands`) au plus ~30 fois par seconde. Sans spectre :
+  `bands::from_level` à partir du niveau du micro.
+- **Le texte** (`dictation_text.rs`, testé) : snippets à la voix (le nom d'un
+  snippet du Presse-papiers, lu par `modules::invoke("clipboard", "list")`,
+  mis de côté sous une marque ⟦n⟧), remplacements du dictionnaire, noms bien
+  écrits (mots entiers, sans tenir compte des majuscules ni des séparateurs),
+  puis, **si `cleanup` est allumé** (coupé par défaut) et que le style de
+  l'appli n'est pas « Tel quel » : le texte (jamais l'audio) part vers l'IA
+  choisie dans Parler à Ondine (`askclaude::model_from` lit son fournisseur
+  et son modèle), 8 s au plus, sinon le texte tel quel. Une réponse
+  invraisemblable (trop longue, marques perdues) est ignorée.
+- **Le collage** (`platform/dictation.rs`) : attend que la touche soit
+  relâchée, cherche un champ de texte (curseur de Windows via
+  `GetGUIThreadInfo`, sinon UI Automation : zone de saisie, document
+  modifiable, terminal ; fonctionnalité Cargo `Win32_UI_Accessibility`).
+  Sûr qu'il n'y en a pas (bureau, Explorateur, bouton, fenêtre d'Ondine) :
+  la dictée reste dans le presse-papiers et la pilule le dit. Sinon : le texte
+  entre dans le presse-papiers par `copy_secret` (exclu de l'historique
+  d'Ondine, de Win+V et du cloud), Ctrl+V simulé, puis l'ancien texte revient
+  700 ms après si rien d'autre n'a été copié entre-temps. Raccourci
+  `pasteHotkey` (Ctrl+Alt+Maj+V par défaut) : recolle la dernière dictée.
+- **Ce qui est gardé** (`dictation_store.rs`, `%APPDATA%\Ondine\dictation.json`,
+  écrit par fichier temporaire renommé ; un fichier illisible est mis de
+  côté) : l'historique (`keepDays`, 30 jours par défaut, 0 = rien), les
+  chiffres de chaque jour (mots, temps de parole, dictées, mains libres,
+  applis), le dictionnaire, les styles par appli (programme au premier plan,
+  `outlook`, `slack`…). Les statistiques (mots, temps gagné par rapport à 40
+  mots/min, vitesse, jours d'affilée, mots par jour, applis) sont calculées
+  sur le PC.
+- **La pilule** (`pill.rs`, `pill.html`, `src/pill/`) : fenêtre transparente
+  créée cachée au démarrage, toujours au-dessus, non activante, posée en bas
+  au centre de la zone de travail de l'écran de la souris, ou debout sur le
+  bord gauche / droit (`edge`). Clics traversants : la page envoie ses cases
+  (`pill_hit`), un fil lit la souris (30 fois/s près d'elle, 8 loin, rien de
+  plus qu'un sommeil quand elle est cachée). Elle ne peut appeler que
+  `pill_state`, `pill_hit` et `pill_action` du module (`module_invoke`
+  refuse le reste ; capacité `capabilities/pill.json`). États : repos (barre
+  de verre ; cachée en présentation si `discreet`), survol (Dicter,
+  Enregistrer un appel, Réglages), écoute (la goutte gomme « concentree »
+  dessinée par le vrai moteur, montée seulement pendant l'écoute, un point
+  rouge tant que le micro est ouvert, neuf bulles), mains libres (Annuler,
+  Coller), appel (corail, chronomètre, Arrêter → `callnotes.stop` ; suit
+  `callnotes.state {recording, startedAt}`), message (copié, rien entendu,
+  Parakeet pas installé, pas de clé, erreur avec bouton vers les Paramètres
+  Windows). Les phrases sont composées par le front (`pill-logic.ts`), donc
+  traduites. Au repos : 0 % de CPU (pas de goutte, pas de boucle). Mouvements
+  réduits ou Calme : rien ne rebondit, les bulles sautent à leur niveau.
+- **Les pages Voix** (`src/settings/voice/`) : Dictée (bande « Bonjour
+  <prénom> », interrupteur, historique avec recherche / copier / supprimer,
+  tuiles, carte Notes d'appel, réglages du module), Statistiques, Dictionnaire
+  (noms, remplacements, snippets à la voix), Styles (Tel quel / Naturel /
+  Soigné par appli, remise au propre et ce qui part). Logique pure dans
+  `dictation-format.ts`, testée.
+
+
+## 1.2.4 : le micro choisi, le raccourci personnalisé, « Dis Ondine » (`platform/voice.rs`, `askclaude_voice.rs`, `askclaude_wake.rs`, `src/core/hotkey.ts`, `src/settings/hotkey-input.ts`, `mic-block.ts`, `mic-logic.ts`)
+
+- **Le micro** : réglage `micDevice` de Parler à Ondine (vide = micro par
+  défaut de Windows), dessiné par `mic-block.ts` (Réglages → Parler à Ondine →
+  Voix et sons, bloc « Micro », visible aussi en mode Simple). Commande `mics` :
+  `IMMDeviceEnumerator::EnumAudioEndpoints(eCapture, DEVICE_STATE_ACTIVE)`, id
+  et `PKEY_Device_FriendlyName`, celui par défaut (`eConsole`) et celui de
+  communication (`eCommunications`). Le fil des raccourcis recopie le réglage
+  chaque seconde dans `voice::set_mic` (même module coupé) ; toutes les
+  captures WASAPI l'ouvrent (`open_stream` / `pick_device`) : Parler à Ondine
+  en Parakeet et en API (`record_info`), bulles et Parakeet de la dictée
+  (`monitor`, `record`), côté micro des notes d'appel (`capture`), mot
+  d'appel (`watch`). Débranché : le micro par défaut, et une ligne au journal.
+  La reconnaissance de Windows (WinRT) écoute toujours le micro par défaut :
+  la page le dit (`micEngineWarning`) avec « Ouvrir les paramètres du son de
+  Windows » (`Fix::Sound`, `ms-settings:sound`) et « Passer à Parakeet ». Le
+  moteur hors ligne (SAPI) prend le micro choisi : son numéro waveIn
+  (`waveInMessage(DRV_QUERYFUNCTIONINSTANCEID)` = l'id de l'appareil) passe à
+  `ISpMMSysAudio::SetDeviceId`.
+- **Formats** : le format de mixage est lu tel quel (`SampleKind` : virgule
+  flottante 32 bits, entiers 8, 16, 24, 32 bits ; `mix_to_mono`, testé), puis
+  ramené à 16 kHz avant Parakeet (`speech::to_16k_mono`).
+- **Un micro muet est expliqué** (`silent_mic`, testé) : coupé ou volume à 0
+  dans Windows (`IAudioEndpointVolume`), que des zéros (bloqué par la
+  confidentialité, ou pas le bon micro), à peine un son. Parakeet / API : quand
+  le seuil de silence n'a rien entendu ; Windows / hors ligne : quand rien
+  n'est reconnu et que le niveau max (`IAudioMeterInformation`) est resté
+  plat. L'île propose alors « 🎙️ Choisir le micro ». Seuil de parole abaissé à
+  −44 dBFS ; avec Parakeet, une voix faible (crête ≥ 0,02) est écrite quand
+  même. Le journal note le micro ouvert, son format, son volume, s'il est
+  coupé, et le niveau max à la fermeture (jamais ce qui est dit).
+- **Tester le micro** : commande `mic_test {device}` (4 s, compte comme une
+  capture d'Ondine), événement Tauri `mic-test` : `{level}` ~15 fois par
+  seconde, puis `{done, info, problem, fix}`. Rien n'est gardé.
+- **Raccourci personnalisé** : type de champ `hotkey` des manifestes
+  (`module-types.ts`, `coerce` → `coerceHotkey`, `form.ts` →
+  `hotkeyInput`) : choix proposés + « Personnalisé… » (on clique, on appuie,
+  Échap annule, « Effacer »). Forme `Shortcut` du greffon (« Ctrl+Alt+K »,
+  modificateurs Ctrl, Alt, Shift, Super). Lettres et chiffres lus par
+  `keyCode` (touche virtuelle de Windows : bon sur AZERTY). Règles
+  identiques des deux côtés (`hotkeyProblem` / `check_hotkey`, testées) : un
+  modificateur sauf F1–F24, pas Maj seule, pas F12 seule, pas Alt+F4,
+  Ctrl+Alt+Suppr, Win+L…, ni Ctrl+C/V/X/Z/S…. Un refus du Rust (déjà pris)
+  est gardé (`hotkey_errors`, commande `hotkeys`) et écrit sous le champ
+  (`showHotkeyProblem`, après l'événement DOM `hotkey-saved`).
+- **« Dis Ondine »** (`askclaude_wake.rs`, réglage `wakeWord`, COUPÉ par
+  défaut, confirmation explicite dans les Réglages) : `voice::watch` garde le
+  micro choisi ouvert (en mémoire), `Downsampler` → 16 kHz, `WakeGate` (trames
+  de 30 ms, seuil d'énergie au-dessus du bruit de fond qui s'adapte, testé)
+  découpe les passages parlés ; seulement alors Parakeet écrit les 2,4
+  premières secondes, dans un autre fil (file de 2, le reste oublié) ;
+  `wake_rest` (testé) reconnaît « dis / hey / hé / ok Ondine » (distance
+  d'édition 1, « on dîne » collé) au début. Mot seul : `listen` (comme le
+  raccourci) ; suivi d'une question : `heard_text` (événements `open` puis
+  `final`). Pause (micro fermé) : réglage ou module coupé, hors Windows,
+  Parakeet absent, Ondine écoute déjà (`voice::ondine_capturing`, compteur des
+  captures), discrétion, PC verrouillé (`session::locked`), mode Économie
+  d'énergie (`perf::mode`). L'état part sur le bus (`voice.wake {on,
+  paused}`) : point rouge `wake` de l'île (nano-rules.ts, montré en premier,
+  aussi sur l'île de taille normale en compact) ; commande `wake_state` pour
+  les Réglages. Pas de VAD silero ni de keyword spotter de sherpa-onnx : il
+  faudrait un modèle de plus à télécharger (et le spotter n'a pas de modèle
+  français).
+
+## 1.2.4 : limites du forfait, fichiers modifiés en direct, modèles locaux, vos propres sons
+
+### Limites du forfait (`src-tauri/src/modules/agents_plan.rs`, `src/modules/agents/plan.ts`, `plan-view.ts`)
+
+Onglet Agents IA, au-dessus du compteur de jetons : la fenêtre de 5 h et la
+semaine de Claude et de Codex, en % utilisé, avec l'heure de remise à zéro.
+Couleurs : normale, jaune dès 75 %, rouge dès 90 % (`planLevel`, testé).
+Réglage `planLimits` (activé, groupe « Jetons et budget »).
+
+- **Claude** : Claude Code donne `rate_limits.five_hour / seven_day`
+  (`used_percentage`, `resets_at` en secondes) à sa **ligne d'état**, sur
+  l'entrée standard (forfaits Pro et Max). « Brancher la ligne d'état »
+  écrit `"statusLine": { "type": "command", "command": "\"C:/…/ondine.exe\" statusline" }`
+  dans `~/.claude/settings.json` avec la même installation sûre que les
+  hooks (lecture, fusion, copie `.bak`, jamais d'écrasement). Une ligne
+  d'état déjà là est gardée dans `%APPDATA%\Ondine\statusline-previous.json`
+  et relancée par `ondine.exe statusline` (son texte reste affiché) ;
+  « Débrancher » la remet. `ondine.exe statusline` n'envoie à l'île que les
+  chiffres (`source: "plan"`), par le canal nommé des agents ; rien n'est
+  écrit sur le disque. État : installed / stale / other / absent / unreadable.
+- **Codex** : les journaux `~/.codex/sessions/**/rollout-*.jsonl` (événement
+  `token_count`, `rate_limits.primary / secondary`), lus sur le PC, le plus
+  récent d'abord, avec un cache par taille et date. « Demander à Codex »
+  (sur un clic) lance `codex app-server` (JSON-RPC
+  `account/rateLimits/read`, 15 s au plus, puis arrêt de l'arbre) : c'est
+  Codex qui contacte OpenAI, Ondine n'envoie rien.
+
+### Fichiers modifiés en direct (`src-tauri/src/modules/agents_live.rs`, `src/modules/agents/live-logic.ts`, `live-view.ts`)
+
+Sous chaque session du tableau « En cours », les fichiers que l'agent vient de
+modifier, avec `+N −M` ; un clic ouvre le changement dans un panneau de
+l'onglet, en lecture seule. Réglage `liveFiles` (activé, groupe
+Notifications).
+
+- Hooks : `PostToolUse` (matcher `Edit|MultiEdit|Write`) pour Claude Code,
+  `AfterTool` (matcher `write_file|replace`) pour Gemini CLI, ajoutés aux
+  configurations de l'installation automatique (il faut les réinstaller une
+  fois). Codex : pas de hook d'écriture vérifié, rien d'ajouté.
+- Le calcul se fait dans `ondine.exe notify` (lecture de 4 Mo au plus) :
+  diff ligne à ligne (plus longue sous-suite commune, 3 lignes de contexte,
+  « ⋯ » entre deux morceaux ; au-delà de 200 Ko, 4 000 lignes ou 1 M de
+  cases : seulement les nombres). Claude donne `structuredPatch` : il est
+  repris tel quel. Seul un message réduit (chemin, nombres, 300 lignes au
+  plus, toujours sous les 64 Ko du canal) part vers l'île ; le contenu
+  entier du fichier ne traverse jamais le canal.
+- Dans l'île : `check_path` (dossiers exclus) avant de garder quoi que ce
+  soit, puis encore avant de montrer le changement ; 20 messages par seconde
+  au plus ; 24 fichiers en mémoire, rien sur le disque. Les fichiers d'une
+  session sont oubliés à son message suivant (`working`) ou à sa fin.
+- Animation : une petite gelée à l'arrivée d'une puce (seulement les
+  nouvelles), coupée avec « Réduire les animations », Calme et le mode éco.
+
+### Modèles locaux et OpenRouter (`src-tauri/src/modules/askclaude_compat.rs`, `src/settings/askclaude-models.ts`)
+
+Deux fournisseurs de plus dans Parler à Ondine, en API « Chat Completions » :
+`local` (Ollama, LM Studio, tout serveur compatible OpenAI, réglages
+`localUrl` et `localModel`) et `openrouter` (`openrouterModel`, vide =
+`openrouter/auto`).
+
+- Adresse (`server_base`, testée) : http seulement pour localhost,
+  127.0.0.1 ou [::1] ; https pour toute autre machine ; pas d'identifiant
+  (@), de « ? », de « # », d'IPv6 autre que [::1], de « .. ». Aucune
+  redirection suivie ; un serveur sur ce PC est joint sans proxy (300 s pour
+  le premier chargement du modèle).
+- Clés dans le Gestionnaire d'identifiants : `openrouter-api-key`, et
+  `local-llm-api-key` (facultative ; un serveur local n'en demande pas).
+- Réponses non diffusées en continu (le module ne diffuse pas) ; la
+  réflexion du modèle (`<think>…</think>`, `reasoning_content`) est retirée
+  et n'est jamais montrée ni renvoyée.
+- Outils d'Ondine : proposés seulement si le modèle les gère. Si le serveur
+  les refuse (`refuses_tools`), la même question repart sans eux et le
+  modèle est retenu (`no_tools`) pour la suite ; la liste d'OpenRouter
+  (`supported_parameters`) le dit aussi d'avance.
+- « Lister les modèles du serveur » (Réglages → Parler à Ondine → Fournisseur
+  et modèles) : `GET <adresse>/models`, sur un clic ; un clic sur un modèle le
+  choisit.
+- « Ce qui part » donne la vraie destination : `localhost:11434` et « Vos
+  messages restent sur votre PC » pour un serveur local (`onThisPc`).
+- La voix (transcription par l'API) reste à OpenAI ou Gemini, comme avec Claude.
+
+### Vos propres sons (`src-tauri/src/services/custom_sounds.rs`, `src/island/custom-sounds.ts`, `src/settings/sounds-page.ts`)
+
+Un fichier de `%APPDATA%\Ondine\sounds` nommé comme un son d'Ondine (`tap`,
+`open`, `close`, `toggle`, `drop`, `boing`, `plop`, `jingle`, `jingle-down`,
+`glitch`, `whoosh`, `chomp`, `pop`) en `.wav`, `.mp3`, `.ogg` ou `.m4a`
+remplace ce son. Les noms sont les mêmes des deux côtés (test front).
+
+- Le Rust (`resolve`, testé) choisit d'après le nom et la taille : 2 Mo au
+  plus, non vide, un seul fichier par son (ordre .wav, .mp3, .ogg, .m4a). Il
+  vérifie l'en-tête (`looks_like` : RIFF/WAVE, ID3 ou trame MP3, OggS, ftyp)
+  et renvoie les octets en base64 (commande `sounds_custom`). Un fichier
+  ignoré : le son d'origine reste, une ligne au journal.
+- L'île décode avec Web Audio (`decodeAudioData`) ; un fichier illisible est
+  ignoré de même. `sounds.ts` joue votre fichier (4 s au plus, au volume des
+  sons) à la place du son fabriqué. Les sons de l'éclosion ne sont pas
+  remplaçables.
+- Réglages → Apparence → Sons : « Ouvrir le dossier des sons »
+  (`sounds_open_folder`, crée le dossier s'il manque), « Recharger les sons »
+  (ici, et dans l'île par l'événement `sounds.reload`), les noms possibles.

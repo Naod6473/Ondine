@@ -17,17 +17,30 @@ mod agents;
 mod askclaude;
 // Les fournisseurs d'IA de « Parler à Ondine » : Claude, OpenAI, Gemini.
 mod askclaude_providers;
+// Serveur local (Ollama, LM Studio…) et OpenRouter (API Chat Completions).
+mod askclaude_compat;
 // Ses outils de fichiers : chercher, lire, créer, proposer.
 mod askclaude_tools;
 // Ses outils pour le PC et les onglets : regarder, régler, ouvrir.
 mod askclaude_pc;
 // Sa voix : raccourci, écoute, transcription (Windows ou API), « Regarde ça ».
 mod askclaude_voice;
+// Le mot d'appel « Dis Ondine » (1.2.4, coupé par défaut).
+mod askclaude_wake;
 // Ses commandes rapides comprises sans IA (minuteur, volume, note…).
 mod askclaude_quick;
+// Notes d'appel (1.2.4) : micro + son du PC, transcription personne par personne, résumé.
+mod callnotes;
+mod callnotes_audio;
+mod callnotes_text;
 mod capture;
 mod clipboard;
 mod controls;
+// La dictée partout : la touche, la pilule, le collage (avec sa logique, ses mots et son fichier).
+mod dictation;
+mod dictation_logic;
+mod dictation_store;
+mod dictation_text;
 // Contrôles → télécommande sur le téléphone : une petite page sur le réseau local.
 mod controls_remote;
 mod launcher;
@@ -87,6 +100,10 @@ mod agents_tools;
 mod agents_mcp_extra;
 // Les rappels d'attente.
 mod agents_wait;
+// Les limites du forfait de Claude et Codex (1.2.4) ; « ondine.exe statusline » s'en sert.
+pub(crate) mod agents_plan;
+// Les fichiers modifiés en direct par un agent (1.2.4) ; « ondine.exe notify » calcule le diff.
+pub(crate) mod agents_live;
 // Animations de l'île : sortie de veille, Verr Maj, copier / coller, volume, Wi-Fi, niveaux sonores.
 mod halos;
 // Ondine et les fenêtres (public : island/mod.rs lui demande le « lancer »).
@@ -275,6 +292,8 @@ impl Registry {
             Box::new(team::Team::default()),
             Box::new(windowlife::WindowLife),
             Box::new(screensaver::Screensaver),
+            Box::new(callnotes::CallNotes::default()),
+            Box::new(dictation::Dictation),
         ];
 
         let mut entries = Vec::new();
@@ -454,6 +473,13 @@ mod tests {
     }
 
     #[test]
+    fn dictation_manifest_is_valid() {
+        let m = check_manifest(dictation::Dictation.manifest_json()).unwrap();
+        assert_eq!(m.id, "dictation");
+        assert!(m.events.emits.iter().any(|e| e == "dictation.state"));
+    }
+
+    #[test]
     fn askclaude_manifest_is_valid() {
         let m = check_manifest(askclaude::AskClaude::default().manifest_json()).unwrap();
         assert_eq!(m.id, "askclaude");
@@ -515,6 +541,18 @@ mod tests {
         assert_eq!(m.id, "team");
         assert!(m.events.listens.iter().any(|t| t == "timer.focus"));
         assert!(m.events.emits.iter().any(|t| t == "mascot.emote"));
+    }
+
+    #[test]
+    fn callnotes_manifest_is_valid() {
+        let m = check_manifest(callnotes::CallNotes::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "callnotes");
+        for t in ["callnotes.start", "callnotes.stop"] {
+            assert!(m.events.listens.iter().any(|l| l == t), "{t}");
+        }
+        for t in ["callnotes.state", "notes.add"] {
+            assert!(m.events.emits.iter().any(|e| e == t), "{t}");
+        }
     }
 
     #[test]

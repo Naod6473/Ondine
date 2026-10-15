@@ -17,6 +17,16 @@
 //     quitte le PC. Il faut la reconnaissance vocale de la langue installée
 //     dans Windows ; sinon l'erreur le dit, avec la page des Paramètres. En
 //     hors ligne, on ne propose jamais de passer à l'API ;
+//   - « parakeet » (1.2.4) : le micro est capté en mémoire (WASAPI), puis
+//     Parakeet l'écrit sur le PC (services/speech.rs, sherpa-onnx). Rien ne
+//     quitte le PC. Sans le modèle (~700 Mo, téléchargé au clic dans les
+//     Réglages), l'erreur le dit et porte `models: true` (bouton vers le
+//     téléchargement). Mots en direct (`LivePartials`) : tant que vous
+//     parlez, un fil à part réécrit le son déjà capté toutes les ~0,9 s
+//     (jamais deux à la fois, un tour sauté si la précédente n'a pas fini,
+//     rien pendant le silence, pas plus de la moitié du temps de calcul) et
+//     publie `partial`. Le texte final reste la transcription complète.
+//     Coupé en mode Économie (services/perf.rs) ;
 //   - « api » : le micro est capté en mémoire (WASAPI), puis l'audio part
 //     vers OpenAI (audio/transcriptions) ou Gemini (audio en entrée), avec la
 //     clé déjà rangée. Claude n'écoute pas l'audio : avec Claude, on prend la
@@ -41,11 +51,14 @@
 //     `apiTo`, la destination de la transcription par l'API, proposée en un
 //     clic quand la dictée de Windows échoue et qu'une clé OpenAI ou Gemini
 //     est rangée ; `offline` (vrai), le moteur hors ligne est installé : le
-//     bouton « Passer à la dictée hors ligne » est proposé à la place.
+//     bouton « Passer à la dictée hors ligne » est proposé à la place ;
+//     `parakeet` (vrai), le modèle Parakeet est téléchargé : « Passer à
+//     Parakeet sur le PC » ; `models` (vrai), Parakeet est choisi mais son
+//     modèle manque : « Télécharger le modèle » ouvre les Réglages.
 
 use crate::sync::LockExt;
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicU8, Ordering};
+use std::sync::{mpsc, Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use base64::Engine;
@@ -56,9 +69,12 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use super::askclaude_providers::{self as providers, Provider};
 use crate::platform::{self, voice};
 use crate::services::log;
+use crate::services::perf;
+use crate::services::speech as stt;
 
 const ID: &str = "askclaude";
-/// Les raccourcis proposés (les autres valeurs sont refusées).
+/// Les raccourcis proposés. Un raccourci personnalisé (1.2.4) est accepté
+/// s'il passe `check_hotkey`.
 pub const HOTKEYS: &[&str] = &["Ctrl+Alt+V", "Alt+Shift+V", "Ctrl+Alt+Enter"];
 pub const LOOK_HOTKEYS: &[&str] = &["Ctrl+Alt+G", "Alt+Shift+G"];
 const DEFAULT_HOTKEY: &str = "Ctrl+Alt+V";
@@ -71,9 +87,17 @@ const MAX_HOLD: Duration = Duration::from_secs(60);
 /// Le niveau part au plus ~15 fois par seconde.
 const LEVEL_EVERY: Duration = Duration::from_millis(66);
 /// Le modèle de transcription d'OpenAI.
-const OPENAI_STT_MODEL: &str = "gpt-4o-mini-transcribe";
+pub(super) const OPENAI_STT_MODEL: &str = "gpt-4o-mini-transcribe";
 /// Une image de la fenêtre active : son plus grand côté, au plus.
 const LOOK_MAX_SIDE: u32 = 1600;
+/// Parakeet : au-dessus de ce niveau crête, on écrit même si le seuil de
+/// silence n'a rien vu (voix faible, micro loin).
+const QUIET_SPEECH_PEAK: f32 = 0.02;
+/// « Tester le micro » : durée.
+const MIC_TEST: Duration = Duration::from_secs(4);
+/// L'événement Tauri de « Tester le micro » (niveau, puis le bilan).
+pub const MIC_TEST_EVENT: &str = "mic-test";
+static MIC_TESTING: AtomicBool = AtomicBool::new(false);
 
 /// L'écoute en cours (une seule à la fois).
 struct Session {
@@ -93,6 +117,8 @@ static FOCUS: AtomicBool = AtomicBool::new(false);
 static QUIET: AtomicBool = AtomicBool::new(false);
 /// Numéro de la dernière écoute (une écoute finie n'efface pas la suivante).
 static NEXT: AtomicU64 = AtomicU64::new(0);
+/// Le dernier refus de chaque raccourci (voix, regarde ça), pour les Réglages.
+static HOTKEY_ERRORS: Mutex<(String, String)> = Mutex::new((String::new(), String::new()));
 
 /// Comment écouter.
 #[derive(Clone, Copy, Debug)]
@@ -123,17 +149,34 @@ fn hold_mode(s: &serde_json::Map<String, Value>) -> bool {
 /// Le fil de fond : toutes les secondes, les raccourcis suivent les réglages
 /// (et le module activé).
 pub fn start(app: AppHandle) {
+    // Le mot d'appel (« Dis Ondine »), coupé par défaut, a son propre fil.
+    super::askclaude_wake::start(app.clone());
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_secs(2)); // le temps que les réglages soient chargés
         loop {
             let step = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                // Le micro choisi sert à toutes les captures d'Ondine, même module coupé.
+                voice::set_mic(&mic_setting(&app));
                 let (voice, look) = if super::is_active(&app, ID) {
                     let s = settings(&app);
-                    let pick = |key: &str, default: &str, list: &[&str]| {
-                        let v = s.get(key).and_then(Value::as_str).unwrap_or(default);
-                        if list.contains(&v) { v.to_string() } else { String::new() }
-                    };
-                    (pick("voiceHotkey", DEFAULT_HOTKEY, HOTKEYS), pick("lookHotkey", "", LOOK_HOTKEYS))
+                    let voice = pick_hotkey(s.get("voiceHotkey").and_then(Value::as_str).unwrap_or(DEFAULT_HOTKEY), HOTKEYS);
+                    let look = pick_hotkey(s.get("lookHotkey").and_then(Value::as_str).unwrap_or(""), LOOK_HOTKEYS);
+                    let mut guard = HOTKEY_ERRORS.locked();
+                    let errors = &mut *guard;
+                    for (picked, slot) in [(&voice, &mut errors.0), (&look, &mut errors.1)] {
+                        if let Err(e) = picked {
+                            if slot != e {
+                                log::warn(format!("parler à Ondine : {e}"));
+                                *slot = e.clone();
+                            }
+                        }
+                    }
+                    drop(guard);
+                    let voice = voice.unwrap_or_default();
+                    // Le même raccourci pour les deux : seulement « parler ».
+                    let look = look.unwrap_or_default();
+                    let look = if !look.is_empty() && same_hotkey(&look, &voice) { String::new() } else { look };
+                    (voice, look)
                 } else {
                     (String::new(), String::new())
                 };
@@ -145,6 +188,123 @@ pub fn start(app: AppHandle) {
             std::thread::sleep(Duration::from_secs(1));
         }
     });
+}
+
+/// Le micro choisi (`micDevice`), lu dans les réglages enregistrés.
+fn mic_setting(app: &AppHandle) -> String {
+    use tauri::Manager;
+    let Some(shared) = app.try_state::<crate::Shared>() else { return String::new() };
+    let st = shared.settings.locked();
+    st.modules.get(ID).and_then(|m| m.values.get("micDevice")).and_then(Value::as_str).unwrap_or("").to_string()
+}
+
+/// La valeur d'un réglage de raccourci → le raccourci à poser ("" = aucun),
+/// ou pourquoi il est refusé.
+fn pick_hotkey(value: &str, presets: &[&str]) -> Result<String, String> {
+    let value = value.trim();
+    if value.is_empty() || presets.contains(&value) {
+        return Ok(value.to_string());
+    }
+    check_hotkey(value).map(|()| value.to_string()).map_err(|why| format!("le raccourci {} est refusé : {why}", pretty_hotkey(value)))
+}
+
+/// Deux écritures du même raccourci (« Alt+Ctrl+K » et « Ctrl+Alt+K ») ?
+fn same_hotkey(a: &str, b: &str) -> bool {
+    use tauri_plugin_global_shortcut::Shortcut;
+    match (a.parse::<Shortcut>(), b.parse::<Shortcut>()) {
+        (Ok(x), Ok(y)) => x.mods == y.mods && x.key == y.key,
+        _ => a == b,
+    }
+}
+
+/// Un raccourci personnalisé est-il acceptable ? Il doit se lire comme un
+/// `Shortcut` du greffon de raccourcis globaux, avoir au moins un
+/// modificateur (Ctrl, Alt, Maj, Win ; sauf F1 à F24), ne pas gêner la frappe
+/// (Maj seule avec une touche) ni prendre un raccourci de Windows (Alt+F4,
+/// Ctrl+Alt+Suppr, Win+L…) ou un raccourci d'édition (Ctrl+C…), qu'Ondine
+/// volerait à toutes les applis.
+pub fn check_hotkey(value: &str) -> Result<(), &'static str> {
+    use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut};
+    let sc: Shortcut = value.parse().map_err(|_| "raccourci illisible")?;
+    let (m, k) = (sc.mods, sc.key);
+    let fkey = matches!(
+        k,
+        Code::F1 | Code::F2 | Code::F3 | Code::F4 | Code::F5 | Code::F6 | Code::F7 | Code::F8 | Code::F9 | Code::F10 | Code::F11 | Code::F12 | Code::F13 | Code::F14 | Code::F15 | Code::F16 | Code::F17 | Code::F18 | Code::F19 | Code::F20 | Code::F21 | Code::F22 | Code::F23 | Code::F24
+    );
+    let (ctrl, alt, shift, win) = (Modifiers::CONTROL, Modifiers::ALT, Modifiers::SHIFT, Modifiers::SUPER);
+    let allowed = ctrl | alt | shift | win;
+    if !allowed.contains(m) {
+        return Err("seules les touches Ctrl, Alt, Maj et Win peuvent accompagner la touche");
+    }
+    if m.is_empty() && !fkey {
+        return Err("il faut au moins une touche Ctrl, Alt, Maj ou Win (sauf pour F1 à F24)");
+    }
+    if m.is_empty() && k == Code::F12 {
+        return Err("F12 seule est réservée par Windows");
+    }
+    if m == shift && !fkey {
+        return Err("Maj seule avec une touche gênerait la frappe : ajoutez Ctrl, Alt ou Win");
+    }
+    let windows: &[(Modifiers, Code)] = &[
+        (alt, Code::F4),
+        (alt, Code::Tab),
+        (alt | shift, Code::Tab),
+        (alt, Code::Escape),
+        (alt, Code::Space),
+        (ctrl, Code::Escape),
+        (ctrl | shift, Code::Escape),
+        (ctrl | alt, Code::Delete),
+        (ctrl | alt, Code::Tab),
+        (win, Code::KeyL),
+        (win, Code::KeyD),
+        (win, Code::KeyE),
+        (win, Code::KeyR),
+        (win, Code::KeyI),
+        (win, Code::KeyX),
+        (win, Code::KeyA),
+        (win, Code::KeyS),
+        (win, Code::KeyV),
+        (win, Code::KeyH),
+        (win, Code::KeyM),
+        (win, Code::Tab),
+        (win, Code::Period),
+        (win | shift, Code::KeyS),
+        (win | ctrl, Code::KeyD),
+        (win | ctrl, Code::ArrowLeft),
+        (win | ctrl, Code::ArrowRight),
+        (win | ctrl, Code::F4),
+    ];
+    let editing = [Code::KeyA, Code::KeyC, Code::KeyF, Code::KeyN, Code::KeyO, Code::KeyP, Code::KeyS, Code::KeyT, Code::KeyV, Code::KeyW, Code::KeyX, Code::KeyY, Code::KeyZ];
+    if windows.iter().any(|&(wm, wk)| wm == m && wk == k) || (m == win && matches!(k, Code::Digit0 | Code::Digit1 | Code::Digit2 | Code::Digit3 | Code::Digit4 | Code::Digit5 | Code::Digit6 | Code::Digit7 | Code::Digit8 | Code::Digit9)) {
+        return Err("ce raccourci sert déjà à Windows");
+    }
+    if m == ctrl && editing.contains(&k) {
+        return Err("ce raccourci sert à toutes les applis (copier, coller, enregistrer…)");
+    }
+    Ok(())
+}
+
+/// Un raccourci à lire (« Ctrl + Alt + Maj + K »).
+fn pretty_hotkey(value: &str) -> String {
+    value
+        .split('+')
+        .map(|t| match t.trim() {
+            "Shift" => "Maj".to_string(),
+            "Super" => "Win".to_string(),
+            "Enter" => "Entrée".to_string(),
+            "Space" => "Espace".to_string(),
+            "Delete" => "Suppr".to_string(),
+            "Escape" => "Échap".to_string(),
+            k => k.strip_prefix("Key").or_else(|| k.strip_prefix("Digit")).unwrap_or(k).to_string(),
+        })
+        .collect::<Vec<_>>()
+        .join(" + ")
+}
+
+/// Pour les Réglages : le dernier refus de chaque raccourci ("" = aucun).
+pub fn hotkey_errors() -> Value {
+    let e = HOTKEY_ERRORS.locked();
+    json!({ "voiceHotkey": e.0, "lookHotkey": e.1 })
 }
 
 /// Enregistre (ou retire) les deux raccourcis s'ils ont changé.
@@ -160,6 +320,11 @@ fn apply_hotkeys(app: &AppHandle, voice: &str, look: &str) {
             let _ = gs.unregister(current.as_str());
         }
         *current = wanted.to_string();
+        {
+            let mut errors = HOTKEY_ERRORS.locked();
+            let slot = if is_look { &mut errors.1 } else { &mut errors.0 };
+            slot.clear();
+        }
         if wanted.is_empty() {
             continue;
         }
@@ -171,13 +336,17 @@ fn apply_hotkeys(app: &AppHandle, voice: &str, look: &str) {
         });
         if let Err(e) = result {
             let text = e.to_string();
-            let pretty = wanted.replace("Shift", "Maj").replace("Enter", "Entrée");
+            let pretty = pretty_hotkey(wanted);
             let msg = if text.contains("already registered") {
                 format!("{pretty} est déjà pris par un autre logiciel : choisissez un autre raccourci dans les réglages de Parler à Ondine")
             } else {
                 format!("le raccourci {pretty} est refusé : {text}")
             };
             log::warn(format!("parler à Ondine : {msg}"));
+            {
+                let mut errors = HOTKEY_ERRORS.locked();
+                *(if is_look { &mut errors.1 } else { &mut errors.0 }) = msg.clone();
+            }
             voice_event(app, "error", json!({ "message": msg }));
         }
     }
@@ -314,12 +483,25 @@ pub fn listen(app: &AppHandle, opts: Options) -> Result<(), String> {
                 let api_to = if windows_failed { api_offer(&app2) } else { None };
                 // Le moteur hors ligne est là : le proposer aussi (rien ne part).
                 let offline = windows_failed && voice::offline_engine(dictation_tag(&app2)).is_some();
-                voice_event(&app2, "error", json!({ "message": f.message, "fix": f.fix.map(voice::Fix::id), "apiTo": api_to, "offline": offline, "id": id }));
+                // Parakeet sur le PC : proposé s'il est prêt ; s'il est choisi
+                // sans son modèle, le bouton mène au téléchargement.
+                let parakeet = windows_failed && stt::ready();
+                let models = engine == VoiceEngine::Parakeet && !stt::ready();
+                voice_event(&app2, "error", json!({ "message": f.message, "fix": f.fix.map(voice::Fix::id), "apiTo": api_to, "offline": offline, "parakeet": parakeet, "models": models, "id": id }));
             }
             Err(_) => voice_event(&app2, "error", json!({ "message": "erreur inattendue pendant l'écoute", "id": id })),
         }
     });
     Ok(())
+}
+
+/// Le mot d'appel suivi d'une question (« Hey Ondine, quel temps fait-il ? ») :
+/// comme une écoute finie, la question part dans Parler à Ondine.
+pub fn heard_text(app: &AppHandle, text: &str) {
+    let id = NEXT.fetch_add(1, Ordering::SeqCst) + 1;
+    log::info(format!("parler à Ondine : mot d'appel suivi d'une question ({} caractères)", text.chars().count()));
+    voice_event(app, "open", json!({ "look": false, "hold": false, "id": id }));
+    voice_event(app, "final", json!({ "text": text.trim(), "look": false, "id": id }));
 }
 
 /// Échap annule l'écoute : un raccourci global posé le temps de l'écoute.
@@ -345,6 +527,8 @@ pub enum VoiceEngine {
     Offline,
     /// L'audio part vers OpenAI ou Gemini.
     Api,
+    /// Parakeet, sur le PC (1.2.4) : rien ne le quitte.
+    Parakeet,
 }
 
 impl VoiceEngine {
@@ -352,6 +536,7 @@ impl VoiceEngine {
         match settings.get("voiceEngine").and_then(Value::as_str) {
             Some("api") => VoiceEngine::Api,
             Some("offline") => VoiceEngine::Offline,
+            Some("parakeet") => VoiceEngine::Parakeet,
             _ => VoiceEngine::Windows,
         }
     }
@@ -361,6 +546,7 @@ impl VoiceEngine {
             VoiceEngine::Windows => "windows",
             VoiceEngine::Offline => "offline",
             VoiceEngine::Api => "api",
+            VoiceEngine::Parakeet => "parakeet",
         }
     }
 }
@@ -401,21 +587,49 @@ fn run(app: &AppHandle, s: &Session, opts: Options) -> Result<String, voice::Fai
     let max = if opts.hold { MAX_HOLD } else { MAX_ONCE };
     // Un garde-fou : au-delà de la durée maximale, on termine.
     let started = Instant::now();
-    if engine == VoiceEngine::Api {
-        let (provider, key, model) = stt_key(app, &settings)?;
+    if engine == VoiceEngine::Api || engine == VoiceEngine::Parakeet {
+        // Avant d'ouvrir le micro : la clé (API) ou le modèle (Parakeet).
+        let api = if engine == VoiceEngine::Api { Some(stt_key(app, &settings)?) } else { None };
+        if engine == VoiceEngine::Parakeet && !stt::ready() {
+            return Err(voice::Failure::from(stt::MISSING.to_string()));
+        }
         let mut gate = SilenceGate::new(opts.hold, silence as u64);
-        let pcm = voice::record(&s.stop, &mut |chunk, rate| {
+        // Parakeet : vos mots en direct pendant que vous parlez (pas en mode Économie).
+        let mut live = (engine == VoiceEngine::Parakeet && perf::mode() != perf::Mode::Eco).then(|| LivePartials::start(app.clone(), lang));
+        let (pcm, info) = voice::record_info(&s.stop, &mut |chunk, rate| {
             let rms = rms(chunk);
             level((rms * 6.0).sqrt().min(1.0));
             if started.elapsed() > max {
                 return false;
             }
-            gate.push(rms, chunk.len() as u64 * 1000 / u64::from(rate.max(1)))
+            let go = gate.push(rms, chunk.len() as u64 * 1000 / u64::from(rate.max(1)));
+            if let Some(live) = live.as_mut() {
+                live.feed(chunk, rate, gate.talking());
+            }
+            go
         })?;
-        if s.stop.load(Ordering::SeqCst) == voice::CANCEL || !gate.heard {
-            return Ok(String::new()); // personne n'a parlé : rien ne part
+        // Plus aucun mot en direct après ça (le fil finit sa transcription en cours).
+        drop(live);
+        if s.stop.load(Ordering::SeqCst) == voice::CANCEL {
+            return Ok(String::new());
+        }
+        if !gate.heard {
+            // Un micro muet (coupé, volume à 0, bloqué, pas le bon) : le dire.
+            if let Some(f) = voice::silent_mic(&info, None) {
+                return Err(f);
+            }
+            // Parakeet (rien ne part) : une voix faible mais présente est
+            // quand même écrite. L'API : personne n'a parlé, rien ne part.
+            if engine == VoiceEngine::Api || info.peak < QUIET_SPEECH_PEAK {
+                return Ok(String::new());
+            }
         }
         voice_event(app, "transcribing", json!({}));
+        let Some((provider, key, model)) = api else {
+            // Parakeet : le son en 16 kHz, écrit sur le PC (rien ne part).
+            let samples = stt::to_16k_mono(&pcm.samples, 1, pcm.rate);
+            return stt::transcribe(&samples, Some(lang)).map_err(voice::Failure::from);
+        };
         let wav = wav_16k(&pcm.samples, pcm.rate);
         log::info(format!("parler à Ondine : audio envoyé à {} ({} octets)", provider.destination(), wav.len()));
         return transcribe(provider, &key, &model, &wav, lang).map_err(voice::Failure::from);
@@ -449,15 +663,70 @@ fn run(app: &AppHandle, s: &Session, opts: Options) -> Result<String, voice::Fai
     voice::dictate(tag, opts.hold, silence, cb)
 }
 
+// ── Le micro : la liste et « Tester le micro » (Réglages, 1.2.4) ─────────────
+
+/// Les micros du PC et celui choisi, pour les Réglages.
+pub fn mics() -> Value {
+    json!({
+        "supported": cfg!(windows),
+        "mics": voice::microphones(),
+        "chosen": voice::chosen_mic(),
+        "testing": MIC_TESTING.load(Ordering::SeqCst),
+    })
+}
+
+/// Écoute le micro `device` (vide = celui par défaut) quelques secondes :
+/// l'événement `mic-test` porte le niveau (~15 fois par seconde), puis le
+/// bilan `{done, info?, problem?, fix?}`. Rien n'est gardé ni envoyé.
+pub fn mic_test(app: &AppHandle, device: &str) -> Result<(), String> {
+    use tauri::Emitter;
+    if MIC_TESTING.swap(true, Ordering::SeqCst) {
+        return Err("le test du micro est déjà en cours".into());
+    }
+    let app = app.clone();
+    let device = device.to_string();
+    std::thread::spawn(move || {
+        let stop = AtomicU8::new(0);
+        let started = Instant::now();
+        let mut last = Instant::now() - LEVEL_EVERY;
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            voice::mic_test(&device, &stop, &mut |chunk, _rate| {
+                if last.elapsed() >= LEVEL_EVERY {
+                    last = Instant::now();
+                    let level = (rms(chunk) * 6.0).sqrt().min(1.0);
+                    let _ = app.emit(MIC_TEST_EVENT, json!({ "level": (level * 100.0).round() / 100.0 }));
+                }
+                started.elapsed() < MIC_TEST
+            })
+        }));
+        MIC_TESTING.store(false, Ordering::SeqCst);
+        let end = match result {
+            Ok(Ok(info)) => {
+                let problem = voice::silent_mic(&info, None);
+                log::info(format!("test du micro : {}", voice::mic_detail(&info)));
+                json!({ "done": true, "info": info, "problem": problem.as_ref().map(|f| f.message.clone()), "fix": problem.and_then(|f| f.fix).map(voice::Fix::id) })
+            }
+            Ok(Err(f)) => {
+                log::warn(format!("test du micro : {} [{}]", f.message, f.detail));
+                json!({ "done": true, "problem": f.message, "fix": f.fix.map(voice::Fix::id) })
+            }
+            Err(_) => json!({ "done": true, "problem": "erreur inattendue pendant le test du micro" }),
+        };
+        let _ = app.emit(MIC_TEST_EVENT, end);
+    });
+    Ok(())
+}
+
 // ── La transcription par l'API ───────────────────────────────────────────────
 
 /// Le fournisseur, la clé et le modèle pour transcrire (Claude n'écoute pas l'audio).
-fn stt_key(app: &AppHandle, settings: &serde_json::Map<String, Value>) -> Result<(Provider, String, String), String> {
+pub(super) fn stt_key(app: &AppHandle, settings: &serde_json::Map<String, Value>) -> Result<(Provider, String, String), String> {
     let chosen = Provider::from_id(settings.get("provider").and_then(Value::as_str).unwrap_or(""));
     let order: &[Provider] = match chosen {
         Provider::Gemini => &[Provider::Gemini],
         Provider::OpenAi => &[Provider::OpenAi],
-        Provider::Claude => &[Provider::OpenAi, Provider::Gemini],
+        // Claude, un serveur local, OpenRouter : pas d'audio ici.
+        Provider::Claude | Provider::Local | Provider::OpenRouter => &[Provider::OpenAi, Provider::Gemini],
     };
     super::with_context(app, ID, |ctx| -> Result<(Provider, String, String), String> {
         ctx.require("claude-api")?;
@@ -472,6 +741,7 @@ fn stt_key(app: &AppHandle, settings: &serde_json::Map<String, Value>) -> Result
         }
         Err(match chosen {
             Provider::Claude => "Claude n'écoute pas l'audio : pour la transcription par l'API, ajoutez une clé OpenAI ou Gemini dans Réglages → Identifiants, ou choisissez la reconnaissance de Windows".into(),
+            Provider::Local | Provider::OpenRouter => "Ce fournisseur n'écoute pas l'audio : pour la transcription par l'API, ajoutez une clé OpenAI ou Gemini dans Réglages → Identifiants, ou choisissez la reconnaissance de Windows".into(),
             p => format!("pas de {} : ajoutez-la dans Réglages → Identifiants", p.key_label().to_lowercase()),
         })
     })
@@ -486,7 +756,7 @@ fn api_offer(app: &AppHandle) -> Option<&'static str> {
 }
 
 /// Envoie l'audio (WAV) et renvoie le texte.
-fn transcribe(provider: Provider, key: &str, model: &str, wav: &[u8], lang: &str) -> Result<String, String> {
+pub(super) fn transcribe(provider: Provider, key: &str, model: &str, wav: &[u8], lang: &str) -> Result<String, String> {
     match provider {
         Provider::Gemini => {
             let prompt = if lang == "en" {
@@ -570,17 +840,25 @@ struct SilenceGate {
 impl SilenceGate {
     /// Fin de phrase : ce silence après avoir parlé.
     const END_MS: u64 = 1200;
+    /// Mots en direct : on ne réécrit plus après ce silence.
+    const TALKING_MS: u64 = 500;
 
     fn new(hold: bool, initial_ms: u64) -> SilenceGate {
         SilenceGate { hold, initial_ms, floor: 1.0, elapsed_ms: 0, quiet_ms: 0, heard: false }
+    }
+
+    /// La personne parle en ce moment (ou vient de s'arrêter, depuis moins de TALKING_MS).
+    fn talking(&self) -> bool {
+        self.heard && self.quiet_ms < Self::TALKING_MS
     }
 
     /// Un morceau de `ms` millisecondes, de niveau `rms`. Faux = on s'arrête.
     fn push(&mut self, rms: f32, ms: u64) -> bool {
         self.elapsed_ms += ms;
         self.floor = self.floor.min(rms.max(0.0005));
-        // Seuil bas (−40 dB) : un micro de portable capte souvent la voix assez faiblement.
-        let speaking = rms > (self.floor * 3.0).max(0.01);
+        // Seuil bas (−44 dB) : un micro de portable ou de casque capte souvent
+        // la voix assez faiblement.
+        let speaking = rms > (self.floor * 3.0).max(0.006);
         if speaking {
             self.heard = true;
             self.quiet_ms = 0;
@@ -597,8 +875,120 @@ impl SilenceGate {
     }
 }
 
+// ── Parakeet : vos mots en direct (1.2.4) ────────────────────────────────────
+
+/// Mots en direct : on réécrit au plus souvent toutes les… (ms de son capté).
+const LIVE_EVERY_MS: u64 = 900;
+/// … et au moins toutes les… (même si la transcription est lente).
+const LIVE_MAX_EVERY_MS: u64 = 4000;
+
+/// Quand réécrire le son déjà capté (sans horloge ni modèle : testé sous Linux).
+struct LiveSchedule {
+    /// Son capté depuis la dernière transcription en direct (ms).
+    since_ms: u64,
+}
+
+impl LiveSchedule {
+    /// Un morceau de `ms` : vrai = lancer une transcription maintenant. Rien
+    /// pendant le silence (`talking` faux) ; si la précédente n'est pas finie
+    /// (`busy`), on saute ce tour. `every_ms` : le pas actuel (`live_every`).
+    fn tick(&mut self, ms: u64, talking: bool, busy: bool, every_ms: u64) -> bool {
+        self.since_ms += ms;
+        if self.since_ms < every_ms || !talking {
+            return false;
+        }
+        self.since_ms = 0;
+        !busy
+    }
+}
+
+/// Le pas des mots en direct après une transcription qui a pris `took_ms` :
+/// au moins deux fois sa durée (le calcul n'occupe jamais plus de la moitié
+/// du temps), entre LIVE_EVERY_MS et LIVE_MAX_EVERY_MS.
+fn live_every(took_ms: u64) -> u64 {
+    took_ms.saturating_mul(2).clamp(LIVE_EVERY_MS, LIVE_MAX_EVERY_MS)
+}
+
+/// Les mots en direct de Parakeet : le son capté est gardé ici, et un fil à
+/// part le réécrit en entier de temps en temps (LiveSchedule), une
+/// transcription à la fois. Rien n'est écrit sur le disque. À la fin
+/// (`drop`), le fil termine sa transcription en cours et n'envoie plus rien.
+struct LivePartials {
+    audio: Arc<Mutex<Vec<f32>>>,
+    rate: Arc<AtomicU32>,
+    busy: Arc<AtomicBool>,
+    done: Arc<AtomicBool>,
+    every: Arc<AtomicU64>,
+    schedule: LiveSchedule,
+    tx: Option<mpsc::Sender<()>>,
+    worker: Option<std::thread::JoinHandle<()>>,
+}
+
+impl LivePartials {
+    fn start(app: AppHandle, lang: &'static str) -> LivePartials {
+        let (tx, rx) = mpsc::channel::<()>();
+        let audio = Arc::new(Mutex::new(Vec::new()));
+        let rate = Arc::new(AtomicU32::new(stt::SAMPLE_RATE));
+        let busy = Arc::new(AtomicBool::new(false));
+        let done = Arc::new(AtomicBool::new(false));
+        let every = Arc::new(AtomicU64::new(LIVE_EVERY_MS));
+        let worker = {
+            let (audio, rate, busy, done, every) = (audio.clone(), rate.clone(), busy.clone(), done.clone(), every.clone());
+            std::thread::spawn(move || {
+                let mut last = String::new();
+                while rx.recv().is_ok() {
+                    if done.load(Ordering::SeqCst) {
+                        break;
+                    }
+                    let samples = audio.locked().clone();
+                    let started = Instant::now();
+                    let text = stt::transcribe(&stt::to_16k_mono(&samples, 1, rate.load(Ordering::SeqCst)), Some(lang));
+                    every.store(live_every(started.elapsed().as_millis() as u64), Ordering::SeqCst);
+                    busy.store(false, Ordering::SeqCst);
+                    if done.load(Ordering::SeqCst) {
+                        break;
+                    }
+                    let Ok(text) = text else { continue };
+                    let text = text.trim();
+                    if !text.is_empty() && text != last {
+                        last = text.to_string();
+                        voice_event(&app, "partial", json!({ "text": text }));
+                    }
+                }
+            })
+        };
+        LivePartials { audio, rate, busy, done, every, schedule: LiveSchedule { since_ms: 0 }, tx: Some(tx), worker: Some(worker) }
+    }
+
+    /// Un morceau de son capté (mono, à la fréquence du micro).
+    fn feed(&mut self, chunk: &[f32], rate: u32, talking: bool) {
+        self.rate.store(rate, Ordering::SeqCst);
+        self.audio.locked().extend_from_slice(chunk);
+        let ms = chunk.len() as u64 * 1000 / u64::from(rate.max(1));
+        let busy = self.busy.load(Ordering::SeqCst);
+        if self.schedule.tick(ms, talking, busy, self.every.load(Ordering::SeqCst)) {
+            if let Some(tx) = &self.tx {
+                self.busy.store(true, Ordering::SeqCst);
+                if tx.send(()).is_err() {
+                    self.busy.store(false, Ordering::SeqCst);
+                }
+            }
+        }
+    }
+}
+
+impl Drop for LivePartials {
+    fn drop(&mut self) {
+        self.done.store(true, Ordering::SeqCst);
+        self.tx.take();
+        if let Some(w) = self.worker.take() {
+            let _ = w.join();
+        }
+    }
+}
+
 /// Le son en WAV mono 16 bits à 16 kHz (ce que les API préfèrent pour la voix).
-fn wav_16k(samples: &[f32], rate: u32) -> Vec<u8> {
+pub(super) fn wav_16k(samples: &[f32], rate: u32) -> Vec<u8> {
     const OUT: u32 = 16_000;
     let rate = rate.max(1);
     let n = (samples.len() as u64 * u64::from(OUT) / u64::from(rate)) as usize;
@@ -664,6 +1054,48 @@ mod tests {
     }
 
     #[test]
+    fn custom_hotkeys_follow_the_rules() {
+        for ok in ["Ctrl+Alt+K", "Ctrl+Shift+F9", "F9", "F24", "Shift+F2", "Alt+Shift+M", "Super+Alt+Space", "Ctrl+Alt+Numpad1", "Ctrl+Shift+V"] {
+            assert_eq!(check_hotkey(ok), Ok(()), "{ok}");
+        }
+        for bad in ["", "Ctrl+", "Ctrl+Alt", "Ctrl+Truc", "K", "Space", "Shift+K", "F12", "Alt+F4", "Ctrl+Alt+Delete", "Super+L", "Super+D", "Alt+Tab", "Ctrl+Shift+Escape", "Ctrl+C", "Ctrl+V", "Super+1"] {
+            assert!(check_hotkey(bad).is_err(), "{bad}");
+        }
+        // Les choix proposés passent aussi les règles.
+        for k in HOTKEYS.iter().chain(LOOK_HOTKEYS) {
+            assert_eq!(check_hotkey(k), Ok(()), "{k}");
+        }
+    }
+
+    #[test]
+    fn hotkey_settings_are_picked_or_refused() {
+        assert_eq!(pick_hotkey("", HOTKEYS), Ok(String::new()));
+        assert_eq!(pick_hotkey("Ctrl+Alt+V", HOTKEYS), Ok("Ctrl+Alt+V".into()));
+        assert_eq!(pick_hotkey("Ctrl+Alt+K", HOTKEYS), Ok("Ctrl+Alt+K".into()));
+        let refused = pick_hotkey("Alt+F4", HOTKEYS).unwrap_err();
+        assert!(refused.contains("Alt + F4") && refused.contains("Windows"), "{refused}");
+        assert!(same_hotkey("Alt+Ctrl+K", "Ctrl+Alt+K"));
+        assert!(!same_hotkey("Ctrl+Alt+K", "Ctrl+Alt+J"));
+        assert_eq!(pretty_hotkey("Ctrl+Shift+Super+KeyK"), "Ctrl + Maj + Win + K");
+        assert_eq!(pretty_hotkey("Ctrl+Alt+Enter"), "Ctrl + Alt + Entrée");
+    }
+
+    #[test]
+    fn hotkey_fields_of_the_manifest() {
+        let manifest: Value = serde_json::from_str(include_str!("../../../src/modules/askclaude/manifest.json")).unwrap();
+        let fields = manifest["settings"]["fields"].as_array().unwrap();
+        for (key, presets) in [("voiceHotkey", HOTKEYS), ("lookHotkey", LOOK_HOTKEYS)] {
+            let f = fields.iter().find(|f| f["key"] == key).unwrap();
+            assert_eq!(f["type"], "hotkey", "{key}");
+            let values: Vec<&str> = f["options"].as_array().unwrap().iter().filter_map(|o| o["value"].as_str()).filter(|v| !v.is_empty()).collect();
+            assert_eq!(values, presets, "{key}");
+        }
+        // Le mot d'appel est coupé par défaut ; le micro, celui de Windows.
+        assert_eq!(fields.iter().find(|f| f["key"] == "wakeWord").unwrap()["default"], false);
+        assert_eq!(fields.iter().find(|f| f["key"] == "micDevice").unwrap()["default"], "");
+    }
+
+        #[test]
     fn discretion() {
         assert_eq!(why_discreet(&["Zoom".into()], false, false), Some("call"));
         assert_eq!(why_discreet(&["Ondine".into()], false, false), None);
@@ -702,6 +1134,42 @@ mod tests {
     }
 
     #[test]
+    fn live_words_are_paced() {
+        // Toutes les ~0,9 s de son, seulement pendant qu'on parle.
+        let mut s = LiveSchedule { since_ms: 0 };
+        let ticks: Vec<bool> = (0..20).map(|_| s.tick(100, true, false, LIVE_EVERY_MS)).collect();
+        assert_eq!(ticks.iter().filter(|t| **t).count(), 2);
+        assert!(ticks[8] && ticks[17]);
+        // Le silence : rien, puis tout de suite quand on reparle.
+        let mut s = LiveSchedule { since_ms: 0 };
+        assert!((0..30).all(|_| !s.tick(100, false, false, LIVE_EVERY_MS)));
+        assert!(s.tick(20, true, false, LIVE_EVERY_MS));
+        // La précédente n'est pas finie : ce tour est sauté (et le compte repart).
+        let mut s = LiveSchedule { since_ms: 0 };
+        assert!(!s.tick(1000, true, true, LIVE_EVERY_MS));
+        assert!(!s.tick(500, true, false, LIVE_EVERY_MS));
+        assert!(s.tick(400, true, false, LIVE_EVERY_MS));
+        // Une transcription lente espace les suivantes (au plus la moitié du temps de calcul).
+        assert_eq!(live_every(100), LIVE_EVERY_MS);
+        assert_eq!(live_every(700), 1400);
+        assert_eq!(live_every(60_000), LIVE_MAX_EVERY_MS);
+    }
+
+    #[test]
+    fn talking_follows_the_voice() {
+        let mut g = SilenceGate::new(false, 6000);
+        assert!(!g.talking());
+        g.push(0.001, 100);
+        assert!(!g.talking(), "rien entendu encore");
+        g.push(0.2, 100);
+        assert!(g.talking());
+        g.push(0.001, 300);
+        assert!(g.talking(), "une petite pause");
+        g.push(0.001, 300);
+        assert!(!g.talking(), "le silence");
+    }
+
+    #[test]
     fn wav_is_16k_mono() {
         let one_second = vec![0.5f32; 48_000];
         let wav = wav_16k(&one_second, 48_000);
@@ -720,6 +1188,22 @@ mod tests {
         assert!(text.starts_with(&format!("--{b}\r\n")) && text.ends_with(&format!("--{b}--\r\n")));
         assert!(text.contains("name=\"model\"\r\n\r\nm\r\n"));
         assert!(text.contains("filename=\"audio.wav\"\r\nContent-Type: audio/wav\r\n\r\nRIFF\r\n"));
+    }
+
+    #[test]
+    fn engines_round_trip() {
+        for id in ["windows", "offline", "api", "parakeet"] {
+            let mut s = serde_json::Map::new();
+            s.insert("voiceEngine".into(), json!(id));
+            assert_eq!(VoiceEngine::of(&s).id(), id);
+        }
+        assert_eq!(VoiceEngine::of(&serde_json::Map::new()), VoiceEngine::Windows);
+        // Le choix « parakeet » existe dans le manifeste (réglage voiceEngine).
+        let manifest: Value = serde_json::from_str(include_str!("../../../src/modules/askclaude/manifest.json")).unwrap();
+        let field = manifest["settings"]["fields"].as_array().unwrap().iter().find(|f| f["key"] == "voiceEngine").unwrap();
+        let values: Vec<&str> = field["options"].as_array().unwrap().iter().filter_map(|o| o["value"].as_str()).collect();
+        assert!(values.contains(&"parakeet"), "{values:?}");
+        assert_eq!(field["default"], "windows");
     }
 
     #[test]

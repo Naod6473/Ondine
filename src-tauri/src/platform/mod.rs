@@ -51,6 +51,8 @@ pub mod desktop_icons;
 pub mod keys;
 // Les autres fenêtres (premier plan, bulles, verrouillage) pour « Ondine et les fenêtres ». Contient sa propre version Linux.
 pub mod winlife;
+// La dictée partout : la touche tenue (crochet clavier), l'appli au premier plan, le champ de texte, le collage. Contient sa propre version Linux.
+pub mod dictation;
 
 #[cfg(windows)]
 mod drop_target;

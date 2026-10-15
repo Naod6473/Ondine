@@ -32,6 +32,7 @@ export default defineConfig({
         settings: resolve(__dirname, "settings.html"),
         annotate: resolve(__dirname, "annotate.html"),
         pet: resolve(__dirname, "pet.html"),
+        pill: resolve(__dirname, "pill.html"),
         // Les reflets de l'île sur les autres écrans (1.2.3, src-tauri/src/island/mirrors.rs).
         mirror: resolve(__dirname, "mirror.html"),
         screensaver: resolve(__dirname, "screensaver.html"),
