@@ -1,10 +1,10 @@
-# Tests 1.2.4 — branche `v124-notes` (Notes d'appel)
+# Tests 1.2.4 — version 1.2.4 (Notes d'appel)
 
 Pour tester :
 
 ```
 git fetch
-git checkout v124-notes
+git checkout version-1-2-4
 npm install
 npm run tauri dev
 ```

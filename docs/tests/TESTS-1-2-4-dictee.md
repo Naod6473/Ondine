@@ -1,10 +1,10 @@
-# Tests 1.2.4 — branche `v124-dictee` (la dictée partout, la pilule, les pages Voix)
+# Tests 1.2.4 — version 1.2.4 (la dictée partout, la pilule, les pages Voix)
 
 Pour tester :
 
 ```
 git fetch
-git checkout v124-dictee
+git checkout version-1-2-4
 npm install
 npm run tauri dev
 ```
