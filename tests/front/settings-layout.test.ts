@@ -53,8 +53,24 @@ describe("Animations et halos", () => {
 });
 
 describe("barre latérale", () => {
-  test("cinq groupes, dans l'ordre", () => {
-    assert.deepEqual([...NAV_GROUPS], ["Ondine", "L'île", "Automatiser", "Modules", "Sécurité et système"]);
+  test("six groupes, dans l'ordre : Voix en premier (1.2.4)", () => {
+    assert.deepEqual([...NAV_GROUPS], ["Voix", "Ondine", "L'île", "Automatiser", "Modules", "Sécurité et système"]);
+  });
+
+  test("Dictée et Notes d'appel ont leur page dans Voix, pas dans Modules", () => {
+    for (const id of ["dictation", "callnotes"]) {
+      assert.ok(MODULES_ELSEWHERE.includes(id), id);
+      assert.ok(!MODULE_CATEGORIES.some((c) => c.modules.includes(id)), id);
+    }
+  });
+
+  test("les pages Voix du contrat : ids « voice:… », dans leur fichier, rangées dans la barre par main.ts", () => {
+    const src = readFileSync("src/settings/voice/pages.ts", "utf8");
+    const ids = [...src.matchAll(/"(voice:[a-z]+)"/g)].map((m) => m[1]);
+    assert.deepEqual([...new Set(ids)].sort(), ["voice:callnotes", "voice:dictation", "voice:dictionary", "voice:stats", "voice:styles"]);
+    const main = readFileSync("src/settings/main.ts", "utf8");
+    assert.match(main, /\.\.\.VOICE_NAV, \.\.\.ONDINE_PAGES/, "Voix vient avant Ondine dans allPages()");
+    assert.match(main, /group: "Voix"/);
   });
 
   test("chaque module a une place : une catégorie, ou une page ailleurs", () => {

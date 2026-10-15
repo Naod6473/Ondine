@@ -14,7 +14,6 @@
 "Elle pourra régler le son, la luminosité, la musique, un minuteur ou une note, et vous demandera avant de partager une information ou d'ouvrir quelque chose.": "Elle pourra régler le son, la luminosité, la musique, un minuteur ou une note, et te demandera avant de partager une information ou d'ouvrir quelque chose.",
 "Votre choix est gardé. Vous pourrez le changer dans les réglages de Parler à Ondine.": "Ton choix est gardé. Tu pourras le changer dans les réglages de Parler à Ondine.",
 "Refusé : utiliser vos fichiers": "Refusé : utiliser tes fichiers",
-"Aucune télémétrie. Les outils de l'IA demandent votre accord.": "Aucune télémétrie. Les outils de l'IA demandent ton accord.",
 "2. Comparez le nom et l'empreinte ci-dessous avec les détails du certificat sur le téléphone. S'ils diffèrent, n'installez pas le certificat.": "2. Compare le nom et l'empreinte ci-dessous avec les détails du certificat sur le téléphone. S'ils diffèrent, n'installe pas le certificat.",
 "iPhone : Réglages → Général → VPN et gestion de l'appareil, installez le profil téléchargé. Puis Général → Informations → Réglages des certificats : activez la confiance pour ce certificat Ondine.": "iPhone : Réglages → Général → VPN et gestion de l'appareil, installe le profil téléchargé. Puis Général → Informations → Réglages des certificats : active la confiance pour ce certificat Ondine.",
 "3. Revenez dans l'Étagère ou les Contrôles et scannez le QR code HTTPS. N'ignorez jamais une alerte de certificat dans le navigateur.": "3. Reviens dans l'Étagère ou les Contrôles et scanne le QR code HTTPS. N'ignore jamais une alerte de certificat dans le navigateur.",
@@ -291,7 +290,6 @@
 "Parler à Ondine : la surface vibre avec votre voix": "Parler à Ondine : la surface vibre avec ta voix",
 "Votre prénom, la langue et le démarrage avec Windows.": "Ton prénom, la langue et le démarrage avec Windows.",
 "Où vit l'île, quand elle se replie, et comment Ondine vit avec vos fenêtres.": "Où vit l'île, quand elle se replie, et comment Ondine vit avec tes fenêtres.",
-"Ondine regarde sur GitHub s'il existe une nouvelle version. Rien ne s'installe sans votre accord.": "Ondine regarde sur GitHub s'il existe une nouvelle version. Rien ne s'installe sans ton accord.",
 "Désactivé, Ondine ne réagit plus à vos fenêtres.": "Désactivé, Ondine ne réagit plus à tes fenêtres.",
 "Bouche d'Ondine : Ondine est suspendue tête en bas au bord de l'écran, et l'île est sa bouche. Elle l'ouvre pour vous montrer ce qui se passe.": "Bouche d'Ondine : Ondine est suspendue tête en bas au bord de l'écran, et l'île est sa bouche. Elle l'ouvre pour te montrer ce qui se passe.",
 "Glissez une carte pour la ranger, cliquez pour l'ouvrir ; clic droit pour changer sa taille ou la retirer.": "Glisse une carte pour la ranger, clique pour l'ouvrir ; clic droit pour changer sa taille ou la retirer.",
@@ -313,7 +311,9 @@
 "Quand personne ne touche le PC, un fond sombre couvre l'écran de l'île : Ondine s'y promène au bord d'une eau qui ondule, l'heure au centre. Il se ferme dès que vous bougez la souris ou touchez le clavier. Jamais pendant une présentation, une appli en plein écran ou un appel. Windows se verrouille et éteint l'écran à l'heure prévue, comme d'habitude.": "Quand personne ne touche le PC, un fond sombre couvre l'écran de l'île : Ondine s'y promène au bord d'une eau qui ondule, l'heure au centre. Il se ferme dès que tu bouges la souris ou touches le clavier. Jamais pendant une présentation, une appli en plein écran ou un appel. Windows se verrouille et éteint l'écran à l'heure prévue, comme d'habitude.",
 "Je prépare votre île…": "Je prépare ton île…",
 "Une nouveauté vous attend.": "Une nouveauté t'attend.",
-"Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine vous dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement.": "Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine te dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement."
+"Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine vous dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement.": "Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine te dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement.",
+"Aucune télémétrie, et les outils de l'IA demandent votre accord.": "Aucune télémétrie, et les outils de l'IA demandent ton accord.",
+"Ondine vous propose les nouvelles versions, et rien ne s'installe sans votre accord.": "Ondine te propose les nouvelles versions, et rien ne s'installe sans ton accord."
 },
 "patterns": [
 ["^(\\d+) nouveautés vous attendent\\.$", "$1 nouveautés t'attendent."],

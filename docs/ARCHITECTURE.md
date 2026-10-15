@@ -3018,7 +3018,7 @@ fichier vers l'Explorateur).
 
 - **Rangement 1.2.2** (`src/settings/layout.ts`, données pures testées dans
   `tests/front/settings-layout.test.ts`) : cinq groupes dans la barre
-  (`NAV_GROUPS`) :
+  (`NAV_GROUPS`, six depuis 1.2.4 avec **Voix** en premier, voir plus bas) :
   - **Ondine** : Général (prénom, langue, Vous / Tu, Lancer avec Windows,
     Refaire l'assistant), Mascotte, Parler à Ondine (page du module
     `askclaude`, id `module:askclaude` inchangé) ;
@@ -3116,6 +3116,68 @@ fichier vers l'Explorateur).
   ligne cachée) passe en Complet avant de faire briller la ligne.
 - Tests : `tests/front/visibility.test.ts` (champs visibles selon le mode,
   compte « N de plus », 1 à 3 champs essentiels par module, défauts).
+
+## Fenêtre de réglages : nouveau style et bandes vivantes (1.2.4, `src/settings/hero.ts`, `frame.ts`, `src/styles/settings-frame.css`)
+
+- **Style** : `settings-frame.css`, chargé après `settings.css` (settings.html),
+  redéfinit les jetons et la disposition : fond `--win-bg` (#020306 en
+  sombre), barre latérale sans verre ni trait, tout le contenu dans UNE carte
+  (`.content`, #070a10, rayon 26 px), blocs `.group-body` en cartes (#0b0f16,
+  rayon 18 px), titres de groupes en petites capitales espacées. Thème clair :
+  même structure, surfaces claires ; les bandes restent sombres. La pastille
+  de la page active (`.nav-pill`) et les pilules prennent `--page-color`, posée
+  sur `#app` par `showPage`.
+- **Fond des Réglages** (Apparence → « Fenêtre des Réglages ») : `html[data-backdrop]`
+  vaut `deep` (défaut, fond plein même avec Mica) ou `blobs` (les taches
+  d'avant derrière une carte en verre, sans flou en éco). Préférence de cette
+  fenêtre seulement, dans `localStorage` (« settings.backdrop »), comme l'ordre
+  du podium : rien dans le fichier de réglages ni dans le Rust.
+- **Pastille d'état** (bas de la barre, `frame-logic.ts` `statusLine`) : si le
+  module `dictation` existe et est activé, « Prête · maintenir <touche> »
+  (touche lue dans `modules.dictation.values` : `holdKey`, `hotkey`, `key` ou
+  `shortcut`, nom affiché par `keyName`) ; sinon « Ondine <version> · mises à
+  jour automatiques / manuelles », ou ce qu'a répondu « Rechercher maintenant »
+  dans cette fenêtre. Aucune requête réseau pour l'écrire.
+- **La bande** `hero({ title, subtitle?, color, mascots?, actions? })` (contrat
+  inchangé) : un canvas de fond (la couleur de la page qui respire en haut à
+  droite, période 7 s ; des bulles qui montent et que la souris écarte ; la
+  vague de derrière), les mascottes (un `GumEngine` par goutte, dans un
+  `div.page-hero-mascot` déplacé en `transform`), puis un canvas de devant (la
+  vague de devant, au-dessus des gouttes qui y trempent) et le texte.
+  **Une seule boucle** `requestAnimationFrame` pour toutes les bandes ; les
+  moteurs gomme reçoivent cette boucle comme hôte (`GumEnv.frameLoop` qui
+  s'inscrit dans la bande), ils n'ont pas de boucle à eux. La boucle s'arrête
+  fenêtre cachée (`document.hidden`), bande hors écran (IntersectionObserver)
+  ou retirée de la page (la bande est alors jetée : moteurs détruits).
+  `reducedMotion()` ou mode éco (`perfMode()`) : image fixe, redessinée
+  seulement à un changement de taille ou à un clic (l'expression change, sans
+  saut) ; le changement de mode est suivi à chaud (`onPerfChange`, media query).
+  Un clic sur une goutte : `react("poke")`, un geste du manifeste gomme
+  (surprise, rire, coucou…) et un saut qui fait un rond dans l'eau en
+  retombant. De temps en temps : un petit saut, un geste, un regard vers une
+  voisine ; les yeux suivent la souris sur la bande.
+- Logique pure, testée (`tests/front/settings-hero.test.ts`) : `hero-sea.ts`
+  (bulles, poussée de la souris, vague et ronds, nage et saut, zone de nage
+  jamais sous le texte, nombre de gouttes selon la largeur) et `hero-theme.ts`
+  (couleurs par groupe `GROUP_COLORS`, par catégorie de modules
+  `CATEGORY_COLORS`, par page `PAGE_COLORS`, contrastes AA vérifiés contre
+  l'encre #04121a et le fond des bandes ; troupes `PAGE_CASTS` ou tirées de
+  l'id de la page par `castFor` ; une bande Voix sans mascottes retrouve sa
+  troupe par sa couleur, `COLOR_PAGES`).
+- **Dans `main.ts`** : `showPage` pose la bande de la page (titre, `Page.sub`
+  limité à deux lignes, `Page.actions`, `Page.cast`) puis les **pilules** des
+  sous-menus (`subPills`, mêmes choix que la barre : `chosenSubs`, points
+  « désactivé », sous-menus cachés en Simple via `dimSubs`). La bande est
+  gardée (`heroKeep`) quand la même page se redessine (sous-menu, réglage
+  changé) : ses gouttes continuent ; seule la suite de la page glisse.
+- **Groupe Voix** (`NAV_GROUPS[0]`) : `VOICE_NAV` range `VOICE_PAGES` (icônes
+  `VOICE_ICONS` de `voice/pages.ts`) avant Ondine. Leur `render(page)` reçoit
+  la page affichée elle-même (elles dessinent leur bande) ; ce qu'il renvoie
+  est appelé quand on la quitte (autre page, recherche). Une page Voix
+  affichée n'est pas redessinée pour un réglage changé ailleurs. Point
+  « désactivé » via `module`, recherche par leur nom, liens profonds
+  `go("voice:dictation")` / « settings.goto ». `dictation` et `callnotes` sont
+  dans `MODULES_ELSEWHERE` (pas de seconde page dans Modules).
 
 ## 1.2.3 : dictée hors ligne, pancarte, pont de fichier, nouvel appareil
 
