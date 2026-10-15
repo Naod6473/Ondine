@@ -80,7 +80,7 @@ const MAX_HOLD: Duration = Duration::from_secs(60);
 /// Le niveau part au plus ~15 fois par seconde.
 const LEVEL_EVERY: Duration = Duration::from_millis(66);
 /// Le modèle de transcription d'OpenAI.
-const OPENAI_STT_MODEL: &str = "gpt-4o-mini-transcribe";
+pub(super) const OPENAI_STT_MODEL: &str = "gpt-4o-mini-transcribe";
 /// Une image de la fenêtre active : son plus grand côté, au plus.
 const LOOK_MAX_SIDE: u32 = 1600;
 

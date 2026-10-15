@@ -1,0 +1,126 @@
+{
+  "id": "dictation",
+  "name": "Dictée",
+  "icon": "🎙",
+  "description": "La dictée partout : maintenez une touche n'importe où (Ctrl droit par défaut), parlez, relâchez, et le texte est collé là où vous écrivez. Deux appuis rapides : Ondine écoute sans qu'on tienne la touche, jusqu'au prochain appui ; Échap annule ; un raccourci recolle la dernière dictée. Une petite pilule en bas de l'écran (ou sur un côté) montre quand Ondine écoute, avec un point rouge tant que le micro est ouvert. Le presse-papiers retrouve ce qu'il contenait après le collage, et la dictée n'entre ni dans l'historique du presse-papiers d'Ondine ni dans celui de Windows. La reconnaissance au choix : Parakeet sur le PC (rien ne le quitte) quand il est installé, la dictée de Windows (en ligne, par le service de Microsoft), le moteur hors ligne de Windows, ou la transcription par l'API d'OpenAI ou de Gemini avec votre clé (l'audio part alors). L'historique, le dictionnaire, les styles et les statistiques restent sur le PC (%APPDATA%\\Ondine\\dictation.json). En option, coupée par défaut : le texte dicté (jamais l'audio) part vers l'IA de Parler à Ondine pour être remis au propre, avec votre clé.",
+  "version": "0.1.0",
+  "permissions": ["clipboard", "claude-api", "credentials"],
+  "settings": {
+    "version": 1,
+    "fields": [
+      {
+        "key": "holdKey",
+        "essential": true,
+        "type": "select",
+        "label": "Touche à maintenir pour dicter",
+        "help": "Une touche qui ne fait rien seule. Un autre appui pendant qu'elle est tenue (un raccourci comme Ctrl+C) annule la dictée.",
+        "default": "rightCtrl",
+        "options": [
+          { "value": "rightCtrl", "label": "Ctrl droit" },
+          { "value": "rightAlt", "label": "Alt droit (Alt Gr)" },
+          { "value": "rightShift", "label": "Maj droite" },
+          { "value": "ctrlWin", "label": "Ctrl + Windows" }
+        ]
+      },
+      {
+        "key": "engine",
+        "essential": true,
+        "type": "select",
+        "label": "Reconnaissance de la voix",
+        "help": "Automatique : Parakeet sur le PC s'il est installé (rien ne quitte le PC), sinon la dictée de Windows, qui passe par le service en ligne de Microsoft. Hors ligne : le moteur installé dans Windows, sur le PC, un peu moins précis. API : l'audio de votre voix part vers OpenAI ou Gemini, avec votre clé.",
+        "default": "auto",
+        "options": [
+          { "value": "auto", "label": "Automatique (Parakeet, sinon Windows)" },
+          { "value": "parakeet", "label": "Parakeet sur le PC" },
+          { "value": "windows", "label": "Dictée de Windows (en ligne)" },
+          { "value": "offline", "label": "Windows hors ligne" },
+          { "value": "api", "label": "Transcription par l'API (l'audio part)" }
+        ]
+      },
+      {
+        "key": "edge",
+        "type": "select",
+        "label": "Place de la pilule",
+        "help": "Sur un côté, elle se met debout.",
+        "default": "bottom",
+        "options": [
+          { "value": "bottom", "label": "En bas" },
+          { "value": "left", "label": "À gauche" },
+          { "value": "right", "label": "À droite" }
+        ]
+      },
+      { "key": "pillAtRest", "type": "boolean", "label": "Montrer la pilule au repos", "help": "Une petite barre de verre qui s'ouvre sous la souris. Sinon, la pilule n'apparaît que pendant la dictée.", "default": true },
+      {
+        "key": "pasteHotkey",
+        "type": "select",
+        "label": "Raccourci pour recoller la dernière dictée",
+        "default": "Ctrl+Alt+Shift+V",
+        "options": [
+          { "value": "Ctrl+Alt+Shift+V", "label": "Ctrl + Alt + Maj + V" },
+          { "value": "Alt+Shift+D", "label": "Alt + Maj + D" },
+          { "value": "", "label": "Aucun" }
+        ]
+      },
+      {
+        "key": "keepDays",
+        "type": "select",
+        "label": "Garder l'historique",
+        "help": "Sur le PC seulement. Les statistiques restent même quand une dictée s'efface.",
+        "default": "30",
+        "options": [
+          { "value": "0", "label": "Ne pas garder" },
+          { "value": "1", "label": "1 jour" },
+          { "value": "7", "label": "7 jours" },
+          { "value": "30", "label": "30 jours" },
+          { "value": "90", "label": "90 jours" },
+          { "value": "365", "label": "1 an" },
+          { "value": "-1", "label": "Toujours" }
+        ]
+      },
+      { "key": "voiceSnippets", "type": "boolean", "label": "Snippets à la voix", "help": "Dire le nom d'un snippet du Presse-papiers colle son texte, tel quel.", "default": true },
+      {
+        "key": "cleanup",
+        "type": "boolean",
+        "label": "Remettre au propre avec l'IA",
+        "help": "Coupé par défaut. Allumé, le texte dicté (jamais l'audio) part vers l'IA choisie dans Parler à Ondine, avec votre clé, avec le nom de l'appli et vos mots du dictionnaire, pour enlever les « euh », les répétitions et appliquer le style de l'appli. Sans réponse en quelques secondes, le texte est collé tel qu'entendu.",
+        "default": false
+      },
+      {
+        "key": "defaultStyle",
+        "type": "select",
+        "label": "Style des autres applis",
+        "default": "natural",
+        "options": [
+          { "value": "verbatim", "label": "Tel quel" },
+          { "value": "natural", "label": "Naturel" },
+          { "value": "polished", "label": "Soigné" }
+        ]
+      },
+      { "key": "discreet", "type": "boolean", "label": "Discrète en présentation", "help": "Pendant une présentation ou une appli en plein écran, la pilule au repos se cache. Elle revient dès que vous dictez.", "default": true }
+    ]
+  },
+  "views": [],
+  "commands": [
+    "status",
+    "history",
+    "delete",
+    "clear",
+    "copy",
+    "stats",
+    "words",
+    "set_words",
+    "styles",
+    "set_styles",
+    "running_apps",
+    "snippets",
+    "hands_free",
+    "paste_again",
+    "pill_state",
+    "pill_hit",
+    "pill_action"
+  ],
+  "events": {
+    "emits": ["dictation.state", "dictation.history"],
+    "listens": ["callnotes.state"]
+  }
+}

@@ -808,6 +808,16 @@ mod win {
     /// qui renvoie faux : le silence est revenu). Chaque morceau (mono)
     /// passe par `chunk` ; le son entier est rendu à la fin.
     pub fn record(stop: &std::sync::atomic::AtomicU8, chunk: &mut dyn FnMut(&[f32], u32) -> bool) -> Result<Pcm, Failure> {
+        capture(stop, true, chunk)
+    }
+
+    /// Comme `record`, sans rien garder : seulement les morceaux, pour les
+    /// bulles de la dictée pendant que Windows écoute de son côté.
+    pub fn monitor(stop: &std::sync::atomic::AtomicU8, chunk: &mut dyn FnMut(&[f32], u32) -> bool) -> Result<(), Failure> {
+        capture(stop, false, chunk).map(|_| ())
+    }
+
+    fn capture(stop: &std::sync::atomic::AtomicU8, keep: bool, chunk: &mut dyn FnMut(&[f32], u32) -> bool) -> Result<Pcm, Failure> {
         super::super::media::init_thread();
         unsafe {
             let devices: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(|e| mic_failure(&e))?;
@@ -859,7 +869,9 @@ mod win {
                     }
                     let _ = capture.ReleaseBuffer(frames);
                 }
-                all.extend_from_slice(&mono);
+                if keep {
+                    all.extend_from_slice(&mono);
+                }
                 if !chunk(&mono, rate) {
                     break Ok(());
                 }
@@ -1003,6 +1015,10 @@ mod stub {
     }
 
     pub fn capture(_source: super::Source, _stop: &std::sync::atomic::AtomicBool, _chunk: &mut dyn FnMut(&[f32], u32)) -> Result<(), Failure> {
+        Err(ONLY_WINDOWS.into())
+    }
+
+    pub fn monitor(_stop: &std::sync::atomic::AtomicU8, _chunk: &mut dyn FnMut(&[f32], u32) -> bool) -> Result<(), Failure> {
         Err(ONLY_WINDOWS.into())
     }
 

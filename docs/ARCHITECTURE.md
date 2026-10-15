@@ -738,6 +738,9 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `shelf.add` `{paths}` | Capture (Rust) | l'Étagère valide les chemins et les pose sur l'étagère |
 | `clipboard.changed` `{count}` | Presse-papiers (Rust) | l'onglet redemande la liste (le message ne contient aucun texte copié) |
 | `timer.done` `{title}` | Minuteur (front) | (la notification et le son sont faits par le module) |
+| `dictation.state` `{phase, engine}` | Dictée (Rust) | 1.2.4 : `phase` = `idle`, `listening`, `handsFree` ou `thinking` ; `engine` = `parakeet`, `windows`, `offline` ou `api` |
+| `dictation.history` `{entry}` | Dictée (Rust) | une dictée vient d'être collée (`entry` null si l'historique n'est pas gardé) : les pages Voix se rechargent |
+| `callnotes.start` / `callnotes.stop` | pilule, page Dictée | 1.2.4 : demandent à Notes d'appel de commencer / d'arrêter l'enregistrement |
 | `timer.focus` `{on}` | Minuteur (front), mode concentration | l'île met ses notifications en attente pendant une séance de travail Pomodoro (sauf « critical » et celles du Minuteur), puis un résumé |
 | `notes.changed` `{notes, todos, open}` | Notes (Rust) | l'onglet redemande la liste (que des nombres dans le message) |
 | `agenda.changed` `{count, next, errors, version}` | Agenda (Rust) | l'onglet et la pilule redemandent la liste (`upcoming`) |
@@ -3656,3 +3659,86 @@ par défaut (rien ne s'enregistre sans clic), sans onglet.
 - Tests : Rust (`callnotes_text` : assemblage micro + PC, écho, renommage,
   Markdown, résumé, nettoyage ; `callnotes_audio` : 16 kHz, WAV, morceaux ;
   `voice::silence_to_add`), front (`tests/front/callnotes.test.ts`).
+
+## 1.2.4 : la dictée partout (`src-tauri/src/modules/dictation*.rs`, `src-tauri/src/platform/dictation.rs`, `src-tauri/src/pill.rs`, `src/pill/`, `src/settings/voice/`)
+
+Module `dictation`, **coupé par défaut** (`MODULES_OFF_BY_DEFAULT`, des deux
+côtés). Technique de la touche, du collage et de la pilule reprise de Flow de
+Coucou (MIT) et adaptée ; textes, dessins et goutte sont ceux d'Ondine.
+
+- **La touche** (`platform/dictation.rs`) : un crochet clavier bas niveau
+  (`WH_KEYBOARD_LL`) dans son propre fil, qui regarde sans jamais avaler une
+  touche et ignore les frappes simulées (`LLKHF_INJECTED`). Réglage `holdKey` :
+  `rightCtrl` (défaut), `rightAlt`, `rightShift`, `ctrlWin` (Ctrl + Windows ;
+  une touche fantôme 0xE8 empêche le menu Démarrer de s'ouvrir). Le crochet
+  n'existe que module allumé (le fil « sync » le crée et le lâche).
+- **La machine à états** (`dictation_logic.rs`, `KeyLogic`, testée) : appui →
+  l'écoute commence tout de suite (pas de premier mot perdu) ; relâché après
+  0,30 s → colle ; relâché avant → attend 0,40 s un second appui (mains
+  libres jusqu'au prochain appui), sinon annule ; Échap ou une autre touche
+  pendant l'appui (un raccourci) → annule. Une écoute dure 5 min au plus.
+- **Les moteurs** (`Engine::pick`, réglage `engine`) : `auto` = Parakeet
+  (`services::speech`, si `ready()`) sinon la dictée de Windows ; `windows`
+  (`voice::dictate`, session continue), `offline` (`voice::dictate_offline`),
+  `parakeet` (`voice::record` en mémoire → `resample_16k` →
+  `speech::transcribe`), `api` (`voice::record` → `askclaude_voice::wav_16k`
+  → `askclaude_voice::transcribe`, clé OpenAI puis Gemini lue par le module,
+  qui a la permission `credentials`). Pour les moteurs de Windows, une
+  seconde capture WASAPI partagée (`voice::monitor`, rien n'est gardé) sert
+  seulement aux bulles.
+- **Les bulles** : `bands::levels` — fenêtre de Hann, FFT 512 points, neuf
+  bandes logarithmiques de 90 Hz à 7 kHz, en dB ramenés à 0..1 —, envoyées à
+  la pilule (`pill-bands`) au plus ~30 fois par seconde. Sans spectre :
+  `bands::from_level` à partir du niveau du micro.
+- **Le texte** (`dictation_text.rs`, testé) : snippets à la voix (le nom d'un
+  snippet du Presse-papiers, lu par `modules::invoke("clipboard", "list")`,
+  mis de côté sous une marque ⟦n⟧), remplacements du dictionnaire, noms bien
+  écrits (mots entiers, sans tenir compte des majuscules ni des séparateurs),
+  puis, **si `cleanup` est allumé** (coupé par défaut) et que le style de
+  l'appli n'est pas « Tel quel » : le texte (jamais l'audio) part vers l'IA
+  choisie dans Parler à Ondine (`askclaude::model_from` lit son fournisseur
+  et son modèle), 8 s au plus, sinon le texte tel quel. Une réponse
+  invraisemblable (trop longue, marques perdues) est ignorée.
+- **Le collage** (`platform/dictation.rs`) : attend que la touche soit
+  relâchée, cherche un champ de texte (curseur de Windows via
+  `GetGUIThreadInfo`, sinon UI Automation : zone de saisie, document
+  modifiable, terminal ; fonctionnalité Cargo `Win32_UI_Accessibility`).
+  Sûr qu'il n'y en a pas (bureau, Explorateur, bouton, fenêtre d'Ondine) :
+  la dictée reste dans le presse-papiers et la pilule le dit. Sinon : le texte
+  entre dans le presse-papiers par `copy_secret` (exclu de l'historique
+  d'Ondine, de Win+V et du cloud), Ctrl+V simulé, puis l'ancien texte revient
+  700 ms après si rien d'autre n'a été copié entre-temps. Raccourci
+  `pasteHotkey` (Ctrl+Alt+Maj+V par défaut) : recolle la dernière dictée.
+- **Ce qui est gardé** (`dictation_store.rs`, `%APPDATA%\Ondine\dictation.json`,
+  écrit par fichier temporaire renommé ; un fichier illisible est mis de
+  côté) : l'historique (`keepDays`, 30 jours par défaut, 0 = rien), les
+  chiffres de chaque jour (mots, temps de parole, dictées, mains libres,
+  applis), le dictionnaire, les styles par appli (programme au premier plan,
+  `outlook`, `slack`…). Les statistiques (mots, temps gagné par rapport à 40
+  mots/min, vitesse, jours d'affilée, mots par jour, applis) sont calculées
+  sur le PC.
+- **La pilule** (`pill.rs`, `pill.html`, `src/pill/`) : fenêtre transparente
+  créée cachée au démarrage, toujours au-dessus, non activante, posée en bas
+  au centre de la zone de travail de l'écran de la souris, ou debout sur le
+  bord gauche / droit (`edge`). Clics traversants : la page envoie ses cases
+  (`pill_hit`), un fil lit la souris (30 fois/s près d'elle, 8 loin, rien de
+  plus qu'un sommeil quand elle est cachée). Elle ne peut appeler que
+  `pill_state`, `pill_hit` et `pill_action` du module (`module_invoke`
+  refuse le reste ; capacité `capabilities/pill.json`). États : repos (barre
+  de verre ; cachée en présentation si `discreet`), survol (Dicter,
+  Enregistrer un appel, Réglages), écoute (la goutte gomme « concentree »
+  dessinée par le vrai moteur, montée seulement pendant l'écoute, un point
+  rouge tant que le micro est ouvert, neuf bulles), mains libres (Annuler,
+  Coller), appel (corail, chronomètre, Arrêter → `callnotes.stop` ; suit
+  `callnotes.state {recording, startedAt}`), message (copié, rien entendu,
+  Parakeet pas installé, pas de clé, erreur avec bouton vers les Paramètres
+  Windows). Les phrases sont composées par le front (`pill-logic.ts`), donc
+  traduites. Au repos : 0 % de CPU (pas de goutte, pas de boucle). Mouvements
+  réduits ou Calme : rien ne rebondit, les bulles sautent à leur niveau.
+- **Les pages Voix** (`src/settings/voice/`) : Dictée (bande « Bonjour
+  <prénom> », interrupteur, historique avec recherche / copier / supprimer,
+  tuiles, carte Notes d'appel, réglages du module), Statistiques, Dictionnaire
+  (noms, remplacements, snippets à la voix), Styles (Tel quel / Naturel /
+  Soigné par appli, remise au propre et ce qui part). Logique pure dans
+  `dictation-format.ts`, testée.
+

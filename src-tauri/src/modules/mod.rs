@@ -32,6 +32,11 @@ mod callnotes_text;
 mod capture;
 mod clipboard;
 mod controls;
+// La dictée partout : la touche, la pilule, le collage (avec sa logique, ses mots et son fichier).
+mod dictation;
+mod dictation_logic;
+mod dictation_store;
+mod dictation_text;
 // Contrôles → télécommande sur le téléphone : une petite page sur le réseau local.
 mod controls_remote;
 mod launcher;
@@ -280,6 +285,7 @@ impl Registry {
             Box::new(windowlife::WindowLife),
             Box::new(screensaver::Screensaver),
             Box::new(callnotes::CallNotes::default()),
+            Box::new(dictation::Dictation),
         ];
 
         let mut entries = Vec::new();
@@ -456,6 +462,13 @@ mod tests {
     fn launcher_manifest_is_valid() {
         let m = check_manifest(launcher::Launcher::default().manifest_json()).unwrap();
         assert_eq!(m.id, "launcher");
+    }
+
+    #[test]
+    fn dictation_manifest_is_valid() {
+        let m = check_manifest(dictation::Dictation.manifest_json()).unwrap();
+        assert_eq!(m.id, "dictation");
+        assert!(m.events.emits.iter().any(|e| e == "dictation.state"));
     }
 
     #[test]

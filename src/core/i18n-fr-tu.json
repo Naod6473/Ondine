@@ -343,7 +343,28 @@
 "Ondine s'est fermée avant d'écrire la transcription : cliquez sur « Réessayer ».": "Ondine s'est fermée avant d'écrire la transcription : clique sur « Réessayer ».",
 "Le son du PC n'a pas pu être enregistré : seul votre micro est noté.": "Le son du PC n'a pas pu être enregistré : seul ton micro est noté.",
 "arrêtez d'abord l'enregistrement": "arrête d'abord l'enregistrement",
-"attendez la fin de l'écriture de cette note": "attends la fin de l'écriture de cette note"
+"attendez la fin de l'écriture de cette note": "attends la fin de l'écriture de cette note",
+"Aucun champ de texte : votre dictée est dans le presse-papiers.": "Aucun champ de texte : ta dictée est dans le presse-papiers.",
+"Vos appels écrits personne par personne, avec un résumé et les choses à faire. Aucun robot dans la réunion.": "Tes appels écrits personne par personne, avec un résumé et les choses à faire. Aucun robot dans la réunion.",
+"Sur votre PC, sans abonnement": "Sur ton PC, sans abonnement",
+"Allumez la dictée pour voir son historique.": "Allume la dictée pour voir son historique.",
+"Pas encore de dictée. Maintenez la touche dans n'importe quelle appli pour commencer.": "Pas encore de dictée. Maintiens la touche dans n'importe quelle appli pour commencer.",
+"Pas de clé OpenAI ou Gemini : ajoutez-en une dans Réglages → Identifiants.": "Pas de clé OpenAI ou Gemini : ajoutes-en une dans Réglages → Identifiants.",
+"Ce que vous avez dicté, à quelle vitesse, et où.": "Ce que tu as dicté, à quelle vitesse, et où.",
+"Compté sur votre PC, jamais envoyé.": "Compté sur ton PC, jamais envoyé.",
+"Où vous dictez": "Où tu dictes",
+"Allumez la dictée (page Dictée) pour voir ses statistiques.": "Allume la dictée (page Dictée) pour voir ses statistiques.",
+"Allumez la dictée (page Dictée) pour remplir son dictionnaire.": "Allume la dictée (page Dictée) pour remplir son dictionnaire.",
+"Allumez la dictée (page Dictée) pour choisir ses styles.": "Allume la dictée (page Dictée) pour choisir ses styles.",
+"Le module Presse-papiers est coupé : allumez-le pour dire vos snippets.": "Le module Presse-papiers est coupé : allume-le pour dire tes snippets.",
+"Pas encore de snippet : créez-en dans l'onglet Presse-papiers.": "Pas encore de snippet : crée-en dans l'onglet Presse-papiers.",
+"Ce que vous pouvez dire": "Ce que tu peux dire",
+"Le texte de la dictée, le nom de l'appli et vos noms du dictionnaire.": "Le texte de la dictée, le nom de l'appli et tes noms du dictionnaire.",
+"Coupée par défaut. Allumée, le texte dicté (jamais l'audio) part vers l'IA choisie dans Parler à Ondine, avec votre clé.": "Coupée par défaut. Allumée, le texte dicté (jamais l'audio) part vers l'IA choisie dans Parler à Ondine, avec ta clé.",
+"Automatique : Parakeet sur le PC s'il est installé (rien ne quitte le PC), sinon la dictée de Windows, qui passe par le service en ligne de Microsoft. Hors ligne : le moteur installé dans Windows, sur le PC, un peu moins précis. API : l'audio de votre voix part vers OpenAI ou Gemini, avec votre clé.": "Automatique : Parakeet sur le PC s'il est installé (rien ne quitte le PC), sinon la dictée de Windows, qui passe par le service en ligne de Microsoft. Hors ligne : le moteur installé dans Windows, sur le PC, un peu moins précis. API : l'audio de ta voix part vers OpenAI ou Gemini, avec ta clé.",
+"Coupé par défaut. Allumé, le texte dicté (jamais l'audio) part vers l'IA choisie dans Parler à Ondine, avec votre clé, avec le nom de l'appli et vos mots du dictionnaire, pour enlever les « euh », les répétitions et appliquer le style de l'appli. Sans réponse en quelques secondes, le texte est collé tel qu'entendu.": "Coupé par défaut. Allumé, le texte dicté (jamais l'audio) part vers l'IA choisie dans Parler à Ondine, avec ta clé, avec le nom de l'appli et tes mots du dictionnaire, pour enlever les « euh », les répétitions et appliquer le style de l'appli. Sans réponse en quelques secondes, le texte est collé tel qu'entendu.",
+"Pendant une présentation ou une appli en plein écran, la pilule au repos se cache. Elle revient dès que vous dictez.": "Pendant une présentation ou une appli en plein écran, la pilule au repos se cache. Elle revient dès que tu dictes.",
+"La dictée partout : maintenez une touche n'importe où (Ctrl droit par défaut), parlez, relâchez, et le texte est collé là où vous écrivez. Deux appuis rapides : Ondine écoute sans qu'on tienne la touche, jusqu'au prochain appui ; Échap annule ; un raccourci recolle la dernière dictée. Une petite pilule en bas de l'écran (ou sur un côté) montre quand Ondine écoute, avec un point rouge tant que le micro est ouvert. Le presse-papiers retrouve ce qu'il contenait après le collage, et la dictée n'entre ni dans l'historique du presse-papiers d'Ondine ni dans celui de Windows. La reconnaissance au choix : Parakeet sur le PC (rien ne le quitte) quand il est installé, la dictée de Windows (en ligne, par le service de Microsoft), le moteur hors ligne de Windows, ou la transcription par l'API d'OpenAI ou de Gemini avec votre clé (l'audio part alors). L'historique, le dictionnaire, les styles et les statistiques restent sur le PC (%APPDATA%\\Ondine\\dictation.json). En option, coupée par défaut : le texte dicté (jamais l'audio) part vers l'IA de Parler à Ondine pour être remis au propre, avec votre clé.": "La dictée partout : maintenez une touche n'importe où (Ctrl droit par défaut), parlez, relâchez, et le texte est collé là où tu écris. Deux appuis rapides : Ondine écoute sans qu'on tienne la touche, jusqu'au prochain appui ; Échap annule ; un raccourci recolle la dernière dictée. Une petite pilule en bas de l'écran (ou sur un côté) montre quand Ondine écoute, avec un point rouge tant que le micro est ouvert. Le presse-papiers retrouve ce qu'il contenait après le collage, et la dictée n'entre ni dans l'historique du presse-papiers d'Ondine ni dans celui de Windows. La reconnaissance au choix : Parakeet sur le PC (rien ne le quitte) quand il est installé, la dictée de Windows (en ligne, par le service de Microsoft), le moteur hors ligne de Windows, ou la transcription par l'API d'OpenAI ou de Gemini avec ta clé (l'audio part alors). L'historique, le dictionnaire, les styles et les statistiques restent sur le PC (%APPDATA%\\Ondine\\dictation.json). En option, coupée par défaut : le texte dicté (jamais l'audio) part vers l'IA de Parler à Ondine pour être remis au propre, avec ta clé."
 },
 "patterns": [
 ["^(\\d+) nouveautés vous attendent\\.$", "$1 nouveautés t'attendent."],
@@ -526,6 +547,7 @@
 ["^(\\d+) Mo sur (\\d+) Mo\\. Vous pouvez fermer les réglages, il continue\\.$", "$1 Mo sur $2 Mo. Tu peux fermer les réglages, il continue."],
 ["^Environ (\\d+) Mo, une seule fois\\. Rien n'est téléchargé avant votre clic\\.$", "Environ $1 Mo, une seule fois. Rien n'est téléchargé avant ton clic."],
 ["^Le résumé est écrit par l'IA de Parler à Ondine \\((.+)\\) : ajoutez d'abord votre clé dans Réglages → Identifiants\\.$", "Le résumé est écrit par l'IA de Parler à Ondine ($1) : ajoute d'abord ta clé dans Réglages → Identifiants."],
-["^Pour le résumé, la transcription \\(le texte, jamais l'audio\\) part vers (.+), avec votre clé\\.$", "Pour le résumé, la transcription (le texte, jamais l'audio) part vers $1, avec ta clé."]
+["^Pour le résumé, la transcription \\(le texte, jamais l'audio\\) part vers (.+), avec votre clé\\.$", "Pour le résumé, la transcription (le texte, jamais l'audio) part vers $1, avec ta clé."],
+["^Maintenez (.+) n'importe où, parlez, relâchez : c'est collé\\.$", "Maintiens $1 n'importe où, parle, relâche : c'est collé."]
 ]
 }

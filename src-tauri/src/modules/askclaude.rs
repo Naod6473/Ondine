@@ -821,7 +821,13 @@ pub(super) fn provider(ctx: &ModuleContext) -> Provider {
 }
 
 pub(super) fn model(ctx: &ModuleContext, provider: Provider) -> Result<String, String> {
-    let get = |k: &str| ctx.settings().get(k).and_then(Value::as_str).unwrap_or("").trim().to_string();
+    model_from(&ctx.settings(), provider)
+}
+
+/// Le modèle d'après les réglages de Parler à Ondine (aussi pour la remise au
+/// propre de la Dictée, qui suit le fournisseur choisi ici).
+pub(super) fn model_from(values: &serde_json::Map<String, Value>, provider: Provider) -> Result<String, String> {
+    let get = |k: &str| values.get(k).and_then(Value::as_str).unwrap_or("").trim().to_string();
     match provider {
         Provider::Claude => {
             let m = get("model");
