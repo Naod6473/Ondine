@@ -33,7 +33,7 @@ export const MODULE_CATEGORIES: { id: string; label: string; modules: string[] }
  *   - halos : la page Animations et halos (L'île) ;
  *   - windowlife : une section de la page Comportement (L'île).
  */
-export const MODULES_ELSEWHERE = ["rules", "askclaude", "halos", "windowlife"];
+export const MODULES_ELSEWHERE = ["rules", "askclaude", "halos", "windowlife", "dictation"];
 
 /** Une partie d'un sous-menu : un bloc de champs d'un module. */
 export interface FieldBlock {

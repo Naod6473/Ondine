@@ -162,6 +162,8 @@ windows = { version = "0.61", features = [
   "Foundation_Collections",
   # Capture : la pipette (pixels physiques sur chaque écran, fenêtre Win32).
   "Win32_UI_HiDpi",
+  # La dictée : quel élément a le focus (UI Automation).
+  "Win32_UI_Accessibility",
   "Win32_System_LibraryLoader",
   # Profils : le nom du Wi-Fi connecté (wlanapi).
   "Win32_NetworkManagement_WiFi",

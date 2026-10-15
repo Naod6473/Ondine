@@ -71,7 +71,7 @@ const MAX_HOLD: Duration = Duration::from_secs(60);
 /// Le niveau part au plus ~15 fois par seconde.
 const LEVEL_EVERY: Duration = Duration::from_millis(66);
 /// Le modèle de transcription d'OpenAI.
-const OPENAI_STT_MODEL: &str = "gpt-4o-mini-transcribe";
+pub(super) const OPENAI_STT_MODEL: &str = "gpt-4o-mini-transcribe";
 /// Une image de la fenêtre active : son plus grand côté, au plus.
 const LOOK_MAX_SIDE: u32 = 1600;
 
@@ -486,7 +486,7 @@ fn api_offer(app: &AppHandle) -> Option<&'static str> {
 }
 
 /// Envoie l'audio (WAV) et renvoie le texte.
-fn transcribe(provider: Provider, key: &str, model: &str, wav: &[u8], lang: &str) -> Result<String, String> {
+pub(super) fn transcribe(provider: Provider, key: &str, model: &str, wav: &[u8], lang: &str) -> Result<String, String> {
     match provider {
         Provider::Gemini => {
             let prompt = if lang == "en" {
@@ -598,7 +598,7 @@ impl SilenceGate {
 }
 
 /// Le son en WAV mono 16 bits à 16 kHz (ce que les API préfèrent pour la voix).
-fn wav_16k(samples: &[f32], rate: u32) -> Vec<u8> {
+pub(super) fn wav_16k(samples: &[f32], rate: u32) -> Vec<u8> {
     const OUT: u32 = 16_000;
     let rate = rate.max(1);
     let n = (samples.len() as u64 * u64::from(OUT) / u64::from(rate)) as usize;

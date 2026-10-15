@@ -5,7 +5,7 @@ travaux, dont les licences sont respectées :
 
 | Quoi | Où dans Ondine | Licence |
 |------|----------------|---------|
-| [Coucou](https://github.com/Louis-CFM/coucou) (Louis-CFM) | Astuces Win32 de la fenêtre et du démarrage, reprises et adaptées | MIT |
+| [Coucou](https://github.com/Louis-CFM/coucou) (Louis-CFM) | Astuces Win32 de la fenêtre et du démarrage ; technique de la dictée partout (touche tenue, double appui, collage avec presse-papiers rendu, champ de texte, bandes de fréquences de la pilule), reprises et adaptées | MIT |
 | [Phosphor Icons](https://phosphoricons.com) | Pack d'icônes « Épurées » (`src/assets/icons-line/`, sauf claude, gemini et codex) | MIT ([texte](src/assets/icons-line/LICENSE-phosphor.txt)) |
 | [Tauri](https://tauri.app) et ses plugins | Le socle de l'appli | MIT ou Apache-2.0 |
 | [windows-rs](https://github.com/microsoft/windows-rs) | Les appels aux API de Windows | MIT ou Apache-2.0 |

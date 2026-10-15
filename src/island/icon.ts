@@ -70,6 +70,8 @@ const BY_EMOJI: Record<string, string> = {
   "🧭": "profiles",
   // Écran de veille (1.2.3) : la lune au trait, l'emoji en couleur.
   "🌙": "moon",
+  // Dictée (1.2.4) : le micro au trait, l'emoji en couleur.
+  "🎙": "microphone",
 };
 
 /**

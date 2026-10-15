@@ -1,0 +1,319 @@
+/* Les pages Voix de la Dictée (src/settings/voice/dictation-page.ts,
+   stats-page.ts, dictionary-page.ts, styles-page.ts). Elles suivent les
+   couleurs de la fenêtre de réglages (settings.css) ; la bande du haut
+   (.page-hero) est dessinée par hero.ts. Aucune animation qui tourne :
+   seules les barres des statistiques poussent une fois, et pas du tout en
+   mouvements réduits. */
+
+.dict-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 14px;
+  margin: 14px 0;
+}
+@media (max-width: 720px) {
+  .dict-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dict-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+  border-radius: 18px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.dict-card h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.dict-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.dict-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.dict-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.dict-status {
+  margin: 4px 2px 0;
+}
+.dict-hint,
+.dict-warn,
+.dict-error,
+.dict-note {
+  margin: 4px 2px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.dict-warn {
+  color: var(--warn);
+}
+.dict-error {
+  color: var(--danger);
+}
+.dict-note {
+  text-align: center;
+  font-size: 12px;
+}
+
+/* L'historique. */
+.dict-search {
+  width: 100%;
+  box-sizing: border-box;
+}
+.dict-history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 460px;
+  overflow: auto;
+}
+.dict-day {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.dict-entry {
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: var(--field);
+  border: 1px solid var(--line);
+}
+.dict-entry-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.dict-time {
+  font-variant-numeric: tabular-nums;
+}
+.dict-entry-tools {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+.dict-text {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.dict-icon-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+.dict-icon-btn:hover,
+.dict-icon-btn:focus-visible {
+  color: var(--fg);
+  background: var(--accent-soft);
+}
+
+/* Les chiffres à droite. */
+.dict-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dict-tiles {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.dict-tile {
+  border-radius: 14px;
+  padding: 10px 14px;
+  background: var(--glass);
+  border: 1px solid var(--glass-edge);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.dict-tile strong {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+.dict-tile span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.dict-tile.big {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.dict-tile.big strong {
+  font-size: 26px;
+}
+.dict-sub {
+  font-size: 12px;
+}
+.dict-call-card {
+  border-color: rgba(255, 138, 107, 0.35);
+}
+
+/* Statistiques. */
+.dict-stats-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 14px 0 6px;
+}
+.dict-stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (max-width: 720px) {
+  .dict-stat-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.dict-chart {
+  height: 120px;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+}
+.dict-bar {
+  flex: 1;
+  height: calc(var(--h, 0) * 100%);
+  min-height: 2px;
+  border-radius: 3px 3px 1px 1px;
+  background: #4cd98b;
+  transform-origin: bottom;
+  animation: dict-grow 0.5s var(--ease, ease-out);
+}
+@keyframes dict-grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+.dict-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+}
+.dict-apps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dict-app {
+  display: grid;
+  grid-template-columns: minmax(0, 7em) 1fr 3.2em;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.dict-app-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dict-app-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--line);
+  overflow: hidden;
+}
+.dict-app-fill {
+  display: block;
+  height: 100%;
+  width: var(--w, 0%);
+  background: #4cd98b;
+  border-radius: 4px;
+}
+.dict-app-pct {
+  text-align: right;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Dictionnaire et styles. */
+.dict-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.dict-inline .text {
+  min-width: 0;
+  flex: 1 1 10em;
+}
+.dict-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.dict-chip-x {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 2px;
+  font: inherit;
+}
+.dict-repls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dict-repl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+}
+.dict-repl-from {
+  color: var(--muted);
+}
+.dict-arrow {
+  color: var(--muted);
+}
+.dict-leaves {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dict-bar {
+    animation: none;
+  }
+}

@@ -13,6 +13,7 @@ mod diagnostics;
 mod island;
 mod modules;
 mod pet;
+mod pill;
 mod platform;
 mod services;
 mod sync;
@@ -485,6 +486,9 @@ async fn module_invoke(app: AppHandle, window: Window, module: String, command: 
     if window.label() == "pet" && !app.state::<Shared>().settings.locked().mascot.pet_tabs.contains(&module) {
         return Err("cet onglet n'est pas disponible sur la mascotte".into());
     }
+    if window.label() == pill::WINDOW_LABEL && !(module == "dictation" && matches!(command.as_str(), "pill_state" | "pill_hit" | "pill_action")) {
+        return Err("commande refusée depuis la pilule de la dictée".into());
+    }
     let permit = work.enter(&module, &command).await?;
     // HTTP, Win32, fichiers et ZIP sont synchrones : ils ne doivent pas occuper
     // les workers async qui livrent les événements et les autres commandes.
@@ -673,6 +677,7 @@ pub fn run() {
         .manage(services::work::WorkGates::default())
         .manage(UndoService::default())
         .manage(pet::PetState::default())
+        .manage(pill::PillState::default())
         .invoke_handler(tauri::generate_handler![
             boot,
             settings_patch,
@@ -729,6 +734,8 @@ pub fn run() {
             create_hidden_window(&handle, "settings", "settings.html", "Réglages — Ondine", (760.0, 720.0), (560.0, 480.0), true);
             create_hidden_window(&handle, "annotate", "annotate.html", "Annoter — Ondine", (1100.0, 760.0), (640.0, 420.0), false);
             create_pet_window(&handle);
+            // La pilule de la Dictée (cachée tant que le module est coupé).
+            pill::create(&handle, page_url(&handle, "pill.html"));
             island::dodge::watch_settings_window(&handle);
 
             if let Some(win) = island::window(&handle) {
@@ -745,6 +752,7 @@ pub fn run() {
             pet::apply(&handle);
             pet::spawn_hit_poll(handle.clone());
             pet::spawn_wander(handle.clone());
+            pill::spawn_hit_poll(handle.clone());
             // À chaque démarrage : l'exe a pu changer de place (réinstallation).
             apply_autostart(loaded.general.autostart);
             // Le mode de performance (réglage + batterie), avant les boucles qui le lisent.
