@@ -43,6 +43,7 @@ import { attachScenes, type Scenes } from "./scenes/scenes";
 import { reducedMotion, TabPill } from "./tab-pill";
 import { Tips } from "./tips";
 import { playHatch, type HatchTexts } from "./hatch";
+import { ConvertGesture } from "./convert-gesture";
 import type { Ring } from "./hatch-plan";
 
 const log = logger("island");
@@ -190,6 +191,8 @@ export class Island {
   private scenes: Scenes;
   /** L'éclosion joue (hatch.ts) : la vraie île est cachée, la fenêtre reste grande. */
   private hatching = false;
+  /** Ondine convertit (1.2.5) : les pilules de formats sous l'île pendant un glisser. */
+  private convert: ConvertGesture;
 
   constructor(
     private readonly root: HTMLElement,
@@ -242,6 +245,15 @@ export class Island {
       this.bus,
       this.notifications,
     );
+    // Ondine convertit : les pilules de formats sous l'île (convert-gesture.ts).
+    this.convert = new ConvertGesture({
+      root: this.root,
+      shell: this.shell,
+      slot: this.mascotSlot,
+      bus: this.bus,
+      keepOpen: (on) => this.fsm.keepOpen("convert", on),
+      rectChanged: () => this.pushRect(),
+    });
     // Ondine quitte sa case pour agir dans l'île (les 22 scènes, scenes/).
     this.scenes = attachScenes({
       shell: this.shell,
@@ -1106,17 +1118,31 @@ export class Island {
     // Île-bouche : l'île et le corps d'Ondine autour (rien quand elle est partie avec Ondine).
     const body = this.forms.hitRect();
     if (body) {
-      void Bridge.islandSetRect(body.x, body.y, body.w, body.h);
+      this.setRect(body.x, body.y, body.w, body.h);
       return;
     }
     // Île cachée et Ondine au bord : seul son petit rectangle prend la souris.
     const hang = this.fsm.state === "hidden" ? this.hanger.rect() : null;
     if (hang) {
-      void Bridge.islandSetRect(hang.left, hang.top, hang.width, hang.height);
+      this.setRect(hang.left, hang.top, hang.width, hang.height);
       return;
     }
     const r = this.shell.getBoundingClientRect();
-    void Bridge.islandSetRect(r.left, r.top, r.width, r.height);
+    this.setRect(r.left, r.top, r.width, r.height);
+  }
+
+  /** Le rectangle qui prend la souris, agrandi aux pilules cliquables d'Ondine convertit. */
+  private setRect(x: number, y: number, w: number, h: number) {
+    const c = this.convert?.hitRect();
+    if (c) {
+      const left = Math.min(x, c.x);
+      const top = Math.min(y, c.y);
+      const right = Math.max(x + w, c.x + c.w);
+      const bottom = Math.max(y + h, c.y + c.h);
+      void Bridge.islandSetRect(left, top, right - left, bottom - top);
+      return;
+    }
+    void Bridge.islandSetRect(x, y, w, h);
   }
 
   /** Position de la souris (px logiques de la fenêtre). */
@@ -1172,19 +1198,36 @@ export class Island {
     if (e.type !== "over") log.info(`glisser-déposer : ${e.type} (état ${this.fsm.state})`);
     switch (e.type) {
       case "enter":
+        // Les pilules d'Ondine convertit d'abord (la forme « drop » en tient compte).
+        this.convert.enter(e.paths ?? []);
         this.fsm.dragEnter();
         break;
       case "over":
         this.highlightDropTarget(e.position);
+        this.convert.over(this.cssPos(e.position), !!e.shift);
         break;
       case "leave":
         this.highlightDropTarget(undefined);
+        this.convert.leave();
         this.fsm.dragLeave();
         break;
       case "drop": {
         const paths = e.paths ?? [];
         const target = this.dropTargetAt(e.position);
         this.highlightDropTarget(undefined);
+        // Coexistence : sur une pilule, on convertit ; dans l'île, une cible
+        // de dépôt range comme avant ; ailleurs, rien (l'île se referme).
+        const outcome = this.convert.drop(paths, this.cssPos(e.position));
+        if (outcome === "converted") {
+          this.fsm.dropped();
+          if (paths.length) sounds.drop();
+          this.bus.emit("island.files-dropped", { count: paths.length, target: "convert" });
+          break;
+        }
+        if (outcome === "missed" && !target) {
+          this.fsm.dragLeave();
+          break;
+        }
         this.fsm.dropped();
         if (paths.length) sounds.drop();
         this.bus.emit("island.files-dropped", { count: paths.length, target: target?.target.id ?? null });
@@ -1226,6 +1269,13 @@ export class Island {
     });
   }
 
+  /** Une position du glisser (px physiques) en px CSS de la fenêtre. */
+  private cssPos(pos: { x: number; y: number } | undefined) {
+    if (!pos) return undefined;
+    const dpr = window.devicePixelRatio || 1;
+    return { x: pos.x / dpr, y: pos.y / dpr };
+  }
+
   /** La cible sous ce point. La position de Tauri est en pixels physiques (à vérifier sur ta machine). */
   private dropTargetAt(pos: { x: number; y: number } | undefined) {
     // Même avec une seule cible, il faut lâcher dessus : lâcher ailleurs sur
@@ -1253,6 +1303,8 @@ export class Island {
   /** « Annuler » : le service d'annulation (Rust) propose, l'île affiche. */
   private wireUndo() {
     this.bus.on("undo.offered", (msg) => {
+      // Ondine convertit a son propre « Annuler » dans la pilule de résultat.
+      if (msg.source === "convert") return;
       const p = msg.payload as { id: number; label: string; expiresInMs: number };
       this.notifications.push({
         moduleId: msg.source,

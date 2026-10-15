@@ -4226,3 +4226,104 @@ une fenêtre qui disparaît surprend). `lockGoodbye` n'est plus essentiel
   mini-île), raccourci clavier global (le menu de l'icône en tient lieu),
   bureaux virtuels (une fenêtre avalée sur un bureau ressort sur le bureau
   courant), aperçu de la fenêtre (le projet d'origine prend une capture).
+
+## Conversion de fichiers (Ondine convertit)
+
+1.2.5. Un fichier glissé vers l'île : des pilules de formats sortent sous
+elle ; lâché sur une pilule, Ondine l'avale, mâche, recrache le nouveau
+fichier. Idées reprises de Filee (MIT, voir THIRD-PARTY.md), réécrites.
+
+- **Qui fait quoi** :
+  - `src/island/convert-gesture.ts` : le geste, dans la fenêtre de l'île
+    (pilules, survol, animations, expressions, liquide, pilules de
+    progression et de résultat) ;
+  - `src/island/convert-plan.ts` : son minutage et ses poses, en fonctions
+    pures testées (`fanK`, `layoutPills`, `hitPill`, `Dwell`, `swallowPose`,
+    `arcPose`, `expressionAt`, `liquidLevel`) ;
+  - `src/modules/convert/` : le module (manifeste, vue compacte « Je mâche…
+    42 % », appels au Rust), et `convert-logic.ts` (pur, testé : pilules
+    proposées, libellés, tailles, résumé du résultat) ;
+  - `src-tauri/src/modules/convert.rs` : le travail ; `convert_logic.rs`
+    (pur, testé) : formats, noms libres, PDF, extraction de ZIP ;
+  - `src-tauri/src/platform/convert.rs` : ce que Windows sait déjà faire
+    (WIC, `Windows.Data.Pdf`, `MediaTranscoder`, sélection dans
+    l'Explorateur). Sous les autres systèmes, « disponible seulement sous
+    Windows ».
+- **Le glisser** : la cible de dépôt de l'île (`platform/drop_target.rs`)
+  envoie maintenant `shift` (touche Maj, `MK_SHIFT`) avec `file-drag`. Dans
+  un navigateur (npm run dev, démo), `bridge.ts` traduit le glisser-déposer
+  HTML5 en ces mêmes événements (noms de fichiers, pas de chemins).
+- **Coexistence avec l'Étagère** : deux zones nettes. DANS l'île, les cibles
+  de dépôt de toujours (Étagère, Copier vers…, Corbeille…) ; SOUS l'île (au
+  dessus pour une île en bas), les pilules de conversion. L'île en mode dépôt
+  passe de 200 à 168 px de haut (classe `convert-room`, cibles en ligne) pour
+  leur laisser la place dans la fenêtre de 320 px. `island.ts`, `onDrag` :
+  `enter` → `convert.enter` puis `fsm.dragEnter` ; `over` → position en px
+  CSS et Maj ; `drop` → `convert.drop` répond « converted » (sur une pilule :
+  `fsm.dropped`, `island.files-dropped` avec `target: "convert"`), « missed »
+  (pilules montrées, lâché ni sur une pilule ni sur une cible : rien, l'île se
+  referme par `fsm.dragLeave`, pas de notification) ou « none » (pas de
+  pilules : comportement d'avant). Une île à gauche ou à droite n'a pas de
+  pilules (v1). Raison du choix : garder intact le geste de l'Étagère qu'on
+  connaît, et ne jamais convertir par accident (il faut viser une pilule).
+- **Les pilules** : `pillsFor` (dernier format choisi en premier, retenu par
+  type dans `localStorage` « ondine.convert.last » ; pas le format que les
+  fichiers ont déjà ; « Un seul ZIP » toujours possible pour plusieurs).
+  Images : JPG, PNG, WebP, PDF (« Un seul PDF » pour plusieurs), Alléger,
+  GIF, BMP, TIFF, ICO. PDF : PNG, JPG (une image par page). Vidéo : MP4,
+  Alléger, MP3, M4A, WAV (le son seul). Son : MP3, M4A, WAV. ZIP : Extraire.
+  La pilule d'option (Conserver à côté / Remplacer l'original / Sur le
+  bureau) tourne après 0,5 s de survol (`Dwell`), à la touche Maj
+  (Remplacer) ; sa valeur de départ est le réglage `dest`.
+- **Le travail** (Rust, `start {paths, format, dest}`) : un thread, une
+  conversion à la fois (« j'ai déjà la bouche pleine »), 100 fichiers au plus,
+  chaque chemin validé (`privacy::check_path`), un fichier après l'autre, un
+  échec n'arrête pas les autres ; `cancel` (clic sur la pilule qui se
+  remplit). `convert.progress {job, index, total, fraction, name}` (au plus
+  toutes les 100 ms), puis `convert.done {job, ok, format, dest, total,
+  failed, cancelled, replaced, note, undoId, results: [{name, out, outName,
+  before, after, error}]}`. Le nom et le chemin ne vont qu'au front (bus
+  local), jamais au journal.
+  - Images : crate `image` (orientation EXIF appliquée, métadonnées gardées
+    ou retirées selon le réglage), repli sur WIC pour HEIC/AVIF/TIFF ;
+    qualité Petite/Normale/Haute (JPEG 70/85/94, Alléger : côté le plus long
+    1280/1920/2560). WebP : sans perte seulement (le crate `image` n'écrit
+    pas de WebP avec perte).
+  - Images → un PDF : `PdfWriter` (pages A4, images en JPEG/DCTDecode, 300
+    pages au plus), écrit à la main, sans dépendance.
+  - PDF → images : `Windows.Data.Pdf` (96/150/220 ppp), « page 01.png »…
+    dans un dossier au nom du PDF.
+  - Vidéo et son : `MediaTranscoder` (profils MP4/M4A/MP3/WAV, progression
+    réelle, annulation ; fichier à moitié écrit à la Corbeille).
+  - ZIP : `files::zip_into` (même code que « Compresser ») ; extraction
+    sûre (`enclosed_name`, 20 000 éléments et 16 Gio au plus).
+  - Ensuite : date d'origine recopiée (réglage), « Remplacer » (l'original à
+    la Corbeille seulement après une réussite, le nouveau prend son nom s'il
+    est libre), « Annuler » 10 s par le service d'annulation (remet
+    l'original, envoie le nouveau à la Corbeille), sélection du fichier dans
+    l'Explorateur si une de ses fenêtres montre déjà le dossier
+    (`IShellWindows`, `SHOpenFolderAndSelectItems`, rien n'est ouvert sinon).
+  - `open {path}` : seulement un fichier de la dernière conversion.
+- **Jamais d'écrasement** : `free_path` donne « photo (2).jpg » ; le même nom
+  que l'original n'est jamais écrit par-dessus.
+- **L'île pendant le travail** : `IslandStateMachine.keepOpen("convert")`
+  garde la mini-île (et la nano en mini) tant qu'Ondine mâche et que la
+  pilule de résultat est là ; `island.ts` agrandit le rectangle qui prend la
+  souris aux pilules cliquables (`convert.hitRect()`), et ne montre pas la
+  notification « Annuler » de `undo.offered` pour ce module (le bouton est
+  dans la pilule de résultat).
+- **Mascotte** : `mascot.play {animation, emotion}` ; une mascotte sans
+  l'animation de la goutte gomme (surpris, ecoute, eating, mange-vite,
+  concentree, sursaut, fiere, celebrate, oups, genee) joue l'émotion proche
+  (`mascot-state.ts`). Mode Calme ou « Réduire les animations » : les mêmes
+  étapes en fondus, pas de grimaces, pas de paillettes. Flou derrière les
+  pilules seulement en style Studio.
+- **Traductions** : la pilule de résultat mêle un nom, des tailles et une
+  raison ; `summarize` reçoit `t()` et l'unité (Ko/KB) et rend des textes
+  déjà traduits (`data-no-i18n` sur ces nœuds).
+- **Démo** : `demo.ts` simule `convert.start` (avancement puis résultat ; un
+  nom qui contient « abîm » échoue).
+- **Pas fait (plus tard)** : FFmpeg, LibreOffice, Règles, « Envoyer vers »,
+  vidéo → GIF (MediaTranscoder ne sait pas écrire de GIF : il faudrait
+  décoder les images une à une), WebP avec perte, métadonnées gardées pour
+  HEIC (WIC les lit, on ne les recopie pas), île à gauche ou à droite.

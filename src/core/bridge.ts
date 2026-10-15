@@ -261,10 +261,60 @@ export interface DragDropEvent {
   type: "enter" | "over" | "drop" | "leave";
   paths?: string[];
   position?: { x: number; y: number };
+  /** Maj enfoncée pendant le glisser (cible de dépôt de l'île, Windows). */
+  shift?: boolean;
+}
+
+/**
+ * Dans un navigateur (npm run dev, mode démo) : le glisser-déposer HTML5,
+ * pour essayer l'île sans l'appli. Pas de vrais chemins : les noms des
+ * fichiers (ou un nom inventé d'après leur type pendant le survol).
+ */
+function browserDragDrop(handler: (e: DragDropEvent) => void): () => void {
+  const dpr = () => window.devicePixelRatio || 1;
+  const pos = (e: DragEvent) => ({ x: e.clientX * dpr(), y: e.clientY * dpr() });
+  const names = (e: DragEvent): string[] => {
+    const files = Array.from(e.dataTransfer?.files ?? []).map((f) => f.name);
+    if (files.length) return files;
+    // Pendant le survol, le navigateur ne donne que les types.
+    return Array.from(e.dataTransfer?.items ?? [])
+      .filter((i) => i.kind === "file")
+      .map((i, n) => `fichier-${n + 1}.${(i.type.split("/")[1] ?? "bin").replace("jpeg", "jpg")}`);
+  };
+  let depth = 0;
+  const enter = (e: DragEvent) => {
+    e.preventDefault();
+    if (depth++ === 0) handler({ type: "enter", paths: names(e), position: pos(e), shift: e.shiftKey });
+  };
+  const over = (e: DragEvent) => {
+    e.preventDefault();
+    handler({ type: "over", position: pos(e), shift: e.shiftKey });
+  };
+  const leave = () => {
+    if (--depth <= 0) {
+      depth = 0;
+      handler({ type: "leave" });
+    }
+  };
+  const drop = (e: DragEvent) => {
+    e.preventDefault();
+    depth = 0;
+    handler({ type: "drop", paths: names(e), position: pos(e), shift: e.shiftKey });
+  };
+  window.addEventListener("dragenter", enter);
+  window.addEventListener("dragover", over);
+  window.addEventListener("dragleave", leave);
+  window.addEventListener("drop", drop);
+  return () => {
+    window.removeEventListener("dragenter", enter);
+    window.removeEventListener("dragover", over);
+    window.removeEventListener("dragleave", leave);
+    window.removeEventListener("drop", drop);
+  };
 }
 
 export async function onDragDrop(handler: (e: DragDropEvent) => void): Promise<() => void> {
-  if (!IS_TAURI) return () => {};
+  if (!IS_TAURI) return browserDragDrop(handler);
   // Sous Windows, c'est la cible de dépôt de l'île (src-tauri/src/platform/drop_target.rs)
   // qui envoie "file-drag". On écoute aussi celle de Tauri, au cas où elle marche.
   const offOwn = await listen<DragDropEvent>("file-drag", (e) => handler(e.payload));

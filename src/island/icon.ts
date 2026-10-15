@@ -49,6 +49,8 @@ const BY_EMOJI: Record<string, string> = {
   "📡": "remote",
   "⚡": "rules",
   "🧺": "shelf",
+  // Ondine convertit (1.2.5) : au trait seulement, l'emoji en couleur.
+  "🔀": "convert",
   "📊": "system",
   "🖥️": "terminal",
   "⏱️": "timer",

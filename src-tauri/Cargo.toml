@@ -36,10 +36,13 @@ trash = "5"
 arboard = { version = "3", default-features = false, features = ["image-data"] }
 # Enregistrer les captures en PNG, réduire une image trop grande pour l'OCR, et
 # convertir / redimensionner les images glissées sur l'île (lecture PNG, JPEG, WebP, BMP, GIF).
-image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "bmp", "gif"] }
+# « ico » (Ondine convertit, 1.2.5) : lire et écrire les icônes .ico, sans
+# nouvelle bibliothèque (le format ICO de `image` réutilise ses codecs PNG et BMP).
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "bmp", "gif", "ico"] }
 # Dates des rendez-vous (.ics) : fuseaux UTC/local, jours de la semaine.
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
-# Création d'archives .zip (compression « deflate » seulement).
+# Création d'archives .zip (compression « deflate » seulement), et leur
+# extraction (Ondine convertit, 1.2.5 : lecture « deflate » et « stored »).
 zip = { version = "2", default-features = false, features = ["deflate"] }
 # Le hasard du système (générateur de mots de passe) : pas un hasard « prévisible ».
 getrandom = "0.3"
@@ -108,6 +111,10 @@ sherpa-onnx = { version = "1.13.8", default-features = false, features = ["stati
 keyring = { version = "3", features = ["windows-native"] }
 # Requis par la macro #[implement] (cible de dépôt) : même version que `windows`.
 windows-core = "0.61"
+# Ondine convertit (1.2.5) : la progression d'une conversion de vidéo ou de son
+# (AsyncActionProgressHandler, AsyncStatus). Déjà tirée par `windows` 0.61 : rien
+# de nouveau à télécharger, on la nomme seulement.
+windows-future = "0.2"
 windows = { version = "0.61", features = [
   # « En cours de lecture » (SMTC) : Media_Control, et Storage_Streams pour la pochette.
   "Foundation",
@@ -200,6 +207,16 @@ windows = { version = "0.61", features = [
   "UI",
   "UI_Notifications",
   "UI_Notifications_Management",
+  # Ondine convertit (1.2.5, platform/convert.rs) : ouvrir un fichier pour les
+  # API WinRT (StorageFile, StorageFolder), lire HEIC / AVIF / TIFF et écrire
+  # TIFF (Graphics_Imaging, déjà là pour l'OCR), dessiner les pages d'un PDF
+  # (Windows.Data.Pdf), convertir vidéo et son (MediaTranscoder).
+  "Storage",
+  # (StorageFolder est rangé sous Storage_Search)
+  "Storage_Search",
+  "Data_Pdf",
+  "Media_Transcoding",
+  "Media_MediaProperties",
 ] }
 
 [profile.release]

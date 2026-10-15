@@ -28,6 +28,17 @@
   AWS, JWT, clé privée…) n'entre plus dans l'historique · Clipboard: a copied
   API key or token (Claude, OpenAI, GitHub, AWS, JWT, private key…) no longer
   goes into the history
+- Ondine convertit : glissez un fichier vers l'île, des pilules de formats
+  sortent dessous (JPG, PNG, PDF, MP3, ZIP…) ; lâchez-le sur l'une d'elles,
+  Ondine l'avale, mâche et recrache le nouveau fichier, avec « Ouvrir » et
+  « Annuler ». À côté de l'original, à sa place (l'original part à la
+  Corbeille) ou sur le Bureau. Images (HEIC, AVIF), images en un seul PDF, PDF
+  en images, vidéo et son, ZIP ; tout sur le PC · Ondine converts: drag a
+  file to the island, format pills come out below it (JPG, PNG, PDF, MP3,
+  ZIP…); drop it on one, Ondine swallows it, chews and spits out the new file,
+  with "Open" and "Cancel". Next to the original, in its place (the original
+  goes to the Recycle Bin) or on the Desktop. Images (HEIC, AVIF), images into
+  one PDF, PDF into images, video and sound, ZIP; all on the PC
 
 ## 1.2.4 · à venir
 

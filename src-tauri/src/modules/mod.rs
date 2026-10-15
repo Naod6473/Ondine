@@ -38,6 +38,10 @@ mod clipboard;
 // Presse-papiers → « Ignorer les clés et jetons » (1.2.5) : reconnaître une clé copiée.
 mod clipboard_secrets;
 mod controls;
+// Ondine convertit (1.2.5) : un fichier glissé sur une pilule de format sous l'île.
+mod convert;
+// Sa partie pure (types, formats, noms, PDF, ZIP) ; publique pour platform/convert.rs.
+pub(crate) mod convert_logic;
 // La dictée partout : la touche, la pilule, le collage (avec sa logique, ses mots et son fichier).
 mod dictation;
 mod dictation_logic;
@@ -305,6 +309,7 @@ impl Registry {
             Box::new(callnotes::CallNotes::default()),
             Box::new(dictation::Dictation),
             Box::new(winnotifs::WinNotifs::default()),
+            Box::new(convert::Convert),
         ];
 
         let mut entries = Vec::new();

@@ -24,7 +24,8 @@
 //   notify.shown → une petite réaction selon la notification (voir REACTIONS)
 //   mascot.clicked ×3 rapides → annoyed, ×6 → dizzy           mascot.hover-long → love
 //   inactivité → bored puis sleep  activité pendant sleep → wake
-//   mascot.play {animation} → joue cette animation (tests depuis les réglages)
+//   mascot.play {animation, emotion?} → joue cette animation (tests depuis les
+//     réglages, Ondine convertit) ; sans elle, l'émotion `emotion` si elle est donnée
 //   mascot.dance {on, style?, bpm?, phase?} → elle danse en boucle (musique +
 //     mini-île, src/eggs/dance.ts) : la danse du style (« danse-rock »… si la
 //     mascotte l'a, sinon « danse »), calée sur le temps (renderer.setBeat) ;
@@ -486,7 +487,13 @@ export class MascotController {
       this.rainy = isRainy(w);
       this.pushExtras();
     });
-    on("mascot.play", (p: { animation?: string }) => p?.animation && this.playAnimation(p.animation));
+    // `emotion` (facultatif, 1.2.5) : ce que montre une mascotte qui n'a pas
+    // cette animation (Ondine convertit joue celles de la goutte gomme).
+    on("mascot.play", (p: { animation?: string; emotion?: string } | null) => {
+      if (!p?.animation) return;
+      if (this.manifest.animations.some((a) => a.name === p.animation)) this.playAnimation(p.animation);
+      else if (p.emotion) this.emote({ emotion: p.emotion });
+    });
     on("mascot.dance", (p: { on?: boolean; style?: string; bpm?: number | null; phase?: number } | null) => {
       const has = (name: string) => this.manifest.animations.some((a) => a.name === name);
       const styled = p?.style ? DANCE_ANIM[p.style as DanceStyle] : undefined;

@@ -181,9 +181,6 @@ pub fn zip(paths: &[PathBuf]) -> Result<PathBuf, String> {
 }
 
 pub fn zip_checked(paths: &[PathBuf], validate: &dyn Fn(&Path) -> Result<(), String>) -> Result<PathBuf, String> {
-    use std::io::Write;
-    use zip::write::SimpleFileOptions;
-
     let first = paths.first().ok_or("rien à compresser")?;
     let dir = first.parent().ok_or("dossier introuvable")?;
     let base = if paths.len() == 1 {
@@ -191,6 +188,18 @@ pub fn zip_checked(paths: &[PathBuf], validate: &dyn Fn(&Path) -> Result<(), Str
     } else {
         "Archive".to_string()
     };
+    zip_into(paths, dir, &base, validate)
+}
+
+/// Comme `zip_checked`, mais l'archive « `base`.zip » (nom libre) est créée
+/// dans `dir` (Ondine convertit : à côté, ou sur le Bureau).
+pub fn zip_into(paths: &[PathBuf], dir: &Path, base: &str, validate: &dyn Fn(&Path) -> Result<(), String>) -> Result<PathBuf, String> {
+    use std::io::Write;
+    use zip::write::SimpleFileOptions;
+
+    if paths.is_empty() {
+        return Err("rien à compresser".into());
+    }
     let out = unique_dest(dir, std::ffi::OsStr::new(&format!("{base}.zip")));
     let file = fs::File::create(&out).map_err(|e| format!("archive impossible à créer : {e}"))?;
     let mut writer = zip::ZipWriter::new(file);
