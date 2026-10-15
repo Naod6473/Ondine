@@ -122,7 +122,7 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
   ],
   askclaude: [
     { id: "general", label: "Général", keys: [] },
-    { id: "models", label: "Fournisseur et modèles", keys: ["provider", "model", "openaiModel", "geminiModel", "maxTokens"] },
+    { id: "models", label: "Fournisseur et modèles", keys: ["provider", "model", "openaiModel", "geminiModel", "localUrl", "localModel", "openrouterModel", "maxTokens"] },
     { id: "persona", label: "Personnalité et affichage", keys: ["personality", "autoGrow", "emotions", "showDrop"] },
     { id: "voice", label: "Voix et sons", keys: ["voiceHotkey", "micMode", "voiceEngine", "lookHotkey", "handsFree", "quickCommands", "plops", "plopVolume", "discreet"] },
     { id: "files", label: "Fichiers et PC", keys: ["fileTools", "pcTools", "filesFolder"] },
@@ -1608,7 +1608,7 @@ function modulePage(main: HTMLElement, man: ModuleManifest, compact = false) {
   if (!compact && man.id === "weekly") main.append(weeklyGroup(man));
   // Animations de l'île : l'aperçu du halo, en direct, avec les réglages choisis.
   // Parler à Ondine : ce qui part et la consigne exacte (askclaude-page.ts).
-  if (!compact && man.id === "askclaude") main.append(...askclaudeGroups());
+  if (!compact && man.id === "askclaude") main.append(...askclaudeGroups((key, value) => save((d) => ((d.modules.askclaude ??= { enabled: settingsStore.moduleEnabled("askclaude"), values: {} }).values[key] = value), true)));
   if (!compact) main.append(el("p", { class: "version" }, `${man.name} · version ${man.version}`));
 }
 
@@ -2137,6 +2137,8 @@ function credentials(main: HTMLElement) {
     { key: "anthropic-api-key", label: "Clé API Anthropic", placeholder: "Coller la clé ici", help: "Pour parler à Ondine avec Claude (fournisseur par défaut)." },
     { key: "openai-api-key", label: "Clé API OpenAI", placeholder: "Coller la clé ici", help: "Pour parler à Ondine avec GPT. Facultative." },
     { key: "gemini-api-key", label: "Clé API Gemini", placeholder: "Coller la clé ici", help: "Pour parler à Ondine avec Gemini (Google AI Studio). Facultative." },
+    { key: "openrouter-api-key", label: "Clé API OpenRouter", placeholder: "Coller la clé ici", help: "Pour parler à Ondine avec un modèle d'OpenRouter. Facultative." },
+    { key: "local-llm-api-key", label: "Clé du serveur local", placeholder: "Coller la clé ici", help: "Seulement si votre serveur compatible OpenAI en demande une (Ollama et LM Studio : non). Facultative." },
   ];
   for (const k of keys) {
     const status = chip("…");

@@ -457,7 +457,8 @@ fn stt_key(app: &AppHandle, settings: &serde_json::Map<String, Value>) -> Result
     let order: &[Provider] = match chosen {
         Provider::Gemini => &[Provider::Gemini],
         Provider::OpenAi => &[Provider::OpenAi],
-        Provider::Claude => &[Provider::OpenAi, Provider::Gemini],
+        // Claude, un serveur local, OpenRouter : pas d'audio ici.
+        Provider::Claude | Provider::Local | Provider::OpenRouter => &[Provider::OpenAi, Provider::Gemini],
     };
     super::with_context(app, ID, |ctx| -> Result<(Provider, String, String), String> {
         ctx.require("claude-api")?;
@@ -472,6 +473,7 @@ fn stt_key(app: &AppHandle, settings: &serde_json::Map<String, Value>) -> Result
         }
         Err(match chosen {
             Provider::Claude => "Claude n'écoute pas l'audio : pour la transcription par l'API, ajoutez une clé OpenAI ou Gemini dans Réglages → Identifiants, ou choisissez la reconnaissance de Windows".into(),
+            Provider::Local | Provider::OpenRouter => "Ce fournisseur n'écoute pas l'audio : pour la transcription par l'API, ajoutez une clé OpenAI ou Gemini dans Réglages → Identifiants, ou choisissez la reconnaissance de Windows".into(),
             p => format!("pas de {} : ajoutez-la dans Réglages → Identifiants", p.key_label().to_lowercase()),
         })
     })

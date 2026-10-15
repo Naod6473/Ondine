@@ -6,6 +6,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { ageText, effectivePct, highestPct, planLevel, resetText } from "../../src/modules/agents/plan";
+import { filterModels, localSentText, modelKey } from "../../src/settings/askclaude-models";
 import { filesOf, lineClass, lineSymbol, liveCounts, type LiveFile } from "../../src/modules/agents/live-logic";
 
 const DICT = JSON.parse(readFileSync("src/core/i18n-en.json", "utf8")) as {
@@ -101,5 +102,26 @@ describe("fichiers modifiés en direct", () => {
     assert.equal(lineSymbol("~"), "⋯");
     assert.equal(lineClass("-"), "removed");
     assert.equal(lineClass(" "), "context");
+  });
+});
+
+describe("modèles locaux et OpenRouter", () => {
+  test("le bon réglage pour le modèle choisi", () => {
+    assert.equal(modelKey("local"), "localModel");
+    assert.equal(modelKey("openrouter"), "openrouterModel");
+    assert.equal(modelKey("claude"), null);
+  });
+
+  test("filtrer la liste des modèles", () => {
+    const list = [{ id: "llama3.2", tools: null }, { id: "qwen3:8b", tools: true }, { id: "meta-llama/llama-3.3", tools: false }];
+    assert.deepEqual(filterModels(list, "LLAMA").map((m) => m.id), ["llama3.2", "meta-llama/llama-3.3"]);
+    assert.equal(filterModels(list, "").length, 3);
+    assert.equal(filterModels(list, "", 2).length, 2);
+  });
+
+  test("« Ce qui part » dit que tout reste sur le PC", () => {
+    const t = localSentText("localhost:11434", 20);
+    assert.match(t, /restent sur votre PC/);
+    assert.match(t, /localhost:11434/);
   });
 });
