@@ -44,6 +44,11 @@ function remember(key: string) {
   }
 }
 
+/** L'identifiant GitHub réglé (en démo, un identifiant inventé : le Rust n'est pas appelé, src/core/demo.ts répond). */
+export function githubLogin(api: ModuleApi): string {
+  return String(api.settings().githubLogin ?? "").trim() || (demoOn() ? "simon-demo" : "");
+}
+
 /** Monte le calendrier dans `box` ; renvoie de quoi l'arrêter. */
 export function mountGithub(box: HTMLElement, api: ModuleApi): () => void {
   let cal: GithubCalendar | null = null;
@@ -52,8 +57,7 @@ export function mountGithub(box: HTMLElement, api: ModuleApi): () => void {
   /** Un mot d'état à côté du bouton (« Déjà à jour »), effacé au prochain dessin. */
   let note = "";
   let noteTimer = 0;
-  // En démo, un identifiant inventé (le Rust n'est pas appelé : src/core/demo.ts répond).
-  const login = () => String(api.settings().githubLogin ?? "").trim() || (demoOn() ? "simon-demo" : "");
+  const login = () => githubLogin(api);
 
   const grid = (c: GithubCalendar) => {
     const cols = columns(c.days);
