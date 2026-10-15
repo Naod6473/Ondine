@@ -1,0 +1,551 @@
+/* Module Jeux (src/modules/games/) : Puissance 4, Morpion (onglet et mini-île),
+ * Aquarium de gouttes, Course de gouttes.
+ * Les couleurs de l'île (--island-fg, --muted, --line, --accent) : tous les
+ * thèmes. Pas de flou, sauf en Studio (la bulle « +5 » de l'aquarium).
+ * « Réduire les animations » : rien ne bouge (bas du fichier). */
+
+.games {
+  --g-me: #ffc24b;
+  --g-ondine: #4da3ff;
+}
+.games-pills {
+  margin-bottom: 6px;
+}
+.games-body {
+  min-height: 0;
+}
+/* Pendant un appel ou une présentation : le plateau s'estompe un peu. */
+.games .paused :is(.c4-board, .ttt-grid, .race-lanes) {
+  opacity: 0.45;
+  filter: saturate(0.5);
+}
+.games-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+.games-side .segmented {
+  margin-bottom: 0;
+}
+.games-status {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--island-fg);
+}
+.games-score {
+  font-size: 12px;
+  color: var(--muted);
+}
+.games-gain-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--island-fg);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  animation: games-pop 520ms var(--ease) both;
+}
+@keyframes games-pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+
+/* ── Puissance 4 ───────────────────────────────────────────────────────── */
+
+.c4 {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.c4-board {
+  --cell: 22px;
+  display: flex;
+  gap: 3px;
+  padding: 6px;
+  /* La place au-dessus du plateau : la goutte fantôme de la colonne survolée. */
+  padding-top: calc(var(--cell) + 8px);
+  position: relative;
+  outline: none;
+}
+/* Le plateau lui-même (sous les colonnes), sans la place de la goutte fantôme. */
+.c4-board::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--cell) + 2px) 0 0 0;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 16%, rgba(255, 255, 255, 0.04));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.c4-board:focus-visible::before {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.c4-col {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 999px;
+  transition: background 160ms ease;
+}
+.c4-col:not(.off):hover,
+.c4-col.kbd {
+  background: rgba(255, 255, 255, 0.07);
+}
+.c4-col.off {
+  cursor: default;
+}
+.c4-ghost {
+  position: absolute;
+  left: 0;
+  top: calc(-1 * var(--cell) - 5px);
+  width: var(--cell);
+  height: var(--cell);
+  border-radius: 50% 50% 46% 46% / 58% 58% 42% 42%;
+  background: var(--g-me);
+  opacity: 0;
+  transform: translateY(-4px) scale(0.7);
+  transition:
+    opacity 160ms ease,
+    transform 300ms var(--ease);
+}
+.c4-col:not(.off):hover .c4-ghost,
+.c4-col.kbd:not(.off) .c4-ghost {
+  opacity: 0.55;
+  transform: none;
+}
+.c4-hole {
+  position: relative;
+  width: var(--cell);
+  height: var(--cell);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.28);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.c4-token {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: 50% 50% 46% 46% / 58% 58% 42% 42%;
+  background: radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.75) 0 12%, transparent 13%), var(--c, var(--g-me));
+  box-shadow:
+    inset 0 -2px 3px rgba(0, 0, 0, 0.18),
+    0 1px 2px rgba(0, 0, 0, 0.25);
+  will-change: transform;
+}
+.c4-token.me {
+  --c: var(--g-me);
+}
+.c4-token.ondine {
+  --c: var(--g-ondine);
+}
+.c4-token.win {
+  animation: games-glow 1.1s ease-in-out infinite alternate;
+}
+@keyframes games-glow {
+  to {
+    box-shadow:
+      0 0 0 2px var(--island-fg),
+      0 0 10px 2px color-mix(in srgb, var(--c) 70%, transparent);
+  }
+}
+.c4-board.waiting .c4-col {
+  cursor: progress;
+}
+
+/* ── Morpion ───────────────────────────────────────────────────────────── */
+
+.ttt {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.ttt-grid {
+  --cell: 46px;
+  display: grid;
+  grid-template-columns: repeat(3, var(--cell));
+  gap: 4px;
+}
+.ttt-grid.mini {
+  --cell: 30px;
+  gap: 3px;
+}
+.ttt-cell {
+  width: var(--cell);
+  height: var(--cell);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--island-fg);
+  font: inherit;
+  font-size: calc(var(--cell) * 0.52);
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    transform 300ms var(--ease);
+}
+.ttt-cell:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.11);
+}
+.ttt-cell:not(:disabled):active {
+  transform: scale(0.92);
+}
+.ttt-cell:disabled {
+  cursor: default;
+}
+.ttt-cell.me {
+  color: var(--g-me);
+}
+.ttt-cell.ondine {
+  color: var(--g-ondine);
+}
+.ttt-cell.win {
+  background: color-mix(in srgb, currentColor 22%, transparent);
+  border-color: currentColor;
+}
+/* Dans la mini-île : une alerte à peine plus grande que la pilule. */
+.island[data-state="alert"]:has(.notif.custom .ttt-mini) {
+  width: 400px;
+  height: 152px;
+}
+.notif.custom:has(.ttt-mini) .notif-icon {
+  display: none;
+}
+.notif.custom:has(.ttt-mini) .notif-title {
+  font-size: 12px;
+}
+.ttt-mini {
+  gap: 12px;
+  align-items: center;
+}
+.ttt-mini .games-side {
+  gap: 5px;
+}
+.ttt-timer {
+  width: 92px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+.ttt-timer i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left;
+}
+.ttt-mini {
+  --g-me: #ffc24b;
+  --g-ondine: #4da3ff;
+}
+
+/* ── Aquarium ──────────────────────────────────────────────────────────── */
+
+.aqua {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.aqua-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 12px;
+}
+.aqua-drops {
+  font-size: 15px;
+  font-weight: 700;
+}
+.aqua-stage {
+  font-weight: 600;
+}
+.aqua-stage-row {
+  display: flex;
+  justify-content: center;
+}
+.aqua-tank {
+  position: relative;
+  height: 112px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  transition: width 900ms var(--ease);
+}
+.aqua-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.aqua-ondine {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 46px;
+  height: 46px;
+  pointer-events: none;
+  will-change: transform;
+}
+.aqua-toast {
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+}
+.motion-studio .aqua-toast {
+  backdrop-filter: blur(6px);
+}
+.aqua-toast.show {
+  animation: aqua-toast 1.8s var(--ease-out) both;
+}
+@keyframes aqua-toast {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.6);
+  }
+  20%,
+  70% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+.aqua-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.aqua-row > .btn {
+  flex-shrink: 0;
+}
+.aqua-label {
+  flex: none;
+  width: 74px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.aqua-chips {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  min-width: 0;
+  flex: 1;
+  padding-bottom: 2px;
+  /* La rangée défile : son bord droit s'efface pour le montrer. */
+  mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+  scrollbar-width: none;
+  scrollbar-width: none;
+}
+.aqua-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--island-fg);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    transform 300ms var(--ease);
+}
+.aqua-chip:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.11);
+}
+.aqua-chip:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.aqua-chip.owned {
+  color: var(--muted);
+}
+.aqua-chip.owned:disabled {
+  cursor: default;
+}
+.aqua-chip.worn {
+  color: var(--island-fg);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.aqua-price {
+  color: var(--muted);
+}
+.aqua-how {
+  font-size: 11px;
+}
+.aqua-problem {
+  color: var(--island-fg);
+}
+
+/* ── Course ────────────────────────────────────────────────────────────── */
+
+.race {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.race-head {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.race-lanes {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 4px 0;
+}
+.race-lane {
+  position: relative;
+  height: 18px;
+}
+.race-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  border-radius: 1px;
+  background: repeating-linear-gradient(90deg, var(--line) 0 6px, transparent 6px 11px);
+}
+.race-flag {
+  position: absolute;
+  right: 4px;
+  top: 0;
+  width: 3px;
+  height: 18px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(180deg, var(--island-fg) 0 3px, transparent 3px 6px);
+  opacity: 0.6;
+}
+.race-drop {
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 22px;
+  height: 16px;
+  /* Une goutte couchée, la pointe derrière. */
+  border-radius: 40% 60% 60% 40% / 50% 50% 50% 50%;
+  background: radial-gradient(circle at 70% 32%, rgba(255, 255, 255, 0.7) 0 10%, transparent 11%), var(--c);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transform-origin: 30% 50%;
+  will-change: transform;
+}
+.race-drop.lead {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+.race-drop.winner {
+  box-shadow: 0 0 0 2px var(--island-fg);
+}
+.race-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.race-bets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.race-bet {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--island-fg);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    transform 300ms var(--ease);
+}
+.race-bet:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.11);
+}
+.race-bet:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.race-bet:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.race-bet.on {
+  opacity: 1;
+  border-color: var(--c);
+  background: color-mix(in srgb, var(--c) 22%, transparent);
+}
+.race-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--c);
+}
+.race.empty .race-lanes {
+  opacity: 0.4;
+}
+.race .games-status {
+  font-weight: 500;
+  font-size: 12px;
+}
+
+/* ── Réduire les animations ────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .games-gain-pill,
+  .aqua-toast.show,
+  .c4-token.win {
+    animation: none;
+  }
+  .aqua-toast.show {
+    opacity: 1;
+  }
+  .aqua-tank,
+  .c4-ghost,
+  .ttt-cell,
+  .aqua-chip,
+  .race-bet {
+    transition: none;
+  }
+}
+/* Économie d'énergie : pas de lueur qui pulse. */
+body[data-perf="eco"] .c4-token.win {
+  animation: none;
+  box-shadow: 0 0 0 2px var(--island-fg);
+}

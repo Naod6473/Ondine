@@ -176,6 +176,17 @@ function islandActions(api: ModuleApi, query: string): Result[] {
       api.emit("capture.pick", {});
     });
   }
+  // Les jeux (module Jeux, 1.2.5) : « jouer », « puissance 4 », « morpion »…
+  // Le morpion se joue dans la mini-île : l'île se replie d'abord.
+  if (settingsStore.moduleEnabled("games")) {
+    const g = settingsStore.current.modules?.games?.values ?? {};
+    const on = (key: string) => g[key] !== false;
+    const play = (game: string) => () => api.emit("games.play", { game });
+    if (on("connect4")) add("game-connect4", "Puissance 4 contre Ondine", "🟡", ["puissance 4", "puissance4", "connect four", "jouer", "jeux"], play("connect4"));
+    if (on("ttt")) add("game-ttt", "Morpion express", "⭕", ["morpion", "tic tac toe", "jouer", "jeux"], () => (close(), play("ttt-express")()));
+    if (on("aquarium")) add("game-aquarium", "Aquarium de gouttes", "🐠", ["aquarium", "gouttes", "jouer", "jeux"], play("aquarium"));
+    if (on("race")) add("game-race", "Course de gouttes", "🏁", ["course", "pari", "jouer", "jeux"], play("race"));
+  }
   add("settings", "Réglages de l'île", "⚙️", ["parametres", "options", "preferences"], async () => {
     await Bridge.openSettingsWindow();
     close();

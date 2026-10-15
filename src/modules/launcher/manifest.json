@@ -114,7 +114,8 @@
       "agents.launch",
       "notes.open",
       "capture.pick",
-      "easter.word"
+      "easter.word",
+      "games.play"
     ],
     "listens": [
       "launcher.open",

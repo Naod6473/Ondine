@@ -38,6 +38,8 @@ mod clipboard;
 // Presse-papiers → « Ignorer les clés et jetons » (1.2.5) : reconnaître une clé copiée.
 mod clipboard_secrets;
 mod controls;
+// Jeux (1.2.5) : la progression de l'aquarium de gouttes (les jeux sont dans le front).
+mod games;
 // La dictée partout : la touche, la pilule, le collage (avec sa logique, ses mots et son fichier).
 mod dictation;
 mod dictation_logic;
@@ -305,6 +307,7 @@ impl Registry {
             Box::new(callnotes::CallNotes::default()),
             Box::new(dictation::Dictation),
             Box::new(winnotifs::WinNotifs::default()),
+            Box::new(games::Games::default()),
         ];
 
         let mut entries = Vec::new();
@@ -440,6 +443,13 @@ pub fn dispatch_event(app: &AppHandle, msg: &BusMessage) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn games_manifest_is_valid() {
+        let m = check_manifest(games::Games::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "games");
+        assert!(m.permissions.is_empty());
+    }
 
     #[test]
     fn shelf_manifest_is_valid() {

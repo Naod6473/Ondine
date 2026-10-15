@@ -1,0 +1,48 @@
+{
+  "id": "games",
+  "name": "Jeux",
+  "icon": "🎮",
+  "tip": "Choisissez un jeu ; un appui long sur Ondine lance un morpion express.",
+  "description": "Quatre petits jeux contre Ondine : Puissance 4 (trois niveaux), Morpion express dans la mini-île (appui long sur Ondine, ou « morpion » dans le Lanceur), l'aquarium de gouttes qui grandit pendant que vous travaillez (tâches finies par vos agents IA, pauses, Pomodoros, parties gagnées) et la course de gouttes pendant qu'un agent IA avance dans sa liste de tâches. Les jeux se mettent en pause et se taisent pendant un appel (micro utilisé, Notes d'appel), une présentation ou une appli en plein écran. La progression reste sur votre PC (%APPDATA%\\Ondine\\games.json) : des nombres et les objets achetés, rien d'autre. Rien ne part sur Internet.",
+  "version": "0.1.0",
+  "permissions": [],
+  "settings": {
+    "version": 1,
+    "fields": [
+      { "key": "connect4", "essential": true, "type": "boolean", "label": "Puissance 4", "default": true },
+      { "key": "ttt", "type": "boolean", "label": "Morpion express", "default": true },
+      { "key": "aquarium", "type": "boolean", "label": "Aquarium de gouttes", "default": true },
+      { "key": "race", "type": "boolean", "label": "Course de gouttes", "default": true },
+      {
+        "key": "level",
+        "essential": true,
+        "type": "select",
+        "label": "Niveau d'Ondine",
+        "default": "normal",
+        "options": [
+          { "value": "easy", "label": "Facile" },
+          { "value": "normal", "label": "Normal" },
+          { "value": "hard", "label": "Malin" }
+        ]
+      },
+      { "key": "sounds", "essential": true, "type": "boolean", "label": "Sons des jeux", "default": true }
+    ]
+  },
+  "views": ["expanded"],
+  "commands": ["state", "result", "buy", "wear"],
+  "events": {
+    "emits": ["mascot.emote", "mascot.look-at", "games.changed"],
+    "listens": [
+      "games.play",
+      "games.changed",
+      "agents.todos",
+      "agents.event",
+      "pauses.taken",
+      "timer.work-session",
+      "controls.media-use",
+      "callnotes.state",
+      "mascot.long-press",
+      "island.state"
+    ]
+  }
+}

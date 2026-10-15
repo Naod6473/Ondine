@@ -28,6 +28,14 @@
   AWS, JWT, clé privée…) n'entre plus dans l'historique · Clipboard: a copied
   API key or token (Claude, OpenAI, GitHub, AWS, JWT, private key…) no longer
   goes into the history
+- Mini-jeux contre Ondine (onglet « Jeux ») : Puissance 4 à trois niveaux,
+  morpion express dans la mini-île (appui long sur Ondine), aquarium de
+  gouttes qui grandit avec les tâches finies des agents IA et les pauses,
+  course de gouttes sur la liste de tâches d'un agent. Tout reste sur le PC ·
+  Mini-games against Ondine ("Games" tab): Connect Four with three levels,
+  express tic-tac-toe in the mini island (long press on Ondine), a droplet
+  aquarium that grows with AI agents' finished tasks and breaks, a droplet race
+  on an agent's task list. Everything stays on the PC
 
 ## 1.2.4 · à venir
 
