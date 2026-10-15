@@ -33,6 +33,7 @@ import {
   type CallStatusInfo,
   type NoteItem,
 } from "./callnotes-logic";
+import { parakeetBlock } from "./parakeet-block";
 import type { VoicePage } from "./pages";
 import "../../styles/callnotes.css";
 
@@ -458,6 +459,7 @@ function render(root: HTMLElement): () => void {
         ...rows,
       ]),
       group("Ce qui part", [wideRow(null, el("div", { class: "cn-leaves" }, ...leaves))]),
+      parakeetBlock(),
     );
   };
 

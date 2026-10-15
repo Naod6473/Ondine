@@ -14,6 +14,7 @@ import { keyLabel } from "../../pill/pill-logic";
 import { group, row } from "../controls";
 import { settingsRows } from "../form";
 import { hero } from "../hero";
+import { parakeetBlock } from "./parakeet-block";
 import {
   formatNumber,
   greetingName,
@@ -120,7 +121,7 @@ export const dictationPage: VoicePage = {
         dictationValues(), (k, v) => {
         saveDictationValue(k, v);
         if (k === "holdKey" || k === "engine") window.setTimeout(() => void loadStatus(), 300);
-      })));
+      })), parakeetBlock());
     };
 
     root.append(band, top, statusBox, columns, settingsBox);
