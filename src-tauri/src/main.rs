@@ -9,6 +9,8 @@ fn main() {
         // « ondine.exe mcp » : un agent (Claude Code, Codex, Gemini) nous parle en MCP.
         Some("mcp") => return ondine_lib::mcp_cli(),
         Some("permission") => return ondine_lib::permission_cli(),
+        // « ondine.exe statusline » : la ligne d'état de Claude Code (limites du forfait).
+        Some("statusline") => return ondine_lib::statusline_cli(),
         _ => {}
     }
     ondine_lib::run()

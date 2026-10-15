@@ -87,6 +87,8 @@ mod agents_tools;
 mod agents_mcp_extra;
 // Les rappels d'attente.
 mod agents_wait;
+// Les limites du forfait de Claude et Codex (1.2.4) ; « ondine.exe statusline » s'en sert.
+pub(crate) mod agents_plan;
 // Animations de l'île : sortie de veille, Verr Maj, copier / coller, volume, Wi-Fi, niveaux sonores.
 mod halos;
 // Ondine et les fenêtres (public : island/mod.rs lui demande le « lancer »).

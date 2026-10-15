@@ -497,3 +497,40 @@ mod mcp_tests {
         assert!(waits_for_reply("ondine_capture") && !waits_for_reply("ondine_timer"));
     }
 }
+
+// ── « ondine.exe statusline » : les limites du forfait de Claude ─────────────
+//
+// Claude Code lance sa « ligne d'état » à chaque mise à jour de son écran et
+// lui donne un JSON sur l'entrée standard ; ce que la commande affiche devient
+// la ligne d'état. Ondine n'en garde que les limites du forfait (`rate_limits`,
+// forfaits Pro et Max) : seuls ces chiffres partent vers l'île, en arrière-plan
+// (300 ms au plus). Puis la ligne d'état que vous aviez avant (gardée par
+// l'installation, voir modules/agents_plan.rs) est lancée avec la même entrée,
+// et ce qu'elle affiche est recopié tel quel. Code de sortie toujours 0.
+
+pub fn statusline() {
+    let mut raw = Vec::new();
+    let _ = std::io::stdin().lock().take(MAX_MESSAGE as u64 * 4).read_to_end(&mut raw);
+    if raw.starts_with(&[0xEF, 0xBB, 0xBF]) {
+        raw.drain(..3);
+    }
+    let sent = serde_json::from_slice::<Value>(&raw).ok().and_then(|v| crate::modules::agents_plan::statusline_message(&v)).map(|m| {
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = tx.send(platform::send_agents_pipe(m.to_string().as_bytes()));
+        });
+        rx
+    });
+    let previous = crate::modules::agents_plan::read_previous().and_then(|p| p["command"].as_str().filter(|c| !c.trim().is_empty()).map(str::to_string));
+    if let Some(command) = previous {
+        if let Some(out) = crate::modules::agents_plan::run_previous(&command, &raw, crate::modules::agents_plan::PREVIOUS_BUDGET) {
+            use std::io::Write;
+            let mut stdout = std::io::stdout();
+            let _ = stdout.write_all(&out);
+            let _ = stdout.flush();
+        }
+    }
+    if let Some(rx) = sent {
+        let _ = rx.recv_timeout(std::time::Duration::from_millis(300));
+    }
+}

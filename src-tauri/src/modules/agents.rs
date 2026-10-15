@@ -56,6 +56,7 @@ use super::agents_history as history;
 use super::agents_github as github;
 use super::agents_hooks as hooks;
 use super::agents_mcp_extra as extra;
+use super::agents_plan as plan;
 use super::agents_resume as resume;
 use super::agents_tools as tools_more;
 use super::agents_usage as usage;
@@ -163,6 +164,9 @@ struct State {
     /// Une capture d'écran demandée par un agent (outil MCP ondine_capture),
     /// acceptée d'un clic : on attend le module Capture.
     capture: Option<PendingCapture>,
+    /// Les dernières limites du forfait de Claude, données par sa ligne d'état
+    /// (« ondine.exe statusline », agents_plan.rs). En mémoire seulement.
+    plan_claude: Option<plan::Limits>,
 }
 
 /// Une capture acceptée : le canal pour rendre son chemin à l'agent.
@@ -216,6 +220,10 @@ pub struct Agents {
     usage: Mutex<usage::Cache>,
     /// Le calendrier de contributions GitHub déjà lu (agents_github.rs).
     github: Mutex<github::Cache>,
+    /// Les journaux de Codex déjà lus pour ses limites (agents_plan.rs).
+    plan_codex: Mutex<plan::CodexCache>,
+    /// La dernière réponse de « Demander à Codex » (agents_plan.rs).
+    plan_asked: Mutex<Option<plan::Limits>>,
 }
 
 impl RustModule for Agents {
@@ -678,6 +686,74 @@ impl RustModule for Agents {
                 files::copy_text(text)?;
                 Ok(Value::Null)
             }
+            // ── Les limites du forfait (agents_plan.rs) ──
+            // Claude : ce qu'a donné sa ligne d'état ; Codex : ses journaux (ou
+            // « Demander à Codex », plus récent). Rien ne part d'Ondine.
+            "plan" => {
+                if ctx.settings().get("planLimits").and_then(Value::as_bool) == Some(false) {
+                    return Err("limites du forfait désactivées dans les réglages".into());
+                }
+                let file = claude_dir().join("settings.json");
+                let line = match hooks::read(&file) {
+                    Ok(text) => plan::statusline_state(text.as_deref(), &exe_path()),
+                    Err(_) => "unreadable",
+                };
+                let claude = self.state.locked().plan_claude.clone();
+                let logs = plan::latest_codex(&mut self.plan_codex.locked(), &codex_dir().join("sessions"), now_ms());
+                let asked = self.plan_asked.locked().clone();
+                // La plus récente des deux sources de Codex.
+                let codex = match (logs, asked) {
+                    (Some(l), Some(a)) => Some(if a.updated_at >= l.updated_at { a } else { l }),
+                    (l, a) => l.or(a),
+                };
+                Ok(json!({
+                    "claude": claude.map(|l| l.json()),
+                    "line": line,
+                    "file": file.display().to_string(),
+                    "codex": codex.map(|l| l.json()),
+                }))
+            }
+            // Met « ondine.exe statusline » comme ligne d'état de Claude Code
+            // (fusion, copie .bak ; votre ligne d'état est gardée et relancée).
+            "plan_install" => {
+                ctx.require("files")?;
+                let exe = exe_path();
+                if exe.is_empty() {
+                    return Err("chemin d'Ondine introuvable".into());
+                }
+                let file = claude_dir().join("settings.json");
+                let existing = hooks::read(&file)?;
+                let (text, previous) = plan::statusline_install(existing.as_deref(), &exe).map_err(|e| format!("{} : {e}", file.display()))?;
+                if let Some(p) = &previous {
+                    let saved = serde_json::to_string_pretty(p).map_err(|e| e.to_string())?;
+                    hooks::write_with_backup(&plan::previous_file(), &saved, &platform::local_time().file_stamp()).map_err(|e| format!("votre ligne d'état n'a pas pu être gardée, rien n'a été modifié ({e})"))?;
+                }
+                let backup = hooks::write_with_backup(&file, &text, &platform::local_time().file_stamp())?;
+                ctx.log_info("limites du forfait : ligne d'état d'Ondine installée pour Claude Code");
+                Ok(json!({ "file": file.display().to_string(), "backup": backup.map(|b| b.display().to_string()), "kept": previous.is_some() }))
+            }
+            // Retire la ligne d'état d'Ondine ; la vôtre revient.
+            "plan_remove" => {
+                ctx.require("files")?;
+                let file = claude_dir().join("settings.json");
+                let existing = hooks::read(&file)?;
+                let Some(text) = plan::statusline_remove(existing.as_deref(), plan::read_previous()).map_err(|e| format!("{} : {e}", file.display()))? else {
+                    return Ok(json!({ "file": file.display().to_string(), "changed": false }));
+                };
+                let backup = hooks::write_with_backup(&file, &text, &platform::local_time().file_stamp())?;
+                let _ = std::fs::remove_file(plan::previous_file());
+                self.state.locked().plan_claude = None;
+                ctx.log_info("limites du forfait : ligne d'état d'Ondine retirée");
+                Ok(json!({ "file": file.display().to_string(), "backup": backup.map(|b| b.display().to_string()), "changed": true }))
+            }
+            // « Demander à Codex » (sur votre clic) : codex app-server, 15 s au plus.
+            "plan_codex" => {
+                let exe = platform::find_program("codex").ok_or("Codex n'est pas installé sur ce PC (commande « codex » introuvable)")?;
+                let limits = plan::ask_codex(&exe)?;
+                ctx.log_info("limites du forfait : lues auprès de Codex");
+                *self.plan_asked.locked() = Some(limits.clone());
+                Ok(limits.json())
+            }
             other => Err(format!("commande inconnue : {other}")),
         }
     }
@@ -880,6 +956,14 @@ fn route(app: &AppHandle, state: &Shared, bytes: &[u8], reply: std::fs::File) {
         mcp_request(app, state, &msg, reply);
     } else if msg["source"] == "permission" {
         permission_request(app, state, &msg, reply);
+    } else if msg["source"] == "plan" {
+        // Les limites du forfait de Claude (« ondine.exe statusline ») : seulement des chiffres.
+        drop(reply);
+        if super::is_active(app, ID) {
+            if let Some(l) = plan::claude_limits(&msg["rate_limits"], now_ms()) {
+                state.locked().plan_claude = Some(l);
+            }
+        }
     } else {
         drop(reply); // un hook n'attend pas de réponse
         receive(app, state, bytes);

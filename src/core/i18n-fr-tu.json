@@ -313,7 +313,10 @@
 "Quand personne ne touche le PC, un fond sombre couvre l'écran de l'île : Ondine s'y promène au bord d'une eau qui ondule, l'heure au centre. Il se ferme dès que vous bougez la souris ou touchez le clavier. Jamais pendant une présentation, une appli en plein écran ou un appel. Windows se verrouille et éteint l'écran à l'heure prévue, comme d'habitude.": "Quand personne ne touche le PC, un fond sombre couvre l'écran de l'île : Ondine s'y promène au bord d'une eau qui ondule, l'heure au centre. Il se ferme dès que tu bouges la souris ou touches le clavier. Jamais pendant une présentation, une appli en plein écran ou un appel. Windows se verrouille et éteint l'écran à l'heure prévue, comme d'habitude.",
 "Je prépare votre île…": "Je prépare ton île…",
 "Une nouveauté vous attend.": "Une nouveauté t'attend.",
-"Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine vous dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement.": "Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine te dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement."
+"Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine vous dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement.": "Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine te dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement.",
+"Ligne d'état branchée (la vôtre continue de s'afficher)": "Ligne d'état branchée (la tienne continue de s'afficher)",
+"La ligne d'état vise un autre ondine.exe : branchez-la de nouveau.": "La ligne d'état vise un autre ondine.exe : branche-la de nouveau.",
+"Claude Code donne ses limites à sa ligne d'état. Ondine peut s'y brancher : votre ligne d'état actuelle continuera de s'afficher.": "Claude Code donne ses limites à sa ligne d'état. Ondine peut s'y brancher : ta ligne d'état actuelle continuera de s'afficher."
 },
 "patterns": [
 ["^(\\d+) nouveautés vous attendent\\.$", "$1 nouveautés t'attendent."],

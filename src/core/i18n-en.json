@@ -2630,7 +2630,34 @@
 "Une nouveauté vous attend.": "Something new is waiting for you.",
 "1 nouveauté": "1 new thing",
 "Éclosion au démarrage": "Hatching at startup",
-"Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine vous dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement.": "On first launch and after an update, a drop comes out of the top of the screen and becomes the island, Ondine says hello, then the island folds back. Only with the island at the top of the screen."
+"Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine vous dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement.": "On first launch and after an update, a drop comes out of the top of the screen and becomes the island, Ondine says hello, then the island folds back. Only with the island at the top of the screen.",
+"Semaine": "Week",
+"Ligne d'état branchée (la vôtre continue de s'afficher)": "Status line connected (yours still shows)",
+"Ligne d'état branchée": "Status line connected",
+"Ligne d'état d'Ondine retirée": "Ondine's status line removed",
+"Limites de Codex mises à jour": "Codex limits updated",
+"Limites du forfait": "Plan limits",
+"Remettre la ligne d'état d'avant dans Claude Code": "Put the previous status line back in Claude Code",
+"Débrancher": "Disconnect",
+"Ajoute « ondine.exe statusline » comme ligne d'état dans le fichier de réglages de Claude Code (copie de sécurité avant)": "Adds “ondine.exe statusline” as the status line in Claude Code's settings file (a backup is made first)",
+"Branchement…": "Connecting…",
+"Brancher la ligne d'état": "Connect the status line",
+"En attente de Claude Code : les chiffres arrivent à son prochain message (forfaits Pro et Max seulement, pas avec une clé API).": "Waiting for Claude Code: the numbers arrive with its next message (Pro and Max plans only, not with an API key).",
+"La ligne d'état vise un autre ondine.exe : branchez-la de nouveau.": "The status line points to another ondine.exe: connect it again.",
+"Claude Code donne ses limites à sa ligne d'état. Ondine peut s'y brancher : votre ligne d'état actuelle continuera de s'afficher.": "Claude Code hands its limits to its status line. Ondine can plug into it: your current status line will keep showing.",
+"Claude Code donne ses limites à sa ligne d'état. Ondine peut s'y brancher, sur ce PC, sans rien envoyer.": "Claude Code hands its limits to its status line. Ondine can plug into it, on this PC, without sending anything.",
+"Le fichier de réglages de Claude Code est illisible : Ondine n'y touche pas.": "Claude Code's settings file can't be read: Ondine leaves it alone.",
+"Lance « codex app-server » sur ce PC : Codex interroge OpenAI avec sa propre connexion. Ondine n'envoie rien elle-même.": "Runs “codex app-server” on this PC: Codex asks OpenAI with its own sign-in. Ondine sends nothing itself.",
+"Codex répond…": "Codex is answering…",
+"Demander à Codex": "Ask Codex",
+"Rien dans les journaux de Codex sur ce PC pour l'instant.": "Nothing in Codex's logs on this PC yet.",
+"Lecture…": "Reading…",
+"remise à zéro en cours…": "resetting…",
+"lu à l'instant": "read just now",
+"Montrer les limites du forfait de Claude et Codex": "Show the Claude and Codex plan limits",
+"La fenêtre de 5 h et la semaine, en % utilisé, avec l'heure de la remise à zéro. Claude : ses chiffres arrivent par sa ligne d'état, à brancher d'un clic dans l'onglet (forfaits Pro et Max). Codex : lus dans ses journaux sur ce PC. Rien n'est envoyé par Ondine.": "The 5-hour window and the week, as % used, with the reset time. Claude: its numbers arrive through its status line, connected with one click in the tab (Pro and Max plans). Codex: read from its logs on this PC. Ondine sends nothing.",
+"Claude": "Claude",
+"Codex": "Codex"
 },
 "patterns": [
 ["^Ondine (.+) est là !$", "Ondine $1 is here!"],
@@ -4558,6 +4585,17 @@
 [
 "^speed\\.cloudflare\\.com ne répond pas(.*)$",
 "speed.cloudflare.com isn't responding$1"
-]
+],
+["^remise à zéro dans (\\d+) h (\\d+)$", "resets in $1 h $2"],
+["^remise à zéro dans (\\d+) min$", "resets in $1 min"],
+["^remise à zéro lun\\. (\\d+:\\d\\d)$", "resets Mon $1"],
+["^remise à zéro mar\\. (\\d+:\\d\\d)$", "resets Tue $1"],
+["^remise à zéro mer\\. (\\d+:\\d\\d)$", "resets Wed $1"],
+["^remise à zéro jeu\\. (\\d+:\\d\\d)$", "resets Thu $1"],
+["^remise à zéro ven\\. (\\d+:\\d\\d)$", "resets Fri $1"],
+["^remise à zéro sam\\. (\\d+:\\d\\d)$", "resets Sat $1"],
+["^remise à zéro dim\\. (\\d+:\\d\\d)$", "resets Sun $1"],
+["^lu il y a (\\d+) min$", "read $1 min ago"],
+["^lu il y a (\\d+) h$", "read $1 h ago"]
 ]
 }

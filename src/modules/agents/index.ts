@@ -29,6 +29,7 @@ import { agentIcon, icon } from "../../island/icon";
 import { mountGithub } from "./github-view";
 import { changesLine, namesLine, since, type ChangeSummary } from "./texts";
 import { usageSection, watchBudget } from "./usage-view";
+import { planSection } from "./plan-view";
 import { HOOK_TOOLS, LAUNCH, launchName, sourceName, summaryLine } from "./tools";
 import { mountFilesPanel, requestFiles } from "./report-view";
 import { startWaitWatch } from "./wait-watch";
@@ -363,6 +364,8 @@ export const agents: IslandModule = {
       // Le compteur de jetons (journaux locaux de Claude Code et Codex) : usage-view.ts.
       const usage = usageSection(api);
       const usageBox = usage.box;
+      // Les limites du forfait de Claude et Codex (plan-view.ts, 1.2.4), au-dessus du compteur.
+      const plan = planSection(api);
       // Le calendrier de contributions GitHub (github-view.ts), sous le compteur.
       const githubBox = el("section", { class: "agents-usage agents-github" });
       const list = el("ul", { class: "agents-list" });
@@ -373,7 +376,7 @@ export const agents: IslandModule = {
       // La liste des fichiers d'un bilan (report-view.ts), vide le reste du temps.
       const filesBox = el("section", { class: "agents-files-box" });
       root.append(
-        el("div", { class: "agents" }, launch, projectRows, asks, filesBox, status, quiet, board, usageBox, githubBox, el("div", { class: "muted agents-subtitle" }, "Derniers messages"), list, guide),
+        el("div", { class: "agents" }, launch, projectRows, asks, filesBox, status, quiet, board, plan.box, usageBox, githubBox, el("div", { class: "muted agents-subtitle" }, "Derniers messages"), list, guide),
       );
       const stopFiles = mountFilesPanel(api, filesBox);
       /** Le nom de l'agent choisi (« Autre outil » : le mot du réglage). */
@@ -768,6 +771,7 @@ export const agents: IslandModule = {
         // Une session vient peut-être de finir : sa dernière phrase a changé.
         void loadLast();
         void usage.load();
+        void plan.load();
         let data: { events: AgentEvent[]; working: number; sessions: Session[]; asks: Ask[]; quiet: { until: number | null; held: number } | null };
         try {
           data = await api.invoke("history");

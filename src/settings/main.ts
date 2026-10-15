@@ -117,7 +117,7 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
     },
     { id: "notify", label: "Notifications", keys: ["notifyWaiting", "notifyDone", "remindWaiting", "showChanges", "doneSummary", "resumePreview", "mascot"] },
     { id: "perms", label: "Autorisations et MCP", keys: ["mcp", "permissions", "permissionWait"] },
-    { id: "tokens", label: "Jetons et budget", keys: ["usage", "prices", "dailyBudget"] },
+    { id: "tokens", label: "Jetons et budget", keys: ["usage", "planLimits", "prices", "dailyBudget"] },
     { id: "github", label: "GitHub", keys: ["githubLogin", "githubToken"] },
   ],
   askclaude: [

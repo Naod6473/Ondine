@@ -635,6 +635,11 @@ pub fn permission_cli() {
     cli::permission(std::env::args().skip(2).collect());
 }
 
+/// `ondine.exe statusline` : ligne d'état de Claude Code, limites du forfait (voir cli.rs).
+pub fn statusline_cli() {
+    cli::statusline();
+}
+
 /// `ondine.exe mcp` : l'île comme serveur MCP pour les agents (voir cli.rs).
 pub fn mcp_cli() {
     cli::mcp();

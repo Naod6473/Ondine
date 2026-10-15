@@ -136,6 +136,13 @@
         "default": true
       },
       {
+        "key": "planLimits",
+        "type": "boolean",
+        "label": "Montrer les limites du forfait de Claude et Codex",
+        "help": "La fenêtre de 5 h et la semaine, en % utilisé, avec l'heure de la remise à zéro. Claude : ses chiffres arrivent par sa ligne d'état, à brancher d'un clic dans l'onglet (forfaits Pro et Max). Codex : lus dans ses journaux sur ce PC. Rien n'est envoyé par Ondine.",
+        "default": true
+      },
+      {
         "key": "prices",
         "type": "string",
         "multiline": true,
@@ -276,7 +283,11 @@
     "github_calendar",
     "report_files",
     "open_vscode_file",
-    "copy_text"
+    "copy_text",
+    "plan",
+    "plan_install",
+    "plan_remove",
+    "plan_codex"
   ],
   "events": {
     "emits": [
