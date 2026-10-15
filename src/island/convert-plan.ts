@@ -1,29 +1,31 @@
 // Ondine convertit (1.2.5) : le plan du geste, en fonctions pures (testées
 // dans tests/front/convert.test.ts), comme hatch-plan.ts pour l'éclosion.
 //
-// Le geste (maquette validée, animations-ile/maquette-conversion.html) :
-//   1. un fichier glissé arrive sur l'île : elle s'ouvre, Ondine ouvre la
-//      bouche (« surpris »), les pilules de formats sortent en éventail sous
-//      l'île, une à une (ressorts), puis la pilule d'option ;
-//   2. une pilule survolée s'allume (Ondine « écoute ») ; la pilule d'option
-//      survolée une demi-seconde tourne (Conserver → Remplacer → Sur le bureau) ;
-//   3. lâché sur une pilule : Ondine l'avale (l'icône rétrécit et file dans
-//      sa bouche), la pilule choisie glisse au centre et se remplit pendant
-//      qu'elle mâche, le liquide de l'île monte avec la vraie progression ;
+// Le geste (maquettes validées : animations-ile/maquette-conversion.html, puis
+// maquette-depot-unifie.html, version A : tout dans l'île) :
+//   1. un fichier glissé arrive sur l'île : elle s'ouvre (hauteur du contenu,
+//      ressort), Ondine ouvre la bouche (« surpris »), les pilules arrivent
+//      une à une dans l'île (drop-panel.ts) ;
+//   2. une pilule survolée s'allume (Ondine « écoute » et la regarde) ; la
+//      pilule d'option survolée une demi-seconde tourne (Conserver →
+//      Remplacer → Sur le bureau) ;
+//   3. lâché sur une pilule de format : Ondine l'avale (l'icône rétrécit et
+//      file dans sa bouche), la pilule choisie glisse dans le bas de la
+//      mini-île et se remplit pendant qu'elle mâche, le liquide de l'île
+//      monte avec la vraie progression ;
 //   4. fini : elle recrache le nouveau fichier (arc + rebond + paillettes),
-//      la pilule de résultat sort (nom · avant → après · Ouvrir · Annuler) ;
+//      la pilule de résultat prend la place de la progression, dans l'île
+//      (nom · avant → après · Ouvrir · Annuler) ;
 //   5. échec : grimace, l'original ressort, la pilule dit pourquoi ;
 //   lâché ailleurs : rien, l'île se referme.
 // « Réduire les animations » ou le mode Calme : les mêmes étapes en fondus.
 
-import { clamp, lerp, smooth, spr } from "./hatch-plan";
+import { clamp, lerp, smooth } from "./hatch-plan";
 
 /** Les durées du geste (secondes). */
 export const T = {
-  /** Écart entre deux pilules qui sortent. */
-  stagger: 0.055,
-  /** Les pilules rentrent (glisser parti, ou fichier lâché ailleurs). */
-  retract: 0.25,
+  /** Écart entre deux pilules qui arrivent dans l'île. */
+  stagger: 0.028,
   /** L'icône file dans la bouche. */
   swallow: 0.5,
   /** Ondine mâche au moins ça, même si c'est déjà fini (le geste doit se lire). */
@@ -44,73 +46,30 @@ export const T = {
   fold: 0.35,
 } as const;
 
-/** La hauteur d'une pilule, l'écart entre deux, entre deux rangées, et sous l'île (px). */
-export const PILL_H = 36;
-export const PILL_GAP = 10;
-export const ROW_GAP = 8;
-export const BELOW = 12;
+/** La place de la pilule de travail dans la mini-île, côté centre de l'écran (px). */
+export const WORK_PAD = 50;
 
-/** Le ressort d'une pilule qui sort (0 → 1, dépasse un peu), ou un fondu en mode Calme. */
-export function fanK(t: number, index: number, calm: boolean): number {
-  const s = t - index * T.stagger;
-  if (s <= 0) return 0;
-  return calm ? smooth(s / 0.3) : spr(s, 7.5, 12.5);
-}
-
-/** Les pilules qui rentrent (1 → 0). */
-export function retractK(t: number): number {
-  return 1 - smooth(t / T.retract);
-}
-
-/** La place d'une pilule : son centre (x, y), sa largeur, sa rangée. */
-export interface Slot {
-  x: number;
-  y: number;
-  w: number;
-  row: number;
+/**
+ * Le centre vertical de la pilule de progression (puis de résultat) : dans
+ * la partie basse de la mini-île agrandie (convert.css, classe convert-work),
+ * la partie haute pour une île en bas (`dir` = -1).
+ */
+export function workY(rect: { top: number; bottom: number }, dir: 1 | -1): number {
+  return dir === 1 ? rect.bottom - WORK_PAD / 2 : rect.top + WORK_PAD / 2;
 }
 
 /**
- * Range les pilules en rangées centrées sous (ou au-dessus de) l'île.
- * `anchor` = le bord de l'île côté pilules ; `dir` = 1 vers le bas, -1 vers
- * le haut (île en bas de l'écran). Une rangée ne dépasse pas `maxW`.
+ * La largeur de la mini-île pour la pilule de résultat : au moins `min`,
+ * assez pour la pilule et un peu d'air, jamais plus que la fenêtre
+ * (`win`, moins la place de l'étirement).
  */
-export function layoutPills(widths: number[], cx: number, anchor: number, dir: 1 | -1, maxW: number): Slot[] {
-  const rows: number[][] = [[]];
-  let used = 0;
-  widths.forEach((w, i) => {
-    const row = rows[rows.length - 1];
-    const need = row.length ? used + PILL_GAP + w : w;
-    if (row.length && need > maxW) {
-      rows.push([i]);
-      used = w;
-    } else {
-      row.push(i);
-      used = need;
-    }
-  });
-  const slots: Slot[] = [];
-  rows.forEach((row, r) => {
-    const total = row.reduce((s, i) => s + widths[i], 0) + PILL_GAP * Math.max(0, row.length - 1);
-    let x = cx - total / 2;
-    const y = anchor + dir * (BELOW + PILL_H / 2 + r * (PILL_H + ROW_GAP));
-    for (const i of row) {
-      slots[i] = { x: x + widths[i] / 2, y, w: widths[i], row: r };
-      x += widths[i] + PILL_GAP;
-    }
-  });
-  return slots;
+export function resultWidth(pill: number, min: number, win: number): number {
+  return Math.round(Math.max(min, Math.min(win - 44, pill + 28)));
 }
 
-/** Le centre de la pilule d'option : une rangée sous les pilules de formats. */
-export function optionY(slots: Slot[], anchor: number, dir: 1 | -1): number {
-  const rows = slots.length ? Math.max(...slots.map((s) => s.row)) + 1 : 0;
-  return anchor + dir * (BELOW + PILL_H / 2 + rows * (PILL_H + ROW_GAP));
-}
-
-/** La pilule sous le point (x, y), avec une petite marge ; -1 sinon. */
-export function hitPill(slots: Slot[], x: number, y: number, margin = 6): number {
-  return slots.findIndex((s) => Math.abs(x - s.x) <= s.w / 2 + margin && Math.abs(y - s.y) <= PILL_H / 2 + margin);
+/** Le délai d'arrivée d'une pilule du dépôt (s) : une à une, plafonné pour une longue liste. */
+export function pillDelay(index: number): number {
+  return Math.min(index, 14) * T.stagger;
 }
 
 /**

@@ -986,6 +986,90 @@ option {
   padding-left: 0 !important;
 }
 
+/* Étagère → Pilules du dépôt (drop-pills-group.ts) : une liste par ligne de l'île. */
+.dpp {
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px 4px;
+}
+.dpp-title {
+  margin: 4px 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+/* Deux colonnes lues de haut en bas : l'ordre reste celui de l'île. */
+.dpp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  column-count: 2;
+  column-gap: 18px;
+}
+@media (max-width: 640px) {
+  .dpp-list {
+    column-count: 1;
+  }
+}
+.dpp-item {
+  break-inside: avoid;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 2px 4px 2px 8px;
+  border-radius: 10px;
+  transition: background 120ms var(--ease), opacity 160ms var(--ease);
+}
+.dpp-item:hover {
+  background: var(--field);
+}
+.dpp-item.off .dpp-icon,
+.dpp-item.off .dpp-name {
+  opacity: 0.45;
+}
+.dpp-icon {
+  flex: none;
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+}
+.dpp-icon :is(.icon-line, .icon-img) {
+  width: 16px;
+  height: 16px;
+}
+.dpp-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  white-space: nowrap;
+}
+.dpp-name.fmt {
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+.dpp-tools {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.dpp-move {
+  width: 24px;
+  height: 24px;
+  font-size: 13px;
+}
+.dpp-tools .toggle {
+  margin-left: 6px;
+}
+.dpp-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 12px 12px;
+}
+
 /* Calendriers de l'Agenda : couleur, nom, source (fichier ou lien) */
 .cals-item {
   flex-wrap: wrap;

@@ -4229,17 +4229,24 @@ une fenêtre qui disparaît surprend). `lockGoodbye` n'est plus essentiel
 
 ## Conversion de fichiers (Ondine convertit)
 
-1.2.5. Un fichier glissé vers l'île : des pilules de formats sortent sous
-elle ; lâché sur une pilule, Ondine l'avale, mâche, recrache le nouveau
-fichier. Idées reprises de Filee (MIT, voir THIRD-PARTY.md), réécrites.
+1.2.5. Un fichier glissé sur l'île : elle s'ouvre et montre tout en pilules
+(« dépôt unifié », version A de la maquette : tout dans l'île) ; lâché sur un
+format, Ondine l'avale, mâche, recrache le nouveau fichier. Idées reprises de Filee (MIT, voir THIRD-PARTY.md), réécrites.
 
 - **Qui fait quoi** :
-  - `src/island/convert-gesture.ts` : le geste, dans la fenêtre de l'île
-    (pilules, survol, animations, expressions, liquide, pilules de
-    progression et de résultat) ;
+  - `src/island/drop-panel.ts` : le contenu de l'île en mode dépôt
+    (en-tête, trois lignes de pilules, phrase), le survol et le choix au
+    lâcher (`DropChoice` : un format ou une cible) ;
+  - `src/island/drop-pills-logic.ts` (pur, testé) : les pilules connues
+    (ligne, libellé, icône), la disposition (ordre, masquées), la reprise des
+    anciens interrupteurs, l'en-tête (`headerFor`) et les phrases ;
+  - `src/settings/drop-pills-group.ts` : Réglages → Étagère → « Pilules du
+    dépôt » ;
+  - `src/island/convert-gesture.ts` : le travail, une fois le format choisi
+    (avaler, mâcher, liquide, pilules de progression et de résultat) ;
   - `src/island/convert-plan.ts` : son minutage et ses poses, en fonctions
-    pures testées (`fanK`, `layoutPills`, `hitPill`, `Dwell`, `swallowPose`,
-    `arcPose`, `expressionAt`, `liquidLevel`) ;
+    pures testées (`pillDelay`, `workY`, `resultWidth`, `Dwell`,
+    `swallowPose`, `arcPose`, `expressionAt`, `liquidLevel`) ;
   - `src/modules/convert/` : le module (manifeste, vue compacte « Je mâche…
     42 % », appels au Rust), et `convert-logic.ts` (pur, testé : pilules
     proposées, libellés, tailles, résumé du résultat) ;
@@ -4253,19 +4260,44 @@ fichier. Idées reprises de Filee (MIT, voir THIRD-PARTY.md), réécrites.
   envoie maintenant `shift` (touche Maj, `MK_SHIFT`) avec `file-drag`. Dans
   un navigateur (npm run dev, démo), `bridge.ts` traduit le glisser-déposer
   HTML5 en ces mêmes événements (noms de fichiers, pas de chemins).
-- **Coexistence avec l'Étagère** : deux zones nettes. DANS l'île, les cibles
-  de dépôt de toujours (Étagère, Copier vers…, Corbeille…) ; SOUS l'île (au
-  dessus pour une île en bas), les pilules de conversion. L'île en mode dépôt
-  passe de 200 à 168 px de haut (classe `convert-room`, cibles en ligne) pour
-  leur laisser la place dans la fenêtre de 320 px. `island.ts`, `onDrag` :
-  `enter` → `convert.enter` puis `fsm.dragEnter` ; `over` → position en px
-  CSS et Maj ; `drop` → `convert.drop` répond « converted » (sur une pilule :
-  `fsm.dropped`, `island.files-dropped` avec `target: "convert"`), « missed »
-  (pilules montrées, lâché ni sur une pilule ni sur une cible : rien, l'île se
-  referme par `fsm.dragLeave`, pas de notification) ou « none » (pas de
-  pilules : comportement d'avant). Une île à gauche ou à droite n'a pas de
-  pilules (v1). Raison du choix : garder intact le geste de l'Étagère qu'on
-  connaît, et ne jamais convertir par accident (il faut viser une pilule).
+- **Le dépôt unifié** : plus aucune pilule hors de l'île. `island.ts`,
+  `onDrag` : `enter` → `DropPanel.prepare(paths)` (et `convert.probe` pour
+  la taille ou le nombre d'éléments d'un dossier) puis `fsm.dragEnter` ;
+  `over` → `DropPanel.over(pos, shift)` (pilule visée : couleur d'Ondine,
+  léger grossissement, Ondine la regarde) ; `drop` → `DropPanel.drop` rend
+  un format (`convert.start`) ou une cible (`registry.drop`, comme avant),
+  sinon rien et l'île se referme (`fsm.dragLeave`, pas de notification).
+  - L'île en mode dépôt fait 700 px de large ; sa hauteur suit le contenu
+    (`ResizeObserver` → `fitDrop`, `--drop-h`, ressort). Si elle dépasse le
+    panneau de 320 px (380 sur un côté), `Bridge.islandSetTall` demande le
+    panneau haut, rendu dès que l'état n'est plus `drop`.
+  - En-tête : Ondine surprise, nom (ou « N fichiers »), type et taille (ou
+    « Dossier · N éléments »), et la pilule d'option. Pas de pilule
+    d'option pour un dossier, ni sans format possible.
+  - Lignes Convertir (formats de `pillsFor`, puis « Redimensionner… » pour
+    des images, puis ZIP), Ranger (Étagère, Copier, Déplacer, dossiers
+    favoris, Corbeille), Outils (Parler à Ondine, Renommer, Chemin, Empreinte,
+    Terminal ici, collègues). Une ligne vide est masquée. Les cibles
+    viennent toujours de `dropTargets()` des modules ; celles qu'on ne
+    connaît pas vont dans Outils.
+  - Sans doublons : la pilule ZIP est `zip` d'Ondine convertit, ou
+    `shelf-zip` (« Compresser ») si ce module est coupé ; « Images… »
+    devient « Redimensionner… » (même boîte de largeur qu'avant).
+  - Réglages : `modules.shelf.values.dropPills` = `{v:1, order, hidden}`.
+    Tant qu'il n'existe pas, `legacyHidden` reprend les anciens
+    interrupteurs (`showTrash`, `showCompress`, `showTools`, `showHash`,
+    `showDrop` du terminal et de Demander) : une pilule masquée avant le
+    reste. Une ligne jamais réordonnée garde l'ordre propre au type de
+    fichier (`arrangeFormats`).
+  - Île à gauche ou à droite : même contenu, l'île s'étend vers le centre.
+    Île en bas : elle grandit vers le haut. Pendant le travail, la mini-île
+    prend la classe `convert-work` (place pour la pilule de progression,
+    `workY`), puis s'élargit à la pilule de résultat (`resultWidth`).
+  - Animations : arrivée des pilules en ressort décalé (`pillDelay`), fondu
+    en mode Calme ou « Réduire les animations », rien en mode Économie.
+- `probe {paths}` (Rust) : `{dir, size, count}` par chemin (10 000 éléments
+  comptés au plus), rien d'autre ; la démo répond pour un nom sans extension
+  par un dossier de 214 éléments.
 - **Les pilules** : `pillsFor` (dernier format choisi en premier, retenu par
   type dans `localStorage` « ondine.convert.last » ; pas le format que les
   fichiers ont déjà ; « Un seul ZIP » toujours possible pour plusieurs).
@@ -4273,8 +4305,9 @@ fichier. Idées reprises de Filee (MIT, voir THIRD-PARTY.md), réécrites.
   GIF, BMP, TIFF, ICO. PDF : PNG, JPG (une image par page). Vidéo : MP4,
   Alléger, MP3, M4A, WAV (le son seul). Son : MP3, M4A, WAV. ZIP : Extraire.
   La pilule d'option (Conserver à côté / Remplacer l'original / Sur le
-  bureau) tourne après 0,5 s de survol (`Dwell`), à la touche Maj
-  (Remplacer) ; sa valeur de départ est le réglage `dest`.
+  bureau, en haut de l'île) tourne après 0,5 s de survol (`Dwell`), à la
+  touche Maj (Remplacer) ou au clic ; sa valeur de départ est le réglage
+  `dest`.
 - **Le travail** (Rust, `start {paths, format, dest}`) : un thread, une
   conversion à la fois (« j'ai déjà la bouche pleine »), 100 fichiers au plus,
   chaque chemin validé (`privacy::check_path`), un fichier après l'autre, un
@@ -4326,4 +4359,4 @@ fichier. Idées reprises de Filee (MIT, voir THIRD-PARTY.md), réécrites.
 - **Pas fait (plus tard)** : FFmpeg, LibreOffice, Règles, « Envoyer vers »,
   vidéo → GIF (MediaTranscoder ne sait pas écrire de GIF : il faudrait
   décoder les images une à une), WebP avec perte, métadonnées gardées pour
-  HEIC (WIC les lit, on ne les recopie pas), île à gauche ou à droite.
+  HEIC (WIC les lit, on ne les recopie pas).

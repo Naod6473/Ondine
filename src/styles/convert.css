@@ -1,7 +1,8 @@
-/* Ondine convertit (1.2.5) : les pilules sous l'île, l'icône avalée puis
-   recrachée, la pilule de progression et celle du résultat
-   (src/island/convert-gesture.ts), et la mini-île pendant le travail
-   (src/modules/convert/index.ts).
+/* Ondine convertit (1.2.5) : l'icône avalée puis recrachée, la pilule de
+   progression et celle du résultat, DANS la mini-île agrandie
+   (src/island/convert-gesture.ts), et le texte de la mini-île pendant le
+   travail (src/modules/convert/index.ts). Les pilules du dépôt (formats,
+   rangements, outils) sont dans island.css (« Dépôt »).
 
    Tout est posé par le JS (transform, opacity) : ici, seulement l'allure.
    Les couleurs suivent celles de l'île (thèmes clairs compris). Le flou
@@ -28,7 +29,8 @@
   align-items: center;
   gap: 7px;
   white-space: nowrap;
-  background: color-mix(in srgb, var(--island-bg) 92%, transparent);
+  /* Dans l'île : un peu plus clair qu'elle, comme les pilules du dépôt. */
+  background: color-mix(in srgb, var(--island-fg) 10%, var(--island-bg));
   color: var(--island-fg);
   font: 600 14px/1 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   box-shadow:
@@ -44,7 +46,7 @@
 }
 /* Style Studio : un verre dépoli derrière les pilules. */
 body.motion-studio .convert-pill {
-  background: color-mix(in srgb, var(--island-bg) 72%, transparent);
+  background: color-mix(in srgb, var(--island-fg) 12%, color-mix(in srgb, var(--island-bg) 72%, transparent));
   backdrop-filter: blur(14px) saturate(160%);
 }
 .convert-pill.hot {
@@ -55,17 +57,11 @@ body.motion-studio .convert-pill {
     0 0 0 1px rgba(255, 255, 255, 0.3) inset;
 }
 
-/* La pilule d'option : où va le résultat. */
-.convert-choice {
-  font-weight: 500;
-  gap: 8px;
+@keyframes convert-turn {
+  from {
+    rotate: -360deg;
+  }
 }
-.convert-spin {
-  display: inline-flex;
-  width: 16px;
-  height: 16px;
-}
-.convert-spin svg,
 .convert-file svg {
   width: 100%;
   height: 100%;
@@ -73,26 +69,6 @@ body.motion-studio .convert-pill {
   stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-.convert-choice.turned .convert-spin {
-  animation: convert-turn 460ms var(--ease, ease-out);
-}
-@keyframes convert-turn {
-  from {
-    rotate: -360deg;
-  }
-}
-/* Le petit trait qui se remplit pendant le survol d'une demi-seconde. */
-.convert-dwell {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 4px;
-  height: 2px;
-  border-radius: 1px;
-  background: var(--accent);
-  transform-origin: 0 50%;
-  transform: scaleX(0);
 }
 
 /* La pilule qui se remplit pendant qu'Ondine mâche (un clic : « Arrêter »). */
@@ -133,7 +109,7 @@ body.motion-studio .convert-pill {
   gap: 10px;
   padding-right: 5px;
   font-weight: 500;
-  max-width: calc(100vw - 24px);
+  max-width: calc(100vw - 44px);
 }
 .convert-res.live {
   pointer-events: auto;
@@ -209,24 +185,50 @@ body.motion-studio .convert-pill {
   background: #ffd84a;
 }
 
-/* L'île en mode dépôt laisse la place aux pilules dessous : un peu moins
-   haute, et ses cibles en ligne (icône à côté du nom) pour garder trois
-   rangées lisibles. */
-.island[data-state="drop"].convert-room {
-  height: 168px;
+/* Pendant le travail, la mini-île est plus haute : la pilule de progression,
+   puis celle du résultat, y prennent place côté centre de l'écran (WORK_PAD
+   de convert-plan.ts : 50 px), et elle s'élargit pour un long résultat
+   (--convert-w). La gelée (jelly.ts) anime le changement. */
+.island[data-state="compact"].convert-work {
+  width: var(--convert-w, 400px);
+  height: 92px;
+  padding-bottom: 50px;
+  --r: 26px;
 }
-.island[data-state="drop"].convert-room .drop-target {
-  flex-direction: row;
-  gap: 6px;
-  padding: 0 6px;
+body[data-edge="bottom"] .island[data-state="compact"].convert-work {
+  padding-bottom: 0;
+  padding-top: 50px;
 }
-.island[data-state="drop"].convert-room .drop-icon {
-  font-size: 16px;
-  display: inline-flex;
+/* Sur un côté de l'écran, la mini-île n'est plus une pilule debout le temps
+   du travail : elle se couche vers le centre de l'écran, comme en haut. */
+body:is([data-edge="left"], [data-edge="right"]) .island[data-state="compact"].convert-work {
+  width: var(--convert-w, 400px);
+  height: 92px;
+  padding: 0 14px 50px 8px;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: minmax(0, 1fr);
+  justify-items: stretch;
+  align-items: center;
 }
-.island[data-state="drop"].convert-room .drop-icon :is(.icon-img, .icon-line) {
-  width: 18px;
-  height: 18px;
+body:is([data-edge="left"], [data-edge="right"]) .island[data-state="compact"].convert-work .island-content {
+  position: static;
+  width: auto;
+  height: 100%;
+  translate: none;
+  rotate: none;
+}
+body[data-island-style="mouth"][data-edge] .island[data-state="compact"].convert-work {
+  width: var(--convert-w, 400px);
+  height: 92px;
+  padding: 0 14px 50px 8px;
+}
+body[data-island-style="mouth"][data-edge="bottom"] .island[data-state="compact"].convert-work {
+  padding: 50px 14px 0 8px;
+}
+/* Un autre fichier glissé pendant le travail : l'île passe en mode dépôt,
+   la pilule de progression attend (elle revient avec la mini-île). */
+.island[data-state="drop"] ~ .convert-layer {
+  visibility: hidden;
 }
 
 /* La mini-île pendant le travail. */
@@ -256,10 +258,4 @@ body.motion-studio .convert-pill {
 }
 [data-convert="fail"] .convert-compact-line {
   color: var(--convert-fail, #ff8f78);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .convert-choice.turned .convert-spin {
-    animation: none;
-  }
 }

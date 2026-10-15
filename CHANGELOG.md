@@ -28,17 +28,27 @@
   AWS, JWT, clé privée…) n'entre plus dans l'historique · Clipboard: a copied
   API key or token (Claude, OpenAI, GitHub, AWS, JWT, private key…) no longer
   goes into the history
-- Ondine convertit : glissez un fichier vers l'île, des pilules de formats
-  sortent dessous (JPG, PNG, PDF, MP3, ZIP…) ; lâchez-le sur l'une d'elles,
-  Ondine l'avale, mâche et recrache le nouveau fichier, avec « Ouvrir » et
-  « Annuler ». À côté de l'original, à sa place (l'original part à la
-  Corbeille) ou sur le Bureau. Images (HEIC, AVIF), images en un seul PDF, PDF
-  en images, vidéo et son, ZIP ; tout sur le PC · Ondine converts: drag a
-  file to the island, format pills come out below it (JPG, PNG, PDF, MP3,
-  ZIP…); drop it on one, Ondine swallows it, chews and spits out the new file,
-  with "Open" and "Cancel". Next to the original, in its place (the original
-  goes to the Recycle Bin) or on the Desktop. Images (HEIC, AVIF), images into
-  one PDF, PDF into images, video and sound, ZIP; all on the PC
+- Ondine convertit, dépôt unifié : glissez un fichier sur l'île, elle s'ouvre
+  et montre tout en pilules du même style, en trois lignes (Convertir : JPG,
+  PNG, PDF, MP3, ZIP…, Ranger, Outils), avec une phrase qui dit ce qui va se
+  passer ; lâchez-le sur un format, Ondine l'avale, mâche et recrache le
+  nouveau fichier, avec « Ouvrir » et « Annuler ». À côté de l'original, à sa
+  place (l'original part à la Corbeille) ou sur le Bureau, au choix sur la
+  pilule d'option en haut de l'île. Plus de doublons (« Compresser » est la
+  pilule ZIP, « Images… » devient « Redimensionner… »). Ordre et pilules
+  montrées dans Réglages → Étagère → Pilules du dépôt. Île à gauche, à droite
+  ou en bas comprise. Images (HEIC, AVIF), images en un seul PDF, PDF en
+  images, vidéo et son, ZIP ; tout sur le PC · Ondine converts, one drop
+  panel: drag a file onto the island, it opens and shows everything as
+  matching pills in three rows (Convert: JPG, PNG, PDF, MP3, ZIP…, Put away,
+  Tools), with a line saying what will happen; drop it on a format, Ondine
+  swallows it, chews and spits out the new file, with "Open" and "Undo". Next
+  to the original, in its place (the original goes to the Recycle Bin) or on
+  the Desktop, picked on the option pill at the top of the island. No more
+  duplicates ("Compress" is the ZIP pill, "Images…" becomes "Resize…"). Order
+  and shown pills in Settings → Shelf → Drop pills. Works with the island on
+  the left, right or bottom. Images (HEIC, AVIF), images into one PDF, PDF
+  into images, video and sound, ZIP; all on the PC
 
 ## 1.2.4 · à venir
 

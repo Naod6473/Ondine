@@ -38,8 +38,8 @@ async function open(api: ModuleApi, options: OpenOptions = {}) {
   }
 }
 
+/** « Terminal ici » (montrée ou masquée dans Réglages → Étagère → Pilules du dépôt). */
 function dropTargets(api: ModuleApi): DropTarget[] {
-  if (!api.settings().showDrop) return [];
   return [{ id: "terminal-here", label: "Terminal ici", icon: "🖥️", onDrop: (paths) => open(api, { path: paths[0] }) }];
 }
 

@@ -136,13 +136,19 @@ body {
   align-items: start;
 }
 .island[data-state="drop"] {
-  /* Assez large pour les cibles de l'Étagère (jusqu'à 3 rangées). */
+  /* Le dépôt unifié (drop-panel.ts) : la largeur de la fenêtre, et la
+     hauteur de ses pilules (--drop-h, island.ts fitDrop). Sur un côté de
+     l'écran, la même île s'étend vers le centre ; en bas, vers le haut. */
   width: 700px;
-  height: 200px;
-  padding: 10px 14px;
-  --r: 24px;
-  outline: 2px dashed rgba(124, 196, 255, 0.5);
-  outline-offset: -6px;
+  height: var(--drop-h, 200px);
+  padding: 12px 16px 10px 12px;
+  --r: 28px;
+  outline: 1.5px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: -7px;
+  align-items: start;
+  /* Ondine dans le coin, le contenu sur toute la largeur (les étiquettes
+     des lignes sous elle, comme la maquette). */
+  --dp-face: 72px;
 }
 .island[data-state="alert"] {
   width: 480px;
@@ -828,42 +834,208 @@ body {
   background: rgba(255, 255, 255, 0.05);
 }
 
-/* ── Dépôt ───────────────────────────────────────────────────────────────── */
+/* ── Dépôt (drop-panel.ts) ───────────────────────────────────────────────── */
 
-.drop-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-  grid-auto-rows: minmax(0, 1fr);
-  gap: 8px;
-  height: 100%;
+/* Ondine en haut à gauche, par-dessus le contenu qui prend toute la largeur. */
+.island[data-state="drop"] .mascot-slot {
+  grid-row: 1;
+  grid-column: 1;
+  align-self: start;
+  z-index: 2;
 }
-.drop-target {
-  flex: 1;
+.island[data-state="drop"] .island-content {
+  grid-row: 1;
+  grid-column: 1 / -1;
+  height: auto;
+  justify-content: flex-start;
+}
+.island[data-mascot-size="small"][data-state="drop"] {
+  --dp-face: 56px;
+}
+.island[data-mascot-size="large"][data-state="drop"] {
+  --dp-face: 92px;
+}
+.island.no-mascot[data-state="drop"] {
+  --dp-face: 0px;
+}
+.dp {
   display: flex;
   flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  flex: none;
+  /* La largeur de l'île ouverte (700 px moins ses marges), même pendant que
+     la gelée l'élargit : la hauteur mesurée (fitDrop) est la bonne d'emblée. */
+  width: 672px;
+}
+.dp-head {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--line);
-  transition: background 120ms ease, transform 120ms ease;
+  gap: 12px;
+  min-height: var(--dp-face, 72px);
+  padding-left: calc(var(--dp-face, 72px) + 10px);
 }
-.drop-target.hover {
-  background: rgba(124, 196, 255, 0.22);
-  transform: scale(1.04);
+.dp-who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
-.drop-target > span:last-child {
-  font-size: 12px;
-  text-align: center;
-  padding: 0 4px;
+/* Le nom du fichier peut se couper (c'est un en-tête) ; les pilules, jamais. */
+.dp-title {
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
 }
-.drop-icon {
-  font-size: 20px;
+.dp-meta {
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dp-row {
+  display: grid;
+  grid-template-columns: max(84px, var(--dp-face, 72px)) minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+}
+.dp-lbl {
+  padding-top: 9px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--island-fg) 48%, transparent);
+  white-space: nowrap;
+}
+.dp-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+.dp-pill {
+  flex: none;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--island-fg) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--island-fg) 9%, transparent);
+  color: var(--island-fg);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: default;
+  /* Le léger grossissement au survol : un ressort (la courbe dépasse un peu). */
+  transition:
+    transform 280ms cubic-bezier(0.34, 1.6, 0.5, 1),
+    background 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    opacity 200ms ease;
+}
+.dp-fmt {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.dp-icon {
+  flex: none;
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+}
+.dp-icon :is(.icon-line, .icon-img) {
+  width: 16px;
+  height: 16px;
+}
+.dp-icon svg {
+  width: 100%;
+  height: 100%;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.dp-pill.hot {
+  transform: scale(1.08);
+  background: var(--accent);
+  border-color: transparent;
+  color: #06223a;
+  box-shadow: 0 8px 22px -6px var(--accent);
+}
+/* Une pilule visée : les autres s'effacent un peu. */
+.dp-aiming .dp-pill:not(.hot) {
+  opacity: 0.78;
+}
+/* La pilule d'option (Conserver / Remplacer / Sur le bureau). */
+.dp-opt {
+  position: relative;
+  background: transparent;
+  border-color: color-mix(in srgb, var(--island-fg) 24%, transparent);
+  font-weight: 500;
+  cursor: pointer;
+}
+.dp-opt.hot {
+  background: color-mix(in srgb, var(--island-fg) 12%, transparent);
+  color: var(--island-fg);
+  border-color: color-mix(in srgb, var(--island-fg) 30%, transparent);
+  box-shadow: none;
+}
+.dp-opt[hidden] {
+  display: none;
+}
+.dp-opt.turned .dp-spin {
+  animation: convert-turn 460ms var(--ease, ease-out);
+}
+/* Le petit trait qui se remplit pendant le survol d'une demi-seconde. */
+.dp-dwell {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 3px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+}
+/* Ce qui va se passer. */
+.dp-hint {
+  min-height: 18px;
+  padding: 2px 0 0;
+  text-align: center;
+  font-size: 12.5px;
+  color: color-mix(in srgb, var(--island-fg) 72%, transparent);
+}
+/* « Réduire les animations », mode Calme, mode Économie : ni ressort ni grossissement. */
+.dp-quiet .dp-pill {
+  transition: background 120ms ease, color 120ms ease, opacity 120ms ease;
+}
+.dp-quiet .dp-pill.hot {
+  transform: none;
+}
+body[data-perf="eco"] .dp-pill.hot {
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dp-pill {
+    transition: none;
+  }
+  .dp-pill.hot {
+    transform: none;
+  }
+  .dp-opt.turned .dp-spin {
+    animation: none;
+  }
 }
 
 /* ── Module Étagère ──────────────────────────────────────────────────────── */

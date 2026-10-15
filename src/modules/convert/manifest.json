@@ -2,7 +2,7 @@
   "id": "convert",
   "name": "Ondine convertit",
   "icon": "🔀",
-  "description": "Glissez un fichier vers l'île : des pilules de formats sortent sous elle (JPG, PNG, PDF, MP3, ZIP…). Lâchez-le sur l'une d'elles : Ondine l'avale, le convertit et recrache le nouveau fichier à côté de l'original, à sa place (l'original part à la Corbeille, « Annuler » le remet) ou sur le Bureau. Images (HEIC et AVIF avec l'extension de Windows), images en un seul PDF, PDF en images, vidéo et son courants (MP4, M4A, MP3, WAV), ZIP. Tout se fait sur ce PC avec ce que Windows sait déjà faire : rien ne part sur Internet, et le journal ne note ni les noms ni le contenu des fichiers.",
+  "description": "Glissez un fichier sur l'île : elle s'ouvre et montre en pilules les formats possibles (JPG, PNG, PDF, MP3, ZIP…), à côté de Ranger et Outils. Lâchez-le sur l'une d'elles : Ondine l'avale, le convertit et recrache le nouveau fichier à côté de l'original, à sa place (l'original part à la Corbeille, « Annuler » le remet) ou sur le Bureau. La pilule d'option, en haut de l'île, change ce choix (survol d'une demi-seconde, Maj ou clic). Images (HEIC et AVIF avec l'extension de Windows), images en un seul PDF, PDF en images, vidéo et son courants (MP4, M4A, MP3, WAV), ZIP. Tout se fait sur ce PC avec ce que Windows sait déjà faire : rien ne part sur Internet, et le journal ne note ni les noms ni le contenu des fichiers.",
   "version": "0.1.0",
   "permissions": [
     "files"
@@ -74,16 +74,19 @@
   ],
   "commands": [
     "start",
+    "probe",
     "cancel",
     "open"
   ],
   "events": {
     "emits": [
       "convert.progress",
-      "convert.done"
+      "convert.done",
+      "convert.probed"
     ],
     "listens": [
       "convert.request",
+      "convert.probe",
       "convert.open",
       "convert.cancel",
       "convert.progress",

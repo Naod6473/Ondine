@@ -556,6 +556,17 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     case "convert.cancel":
       demoConvertCancelled = true;
       return null;
+    // L'en-tête du dépôt : un nom sans extension est un dossier, le reste a une taille crédible.
+    case "convert.probe": {
+      const paths = (Array.isArray(args.paths) ? args.paths : []).filter((p): p is string => typeof p === "string");
+      const sizes: Record<string, number> = { heic: 3_400_000, jpg: 2_100_000, png: 1_800_000, pdf: 1_200_000, mov: 48_000_000, mp4: 36_000_000, mp3: 5_200_000, zip: 12_000_000 };
+      return {
+        items: paths.map((p) => {
+          const ext = /\.([^.\\/]+)$/.exec(p)?.[1]?.toLowerCase();
+          return ext ? { dir: false, size: sizes[ext] ?? 640_000, count: null } : { dir: true, size: 0, count: 214 };
+        }),
+      };
+    }
     case "convert.open":
       return null; // en démo, pas de vrai fichier à ouvrir
 

@@ -2,7 +2,8 @@
 // (testée dans tests/front/convert.test.ts).
 //
 //   - le type d'un fichier d'après son extension, et les pilules de formats à
-//     montrer pour CE fichier (ou ce lot). La première pilule est le dernier
+//     montrer pour CE fichier (ou ce lot), dans la ligne « Convertir » de
+//     l'île (src/island/drop-panel.ts). La première pilule est le dernier
 //     format choisi pour ce type ;
 //   - la pilule d'option (Conserver / Remplacer / Sur le bureau) et son tour ;
 //   - les textes de l'île et des pilules : progression (« Je mâche… 42 % »,
@@ -56,12 +57,16 @@ export function commonKind(paths: string[]): Kind {
   return kinds.every((k) => k === kinds[0]) ? (kinds[0] ?? "other") : "other";
 }
 
-/** Les formats proposés par type, dans l'ordre des pilules (avant le « dernier choix »). */
+/**
+ * Les formats proposés par type, dans l'ordre des pilules (avant le « dernier
+ * choix »). « ZIP » partout (sauf pour une archive) : c'est l'ancienne cible
+ * « Compresser » de l'Étagère (dépôt unifié, 1.2.5).
+ */
 const FORMATS: Record<Kind, FormatId[]> = {
-  image: ["jpg", "png", "webp", "pdf", "shrink", "gif", "bmp", "tiff", "ico"],
-  pdf: ["png", "jpg"],
-  video: ["mp4", "shrink", "mp3", "m4a", "wav"],
-  audio: ["mp3", "m4a", "wav"],
+  image: ["jpg", "png", "webp", "pdf", "shrink", "gif", "bmp", "tiff", "ico", "zip"],
+  pdf: ["png", "jpg", "zip"],
+  video: ["mp4", "shrink", "mp3", "m4a", "wav", "zip"],
+  audio: ["mp3", "m4a", "wav", "zip"],
   zip: ["unzip"],
   other: ["zip"],
 };

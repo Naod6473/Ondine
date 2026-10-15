@@ -1,16 +1,19 @@
 // Module « Ondine convertit » (1.2.5) : un fichier glissé vers l'île, lâché
 // sur une pilule de format, est converti.
 //
-// Pas d'onglet. Le geste (les pilules sous l'île, avaler, mâcher, recracher)
-// est dessiné par l'île (src/island/convert-gesture.ts), qui publie le choix
-// sur le bus (« convert.request »). Ici :
+// Pas d'onglet. Les pilules (dans l'île, avec les autres cibles de dépôt :
+// src/island/drop-panel.ts) et le geste (avaler, mâcher, recracher :
+// src/island/convert-gesture.ts) sont dessinés par l'île, qui publie le
+// choix sur le bus (« convert.request »). Ici :
 //   - on appelle le Rust (`start`, src-tauri/src/modules/convert.rs), qui
 //     convertit dans un thread et répond par « convert.progress » et
 //     « convert.done » ;
 //   - la mini-île montre l'avancement (vue compacte) : « vacances.heic → JPG »,
 //     « Je mâche… 42 % », puis « C'est prêt ! » ou la raison d'un échec ;
 //   - « Ouvrir » (convert.open) et « Arrêter » (convert.cancel), demandés par
-//     les pilules de l'île, passent par les commandes du module.
+//     les pilules de l'île, passent par les commandes du module ;
+//   - l'en-tête du dépôt (taille, dossier) : « convert.probe » → `probe` →
+//     « convert.probed ».
 //
 // Confidentialité : tout se fait sur ce PC ; rien n'est écrit dans le journal
 // (ni nom ni contenu), rien ne part sur Internet.
@@ -102,6 +105,18 @@ export const convert: IslandModule = {
         void api.invoke("open", { path }).catch((err) =>
           api.notify({ title: "Ondine convertit", body: String(err).replace(/^Error:\s*/, ""), icon: "🔀", priority: "low", key: "convert-open" }),
         );
+      }),
+      // Le dépôt unifié veut l'en-tête (« Image · 3,4 Mo », « Dossier · 214 éléments ») :
+      // des métadonnées seulement, rien n'est lu ni noté.
+      api.on("convert.probe", (msg) => {
+        const p = (msg.payload ?? {}) as { id?: unknown; paths?: unknown };
+        const paths = strings(p.paths);
+        if (typeof p.id !== "number" || !paths.length) return;
+        const id = p.id;
+        void api
+          .invoke<{ items?: unknown[] }>("probe", { paths })
+          .then((r) => api.emit("convert.probed", { id, items: Array.isArray(r?.items) ? r.items : [] }))
+          .catch(() => undefined); // pas de taille : l'en-tête dit seulement le type
       }),
       // Un clic sur la pilule qui se remplit : « Arrêter ».
       api.on("convert.cancel", () => void api.invoke("cancel").catch(() => undefined)),

@@ -18,7 +18,7 @@ import {
   workTitle,
   type DoneMessage,
 } from "../../src/modules/convert/convert-logic";
-import { Dwell, expressionAt, fanK, hitPill, layoutPills, liquidLevel, optionY, PILL_H, retractK, swallowPose, T } from "../../src/island/convert-plan";
+import { Dwell, expressionAt, liquidLevel, pillDelay, resultWidth, swallowPose, WORK_PAD, workY } from "../../src/island/convert-plan";
 import { IslandStateMachine } from "../../src/island/island-state";
 
 (globalThis as unknown as { window: unknown }).window = globalThis;
@@ -40,7 +40,8 @@ describe("les pilules proposées", () => {
     const list = ids(["photo.jpg"])!;
     assert.ok(!list.includes("jpg"));
     assert.ok(list.includes("shrink") && list.includes("pdf"));
-    assert.ok(!list.includes("zip"), "un seul fichier : pas de ZIP");
+    // L'ancienne cible « Compresser » de l'Étagère : la pilule ZIP, en dernier.
+    assert.equal(list.at(-1), "zip");
     assert.equal(ids(["photo.heic"])![0], "jpg");
   });
 
@@ -160,32 +161,23 @@ describe("les textes", () => {
 });
 
 describe("le plan du geste", () => {
-  test("les pilules sortent une à une, en ressort (ou en fondu)", () => {
-    assert.equal(fanK(0, 0, false), 0);
-    assert.equal(fanK(T.stagger * 0.5, 1, false), 0, "la deuxième attend son tour");
-    assert.ok(fanK(2, 0, false) > 0.95);
-    assert.ok(fanK(2, 0, true) === 1);
-    assert.equal(retractK(0), 1);
-    assert.equal(retractK(T.retract), 0);
+  test("les pilules du dépôt arrivent une à une, sans attendre trop longtemps", () => {
+    assert.equal(pillDelay(0), 0);
+    assert.ok(pillDelay(1) > 0);
+    assert.equal(pillDelay(40), pillDelay(14), "plafonné pour une longue liste");
+    assert.ok(pillDelay(14) < 0.5);
   });
 
-  test("rangées centrées sous l'île, au-dessus pour une île en bas", () => {
-    const slots = layoutPills([60, 60, 60], 360, 100, 1, 1000);
-    assert.equal(slots.length, 3);
-    assert.ok(slots.every((s) => s.row === 0 && s.y > 100));
-    assert.ok(Math.abs((slots[0].x + slots[2].x) / 2 - 360) < 0.01, "centrées");
-    const wrapped = layoutPills([200, 200, 200], 360, 100, 1, 420);
-    assert.deepEqual(wrapped.map((s) => s.row), [0, 0, 1]);
-    const up = layoutPills([60], 360, 500, -1, 1000);
-    assert.ok(up[0].y < 500);
-    assert.ok(optionY(wrapped, 100, 1) > wrapped[2].y);
+  test("la pilule de travail est dans la mini-île, côté centre de l'écran", () => {
+    const rect = { top: 0, bottom: 92 };
+    assert.equal(workY(rect, 1), 92 - WORK_PAD / 2);
+    assert.equal(workY({ top: 500, bottom: 592 }, -1), 500 + WORK_PAD / 2, "île en bas : la partie haute");
   });
 
-  test("la pilule sous la souris (avec une marge), -1 ailleurs", () => {
-    const slots = layoutPills([80, 80], 200, 0, 1, 1000);
-    assert.equal(hitPill(slots, slots[1].x + 40, slots[1].y), 1);
-    assert.equal(hitPill(slots, slots[0].x, slots[0].y + PILL_H / 2 + 3), 0);
-    assert.equal(hitPill(slots, 200, slots[0].y + 200), -1);
+  test("la mini-île s'élargit pour un long résultat, sans dépasser la fenêtre", () => {
+    assert.equal(resultWidth(200, 400, 720), 400);
+    assert.equal(resultWidth(420, 400, 720), 448);
+    assert.equal(resultWidth(900, 400, 720), 676);
   });
 
   test("la pilule d'option tourne après une demi-seconde, une fois par survol", () => {

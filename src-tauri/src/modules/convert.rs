@@ -71,6 +71,10 @@ impl RustModule for Convert {
         match command {
             // { paths, format, dest } → { job, count } ; le reste arrive par le bus.
             "start" => start(ctx, &args),
+            // { paths } → { items: [{ dir, size, count } | null] } : l'en-tête de
+            // l'île pendant le glisser (« Image · 3,4 Mo », « Dossier · 214 éléments »).
+            // Rien que des métadonnées, rien n'est lu ni noté au journal.
+            "probe" => Ok(probe(ctx, &args)),
             "cancel" => {
                 CANCEL.store(true, Ordering::SeqCst);
                 Ok(Value::Null)
@@ -88,6 +92,30 @@ impl RustModule for Convert {
             other => Err(format!("commande inconnue : {other}")),
         }
     }
+}
+
+/// Au plus tant d'éléments comptés dans un dossier (l'en-tête dit « 10000 éléments »).
+const PROBE_COUNT_MAX: usize = 10_000;
+
+/// La taille d'un fichier, ou le nombre d'éléments d'un dossier (sans descendre dedans).
+/// Un chemin refusé (dossier exclu, permission) ou disparu donne null.
+fn probe(ctx: &ModuleContext, args: &Value) -> Value {
+    let list = args.get("paths").and_then(Value::as_array).cloned().unwrap_or_default();
+    let items: Vec<Value> = list
+        .iter()
+        .take(logic::MAX_FILES)
+        .map(|raw| raw.as_str().and_then(|r| ctx.check_path(r).ok()).map_or(Value::Null, |p| probe_one(&p)))
+        .collect();
+    json!({ "items": items })
+}
+
+fn probe_one(path: &Path) -> Value {
+    let Ok(meta) = fs::metadata(path) else { return Value::Null };
+    if meta.is_dir() {
+        let count = fs::read_dir(path).map(|it| it.take(PROBE_COUNT_MAX).count()).ok();
+        return json!({ "dir": true, "size": 0, "count": count });
+    }
+    json!({ "dir": false, "size": meta.len(), "count": null })
 }
 
 /// Ce qu'il faut pour faire le travail, lu une fois au départ.
@@ -680,6 +708,16 @@ mod tests {
     fn photo(path: &Path, w: u32, h: u32) {
         let img = image::RgbaImage::from_fn(w, h, |x, y| image::Rgba([(x * 7) as u8, (y * 5) as u8, 90, if x < 2 { 0 } else { 255 }]));
         DynamicImage::ImageRgba8(img).to_rgb8().save(path).unwrap();
+    }
+
+    #[test]
+    fn probe_gives_size_or_count() {
+        let dir = temp("probe");
+        fs::write(dir.join("a.txt"), b"bonjour").unwrap();
+        fs::create_dir_all(dir.join("sous")).unwrap();
+        assert_eq!(probe_one(&dir.join("a.txt")), json!({ "dir": false, "size": 7, "count": null }));
+        assert_eq!(probe_one(&dir), json!({ "dir": true, "size": 0, "count": 2 }));
+        assert_eq!(probe_one(&dir.join("absent")), Value::Null);
     }
 
     #[test]

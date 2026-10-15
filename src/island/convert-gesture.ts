@@ -1,23 +1,25 @@
 // Ondine convertit (1.2.5) : le geste, dans la fenêtre de l'île.
 //
-// Un fichier glissé vers l'île : sous elle, des pilules de formats sortent en
-// éventail (celles de CE fichier), et la pilule d'option (Conserver /
-// Remplacer / Sur le bureau). Lâché sur une pilule : Ondine l'avale, mâche
-// (la pilule choisie se remplit, le liquide de l'île monte avec la vraie
-// progression), puis recrache le nouveau fichier (un arc vers sa place) et la
-// pilule de résultat sort : « photo.jpg · 3,4 Mo → 820 Ko · Ouvrir · Annuler ».
-// Échec : grimace, l'original ressort, une ligne dit pourquoi.
+// Dépôt unifié (maquette-depot-unifie.html, version A) : un fichier glissé
+// vers l'île, elle s'ouvre et montre tout DANS l'île, en pilules du même
+// style (drop-panel.ts) : la ligne « Convertir » (les formats de CE fichier,
+// le dernier choix en premier), « Ranger », « Outils », et la pilule
+// d'option (Conserver / Remplacer / Sur le bureau) dans l'en-tête.
 //
-// Coexistence avec l'Étagère : DANS l'île, les cibles de dépôt de toujours
-// (Étagère, Copier vers…, Corbeille…) ; SOUS l'île, les pilules de conversion.
-// Deux zones nettes : lâcher dans l'île range, lâcher sur une pilule convertit,
-// lâcher ailleurs ne fait rien (l'île se referme). L'île en mode dépôt est un
-// peu moins haute quand les pilules sont là (classe convert-room, island.css).
+// Ici, ce qui suit le lâcher sur une pilule de format : Ondine avale le
+// fichier, mâche (la pilule choisie glisse dans le bas de la mini-île et s'y
+// remplit, le liquide de l'île monte avec la vraie progression), puis
+// recrache le nouveau fichier (un arc vers sa place) et la pilule de résultat
+// prend la place de la progression, toujours DANS l'île : « photo.jpg ·
+// 3,4 Mo → 820 Ko · Ouvrir · Annuler ». Échec : grimace, l'original ressort,
+// une ligne dit pourquoi. La mini-île est plus haute pendant ce temps (classe
+// convert-work, convert.css), et plus large s'il le faut pour le résultat.
 //
 // Qui fait quoi :
-//   - ici : les pilules, le survol (positions envoyées par la cible de dépôt
-//     de l'île, platform/drop_target.rs, Maj comprise), les animations, les
-//     expressions d'Ondine, le liquide ;
+//   - drop-panel.ts : les pilules, le survol (positions envoyées par la cible
+//     de dépôt de l'île, platform/drop_target.rs, Maj comprise), la pilule
+//     d'option, la phrase qui dit ce qui va se passer ;
+//   - ici : les animations après le lâcher, les expressions d'Ondine, le liquide ;
 //   - le module (src/modules/convert/) reçoit « convert.request », appelle le
 //     Rust (`start`), et montre l'avancement dans la mini-île ;
 //   - le Rust (modules/convert.rs) convertit et envoie « convert.progress »
@@ -40,8 +42,6 @@ import convertManifest from "../modules/convert/manifest.json";
 import type { ModuleManifest } from "../core/module-types";
 import {
   asDest,
-  DEST_LABEL,
-  nextDest,
   outKind,
   parseLast,
   pillsFor,
@@ -49,12 +49,13 @@ import {
   summarize,
   type Dest,
   type DoneMessage,
+  type FormatId,
   type Kind,
   type LastChoices,
   type Pill,
   type Summary,
 } from "../modules/convert/convert-logic";
-import { arcPose, Dwell, expressionAt, fanK, hitPill, layoutPills, liquidLevel, optionY, PILL_H, retractK, swallowPose, T, type Slot, type WorkPhase } from "./convert-plan";
+import { arcPose, expressionAt, liquidLevel, resultWidth, swallowPose, T, workY, type WorkPhase } from "./convert-plan";
 import { clamp, lerp, smooth, spr } from "./hatch-plan";
 import { hideLiquid, showLiquid, updateLiquid } from "./liquid";
 import { sounds } from "./sounds";
@@ -68,11 +69,13 @@ const LAST_KEY = "ondine.convert.last";
 const LIQUID_ID = "convert";
 /** La pilule de progression, au centre : sa largeur. */
 const PROG_W = 280;
+/** La largeur de la mini-île pendant le travail (au moins ; plus si le résultat le demande). */
+const WORK_W = 400;
 /** Le rouge doux d'un échec (comme la maquette). */
 const FAIL_TINT = "#ff8f78";
 
 export interface ConvertHooks {
-  /** La fenêtre de l'île (les pilules vivent à côté de la forme de l'île). */
+  /** La fenêtre de l'île (la couche du geste est posée sur la forme de l'île). */
   root: HTMLElement;
   /** La forme de l'île. */
   shell: HTMLElement;
@@ -83,12 +86,29 @@ export interface ConvertHooks {
   keepOpen(on: boolean): void;
   /** Les pilules cliquables ont bougé : redonner au Rust le rectangle qui prend la souris. */
   rectChanged(): void;
+  /** La forme voulue de l'île a changé (largeur du résultat) : la gelée la rejoint. */
+  reshape(): void;
 }
 
-/** Ce que l'île doit faire d'un lâcher. */
-export type DropOutcome = "converted" | "missed" | "none";
+/** Ce que l'île propose de convertir pour ces fichiers. */
+export interface ConvertOffer {
+  kind: Kind;
+  pills: Pill[];
+  /** Le dernier format choisi pour ce type (il passe en premier). */
+  last?: FormatId;
+}
 
-type Phase = "idle" | "open" | "closing" | "work";
+/** Une conversion demandée par un lâcher sur une pilule de format (drop-panel.ts). */
+export interface ConvertStart {
+  paths: string[];
+  pill: Pill;
+  kind: Kind;
+  dest: Dest;
+  /** Le point de lâcher (px CSS de la fenêtre). */
+  from: { x: number; y: number };
+  /** La pilule lâchée : son centre et sa largeur (la progression part de là). */
+  slot: { x: number; y: number; w: number };
+}
 
 interface Work {
   startedAt: number;
@@ -98,7 +118,7 @@ interface Work {
   kind: Kind;
   dest: Dest;
   from: { x: number; y: number };
-  slot: Slot;
+  slot: { x: number; y: number; w: number };
   fraction: number;
   shown: number;
   done: DoneMessage | null;
@@ -136,7 +156,7 @@ function fileIcon(kind: Kind | "bin"): string {
 }
 
 /** Les flèches qui tournent de la pilule d'option (au trait). */
-const SPIN_ICON = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.6" fill="none"/><path d="M13 2.5V5h-2.5" fill="none"/></svg>`;
+export const SPIN_ICON = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.6" fill="none"/><path d="M13 2.5V5h-2.5" fill="none"/></svg>`;
 
 function readLast(): LastChoices {
   try {
@@ -154,10 +174,9 @@ function writeLast(last: LastChoices) {
   }
 }
 
+
 export class ConvertGesture {
   private readonly layer = document.createElement("div");
-  private readonly pillsBox = document.createElement("div");
-  private readonly opt = document.createElement("div");
   private readonly prog = document.createElement("button");
   private readonly progFill = document.createElement("span");
   private readonly progLabel = document.createElement("span");
@@ -168,21 +187,6 @@ export class ConvertGesture {
   private readonly bin = document.createElement("div");
   private readonly sparks: HTMLElement[] = [];
 
-  private phase: Phase = "idle";
-  private paths: string[] = [];
-  private kind: Kind = "other";
-  private pills: Pill[] = [];
-  private pillEls: HTMLElement[] = [];
-  private widths: number[] = [];
-  private slots: Slot[] = [];
-  private optCenter = { x: 0, y: 0, w: 0 };
-  private hot: number[] = [];
-  private hovered = -1;
-  private onOpt = false;
-  private dest: Dest = "keep";
-  private dwell = new Dwell();
-  private openedAt = 0;
-  private closingAt = 0;
   private listened = false;
   private work: Work | null = null;
   private frame = 0;
@@ -192,8 +196,6 @@ export class ConvertGesture {
   constructor(private readonly hooks: ConvertHooks) {
     this.layer.className = "convert-layer";
     this.layer.setAttribute("aria-hidden", "true");
-    this.pillsBox.className = "convert-pills";
-    this.opt.className = "convert-pill convert-choice";
     this.prog.className = "convert-pill convert-prog";
     this.prog.type = "button";
     this.prog.title = "Arrêter";
@@ -219,98 +221,65 @@ export class ConvertGesture {
       s.className = "convert-spark";
       this.sparks.push(s);
     }
-    this.layer.append(this.pillsBox, this.opt, this.prog, this.res, this.old, this.bin, this.ghost, this.made, ...this.sparks);
+    this.layer.append(this.prog, this.res, this.old, this.bin, this.ghost, this.made, ...this.sparks);
     this.hooks.root.append(this.layer);
   }
 
   // ── Ce que l'île appelle ───────────────────────────────────────────────────
 
-  /** Le module est-il là pour convertir ? (activé, et une île en haut ou en bas) */
-  private available(): boolean {
-    const edge = document.body.dataset.edge ?? "top";
-    return settingsStore.moduleEnabled("convert") && (edge === "top" || edge === "bottom");
-  }
-
   private calm(): boolean {
     return reducedMotion() || calmMode();
   }
 
-  /** Un fichier (ou plusieurs) arrive au-dessus de l'île. */
-  enter(paths: string[]) {
-    if (!this.available()) return;
-    // Une conversion en cours : pas de nouvelles pilules (l'Étagère reste là).
-    if (this.work && !this.work.done) return;
-    if (this.work) this.finish();
-    const offer = pillsFor(paths, readLast());
-    if (!offer) return;
-    this.listen();
-    this.paths = paths;
-    this.kind = offer.kind;
-    this.pills = offer.pills;
-    this.dest = asDest(settingsStore.moduleValues(convertManifest as ModuleManifest).dest);
-    this.dwell = new Dwell();
-    this.hovered = -1;
-    this.onOpt = false;
-    this.buildPills();
-    this.phase = "open";
-    this.openedAt = performance.now();
-    this.layer.classList.add("on");
-    this.hooks.shell.classList.add("convert-room");
-    this.express("open", 0);
-    this.kick();
-  }
-
-  /** La souris bouge pendant le glisser (px CSS de la fenêtre ; Maj enfoncée ?). */
-  over(pos: { x: number; y: number } | undefined, shift: boolean) {
-    if (this.phase !== "open") return;
-    if (shift && this.dest !== "replace") {
-      this.dest = "replace";
-      this.setOptLabel(true);
-    }
-    const h = pos ? hitPill(this.slots, pos.x, pos.y) : -1;
-    if (h !== this.hovered) {
-      this.hovered = h;
-      if (h >= 0) {
-        this.express("hover", 0);
-        sounds.tap();
-      }
-    }
-    const o = this.optCenter;
-    this.onOpt = !!pos && o.w > 0 && Math.abs(pos.x - o.x) <= o.w / 2 + 6 && Math.abs(pos.y - o.y) <= PILL_H / 2 + 6;
-    this.kick();
-  }
-
-  /** Le glisser est parti (ou annulé). */
-  leave() {
-    if (this.phase !== "open") return;
-    this.close();
+  /** Une conversion est en cours (pas encore finie) : pas de nouvelle ligne « Convertir ». */
+  busy(): boolean {
+    return !!this.work && !this.work.done;
   }
 
   /**
-   * Le fichier est lâché. "converted" : sur une pilule (l'île ne fait rien
-   * d'autre) ; "missed" : les pilules étaient là mais pas sous la souris
-   * (l'île garde ses cibles de dépôt) ; "none" : pas de pilules.
+   * Les formats à proposer pour ces fichiers, ou null (module désactivé,
+   * conversion en cours, rien à proposer).
    */
-  drop(paths: string[], pos: { x: number; y: number } | undefined): DropOutcome {
-    if (this.phase !== "open") return "none";
-    const index = pos ? hitPill(this.slots, pos.x, pos.y) : -1;
-    if (index < 0 || !pos) {
-      this.close();
-      return "missed";
+  offer(paths: string[]): ConvertOffer | null {
+    if (!settingsStore.moduleEnabled("convert") || this.busy()) return null;
+    const last = readLast();
+    const offer = pillsFor(paths, last);
+    return offer ? { ...offer, last: last[offer.kind] } : null;
+  }
+
+  /** Où va le résultat au départ (réglage « Où va le résultat, au départ »). */
+  defaultDest(): Dest {
+    return asDest(settingsStore.moduleValues(convertManifest as ModuleManifest).dest);
+  }
+
+  /** Un nouveau glisser commence : le résultat précédent (déjà fini) se range. */
+  dragStarted() {
+    if (this.work?.done) this.finish();
+  }
+
+  /** L'expression d'Ondine pendant le glisser : surprise à l'ouverture, attentive sur une pilule. */
+  react(phase: "open" | "hover" | "idle") {
+    if (phase === "idle") {
+      this.expression = "";
+      return;
     }
-    const pill = this.pills[index];
-    const list = paths.length ? paths : this.paths;
-    writeLast(remember(readLast(), this.kind, pill.id));
-    this.hooks.shell.classList.remove("convert-room");
+    this.express(phase, 0);
+  }
+
+  /** Le fichier est lâché sur une pilule de format : Ondine l'avale, et c'est parti. */
+  start(req: ConvertStart) {
+    this.listen();
+    if (this.work) this.finish();
+    writeLast(remember(readLast(), req.kind, req.pill.id));
     this.work = {
       startedAt: performance.now(),
-      paths: list,
-      label: pill.label,
-      batch: list.length > 1,
-      kind: this.kind,
-      dest: this.dest,
-      from: { x: pos.x, y: pos.y },
-      slot: this.slots[index],
+      paths: req.paths,
+      label: req.pill.label,
+      batch: req.paths.length > 1,
+      kind: req.kind,
+      dest: req.dest,
+      from: req.from,
+      slot: req.slot,
       fraction: 0,
       shown: 0,
       done: null,
@@ -325,42 +294,33 @@ export class ConvertGesture {
       foldAt: null,
       rectPushed: new Set(),
     };
-    this.phase = "work";
-    this.layer.classList.add("working");
-    // La pilule choisie devient la pilule de progression ; l'icône du fichier
-    // part du point de lâcher vers la bouche.
-    this.pillEls[index]?.classList.add("chosen");
-    this.ghost.innerHTML = fileIcon(this.kind);
-    this.made.innerHTML = fileIcon(outKind(pill.id, this.kind));
-    this.old.innerHTML = fileIcon(this.kind);
-    this.progLabel.textContent = pill.label;
+    this.layer.classList.add("on", "working");
+    // La mini-île s'agrandit pour garder la pilule dedans (convert.css).
+    this.hooks.shell.classList.add("convert-work");
+    this.hooks.shell.style.setProperty("--convert-w", `${WORK_W}px`);
+    this.ghost.innerHTML = fileIcon(req.kind);
+    this.made.innerHTML = fileIcon(outKind(req.pill.id, req.kind));
+    this.old.innerHTML = fileIcon(req.kind);
+    this.progLabel.textContent = req.pill.label;
     this.prog.classList.remove("bad");
     this.res.classList.remove("bad");
     this.res.replaceChildren();
     this.hooks.keepOpen(true);
     this.express("swallow", 0);
-    [120, 420, 760].forEach((ms) => window.setTimeout(() => this.phase === "work" && !this.work?.done && sounds.chomp(), ms));
+    [120, 420, 760].forEach((ms) => window.setTimeout(() => this.work && !this.work.done && sounds.chomp(), ms));
     // Le module appelle le Rust (src/modules/convert/index.ts).
-    this.hooks.bus.emit("convert.request", { paths: list, format: pill.id, label: pill.label, dest: this.dest, kind: this.kind });
-    log.info(`conversion demandée : ${pill.id}, ${list.length} élément(s), ${this.dest}`);
+    this.hooks.bus.emit("convert.request", { paths: req.paths, format: req.pill.id, label: req.pill.label, dest: req.dest, kind: req.kind });
+    log.info(`conversion demandée : ${req.pill.id}, ${req.paths.length} élément(s), ${req.dest}`);
     this.kick();
-    return "converted";
   }
 
   /** Le rectangle des pilules cliquables (progression, résultat), en px CSS, ou null. */
   hitRect(): { x: number; y: number; w: number; h: number } | null {
     const w = this.work;
     if (!w) return null;
-    const rects: DOMRect[] = [];
-    if (!w.endAt) rects.push(this.prog.getBoundingClientRect());
-    if (w.endAt) rects.push(this.res.getBoundingClientRect());
-    const shown = rects.filter((r) => r.width > 0 && r.height > 0);
-    if (!shown.length) return null;
-    const left = Math.min(...shown.map((r) => r.left)) - 4;
-    const top = Math.min(...shown.map((r) => r.top)) - 4;
-    const right = Math.max(...shown.map((r) => r.right)) + 4;
-    const bottom = Math.max(...shown.map((r) => r.bottom)) + 4;
-    return { x: left, y: top, w: right - left, h: bottom - top };
+    const r = (w.endAt ? this.res : this.prog).getBoundingClientRect();
+    if (r.width <= 0 || r.height <= 0) return null;
+    return { x: r.left - 4, y: r.top - 4, w: r.width + 8, h: r.height + 8 };
   }
 
   // ── Le bus ─────────────────────────────────────────────────────────────────
@@ -385,39 +345,6 @@ export class ConvertGesture {
     });
   }
 
-  // ── Construction ───────────────────────────────────────────────────────────
-
-  private buildPills() {
-    this.pillEls = this.pills.map((p) => {
-      const b = document.createElement("div");
-      b.className = "convert-pill";
-      b.textContent = p.label;
-      return b;
-    });
-    this.pillsBox.replaceChildren(...this.pillEls);
-    this.setOptLabel(false);
-    // Les largeurs sont mesurées une fois (pilules posées, invisibles).
-    this.widths = this.pillEls.map((b) => Math.ceil(b.getBoundingClientRect().width) || 64);
-    this.hot = this.pills.map(() => 0);
-  }
-
-  private setOptLabel(turned: boolean) {
-    const label = document.createElement("span");
-    label.textContent = DEST_LABEL[this.dest];
-    const icon = document.createElement("span");
-    icon.className = "convert-spin";
-    icon.innerHTML = SPIN_ICON;
-    const bar = document.createElement("span");
-    bar.className = "convert-dwell";
-    this.opt.replaceChildren(icon, label, bar);
-    if (turned) {
-      this.opt.classList.remove("turned");
-      void this.opt.offsetWidth;
-      this.opt.classList.add("turned");
-      sounds.toggle(true);
-    }
-  }
-
   // ── Expressions, liquide ───────────────────────────────────────────────────
 
   private express(phase: WorkPhase | "open" | "hover", t: number) {
@@ -430,35 +357,23 @@ export class ConvertGesture {
 
   // ── Les états ──────────────────────────────────────────────────────────────
 
-  private close() {
-    this.phase = "closing";
-    this.closingAt = performance.now();
-    this.hooks.shell.classList.remove("convert-room");
-    this.expression = "";
-    this.kick();
-  }
-
   /** Tout est fini : la couche se vide, l'île peut se replier. */
   private finish() {
     const hadWork = !!this.work;
     if (this.work?.liquid) hideLiquid(LIQUID_ID);
     this.work = null;
-    this.phase = "idle";
     this.expression = "";
-    this.layer.classList.remove("on");
-    this.pillsBox.replaceChildren();
-    this.pillEls = [];
-    this.slots = [];
-    this.optCenter = { x: 0, y: 0, w: 0 };
-    for (const n of [this.opt, this.prog, this.res, this.ghost, this.made, this.old, this.bin, ...this.sparks]) n.style.opacity = "0";
+    this.layer.classList.remove("on", "working");
+    for (const n of [this.prog, this.res, this.ghost, this.made, this.old, this.bin, ...this.sparks]) n.style.opacity = "0";
     this.res.replaceChildren();
     this.res.classList.remove("live");
-    this.layer.classList.remove("working");
     this.layer.setAttribute("aria-hidden", "true");
-    this.hooks.shell.classList.remove("convert-room");
+    this.hooks.shell.classList.remove("convert-work");
+    this.hooks.shell.style.removeProperty("--convert-w");
     if (hadWork) {
       this.hooks.keepOpen(false);
       this.hooks.rectChanged();
+      this.hooks.reshape();
     }
   }
 
@@ -474,7 +389,7 @@ export class ConvertGesture {
     this.last = now;
     let more = false;
     try {
-      more = this.phase === "work" ? this.drawWork(now, dt) : this.phase === "idle" ? false : this.drawOpen(now, dt);
+      more = this.work ? this.drawWork(now, dt) : false;
     } catch (err) {
       log.warn(`geste de conversion : ${String(err)}`);
       this.finish();
@@ -482,11 +397,11 @@ export class ConvertGesture {
     if (more) this.frame = requestAnimationFrame((n) => this.tick(n));
   }
 
-  /** Le bord de l'île côté pilules, le sens, le centre. */
-  private anchor(): { anchor: number; dir: 1 | -1; cx: number; rect: DOMRect } {
+  /** La forme de l'île : le sens (1 = l'île s'ouvre vers le bas), son centre, son rectangle. */
+  private anchor(): { dir: 1 | -1; cx: number; rect: DOMRect } {
     const rect = this.hooks.shell.getBoundingClientRect();
     const bottom = document.body.dataset.edge === "bottom";
-    return { anchor: bottom ? rect.top : rect.bottom, dir: bottom ? -1 : 1, cx: rect.left + rect.width / 2, rect };
+    return { dir: bottom ? -1 : 1, cx: rect.left + rect.width / 2, rect };
   }
 
   /** La bouche d'Ondine (le centre de sa case, un peu plus bas), sinon la gauche de l'île. */
@@ -504,74 +419,13 @@ export class ConvertGesture {
     node.style.opacity = clamp(o).toFixed(3);
   }
 
-  /** Les pilules ouvertes (ou qui rentrent). Renvoie true s'il faut encore des images. */
-  private drawOpen(now: number, dt: number): boolean {
-    const calm = this.calm();
-    const { anchor, dir, cx } = this.anchor();
-    const maxW = Math.min(window.innerWidth - 24, 700);
-    this.slots = layoutPills(this.widths, cx, anchor, dir, maxW);
-    const t = (now - this.openedAt) / 1000;
-    const closing = this.phase === "closing";
-    const back = closing ? retractK((now - this.closingAt) / 1000) : 1;
-    let moving = closing ? back > 0 : false;
-    this.pillEls.forEach((el, i) => {
-      const slot = this.slots[i];
-      const k = fanK(t, i, calm) * back;
-      if (k < 0.999 || Math.abs(k - 1) > 0.002) moving = true;
-      const target = i === this.hovered && !closing ? 1 : 0;
-      this.hot[i] += (target - this.hot[i]) * (1 - Math.exp(-dt * 18));
-      if (Math.abs(target - this.hot[i]) > 0.01) moving = true;
-      el.classList.toggle("hot", i === this.hovered && !closing);
-      const x = calm ? slot.x : lerp(cx, slot.x, k);
-      const y = calm ? slot.y : lerp(anchor - dir * 14, slot.y, k);
-      const s = calm ? 1 : lerp(0.3, 1, k) * (1 + 0.12 * this.hot[i]);
-      const dim = this.hovered >= 0 && i !== this.hovered ? 0.75 : 1;
-      this.place(el, x, y, s, clamp(k * 3) * dim);
-    });
-    // La pilule d'option, une rangée en dessous, sortie après les autres.
-    const oy = optionY(this.slots, anchor, dir);
-    const ko = fanK(t - 0.04, this.pillEls.length, calm) * back;
-    this.optCenter = { x: cx, y: oy, w: this.opt.offsetWidth };
-    this.place(this.opt, cx, calm ? oy : lerp(anchor - dir * 14, oy, ko), calm ? 1 : lerp(0.3, 1, ko), clamp(ko * 3));
-    if (Math.abs(ko - 1) > 0.002) moving = true;
-    if (!closing) {
-      if (this.dwell.update(this.onOpt, now)) {
-        this.dest = nextDest(this.dest);
-        this.setOptLabel(true);
-      }
-      const bar = this.opt.querySelector<HTMLElement>(".convert-dwell");
-      const d = this.dwell.progress(now);
-      if (bar) bar.style.transform = `scaleX(${d.toFixed(3)})`;
-      if (d > 0) moving = true;
-    }
-    if (closing && back <= 0) {
-      this.finish();
-      return false;
-    }
-    // Ouvertes et posées : plus rien ne bouge, sauf le survol (over relance).
-    return moving || this.onOpt;
-  }
-
   /** Après le lâcher : avaler, mâcher, recracher (ou grimacer), le résultat. */
   private drawWork(now: number, dt: number): boolean {
     const w = this.work!;
     const calm = this.calm();
-    const { anchor, dir, cx } = this.anchor();
+    const { dir, cx, rect } = this.anchor();
     const mouth = this.mouth();
     const t = (now - w.startedAt) / 1000;
-
-    // Les autres pilules rentrent ; la choisie se cache (la progression prend sa place).
-    const back = retractK(t);
-    this.pillEls.forEach((el, i) => {
-      const slot = this.slots[i];
-      if (!slot) return;
-      if (el.classList.contains("chosen")) {
-        el.style.opacity = "0";
-        return;
-      }
-      this.place(el, slot.x, slot.y, calm ? 1 : lerp(0.6, 1, back), back);
-    });
-    this.place(this.opt, this.optCenter.x, this.optCenter.y, calm ? 1 : lerp(0.6, 1, back), back);
 
     // L'icône avalée.
     if (t < T.swallow) {
@@ -619,8 +473,9 @@ export class ConvertGesture {
     const te = w.endAt ? (now - w.endAt) / 1000 : -1;
     if (w.endAt) this.express(w.ok ? "spit" : "fail", te);
 
-    // La pilule de progression : de la place de la pilule choisie vers le centre.
-    const progY = anchor + dir * (12 + PILL_H / 2);
+    // La pilule de progression : de la place de la pilule choisie vers le bas
+    // de la mini-île (le haut pour une île en bas), qui rétrécit en même temps.
+    const progY = workY(rect, dir);
     const kp = calm ? smooth(t / 0.3) : spr(t - 0.05, 7.5, 12.5);
     const width = lerp(w.slot.w, PROG_W, clamp(kp, 0, 1.1));
     this.prog.style.width = `${width.toFixed(1)}px`;
@@ -641,9 +496,11 @@ export class ConvertGesture {
       this.hooks.rectChanged();
     }
 
-    // Recraché : l'arc du nouveau fichier, l'original qui part à la Corbeille.
+    // Recraché : l'arc du nouveau fichier (il sort de l'île vers sa place),
+    // l'original qui part à la Corbeille.
     if (w.endAt && w.ok) {
-      const land = { x: cx - 170, y: clamp(progY + dir * 64, 24, window.innerHeight - 24) };
+      const edgeY = dir === 1 ? rect.bottom : rect.top;
+      const land = { x: cx - 170, y: clamp(edgeY + dir * 40, 24, window.innerHeight - 24) };
       if (w.dest === "desk") land.x = cx + 210;
       const a = arcPose(te / T.arc, te - T.arc, mouth, land, calm, dir);
       const fade = 1 - smooth((te - T.arc - 0.7) / 0.35);
@@ -679,7 +536,7 @@ export class ConvertGesture {
       this.place(this.ghost, p.x, p.y, calm ? 1 : lerp(0.2, 1, smooth(u)), p.o * fade);
     }
 
-    // La pilule de résultat.
+    // La pilule de résultat, à la place de la progression, dans l'île.
     if (w.endAt && now >= w.resultFrom) {
       if (w.hovering) w.resultUntil = Math.max(w.resultUntil, now + 1500);
       if (!w.foldAt && now >= w.resultUntil) w.foldAt = now;
@@ -747,6 +604,10 @@ export class ConvertGesture {
     // Le résultat est annoncé (role="status") et ses boutons se cliquent.
     this.layer.removeAttribute("aria-hidden");
     this.res.classList.add("live");
+    // La mini-île s'élargit si le résultat est plus large qu'elle (jamais coupé).
+    const need = resultWidth(this.res.scrollWidth, WORK_W, window.innerWidth);
+    this.hooks.shell.style.setProperty("--convert-w", `${need}px`);
+    this.hooks.reshape();
   }
 
   private button(label: string, main: boolean, run: () => void): HTMLButtonElement {
