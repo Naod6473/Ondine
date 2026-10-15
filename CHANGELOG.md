@@ -112,6 +112,29 @@
   %APPDATA%\Ondine\sounds and named like an Ondine sound (tap, open, drop…)
   replaces it. Settings → Appearance → Sounds: open the folder, reload, the
   possible names.
+- Parler à Ondine : choisissez le micro (Réglages → Parler à Ondine → Voix et
+  sons), avec « Tester le micro » pour voir tout de suite si Ondine vous
+  entend. Il sert aussi à la dictée et aux notes d'appel · Talk to Ondine:
+  choose the microphone (Settings → Talk to Ondine → Voice and sounds), with
+  "Test the microphone" to see right away whether Ondine hears you. It is
+  also used for dictation and call notes
+- Un micro coupé, à volume 0, bloqué par Windows ou trop faible est expliqué
+  au lieu de « Je n'ai rien entendu » ; une voix faible est mieux captée avec
+  Parakeet · A microphone that is muted, at volume 0, blocked by Windows or too
+  quiet is explained instead of "I didn't hear anything"; a quiet voice is
+  picked up better with Parakeet
+- Raccourcis de Parler à Ondine et de « Regarde ça » : « Personnalisé… »,
+  appuyez sur la combinaison de votre choix ; un raccourci déjà pris est
+  signalé sous le champ · Talk to Ondine and "Look at this" shortcuts:
+  "Custom…", press the key combination of your choice; a shortcut already
+  taken is shown under the field
+- « Dis Ondine » / « Hey Ondine » pour lui parler sans toucher au clavier, en
+  option (coupé par défaut) : l'écoute se fait entièrement sur le PC, un point
+  rouge reste visible, pause en visio, présentation, PC verrouillé et
+  économie d'énergie · "Hey Ondine" to talk to her without touching the
+  keyboard, optional (off by default): listening happens entirely on the PC,
+  a red dot stays visible, paused during calls, presentations, when the PC is
+  locked and in power saving
 - L'éclosion de l'île : au premier lancement et après une mise à jour, une
   goutte sort du haut de l'écran et s'étire en île, l'île éclate en
   paillettes, Ondine dit bonjour, les aspire et les souffle dans trois anneaux
