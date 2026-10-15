@@ -5,6 +5,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { todoBar, todoFill } from "../../src/modules/agents/todos-logic";
 import { byModel, changesLine, modelLabel, namesLine, periodFrom, since, sumTokens, tokensShort } from "../../src/modules/agents/texts";
 
 const DICT = JSON.parse(readFileSync("src/core/i18n-en.json", "utf8")) as {
@@ -288,5 +289,31 @@ describe("les coucous de la mascotte", () => {
     assert.equal(waveDue({ ...base, islandState: "hidden" }), false);
     assert.equal(waveDue({ ...base, quiet: true }), false);
     assert.equal(waveDue({ ...base, enabled: false }), false);
+  });
+});
+
+describe("la liste de tâches de l'agent (todos-logic.ts)", () => {
+  test("« 3/7 », la largeur et la tâche en cours", () => {
+    assert.deepEqual(todoBar({ done: 3, total: 7, current: " Lance les tests " }), { label: "3/7", pct: 43, text: "Lance les tests", finished: false });
+    assert.deepEqual(todoBar({ done: 7, total: 7 }), { label: "7/7", pct: 100, text: "", finished: true });
+    // Valeurs bizarres : bornées, ou rien.
+    assert.equal(todoBar({ done: 9, total: 4 })?.label, "4/4");
+    assert.equal(todoBar({ done: -2, total: 4 })?.label, "0/4");
+    assert.equal(todoBar({ done: 0, total: 0 }), null);
+    assert.equal(todoBar(undefined), null);
+  });
+
+  test("le liseré de l'île : la part faite, éteint à la fin", () => {
+    assert.equal(todoFill({ done: 2, total: 4 }), 0.5);
+    assert.equal(todoFill({ done: 0, total: 7 }), 0.04);
+    assert.equal(todoFill({ done: 4, total: 4 }), null);
+    assert.equal(todoFill({ session: "x" } as never), null);
+    assert.equal(todoFill(null), null);
+  });
+
+  test("les nouveaux textes sont traduits", () => {
+    for (const fr of ["Montrer la liste de tâches de l'agent", "Rester discrète quand vous regardez déjà le terminal", "Liste de tâches de l'agent", "Tâches faites"]) {
+      assert.ok(english(fr), fr);
+    }
   });
 });

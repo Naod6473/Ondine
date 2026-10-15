@@ -8,6 +8,15 @@
 // Règles appliquées ici :
 //   - une copie que l'appli d'origine marque « sensible » (gestionnaire de mots
 //     de passe…) n'est JAMAIS lue : platform::clipboard_is_sensitive ;
+//   - « Ignorer les clés et jetons » (réglage, activé par défaut, 1.2.5) : une
+//     copie qui EST une clé d'API, un jeton ou une clé privée (sk-ant-…, ghp_…,
+//     JWT, « -----BEGIN … PRIVATE KEY----- », postgres://u:mdp@hôte…) est lue
+//     mais pas gardée : ni historique, ni recherche du Lanceur, ni envoi sur mes
+//     autres PC (Équipe). On ne retient que sa famille et le numéro de copie de
+//     Windows, pour que l'onglet dise « Clé ignorée » et que le décodeur puisse
+//     encore lire un JWT tant qu'il est dans le presse-papiers (commande
+//     "current", qui relit le presse-papiers au lieu de garder le texte).
+//     Reconnaissance : clipboard_secrets.rs ;
 //   - l'historique reste en mémoire : il disparaît quand l'île s'arrête. Seuls
 //     les éléments épinglés et les snippets sont enregistrés sur le disque
 //     (%APPDATA%\Ondine\clipboard.json), parce que tu l'as demandé en épinglant ;
@@ -45,6 +54,7 @@ use serde_json::{json, Value};
 use tauri::AppHandle;
 
 use super::clipboard_qr;
+use super::clipboard_secrets::{self, SecretKind};
 use super::{ModuleContext, RustModule};
 use crate::platform;
 use crate::services::undo::DEFAULT_WINDOW;
@@ -94,6 +104,9 @@ struct Store {
     original_link: Option<String>,
     /// Un lien remis exprès avec ses traqueurs : on ne le renettoie pas.
     keep_as_is: Option<String>,
+    /// La dernière copie ignorée parce qu'elle ressemblait à une clé : sa
+    /// famille et son numéro de copie Windows (JAMAIS son texte).
+    ignored: Option<(SecretKind, u32)>,
 }
 
 /// Ce qui est enregistré sur le disque : les épinglés et les snippets.
@@ -128,7 +141,28 @@ impl RustModule for Clipboard {
         match command {
             "list" => {
                 let query = args.get("query").and_then(Value::as_str).unwrap_or("");
-                Ok(list_json(&self.store.locked(), query))
+                let s = self.store.locked();
+                let mut out = list_json(&s, query);
+                // La clé ignorée, si elle est encore dans le presse-papiers (rien d'autre copié depuis).
+                if let Some(kind) = current_ignored(&s) {
+                    out["ignored"] = json!({ "kind": kind.id(), "decodable": kind.decodable() });
+                }
+                Ok(out)
+            }
+            // {} → { text } : le texte de la copie ignorée EN COURS, relu dans le
+            // presse-papiers, pour le décodeur (un JWT). Seulement si elle s'y trouve
+            // encore et se décode ; rien n'est gardé ni journalisé.
+            "current" => {
+                let kind = current_ignored(&self.store.locked()).ok_or("plus de clé ignorée dans le presse-papiers")?;
+                if !kind.decodable() || platform::clipboard_is_sensitive() {
+                    return Err("cette copie ne se décode pas".into());
+                }
+                let text = read_text().ok_or("le presse-papiers ne contient pas de texte")?;
+                // Vérifier que c'est bien elle (le numéro de copie peut rester 0 hors Windows).
+                if clipboard_secrets::detect(&text) != Some(kind) {
+                    return Err("plus de clé ignorée dans le presse-papiers".into());
+                }
+                Ok(json!({ "text": text }))
             }
             // { query, limit } → { items } : la recherche du Lanceur. Les copies
             // sensibles n'y sont jamais : elles n'ont pas été lues.
@@ -419,6 +453,17 @@ fn watch(app: AppHandle, store: Shared) {
                 log::debug("presse-papiers : copie trop longue, ignorée");
                 return;
             }
+            // Une clé ou un jeton : pas dans l'historique. Avant « liens propres » :
+            // https://u:mdp@hôte ne doit pas devenir « le lien d'origine » gardé.
+            if let Some(kind) = secret_to_skip(&app, &text) {
+                drop(text);
+                // Ni le texte ni la famille dans le journal : seulement le fait.
+                log::debug("presse-papiers : copie ressemblant à une clé, ignorée");
+                store.locked().ignored = Some((kind, seq));
+                bus::emit(&app, ID, "clipboard.secret-ignored", json!({ "kind": kind.id(), "decodable": kind.decodable() }));
+                changed(&app, &store);
+                return;
+            }
             // Un lien plein de traqueurs : on remet le lien propre dans le
             // presse-papiers. Cette nouvelle copie sera vue au tour suivant.
             if clean_links_on(&app) && store.locked().keep_as_is.as_deref() != Some(text.as_str()) {
@@ -432,7 +477,13 @@ fn watch(app: AppHandle, store: Shared) {
                 }
             }
             let max = max_items_of(&app);
-            if remember(&mut store.locked(), text, now_ms(), max) {
+            let added = {
+                let mut s = store.locked();
+                // Une nouvelle copie ordinaire : l'onglet ne parle plus de la clé ignorée.
+                let had_ignored = s.ignored.take().is_some();
+                remember(&mut s, text, now_ms(), max) || had_ignored
+            };
+            if added {
                 changed(&app, &store);
             }
         }));
@@ -440,6 +491,26 @@ fn watch(app: AppHandle, store: Shared) {
             log::warn("presse-papiers : panique pendant la lecture d'une copie");
         }
     }
+}
+
+/// Le réglage « Ignorer les clés et jetons » (activé si absent, ou si le réglage
+/// est illisible : mieux vaut ne pas garder une clé).
+fn ignore_secrets_on(app: &AppHandle) -> bool {
+    super::with_context(app, ID, |ctx| ctx.settings().get("ignoreSecrets").and_then(Value::as_bool).unwrap_or(true)).unwrap_or(true)
+}
+
+/// La famille de clé reconnue dans `text`, si le réglage demande de l'ignorer.
+/// Aussi pour l'Équipe (presse-papiers partagé entre mes PC) : même réglage.
+pub(super) fn secret_to_skip(app: &AppHandle, text: &str) -> Option<SecretKind> {
+    if !ignore_secrets_on(app) {
+        return None;
+    }
+    clipboard_secrets::detect(text)
+}
+
+/// La clé ignorée, si elle est encore la copie en cours (même numéro de copie).
+fn current_ignored(s: &Store) -> Option<SecretKind> {
+    s.ignored.filter(|(_, seq)| *seq == platform::clipboard_sequence()).map(|(kind, _)| kind)
 }
 
 /// Un mot de passe copié est effacé du presse-papiers au bout de…
@@ -894,6 +965,18 @@ mod tests {
         let all = search_json(&s, &json!({ "query": "medecin" }));
         assert_eq!(all["items"].as_array().unwrap().len(), 3);
         assert_eq!(all["items"][2]["kind"], "snippet");
+    }
+
+    #[test]
+    fn ignored_key_only_while_it_is_the_current_copy() {
+        // Hors Windows, le numéro de copie vaut toujours 0.
+        let now = platform::clipboard_sequence();
+        let mut s = Store { ignored: Some((SecretKind::Jwt, now)), ..Store::default() };
+        assert_eq!(current_ignored(&s), Some(SecretKind::Jwt));
+        s.ignored = Some((SecretKind::GitHub, now.wrapping_add(1))); // une autre copie depuis
+        assert_eq!(current_ignored(&s), None);
+        // Rien de la clé ne va dans la liste, à part ce que le module y ajoute (sa famille).
+        assert!(list_json(&s, "")["items"].as_array().unwrap().is_empty());
     }
 
     #[test]

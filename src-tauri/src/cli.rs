@@ -30,9 +30,13 @@ pub fn notify(args: Vec<String>) {
     let stdin = read_stdin();
     // Un fichier modifié par l'agent (PostToolUse, AfterTool) : le résumé du
     // changement, calculé ici (modules/agents_live.rs), jamais le fichier entier.
+    // Ou sa liste de tâches mise à jour (modules/agents_todos.rs).
     if let Some(hook) = stdin.as_deref().and_then(|t| serde_json::from_str::<Value>(t).ok()).filter(|h| matches!(h["hook_event_name"].as_str(), Some("PostToolUse" | "AfterTool"))) {
         let source = args.iter().position(|a| a == "--source").and_then(|i| args.get(i + 1)).cloned().unwrap_or_else(|| "outil".into());
-        if let Some(mut m) = crate::modules::agents_live::compact(&source, &hook) {
+        // La liste de tâches de l'agent (TodoWrite, TaskCreate… : agents_todos.rs),
+        // sinon un fichier modifié. Seul un petit résumé part vers l'île.
+        let compact = crate::modules::agents_todos::compact(&source, &hook).or_else(|| crate::modules::agents_live::compact(&source, &hook));
+        if let Some(mut m) = compact {
             m["pids"] = json!(platform::ancestor_pids(12));
             let _ = platform::send_agents_pipe(m.to_string().as_bytes());
         }

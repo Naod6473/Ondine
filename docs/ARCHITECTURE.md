@@ -740,6 +740,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `capture.done` `{action, ok, result, error}` | Capture (Rust) | notification ; l'onglet redemande le texte lu (`last`), qui n'est pas dans le message |
 | `shelf.add` `{paths}` | Capture (Rust) | l'Étagère valide les chemins et les pose sur l'étagère |
 | `clipboard.changed` `{count}` | Presse-papiers (Rust) | l'onglet redemande la liste (le message ne contient aucun texte copié) |
+| `clipboard.secret-ignored` `{kind, decodable}` | Presse-papiers (Rust) | 1.2.5 : une copie qui ressemblait à une clé n'a pas été gardée ; petite notification « Clé ignorée » (`kind` = la famille, jamais le texte) |
 | `timer.done` `{title}` | Minuteur (front) | (la notification et le son sont faits par le module) |
 | `dictation.state` `{phase, engine}` | Dictée (Rust) | 1.2.4 : `phase` = `idle`, `listening`, `handsFree` ou `thinking` ; `engine` = `parakeet`, `windows`, `offline` ou `api` |
 | `dictation.history` `{entry}` | Dictée (Rust) | une dictée vient d'être collée (`entry` null si l'historique n'est pas gardé) : les pages Voix se rechargent |
@@ -1534,6 +1535,9 @@ et l'accès à Windows dans `src-tauri/src/platform/windows.rs` (« Presse-papie
   `CanIncludeInClipboardHistory` = 0 (ce que font KeePass, Bitwarden,
   1Password…). Si oui, la copie n'est jamais lue. Presse-papiers occupé pendant
   la vérification = considéré sensible.
+- **Clés et jetons** (1.2.5, réglage « Ignorer les clés et jetons », activé par
+  défaut) : une copie qui EST une clé d'API ou un jeton est lue mais pas gardée.
+  Voir « 1.2.5 » à la fin (« Le Presse-papiers ignore les clés et jetons »).
 - **Historique** : en mémoire seulement (disparaît à la fermeture), le plus
   récent en haut, sans doublons, 50 copies par défaut (réglage), 100 000
   caractères au plus par copie. Recherche sans tenir compte des majuscules,
@@ -3140,7 +3144,8 @@ premier plan, au plus toutes les 15 min), `agendaClimb` (`agenda.reminder` →
 puis `stretch`), `tidyForgotten` (non) + `forgottenMins` (une notification
 propose « Réduire » : commande `minimize`, jamais fermer). Le « pont » de
 fichiers à travers l'île n'est pas fait (l'Étagère sait déjà glisser un
-fichier vers l'Explorateur).
+fichier vers l'Explorateur). Et `swallow` (non) : le « trou noir », voir
+« 1.2.5 : le trou noir » à la fin.
 
 ## Fenêtre de réglages : catégories et sous-menus (`src/settings/main.ts`)
 
@@ -3950,3 +3955,274 @@ remplace ce son. Les noms sont les mêmes des deux côtés (test front).
 - Réglages → Apparence → Sons : « Ouvrir le dossier des sons »
   (`sounds_open_folder`, crée le dossier s'il manque), « Recharger les sons »
   (ici, et dans l'île par l'événement `sounds.reload`), les noms possibles.
+
+## 1.2.5 : nouveautés tirées des projets similaires
+
+### Le Presse-papiers ignore les clés et jetons (`clipboard_secrets.rs`)
+
+Idée reprise de winbar (laurennguyen1304, MIT), motifs et code réécrits (crédit
+dans THIRD-PARTY.md). Réglage `ignoreSecrets` du module Presse-papiers
+(« Ignorer les clés et jetons », activé par défaut ; activé aussi si le réglage
+est illisible).
+
+- **Où** : au même endroit que le filtre « sensible », dans la boucle `watch`
+  de `clipboard.rs`, juste après la lecture du texte et AVANT « liens propres »
+  (un `https://u:mdp@hôte` ne doit pas devenir « le lien d'origine » gardé pour
+  « Remettre »). L'historique vit en Rust : une copie ignorée n'entre jamais
+  dans `Store.clips`, donc ni dans la liste, ni dans `search` (Lanceur).
+- **Reconnaissance** (`clipboard_secrets::detect`, pure, sans le crate
+  `regex`) : une petite fonction par famille (préfixe, longueur minimale,
+  alphabet, parfois un mélange chiffres / minuscules / majuscules pour les
+  préfixes courts). Anthropic `sk-ant-` (≥ 32), OpenAI `sk-proj-` /
+  `sk-svcacct-` / `sk-admin-` (≥ 32) ou `sk-` (≥ 32, mélangé), GitHub `ghp_`
+  `gho_` `ghu_` `ghs_` `ghr_` (36) et `github_pat_` (≥ 40), GitLab `glpat-`
+  (≥ 20), AWS `AKIA`/`ASIA` + 16 majuscules/chiffres (avec un chiffre), Google
+  `AIza` + 35, Slack `xox[abprs]-` (≥ 20, avec un chiffre), Stripe `sk_live_` /
+  `rk_live_` (≥ 24), npm `npm_` + 36, Hugging Face `hf_` (≥ 30, majuscules et
+  minuscules), JWT signé (`eyJ….eyJ….sig`, trois parties ≥ 16 en Base64 URL),
+  adresse `schéma://utilisateur:motdepasse@hôte` (sauf mots de passe
+  d'exemple : `password`, `${…}`, `***`…).
+- **Contre les faux positifs** : seule la copie ENTIÈRE compte, une fois
+  retirés les emballages courants (espaces, `export `, `NOM=`, `NOM: `,
+  `"nom": "…",`, `Bearer `, guillemets). S'il reste une espace ou un saut de
+  ligne, c'est du texte : on garde. Exception : un bloc
+  `-----BEGIN … PRIVATE KEY-----` suivi d'au moins 64 caractères Base64, où
+  qu'il soit (un en-tête cité seul ou un certificat public ne comptent pas).
+  Tests : vrais positifs par famille et emballage, faux positifs (phrases,
+  liens, `ssh://git@…`, hash git, UUID, `sha256:…`, data URL d'image, Base64
+  de texte, `sk-learn…`, `hf_hub_download`, `sk_test_`…). Les fausses clés des
+  tests sont fabriquées morceau par morceau (aucune en entier dans le code).
+- **Quand une copie est ignorée** : `Store.ignored` ne retient que la famille
+  et le numéro de copie Windows (jamais le texte) ; le journal dit seulement
+  « copie ressemblant à une clé, ignorée » (debug, sans la famille) ; le bus
+  reçoit `clipboard.secret-ignored {kind, decodable}` → notification basse
+  « Clé ignorée ». `list` ajoute `ignored {kind, decodable}` tant que le
+  numéro de copie n'a pas changé : l'onglet montre une ligne discrète
+  « 🔒 Clé ignorée · Jeton GitHub ». Une nouvelle copie ordinaire l'efface.
+- **Décoder la copie en cours** : pour un JWT (`decodable`), la ligne propose
+  « Décoder » ; le front appelle `current`, qui relit le presse-papiers
+  seulement si la copie ignorée y est encore (même numéro, pas sensible, même
+  famille reconnue), et `decode.ts` l'affiche. Rien n'est gardé.
+- **Ailleurs** : Équipe (`team_net::sync_clipboard`) n'envoie pas une clé à
+  mes autres PC (même réglage, via `clipboard::secret_to_skip`) ; les halos
+  « Copié » n'affichent jamais le début d'une clé (toujours, réglage ou non).
+  Non touché : les règles « quand je copie… » (rien n'y est gardé) et les
+  actions explicites (« Coller une image », QR d'Équipe).
+- Mode démo : `clipboard.secret-ignored` est dans `REAL_DATA` (src/core/demo.ts).
+
+### Agents IA : la liste de tâches en barre, et la discrétion devant le terminal (`src-tauri/src/modules/agents_todos.rs`, `agents_discreet.rs`, `src/modules/agents/todos-logic.ts`)
+
+Deux idées de CodeIsland (wxtsky, MIT, macOS), réécrites (THIRD-PARTY.md).
+
+**La liste de tâches de l'agent** (réglage `taskProgress`, activé, groupe
+Notifications) : sous la session du tableau « En cours », une barre fine
+« 3/7 » et la tâche en cours (sa forme « en train de », `activeForm`).
+
+- Même chemin que les fichiers en direct : hook `PostToolUse` → `ondine.exe
+  notify` (`cli.rs`) → `agents_todos::compact` (essayé avant
+  `agents_live::compact`) → le canal → `route` (`msg.todos`) → `todos_note`.
+- Formes comprises (`update_of`, tout JSON inattendu ignoré sans bruit) :
+  - liste entière (`{mode: "replace"}`) : Claude Code `TodoWrite`
+    (`todos [{content, status, activeForm}]`), Codex `update_plan`
+    (`plan [{step, status}]`, paramètres éventuellement en texte JSON),
+    Gemini CLI `write_todos` (`todos [{description, status}]`), et la
+    réponse de `TaskList` (`tasks [{id, subject, status}]`) ;
+  - par numéro (`{mode: "patch"}`) : `TaskCreate` (`subject`, `activeForm` ;
+    le numéro est lu dans la réponse : `task.id`, `id`, `taskId` ou « #3 »
+    dans un texte ; sinon le suivant), `TaskUpdate` (`taskId`, `status`,
+    `subject`, `activeForm` ; `deleted` = retirée). Une mise à jour d'un
+    numéro inconnu sans texte est ignorée.
+  - États ramenés à `pending` / `in_progress` / `completed` ; `cancelled`
+    et `deleted` ne comptent pas.
+- Envoyé : la session et les tâches seulement (pas le reste du hook),
+  50 tâches au plus, chaque texte sur une ligne, coupé à 120 caractères.
+- Dans l'île (`todos::Store`) : 30 listes au plus, 20 mises à jour par
+  seconde au plus, en mémoire seulement, jamais journalisé. Oubliée à
+  `SessionEnd`, ou quand la session quitte le tableau (2 h ; une liste
+  arrivée avant tout autre hook de sa session est gardée 2 h). Gardée
+  d'un message à l'autre (contrairement aux fichiers en direct).
+- `history` ajoute `todos {done, total, current?}` à chaque session ; le
+  sujet `agents.todos {session, done?, total?, current?}` redessine
+  l'onglet (une fois par rafale) et allume, dans le module Animations
+  (case « Agents IA »), un liseré `progress` figé (`id: agent-todos`,
+  palette `work`, `todoFill`) : la part faite, éteint quand tout est fait,
+  à « a fini » et à `claude.done`.
+- Hooks : le matcher `PostToolUse` de Claude Code devient
+  `Edit|MultiEdit|Write|TodoWrite|TaskCreate|TaskUpdate|TaskList` ;
+  Gemini `AfterTool` : `write_file|replace|write_todos` ; Codex : un
+  nouveau bloc `[[hooks.PostToolUse]] matcher = "update_plan"` (la
+  documentation des hooks de Codex range `update_plan` parmi les « local
+  function tools » vus par PostToolUse ; non essayé sous Windows). Même
+  installation sûre (fusion, `.bak`, TOML relu et comparé). `hook_status`
+  rend aussi `incomplete` (`agents_hooks::incomplete` : des hooks d'Ondine
+  sont là, mais un événement ou un matcher d'aujourd'hui manque) :
+  « ✅ Installé, sans les dernières nouveautés (liste de tâches) :
+  réinstallez pour les ajouter ». Codex demande d'approuver le nouveau
+  hook une fois dans `/hooks`.
+
+**Rester discrète quand vous regardez déjà le terminal** (réglage
+`quietWhenWatching`, activé, groupe Notifications) :
+
+- À « vous attend » ou « a fini » (`discreet::stay_discreet` : réglage +
+  genre, la recherche n'est faite qu'alors), `watching_session` compare la
+  fenêtre au premier plan (`platform::foreground_window`, sa fenêtre du
+  haut) à celle de la session, cherchée comme « Y aller »
+  (`platform::agent_windows` : la console du hook, sinon
+  `pick_agent_window` ; la recherche est partagée avec
+  `focus_agent_window`, une seule liste des fenêtres pour toutes les
+  sessions). Si c'est elle, et qu'aucune AUTRE session du tableau n'a la
+  même fenêtre (`discreet::watching` : deux onglets de Windows Terminal
+  ont la même fenêtre, on ne sait pas lequel est affiché), alors pas
+  d'`agents.event` (donc ni notification, ni son, ni halo d'appel, ni
+  scène) ni de `task.finished` (fête). Le tableau est mis à jour
+  (`agents.changed`), l'historique aussi, le bilan git est calculé pour
+  l'historique sans notification (`report_then_show(…, show: false)`).
+- Les rappels de 10 / 30 min (`agents_wait.rs`, inchangé) suivent l'état
+  de la session : si vous quittez la fenêtre, ils arrivent comme avant
+  (et aussi si elle est encore devant : la discrétion ne vise que le
+  passage à « vous attend » / « a fini »).
+- Hors Windows : `foreground_window` rend 0, jamais discrète.
+
+### Notifications de Windows (`src-tauri/src/modules/winnotifs.rs`, `src-tauri/src/platform/winnotifs.rs`, `src/modules/winnotifs/`, `src/settings/winnotifs-group.ts`)
+
+Les notifications des autres applis (celles du Centre de notifications)
+s'affichent aussi dans l'île. Module à petit onglet (🔔, catégorie « Le PC au
+quotidien »), **désactivé par défaut** (`MODULES_OFF_BY_DEFAULT`, Rust et
+front) : il lit le contenu des notifications des autres applis.
+
+- **Sans paquet du Store.** `Windows.UI.Notifications.Management.UserNotificationListener`
+  marche pour une appli ordinaire une fois que Windows l'autorise (Paramètres →
+  Confidentialité → Notifications). Technique reprise de windows-dynamic-island
+  et de PILLAR (MIT, THIRD-PARTY.md), réécrite. L'événement
+  `NotificationChanged` demande une identité de paquet (erreur 0x80070490 chez
+  ces projets) : la liste est donc **relue** (`GetNotificationsAsync(Toast)`).
+- **Le thread** (`run`) : module coupé → il dort 3 s et oublie tout ; lecteur
+  absent (Windows 10 d'avant 1607) → état `unavailable`, nouvel essai toutes les
+  5 min ; accès demandé une fois par activation (`RequestAccessAsync` sur le fil
+  de fond ; si Windows refuse de répondre hors du fil de l'interface, la demande
+  est relancée par `run_on_main_thread` et attendue sur le fil de fond) ; refusé
+  → état `denied`, `GetAccessStatus` toutes les 10 s pour repartir dès que la
+  case est cochée ; autorisé → relecture au rythme `perf::Loop::WinNotifs`
+  (1 000 / 1 500 / 4 000 ms en haute / équilibrée / éco). « Vérifier de
+  nouveau » (commande `recheck`) réveille le fil et redemande l'accès.
+- **Les nouvelles** (`fresh_ids`, testé) : le premier tour (démarrage,
+  réactivation, accès accordé) note tout comme vu ; ensuite, un id jamais vu =
+  nouvelle ; un id disparu est oublié. Au plus 5 d'un coup (sortie de veille).
+  Pour chacune : appli (nom affiché, AUMID), lignes de texte du modèle
+  ToastGeneric (`extract` : 1re ligne = titre, 4 lignes de corps au plus,
+  120 / 400 caractères), filtres (`app_allowed` : « Applis à ignorer »,
+  « Seulement ces applis », noms séparés par des virgules, comparés au nom et
+  à l'AUMID en minuscules), logo (`AppInfo.DisplayInfo.GetLogo` 32 × 32, 48 Ko
+  au plus, data URL gardée en mémoire, 64 applis au plus).
+- **Bus** : `winnotifs.new` `{id, app, key, icon, title, body}` (`key` = FNV-1a
+  de l'appli, jamais l'AUMID ; `body` vide si « Montrer le texte du message »
+  est décoché) et `winnotifs.status` `{state, remove}` (`state` : off,
+  starting, allowed, denied, unavailable, error ; `remove` : unknown, ok,
+  refused). Commandes : `status`, `recheck`, `open_settings`
+  (`ms-settings:privacy-notifications`), `icon {key}`, `open_app {key}`
+  (`shell:AppsFolder\AUMID`, AUMID vérifié par `aumid_ok`), `remove {id}`.
+- **Dans l'île** : `api.notify` priorité `normal`, titre « Appli · Titre »,
+  icône `app:<key>` (logo enregistré par `setAppIcon` de `icon.ts`, sinon 🔔),
+  bouton « Ouvrir » (l'appli). La file habituelle s'applique : concentration
+  (Pomodoro), mode présentation, Calme des Règles. Windows refuse : une
+  notification une fois par démarrage du module, avec « Ouvrir les réglages de
+  Windows ».
+- **L'onglet** : l'état de l'accès (et les boutons quand Windows refuse), les
+  20 dernières (réglage `history`, oui par défaut), « Effacer la liste ». Tout
+  en mémoire du front : effacé quand le module s'arrête ou que le réglage est
+  décoché. Réglages → Notifications de Windows : un bloc « Accès de Windows »
+  (état, « Ouvrir les réglages de Windows », « Vérifier de nouveau »).
+- **Retirer du Centre de notifications** (`removeFromCenter`, non par défaut) :
+  à la fermeture de la notification de l'île (`onDismiss` : temps écoulé, ×,
+  « Ouvrir »), `remove {id}` appelle `RemoveNotification`. Rien ne garantit
+  que Windows l'accepte sans paquet : une erreur, ou la même notification
+  encore là 0,8 s plus tard à la lecture suivante = `remove: "refused"`, le
+  module n'essaie plus jusqu'au redémarrage et l'onglet comme la page des
+  réglages le disent.
+- **Confidentialité** : contenus en mémoire seulement (bus, onglet) ; le
+  journal ne reçoit que les changements d'état et les erreurs de Windows
+  (jamais un titre ni un texte ; le bus ne journalise que le sujet). Les
+  textes des notifications sont marqués `data-no-i18n` dans l'onglet.
+- **Limites** : Windows montre toujours sa propre bulle en même temps (la
+  cacher demanderait de toucher aux réglages de notification des autres
+  applis) ; « Ne pas déranger » de Windows n'est pas lu (les notifications
+  vont quand même au Centre, donc dans l'île).
+
+### Le trou noir (`src-tauri/src/modules/windowlife_hole.rs`, `windowlife.rs`, `platform/winlife.rs`, `src/modules/windowlife/`, `src/styles/windowlife.css`)
+
+Idée et technique de windows-dynamic-island (Nazim Ferragh, MIT), réécrites
+(THIRD-PARTY.md). Réglage `swallow` du module Ondine et les fenêtres
+(« Avaler une fenêtre lâchée sur l'île », essentiel, **coupé par défaut** :
+l'île est en haut au centre, là où l'on lance une fenêtre pour l'agrandir ;
+une fenêtre qui disparaît surprend). `lockGoodbye` n'est plus essentiel
+(3 au plus par module, test de visibility).
+
+- **Le glisser** : réglage allumé, `winlife::watch_drags` ouvre un fil avec
+  sa boucle de messages et `SetWinEventHook(EVENT_SYSTEM_MOVESIZESTART…END,
+  WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS)` : deux événements par
+  déplacement, aucun crochet souris, rien d'injecté. Au début : la fenêtre
+  principale (`GA_ROOT`), sa place (`GetWindowPlacement` : place normale +
+  agrandie) et sa taille ; à la fin : la souris (`GetCursorPos`). Réglage
+  coupé : le `DragWatch` est lâché (WM_QUIT, `UnhookWinEvent`).
+- **Pendant** (fil du module, 30 tours/s seulement pendant un déplacement) :
+  `DragTrack::step` (pur, testé) ; la souris sur l'île =
+  `island::screen_point_on_island` (px physiques, forme de l'île avec une
+  marge, bande de réveil avec 40 px ; tous les bords, toutes les échelles).
+  Armée après 0,3 s au-dessus (`ARM_SECS`, contre le geste « agrandir » de
+  Windows) ; une taille qui change = redimensionnement, jamais avalée.
+  Armée ou non → `windowlife.hole-hover {over}` : island.ts montre l'île si
+  elle était cachée (`fsm.pointerEnter`), classe `hole-over` (assombrie,
+  halo violet : filtre + ombre, la gelée garde la forme) ; le front fait
+  `surprised` (bouche ouverte). Lâchée armée sur l'île → `hole::swallow`
+  dans un fil à part.
+- **Le tri** (`may_swallow`, testé) : refusées les fenêtres d'Ondine, cachées
+  ou « cloaked », non principales (enfant, outil, avec propriétaire = boîte
+  de dialogue), de Windows (`SHELL_CLASSES` : bureau Progman / WorkerW, barres
+  des tâches, Démarrer, vue des tâches, menus, et les applis du Store
+  `ApplicationFrameWindow`), plein écran, qui ne répondent pas
+  (`IsHungAppWindow`), sans titre, et d'un programme administrateur quand
+  Ondine ne l'est pas (`TokenElevation` du programme ; illisible = refusée).
+  Une fenêtre refusée ne donne aucun retour visuel.
+- **Avaler** : notée dans la liste (`static HOLE`, 24 au plus) et dans
+  `%APPDATA%\Ondine\trou-noir.json` (hwnd, pid, classe, titre, place ;
+  écrit par fichier temporaire + renommage, supprimé quand la liste est
+  vide) AVANT d'être cachée par `ShowWindowAsync(SW_HIDE)` (jamais bloqué par
+  un programme occupé), et rien d'autre. Toujours visible 600 ms plus tard :
+  réaffichée (`SW_SHOWNA`), retirée, `windowlife.swallowed {ok:false,
+  reason}` (bulle). Sinon `{ok:true}` : `eating`, île `hole-gulp`. L'icône
+  (WM_GETICON 150 ms au plus, sinon celle de la classe ; 32 × 32, masque pour
+  les vieilles icônes) reste en mémoire, PNG en data URL.
+- **Recracher** (`spit`, un clic) : place d'avant remise pendant qu'elle est
+  encore cachée (`SetWindowPlacement` avec `SW_HIDE`, sauf programme qui ne
+  répond pas), puis `SW_SHOW` / `SW_SHOWMAXIMIZED`, `BringWindowToTop`,
+  `SetForegroundWindow`, `forget_previous_foreground`. `windowlife.spat` :
+  `push`, île `hole-spit`. Pas encore réaffichée au bout de 600 ms : gardée
+  dans la liste (le tri la retirera).
+- **Tout recracher** (`release_all`, sans voler le focus) : commande
+  `spit_all` (bouton de la mini-île, action de la carte), entrée « Tout
+  recracher (n) » du menu de l'icône (tray.rs, seulement s'il y en a,
+  `sync_hole`), réglage ou module coupé (fil du module), `RunEvent::Exit`
+  (lib.rs : `.build().run(…)`), juste avant l'installateur d'une mise à jour
+  et avant `app.restart()` (update.rs), panique du fil principal (crochet de
+  panique). Au démarrage (`start`, même module coupé) : `recover_at_start`
+  relit le fichier et réaffiche celles qui existent encore, au même
+  programme, toujours cachées (`to_recover`, testé), puis l'efface.
+- **Le tri de chaque seconde** (`Hole::sweep`) : une fenêtre fermée (ou dont
+  le numéro est passé à un autre programme), ou réaffichée par son propre
+  programme, sort de la liste. `windowlife.hole {count}` à chaque changement :
+  le front relit `hole_list` (le bus est limité à 64 Ko : les icônes passent
+  par la commande).
+- **Le front** : vue compacte (`views: ["compact"]`, pas d'onglet ;
+  `compactWhen` = liste non vide, après Musique et Notes d'appel dans
+  `ALL_MODULES`) : 🕳️, la pastille violette avec le nombre, 5 icônes au plus
+  (un clic recrache, titre en infobulle, `data-no-i18n`), « Tout recracher ».
+  Carte de l'Accueil « Trou noir » (`expandable: false`) : le nombre, les
+  titres, « Recracher la dernière », « Tout recracher », un morceau de phrase
+  (`hole-logic.ts`, testé). Réactions de la mascotte jamais en mode Calme.
+- **Confidentialité** : rien ne sort du PC ; le journal ne note que des
+  nombres et des raisons, jamais un titre ; le titre n'est écrit sur le
+  disque que dans le fichier de secours, le temps que la fenêtre est avalée.
+- **Pas fait** : point dans la forme nano (la vue compacte n'apparaît qu'en
+  mini-île), raccourci clavier global (le menu de l'icône en tient lieu),
+  bureaux virtuels (une fenêtre avalée sur un bureau ressort sur le bureau
+  courant), aperçu de la fenêtre (le projet d'origine prend une capture).

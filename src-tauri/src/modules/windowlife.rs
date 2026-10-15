@@ -16,6 +16,10 @@
 // Et island/mod.rs demande `throw_window` à la fin d'un déplacement de l'île :
 // lancée vers un bord, l'île y colle la fenêtre au premier plan (comme
 // Windows + flèche).
+// Le « trou noir » (réglage `swallow`, coupé par défaut) : une fenêtre lâchée
+// sur l'île est avalée (cachée), puis recrachée d'un clic. Le tri, la liste et
+// le filet de sécurité sont dans windowlife_hole.rs ; ici, seulement le suivi
+// du déplacement (plus rapide pendant qu'une fenêtre est déplacée).
 //
 // Rien ne sort du PC ; rien n'est lu dans les fenêtres à part leur place, leur
 // titre (pour la proposition « ranger ») et quelques pixels (lunettes de
@@ -23,11 +27,13 @@
 
 use std::collections::{HashMap, HashSet};
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::sync::mpsc::{channel, Receiver};
 use std::time::{Duration, Instant};
 
 use serde_json::{json, Map, Value};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
+use super::windowlife_hole::{self as hole, DragTrack};
 use super::{ModuleContext, RustModule};
 use crate::island::dodge;
 use crate::platform::{self, winlife};
@@ -60,17 +66,40 @@ impl RustModule for WindowLife {
     }
 
     fn start(&self, app: &AppHandle) {
+        // Avant tout, même module coupé : les fenêtres qu'une session
+        // précédente (plantée) a laissées dans le trou noir réapparaissent.
+        hole::recover_at_start();
         let app = app.clone();
         std::thread::spawn(move || run(app));
     }
 
-    fn invoke(&self, _ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
+    fn invoke(&self, ctx: &ModuleContext, command: &str, args: Value) -> Result<Value, String> {
         match command {
             // « Ranger » une fenêtre oubliée : seulement la réduire, après un clic.
             "minimize" => {
                 let hwnd = args.get("hwnd").and_then(Value::as_i64).ok_or("fenêtre manquante")? as isize;
                 winlife::minimize(hwnd)?;
                 Ok(Value::Null)
+            }
+            // Le trou noir : la liste (titre, icône), recracher une fenêtre, tout recracher.
+            "hole_list" => Ok(hole::list_json()),
+            "spit" => {
+                let hwnd = args.get("hwnd").and_then(Value::as_i64).ok_or("fenêtre manquante")?;
+                let done = hole::spit(hwnd);
+                // Ondine la repousse (le front, qui respecte le mode Calme).
+                if done.is_ok() {
+                    bus::emit(ctx.app, ID, "windowlife.spat", json!({ "count": 1 }));
+                }
+                hole_changed(ctx.app);
+                done.map(|_| Value::Null)
+            }
+            "spit_all" => {
+                let n = hole::release_all("« Tout recracher »");
+                if n > 0 {
+                    bus::emit(ctx.app, ID, "windowlife.spat", json!({ "count": n }));
+                }
+                hole_changed(ctx.app);
+                Ok(json!({ "count": n }))
             }
             other => Err(format!("commande inconnue : {other}")),
         }
@@ -93,6 +122,7 @@ pub struct Prefs {
     pub tidy_forgotten: bool,
     pub forgotten_mins: f64,
     pub lock_goodbye: bool,
+    pub swallow: bool,
 }
 
 impl Prefs {
@@ -110,6 +140,7 @@ impl Prefs {
             tidy_forgotten: flag("tidyForgotten", false),
             forgotten_mins: s.get("forgottenMins").and_then(Value::as_f64).unwrap_or(60.0).clamp(10.0, 600.0),
             lock_goodbye: flag("lockGoodbye", true),
+            swallow: flag("swallow", false),
         }
     }
 }
@@ -293,6 +324,108 @@ pub fn throw_window(app: &AppHandle, hwnd: isize, trail: &[(f64, f64, Instant)],
     }
 }
 
+// ── Le trou noir (la liste est dans windowlife_hole.rs) ──────────────────────
+
+/// La liste du trou noir a changé : le front relit la liste (`hole_list`), le
+/// menu de l'icône suit (« Tout recracher »). Aussi appelée par tray.rs.
+pub fn hole_changed(app: &AppHandle) {
+    let n = hole::count();
+    bus::emit(app, ID, "windowlife.hole", json!({ "count": n }));
+    crate::tray::sync_hole(app, n);
+}
+
+/// « Tout recracher » du menu de l'icône (même module coupé : on ne garde rien caché).
+pub fn release_from_tray(app: &AppHandle) {
+    let n = hole::release_all("menu de l'icône");
+    if n > 0 {
+        bus::emit(app, ID, "windowlife.spat", json!({ "count": n }));
+    }
+    hole_changed(app);
+}
+
+/// Le point (px physiques) est-il sur l'île, quelle que soit sa forme (bande
+/// de réveil, mini-île, ouverte ; sur n'importe quel bord) ?
+fn on_island(app: &AppHandle, x: f64, y: f64) -> bool {
+    let Some(shared) = app.try_state::<crate::Shared>() else { return false };
+    crate::island::screen_point_on_island(app, &shared.gate, x, y)
+}
+
+/// Le crochet des déplacements, ouvert seulement quand le réglage est allumé.
+struct HoleWatch {
+    _watch: winlife::DragWatch,
+    rx: Receiver<winlife::DragEvent>,
+}
+
+/// Le trou noir, à chaque tour : ouvre ou ferme le crochet selon le réglage,
+/// suit le déplacement en cours (retour visuel), avale à la fin. Vrai tant
+/// qu'une fenêtre est déplacée (le tour suivant vient plus vite).
+fn hole_tick(app: &AppHandle, p: &Prefs, w: &mut Watch, t: f64) -> bool {
+    if !p.swallow {
+        w.hole_refused = false;
+        if w.hole.take().is_some() {
+            w.drag = None;
+            if hole::release_all("réglage coupé") > 0 {
+                hole_changed(app);
+            }
+        }
+        return false;
+    }
+    if w.hole.is_none() {
+        if w.hole_refused {
+            return false;
+        }
+        let (tx, rx) = channel();
+        match winlife::watch_drags(tx) {
+            Some(watch) => w.hole = Some(HoleWatch { _watch: watch, rx }),
+            // Hors de Windows, ou crochet refusé : on ne réessaie pas à chaque
+            // tour (seulement après avoir coupé puis rallumé le réglage).
+            None => {
+                w.hole_refused = true;
+                return false;
+            }
+        }
+    }
+    let Some(hw) = w.hole.as_ref() else { return false };
+    let events: Vec<winlife::DragEvent> = hw.rx.try_iter().collect();
+    for e in events {
+        match e {
+            winlife::DragEvent::Start { hwnd, placement, size } => {
+                // Une fenêtre qu'on n'a pas le droit d'avaler : ni retour visuel, ni rien.
+                let allowed = winlife::candidate(hwnd).is_some_and(|c| hole::may_swallow(&c).is_ok());
+                w.drag = allowed.then(|| DragTrack::new(hwnd, placement, size));
+            }
+            winlife::DragEvent::End { hwnd, cursor } => {
+                let Some(d) = w.drag.take().filter(|d| d.hwnd == hwnd) else { continue };
+                if d.armed {
+                    emit(app, "windowlife.hole-hover", json!({ "over": false }));
+                }
+                if !d.swallows(on_island(app, cursor.0 as f64, cursor.1 as f64)) {
+                    continue;
+                }
+                // Hors du fil du module : l'icône et la vérification prennent un instant.
+                let (app, placement) = (app.clone(), d.placement);
+                std::thread::spawn(move || match hole::swallow(hwnd, placement) {
+                    Ok(()) => {
+                        bus::emit(&app, ID, "windowlife.swallowed", json!({ "ok": true }));
+                        hole_changed(&app);
+                    }
+                    Err(e) => {
+                        crate::services::log::warn(format!("trou noir : fenêtre non avalée ({e})"));
+                        let reason = if e.contains("plein") { "full" } else { "refused" };
+                        bus::emit(&app, ID, "windowlife.swallowed", json!({ "ok": false, "reason": reason }));
+                    }
+                });
+            }
+        }
+    }
+    let Some(d) = w.drag.as_mut() else { return false };
+    let over = platform::cursor_physical().is_some_and(|(x, y)| on_island(app, x, y));
+    if let Some(armed) = d.step(t, over, winlife::window_size(d.hwnd)) {
+        emit(app, "windowlife.hole-hover", json!({ "over": armed }));
+    }
+    true
+}
+
 // ── Le thread ────────────────────────────────────────────────────────────────
 
 #[derive(Default)]
@@ -313,6 +446,10 @@ struct Watch {
     proposed: HashSet<isize>,
     /// Le module a placé un obstacle ou un perchoir (à retirer s'il s'arrête).
     placed: bool,
+    /// Le trou noir : le crochet des déplacements, et le déplacement en cours.
+    hole: Option<HoleWatch>,
+    hole_refused: bool,
+    drag: Option<DragTrack>,
 }
 
 fn run(app: AppHandle) {
@@ -334,6 +471,12 @@ fn run(app: AppHandle) {
                 dodge::set_obstacle(&app, "foreground", None);
                 dodge::set_obstacle(&app, "toast", None);
                 dodge::set_perch(&app, None);
+            }
+            // Et recrache tout ce qu'elle avait avalé.
+            w.hole = None;
+            w.drag = None;
+            if hole::release_all("module coupé") > 0 {
+                hole_changed(&app);
             }
             std::thread::sleep(Duration::from_secs(2));
             continue;
@@ -357,6 +500,9 @@ fn tick(app: &AppHandle, p: &Prefs, w: &mut Watch) -> bool {
     let now = Instant::now();
     let t = now.duration_since(w.started.unwrap_or(now)).as_secs_f64();
 
+    // ── Le trou noir (à chaque tour, rapide pendant un déplacement) ──
+    let dragging = hole_tick(app, p, w, t);
+
     // ── La souris secouée près de l'île ──
     let near = match (island, cursor) {
         (Some((l, tp, r, b)), Some((cx, cy))) => cx >= l - NEAR_PX && cx <= r + NEAR_PX && cy >= tp - NEAR_PX && cy <= b + NEAR_PX,
@@ -375,7 +521,7 @@ fn tick(app: &AppHandle, p: &Prefs, w: &mut Watch) -> bool {
     }
     // Le reste à son rythme normal (pas 30 fois par seconde).
     if w.last_slow.is_some_and(|at| now.duration_since(at) < TICK - Duration::from_millis(20)) {
-        return near;
+        return near || dragging;
     }
     w.last_slow = Some(now);
 
@@ -435,6 +581,11 @@ fn tick(app: &AppHandle, p: &Prefs, w: &mut Watch) -> bool {
         let union = toasts.iter().copied().reduce(|a, b| (a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3)));
         dodge::set_obstacle(app, "toast", union.map(|r| (r.0, r.1, (r.2 - r.0) as u32, (r.3 - r.1) as u32)));
 
+        // Le trou noir : les fenêtres fermées (ou réaffichées par leur programme) en sortent.
+        if hole::sweep() {
+            hole_changed(app);
+        }
+
         let locked = winlife::session_locked();
         if locked != w.locked {
             w.locked = locked;
@@ -463,7 +614,7 @@ fn tick(app: &AppHandle, p: &Prefs, w: &mut Watch) -> bool {
             }
         }
     }
-    near
+    near || dragging
 }
 
 #[cfg(test)]
@@ -486,6 +637,8 @@ mod tests {
         // Les plus intrusives sont coupées.
         let p = Prefs::from(&Map::new());
         assert!(!p.avoid_foreground && !p.perch_title && !p.throw_snap && !p.tidy_forgotten);
+        // Le trou noir aussi : il cache des fenêtres (voir windowlife_hole.rs).
+        assert!(!p.swallow);
     }
 
     #[test]

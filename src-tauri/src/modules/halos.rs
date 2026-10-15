@@ -236,10 +236,18 @@ fn watch(app: AppHandle) {
     }
 }
 
-/// « Copié », « Coupé », « Collé », avec le début du texte si permis et pas sensible.
+/// « Copié », « Coupé », « Collé », avec le début du texte si permis, pas sensible
+/// et pas une clé (même sans le réglage du Presse-papiers : rien ne s'y garde,
+/// mais une clé n'a rien à faire en grand sur l'écran).
 fn emit_clip(app: &AppHandle, action: &str, with_text: bool) {
     let text = if with_text && !platform::clipboard_is_sensitive() {
-        arboard::Clipboard::new().ok().and_then(|mut c| c.get_text().ok()).map(|t| snippet(&t)).filter(|t| !t.is_empty())
+        arboard::Clipboard::new()
+            .ok()
+            .and_then(|mut c| c.get_text().ok())
+            // Une clé ou un jeton (sk-ant-…, ghp_…, JWT…) ne s'affiche pas en clair à l'écran.
+            .filter(|t| super::clipboard_secrets::detect(t).is_none())
+            .map(|t| snippet(&t))
+            .filter(|t| !t.is_empty())
     } else {
         None
     };

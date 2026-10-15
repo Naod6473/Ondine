@@ -18,6 +18,13 @@
 // propose un bouton (decode.ts reconnaît et décode, ici, sans rien envoyer).
 // Le résultat s'affiche dans l'onglet, avec « Copier ». Pour une longue copie,
 // on demande au Rust le texte entier ("full") ; rien n'est journalisé.
+//
+// « Clé ignorée » (1.2.5, réglage « Ignorer les clés et jetons ») : le Rust ne
+// garde pas une copie qui est une clé d'API ou un jeton (clipboard_secrets.rs).
+// Il prévient ("clipboard.secret-ignored", sans le texte) : petite notification,
+// et une ligne discrète en haut de l'historique tant que la clé est encore dans
+// le presse-papiers. Pour un JWT, cette ligne propose « Décoder » : le texte est
+// relu dans le presse-papiers ("current"), décodé ici, jamais gardé.
 
 import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
@@ -48,7 +55,26 @@ interface ListResult {
   items: ClipItem[];
   snippets: SnippetItem[];
   total: number;
+  /** La copie en cours a été ignorée parce qu'elle ressemblait à une clé (sa famille seulement). */
+  ignored?: { kind: string; decodable: boolean };
 }
+
+/** Le nom de chaque famille de clé reconnue par le Rust (clipboard_secrets.rs). */
+const SECRET_KINDS: Record<string, string> = {
+  anthropic: "Clé Anthropic",
+  openai: "Clé OpenAI",
+  github: "Jeton GitHub",
+  gitlab: "Jeton GitLab",
+  aws: "Clé AWS",
+  google: "Clé Google",
+  slack: "Jeton Slack",
+  stripe: "Clé Stripe",
+  npm: "Jeton npm",
+  huggingface: "Jeton Hugging Face",
+  jwt: "Jeton JWT",
+  "private-key": "Clé privée",
+  connection: "Adresse avec mot de passe",
+};
 
 /** Ce que la vue retient entre deux ouvertures de l'île. */
 const view = {
@@ -148,8 +174,18 @@ export const clipboard: IslandModule = {
   manifest: manifest as ModuleManifest,
 
   // Un lien copié a été nettoyé (Rust) : on le dit, avec « Remettre » l'original.
+  // Une clé copiée n'a pas été gardée : on le dit aussi, discrètement.
   setup(api) {
-    return api.on("clipboard.link-cleaned", (msg) => {
+    const offSecret = api.on("clipboard.secret-ignored", () => {
+      api.notify({
+        title: "Clé ignorée",
+        body: "Cette copie ressemble à une clé ou un jeton : elle n'est pas gardée dans l'historique.",
+        icon: "🔒",
+        priority: "low",
+        key: "clipboard-secret",
+      });
+    });
+    const offLink = api.on("clipboard.link-cleaned", (msg) => {
       const n = (msg.payload as { removed?: number } | null)?.removed ?? 0;
       api.notify({
         title: "Lien nettoyé",
@@ -160,6 +196,10 @@ export const clipboard: IslandModule = {
         actions: [{ label: "Remettre", run: async () => void (await attempt(api, "Remettre le lien", () => api.invoke("restore_link"))) }],
       });
     });
+    return () => {
+      offSecret();
+      offLink();
+    };
   },
 
   views: {
@@ -192,8 +232,8 @@ export const clipboard: IslandModule = {
       let editing: SnippetItem | "new" | null = null;
       /** La copie montrée en QR code (même chose : on ne redessine pas par-dessus). */
       let qrFor: ClipItem | null = null;
-      /** La copie décodée (même chose). */
-      let decodeFor: { item: ClipItem; kind: DecodeKind } | null = null;
+      /** La copie décodée (même chose). `item` null : la clé ignorée en cours, relue dans le presse-papiers. */
+      let decodeFor: { item: ClipItem | null; kind: DecodeKind } | null = null;
       let alive = true;
 
       const setTab = (tab: typeof view.tab) => {
@@ -227,6 +267,27 @@ export const clipboard: IslandModule = {
       };
 
       const drawHistory = () => {
+        // La clé ignorée (toujours dans le presse-papiers) : une ligne discrète, sans son texte.
+        if (last.ignored && !view.query) {
+          const ignored = last.ignored;
+          body.append(
+            el(
+              "p",
+              { class: "muted clip-ignored", title: "Pas gardée dans l'historique (réglage « Ignorer les clés et jetons »)" },
+              "🔒 ",
+              el("span", {}, "Clé ignorée"),
+              " · ",
+              el("span", {}, SECRET_KINDS[ignored.kind] ?? "Clé ou jeton"),
+              ignored.decodable
+                ? el(
+                    "button",
+                    { class: "icon-btn clip-case clip-decode", title: DECODE_ACTIONS.jwt.title, onclick: api.handler(() => openDecode(null, "jwt")) },
+                    DECODE_ACTIONS.jwt.label,
+                  )
+                : null,
+            ),
+          );
+        }
         if (!last.items.length) {
           body.append(
             el(
@@ -385,7 +446,7 @@ export const clipboard: IslandModule = {
       };
 
       // ── Décoder une copie (JWT, Base64, %xx, JSON, horodatage) ──
-      const openDecode = (item: ClipItem, kind: DecodeKind) => {
+      const openDecode = (item: ClipItem | null, kind: DecodeKind) => {
         decodeFor = { item, kind };
         draw();
       };
@@ -394,7 +455,7 @@ export const clipboard: IslandModule = {
         draw();
       };
 
-      const drawDecoded = (target: { item: ClipItem; kind: DecodeKind }) => {
+      const drawDecoded = (target: { item: ClipItem | null; kind: DecodeKind }) => {
         const box = el("div", { class: "clip-decode" }, el("p", { class: "muted" }, "…"));
         body.append(
           el(
@@ -407,10 +468,13 @@ export const clipboard: IslandModule = {
         );
         const fail = (message: string) => box.replaceChildren(el("p", { class: "clip-qr-error" }, "⚠️ ", el("span", {}, message)));
         void (async () => {
-          let text = target.item.preview;
-          if (target.item.truncated) {
+          let text = target.item?.preview ?? "";
+          if (!target.item || target.item.truncated) {
             try {
-              text = (await api.invoke<{ text: string }>("full", { id: target.item.id })).text;
+              // La clé ignorée n'est pas dans l'historique : on relit le presse-papiers.
+              text = target.item
+                ? (await api.invoke<{ text: string }>("full", { id: target.item.id })).text
+                : (await api.invoke<{ text: string }>("current")).text;
             } catch (err) {
               if (decodeFor === target) fail(errorText(err)); // copie disparue entre-temps…
               return;

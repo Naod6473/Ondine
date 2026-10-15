@@ -1,7 +1,8 @@
 // L'icône de la zone de notification : Ouvrir l'île, Profil (s'il y en a),
-// Réglages, Journal, Quitter.
+// « Tout recracher » (s'il y a des fenêtres dans le trou noir), Réglages,
+// Journal, Quitter.
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Mutex;
 
 use tauri::menu::{CheckMenuItem, IsMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
@@ -25,6 +26,8 @@ type ShownProfiles = (Vec<(String, String)>, String);
 static SHOWN: Mutex<Option<ShownProfiles>> = Mutex::new(None);
 /// Ondine est sur le bureau : la case « Ondine sur le bureau » est cochée.
 static PET: AtomicBool = AtomicBool::new(false);
+/// Le nombre de fenêtres dans le trou noir (Ondine et les fenêtres) : 0 = pas d'entrée.
+static HOLE: AtomicUsize = AtomicUsize::new(0);
 
 fn tr(fr: &'static str, english: &'static str) -> &'static str {
     if ENGLISH.load(Ordering::Relaxed) {
@@ -43,8 +46,23 @@ fn menu(app: &AppHandle, profiles: &[(String, String)], active: &str) -> tauri::
     let quit = MenuItem::with_id(app, "quit", tr("Quitter", "Quit"), true, None::<&str>)?;
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
+    // « Tout recracher (n) » : seulement quand le trou noir n'est pas vide.
+    let n = HOLE.load(Ordering::Relaxed);
+    let release = MenuItem::with_id(
+        app,
+        "hole-release",
+        if ENGLISH.load(Ordering::Relaxed) { format!("Spit out every window ({n})") } else { format!("Tout recracher ({n})") },
+        true,
+        None::<&str>,
+    )?;
+    let mut head: Vec<&dyn IsMenuItem<Wry>> = vec![&open, &pet];
+    if n > 0 {
+        head.push(&release);
+    }
     if profiles.is_empty() {
-        return Menu::with_items(app, &[&open, &pet, &sep1, &settings, &logs, &sep2, &quit]);
+        let tail: [&dyn IsMenuItem<Wry>; 5] = [&sep1, &settings, &logs, &sep2, &quit];
+        head.extend(tail);
+        return Menu::with_items(app, &head);
     }
     // Sous-menu « Profil » : une case cochée devant le profil actif.
     let mut items = vec![CheckMenuItem::with_id(app, PROFILE_PREFIX, tr("Aucun", "None"), true, active.is_empty(), None::<&str>)?];
@@ -60,7 +78,9 @@ fn menu(app: &AppHandle, profiles: &[(String, String)], active: &str) -> tauri::
     };
     let sub = Submenu::with_items(app, title, true, &refs)?;
     let sep3 = PredefinedMenuItem::separator(app)?;
-    Menu::with_items(app, &[&open, &pet, &sep1, &sub, &sep3, &settings, &logs, &sep2, &quit])
+    let tail: [&dyn IsMenuItem<Wry>; 7] = [&sep1, &sub, &sep3, &settings, &logs, &sep2, &quit];
+    head.extend(tail);
+    Menu::with_items(app, &head)
 }
 
 /// `en` : le menu en anglais (réglage « Langue », lu au démarrage).
@@ -75,6 +95,12 @@ pub fn build(app: &AppHandle, en: bool) -> tauri::Result<()> {
             "quit" => app.exit(0),
             "settings" => crate::show_settings_window(app),
             "logs" => crate::open_logs_folder(),
+            // Le trou noir rend toutes ses fenêtres (même module coupé), hors du
+            // gestionnaire du menu (qui sera remplacé : l'entrée disparaît).
+            "hole-release" => {
+                let app = app.clone();
+                std::thread::spawn(move || crate::modules::windowlife::release_from_tray(&app));
+            }
             // Ondine sort de l'île ou y rentre (pet.rs) ; le menu suivra (sync_pet).
             "pet" => {
                 if PET.load(Ordering::Relaxed) {
@@ -123,6 +149,15 @@ pub fn sync_profiles(app: &AppHandle, profiles: &Profiles) {
 /// La case « Ondine sur le bureau » suit le réglage.
 pub fn sync_pet(app: &AppHandle, on: bool) {
     if PET.swap(on, Ordering::Relaxed) == on {
+        return;
+    }
+    let (list, active) = SHOWN.locked().clone().unwrap_or_default();
+    rebuild(app, &list, &active);
+}
+
+/// L'entrée « Tout recracher (n) » suit le nombre de fenêtres dans le trou noir.
+pub fn sync_hole(app: &AppHandle, n: usize) {
+    if HOLE.swap(n, Ordering::Relaxed) == n {
         return;
     }
     let (list, active) = SHOWN.locked().clone().unwrap_or_default();

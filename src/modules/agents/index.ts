@@ -15,7 +15,8 @@
 //
 // Les outils en plus (Copilot CLI, Cursor, Qwen Code, Goose, OpenCode, Kiro,
 // Hermes, Aider, Amp, « Autre outil ») sont décrits dans tools.ts ; les
-// coucous de la mascotte pendant une attente dans wait-watch.ts.
+// coucous de la mascotte pendant une attente dans wait-watch.ts ; la barre
+// « 3/7 » de la liste de tâches de l'agent dans todos-logic.ts (1.2.5).
 
 import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
@@ -35,6 +36,7 @@ import { planSection } from "./plan-view";
 import { HOOK_TOOLS, LAUNCH, launchName, sourceName, summaryLine } from "./tools";
 import { mountFilesPanel, requestFiles } from "./report-view";
 import { startWaitWatch } from "./wait-watch";
+import { todoBar, type TodoSummary } from "./todos-logic";
 
 /** Le bilan d'une fin de tâche, avec ce qu'il faut pour ses boutons. */
 interface Changes extends ChangeSummary {
@@ -91,6 +93,26 @@ interface Session {
   project: string;
   state: "working" | "waiting" | "done" | "idle";
   since: number;
+  /** La liste de tâches de l'agent (réglage « taskProgress ») : « 3/7 » et la tâche en cours. */
+  todos?: TodoSummary;
+}
+
+/** La barre de la liste de tâches sous une session (rien sans liste). */
+function todosRow(t: TodoSummary | undefined): HTMLElement | null {
+  const bar = todoBar(t);
+  if (!bar) return null;
+  return el(
+    "div",
+    { class: `agents-todos${bar.finished ? " finished" : ""}`, title: "Liste de tâches de l'agent" },
+    el(
+      "span",
+      { class: "agents-todos-track", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": String(t!.total), "aria-valuenow": String(Math.min(t!.done, t!.total)), "aria-label": "Tâches faites" },
+      el("span", { class: "agents-todos-fill", style: `width: ${bar.pct}%` }),
+    ),
+    el("b", { "data-no-i18n": true }, bar.label),
+    // Le texte de l'agent : jamais traduit.
+    bar.text ? el("span", { class: "agents-todos-text", "data-no-i18n": true }, bar.text) : null,
+  );
 }
 
 /** Les agents qu'on sait lancer (réglages « Proposer … », liste dans tools.ts ; le Rust décide). */
@@ -502,6 +524,8 @@ export const agents: IslandModule = {
         state: "installed" | "stale" | "absent" | "unreadable";
         permission: boolean;
         otherPermission: boolean;
+        /** Installé avant une nouveauté (la liste de tâches, 1.2.5) : réinstaller ajoute ce qui manque. */
+        incomplete?: boolean;
       }
       let hookStates: Partial<Record<Tool, HookState>> = {};
       /** La copie de sécurité faite au dernier enregistrement, par outil. */
@@ -581,7 +605,12 @@ export const agents: IslandModule = {
         if (!s) return hookState.replaceChildren();
         const permOn = api.settings().permissions === true && (tool === "claude-code" || tool === "codex");
         const label = {
-          installed: permOn && !s.permission ? "✅ Installé, sans « Autoriser depuis l'île » : réinstallez pour l'ajouter" : "✅ Installé",
+          installed:
+            permOn && !s.permission
+              ? "✅ Installé, sans « Autoriser depuis l'île » : réinstallez pour l'ajouter"
+              : s.incomplete
+                ? "✅ Installé, sans les dernières nouveautés (liste de tâches) : réinstallez pour les ajouter"
+                : "✅ Installé",
           stale: "⚠️ Ancien chemin : ces hooks lancent un autre ondine.exe, que l'île refuse. Réinstallez-les.",
           absent: "Non installé",
           unreadable: "⚠️ Fichier illisible (JSON ou TOML invalide) : Ondine n'y touche pas. Corrigez-le ou utilisez la copie.",
@@ -817,6 +846,7 @@ export const agents: IslandModule = {
                 el("small", { class: "muted" }, what),
                 el("span", { class: "agents-go" }, "↗"),
               ),
+              todosRow(x.todos),
               live.some((f) => f.session === x.id) ? liveRow(live, x.id, (f) => void diff.show(f)) : null,
             );
           }),
@@ -861,8 +891,13 @@ export const agents: IslandModule = {
       const stopLive = api.on("agents.live", () => {
         if (!liveTimer) liveTimer = window.setTimeout(() => ((liveTimer = 0), void draw()), 300);
       });
+      // La liste de tâches d'un agent a bougé : pareil.
+      const stopTodos = api.on("agents.todos", () => {
+        if (!liveTimer) liveTimer = window.setTimeout(() => ((liveTimer = 0), void draw()), 300);
+      });
       return () => {
         stopLive();
+        stopTodos();
         window.clearTimeout(liveTimer);
         redraws.delete(draw);
         stopTimer();

@@ -1,5 +1,34 @@
 # Changements · Changelog
 
+## 1.2.5 · à venir
+
+- Notifications de Windows dans l'île : les bulles des autres applis (Teams,
+  Outlook, WhatsApp…) passent aussi par Ondine, avec le logo de l'appli et
+  « Ouvrir ». Applis à ignorer, ou seulement certaines. Coupé par défaut ;
+  rien n'est gardé sur le disque · Windows notifications in the island: other
+  apps' toasts (Teams, Outlook, WhatsApp…) also go through Ondine, with the
+  app's logo and "Open". Apps to ignore, or only some. Off by default; nothing
+  is kept on disk
+- Agents IA : la liste de tâches de l'agent en barre de progression (« 3/7 »
+  et la tâche en cours), aussi en fin liseré autour de la mini-île. Pour
+  Claude Code, Codex et Gemini CLI ; réinstaller les hooks une fois · AI
+  agents: the agent's task list as a progress bar ("3/7" and the current
+  task), also as a thin line around the mini-island. For Claude Code, Codex
+  and Gemini CLI; reinstall the hooks once
+- Agents IA : Ondine reste discrète (ni son, ni alerte) quand vous regardez
+  déjà le terminal de la session · AI agents: Ondine stays quiet (no sound, no
+  alert) when you are already looking at the session's terminal
+- Le trou noir : lâchez une fenêtre sur l'île, Ondine l'avale (elle disparaît
+  de l'écran, de la barre des tâches et d'Alt+Tab) ; un clic la recrache.
+  Tout ressort quand Ondine quitte. Coupé par défaut · The black hole: drop a
+  window on the island, Ondine swallows it (it disappears from the screen,
+  the taskbar and Alt+Tab); one click spits it back out. Everything comes back
+  when Ondine quits. Off by default
+- Presse-papiers : une clé API ou un jeton copié (Claude, OpenAI, GitHub,
+  AWS, JWT, clé privée…) n'entre plus dans l'historique · Clipboard: a copied
+  API key or token (Claude, OpenAI, GitHub, AWS, JWT, private key…) no longer
+  goes into the history
+
 ## 1.2.4 · à venir
 
 - Nouvelle fenêtre des Réglages : fond noir profond, tout le contenu dans une

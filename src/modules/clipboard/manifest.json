@@ -3,7 +3,7 @@
   "name": "Presse-papiers",
   "tip": "Cliquez sur une copie pour la coller dans la fenêtre où vous étiez.",
   "icon": "📋",
-  "description": "Garde l'historique de vos copies de texte (recherche, épinglage), colle sans mise en forme, range vos textes fréquents en snippets, retire les traqueurs des liens copiés (utm_source, fbclid…) change la casse d'un texte en un clic, décode un jeton JWT, du Base64, une adresse encodée (%20), un horodatage Unix ou met en forme du JSON, et génère des mots de passe (copiés en secret, effacés au bout de 30 s, jamais enregistrés). Les copies que Windows signale comme sensibles (mots de passe) sont ignorées. L'historique reste en mémoire et disparaît à la fermeture de l'île ; seuls les éléments épinglés et les snippets sont enregistrés, sur votre ordinateur.",
+  "description": "Garde l'historique de vos copies de texte (recherche, épinglage), colle sans mise en forme, range vos textes fréquents en snippets, retire les traqueurs des liens copiés (utm_source, fbclid…) change la casse d'un texte en un clic, décode un jeton JWT, du Base64, une adresse encodée (%20), un horodatage Unix ou met en forme du JSON, et génère des mots de passe (copiés en secret, effacés au bout de 30 s, jamais enregistrés). Les copies que Windows signale comme sensibles (mots de passe) sont ignorées, ainsi que les clés d'API, jetons et clés privées copiés (réglage). L'historique reste en mémoire et disparaît à la fermeture de l'île ; seuls les éléments épinglés et les snippets sont enregistrés, sur votre ordinateur.",
   "version": "0.1.0",
   "permissions": [
     "clipboard"
@@ -29,6 +29,14 @@
         "label": "Nettoyer les liens copiés (retirer utm_source, fbclid, gclid…)",
         "help": "Le lien propre remplace le lien copié ; la notification propose de remettre l'original.",
         "default": true
+      },
+      {
+        "key": "ignoreSecrets",
+        "essential": true,
+        "type": "boolean",
+        "label": "Ignorer les clés et jetons",
+        "help": "Une copie qui est une clé d'API, un jeton (GitHub, OpenAI, Anthropic, AWS, JWT…), une clé privée ou une adresse avec mot de passe n'est gardée ni dans l'historique, ni dans la recherche, ni envoyée sur vos autres PC.",
+        "default": true
       }
     ]
   },
@@ -52,17 +60,20 @@
     "search",
     "qr",
     "qr_copy",
-    "full"
+    "full",
+    "current"
   ],
   "events": {
     "emits": [
       "clipboard.changed",
-      "clipboard.link-cleaned"
+      "clipboard.link-cleaned",
+      "clipboard.secret-ignored"
     ],
     "listens": [
       "clipboard.changed",
       "clipboard.paste-plain",
-      "clipboard.link-cleaned"
+      "clipboard.link-cleaned",
+      "clipboard.secret-ignored"
     ]
   }
 }

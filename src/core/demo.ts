@@ -30,7 +30,7 @@ export type DemoScene = (typeof DEMO_SCENES)[number];
  * vraies données. On garde le reste (ouvrir l'île, raccourcis…).
  */
 const REAL_DATA = [
-  "agenda.", "agents.", "claude.", "capture.", "clipboard.changed", "clipboard.link-cleaned", "controls.",
+  "agenda.", "agents.", "claude.", "capture.", "clipboard.changed", "clipboard.link-cleaned", "clipboard.secret-ignored", "controls.",
   "media.", "nettools.", "notes.", "remote.", "rules.notify", "shelf.", "system.", "task.",
   "weather.", "halos.", "team.",
 ];

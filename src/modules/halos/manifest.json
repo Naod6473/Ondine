@@ -504,6 +504,7 @@
       "island.files-dropped",
       "island.state",
       "agents.event",
+      "agents.todos",
       "agents.ask",
       "agents.ask.closed",
       "claude.thinking",

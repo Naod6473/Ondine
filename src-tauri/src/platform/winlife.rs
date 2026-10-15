@@ -2,7 +2,8 @@
 // windowlife, island/dodge.rs) : la fenêtre au premier plan et sa place, les
 // bulles de notification, la session verrouillée, quelques pixels de l'écran,
 // et les seuls gestes permis sur une autre fenêtre : la coller à un bord
-// (comme Windows + flèche), l'agrandir, la restaurer, la réduire. Jamais la
+// (comme Windows + flèche), l'agrandir, la restaurer, la réduire, et pour le
+// « trou noir » la cacher (ShowWindow SW_HIDE) puis la réafficher. Jamais la
 // fermer.
 //
 // Les rectangles sont en px physiques de l'écran (gauche, haut, droite, bas),
@@ -25,9 +26,59 @@ pub struct Win {
     pub work: (i32, i32, i32, i32),
 }
 
+/// Ce qu'il faut savoir d'une fenêtre avant de l'avaler (trou noir) : le tri
+/// lui-même est du code pur, testé (modules/windowlife_hole.rs, `may_swallow`).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Candidate {
+    pub hwnd: isize,
+    pub pid: u32,
+    /// Une fenêtre d'Ondine elle-même.
+    pub own: bool,
+    pub class: String,
+    pub title: String,
+    pub visible: bool,
+    /// Cachée par Windows (autre bureau virtuel, appli suspendue).
+    pub cloaked: bool,
+    /// Une fenêtre principale (GetAncestor GA_ROOT = elle-même).
+    pub root: bool,
+    /// Style enfant (WS_CHILD) ou fenêtre outil (WS_EX_TOOLWINDOW).
+    pub child: bool,
+    pub tool: bool,
+    /// A une fenêtre propriétaire (une boîte de dialogue).
+    pub owned: bool,
+    /// Ne répond plus (IsHungAppWindow).
+    pub hung: bool,
+    /// Son programme tourne en administrateur et pas Ondine (ou on ne peut pas
+    /// le savoir) : on ne serait pas sûr de pouvoir la réafficher.
+    pub elevated: bool,
+    /// Son rectangle visible et celui de son écran (px physiques).
+    pub rect: (i32, i32, i32, i32),
+    pub monitor: (i32, i32, i32, i32),
+}
+
+/// Où était une fenêtre (sa place « normale », en coordonnées de la zone de
+/// travail comme WINDOWPLACEMENT, et si elle était agrandie) : le trou noir la
+/// recrache là, et pas au-dessus de l'île où on l'a lâchée.
+#[derive(Clone, Copy, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct Placement {
+    pub normal: (i32, i32, i32, i32),
+    pub maximized: bool,
+}
+
+/// Le déplacement d'une fenêtre par sa barre de titre (ou son redimensionnement
+/// par un bord : Windows ne les distingue pas), vu par `watch_drags`.
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(not(windows), allow(dead_code))]
+pub enum DragEvent {
+    /// Le début : la fenêtre principale, sa place et sa taille à ce moment.
+    Start { hwnd: isize, placement: Option<Placement>, size: (i32, i32) },
+    /// La fin (bouton lâché) : la souris à cet instant (px physiques).
+    End { hwnd: isize, cursor: (i32, i32) },
+}
+
 #[cfg(windows)]
 mod imp {
-    use super::Win;
+    use super::{Candidate, DragEvent, Placement, Win};
     use ::windows::core::BOOL;
     use ::windows::Win32::Foundation::{HWND, LPARAM, RECT};
     use ::windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED, DWMWA_EXTENDED_FRAME_BOUNDS};
@@ -226,11 +277,338 @@ mod imp {
         let _ = unsafe { ShowWindow(w, SW_MINIMIZE) };
         Ok(())
     }
+
+    // ── Le trou noir ─────────────────────────────────────────────────────────
+
+    /// Ce qu'il faut savoir d'une fenêtre pour décider si on peut l'avaler.
+    pub fn candidate(hwnd: isize) -> Option<Candidate> {
+        use ::windows::Win32::UI::WindowsAndMessaging::{GetAncestor, IsHungAppWindow, GA_ROOT, GWL_STYLE, WS_CHILD};
+        let w = h(hwnd);
+        let info = describe(w)?;
+        let mut pid = 0u32;
+        unsafe { GetWindowThreadProcessId(w, Some(&mut pid)) };
+        let style = unsafe { GetWindowLongPtrW(w, GWL_STYLE) } as u32;
+        let ex = unsafe { GetWindowLongPtrW(w, GWL_EXSTYLE) } as u32;
+        let elevated = !crate::platform::is_elevated() && process_elevated(pid) != Some(false);
+        Some(Candidate {
+            hwnd,
+            pid,
+            own: info.own,
+            class: info.class,
+            title: info.title,
+            visible: unsafe { IsWindowVisible(w) }.as_bool(),
+            cloaked: cloaked(w),
+            root: unsafe { GetAncestor(w, GA_ROOT) } == w,
+            child: style & WS_CHILD.0 != 0,
+            tool: ex & WS_EX_TOOLWINDOW.0 != 0,
+            owned: unsafe { GetWindow(w, GW_OWNER) }.is_ok_and(|o| !o.0.is_null()),
+            hung: unsafe { IsHungAppWindow(w) }.as_bool(),
+            elevated,
+            rect: info.rect,
+            monitor: info.monitor,
+        })
+    }
+
+    /// Le programme `pid` tourne-t-il en administrateur ? None : on ne peut
+    /// pas le savoir (Windows refuse de nous le dire, ce qui arrive justement
+    /// pour un programme administrateur vu d'un programme normal).
+    fn process_elevated(pid: u32) -> Option<bool> {
+        use ::windows::Win32::Foundation::{CloseHandle, HANDLE};
+        use ::windows::Win32::Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY};
+        use ::windows::Win32::System::Threading::{OpenProcess, OpenProcessToken, PROCESS_QUERY_LIMITED_INFORMATION};
+        unsafe {
+            let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+            let mut token = HANDLE::default();
+            let opened = OpenProcessToken(process, TOKEN_QUERY, &mut token).is_ok();
+            let _ = CloseHandle(process);
+            if !opened {
+                return None;
+            }
+            let mut info = TOKEN_ELEVATION::default();
+            let mut len = 0u32;
+            let ok = GetTokenInformation(token, TokenElevation, Some(&mut info as *mut TOKEN_ELEVATION as *mut _), std::mem::size_of::<TOKEN_ELEVATION>() as u32, &mut len).is_ok();
+            let _ = CloseHandle(token);
+            ok.then_some(info.TokenIsElevated != 0)
+        }
+    }
+
+    /// La place d'une fenêtre (WINDOWPLACEMENT), sans envoyer de message à son programme.
+    fn placement(w: HWND) -> Option<Placement> {
+        use ::windows::Win32::UI::WindowsAndMessaging::{GetWindowPlacement, SW_SHOWMAXIMIZED, WINDOWPLACEMENT};
+        let mut wp = WINDOWPLACEMENT { length: std::mem::size_of::<WINDOWPLACEMENT>() as u32, ..Default::default() };
+        unsafe { GetWindowPlacement(w, &mut wp) }.ok()?;
+        Some(Placement { normal: rect4(wp.rcNormalPosition), maximized: wp.showCmd == SW_SHOWMAXIMIZED.0 as u32 })
+    }
+
+    fn outer_size(w: HWND) -> Option<(i32, i32)> {
+        let mut r = RECT::default();
+        unsafe { GetWindowRect(w, &mut r) }.ok()?;
+        Some((r.right - r.left, r.bottom - r.top))
+    }
+
+    /// La taille extérieure d'une fenêtre (pour reconnaître un redimensionnement).
+    pub fn window_size(hwnd: isize) -> Option<(i32, i32)> {
+        outer_size(h(hwnd))
+    }
+
+    /// La fenêtre existe-t-elle encore, toujours à ce programme ? Et est-elle visible ?
+    pub fn window_state(hwnd: isize, pid: u32) -> (bool, bool) {
+        let w = h(hwnd);
+        if !unsafe { IsWindow(Some(w)) }.as_bool() {
+            return (false, false);
+        }
+        let mut owner = 0u32;
+        unsafe { GetWindowThreadProcessId(w, Some(&mut owner)) };
+        (owner == pid, unsafe { IsWindowVisible(w) }.as_bool())
+    }
+
+    /// Attend (au plus `ms`) que la fenêtre soit visible ou cachée.
+    fn wait_visible(w: HWND, visible: bool, ms: u64) -> bool {
+        let until = std::time::Instant::now() + std::time::Duration::from_millis(ms);
+        loop {
+            if unsafe { IsWindowVisible(w) }.as_bool() == visible {
+                return true;
+            }
+            if std::time::Instant::now() >= until {
+                return false;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(15));
+        }
+    }
+
+    /// Cache la fenêtre : ShowWindowAsync(SW_HIDE), RIEN d'autre (ni fermée, ni
+    /// déplacée). Une fenêtre cachée n'est plus ni à l'écran, ni dans la barre
+    /// des tâches, ni dans Alt+Tab ; son programme continue de tourner. La
+    /// version « Async » ne nous bloque jamais si le programme est occupé.
+    /// Err si Windows ne l'a pas cachée (on la réaffiche alors par précaution).
+    pub fn hide(hwnd: isize) -> Result<(), String> {
+        use ::windows::Win32::UI::WindowsAndMessaging::{ShowWindowAsync, SW_HIDE, SW_SHOWNA};
+        let w = h(hwnd);
+        if !unsafe { IsWindow(Some(w)) }.as_bool() {
+            return Err("fenêtre introuvable".into());
+        }
+        let _ = unsafe { ShowWindowAsync(w, SW_HIDE) };
+        if wait_visible(w, false, 600) {
+            return Ok(());
+        }
+        // Refusée (programme administrateur…) : si elle se cachait plus tard,
+        // on ne la perdrait pas pour autant.
+        let _ = unsafe { ShowWindowAsync(w, SW_SHOWNA) };
+        Err("Windows n'a pas caché la fenêtre".into())
+    }
+
+    /// Réaffiche une fenêtre avalée. `placement` : sa place d'avant (remise
+    /// pendant qu'elle est encore cachée, sauf si son programme ne répond
+    /// plus) ; `front` : au premier plan (un clic de l'utilisateur), sinon
+    /// sans lui donner le focus (sortie d'Ondine, reprise après un plantage).
+    pub fn show_again(hwnd: isize, placement: Option<Placement>, front: bool) -> Result<(), String> {
+        use ::windows::Win32::UI::WindowsAndMessaging::{
+            BringWindowToTop, GetWindowPlacement, IsHungAppWindow, SetForegroundWindow, SetWindowPlacement, ShowWindowAsync, SW_HIDE, SW_SHOW, SW_SHOWMAXIMIZED, SW_SHOWNA, WINDOWPLACEMENT,
+            WINDOWPLACEMENT_FLAGS,
+        };
+        let w = h(hwnd);
+        if !unsafe { IsWindow(Some(w)) }.as_bool() {
+            return Err("fenêtre fermée".into());
+        }
+        let hung = unsafe { IsHungAppWindow(w) }.as_bool();
+        if let Some(p) = placement.filter(|_| !hung) {
+            let mut wp = WINDOWPLACEMENT { length: std::mem::size_of::<WINDOWPLACEMENT>() as u32, ..Default::default() };
+            if unsafe { GetWindowPlacement(w, &mut wp) }.is_ok() && !unsafe { IsWindowVisible(w) }.as_bool() {
+                wp.rcNormalPosition = RECT { left: p.normal.0, top: p.normal.1, right: p.normal.2, bottom: p.normal.3 };
+                // Toujours cachée pendant qu'on la replace : elle n'apparaît qu'une fois, au bon endroit.
+                wp.showCmd = SW_HIDE.0 as u32;
+                wp.flags = WINDOWPLACEMENT_FLAGS(0);
+                let _ = unsafe { SetWindowPlacement(w, &wp) };
+            }
+        }
+        let maximized = placement.is_some_and(|p| p.maximized);
+        let cmd = if !front || hung {
+            if maximized && !hung {
+                SW_SHOWMAXIMIZED
+            } else {
+                SW_SHOWNA
+            }
+        } else if maximized {
+            SW_SHOWMAXIMIZED
+        } else {
+            SW_SHOW
+        };
+        let _ = unsafe { ShowWindowAsync(w, cmd) };
+        if !wait_visible(w, true, 600) {
+            return Err("Windows n'a pas encore réaffiché la fenêtre".into());
+        }
+        if front && !hung {
+            unsafe {
+                let _ = BringWindowToTop(w);
+                let _ = SetForegroundWindow(w);
+            }
+            // L'île, en se refermant, ne doit pas reprendre la main.
+            crate::platform::forget_previous_foreground();
+        }
+        Ok(())
+    }
+
+    /// L'icône de la fenêtre en PNG de 32 × 32 (WM_GETICON, sinon celle de sa
+    /// classe), ou None. Le message attend au plus 150 ms : un programme
+    /// occupé n'a simplement pas d'icône dans la liste.
+    pub fn icon_png(hwnd: isize) -> Option<Vec<u8>> {
+        use ::windows::Win32::Foundation::{LPARAM, WPARAM};
+        use ::windows::Win32::Graphics::Gdi::{
+            CreateCompatibleDC, CreateDIBSection, DeleteDC, DeleteObject, SelectObject, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, HGDIOBJ,
+        };
+        use ::windows::Win32::UI::WindowsAndMessaging::{
+            DrawIconEx, GetClassLongPtrW, SendMessageTimeoutW, DI_MASK, DI_NORMAL, GCLP_HICON, GCLP_HICONSM, HICON, ICON_BIG, ICON_SMALL, ICON_SMALL2, SMTO_ABORTIFHUNG, SMTO_BLOCK,
+            WM_GETICON,
+        };
+        const SIZE: i32 = 32;
+        let w = h(hwnd);
+        let mut icon = 0usize;
+        for kind in [ICON_BIG, ICON_SMALL2, ICON_SMALL] {
+            let mut r = 0usize;
+            let ok = unsafe { SendMessageTimeoutW(w, WM_GETICON, WPARAM(kind as usize), LPARAM(0), SMTO_ABORTIFHUNG | SMTO_BLOCK, 150, Some(&mut r)) };
+            if ok.0 != 0 && r != 0 {
+                icon = r;
+                break;
+            }
+        }
+        if icon == 0 {
+            icon = unsafe { GetClassLongPtrW(w, GCLP_HICON) };
+        }
+        if icon == 0 {
+            icon = unsafe { GetClassLongPtrW(w, GCLP_HICONSM) };
+        }
+        if icon == 0 {
+            return None;
+        }
+        let icon = HICON(icon as *mut _);
+        unsafe {
+            let dc = CreateCompatibleDC(None);
+            if dc.is_invalid() {
+                return None;
+            }
+            let bmi = BITMAPINFO {
+                bmiHeader: BITMAPINFOHEADER {
+                    biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+                    biWidth: SIZE,
+                    biHeight: -SIZE, // de haut en bas
+                    biPlanes: 1,
+                    biBitCount: 32,
+                    biCompression: BI_RGB.0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+            let mut bits: *mut core::ffi::c_void = std::ptr::null_mut();
+            let Ok(bmp) = CreateDIBSection(Some(dc), &bmi, DIB_RGB_COLORS, &mut bits, None, 0) else {
+                let _ = DeleteDC(dc);
+                return None;
+            };
+            let old = SelectObject(dc, HGDIOBJ(bmp.0));
+            let n = (SIZE * SIZE * 4) as usize;
+            let pixels = std::slice::from_raw_parts_mut(bits as *mut u8, n);
+            let drawn = DrawIconEx(dc, 0, 0, icon, SIZE, SIZE, 0, None, DI_NORMAL).is_ok();
+            let mut bgra = pixels.to_vec();
+            // Une vieille icône sans couche alpha : le masque dit ce qui est transparent.
+            if drawn && bgra.chunks(4).all(|p| p[3] == 0) {
+                pixels.fill(0);
+                if DrawIconEx(dc, 0, 0, icon, SIZE, SIZE, 0, None, DI_MASK).is_ok() {
+                    for (px, m) in bgra.chunks_mut(4).zip(pixels.chunks(4)) {
+                        px[3] = if m[0] == 0 { 255 } else { 0 };
+                    }
+                }
+            }
+            SelectObject(dc, old);
+            let _ = DeleteObject(HGDIOBJ(bmp.0));
+            let _ = DeleteDC(dc);
+            if !drawn {
+                return None;
+            }
+            for px in bgra.chunks_mut(4) {
+                px.swap(0, 2);
+            }
+            let mut out = std::io::Cursor::new(Vec::new());
+            image::write_buffer_with_format(&mut out, &bgra, SIZE as u32, SIZE as u32, image::ExtendedColorType::Rgba8, image::ImageFormat::Png).ok()?;
+            Some(out.into_inner())
+        }
+    }
+
+    /// Le fil qui écoute les déplacements de fenêtres tant qu'il existe.
+    pub struct DragWatch {
+        thread: u32,
+    }
+
+    impl Drop for DragWatch {
+        fn drop(&mut self) {
+            use ::windows::Win32::Foundation::{LPARAM, WPARAM};
+            use ::windows::Win32::UI::WindowsAndMessaging::{PostThreadMessageW, WM_QUIT};
+            let _ = unsafe { PostThreadMessageW(self.thread, WM_QUIT, WPARAM(0), LPARAM(0)) };
+        }
+    }
+
+    thread_local! {
+        /// Où envoyer les événements (le crochet appelle `on_move_size` sur ce fil-ci).
+        static DRAGS: std::cell::RefCell<Option<std::sync::mpsc::Sender<DragEvent>>> = const { std::cell::RefCell::new(None) };
+    }
+
+    unsafe extern "system" fn on_move_size(_hook: ::windows::Win32::UI::Accessibility::HWINEVENTHOOK, event: u32, hwnd: HWND, id_object: i32, _child: i32, _thread: u32, _time: u32) {
+        use ::windows::Win32::UI::WindowsAndMessaging::{GetAncestor, GetCursorPos, EVENT_SYSTEM_MOVESIZEEND, EVENT_SYSTEM_MOVESIZESTART, GA_ROOT};
+        // OBJID_WINDOW seulement (pas une barre de défilement…).
+        if id_object != 0 || hwnd.0.is_null() {
+            return;
+        }
+        let root = unsafe { GetAncestor(hwnd, GA_ROOT) };
+        let root = if root.0.is_null() { hwnd } else { root };
+        let msg = if event == EVENT_SYSTEM_MOVESIZESTART {
+            // Lu tout de suite : sa place d'avant le déplacement, et sa taille
+            // (une taille qui change ensuite = un redimensionnement par un bord).
+            DragEvent::Start { hwnd: root.0 as isize, placement: placement(root), size: outer_size(root).unwrap_or_default() }
+        } else if event == EVENT_SYSTEM_MOVESIZEEND {
+            let mut p = ::windows::Win32::Foundation::POINT::default();
+            let _ = unsafe { GetCursorPos(&mut p) };
+            DragEvent::End { hwnd: root.0 as isize, cursor: (p.x, p.y) }
+        } else {
+            return;
+        };
+        DRAGS.with(|d| {
+            if let Some(tx) = d.borrow().as_ref() {
+                let _ = tx.send(msg);
+            }
+        });
+    }
+
+    /// Écoute le début et la fin des déplacements de fenêtres des autres
+    /// programmes : SetWinEventHook(EVENT_SYSTEM_MOVESIZESTART…END) hors
+    /// contexte (rien n'est injecté dans les autres programmes, pas de crochet
+    /// souris), sur un fil à lui avec sa boucle de messages. Deux événements par
+    /// déplacement, rien entre les deux. S'arrête quand le DragWatch est lâché.
+    pub fn watch_drags(tx: std::sync::mpsc::Sender<DragEvent>) -> Option<DragWatch> {
+        use ::windows::Win32::System::Threading::GetCurrentThreadId;
+        use ::windows::Win32::UI::Accessibility::{SetWinEventHook, UnhookWinEvent};
+        use ::windows::Win32::UI::WindowsAndMessaging::{GetMessageW, EVENT_SYSTEM_MOVESIZEEND, EVENT_SYSTEM_MOVESIZESTART, MSG, WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS};
+        let (ready_tx, ready_rx) = std::sync::mpsc::channel::<Option<u32>>();
+        let spawned = std::thread::Builder::new().name("ondine-trou-noir".into()).spawn(move || {
+            DRAGS.with(|d| *d.borrow_mut() = Some(tx));
+            let hook = unsafe { SetWinEventHook(EVENT_SYSTEM_MOVESIZESTART, EVENT_SYSTEM_MOVESIZEEND, None, Some(on_move_size), 0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS) };
+            if hook.is_invalid() {
+                let _ = ready_tx.send(None);
+                return;
+            }
+            let _ = ready_tx.send(Some(unsafe { GetCurrentThreadId() }));
+            let mut msg = MSG::default();
+            // GetMessageW : 0 pour WM_QUIT, -1 en cas d'erreur.
+            while unsafe { GetMessageW(&mut msg, None, 0, 0) }.0 > 0 {}
+            let _ = unsafe { UnhookWinEvent(hook) };
+            DRAGS.with(|d| *d.borrow_mut() = None);
+        });
+        spawned.ok()?;
+        let thread = ready_rx.recv_timeout(std::time::Duration::from_secs(2)).ok()??;
+        Some(DragWatch { thread })
+    }
 }
 
 #[cfg(not(windows))]
 mod imp {
-    use super::Win;
+    use super::{Candidate, DragEvent, Placement, Win};
     pub fn foreground() -> Option<Win> {
         None
     }
@@ -260,6 +638,28 @@ mod imp {
     }
     pub fn minimize(_hwnd: isize) -> Result<(), String> {
         Err("seulement sous Windows".into())
+    }
+    pub fn candidate(_hwnd: isize) -> Option<Candidate> {
+        None
+    }
+    pub fn window_size(_hwnd: isize) -> Option<(i32, i32)> {
+        None
+    }
+    pub fn window_state(_hwnd: isize, _pid: u32) -> (bool, bool) {
+        (false, false)
+    }
+    pub fn hide(_hwnd: isize) -> Result<(), String> {
+        Err("seulement sous Windows".into())
+    }
+    pub fn show_again(_hwnd: isize, _placement: Option<Placement>, _front: bool) -> Result<(), String> {
+        Err("seulement sous Windows".into())
+    }
+    pub fn icon_png(_hwnd: isize) -> Option<Vec<u8>> {
+        None
+    }
+    pub struct DragWatch;
+    pub fn watch_drags(_tx: std::sync::mpsc::Sender<DragEvent>) -> Option<DragWatch> {
+        None
     }
 }
 

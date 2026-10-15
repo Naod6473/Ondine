@@ -405,8 +405,9 @@ impl Settings {
 }
 
 /// Les modules désactivés tant qu'on ne les a pas allumés (ceux qui ouvrent un
-/// port sur le réseau local, l'écran de veille, la dictée). Même liste dans src/core/settings-store.ts.
-pub const MODULES_OFF_BY_DEFAULT: &[&str] = &["team", "screensaver", "dictation"];
+/// port sur le réseau local, l'écran de veille, la dictée, les notifications de
+/// Windows qui lisent celles des autres applis). Même liste dans src/core/settings-store.ts.
+pub const MODULES_OFF_BY_DEFAULT: &[&str] = &["team", "screensaver", "dictation", "winnotifs"];
 
 /// Une couleur « #rrggbb » (sept caractères, hexadécimaux).
 fn is_hex_color(s: &str) -> bool {

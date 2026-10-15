@@ -112,6 +112,9 @@ pub enum Loop {
     HaloKeys,
     /// Animations de l'île : sortie de veille, signal Wi-Fi (quand les touches ne sont pas regardées).
     HaloIdle,
+    /// Notifications de Windows : relecture du Centre de notifications (l'événement
+    /// de Windows demande une appli du Store, on relit donc la liste).
+    WinNotifs,
 }
 
 /// Le tableau des rythmes, en millisecondes : (haute, équilibrée, éco).
@@ -142,6 +145,7 @@ pub const fn table(l: Loop) -> (u64, u64, u64) {
         Loop::Weather => (10_000, 10_000, 30_000),
         Loop::HaloKeys => (40, 50, 100),
         Loop::HaloIdle => (1_000, 1_000, 3_000),
+        Loop::WinNotifs => (1_000, 1_500, 4_000),
     }
 }
 
@@ -259,7 +263,7 @@ mod tests {
         assert_eq!(serde_json::to_value(Mode::Eco).unwrap(), "eco");
     }
 
-    const ALL: [Loop; 20] = [
+    const ALL: [Loop; 21] = [
         Loop::CursorMoving,
         Loop::CursorStill,
         Loop::CursorFar,
@@ -280,6 +284,7 @@ mod tests {
         Loop::Weather,
         Loop::HaloKeys,
         Loop::HaloIdle,
+        Loop::WinNotifs,
     ];
 
     #[test]

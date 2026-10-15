@@ -35,6 +35,8 @@ mod callnotes_audio;
 mod callnotes_text;
 mod capture;
 mod clipboard;
+// Presse-papiers → « Ignorer les clés et jetons » (1.2.5) : reconnaître une clé copiée.
+mod clipboard_secrets;
 mod controls;
 // La dictée partout : la touche, la pilule, le collage (avec sa logique, ses mots et son fichier).
 mod dictation;
@@ -100,14 +102,22 @@ mod agents_tools;
 mod agents_mcp_extra;
 // Les rappels d'attente.
 mod agents_wait;
+// Rester discrète quand vous regardez déjà le terminal de la session (1.2.5).
+mod agents_discreet;
 // Les limites du forfait de Claude et Codex (1.2.4) ; « ondine.exe statusline » s'en sert.
 pub(crate) mod agents_plan;
 // Les fichiers modifiés en direct par un agent (1.2.4) ; « ondine.exe notify » calcule le diff.
 pub(crate) mod agents_live;
+// La liste de tâches de l'agent en barre de progression (1.2.5) ; « ondine.exe notify » la résume.
+pub(crate) mod agents_todos;
 // Animations de l'île : sortie de veille, Verr Maj, copier / coller, volume, Wi-Fi, niveaux sonores.
 mod halos;
 // Ondine et les fenêtres (public : island/mod.rs lui demande le « lancer »).
 pub mod windowlife;
+// Notifications de Windows : les bulles des autres applis dans l'île (désactivé par défaut).
+mod winnotifs;
+// Son « trou noir » (public : lib.rs et update.rs recrachent tout avant de quitter).
+pub mod windowlife_hole;
 
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -294,6 +304,7 @@ impl Registry {
             Box::new(screensaver::Screensaver),
             Box::new(callnotes::CallNotes::default()),
             Box::new(dictation::Dictation),
+            Box::new(winnotifs::WinNotifs::default()),
         ];
 
         let mut entries = Vec::new();
@@ -553,6 +564,19 @@ mod tests {
         for t in ["callnotes.state", "notes.add"] {
             assert!(m.events.emits.iter().any(|e| e == t), "{t}");
         }
+    }
+
+    #[test]
+    fn winnotifs_manifest_is_valid() {
+        let m = check_manifest(winnotifs::WinNotifs::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "winnotifs");
+        for t in ["winnotifs.new", "winnotifs.status"] {
+            assert!(m.events.emits.iter().any(|e| e == t), "{t}");
+        }
+        for c in ["status", "recheck", "open_settings", "icon", "open_app", "remove"] {
+            assert!(m.commands.iter().any(|x| x == c), "{c}");
+        }
+        assert!(crate::services::settings::MODULES_OFF_BY_DEFAULT.contains(&"winnotifs"));
     }
 
     #[test]

@@ -42,6 +42,7 @@ import { profilesPage, profileSubs } from "./profiles-page";
 import { mascotPodium, type Podium } from "./podium";
 import { aboutGroup } from "./about";
 import { askclaudeGroups } from "./askclaude-page";
+import { winnotifsGroup } from "./winnotifs-group";
 import { customSoundRows } from "./sounds-page";
 import { perfGroup } from "./perf-group";
 import { phonesPage } from "./phone-certificate";
@@ -129,7 +130,7 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
       label: "Outils proposés",
       keys: ["launchClaude", "launchCodex", "launchGemini", "launchCopilot", "launchCursor", "launchQwen", "launchGoose", "launchOpencode", "launchKiro", "launchHermes", "launchAider", "launchAmp", "otherTool"],
     },
-    { id: "notify", label: "Notifications", keys: ["notifyWaiting", "notifyDone", "remindWaiting", "showChanges", "liveFiles", "doneSummary", "resumePreview", "mascot"] },
+    { id: "notify", label: "Notifications", keys: ["notifyWaiting", "notifyDone", "remindWaiting", "quietWhenWatching", "showChanges", "liveFiles", "taskProgress", "doneSummary", "resumePreview", "mascot"] },
     { id: "perms", label: "Autorisations et MCP", keys: ["mcp", "permissions", "permissionWait"] },
     { id: "tokens", label: "Jetons et budget", keys: ["usage", "planLimits", "prices", "dailyBudget"] },
     { id: "github", label: "GitHub", keys: ["githubLogin", "githubToken"] },
@@ -1717,6 +1718,8 @@ function modulePage(main: HTMLElement, man: ModuleManifest, compact = false) {
     });
   }
   if (!compact && man.id === "weekly") main.append(weeklyGroup(man));
+  // Notifications de Windows : ce que Windows autorise, et le bouton vers ses Paramètres.
+  if (!compact && man.id === "winnotifs") main.append(winnotifsGroup());
   // Animations de l'île : l'aperçu du halo, en direct, avec les réglages choisis.
   // Parler à Ondine : ce qui part et la consigne exacte (askclaude-page.ts).
   if (!compact && man.id === "askclaude") main.append(...askclaudeGroups((key, value) => save((d) => ((d.modules.askclaude ??= { enabled: settingsStore.moduleEnabled("askclaude"), values: {} }).values[key] = value), true)));

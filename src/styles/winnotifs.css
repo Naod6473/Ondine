@@ -1,0 +1,107 @@
+/* Notifications de Windows (src/modules/winnotifs/) : l'onglet, avec l'état
+ * de l'accès en haut et les 20 dernières notifications des autres applis.
+ * Les couleurs de l'île (--island-fg, --muted, --line) : clair et sombre. */
+
+.wn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wn-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.wn-head.warn .wn-status {
+  color: var(--island-fg);
+}
+.wn-status {
+  flex: 1 1 220px;
+}
+.wn-note,
+.wn-empty {
+  margin: 0;
+  font-size: 12px;
+}
+.wn-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.wn-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--island-fg);
+  font: inherit;
+  text-align: left;
+}
+button.wn-item {
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    transform 300ms var(--ease);
+}
+button.wn-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+button.wn-item:active {
+  transform: scale(0.98);
+}
+.wn-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  font-size: 16px;
+}
+.wn-icon .icon-img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+.wn-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+.wn-line {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+}
+.wn-app {
+  font-weight: 600;
+}
+.wn-title {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.wn-body {
+  font-size: 12px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.wn-clear {
+  align-self: flex-end;
+}
+@media (prefers-reduced-motion: reduce) {
+  button.wn-item {
+    transition: none;
+  }
+}
