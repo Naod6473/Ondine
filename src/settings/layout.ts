@@ -31,9 +31,10 @@ export const MODULE_CATEGORIES: { id: string; label: string; modules: string[] }
  *   - rules : la page Règles (Automatiser) ;
  *   - askclaude : « Parler à Ondine », dans le groupe Ondine (même id de page) ;
  *   - halos : la page Animations et halos (L'île) ;
- *   - windowlife : une section de la page Comportement (L'île).
+ *   - windowlife : une section de la page Comportement (L'île) ;
+ *   - callnotes : la page Notes d'appel du groupe Voix (1.2.4).
  */
-export const MODULES_ELSEWHERE = ["rules", "askclaude", "halos", "windowlife"];
+export const MODULES_ELSEWHERE = ["rules", "askclaude", "halos", "windowlife", "callnotes"];
 
 /** Une partie d'un sous-menu : un bloc de champs d'un module. */
 export interface FieldBlock {

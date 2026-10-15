@@ -12,6 +12,7 @@ Ondine ne se connecte à Internet que dans ces cas :
 | Une fois par jour, et sur « Rechercher maintenant » (désactivable : Réglages → Mises à jour automatiques) | github.com | Une simple demande du fichier `latest.json` de la dernière version. Rien sur vous ni sur votre PC. |
 | Vous cliquez « Installer » une mise à jour | github.com | Le téléchargement de l'installateur. |
 | Vous écrivez à Ondine (« Parler à Ondine ») | api.anthropic.com, api.openai.com ou generativelanguage.googleapis.com, selon le fournisseur choisi | Votre message, la personnalité d'Ondine et les derniers messages de la conversation (20 au plus, avec les fichiers joints, qui vous sont montrés avant de partir), avec **votre** clé API. La conversation n'est jamais écrite sur le disque. |
+| Notes d'appel (1.2.4) : vous cliquez « Écrire le résumé » (ou avez activé le résumé automatique, coupé par défaut) ; ou vous avez choisi la transcription par l'API | l'IA de « Parler à Ondine » (api.anthropic.com, api.openai.com ou generativelanguage.googleapis.com) ; pour la transcription, api.openai.com ou generativelanguage.googleapis.com | Résumé : la transcription écrite (jamais l'audio). Transcription par l'API : l'audio de l'appel, par morceaux d'une minute, puis il est effacé. Avec Parakeet (par défaut), rien ne part. Toujours avec **votre** clé API. |
 | Vous avez ajouté des liens iCal dans Agenda | les adresses que vous avez données | La lecture de vos calendriers (toutes les 15 minutes). |
 | Vous avez activé l'alerte « changement d'IP publique » (Outils IT, désactivée par défaut) | api.ipify.org | Une demande de votre adresse IP publique. |
 | Vous lancez un ping, un test de port, un accès RDP/SSH ou un agent IA | la machine ou le service que vous avez choisi | Ce que vous avez demandé. |
@@ -58,6 +59,12 @@ specifically requested by the user, with one exception: the update check.
   to you before they leave) to api.anthropic.com, api.openai.com or
   generativelanguage.googleapis.com depending on the chosen provider, with
   **your** API key. The conversation is never written to disk.
+- **Call notes** (1.2.4): with Parakeet (the default) nothing leaves the PC. When
+  you click "Write the summary" (or turned on the automatic summary, off by
+  default), the written transcript (never the audio) goes to Talk to Ondine's AI.
+  If you chose the transcription through the API, the call's audio goes to
+  api.openai.com or generativelanguage.googleapis.com in one-minute pieces, then
+  it is deleted. Always with **your** API key.
 - **Calendar**: reads the iCal links you entered (every 15 minutes).
 - **Public IP alert** (IT tools, off by default): asks api.ipify.org for your public IP.
 - **Ping, port test, RDP/SSH, AI agents**: connect to the host or service you chose.

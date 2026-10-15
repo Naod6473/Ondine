@@ -30,6 +30,9 @@
 //     listes de phrases fixées d'avance (pas une question libre).
 //   - `record` : la capture du micro en mémoire (WASAPI partagé), pour
 //     l'option « transcription par l'API ». Rien n'est écrit sur le disque.
+//   - `capture` (1.2.4, notes d'appel) : une capture continue du micro OU du
+//     son du PC (WASAPI « loopback » : ce que les haut-parleurs jouent, sans
+//     rien installer), morceau par morceau, sans rien garder en mémoire.
 //   - le niveau du micro pendant la dictée (IAudioMeterInformation), pour que
 //     le halo tremble avec la voix pendant que Windows écoute.
 //   - `foreground_area` : la fenêtre active (pas celle d'Ondine), pour
@@ -234,6 +237,31 @@ impl EndGate {
     }
 }
 
+/// D'où vient le son d'une capture continue (`capture`, notes d'appel).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Source {
+    /// Le micro par défaut de Windows.
+    Mic,
+    /// Ce que joue la sortie audio par défaut (WASAPI loopback) : la voix des
+    /// autres pendant un appel.
+    Speakers,
+}
+
+/// Le son du PC qui se tait : WASAPI loopback ne donne alors plus rien du
+/// tout (pas même des zéros). Pour que le son du PC reste aligné sur le micro,
+/// on ajoute ce silence dès qu'il manque plus de 200 ms par rapport au temps
+/// écoulé (en gardant 50 ms de marge pour les paquets en route).
+#[cfg_attr(not(windows), allow(dead_code))] // utilisé seulement sous Windows (et les tests)
+pub(crate) fn silence_to_add(elapsed_ms: u64, rate: u32, emitted: u64) -> u64 {
+    let expected = elapsed_ms * u64::from(rate) / 1000;
+    let behind = expected.saturating_sub(emitted);
+    if behind > u64::from(rate) / 5 {
+        behind - u64::from(rate) / 20
+    } else {
+        0
+    }
+}
+
 #[cfg(windows)]
 pub use self::win::*;
 
@@ -242,7 +270,7 @@ pub use self::stub::*;
 
 #[cfg(windows)]
 mod win {
-    use super::{explain_unknown, pick_language, Failure, Fix, Listen, Pcm, CANCEL, FINISH, MIC_TEXT, PRIVACY_TEXT};
+    use super::{explain_unknown, pick_language, Failure, Fix, Listen, Pcm, Source, CANCEL, FINISH, MIC_TEXT, PRIVACY_TEXT};
     use std::sync::atomic::Ordering;
     use std::sync::mpsc;
     use std::time::{Duration, Instant};
@@ -256,8 +284,8 @@ mod win {
     };
     use windows::Win32::Media::Audio::Endpoints::IAudioMeterInformation;
     use windows::Win32::Media::Audio::{
-        eCapture, eConsole, IAudioCaptureClient, IAudioClient, IMMDeviceEnumerator, MMDeviceEnumerator, AUDCLNT_BUFFERFLAGS_SILENT, AUDCLNT_SHAREMODE_SHARED,
-        WAVEFORMATEX, WAVEFORMATEXTENSIBLE,
+        eCapture, eConsole, eRender, IAudioCaptureClient, IAudioClient, IMMDeviceEnumerator, MMDeviceEnumerator, AUDCLNT_BUFFERFLAGS_SILENT, AUDCLNT_SHAREMODE_SHARED,
+        AUDCLNT_STREAMFLAGS_LOOPBACK, WAVEFORMATEX, WAVEFORMATEXTENSIBLE,
     };
     use windows::Win32::System::Com::{CoCreateInstance, CoTaskMemFree, CLSCTX_ALL};
     use windows::Win32::System::Registry::{RegGetValueW, HKEY, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, RRF_RT_REG_DWORD, RRF_RT_REG_SZ};
@@ -841,6 +869,93 @@ mod win {
         }
     }
 
+    /// Une erreur de la capture du son du PC (loopback).
+    fn speakers_failure(e: &windows::core::Error) -> Failure {
+        let code = e.code().0 as u32;
+        let message = match code {
+            NO_DEVICE | NO_ENDPOINT => "aucune sortie audio trouvée (haut-parleurs ou casque)".to_string(),
+            _ => format!("son du PC indisponible ({e})"),
+        };
+        Failure { message, fix: None, detail: format!("étape « capture du son du PC (WASAPI loopback) », HRESULT 0x{code:08X} ({})", e.message()) }
+    }
+
+    /// Notes d'appel (1.2.4) : capte le micro ou le son du PC (WASAPI partagé ;
+    /// pour le son du PC, la sortie par défaut ouverte en « loopback »), jusqu'à
+    /// `stop`. Chaque morceau (mono, à la fréquence de l'appareil) passe par
+    /// `chunk` ; rien n'est gardé ici. Le son du PC qui se tait est complété
+    /// par du silence (`silence_to_add`) pour rester aligné sur le micro.
+    pub fn capture(source: Source, stop: &std::sync::atomic::AtomicBool, chunk: &mut dyn FnMut(&[f32], u32)) -> Result<(), Failure> {
+        super::super::media::init_thread();
+        let speakers = source == Source::Speakers;
+        let fail = |e: &windows::core::Error| if speakers { speakers_failure(e) } else { mic_failure(e) };
+        unsafe {
+            let devices: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(|e| fail(&e))?;
+            let device = devices.GetDefaultAudioEndpoint(if speakers { eRender } else { eCapture }, eConsole).map_err(|e| fail(&e))?;
+            let client: IAudioClient = device.Activate(CLSCTX_ALL, None).map_err(|e| fail(&e))?;
+            let format = client.GetMixFormat().map_err(|e| fail(&e))?;
+            let f: WAVEFORMATEX = *format;
+            let float = f.wFormatTag == WAVE_FORMAT_IEEE_FLOAT
+                || (f.wFormatTag == WAVE_FORMAT_EXTENSIBLE && { std::ptr::read_unaligned(format as *const WAVEFORMATEXTENSIBLE).SubFormat } == FLOAT_SUBTYPE);
+            let (channels, rate, bits) = (f.nChannels.max(1) as usize, f.nSamplesPerSec, f.wBitsPerSample);
+            let flags = if speakers { AUDCLNT_STREAMFLAGS_LOOPBACK } else { 0 };
+            let init = client.Initialize(AUDCLNT_SHAREMODE_SHARED, flags, 10_000_000, 0, format, None);
+            CoTaskMemFree(Some(format as *const _));
+            init.map_err(|e| fail(&e))?;
+            if !(float && bits == 32) && bits != 16 {
+                return Err(format!("format audio non pris en charge ({bits} bits)").into());
+            }
+            let capture: IAudioCaptureClient = client.GetService().map_err(|e| fail(&e))?;
+            client.Start().map_err(|e| fail(&e))?;
+            let started = Instant::now();
+            let mut emitted: u64 = 0;
+            let mut mono: Vec<f32> = Vec::new();
+            let result = loop {
+                std::thread::sleep(Duration::from_millis(20));
+                if stop.load(Ordering::SeqCst) {
+                    break Ok(());
+                }
+                mono.clear();
+                loop {
+                    match capture.GetNextPacketSize() {
+                        Ok(0) => break,
+                        Ok(_) => {}
+                        Err(_) => break,
+                    }
+                    let mut data: *mut u8 = std::ptr::null_mut();
+                    let (mut frames, mut buf_flags) = (0u32, 0u32);
+                    if capture.GetBuffer(&mut data, &mut frames, &mut buf_flags, None, None).is_err() {
+                        break;
+                    }
+                    let n = frames as usize;
+                    if buf_flags & (AUDCLNT_BUFFERFLAGS_SILENT.0 as u32) != 0 || data.is_null() {
+                        mono.extend(std::iter::repeat_n(0.0, n));
+                    } else if float {
+                        let s = std::slice::from_raw_parts(data as *const f32, n * channels);
+                        mono.extend(s.chunks(channels).map(|c| c.iter().sum::<f32>() / channels as f32));
+                    } else {
+                        let s = std::slice::from_raw_parts(data as *const i16, n * channels);
+                        mono.extend(s.chunks(channels).map(|c| c.iter().map(|&v| v as f32 / 32768.0).sum::<f32>() / channels as f32));
+                    }
+                    let _ = capture.ReleaseBuffer(frames);
+                }
+                // L'appareil a disparu (casque débranché…) : on s'arrête, l'appel garde ce qui est pris.
+                if let Err(e) = capture.GetNextPacketSize() {
+                    break Err(fail(&e));
+                }
+                if speakers && mono.is_empty() {
+                    let gap = super::silence_to_add(started.elapsed().as_millis() as u64, rate, emitted);
+                    mono.extend(std::iter::repeat_n(0.0, gap as usize));
+                }
+                if !mono.is_empty() {
+                    emitted += mono.len() as u64;
+                    chunk(&mono, rate);
+                }
+            };
+            let _ = client.Stop();
+            result
+        }
+    }
+
     /// La fenêtre active, si ce n'est pas une fenêtre d'Ondine : sa zone à
     /// l'écran (pixels physiques), pour « Regarde ça ».
     pub fn foreground_area() -> Option<super::super::record::Area> {
@@ -887,6 +1002,10 @@ mod stub {
         Err(ONLY_WINDOWS.into())
     }
 
+    pub fn capture(_source: super::Source, _stop: &std::sync::atomic::AtomicBool, _chunk: &mut dyn FnMut(&[f32], u32)) -> Result<(), Failure> {
+        Err(ONLY_WINDOWS.into())
+    }
+
     pub fn foreground_area() -> Option<super::super::record::Area> {
         None
     }
@@ -895,6 +1014,16 @@ mod stub {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn quiet_pc_sound_is_filled_with_silence() {
+        // 1 s écoulée à 48 kHz, rien reçu : 1 s moins 50 ms de marge.
+        assert_eq!(silence_to_add(1000, 48_000, 0), 48_000 - 2_400);
+        // 150 ms de retard : rien (des paquets sont peut-être en route).
+        assert_eq!(silence_to_add(1000, 48_000, 48_000 - 7_200), 0);
+        // En avance ou à l'heure : rien.
+        assert_eq!(silence_to_add(1000, 16_000, 20_000), 0);
+    }
 
     #[test]
     fn fix_pages_are_a_fixed_list() {

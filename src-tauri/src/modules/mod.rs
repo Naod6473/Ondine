@@ -25,6 +25,10 @@ mod askclaude_pc;
 mod askclaude_voice;
 // Ses commandes rapides comprises sans IA (minuteur, volume, note…).
 mod askclaude_quick;
+// Notes d'appel (1.2.4) : micro + son du PC, transcription personne par personne, résumé.
+mod callnotes;
+mod callnotes_audio;
+mod callnotes_text;
 mod capture;
 mod clipboard;
 mod controls;
@@ -275,6 +279,7 @@ impl Registry {
             Box::new(team::Team::default()),
             Box::new(windowlife::WindowLife),
             Box::new(screensaver::Screensaver),
+            Box::new(callnotes::CallNotes::default()),
         ];
 
         let mut entries = Vec::new();
@@ -515,6 +520,18 @@ mod tests {
         assert_eq!(m.id, "team");
         assert!(m.events.listens.iter().any(|t| t == "timer.focus"));
         assert!(m.events.emits.iter().any(|t| t == "mascot.emote"));
+    }
+
+    #[test]
+    fn callnotes_manifest_is_valid() {
+        let m = check_manifest(callnotes::CallNotes::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "callnotes");
+        for t in ["callnotes.start", "callnotes.stop"] {
+            assert!(m.events.listens.iter().any(|l| l == t), "{t}");
+        }
+        for t in ["callnotes.state", "notes.add"] {
+            assert!(m.events.emits.iter().any(|e| e == t), "{t}");
+        }
     }
 
     #[test]

@@ -313,7 +313,26 @@
 "Quand personne ne touche le PC, un fond sombre couvre l'écran de l'île : Ondine s'y promène au bord d'une eau qui ondule, l'heure au centre. Il se ferme dès que vous bougez la souris ou touchez le clavier. Jamais pendant une présentation, une appli en plein écran ou un appel. Windows se verrouille et éteint l'écran à l'heure prévue, comme d'habitude.": "Quand personne ne touche le PC, un fond sombre couvre l'écran de l'île : Ondine s'y promène au bord d'une eau qui ondule, l'heure au centre. Il se ferme dès que tu bouges la souris ou touches le clavier. Jamais pendant une présentation, une appli en plein écran ou un appel. Windows se verrouille et éteint l'écran à l'heure prévue, comme d'habitude.",
 "Je prépare votre île…": "Je prépare ton île…",
 "Une nouveauté vous attend.": "Une nouveauté t'attend.",
-"Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine vous dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement.": "Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine te dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement."
+"Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine vous dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement.": "Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine te dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement.",
+"Enregistre un appel d'un clic : votre micro et le son du PC, écrits personne par personne, avec un résumé et les choses à faire. L'audio est effacé dès que la transcription est écrite ; les notes restent sur votre ordinateur (%APPDATA%\\Ondine\\callnotes). Prévenez les participants que vous enregistrez.": "Enregistre un appel d'un clic : ton micro et le son du PC, écrits personne par personne, avec un résumé et les choses à faire. L'audio est effacé dès que la transcription est écrite ; les notes restent sur ton ordinateur (%APPDATA%\\Ondine\\callnotes). Préviens les participants que tu enregistres.",
+"La transcription (le texte, jamais l'audio) part alors vers l'IA de Parler à Ondine, avec votre clé. Sinon, le résumé s'écrit d'un clic.": "La transcription (le texte, jamais l'audio) part alors vers l'IA de Parler à Ondine, avec ta clé. Sinon, le résumé s'écrit d'un clic.",
+"Prévenez les participants que vous enregistrez.": "Préviens les participants que tu enregistres.",
+"Votre micro et le son du PC, écrits personne par personne. Prévenez les participants que vous enregistrez.": "Ton micro et le son du PC, écrits personne par personne. Préviens les participants que tu enregistres.",
+"Le module Notes d'appel est désactivé : activez-le dans les réglages en bas de cette page.": "Le module Notes d'appel est désactivé : active-le dans les réglages en bas de cette page.",
+"Vos notes": "Tes notes",
+"Vos appels s'afficheront ici. Cliquez sur « Enregistrer un appel » quand l'un commence.": "Tes appels s'afficheront ici. Clique sur « Enregistrer un appel » quand l'un commence.",
+"Choisissez une note à gauche.": "Choisis une note à gauche.",
+"Les notes restent sur votre ordinateur (%APPDATA%\\Ondine\\callnotes), une par fichier. Supprimer une note la met à la Corbeille.": "Les notes restent sur ton ordinateur (%APPDATA%\\Ondine\\callnotes), une par fichier. Supprimer une note la met à la Corbeille.",
+"Rien n'est enregistré sans votre clic sur « Enregistrer un appel ».": "Rien n'est enregistré sans ton clic sur « Enregistrer un appel ».",
+"Le résumé est écrit par l'IA de Parler à Ondine : activez ce module et ajoutez votre clé.": "Le résumé est écrit par l'IA de Parler à Ondine : active ce module et ajoute ta clé.",
+"Transcription par l'API : ajoutez une clé OpenAI ou Gemini dans Réglages → Identifiants, et activez Parler à Ondine.": "Transcription par l'API : ajoute une clé OpenAI ou Gemini dans Réglages → Identifiants, et active Parler à Ondine.",
+"Parakeet n'est pas encore téléchargé : téléchargez-le dans les Réglages (groupe Voix) pour écrire les appels sur le PC.": "Parakeet n'est pas encore téléchargé : télécharge-le dans les Réglages (groupe Voix) pour écrire les appels sur le PC.",
+"Parakeet, la reconnaissance sur le PC, n'est pas encore téléchargé : téléchargez-le dans les Réglages (groupe Voix), ou choisissez la transcription par l'API dans les réglages des notes d'appel.": "Parakeet, la reconnaissance sur le PC, n'est pas encore téléchargé : télécharge-le dans les Réglages (groupe Voix), ou choisis la transcription par l'API dans les réglages des notes d'appel.",
+"Activez « Parler à Ondine » : c'est son IA, avec votre clé, qui écrit le résumé et la transcription par l'API.": "Active « Parler à Ondine » : c'est son IA, avec ta clé, qui écrit le résumé et la transcription par l'API.",
+"Ondine s'est fermée avant d'écrire la transcription : cliquez sur « Réessayer ».": "Ondine s'est fermée avant d'écrire la transcription : clique sur « Réessayer ».",
+"Le son du PC n'a pas pu être enregistré : seul votre micro est noté.": "Le son du PC n'a pas pu être enregistré : seul ton micro est noté.",
+"arrêtez d'abord l'enregistrement": "arrête d'abord l'enregistrement",
+"attendez la fin de l'écriture de cette note": "attends la fin de l'écriture de cette note"
 },
 "patterns": [
 ["^(\\d+) nouveautés vous attendent\\.$", "$1 nouveautés t'attendent."],
@@ -492,6 +511,8 @@
 [
 "^QR code lu : (.+)\\. Cliquez sur « Ajouter »\\.$",
 "QR code lu : $1. Clique sur « Ajouter »."
-]
+],
+["^Le résumé est écrit par l'IA de Parler à Ondine \\((.+)\\) : ajoutez d'abord votre clé dans Réglages → Identifiants\\.$", "Le résumé est écrit par l'IA de Parler à Ondine ($1) : ajoute d'abord ta clé dans Réglages → Identifiants."],
+["^Pour le résumé, la transcription \\(le texte, jamais l'audio\\) part vers (.+), avec votre clé\\.$", "Pour le résumé, la transcription (le texte, jamais l'audio) part vers $1, avec ta clé."]
 ]
 }
