@@ -175,6 +175,15 @@ pub fn focus_agent_window(_hwnd: isize, _pids: &[u32], _project: &str) -> Result
     Err("disponible seulement sous Windows".into())
 }
 
+/// Hors Windows : pas de fenêtre au premier plan connue.
+pub fn foreground_window() -> isize {
+    0
+}
+
+pub fn agent_windows(targets: &[(isize, Vec<u32>, String)]) -> Vec<Option<isize>> {
+    vec![None; targets.len()]
+}
+
 pub fn pipe_client_alive(_file: &std::fs::File) -> bool {
     true
 }

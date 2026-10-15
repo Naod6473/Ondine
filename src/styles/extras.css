@@ -117,6 +117,50 @@
   }
 }
 
+/* ── Agents IA : la liste de tâches de l'agent (todos-logic.ts, 1.2.5) ─── */
+.agents-todos {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 1px 0 3px 26px;
+  font-size: 12px;
+  min-width: 0;
+}
+.agents-todos-track {
+  flex: none;
+  width: 64px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.agents-todos-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: width 400ms var(--ease);
+}
+.agents-todos.finished .agents-todos-fill {
+  background: #5ee08a;
+}
+.agents-todos b {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.agents-todos-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.75;
+  min-width: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .agents-todos-fill {
+    transition: none;
+  }
+}
+
 /* La vue du changement (lecture seule). */
 .agents-diff-box:empty {
   display: none;

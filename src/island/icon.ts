@@ -74,6 +74,8 @@ const BY_EMOJI: Record<string, string> = {
   "🌙": "moon",
   // Dictée (1.2.4) : le micro au trait, l'emoji en couleur.
   "🎙": "microphone",
+  // Notifications de Windows (1.2.5) : la cloche au trait, l'emoji en couleur.
+  "🔔": "bell",
 };
 
 /**
@@ -361,4 +363,22 @@ export function agentIcon(tool: string): string {
   if (t.includes("codex")) return "logo:codex";
   for (const name of AGENTS) if (t === name || t.startsWith(`${name}-`)) return `logo:${name}`;
   return "🤖";
+}
+
+/**
+ * Le logo d'une autre appli (« app:1a2b3c4d », module Notifications de
+ * Windows) : une image en data URL, gardée en mémoire le temps de la session.
+ * Montré tel quel dans les deux packs (c'est le logo de l'appli). Sans logo
+ * enregistré, le nom donne l'icône de secours, jamais du texte brut.
+ */
+export function setAppIcon(name: string, dataUrl: string) {
+  if (!name.startsWith("app:") || !dataUrl.startsWith("data:image/")) return;
+  if (!(name in IMAGES) && ++appIcons > 64) return;
+  IMAGES[name] = dataUrl;
+}
+let appIcons = 0;
+
+/** Ce logo est-il déjà connu ? */
+export function hasAppIcon(name: string): boolean {
+  return name in IMAGES;
 }

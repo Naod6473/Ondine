@@ -70,13 +70,22 @@ async fn install(app: &AppHandle) -> Result<(), String> {
     };
     log::info(format!("installation de la version {}", update.version));
     update
-        .download_and_install(|_, _| {}, || log::info("mise à jour téléchargée, lancement de l'installateur"))
+        .download_and_install(
+            |_, _| {},
+            || {
+                log::info("mise à jour téléchargée, lancement de l'installateur");
+                // Sur Windows, le plugin ferme Ondine sans passer par RunEvent::Exit :
+                // les fenêtres du trou noir ressortent d'abord.
+                crate::modules::windowlife_hole::release_all("mise à jour");
+            },
+        )
         .await
         .map_err(|e| {
             log::error(format!("mise à jour échouée : {e}"));
             format!("la mise à jour a échoué : {e}")
         })?;
     // Hors de Windows, l'installateur ne relance pas l'appli : on le fait nous-mêmes.
+    crate::modules::windowlife_hole::release_all("redémarrage");
     app.restart();
 }
 

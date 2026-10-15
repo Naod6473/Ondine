@@ -343,6 +343,8 @@ export class Island {
     this.bus.on("island.open", (msg) => this.registry.onOpenRequest((msg.payload as { tab?: string } | null)?.tab));
     // Bouton « Faire venir Ondine » des réglages.
     this.bus.on("mascot.peek-now", () => this.startPeek());
+    // Le trou noir (Ondine et les fenêtres) : une fenêtre gardée au-dessus de l'île.
+    this.wireBlackHole();
     this.render(true);
   }
 
@@ -395,6 +397,39 @@ export class Island {
     this.forms.apply(s);
     // Le bord ou la place ont peut-être changé : la forme voulue aussi.
     this.jelly.retarget();
+  }
+
+  // ── Le trou noir ───────────────────────────────────────────────────────────
+
+  /**
+   * Une fenêtre qu'on fait glisser reste un instant au-dessus de l'île (le Rust
+   * de windowlife le dit, `windowlife.hole-hover`) : l'île se montre si elle
+   * était cachée et s'assombrit (classe `hole-over`, windowlife.css) ; avalée,
+   * elle fait « gloups » (`hole-gulp`) ; une fenêtre qui ressort, un éclat
+   * (`hole-spit`). Seulement des filtres et une ombre : la forme reste à la gelée.
+   */
+  private wireBlackHole() {
+    let over = false;
+    const flash = (cls: string) => {
+      this.shell.classList.remove(cls);
+      void this.shell.offsetWidth; // l'animation repart du début
+      this.shell.classList.add(cls);
+      window.setTimeout(() => this.shell.classList.remove(cls), 700);
+    };
+    this.bus.on("windowlife.hole-hover", (msg) => {
+      const now = !!(msg.payload as { over?: boolean } | null)?.over;
+      if (now === over) return;
+      over = now;
+      this.shell.classList.toggle("hole-over", now);
+      if (now) this.fsm.pointerEnter();
+      else this.fsm.pointerLeave();
+    });
+    this.bus.on("windowlife.swallowed", (msg) => {
+      over = false;
+      this.shell.classList.remove("hole-over");
+      if ((msg.payload as { ok?: boolean } | null)?.ok) flash("hole-gulp");
+    });
+    this.bus.on("windowlife.spat", () => flash("hole-spit"));
   }
 
   // ── Micro et caméra ────────────────────────────────────────────────────────

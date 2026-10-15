@@ -662,6 +662,11 @@ pub fn run() {
     // sont en plus rattrapées par catch_unwind (modules/mod.rs).
     std::panic::set_hook(Box::new(|info| {
         log::error(format!("panique : {info}"));
+        // Le fil principal qui panique, c'est Ondine qui s'arrête : les fenêtres
+        // du trou noir ressortent tout de suite (le fichier de secours couvre le reste).
+        if std::thread::current().name() == Some("main") {
+            modules::windowlife_hole::release_on_panic();
+        }
     }));
 
     let gate = Arc::new(PollGate::new());
@@ -784,6 +789,13 @@ pub fn run() {
             }
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("impossible de démarrer Ondine");
+        .build(tauri::generate_context!())
+        .expect("impossible de démarrer Ondine")
+        .run(|_app, event| {
+            // Ondine quitte (menu, mise à jour, fin de session) : rien ne doit
+            // rester caché dans le trou noir (Ondine et les fenêtres).
+            if let tauri::RunEvent::Exit = event {
+                modules::windowlife_hole::release_all("Ondine quitte");
+            }
+        });
 }

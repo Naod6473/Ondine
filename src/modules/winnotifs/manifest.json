@@ -1,0 +1,25 @@
+{
+  "id": "winnotifs",
+  "name": "Notifications de Windows",
+  "icon": "🔔",
+  "tip": "Les notifications de vos autres applis s'affichent dans l'île, et les 20 dernières restent ici.",
+  "description": "Les notifications de vos autres applis (Outlook, Teams, WhatsApp…) s'affichent aussi dans l'île, avec le nom de l'appli, et respectent la concentration et le mode présentation. Pour cela, Ondine lit le Centre de notifications de Windows : c'est pourquoi le module est désactivé par défaut, et Windows doit l'autoriser (Paramètres, Confidentialité, Notifications). Seules les nouvelles notifications sont montrées. Leur texte reste en mémoire : rien n'est écrit sur le disque ni dans le journal, rien ne quitte le PC.",
+  "version": "0.1.0",
+  "permissions": [],
+  "settings": {
+    "version": 1,
+    "fields": [
+      { "key": "showBody", "essential": true, "type": "boolean", "label": "Montrer le texte du message", "help": "Décoché : seulement le nom de l'appli et le titre de la notification.", "default": true },
+      { "key": "ignoreApps", "essential": true, "type": "string", "label": "Applis à ignorer", "help": "Noms séparés par des virgules, tels qu'ils s'affichent dans les notifications (par exemple : Teams, Discord).", "default": "" },
+      { "key": "onlyApps", "type": "string", "label": "Seulement ces applis", "help": "Vide : toutes les applis, sauf celles à ignorer. Sinon, seulement celles-ci (noms séparés par des virgules).", "default": "" },
+      { "key": "history", "type": "boolean", "label": "Garder les 20 dernières dans l'onglet", "help": "En mémoire seulement : tout s'efface quand Ondine se ferme.", "default": true },
+      { "key": "removeFromCenter", "type": "boolean", "label": "Retirer la notification du Centre de notifications une fois montrée", "help": "Seulement si Windows le permet à Ondine : sinon, l'onglet le dit et rien n'est retiré.", "default": false }
+    ]
+  },
+  "views": ["expanded"],
+  "commands": ["status", "recheck", "open_settings", "icon", "open_app", "remove"],
+  "events": {
+    "emits": ["winnotifs.new", "winnotifs.status"],
+    "listens": ["winnotifs.new", "winnotifs.status"]
+  }
+}

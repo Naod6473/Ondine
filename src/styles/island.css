@@ -1613,6 +1613,17 @@ body[data-perf="eco"] .media-compact.on .media-eq i {
 .clip-qr-error {
   text-align: center;
 }
+/* « Clé ignorée » (1.2.5) : une ligne discrète en haut de l'historique. */
+.clip-ignored {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 4px;
+  font-size: 12px;
+}
+.clip-ignored .clip-decode {
+  margin-left: auto;
+}
 /* Décoder une copie (JWT, Base64, %xx, JSON, horodatage) : le bouton sur la
    ligne, puis le résultat dans l'onglet, en police à chasse fixe. */
 .clip-decode {

@@ -1,0 +1,101 @@
+/* Le trou noir d'Ondine et les fenêtres (src/modules/windowlife/index.ts) :
+ * la mini-île tant qu'il garde des fenêtres (le nombre, leurs icônes, « Tout
+ * recracher »), et l'île elle-même pendant qu'une fenêtre arrive au-dessus
+ * (island.ts, classes hole-over / hole-gulp / hole-spit). Seulement filtre et
+ * ombre sur l'île : sa taille reste à la gelée (jelly.ts). Violet nuit #8b6cff. */
+
+:root {
+  --hole-violet: #8b6cff;
+}
+
+/* ── La mini-île ────────────────────────────────────────────────────────── */
+.hole-compact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  padding: 0 6px 0 12px;
+  color: #fff;
+  min-width: 0;
+}
+.hole-mark { font-size: 15px; line-height: 1; }
+.hole-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--hole-violet);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 10px rgba(139, 108, 255, 0.55);
+}
+.hole-icons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+.hole-win {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: background 160ms var(--ease, ease), scale 180ms var(--spring, ease);
+}
+.hole-win:hover { background: rgba(139, 108, 255, 0.3); }
+.hole-win:active { scale: 0.9; }
+.hole-win:focus-visible { outline: 2px solid var(--hole-violet); outline-offset: 1px; }
+.hole-icon { width: 20px; height: 20px; object-fit: contain; pointer-events: none; }
+.hole-icon-none { font-size: 15px; line-height: 20px; text-align: center; }
+.hole-all {
+  margin-left: auto;
+  flex: none;
+  height: 26px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 13px;
+  background: rgba(139, 108, 255, 0.22);
+  color: #d6ccff;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 160ms var(--ease, ease), scale 160ms var(--ease, ease);
+}
+.hole-all:hover { background: rgba(139, 108, 255, 0.36); }
+.hole-all:active { scale: 0.96; }
+
+/* ── L'île pendant qu'une fenêtre arrive, l'avale, la recrache ──────────── */
+.island.hole-over {
+  transition: filter 220ms var(--ease, ease), box-shadow 220ms var(--ease, ease);
+  filter: brightness(0.55) saturate(1.4);
+  box-shadow: 0 0 0 2px rgba(139, 108, 255, 0.75), 0 0 32px 8px rgba(110, 70, 255, 0.5);
+}
+.island.hole-gulp { animation: hole-gulp 620ms var(--ease, ease); }
+.island.hole-spit { animation: hole-spit 520ms var(--ease, ease); }
+@keyframes hole-gulp {
+  0% { filter: brightness(0.35) saturate(1.6); box-shadow: 0 0 0 3px rgba(139, 108, 255, 0.9), 0 0 44px 14px rgba(110, 70, 255, 0.6); }
+  100% { filter: none; box-shadow: 0 0 0 0 rgba(139, 108, 255, 0), 0 0 0 0 rgba(110, 70, 255, 0); }
+}
+@keyframes hole-spit {
+  0% { filter: brightness(1.45); box-shadow: 0 0 26px 6px rgba(139, 108, 255, 0.5); }
+  100% { filter: none; box-shadow: 0 0 0 0 rgba(139, 108, 255, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .island.hole-over { transition: none; }
+  .island.hole-gulp,
+  .island.hole-spit { animation: none; }
+  .hole-win, .hole-all { transition: none; }
+}

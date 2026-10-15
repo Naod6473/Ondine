@@ -2,7 +2,7 @@
   "id": "windowlife",
   "name": "Ondine et les fenêtres",
   "icon": "🪟",
-  "description": "Ondine vit avec vos fenêtres : elle sursaute quand une fenêtre passe en plein écran, s'assoit sur le bord d'une fenêtre toute proche, rit quand vous secouez la souris près d'elle, laisse la place aux notifications de Windows, met ses lunettes de soleil la nuit devant une fenêtre très claire, grimpe avant un rendez-vous de l'agenda, et vous dit au revoir quand vous verrouillez le PC. Sur demande, l'île s'écarte de la fenêtre active ou se pose sur sa barre de titre, et la lancer vers un bord y range la fenêtre active. Tout se passe sur votre PC : Ondine regarde seulement la place des fenêtres, leur titre et quelques pixels, et ne ferme jamais rien.",
+  "description": "Ondine vit avec vos fenêtres : elle sursaute quand une fenêtre passe en plein écran, s'assoit sur le bord d'une fenêtre toute proche, rit quand vous secouez la souris près d'elle, laisse la place aux notifications de Windows, met ses lunettes de soleil la nuit devant une fenêtre très claire, grimpe avant un rendez-vous de l'agenda, et vous dit au revoir quand vous verrouillez le PC. Sur demande, l'île s'écarte de la fenêtre active ou se pose sur sa barre de titre, la lancer vers un bord y range la fenêtre active, et une fenêtre lâchée sur l'île est avalée (cachée) puis recrachée d'un clic. Tout se passe sur votre PC : Ondine regarde seulement la place des fenêtres, leur titre, leur icône et quelques pixels, et ne ferme jamais rien.",
   "version": "0.1.0",
   "permissions": [],
   "settings": {
@@ -11,21 +11,22 @@
       { "key": "avoidForeground", "essential": true, "type": "boolean", "label": "L'île s'écarte de la fenêtre active", "help": "Si la fenêtre que vous utilisez vient la recouvrir (sauf agrandie ou en plein écran), l'île glisse un peu plus loin, puis revient.", "default": false },
       { "key": "perchTitle", "type": "boolean", "label": "L'île se pose sur la barre de titre de la fenêtre active", "help": "Seulement quand l'île est en haut de l'écran : elle suit la fenêtre quand vous la déplacez.", "default": false },
       { "key": "throwSnap", "essential": true, "type": "boolean", "label": "Lancer l'île vers un bord y range la fenêtre active", "help": "Attrapez l'île et lancez-la d'un geste vif : à gauche ou à droite, la fenêtre active prend cette moitié de l'écran ; en haut, elle s'agrandit ; en bas, elle reprend sa taille. L'île, elle, revient à sa place.", "default": false },
+      { "key": "swallow", "essential": true, "type": "boolean", "label": "Avaler une fenêtre lâchée sur l'île", "help": "Faites glisser une fenêtre par sa barre de titre et gardez-la un instant sur l'île : Ondine ouvre la bouche, lâchez, elle l'avale. La fenêtre est seulement cachée (son programme continue) ; un clic sur son icône dans l'île ou sur l'Accueil la remet à sa place. Tout ressort quand vous coupez ce réglage ou quittez Ondine. Jamais les fenêtres en plein écran, de Windows ou d'un programme administrateur.", "default": false },
       { "key": "fullscreenHop", "type": "boolean", "label": "Sursauter quand une fenêtre passe en plein écran", "default": true },
       { "key": "sitEdge", "type": "boolean", "label": "S'asseoir sur le bord d'une fenêtre toute proche", "default": true },
       { "key": "mouseShake", "type": "boolean", "label": "Réagir quand on secoue la souris près d'elle", "default": true },
       { "key": "toastRoom", "type": "boolean", "label": "Laisser la place aux notifications de Windows", "help": "Quand une bulle de Windows apparaît dans le coin, l'île s'écarte puis revient.", "default": true },
       { "key": "nightSunglasses", "type": "boolean", "label": "Lunettes de soleil la nuit devant une fenêtre très claire", "default": true },
       { "key": "agendaClimb", "type": "boolean", "label": "Grimper avant un rendez-vous de l'agenda", "default": true },
-      { "key": "lockGoodbye", "essential": true, "type": "boolean", "label": "Au revoir au verrouillage, étirement au retour", "default": true },
+      { "key": "lockGoodbye", "type": "boolean", "label": "Au revoir au verrouillage, étirement au retour", "default": true },
       { "key": "tidyForgotten", "type": "boolean", "label": "Proposer de réduire une fenêtre oubliée", "help": "Une fenêtre que vous n'avez pas utilisée depuis longtemps : Ondine propose de la réduire dans la barre des tâches. Rien sans votre clic, et elle n'est jamais fermée.", "default": false },
       { "key": "forgottenMins", "type": "number", "label": "Oubliée après (minutes)", "default": 60, "min": 10, "max": 600, "step": 10 }
     ]
   },
-  "views": [],
-  "commands": ["minimize"],
+  "views": ["compact"],
+  "commands": ["minimize", "hole_list", "spit", "spit_all"],
   "events": {
-    "emits": ["mascot.emote", "windowlife.fullscreen", "windowlife.sit", "windowlife.mouse-shake", "windowlife.bright", "windowlife.lock", "windowlife.forgotten"],
-    "listens": ["windowlife.fullscreen", "windowlife.sit", "windowlife.mouse-shake", "windowlife.bright", "windowlife.lock", "windowlife.forgotten", "agenda.reminder"]
+    "emits": ["mascot.emote", "windowlife.fullscreen", "windowlife.sit", "windowlife.mouse-shake", "windowlife.bright", "windowlife.lock", "windowlife.forgotten", "windowlife.hole", "windowlife.hole-hover", "windowlife.swallowed", "windowlife.spat"],
+    "listens": ["windowlife.fullscreen", "windowlife.sit", "windowlife.mouse-shake", "windowlife.bright", "windowlife.lock", "windowlife.forgotten", "windowlife.hole", "windowlife.hole-hover", "windowlife.swallowed", "windowlife.spat", "agenda.reminder"]
   }
 }

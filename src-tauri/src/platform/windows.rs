@@ -1351,19 +1351,14 @@ pub fn own_console_window() -> isize {
     }
 }
 
-/// Fait passer devant la fenêtre d'un agent : `hwnd` (sa console) si elle
-/// existe encore, sinon une fenêtre trouvée par `super::pick_agent_window`
-/// (programmes `pids`, puis titre contenant le projet, puis terminal unique).
-/// Err si aucune n'est trouvée ; le journal dit alors ce qui a été cherché.
-pub fn focus_agent_window(hwnd: isize, pids: &[u32], project: &str) -> Result<(), String> {
+/// Les fenêtres principales visibles (avec un titre, sans propriétaire), avec
+/// leur programme, leur titre et le nom de leur exe : la liste où l'on
+/// cherche la fenêtre d'un agent (`super::pick_agent_window`).
+fn agent_window_list(names: &std::collections::HashMap<u32, String>) -> Vec<super::AgentWindow> {
     use ::windows::core::BOOL;
     use ::windows::Win32::Foundation::{LPARAM, HWND};
-    use ::windows::Win32::UI::Input::KeyboardAndMouse::{SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP, VK_MENU};
-    use ::windows::Win32::UI::WindowsAndMessaging::{
-        EnumWindows, GetWindow, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindowVisible, SetForegroundWindow, ShowWindow, GW_OWNER, SW_RESTORE,
-    };
+    use ::windows::Win32::UI::WindowsAndMessaging::{EnumWindows, GetWindow, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId, IsWindowVisible, GW_OWNER};
 
-    // Les fenêtres principales visibles (avec un titre, sans propriétaire), leur programme et leur titre.
     unsafe extern "system" fn collect(h: HWND, lparam: LPARAM) -> BOOL {
         let list = unsafe { &mut *(lparam.0 as *mut Vec<(isize, u32, String)>) };
         unsafe {
@@ -1379,6 +1374,60 @@ pub fn focus_agent_window(hwnd: isize, pids: &[u32], project: &str) -> Result<()
         BOOL(1) // continuer
     }
 
+    let mut raw: Vec<(isize, u32, String)> = Vec::new();
+    let _ = unsafe { EnumWindows(Some(collect), LPARAM(&mut raw as *mut _ as isize)) };
+    raw.into_iter().map(|(h, pid, title)| super::AgentWindow { hwnd: h, pid, title, exe: names.get(&pid).cloned().unwrap_or_default() }).collect()
+}
+
+/// La fenêtre d'une session d'agent, cherchée comme « Y aller » : `hwnd` (sa
+/// console) si elle existe encore, sinon `super::pick_agent_window` dans
+/// `list` (calculée une fois, à la demande). Toujours la fenêtre du haut
+/// (propriétaire racine) : celle que Windows met au premier plan.
+fn find_agent_window(hwnd: isize, pids: &[u32], project: &str, list: &mut dyn FnMut() -> std::rc::Rc<Vec<super::AgentWindow>>) -> (Option<isize>, bool) {
+    if let Some(direct) = usable_window(hwnd) {
+        return (Some(direct), true);
+    }
+    let windows = list();
+    (super::pick_agent_window(&windows, pids, project).map(root_window), false)
+}
+
+/// La fenêtre du haut de `h` (sa propriétaire racine), sinon `h`.
+fn root_window(h: isize) -> isize {
+    use ::windows::Win32::Foundation::HWND;
+    use ::windows::Win32::UI::WindowsAndMessaging::{GetAncestor, GA_ROOTOWNER};
+    if h == 0 {
+        return 0;
+    }
+    let root = unsafe { GetAncestor(HWND(h as *mut _), GA_ROOTOWNER) };
+    if root.0.is_null() { h } else { root.0 as isize }
+}
+
+/// La fenêtre au premier plan (sa fenêtre du haut), 0 s'il n'y en a pas.
+pub fn foreground_window() -> isize {
+    use ::windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
+    let h = unsafe { GetForegroundWindow() };
+    if h.0.is_null() { 0 } else { root_window(h.0 as isize) }
+}
+
+/// Les fenêtres de plusieurs sessions d'un coup (une seule liste des
+/// fenêtres et des programmes, faite seulement si une console ne suffit
+/// pas). Pour « rester discrète quand vous regardez déjà le terminal ».
+/// Rien n'est journalisé ni déplacé.
+pub fn agent_windows(targets: &[(isize, Vec<u32>, String)]) -> Vec<Option<isize>> {
+    let mut cache: Option<std::rc::Rc<Vec<super::AgentWindow>>> = None;
+    let mut list = || cache.get_or_insert_with(|| std::rc::Rc::new(agent_window_list(&process_names()))).clone();
+    targets.iter().map(|(hwnd, pids, project)| find_agent_window(*hwnd, pids, project, &mut list).0).collect()
+}
+
+/// Fait passer devant la fenêtre d'un agent : `hwnd` (sa console) si elle
+/// existe encore, sinon une fenêtre trouvée par `super::pick_agent_window`
+/// (programmes `pids`, puis titre contenant le projet, puis terminal unique).
+/// Err si aucune n'est trouvée ; le journal dit alors ce qui a été cherché.
+pub fn focus_agent_window(hwnd: isize, pids: &[u32], project: &str) -> Result<(), String> {
+    use ::windows::Win32::Foundation::HWND;
+    use ::windows::Win32::UI::Input::KeyboardAndMouse::{SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP, VK_MENU};
+    use ::windows::Win32::UI::WindowsAndMessaging::{GetWindowTextW, GetWindowThreadProcessId, IsIconic, SetForegroundWindow, ShowWindow, SW_RESTORE};
+
     let names = process_names();
     let describe = |h: isize| {
         let mut pid = 0u32;
@@ -1389,27 +1438,17 @@ pub fn focus_agent_window(hwnd: isize, pids: &[u32], project: &str) -> Result<()
         };
         format!("{} « {} »", names.get(&pid).map(String::as_str).unwrap_or("?"), String::from_utf16_lossy(&buf[..n]))
     };
-    let target = if let Some(direct) = usable_window(hwnd) {
-        crate::services::log::info(format!("agents : Y aller → {} (console du hook)", describe(direct)));
-        Some(HWND(direct as *mut _))
-    } else {
-        let mut raw: Vec<(isize, u32, String)> = Vec::new();
-        let _ = unsafe { EnumWindows(Some(collect), LPARAM(&mut raw as *mut _ as isize)) };
-        let windows: Vec<super::AgentWindow> = raw
-            .into_iter()
-            .map(|(h, pid, title)| super::AgentWindow { hwnd: h, pid, title, exe: names.get(&pid).cloned().unwrap_or_default() })
-            .collect();
-        let found = super::pick_agent_window(&windows, pids, project);
-        if found.is_none() {
+    let mut list = || std::rc::Rc::new(agent_window_list(&names));
+    let (found, direct) = find_agent_window(hwnd, pids, project, &mut list);
+    match (found, direct) {
+        (Some(h), true) => crate::services::log::info(format!("agents : Y aller → {} (console du hook)", describe(h))),
+        (Some(h), false) => crate::services::log::info(format!("agents : Y aller → {} (cherchée)", describe(h))),
+        (None, _) => {
             let chain: Vec<String> = pids.iter().map(|p| format!("{p}:{}", names.get(p).map(String::as_str).unwrap_or("?"))).collect();
             crate::services::log::warn(format!("agents : fenêtre introuvable (programmes au-dessus du hook : {} ; projet : « {project} »)", if chain.is_empty() { "aucun".into() } else { chain.join(" > ") }));
         }
-        if let Some(h) = found {
-            crate::services::log::info(format!("agents : Y aller → {} (cherchée)", describe(h)));
-        }
-        found.map(|h| HWND(h as *mut _))
-    };
-    let Some(target) = target else {
+    }
+    let Some(target) = found.map(|h| HWND(h as *mut _)) else {
         return Err("la fenêtre de cette session est introuvable (fermée ?)".into());
     };
     unsafe {

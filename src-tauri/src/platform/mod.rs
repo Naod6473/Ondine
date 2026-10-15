@@ -53,6 +53,8 @@ pub mod keys;
 pub mod winlife;
 // La dictée partout : la touche tenue (crochet clavier), l'appli au premier plan, le champ de texte, le collage. Contient sa propre version Linux.
 pub mod dictation;
+// Les notifications des autres applis (Centre de notifications) pour « Notifications de Windows ». Contient sa propre version Linux.
+pub mod winnotifs;
 
 #[cfg(windows)]
 mod drop_target;

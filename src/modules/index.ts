@@ -27,6 +27,7 @@ import { weekly } from "./weekly";
 import { halos } from "./halos";
 import { home } from "./home";
 import { windowlife } from "./windowlife";
+import { winnotifs } from "./winnotifs";
 import { screensaver } from "./screensaver";
 import { dictation } from "./dictation";
 
@@ -36,5 +37,5 @@ import { dictation } from "./dictation";
 // Notes d'appel juste après (ni l'un ni l'autre n'a de vue compacte) : la
 // sienne, le point rouge de l'enregistrement, passe avant celle des autres.
 // Il n'a pas d'onglet.
-export const ALL_MODULES: IslandModule[] = [home, askclaude, callnotes, shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, team, agents, launcher, rules, media, controls, pauses, weather, weekly, halos, windowlife, screensaver, dictation];
+export const ALL_MODULES: IslandModule[] = [home, askclaude, callnotes, shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, team, agents, launcher, rules, media, controls, winnotifs, pauses, weather, weekly, halos, windowlife, screensaver, dictation];
 

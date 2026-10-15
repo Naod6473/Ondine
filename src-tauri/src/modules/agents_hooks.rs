@@ -253,6 +253,28 @@ pub fn status(format: Format, existing: Option<&str>, exe: &str) -> Status {
     }
 }
 
+/// Des hooks d'Ondine sont là, mais pas tous ceux d'aujourd'hui (`ours`,
+/// même forme que pour `install_text`) : un événement, ou un `matcher`, manque
+/// (par exemple PostToolUse sans TodoWrite, ajouté en 1.2.5). Il suffit de
+/// réinstaller (même fusion sûre). Faux si le fichier est illisible ou sans Ondine.
+pub fn incomplete(format: Format, existing: Option<&str>, ours: &str) -> bool {
+    let Ok(root) = parse(format, existing) else { return false };
+    let have = ondine_part(&root);
+    if have.as_object().is_none_or(|o| o.is_empty()) {
+        return false;
+    }
+    let wanted = match format {
+        Format::Json => serde_json::from_str::<Value>(ours).ok(),
+        Format::Toml => parse(Format::Toml, Some(ours)).ok(),
+    };
+    let Some(wanted) = wanted.map(|w| ondine_part(&w)) else { return false };
+    wanted["hooks"].as_object().into_iter().flatten().any(|(event, groups)| {
+        groups.as_array().into_iter().flatten().any(|g| {
+            !have["hooks"][event].as_array().into_iter().flatten().any(|h| h.get("matcher") == g.get("matcher"))
+        })
+    })
+}
+
 /// Le fichier après installation : sans les anciennes entrées d'Ondine, avec
 /// `ours` (JSON : `{"hooks": …}` ; TOML : les sections à ajouter à la fin).
 pub fn install_text(format: Format, existing: Option<&str>, ours: &str) -> Result<Merge, String> {
@@ -460,6 +482,19 @@ pub fn write_with_backup(path: &Path, text: &str, stamp: &str) -> Result<Option<
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_older_install_is_incomplete() {
+        let exe = r"C:\O\ondine.exe";
+        let ours = json!({ "hooks": { "Stop": [{ "hooks": [{ "command": exe }] }], "PostToolUse": [{ "matcher": "Edit|TodoWrite", "hooks": [{ "command": exe }] }] } }).to_string();
+        let old = json!({ "hooks": { "Stop": [{ "hooks": [{ "command": exe }] }], "PostToolUse": [{ "matcher": "Edit", "hooks": [{ "command": exe }] }] } }).to_string();
+        assert!(incomplete(Format::Json, Some(&old), &ours));
+        let done = install_text(Format::Json, Some(&old), &ours).unwrap().text;
+        assert!(!incomplete(Format::Json, Some(&done), &ours));
+        // Rien d'Ondine, ou fichier illisible : pas « incomplet » (c'est « absent » / « illisible »).
+        assert!(!incomplete(Format::Json, Some("{}"), &ours));
+        assert!(!incomplete(Format::Json, Some("{"), &ours));
+    }
     use serde_json::json;
 
     const EXE: &str = r"C:\Program Files\Ondine\ondine.exe";

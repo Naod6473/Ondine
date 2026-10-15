@@ -31,6 +31,7 @@ import { dayKey, leaveDue, levelFromPeak, mediaPlaying, meetingCometMs, morningD
 import { settingsStore } from "../../core/settings-store";
 import { helloText } from "../../core/setup-plan";
 import { coverColors, onCoverColors } from "../../mascot/env-tint";
+import { todoFill } from "../agents/todos-logic";
 
 /** Un petit retour (Verr Maj, Copié…) : une ligne dans l'île, vite repartie. */
 const KEY_NOTE_MS = 1600;
@@ -114,10 +115,23 @@ export const halos: IslandModule = {
 
     // ── Agents IA ──────────────────────────────────────────────────────────
     listen("claude.thinking", () => halo("agents", { id: "agent-work", palette: "work", shape: "aurora", priority: "low" }));
-    listen("claude.done", () => hideHalo("agent-work"));
+    listen("claude.done", () => {
+      hideHalo("agent-work");
+      hideHalo("agent-todos");
+    });
+    // La liste de tâches de la session active (1.2.5) : un fin liseré qui
+    // avance avec les tâches faites (figé : pas d'heure de fin), éteint quand
+    // tout est fait ou que la liste est vide.
+    listen("agents.todos", (p) => {
+      const fill = todoFill(p);
+      if (fill === null) return hideHalo("agent-todos");
+      if (haloShown("agent-todos")) updateHalo("agent-todos", { fill });
+      else halo("agents", { id: "agent-todos", palette: "work", shape: "progress", fill, endsAt: null, total: 0, priority: "low" });
+    });
     listen("agents.event", (p) => {
       if (p.kind === "done") {
         hideHalo("agent-work");
+        hideHalo("agent-todos");
         hideHalo("agent-wait");
         halo("agents", { id: "agent-done", palette: "done", shape: "burst", durationMs: 3000 });
       } else if (p.kind === "waiting") {

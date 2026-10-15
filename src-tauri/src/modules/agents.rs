@@ -42,7 +42,7 @@
 // (agents_mcp_extra.rs) sont décrits dans leurs fichiers.
 
 use crate::sync::LockExt;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -54,6 +54,7 @@ use tauri::AppHandle;
 use super::agents_git as git;
 use super::agents_history as history;
 use super::agents_live as live;
+use super::agents_todos as todos;
 use super::agents_github as github;
 use super::agents_hooks as hooks;
 use super::agents_mcp_extra as extra;
@@ -62,6 +63,7 @@ use super::agents_resume as resume;
 use super::agents_tools as tools_more;
 use super::agents_usage as usage;
 use super::agents_wait as wait;
+use super::agents_discreet as discreet;
 use super::{ModuleContext, RustModule};
 use crate::services::bus::BusMessage;
 use crate::cli::MAX_MESSAGE;
@@ -170,6 +172,8 @@ struct State {
     plan_claude: Option<plan::Limits>,
     /// Les fichiers modifiés en direct par les agents (agents_live.rs). En mémoire seulement.
     live: live::Store,
+    /// La liste de tâches de chaque session (agents_todos.rs). En mémoire seulement.
+    todos: todos::Store,
 }
 
 /// Une capture acceptée : le canal pour rendre son chemin à l'agent.
@@ -305,6 +309,9 @@ impl RustModule for Agents {
                     }
                 }
                 st.sessions.retain(|_, s| s.updated.is_some_and(|t| t.elapsed() < SESSION_FORGET));
+                // Les listes de tâches suivent leur session (oubliées avec elle).
+                let known: HashSet<String> = st.sessions.keys().cloned().collect();
+                st.todos.retain(|k| known.contains(k), SESSION_FORGET);
                 before > 0 && st.working() == 0
             };
             if emptied {
@@ -339,7 +346,19 @@ impl RustModule for Agents {
                     .collect();
                 asks.sort_by_key(|a| a["id"].as_u64());
                 let quiet = if st.quiet() { json!({ "until": st.quiet_until.filter(|u| *u != u64::MAX), "held": st.held.len() }) } else { Value::Null };
-                Ok(json!({ "events": st.history, "working": st.working(), "sessions": sorted_sessions(&st), "asks": asks, "quiet": quiet }))
+                // La liste de tâches de chaque session (réglage « taskProgress ») : « 3/7 » et la tâche en cours.
+                let with_todos = ctx.settings().get("taskProgress").and_then(Value::as_bool) != Some(false);
+                let sessions: Vec<Value> = sorted_sessions(&st)
+                    .iter()
+                    .map(|x| {
+                        let mut v = serde_json::to_value(x).unwrap_or(Value::Null);
+                        if let Some(t) = st.todos.summary(&x.id).filter(|_| with_todos) {
+                            v["todos"] = serde_json::to_value(t).unwrap_or(Value::Null);
+                        }
+                        v
+                    })
+                    .collect();
+                Ok(json!({ "events": st.history, "working": st.working(), "sessions": sessions, "asks": asks, "quiet": quiet }))
             }
             // { minutes: 0 | 25 | 60 | 120 } : la concentration (0 = jusqu'à l'arrêt).
             "quiet_start" => {
@@ -442,13 +461,14 @@ impl RustModule for Agents {
                 let mut tools = serde_json::Map::new();
                 for tool in HOOK_TOOLS {
                     let (file, format) = config_file(tool)?;
-                    let status = match hooks::read(&file) {
-                        Ok(text) => hooks::status(format, text.as_deref(), &exe),
-                        Err(_) => hooks::Status { state: "unreadable", permission: false, other_permission: false },
+                    let (status, incomplete) = match hooks::read(&file) {
+                        // Incomplet : installé avant une nouveauté (la liste de tâches en 1.2.5) : réinstaller suffit.
+                        Ok(text) => (hooks::status(format, text.as_deref(), &exe), our_hooks(tool, &exe, false).is_ok_and(|o| hooks::incomplete(format, text.as_deref(), &o))),
+                        Err(_) => (hooks::Status { state: "unreadable", permission: false, other_permission: false }, false),
                     };
                     tools.insert(
                         tool.into(),
-                        json!({ "file": file.display().to_string(), "state": status.state, "permission": status.permission, "otherPermission": status.other_permission }),
+                        json!({ "file": file.display().to_string(), "state": status.state, "permission": status.permission, "otherPermission": status.other_permission, "incomplete": incomplete }),
                     );
                 }
                 Ok(json!({ "exe": exe, "tools": tools }))
@@ -988,6 +1008,9 @@ fn route(app: &AppHandle, state: &Shared, bytes: &[u8], reply: std::fs::File) {
     } else if msg["live"].is_object() {
         drop(reply);
         live_note(app, state, &msg);
+    } else if msg["todos"].is_object() {
+        drop(reply);
+        todos_note(app, state, &msg);
     } else {
         drop(reply); // un hook n'attend pas de réponse
         receive(app, state, bytes);
@@ -1018,6 +1041,35 @@ fn live_note(app: &AppHandle, state: &Shared, msg: &Value) {
         st.live.note(&session, &source, path, &msg["live"], now_ms())
     };
     super::with_context(app, ID, |ctx| ctx.emit("agents.live", json!({ "id": id, "session": session })));
+}
+
+/// La liste de tâches d'un agent, mise à jour (« ondine.exe notify » sur
+/// TodoWrite, TaskCreate, update_plan… : agents_todos.rs) : gardée en mémoire
+/// si le réglage `taskProgress` est actif, puis « agents.todos » pour la carte
+/// de la session et le liseré de l'île. Rien n'est écrit ni journalisé.
+fn todos_note(app: &AppHandle, state: &Shared, msg: &Value) {
+    if !super::is_active(app, ID) {
+        return;
+    }
+    let on = super::with_context(app, ID, |ctx| ctx.settings().get("taskProgress").and_then(Value::as_bool) != Some(false)).unwrap_or(false);
+    if !on {
+        return;
+    }
+    let (_, session) = source_session(msg);
+    let summary = {
+        let mut st = state.locked();
+        if !st.todos.allow() || !st.todos.apply(&session, &msg["todos"]) {
+            return;
+        }
+        st.todos.summary(&session)
+    };
+    let mut payload = json!({ "session": session });
+    if let Some(t) = summary {
+        payload["done"] = json!(t.done);
+        payload["total"] = json!(t.total);
+        payload["current"] = json!(t.current);
+    }
+    super::with_context(app, ID, |ctx| ctx.emit("agents.todos", payload));
 }
 
 // ── Les outils MCP (« ondine.exe mcp ») ──────────────────────────────────────
@@ -1592,6 +1644,10 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
         if matches!(event.kind, "working" | "ended") {
             st.live.forget(&event.session);
         }
+        // La fin de la session : sa liste de tâches est oubliée.
+        if event.kind == "ended" {
+            st.todos.forget(&event.session);
+        }
         history_note(&mut st, &event, previous);
         if event.kind == "ended" {
             st.sessions.remove(&event.session);
@@ -1649,6 +1705,19 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
     super::with_context(app, ID, |ctx| {
         let settings = ctx.settings();
         let on = |key: &str| settings.get(key).and_then(Value::as_bool).unwrap_or(true);
+        let wanted = match event.kind {
+            "waiting" => on("notifyWaiting") && !already_shown,
+            "done" => on("notifyDone"),
+            "info" => true,
+            _ => false,
+        };
+        // Vous regardez déjà la fenêtre de cette session : ni son, ni
+        // notification, ni halo, ni fête (agents_discreet.rs). Le tableau
+        // est quand même mis à jour (« agents.changed » plus bas).
+        let discreet = discreet::stay_discreet(on("quietWhenWatching"), event.kind, || watching_session(state, &event.session));
+        if discreet {
+            log::debug("agents : discrète (fenêtre de la session au premier plan)");
+        }
         if on("mascot") {
             if started {
                 ctx.emit("claude.thinking", Value::Null);
@@ -1656,17 +1725,11 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
             if finished {
                 ctx.emit("claude.done", Value::Null);
             }
-            // (pas de fête pendant la concentration)
-            if event.kind == "done" && !state.locked().quiet() {
+            // (pas de fête pendant la concentration, ni sous vos yeux)
+            if event.kind == "done" && !discreet && !state.locked().quiet() {
                 ctx.emit("task.finished", json!({ "label": event.title }));
             }
         }
-        let wanted = match event.kind {
-            "waiting" => on("notifyWaiting") && !already_shown,
-            "done" => on("notifyDone"),
-            "info" => true,
-            _ => false,
-        };
         // A fini : la dernière phrase de l'agent, si le hook donne une
         // transcription de Claude Code vérifiée (et si le réglage le veut).
         let mut event = event;
@@ -1676,9 +1739,10 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
         // A fini, dans un dossier connu : d'abord le bilan (git, 3 s au plus,
         // dans un fil à part), puis la notification.
         let cwd = tools_more::hook_cwd(&msg["hook"]);
+        // Discrète : le bilan est quand même calculé pour l'historique, sans notification.
         if wanted && event.kind == "done" && on("showChanges") && !cwd.is_empty() {
-            report_then_show(ctx.app, state, event.clone(), cwd.to_string());
-        } else if wanted {
+            report_then_show(ctx.app, state, event.clone(), cwd.to_string(), !discreet);
+        } else if wanted && !discreet {
             show_or_hold(ctx, state, &event);
         }
         // Le tableau des sessions a peut-être changé.
@@ -1703,7 +1767,7 @@ fn done_summary(hook: &Value) -> Option<String> {
 /// Calcule le bilan dans un fil à part (git peut prendre jusqu'à 3 s), puis
 /// montre la notification « a fini », avec le bilan s'il y en a un, sinon
 /// comme avant.
-fn report_then_show(app: &AppHandle, state: &Shared, mut event: Event, cwd: String) {
+fn report_then_show(app: &AppHandle, state: &Shared, mut event: Event, cwd: String, show: bool) {
     let (app, state) = (app.clone(), state.clone());
     std::thread::spawn(move || {
         let found = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| report(&app, &cwd))).ok().flatten();
@@ -1722,10 +1786,29 @@ fn report_then_show(app: &AppHandle, state: &Shared, mut event: Event, cwd: Stri
             history_save(&state);
         }
         super::with_context(&app, ID, |ctx| {
-            show_or_hold(ctx, &state, &event);
+            if show {
+                show_or_hold(ctx, &state, &event);
+            }
             ctx.emit("agents.changed", Value::Null);
         });
     });
+}
+
+/// La fenêtre au premier plan est-elle celle de cette session (et d'aucune
+/// autre session du tableau) ? Même recherche que « Y aller ».
+fn watching_session(state: &Shared, session: &str) -> bool {
+    let foreground = platform::foreground_window();
+    if foreground == 0 {
+        return false;
+    }
+    // Cette session d'abord, puis les autres.
+    let targets: Vec<(isize, Vec<u32>, String)> = {
+        let st = state.locked();
+        let Some(me) = st.sessions.get(session) else { return false };
+        std::iter::once(me).chain(st.sessions.values().filter(|s| s.id != session)).map(|s| (s.hwnd, s.pids.clone(), s.project.clone())).collect()
+    };
+    let found = platform::agent_windows(&targets);
+    discreet::watching(foreground, found.first().copied().flatten(), found.get(1..).unwrap_or(&[]))
 }
 
 /// Le bilan du dossier `cwd` (None : dossier refusé ou absent, pas un dépôt
@@ -1891,13 +1974,19 @@ fn hook_config(tool: &str, exe: &str) -> Result<String, String> {
     }
 }
 
+/// Les outils de Claude Code suivis par PostToolUse : les écritures (fichiers
+/// en direct) et la liste de tâches.
+const CLAUDE_TOOL_MATCHER: &str = "Edit|MultiEdit|Write|TodoWrite|TaskCreate|TaskUpdate|TaskList";
+
 /// Claude Code (settings.json). Forme « programme + paramètres » (`command` +
 /// `args`) : Claude Code lance directement ondine.exe, sans Git Bash ni
 /// PowerShell, donc rien à échapper dans le chemin (même avec des espaces).
 fn claude_config(exe: &str) -> String {
     let entry = json!([{ "hooks": [{ "type": "command", "command": exe, "args": ["notify", "--source", "claude-code"] }] }]);
     // Fichiers modifiés en direct : seulement après une écriture (agents_live.rs).
-    let edits = json!([{ "matcher": "Edit|MultiEdit|Write", "hooks": [{ "type": "command", "command": exe, "args": ["notify", "--source", "claude-code"] }] }]);
+    // La liste de tâches en plus (1.2.5, agents_todos.rs) : TodoWrite, et les
+    // outils par numéro TaskCreate / TaskUpdate / TaskList.
+    let edits = json!([{ "matcher": CLAUDE_TOOL_MATCHER, "hooks": [{ "type": "command", "command": exe, "args": ["notify", "--source", "claude-code"] }] }]);
     let config = json!({
         "hooks": {
             "Notification": entry,
@@ -1924,6 +2013,10 @@ fn codex_blocks(exe: &str) -> String {
     for event in ["UserPromptSubmit", "PermissionRequest", "Stop", "SessionEnd"] {
         out.push_str(&format!("\n[[hooks.{event}]]\n[[hooks.{event}.hooks]]\ntype = \"command\"\ncommand = {toml}\n"));
     }
+    // Son plan (outil update_plan) : la barre de progression de la session
+    // (1.2.5, agents_todos.rs). La documentation des hooks de Codex range
+    // update_plan parmi les « local function tools » vus par PostToolUse.
+    out.push_str(&format!("\n[[hooks.PostToolUse]]\nmatcher = \"update_plan\"\n[[hooks.PostToolUse.hooks]]\ntype = \"command\"\ncommand = {toml}\n"));
     out
 }
 
@@ -1995,7 +2088,8 @@ fn gemini_config(exe: &str) -> String {
     let command = format!("$input | & '{}' notify --source gemini", exe.replace('\'', "''"));
     let entry = json!([{ "matcher": "*", "hooks": [{ "name": "ondine", "type": "command", "command": command, "timeout": 5000 }] }]);
     // Fichiers modifiés en direct : seulement après une écriture (agents_live.rs).
-    let edits = json!([{ "matcher": "write_file|replace", "hooks": [{ "name": "ondine", "type": "command", "command": command, "timeout": 5000 }] }]);
+    // Et sa liste de tâches (write_todos, 1.2.5, agents_todos.rs).
+    let edits = json!([{ "matcher": "write_file|replace|write_todos", "hooks": [{ "name": "ondine", "type": "command", "command": command, "timeout": 5000 }] }]);
     let config = json!({
         "hooks": {
             "BeforeAgent": entry,
@@ -2332,8 +2426,24 @@ mod tests {
         assert!(c.contains("[[hooks.PermissionRequest.hooks]]"));
         let g: Value = serde_json::from_str(&gemini_config(r"C:\Users\O'Neil\ondine.exe")).unwrap();
         assert_eq!(g["hooks"]["AfterAgent"][0]["hooks"][0]["command"], r"$input | & 'C:\Users\O''Neil\ondine.exe' notify --source gemini");
-        assert_eq!(g["hooks"]["AfterTool"][0]["matcher"], "write_file|replace");
+        assert_eq!(g["hooks"]["AfterTool"][0]["matcher"], "write_file|replace|write_todos");
         assert!(hook_config("chatgpt-web", exe).is_err());
+    }
+
+    #[test]
+    fn codex_plan_hook_installs_and_leaves_cleanly() {
+        let exe = r"C:\Program Files\Ondine\ondine.exe";
+        // Le plan de Codex (update_plan) : un PostToolUse avec son matcher.
+        assert!(codex_blocks(exe).contains("[[hooks.PostToolUse]]\nmatcher = \"update_plan\"\n[[hooks.PostToolUse.hooks]]"));
+        let mine = "model = \"gpt-5\"\n\n[[hooks.PostToolUse]]\nmatcher = \"Bash\"\n[[hooks.PostToolUse.hooks]]\ntype = \"command\"\ncommand = \"audit.exe\"\n";
+        let m = hooks::install_text(hooks::Format::Toml, Some(mine), &our_hooks("codex", exe, false).unwrap()).unwrap();
+        assert!(m.text.contains("matcher = \"update_plan\"") && m.text.contains("audit.exe"));
+        assert_eq!(hooks::status(hooks::Format::Toml, Some(&m.text), exe).state, "installed");
+        // Réinstaller : même texte ; retirer : le fichier d'avant.
+        let again = hooks::install_text(hooks::Format::Toml, Some(&m.text), &our_hooks("codex", exe, false).unwrap()).unwrap();
+        assert_eq!(again.text, m.text);
+        let back = hooks::remove_text(hooks::Format::Toml, Some(&m.text)).unwrap();
+        assert_eq!(back.text.trim_end(), mine.trim_end());
     }
 
     #[test]
@@ -2416,8 +2526,8 @@ mod tests {
         let h = &c["hooks"]["Stop"][0]["hooks"][0];
         assert_eq!(h["command"], r"C:\Program Files\Ondine\ondine.exe");
         assert_eq!(h["args"], json!(["notify", "--source", "claude-code"]));
-        // Fichiers modifiés en direct : seulement les outils qui écrivent.
-        assert_eq!(c["hooks"]["PostToolUse"][0]["matcher"], "Edit|MultiEdit|Write");
+        // Fichiers modifiés en direct (les outils qui écrivent) et liste de tâches.
+        assert_eq!(c["hooks"]["PostToolUse"][0]["matcher"], "Edit|MultiEdit|Write|TodoWrite|TaskCreate|TaskUpdate|TaskList");
         assert_eq!(c["hooks"]["PostToolUse"][0]["hooks"][0]["args"], json!(["notify", "--source", "claude-code"]));
     }
 }

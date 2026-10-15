@@ -609,7 +609,7 @@ fn send_to_my_pcs(inner: &Arc<Inner>, msg: Msg) {
 
 /// Presse-papiers partagé entre mes PC : le texte copié ici part sur mes
 /// autres PC (jamais un élément marqué sensible, comme un mot de passe copié
-/// depuis un gestionnaire de mots de passe).
+/// depuis un gestionnaire de mots de passe, ni une clé ou un jeton reconnu).
 fn sync_clipboard(app: &AppHandle, inner: &Arc<Inner>) {
     if !team::settings(app).get("clipboardSync").and_then(Value::as_bool).unwrap_or(false) {
         return;
@@ -633,6 +633,11 @@ fn sync_clipboard(app: &AppHandle, inner: &Arc<Inner>) {
     }
     let Ok(text) = arboard::Clipboard::new().and_then(|mut c| c.get_text()) else { return };
     if text.trim().is_empty() || text.chars().count() > proto::MAX_TEXT || text == inner.state.locked().clip_from_peer {
+        return;
+    }
+    // Une clé ou un jeton copié ne part pas non plus (réglage « Ignorer les clés
+    // et jetons » du Presse-papiers, activé par défaut : clipboard_secrets.rs).
+    if super::clipboard::secret_to_skip(app, &text).is_some() {
         return;
     }
     let msg = Msg::Clipboard { text };
