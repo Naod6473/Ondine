@@ -128,7 +128,7 @@ pub fn read_wav(path: &Path) -> Result<Vec<f32>, String> {
     if bytes.len() < 44 || &bytes[0..4] != b"RIFF" || &bytes[36..40] != b"data" {
         return Err("enregistrement illisible".into());
     }
-    Ok(bytes[44..].chunks_exact(2).map(|b| f32::from(i16::from_le_bytes([b[0], b[1]])) / 32768.0).collect())
+    Ok(bytes[44..].as_chunks::<2>().0.iter().map(|&b| f32::from(i16::from_le_bytes(b)) / 32768.0).collect())
 }
 
 // ── Les mots en direct ───────────────────────────────────────────────────────
