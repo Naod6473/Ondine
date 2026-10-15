@@ -49,6 +49,11 @@ import { applyMode, hiddenByMode, modeSwitch } from "./mode";
 import { isHidden, modeOf, moduleEssentialKeys, pageEssentials, WHOLE_PAGE, type SettingsMode } from "./visibility";
 import { SCENE_IDS, SCENES } from "../island/scenes/scene-rules";
 import { allKey, ANIMATION_SUBS, FORMER_NAMES, MODULE_CATEGORIES, MODULES_ELSEWHERE, MOVED_FIELDS, resolvePlace, type NavGroup } from "./layout";
+import { hero } from "./hero";
+import { castFor, pageColor } from "./hero-theme";
+import { VOICE_ICONS, VOICE_PAGES, type VoicePage } from "./voice/pages";
+import { applyBackdrop, backdropChoice, navStatus } from "./frame";
+import { statusLine } from "./frame-logic";
 
 const PERMISSION_LABELS: Record<string, string> = {
   files: "Fichiers",
@@ -96,6 +101,14 @@ interface Page {
   category?: string;
   /** Le module dont la page suit l'interrupteur (point « désactivé » dans la barre). */
   module?: string;
+  /** La couleur de sa bande (sinon : hero-theme.ts, d'après le groupe ou la catégorie). */
+  color?: string;
+  /** Les boutons principaux, dans la bande du haut. */
+  actions?: () => HTMLElement[];
+  /** Les mascottes de sa bande (sinon : castFor, hero-theme.ts). */
+  cast?: string[];
+  /** Une page du groupe Voix (VOICE_PAGES) : elle dessine elle-même sa bande. */
+  voice?: VoicePage;
 }
 
 function categoryOf(moduleId: string): string {
@@ -200,6 +213,7 @@ const ONDINE_PAGES: Page[] = [
     sub: "Qui vit dans l'île, et quand elle s'ennuie ou s'endort.",
     keywords: ["Afficher la mascotte", "Mascotte", "Taille", "Couleur", "Roue de couleur", "Couleur personnalisée de la mascotte", "Mains", "Sur la tête", "Lunettes", "Au cou", "S'ennuie après", "S'endort après", "Calme : moins de gestes spontanés", "Ondine vient pendre au bord", "Au plus une visite toutes les", "Faire venir Ondine", "Surprises cachées", "Le goûter d'Ondine", "Carnet des trésors", "Tester les animations", "Ondine vit sur le bureau", "Au-dessus des fenêtres", "Raccourci pour ouvrir sa bulle", "Elle se promène quand vous ne touchez plus au PC", "Double-clic sur Ondine"],
     render: mascot,
+    actions: () => [el("button", { class: "btn primary", onclick: () => bus.emit("mascot.peek-now", null, "settings") }, "Faire venir Ondine")],
     subs: () => [
       { id: "look", label: "Apparence" },
       { id: "mood", label: "Humeur" },
@@ -220,7 +234,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "🎨",
     label: "Apparence",
     sub: "La couleur de l'île, ses icônes, son élasticité et ses petits sons.",
-    keywords: ["Thème", "Givre", "Verre clair", "Icônes", "Style des icônes", "Animations", "Style des animations", "Studio", "Élasticité de l'île", "Halo autour de l'île", "Couleur de l'île", "Taille de la mini-île", "Nano", "Style de l'île", "Bouche d'Ondine", "Couleur personnalisée", "Sons de clic", "Volume des sons"],
+    keywords: ["Thème", "Givre", "Verre clair", "Icônes", "Style des icônes", "Animations", "Style des animations", "Studio", "Élasticité de l'île", "Halo autour de l'île", "Couleur de l'île", "Taille de la mini-île", "Nano", "Style de l'île", "Bouche d'Ondine", "Couleur personnalisée", "Sons de clic", "Volume des sons", "Fond des Réglages", "Noir profond", "Dégradés"],
     render: look,
   },
   {
@@ -299,7 +313,7 @@ const SYSTEM_PAGES: Page[] = [
     group: "Sécurité et système",
     icon: "🛡️",
     label: "Confidentialité",
-    sub: "Aucune télémétrie. Les outils de l'IA demandent votre accord.",
+    sub: "Aucune télémétrie, et les outils de l'IA demandent votre accord.",
     keywords: ["Télémétrie", "Dossiers exclus", "Exclure un dossier"],
     render: privacy,
   },
@@ -335,7 +349,7 @@ const SYSTEM_PAGES: Page[] = [
     group: "Sécurité et système",
     icon: "🔄",
     label: "Mises à jour",
-    sub: "Ondine regarde sur GitHub s'il existe une nouvelle version. Rien ne s'installe sans votre accord.",
+    sub: "Ondine vous propose les nouvelles versions, et rien ne s'installe sans votre accord.",
     keywords: ["Mises à jour automatiques", "Version installée", "Rechercher maintenant"],
     render: (main) => main.append(updatesGroup()),
   },
@@ -356,6 +370,7 @@ const SYSTEM_PAGES: Page[] = [
     sub: "La version, les nouveautés, les ressources utilisées et le mode démo.",
     keywords: ["Version", "Nouveautés", "Signaler un problème", "Ressources utilisées", "Mode démo"],
     render: (main) => main.append(aboutGroup(() => bus.emit("app.whats-new", null, "settings")), demoGroup()),
+    actions: () => [el("button", { class: "btn primary", onclick: () => bus.emit("app.whats-new", null, "settings") }, "Voir les nouveautés")],
   },
 ];
 
@@ -395,10 +410,30 @@ function firstSentence(text: string): string {
   return end > 0 ? text.slice(0, end + 1) : text;
 }
 
+/**
+ * Les pages du groupe Voix (1.2.4, src/settings/voice/pages.ts) : chacune est
+ * dessinée par son fichier, avec sa bande ; on la range seulement ici. Son
+ * `render` reçoit la page affichée (pas un brouillon : elle peut s'y dessiner
+ * plus tard), et ce qu'il renvoie est appelé en la quittant.
+ */
+const VOICE_NAV: Page[] = VOICE_PAGES.map((v) => ({
+  id: v.id,
+  group: "Voix",
+  icon: VOICE_ICONS[v.id] ?? "🎙️",
+  label: v.label,
+  sub: "",
+  keywords: [],
+  render: () => {},
+  essentials: WHOLE_PAGE,
+  module: v.module,
+  color: v.color,
+  voice: v,
+}));
+
 /** Toutes les pages, dans l'ordre de la barre (les groupes de layout.ts). */
 function allPages(): Page[] {
   const ask = manifestOf("askclaude");
-  return [...ONDINE_PAGES, ...(ask ? [modulePageEntry(ask, "Ondine")] : []), ...ISLAND_PAGES, ...AUTOMATE_PAGES, ...modulePages(), ...SYSTEM_PAGES];
+  return [...VOICE_NAV, ...ONDINE_PAGES, ...(ask ? [modulePageEntry(ask, "Ondine")] : []), ...ISLAND_PAGES, ...AUTOMATE_PAGES, ...modulePages(), ...SYSTEM_PAGES];
 }
 
 let bus: Bus;
@@ -414,8 +449,16 @@ let openCats = new Set<string>();
 let pill: NavPill | null = null;
 /** Quand on a enregistré nous-mêmes pour la dernière fois (voir `start`). */
 let lastOwnSave = 0;
-/** La version d'Ondine (« 1.0.0 »), affichée à côté de « Réglages ». */
+/** La version d'Ondine (« 1.0.0 »), dans la pastille d'état en bas de la barre. */
 let appVersion = "";
+/** Ce qu'a dit « Rechercher maintenant » (Mises à jour), repris par la pastille d'état. */
+let updateNote: { tone: "ok" | "new" | "error"; version?: string } | null = null;
+/** La bande de la page affichée : gardée quand la page se redessine (ses mascottes continuent). */
+let heroKeep: { page: string; el: HTMLElement } | null = null;
+/** La « page » des résultats de recherche, pour garder sa bande. */
+const SEARCH_PAGE = "\u0000search";
+/** De quoi arrêter la page Voix affichée (ce qu'a renvoyé son `render`). */
+let voiceStop: (() => void) | null = null;
 
 const app = document.getElementById("app")!;
 const nav = el("nav", { class: "sidebar", "aria-label": "Pages des réglages" });
@@ -430,6 +473,7 @@ async function start() {
   // Fond Mica de Windows 11 : la page devient transparente (voir settings.css).
   if (boot?.mica) document.documentElement.classList.add("mica");
   await settingsStore.connect(boot?.settings ?? null);
+  applyBackdrop();
   await startI18n();
   await startPerf();
   bus = new Bus(windowLabel("settings"));
@@ -575,6 +619,17 @@ function saveCats() {
 }
 
 /**
+ * La pastille d'état en bas de la barre : « Prête · maintenir … » quand la
+ * dictée est activée (module dictation), sinon la version et les mises à jour.
+ */
+function statusPill(): HTMLElement {
+  const s = settingsStore.current;
+  const man = manifestOf("dictation");
+  const dictation = man || s.modules.dictation ? { enabled: settingsStore.moduleEnabled("dictation"), values: man ? settingsStore.moduleValues(man) : (s.modules.dictation?.values ?? {}) } : null;
+  return navStatus(statusLine({ version: appVersion, dictation, autoUpdate: s.general.autoUpdate !== false, note: updateNote }));
+}
+
+/**
  * Ouvre une page (et peut-être un de ses sous-menus, ou la ligne `focusKey`).
  * Un ancien nom de page ou de sous-menu (avant 1.2.2) mène à sa nouvelle
  * place (resolvePlace, layout.ts) : les liens profonds restent bons.
@@ -688,15 +743,11 @@ function drawNav() {
     if (subs.length) into.append(subsFold(p, subs));
   }
   nav.replaceChildren(
-    el(
-      "div",
-      { class: "brand" },
-      el("span", { class: "brand-drop" }, iconNode("💧")),
-      el("span", {}, "Réglages", appVersion ? el("small", { class: "brand-version" }, appVersion) : null),
-    ),
+    el("div", { class: "brand" }, el("span", { class: "brand-drop" }, iconNode("💧")), el("span", {}, "Réglages")),
     search,
     modeSwitch(settingsMode(), setMode),
     list,
+    statusPill(),
   );
   // La pastille se place une fois la liste affichée (il faut ses positions).
   requestAnimationFrame(() => {
@@ -806,6 +857,7 @@ function shapeOf(): string {
 function syncNav() {
   const shape = shapeOf();
   if (shape !== navShape) return drawNav();
+  nav.querySelector(".nav-status")?.replaceWith(statusPill());
   let active: HTMLElement | null = null;
   const here = pageById(current);
   const chosen = here ? subOf(here) : null;
@@ -840,16 +892,32 @@ function syncNav() {
 
 /** Affiche la page courante (ou les résultats de recherche). `focusKey` : ouvre le sous-menu de cette ligne. */
 function showPage(animate: boolean, direction = 1, focusKey?: string) {
+  const p = query.trim() ? null : (pageById(current) ?? ONDINE_PAGES[0]);
+  // Une page Voix déjà affichée ne se redessine pas pour un réglage changé
+  // ailleurs (elle se tient à jour elle-même : un enregistrement continue).
+  if (!animate && p?.voice && content.querySelector(`.page[data-page="${p.id}"]`)) return;
+  voiceStop?.();
+  voiceStop = null;
   preview?.destroy();
   preview = null;
   podium?.destroy();
   podium = null;
-  const page = el("div", { class: "page" });
+  const page = el("div", { class: "page", "data-page": p?.id ?? "search" });
   if (!IS_TAURI) page.append(el("p", { class: "banner" }, "Aperçu dans un navigateur : rien n'est enregistré."));
-  if (query.trim()) {
+  // La bande est gardée quand la même page se redessine (sous-menu, réglage changé).
+  const kept = !!p && heroKeep?.page === p.id;
+  if (!p) {
+    app.style.setProperty("--page-color", "#9fb4d8");
     results(page, query);
+  } else if (p.voice) {
+    heroKeep = null;
+    app.style.setProperty("--page-color", p.color ?? "#5fd4e6");
+    // La page Voix dessine tout, bande comprise, directement dans la page affichée.
+    const stop = p.voice.render(page);
+    if (typeof stop === "function") voiceStop = stop;
   } else {
-    const p = pageById(current) ?? ONDINE_PAGES[0];
+    const color = pageColor(p);
+    app.style.setProperty("--page-color", color);
     // La page entière est dessinée, puis on ne garde que son sous-menu.
     const body = el("div", {});
     p.render(body);
@@ -874,8 +942,10 @@ function showPage(animate: boolean, direction = 1, focusKey?: string) {
         syncNav();
       }
     }
-    const shown = subs.find((s) => s.id === sub);
-    page.append(header(p.icon, p.label, p.sub, undefined, shown));
+    const band = kept && heroKeep ? heroKeep.el : hero({ title: p.label, subtitle: p.sub, color, mascots: p.cast ?? castFor(p.id), actions: p.actions?.() });
+    heroKeep = { page: p.id, el: band };
+    page.append(band);
+    if (subs.length) page.append(subPills(p, subs, sub, empty));
     if (sub) {
       for (const child of [...body.children] as HTMLElement[]) if (child.dataset.sub && child.dataset.sub !== sub) child.remove();
     }
@@ -893,8 +963,40 @@ function showPage(animate: boolean, direction = 1, focusKey?: string) {
   if (reducedMotion() || !old) return;
   // La nouvelle page glisse un peu dans le sens du déplacement, et ses
   // morceaux (titre, groupes) arrivent l'un après l'autre, flous puis nets.
-  page.animate([{ transform: `translateY(${direction * 10}px)` }, { transform: "none" }], { duration: 320, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" });
-  staggerIn(page, 0);
+  // Même page (un autre sous-menu) : la bande reste où elle est.
+  const moving = kept ? ([...page.children] as HTMLElement[]).filter((c) => !c.classList.contains("page-hero") && !c.classList.contains("page-subs")) : [page];
+  for (const part of moving) part.animate([{ transform: `translateY(${direction * 10}px)` }, { transform: "none" }], { duration: 320, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" });
+  if (!kept) staggerIn(page, 0);
+}
+
+/**
+ * Les sous-menus de la page en pilules sous la bande : les mêmes que dans la
+ * barre (même choix retenu, mêmes points « désactivé », mêmes sous-menus
+ * cachés en mode Simple).
+ */
+function subPills(p: Page, subs: Sub[], chosen: string | null, empty: Set<string>): HTMLElement {
+  const box = el("div", { class: "page-subs", role: "tablist", "aria-label": "Parties de la page" });
+  for (const s of subs) {
+    const on = s.id === chosen;
+    const off = !!s.module && !settingsStore.moduleEnabled(s.module);
+    const b = el(
+      "button",
+      {
+        class: `page-sub ${on ? "on" : ""} ${off ? "off" : ""} ${empty.has(s.id) ? "dim" : ""}`,
+        type: "button",
+        role: "tab",
+        "aria-selected": String(on),
+        "data-sub": s.id,
+        "data-no-i18n": s.noI18n ? "" : undefined,
+      },
+      s.label,
+    );
+    b.addEventListener("click", () => {
+      if (!on) goSub(p.id, s.id);
+    });
+    box.append(b);
+  }
+  return box;
 }
 
 /**
@@ -921,21 +1023,6 @@ function dimSubs(body: HTMLElement, p: Page, subs: Sub[]): Set<string> {
     else b.removeAttribute("title");
   }
   return empty;
-}
-
-function header(pageIcon: string, title: string, sub: string, extra?: HTMLElement, crumb?: Sub): HTMLElement {
-  return el(
-    "header",
-    { class: "page-head" },
-    el("span", { class: "page-icon" }, iconNode(pageIcon)),
-    el(
-      "div",
-      { class: "page-titles" },
-      el("h1", {}, title, crumb ? el("span", { class: "page-crumb", "data-no-i18n": crumb.noI18n ? "" : undefined }, crumb.label) : null),
-      el("p", {}, sub),
-    ),
-    extra ?? null,
-  );
 }
 
 /** La ligne (ou le bloc) de clé `key` dans `root`. */
@@ -983,7 +1070,14 @@ function results(page: HTMLElement, q: string) {
       } else hits.push({ page: p, key: SEARCH_ALIASES[k] ?? k, label: k });
     }
   }
-  page.append(header("🔎", "Recherche", hits.length ? `${hits.length} résultat${hits.length > 1 ? "s" : ""} pour « ${q.trim()} »` : `Rien trouvé pour « ${q.trim()} ».`));
+  const line = hits.length ? `${hits.length} résultat${hits.length > 1 ? "s" : ""} pour « ${q.trim()} »` : `Rien trouvé pour « ${q.trim()} ».`;
+  // La bande de la recherche reste la même d'une lettre à l'autre : seule sa phrase change.
+  let band = heroKeep?.page === SEARCH_PAGE ? heroKeep.el : null;
+  const said = band?.querySelector<HTMLElement>(".page-hero-copy p");
+  if (band && said) said.textContent = line;
+  else band = hero({ title: "Recherche", subtitle: line, color: "#9fb4d8", mascots: ["gomme-champignon", "goutte-gomme"] });
+  heroKeep = { page: SEARCH_PAGE, el: band };
+  page.append(band);
   if (!hits.length) return;
   page.append(
     group(
@@ -1176,9 +1270,12 @@ function updatesGroup(): HTMLElement {
           const info = await Bridge.updateCheck();
           status.textContent = info ? `La version ${info.version} est disponible.` : "Ondine est à jour.";
           install.hidden = !info;
+          updateNote = info ? { tone: "new", version: info.version } : { tone: "ok" };
         } catch {
           status.textContent = "Impossible de joindre GitHub. Vérifiez votre connexion à Internet.";
+          updateNote = { tone: "error" };
         }
+        nav.querySelector(".nav-status")?.replaceWith(statusPill());
         search.disabled = false;
       },
     },
@@ -1349,6 +1446,10 @@ function look(main: HTMLElement) {
         el("button", { class: "btn small", onclick: () => go("animations") }, "Régler les animations et halos"),
         "Un liseré de lumière en couleurs qui bougent : batterie, agents, sortie de veille, téléchargements… Chaque moment se coupe à part.",
       ),
+    ]),
+    // La fenêtre des Réglages elle-même (1.2.4, frame.ts) : une préférence de cette fenêtre.
+    group("Fenêtre des Réglages", [
+      row("Fond des Réglages", backdropChoice(), "Noir profond : un fond sombre et calme derrière les pages. Dégradés : les taches de couleur d'avant, derrière du verre."),
     ]),
     group("Sons", [
       row("Sons de clic", toggle(s.island.sounds, (v) => save((d) => (d.island.sounds = v)), "Sons de clic"), "De petits « plop » à l'ouverture, à la fermeture et sur les boutons. Fabriqués sur place, sans fichier."),

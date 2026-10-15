@@ -22,3 +22,16 @@ export interface VoicePage {
 }
 
 export const VOICE_PAGES: VoicePage[] = [dictationPage, callnotesPage, statsPage, dictionaryPage, stylesPage];
+
+/**
+ * L'icône de chaque page Voix dans la barre latérale et la recherche (ajout
+ * de la branche « fenêtre ») ; une page absente d'ici prend 🎙️.
+ */
+export const VOICE_ICONS: Record<string, string> = {
+  "voice:dictation": "🎙️",
+  "voice:callnotes": "🎧",
+  "voice:stats": "📈",
+  "voice:dictionary": "📖",
+  "voice:styles": "✏️",
+};
+

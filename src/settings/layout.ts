@@ -7,8 +7,11 @@
 // Une page peut afficher les champs de plusieurs modules (Animations et halos :
 // le module Animations de l'île et les halos de batterie du module Système).
 
-/** Les cinq groupes de la barre latérale, dans l'ordre. */
-export const NAV_GROUPS = ["Ondine", "L'île", "Automatiser", "Modules", "Sécurité et système"] as const;
+/**
+ * Les groupes de la barre latérale, dans l'ordre. « Voix » (1.2.4) vient en
+ * premier : les pages de VOICE_PAGES (src/settings/voice/pages.ts).
+ */
+export const NAV_GROUPS = ["Voix", "Ondine", "L'île", "Automatiser", "Modules", "Sécurité et système"] as const;
 export type NavGroup = (typeof NAV_GROUPS)[number];
 
 /**
@@ -31,9 +34,10 @@ export const MODULE_CATEGORIES: { id: string; label: string; modules: string[] }
  *   - rules : la page Règles (Automatiser) ;
  *   - askclaude : « Parler à Ondine », dans le groupe Ondine (même id de page) ;
  *   - halos : la page Animations et halos (L'île) ;
- *   - windowlife : une section de la page Comportement (L'île).
+ *   - windowlife : une section de la page Comportement (L'île) ;
+ *   - dictation, callnotes (1.2.4) : leur page est dans le groupe Voix.
  */
-export const MODULES_ELSEWHERE = ["rules", "askclaude", "halos", "windowlife"];
+export const MODULES_ELSEWHERE = ["rules", "askclaude", "halos", "windowlife", "dictation", "callnotes"];
 
 /** Une partie d'un sous-menu : un bloc de champs d'un module. */
 export interface FieldBlock {

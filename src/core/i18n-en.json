@@ -33,7 +33,6 @@
 "Ce certificat ne vaut que pour les adresses du réseau local : il ne peut servir pour aucun site d'Internet.": "This certificate only applies to local network addresses: it cannot be used for any Internet site.",
 "Refusé : utiliser vos fichiers": "Refused: use your files",
 "Refusé : agir sur le PC": "Refused: act on the PC",
-"Aucune télémétrie. Les outils de l'IA demandent votre accord.": "No telemetry. AI tools ask for your approval.",
 "Accord pour les outils": "Approval for tools",
 "Automatique : la langue choisie à l'installation, sinon celle de Windows. Le changement s'applique sans recharger les fenêtres.": "Automatic: the language chosen during installation, otherwise Windows' language. Changes apply without reloading windows.",
 "Le profil iPhone doit contenir uniquement un certificat, aucun autre réglage.": "The iPhone profile must contain only a certificate and no other settings.",
@@ -2412,7 +2411,6 @@
 "La couleur de l'île, ses icônes, son élasticité et ses petits sons.": "The island's color, its icons, its elasticity and its little sounds.",
 "Où vit l'île, quand elle se replie, et comment Ondine vit avec vos fenêtres.": "Where the island lives, when it folds away, and how Ondine lives with your windows.",
 "Le halo autour de l'île, le liquide à l'intérieur, et les moments qui les allument.": "The halo around the island, the liquid inside, and the moments that light them up.",
-"Ondine regarde sur GitHub s'il existe une nouvelle version. Rien ne s'installe sans votre accord.": "Ondine checks GitHub for a new version. Nothing installs without your consent.",
 "La réactivité d'Ondine, l'économie d'énergie et le journal.": "Ondine's responsiveness, power saving and the log.",
 "La version, les nouveautés, les ressources utilisées et le mode démo.": "The version, what's new, the resources used and demo mode.",
 "Désactivé, Ondine ne réagit plus à vos fenêtres.": "Off, Ondine no longer reacts to your windows.",
@@ -2630,7 +2628,34 @@
 "Une nouveauté vous attend.": "Something new is waiting for you.",
 "1 nouveauté": "1 new thing",
 "Éclosion au démarrage": "Hatching at startup",
-"Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine vous dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement.": "On first launch and after an update, a drop comes out of the top of the screen and becomes the island, Ondine says hello, then the island folds back. Only with the island at the top of the screen."
+"Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine vous dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement.": "On first launch and after an update, a drop comes out of the top of the screen and becomes the island, Ondine says hello, then the island folds back. Only with the island at the top of the screen.",
+"Voix": "Voice",
+"Recherche": "Search",
+"Fenêtre des Réglages": "Settings window",
+"Fond des Réglages": "Settings background",
+"Noir profond": "Deep black",
+"Dégradés": "Gradients",
+"Noir profond : un fond sombre et calme derrière les pages. Dégradés : les taches de couleur d'avant, derrière du verre.": "Deep black: a calm, dark background behind the pages. Gradients: the colour blobs from before, behind glass.",
+"Aucune télémétrie, et les outils de l'IA demandent votre accord.": "No telemetry, and the AI's tools ask for your consent.",
+"Ondine vous propose les nouvelles versions, et rien ne s'installe sans votre accord.": "Ondine offers you new versions, and nothing installs without your consent.",
+"Parties de la page": "Page sections",
+"Prête · maintenir": "Ready · hold",
+"Dictée prête": "Dictation ready",
+"à jour": "up to date",
+"mises à jour automatiques": "automatic updates",
+"mises à jour manuelles": "manual updates",
+"recherche impossible": "check failed",
+"nouvelle version disponible": "new version available",
+"Ctrl droit": "Right Ctrl",
+"Alt droit": "Right Alt",
+"Maj droite": "Right Shift",
+"Verr. Maj": "Caps Lock",
+"Dictée": "Dictation",
+"Notes d'appel": "Call notes",
+"Statistiques": "Statistics",
+"Dictionnaire": "Dictionary",
+"Styles": "Styles",
+"Bientôt.": "Coming soon."
 },
 "patterns": [
 ["^Ondine (.+) est là !$", "Ondine $1 is here!"],
@@ -4558,6 +4583,10 @@
 [
 "^speed\\.cloudflare\\.com ne répond pas(.*)$",
 "speed.cloudflare.com isn't responding$1"
+],
+[
+"^version (.+) disponible$",
+"version $1 available"
 ]
 ]
 }
