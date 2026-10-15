@@ -42,6 +42,7 @@ import { profilesPage, profileSubs } from "./profiles-page";
 import { mascotPodium, type Podium } from "./podium";
 import { aboutGroup } from "./about";
 import { askclaudeGroups } from "./askclaude-page";
+import { customSoundRows } from "./sounds-page";
 import { perfGroup } from "./perf-group";
 import { phonesPage } from "./phone-certificate";
 import { startPerf } from "../core/perf";
@@ -1351,7 +1352,7 @@ function look(main: HTMLElement) {
       ),
     ]),
     group("Sons", [
-      row("Sons de clic", toggle(s.island.sounds, (v) => save((d) => (d.island.sounds = v)), "Sons de clic"), "De petits « plop » à l'ouverture, à la fermeture et sur les boutons. Fabriqués sur place, sans fichier."),
+      row("Sons de clic", toggle(s.island.sounds, (v) => save((d) => (d.island.sounds = v)), "Sons de clic"), "De petits « plop » à l'ouverture, à la fermeture et sur les boutons. Fabriqués sur place, ou vos propres fichiers (ci-dessous)."),
       row(
         "Volume des sons",
         stepper(Math.round(s.island.soundVolume * 100), 5, 100, (v) => save((d) => (d.island.soundVolume = v / 100)), 5, "%"),
@@ -1375,6 +1376,8 @@ function look(main: HTMLElement) {
           "▶ Essayer",
         ),
       ),
+      // Vos propres sons (sounds-page.ts, 1.2.4).
+      ...customSoundRows(() => bus.emit("sounds.reload", null, "settings")),
     ]),
   );
 }

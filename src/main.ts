@@ -19,6 +19,7 @@ import { startScrollbars } from "./island/scrollbars";
 import { startSetup } from "./core/setup";
 import { startHatch } from "./core/hatch-start";
 import { startSuggestions } from "./core/suggestions";
+import { startCustomSounds } from "./island/custom-sounds";
 import { ALL_MODULES } from "./modules";
 
 const log = logger("app");
@@ -79,6 +80,8 @@ async function start() {
   startSetup(bus, notifications, firstRun);
   // Les propositions d'onglets (bon moment, onglet oublié) : core/suggestions.ts.
   startSuggestions(bus, notifications, registry);
+  // Vos propres sons (%APPDATA%\Ondine\sounds), à la place des sons fabriqués.
+  startCustomSounds(bus);
   log.info(`île prête (${boot?.version ?? "navigateur"})`);
 }
 

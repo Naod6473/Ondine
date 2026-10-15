@@ -47,6 +47,8 @@ const COMMANDS: &[&str] = &[
     "bug_report_open",
     "self_usage",
     "perf_state",
+    "sounds_custom",
+    "sounds_open_folder",
 ];
 fn main() {
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(tauri_build::AppManifest::new().commands(COMMANDS))).expect("construction Tauri");

@@ -195,7 +195,20 @@ export const Bridge = {
   selfUsage: () => call<SelfUsage | null>("self_usage"),
   /** Le mode de performance qui s'applique (choix + batterie). null hors de l'appli. */
   perfState: () => call<PerfState>("perf_state"),
+  // Vos propres sons (src-tauri/src/services/custom_sounds.rs, 1.2.4).
+  /** Les sons remplacés par vos fichiers (base64), le dossier et les noms possibles. null hors de l'appli. */
+  soundsCustom: () => call<CustomSounds>("sounds_custom"),
+  /** Crée (si besoin) et ouvre %APPDATA%\Ondine\sounds dans l'Explorateur. */
+  soundsOpenFolder: () => callOrThrow<void>("sounds_open_folder"),
 };
+
+/** Vos propres sons, lus par le Rust (custom_sounds.rs). */
+export interface CustomSounds {
+  folder: string;
+  names: string[];
+  extensions: string[];
+  sounds: { name: string; file: string; mime: string; data: string }[];
+}
 
 /** Le mode de performance vu par le Rust (src-tauri/src/services/perf.rs). */
 export interface PerfState {

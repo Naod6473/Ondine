@@ -16,9 +16,11 @@
 // - apps        : les logiciels connus installés (assistant de premier lancement), sans rien envoyer
 // - hints       : les bons moments pour proposer un onglet (première clé USB, première visio)
 // - speech      : la reconnaissance vocale sur le PC (Parakeet, 1.2.4)
+// - custom_sounds : vos propres sons (%APPDATA%\Ondine\sounds, 1.2.4)
 
 pub mod bus;
 pub mod credentials;
+pub mod custom_sounds;
 pub mod files;
 pub mod ics;
 pub mod ics_calendars;

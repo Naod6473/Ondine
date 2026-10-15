@@ -319,7 +319,9 @@
 "Claude Code donne ses limites à sa ligne d'état. Ondine peut s'y brancher : votre ligne d'état actuelle continuera de s'afficher.": "Claude Code donne ses limites à sa ligne d'état. Ondine peut s'y brancher : ta ligne d'état actuelle continuera de s'afficher.",
 "Pendant qu'un agent écrit, chaque fichier modifié apparaît sous sa session avec +N −M ; un clic montre le changement en lecture seule. Le calcul se fait sur votre PC, rien n'est écrit sur le disque ni envoyé. Dossiers exclus respectés. Il faut (ré)installer les hooks de Claude Code ou de Gemini CLI.": "Pendant qu'un agent écrit, chaque fichier modifié apparaît sous sa session avec +N −M ; un clic montre le changement en lecture seule. Le calcul se fait sur ton PC, rien n'est écrit sur le disque ni envoyé. Dossiers exclus respectés. Il faut (ré)installer les hooks de Claude Code ou de Gemini CLI.",
 "Seulement si votre serveur compatible OpenAI en demande une (Ollama et LM Studio : non). Facultative.": "Seulement si ton serveur compatible OpenAI en demande une (Ollama et LM Studio : non). Facultative.",
-"🧩 Choisissez le modèle du serveur local.": "🧩 Choisis le modèle du serveur local."
+"🧩 Choisissez le modèle du serveur local.": "🧩 Choisis le modèle du serveur local.",
+"De petits « plop » à l'ouverture, à la fermeture et sur les boutons. Fabriqués sur place, ou vos propres fichiers (ci-dessous).": "De petits « plop » à l'ouverture, à la fermeture et sur les boutons. Fabriqués sur place, ou tes propres fichiers (ci-dessous).",
+"Vos propres sons": "Tes propres sons"
 },
 "patterns": [
 ["^(\\d+) nouveautés vous attendent\\.$", "$1 nouveautés t'attendent."],

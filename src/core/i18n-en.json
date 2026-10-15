@@ -538,7 +538,7 @@
 "Débogage": "Debugging",
 "Le journal reste sur votre PC (%LOCALAPPDATA%\\Ondine\\logs). Il ne contient jamais de clé ni de contenu de fichier.": "The log stays on your PC (%LOCALAPPDATA%\\Ondine\\logs). It never contains a key or file contents.",
 "Choisissez n'importe quelle couleur : si elle est trop claire, l'île l'assombrit juste assez pour que le texte reste lisible.": "Pick any color: if it's too light, the island darkens it just enough to keep the text readable.",
-"De petits « plop » à l'ouverture, à la fermeture et sur les boutons. Fabriqués sur place, sans fichier.": "Little “plop” sounds on open, close and on buttons. Made on the spot, no files.",
+"De petits « plop » à l'ouverture, à la fermeture et sur les boutons. Fabriqués sur place, ou vos propres fichiers (ci-dessous).": "Little “plop” sounds on open, close and on buttons. Made on the spot, or your own files (below).",
 "Écouter": "Listen",
 "▶ Essayer": "▶ Try it",
 "Glisser pour déplacer": "Drag to move",
@@ -2687,7 +2687,13 @@
 "Aucun modèle sur ce serveur.": "No model on this server.",
 "Choisir ce modèle": "Choose this model",
 "Ce modèle ne gère pas les outils : conversation simple": "This model does not handle tools: plain conversation",
-"🧩 Choisissez le modèle du serveur local.": "🧩 Choose the local server's model."
+"🧩 Choisissez le modèle du serveur local.": "🧩 Choose the local server's model.",
+"Vos propres sons": "Your own sounds",
+"Ouvrir le dossier des sons": "Open the sounds folder",
+"Recharger les sons": "Reload sounds",
+"Un fichier .wav, .mp3, .ogg ou .m4a de 2 Mo au plus, nommé comme un son ci-dessous (par exemple tap.wav), remplace ce son. Un fichier invalide est ignoré : le son d'origine reste. Rien ne quitte le PC.": "A .wav, .mp3, .ogg or .m4a file of 2 MB at most, named like a sound below (for example tap.wav), replaces that sound. An invalid file is ignored: the original sound stays. Nothing leaves the PC.",
+"Noms possibles": "Possible names",
+"Aucun son remplacé pour l'instant.": "No sound replaced yet."
 },
 "patterns": [
 ["^Ondine (.+) est là !$", "Ondine $1 is here!"],
@@ -4630,6 +4636,7 @@
 ["^\\+ (\\d+) autres?$", "+ $1 more"],
 ["^Vos messages restent sur votre PC : à chaque message partent vers le serveur local (.+) la personnalité d'Ondine, les (\\d+) derniers messages au plus \\(avec leurs fichiers joints\\) et votre nouveau message\\. Rien n'est gardé sur le disque\\.$", "Your messages stay on your PC: with each message, Ondine's personality, the last $2 messages at most (with their attached files) and your new message go to the local server $1. Nothing is kept on disk."],
 ["^Demande la liste à (.+), sur votre clic \\(rien d'autre ne part\\)\\.$", "Asks $1 for the list when you click (nothing else is sent)."],
-["^(\\d+) autres : filtrez pour les voir\\.$", "$1 more: filter to see them."]
+["^(\\d+) autres : filtrez pour les voir\\.$", "$1 more: filter to see them."],
+["^(\\d+) sons? remplacés? : (.+)$", "$1 sound(s) replaced: $2"]
 ]
 }

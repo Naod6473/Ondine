@@ -726,6 +726,8 @@ pub fn run() {
             diagnostics::bug_report_open,
             diagnostics::self_usage,
             services::perf::perf_state,
+            services::custom_sounds::sounds_custom,
+            services::custom_sounds::sounds_open_folder,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

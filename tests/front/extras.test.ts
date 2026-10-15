@@ -6,6 +6,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { ageText, effectivePct, highestPct, planLevel, resetText } from "../../src/modules/agents/plan";
+import { CUSTOM_NAMES, sounds } from "../../src/island/sounds";
 import { filterModels, localSentText, modelKey } from "../../src/settings/askclaude-models";
 import { filesOf, lineClass, lineSymbol, liveCounts, type LiveFile } from "../../src/modules/agents/live-logic";
 
@@ -123,5 +124,20 @@ describe("modèles locaux et OpenRouter", () => {
     const t = localSentText("localhost:11434", 20);
     assert.match(t, /restent sur votre PC/);
     assert.match(t, /localhost:11434/);
+  });
+});
+
+describe("vos propres sons", () => {
+  test("les mêmes noms côté Rust et côté île", () => {
+    const rust = readFileSync("src-tauri/src/services/custom_sounds.rs", "utf8");
+    const list = /pub const NAMES: \[&str; \d+\] = \[([^\]]+)\]/.exec(rust)?.[1] ?? "";
+    assert.deepEqual([...list.matchAll(/"([^"]+)"/g)].map((m) => m[1]), [...CUSTOM_NAMES]);
+  });
+
+  test("chaque nom correspond à un son de l'île", () => {
+    for (const name of CUSTOM_NAMES) {
+      const key = name.replace(/-(\w)/g, (_, c: string) => c.toUpperCase());
+      assert.equal(typeof (sounds as Record<string, unknown>)[key], "function", name);
+    }
   });
 });
