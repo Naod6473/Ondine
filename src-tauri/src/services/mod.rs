@@ -15,7 +15,8 @@
 // - lan         : le réseau local (cartes IPv4, adresses de diffusion, adresse privée du PC)
 // - apps        : les logiciels connus installés (assistant de premier lancement), sans rien envoyer
 // - hints       : les bons moments pour proposer un onglet (première clé USB, première visio)
-// - speech      : la reconnaissance vocale sur le PC (Parakeet, 1.2.4)
+// - speech      : la reconnaissance vocale sur le PC (Parakeet, 1.2.4) ;
+//                 speech_models (téléchargement vérifié), speech_audio (calculs)
 
 pub mod bus;
 pub mod credentials;
@@ -36,3 +37,5 @@ pub mod lan;
 pub mod apps;
 pub mod hints;
 pub mod speech;
+pub mod speech_audio;
+pub mod speech_models;

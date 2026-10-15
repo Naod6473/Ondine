@@ -2340,7 +2340,9 @@ function followGoto() {
   } catch {
     // Stockage indisponible : on reste sur la page actuelle.
   }
-  if (target && allPages().some((p) => p.id === target)) go(target);
+  // « page#sous-menu » (1.2.4) : un sous-menu précis de la page.
+  const [page, sub] = (target ?? "").split("#");
+  if (page && allPages().some((p) => p.id === page)) go(page, undefined, sub || undefined);
 }
 window.addEventListener("storage", (e) => {
   if (e.key === "settings.goto" && e.newValue) followGoto();

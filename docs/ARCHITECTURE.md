@@ -844,6 +844,9 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
   la route par défaut si elle est privée et pas virtuelle, sinon une vraie carte
   avant une carte de VPN / machine virtuelle, 192.168 > 172.16 > 10). Utilisé
   par le Wake-on-LAN et « Vers le téléphone ».
+- **Reconnaissance vocale sur le PC** (`speech.rs`, `speech_models.rs`,
+  `speech_audio.rs`, 1.2.4) : Parakeet par sherpa-onnx, modèles téléchargés au
+  clic. Voir « 1.2.4 : reconnaissance vocale sur le PC (Parakeet) ».
 
 ## La mascotte
 
@@ -3494,3 +3497,84 @@ Cinq ajouts indépendants, chacun éteint par défaut ou lancé d'un clic.
   `speedBeatMs` 1,6 s → `MIN_PERIOD_MS`). Immobile avec « Réduire les
   animations » ou le réglage Calme.
 
+## 1.2.4 : reconnaissance vocale sur le PC (Parakeet)
+
+`src-tauri/src/services/speech.rs` (contrat et moteur), `speech_models.rs`
+(téléchargement), `speech_audio.rs` (calculs), `src/settings/voice/parakeet-block.ts`
+(+ `parakeet-logic.ts`, `parakeet-link.ts`). Technique reprise de Coucou (MIT).
+
+- **Le moteur** : [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) 1.13.8
+  (Apache-2.0), crate `sherpa-onnx`, fonction `static` : la bibliothèque C++
+  précompilée (onnxruntime compris) est liée dans `ondine.exe`, rien à
+  installer à côté. Son script de construction (`sherpa-onnx-sys/build.rs`)
+  télécharge `sherpa-onnx-v1.13.8-win-x64-static-MT-Release-lib.tar.bz2` sur
+  les « releases » GitHub de k2-fsa au premier `cargo build` (rangé dans
+  `target/sherpa-onnx-prebuilt/`) : pas de cmake ni de compilation C++. La
+  version « MT » (runtime C statique) va avec notre `+crt-static`
+  (`src-tauri/.cargo/config.toml`). Variables utiles : `SHERPA_ONNX_LIB_DIR`
+  (un dossier de bibliothèques déjà là, rien n'est téléchargé) et
+  `SHERPA_ONNX_ARCHIVE_DIR` (l'archive déjà téléchargée, pour un PC derrière
+  un proxy d'entreprise : le script vérifie les certificats avec sa propre
+  liste, pas celle de Windows).
+- **Windows seulement** : la dépendance est dans
+  `[target.'cfg(windows)'.dependencies]`. Sous Linux (tests, CI d'audit),
+  rien n'est compilé ni téléchargé ; `speech::SUPPORTED` est faux, `ready()`
+  aussi, `transcribe` répond « n'existe que dans Ondine pour Windows ».
+  Pour vérifier le code Windows depuis Linux :
+  `SHERPA_ONNX_LIB_DIR=<dossier vide> cargo clippy --target x86_64-pc-windows-msvc`
+  (clippy n'édite pas les liens : un dossier vide suffit).
+- **Les modèles** (`speech_models.rs`) : Parakeet TDT 0.6B v3 int8 (NVIDIA,
+  CC-BY-4.0 : 4 fichiers, 670 Mo) et la séparation des voix (segmentation
+  pyannote 3.0, MIT, 1,5 Mo ; empreinte de voix 3D-Speaker CAM++,
+  Apache-2.0, 28 Mo). Adresses Hugging Face à un commit fixe (`/resolve/<sha1>/`),
+  taille et SHA-256 de chaque fichier écrits dans le code. Rangés dans
+  `%LOCALAPPDATA%\Ondine\Models\<jeu>\`.
+- **Téléchargement** : seulement par la commande `speech_download` (bouton
+  « Télécharger »). Un fil à part, `ureq` (TLS de Windows), 256 Ko à la fois
+  dans `<fichier>.part`, empreinte calculée en route ; à la fin, taille ET
+  SHA-256 comparées, puis renommage. Un fichier qui ne correspond pas est
+  jeté. Un réseau coupé : le « .part » reste, le clic suivant reprend
+  (`Range: bytes=N-`, empreinte recalculée sur ce qui est déjà là ; un
+  serveur qui renvoie tout repart de zéro). « Annuler » (`speech_cancel`)
+  arrête et jette les « .part ». « Supprimer » (`speech_remove`) libère le
+  modèle et efface les dossiers (refusé pendant un téléchargement). Progrès :
+  événement Tauri `speech-models` (4 fois par seconde au plus) avec
+  `{state, done, total, error, supported, loaded}`.
+- **Chargement** : au premier usage (`OfflineRecognizer`, `nemo_transducer`,
+  2 à 4 fils de calcul), gardé dans un `Arc`, une transcription à la fois
+  (verrou `DECODE`). Un fil le libère après 5 minutes sans servir (jamais
+  pendant une transcription), puis s'arrête ; le suivant se charge à nouveau.
+- **Contrat** (appelé par la dictée et les notes d'appel) :
+  `SAMPLE_RATE` (16 kHz), `ready()`, `transcribe(samples, lang)` (le texte),
+  `transcribe_speakers(samples, lang)` (`Vec<Turn>` : voix 0, 1, 2… dans
+  l'ordre où elles parlent, début, fin, texte), `to_16k_mono(son, voies, Hz)`.
+  `lang` n'est pas utilisé : Parakeet v3 reconnaît seul la langue parmi ses
+  25. Sans le modèle : `Err(speech::MISSING)` (phrase claire, traduite).
+- **Calculs** (`speech_audio.rs`, testés sous Linux) : rééchantillonnage
+  « sinc » fenêtré (Blackman, 32 coefficients, coupure à 92 % de la moitié de
+  la plus basse fréquence), moyenne des voies ; découpage en morceaux de 28 s
+  au plus, coupés dans la fenêtre de 0,1 s la plus calme des 8 dernières
+  secondes ; morceaux de mots de Parakeet (« ▁dem », « ande ») recollés avec
+  leur moment ; tours de parole : chaque mot va à la voix qui parle en son
+  milieu (sinon la plus proche à moins de 2 s, sinon celle du mot d'avant),
+  une pause de 1,4 s ou 40 s de parole commencent un nouveau tour. Séparation
+  des voix : `OfflineSpeakerDiarization`, nombre de voix libre, seuil 0,7 ;
+  sans ses modèles ou en cas d'échec, tout est la voix 0.
+- **Parler à Ondine** : `voiceEngine = "parakeet"` (« Parakeet sur le PC »).
+  `askclaude_voice.rs` capte le micro comme pour l'API (WASAPI, `SilenceGate`,
+  point rouge), puis `to_16k_mono` et `speech::transcribe` : rien ne part. Le
+  modèle manque : l'erreur porte `models: true` et l'onglet propose
+  « ⬇️ Télécharger le modèle Parakeet », qui ouvre les Réglages sur
+  `module:askclaude#voice` (`followGoto` de `settings/main.ts` comprend
+  maintenant « page#sous-menu »). La dictée de Windows échoue et le modèle
+  est là : `parakeet: true`, bouton « 🔒 Passer à Parakeet sur le PC ».
+- **Réglages** : `parakeetBlock()` (un `group` à poser où l'on veut ; un seul
+  écouteur de `speech-models` pour toutes ses copies) : état (pas encore
+  téléchargé / téléchargement x % / prêt / échec), barre de progrès,
+  Télécharger, Annuler, Supprimer (2e clic de confirmation), et la phrase
+  « Tout se fait sur le PC : rien de ce que vous dites n'est envoyé », avec le
+  crédit CC-BY de NVIDIA. Posé dans Parler à Ondine → Voix et sons ; les pages
+  Dictée et Notes d'appel l'appellent aussi.
+- **Taille** : `ondine.exe` grossit d'environ 20 Mo (la bibliothèque et
+  onnxruntime), l'installateur d'environ 6 Mo (compressé). Les modèles ne sont
+  jamais dans l'installateur.

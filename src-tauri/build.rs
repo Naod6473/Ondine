@@ -47,6 +47,11 @@ const COMMANDS: &[&str] = &[
     "bug_report_open",
     "self_usage",
     "perf_state",
+    // Reconnaissance sur le PC (1.2.4, services/speech.rs).
+    "speech_status",
+    "speech_download",
+    "speech_cancel",
+    "speech_remove",
 ];
 fn main() {
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(tauri_build::AppManifest::new().commands(COMMANDS))).expect("construction Tauri");
