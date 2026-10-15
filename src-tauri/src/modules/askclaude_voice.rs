@@ -17,6 +17,11 @@
 //     quitte le PC. Il faut la reconnaissance vocale de la langue installée
 //     dans Windows ; sinon l'erreur le dit, avec la page des Paramètres. En
 //     hors ligne, on ne propose jamais de passer à l'API ;
+//   - « parakeet » (1.2.4) : le micro est capté en mémoire (WASAPI), puis
+//     Parakeet l'écrit sur le PC (services/speech.rs, sherpa-onnx). Rien ne
+//     quitte le PC. Sans le modèle (~700 Mo, téléchargé au clic dans les
+//     Réglages), l'erreur le dit et porte `models: true` (bouton vers le
+//     téléchargement) ;
 //   - « api » : le micro est capté en mémoire (WASAPI), puis l'audio part
 //     vers OpenAI (audio/transcriptions) ou Gemini (audio en entrée), avec la
 //     clé déjà rangée. Claude n'écoute pas l'audio : avec Claude, on prend la
@@ -41,7 +46,10 @@
 //     `apiTo`, la destination de la transcription par l'API, proposée en un
 //     clic quand la dictée de Windows échoue et qu'une clé OpenAI ou Gemini
 //     est rangée ; `offline` (vrai), le moteur hors ligne est installé : le
-//     bouton « Passer à la dictée hors ligne » est proposé à la place.
+//     bouton « Passer à la dictée hors ligne » est proposé à la place ;
+//     `parakeet` (vrai), le modèle Parakeet est téléchargé : « Passer à
+//     Parakeet sur le PC » ; `models` (vrai), Parakeet est choisi mais son
+//     modèle manque : « Télécharger le modèle » ouvre les Réglages.
 
 use crate::sync::LockExt;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
@@ -56,6 +64,7 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use super::askclaude_providers::{self as providers, Provider};
 use crate::platform::{self, voice};
 use crate::services::log;
+use crate::services::speech as stt;
 
 const ID: &str = "askclaude";
 /// Les raccourcis proposés (les autres valeurs sont refusées).
@@ -314,7 +323,11 @@ pub fn listen(app: &AppHandle, opts: Options) -> Result<(), String> {
                 let api_to = if windows_failed { api_offer(&app2) } else { None };
                 // Le moteur hors ligne est là : le proposer aussi (rien ne part).
                 let offline = windows_failed && voice::offline_engine(dictation_tag(&app2)).is_some();
-                voice_event(&app2, "error", json!({ "message": f.message, "fix": f.fix.map(voice::Fix::id), "apiTo": api_to, "offline": offline, "id": id }));
+                // Parakeet sur le PC : proposé s'il est prêt ; s'il est choisi
+                // sans son modèle, le bouton mène au téléchargement.
+                let parakeet = windows_failed && stt::ready();
+                let models = engine == VoiceEngine::Parakeet && !stt::ready();
+                voice_event(&app2, "error", json!({ "message": f.message, "fix": f.fix.map(voice::Fix::id), "apiTo": api_to, "offline": offline, "parakeet": parakeet, "models": models, "id": id }));
             }
             Err(_) => voice_event(&app2, "error", json!({ "message": "erreur inattendue pendant l'écoute", "id": id })),
         }
@@ -345,6 +358,8 @@ pub enum VoiceEngine {
     Offline,
     /// L'audio part vers OpenAI ou Gemini.
     Api,
+    /// Parakeet, sur le PC (1.2.4) : rien ne le quitte.
+    Parakeet,
 }
 
 impl VoiceEngine {
@@ -352,6 +367,7 @@ impl VoiceEngine {
         match settings.get("voiceEngine").and_then(Value::as_str) {
             Some("api") => VoiceEngine::Api,
             Some("offline") => VoiceEngine::Offline,
+            Some("parakeet") => VoiceEngine::Parakeet,
             _ => VoiceEngine::Windows,
         }
     }
@@ -361,6 +377,7 @@ impl VoiceEngine {
             VoiceEngine::Windows => "windows",
             VoiceEngine::Offline => "offline",
             VoiceEngine::Api => "api",
+            VoiceEngine::Parakeet => "parakeet",
         }
     }
 }
@@ -401,8 +418,12 @@ fn run(app: &AppHandle, s: &Session, opts: Options) -> Result<String, voice::Fai
     let max = if opts.hold { MAX_HOLD } else { MAX_ONCE };
     // Un garde-fou : au-delà de la durée maximale, on termine.
     let started = Instant::now();
-    if engine == VoiceEngine::Api {
-        let (provider, key, model) = stt_key(app, &settings)?;
+    if engine == VoiceEngine::Api || engine == VoiceEngine::Parakeet {
+        // Avant d'ouvrir le micro : la clé (API) ou le modèle (Parakeet).
+        let api = if engine == VoiceEngine::Api { Some(stt_key(app, &settings)?) } else { None };
+        if engine == VoiceEngine::Parakeet && !stt::ready() {
+            return Err(voice::Failure::from(stt::MISSING.to_string()));
+        }
         let mut gate = SilenceGate::new(opts.hold, silence as u64);
         let pcm = voice::record(&s.stop, &mut |chunk, rate| {
             let rms = rms(chunk);
@@ -416,6 +437,11 @@ fn run(app: &AppHandle, s: &Session, opts: Options) -> Result<String, voice::Fai
             return Ok(String::new()); // personne n'a parlé : rien ne part
         }
         voice_event(app, "transcribing", json!({}));
+        let Some((provider, key, model)) = api else {
+            // Parakeet : le son en 16 kHz, écrit sur le PC (rien ne part).
+            let samples = stt::to_16k_mono(&pcm.samples, 1, pcm.rate);
+            return stt::transcribe(&samples, Some(lang)).map_err(voice::Failure::from);
+        };
         let wav = wav_16k(&pcm.samples, pcm.rate);
         log::info(format!("parler à Ondine : audio envoyé à {} ({} octets)", provider.destination(), wav.len()));
         return transcribe(provider, &key, &model, &wav, lang).map_err(voice::Failure::from);
@@ -720,6 +746,22 @@ mod tests {
         assert!(text.starts_with(&format!("--{b}\r\n")) && text.ends_with(&format!("--{b}--\r\n")));
         assert!(text.contains("name=\"model\"\r\n\r\nm\r\n"));
         assert!(text.contains("filename=\"audio.wav\"\r\nContent-Type: audio/wav\r\n\r\nRIFF\r\n"));
+    }
+
+    #[test]
+    fn engines_round_trip() {
+        for id in ["windows", "offline", "api", "parakeet"] {
+            let mut s = serde_json::Map::new();
+            s.insert("voiceEngine".into(), json!(id));
+            assert_eq!(VoiceEngine::of(&s).id(), id);
+        }
+        assert_eq!(VoiceEngine::of(&serde_json::Map::new()), VoiceEngine::Windows);
+        // Le choix « parakeet » existe dans le manifeste (réglage voiceEngine).
+        let manifest: Value = serde_json::from_str(include_str!("../../../src/modules/askclaude/manifest.json")).unwrap();
+        let field = manifest["settings"]["fields"].as_array().unwrap().iter().find(|f| f["key"] == "voiceEngine").unwrap();
+        let values: Vec<&str> = field["options"].as_array().unwrap().iter().filter_map(|o| o["value"].as_str()).collect();
+        assert!(values.contains(&"parakeet"), "{values:?}");
+        assert_eq!(field["default"], "windows");
     }
 
     #[test]

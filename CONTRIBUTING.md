@@ -53,6 +53,7 @@ npm run tauri build    # src-tauri\target\release\bundle\nsis\Ondine_<version>_x
 | Réglages | `%APPDATA%\Ondine\settings.json` |
 | Exports de réglages | `%APPDATA%\Ondine\exports\` |
 | Journal | `%LOCALAPPDATA%\Ondine\logs\ondine.log` |
+| Modèles de la reconnaissance sur le PC (téléchargés au clic) | `%LOCALAPPDATA%\Ondine\Models\` |
 | Clés API | Gestionnaire d'identifiants Windows |
 
 ## Traduire, ajouter une langue

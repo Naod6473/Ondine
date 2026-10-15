@@ -3,7 +3,10 @@
 //   - « Ce qui part » (sous-menu Général) : vers où, et quoi, à chaque
 //     message ; les noms de fichiers trouvés ; la voix ;
 //   - « Consigne exacte » (sous-menu Personnalité) : la consigne complète
-//     telle qu'elle part (personnalité, humeurs, outils), à relire.
+//     telle qu'elle part (personnalité, humeurs, outils), à relire ;
+//   - « Parakeet sur le PC » (sous-menu Voix et sons, 1.2.4) : télécharger,
+//     annuler ou supprimer le modèle de la reconnaissance sur le PC
+//     (voice/parakeet-block.ts, partagé avec Dictée et Notes d'appel).
 //
 // Tout vient de la commande `status` du module (le Rust sait ce qui part) ;
 // hors de l'appli ou module coupé, les blocs disent simplement de l'activer.
@@ -11,6 +14,7 @@
 import { Bridge } from "../core/bridge";
 import { el } from "../island/dom";
 import { group, inSub, wideRow } from "./controls";
+import { parakeetBlock } from "./voice/parakeet-block";
 
 interface Status {
   destination: string;
@@ -33,6 +37,8 @@ export function voiceText(engine: string, destination: string | null, offlineRea
       ? "Dictée hors ligne choisie, mais la reconnaissance vocale de votre langue n'est pas installée dans Windows : Paramètres Windows → Heure et langue → Langue et région → votre langue → Options de langue → Reconnaissance vocale."
       : "Quand vous parlez à Ondine, le moteur de reconnaissance installé dans Windows écrit vos mots sur le PC : rien ne le quitte, rien n'est enregistré sur le disque.";
   }
+  if (engine === "parakeet")
+    return "Quand vous parlez à Ondine, le modèle Parakeet écrit vos mots sur le PC : rien ne le quitte, rien n'est enregistré sur le disque. Il faut l'avoir téléchargé une fois (Voix et sons).";
   if (engine === "api" && destination) return `Quand vous parlez à Ondine, l'audio de votre voix part vers ${destination} pour être écrit en texte. Il reste en mémoire, jamais sur le disque.`;
   return "Quand vous parlez à Ondine, la reconnaissance vocale de Windows écrit vos mots. Pour la dictée, Windows passe par son service en ligne (réglage « Reconnaissance vocale en ligne » de Windows). Rien n'est enregistré sur le disque.";
 }
@@ -69,5 +75,6 @@ export function askclaudeGroups(): HTMLElement[] {
         wideRow("La consigne envoyée à chaque message", el("div", {}, show, system), "La personnalité, puis les consignes des humeurs et des outils, telles qu'elles partent.", "Voir la consigne exacte"),
       ]),
     ),
+    inSub("voice", parakeetBlock()),
   ];
 }

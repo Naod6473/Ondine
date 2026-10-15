@@ -41,6 +41,7 @@ import { settingsStore } from "../../core/settings-store";
 import { reducedMotion } from "../../island/tab-pill";
 import { cleanFirstName } from "../../core/setup-plan";
 import { DEFAULT_TIMBRE, speak, TIMBRES } from "./plops";
+import { openParakeetSettings } from "../../settings/voice/parakeet-link";
 
 /** Le premier mot d'Ondine, avec le prénom donné à l'assistant de premier lancement. */
 function helloBubble(): string {
@@ -141,6 +142,10 @@ interface VoiceMsg {
   apiTo?: string | null;
   /** La dictée de Windows a échoué et le moteur hors ligne est installé (1.2.3). */
   offline?: boolean;
+  /** La dictée de Windows a échoué et le modèle Parakeet est téléchargé (1.2.4). */
+  parakeet?: boolean;
+  /** Parakeet est choisi mais son modèle manque : bouton vers le téléchargement (1.2.4). */
+  models?: boolean;
 }
 
 /** Un message affiché. Les réponses gardent leurs jetons pour la petite ligne du bas. */
@@ -171,7 +176,7 @@ const state: {
   /** Le message en cours venait de la voix (mains libres après la réponse). */
   spoken: boolean;
   /** Après un échec de l'écoute (`error` : son message, les boutons ne vont qu'avec lui) : la page des Paramètres Windows à ouvrir, et la transcription par l'API à proposer. */
-  voiceHelp: { fix: string | null; apiTo: string | null; offline: boolean; error: string } | null;
+  voiceHelp: { fix: string | null; apiTo: string | null; offline: boolean; parakeet?: boolean; models?: boolean; error: string } | null;
 } = {
   draft: "",
   attachment: null,
@@ -419,7 +424,10 @@ function wireVoice(api: ModuleApi, owner: () => boolean) {
       case "error":
         state.voice = { ...v, on: false, transcribing: false, partial: "" };
         state.error = p.message ?? "écoute impossible";
-        state.voiceHelp = p.fix || p.apiTo || p.offline ? { fix: p.fix ?? null, apiTo: p.apiTo ?? null, offline: !!p.offline, error: state.error } : null;
+        state.voiceHelp =
+          p.fix || p.apiTo || p.offline || p.parakeet || p.models
+            ? { fix: p.fix ?? null, apiTo: p.apiTo ?? null, offline: !!p.offline, parakeet: !!p.parakeet, models: !!p.models, error: state.error }
+            : null;
         if (mine) api.notify({ title: state.error, icon: "🎙️", priority: "normal", key: "askclaude-voice" });
         break;
     }
@@ -432,9 +440,9 @@ function wireVoice(api: ModuleApi, owner: () => boolean) {
  * si une clé OpenAI ou Gemini est rangée, passer à la transcription par l'API
  * (le réglage change, puis l'écoute reprend : l'audio ne part qu'à ce clic).
  */
-function voiceHelpRow(api: ModuleApi, help: { fix: string | null; apiTo: string | null; offline?: boolean }): HTMLElement {
+function voiceHelpRow(api: ModuleApi, help: { fix: string | null; apiTo: string | null; offline?: boolean; parakeet?: boolean; models?: boolean }): HTMLElement {
   /** Change de reconnaissance, puis réécoute (rien ne part avant ce clic). */
-  const switchTo = (engine: "api" | "offline") =>
+  const switchTo = (engine: "api" | "offline" | "parakeet") =>
     api.handler(async () => {
       await settingsStore.update((d) => {
         const entry = (d.modules.askclaude ??= { enabled: true, values: {} });
@@ -470,7 +478,14 @@ function voiceHelpRow(api: ModuleApi, help: { fix: string | null; apiTo: string 
           "⚙️ Ouvrir les paramètres Windows",
         )
       : null,
-    // Hors ligne d'abord : rien ne quitte le PC.
+    // Parakeet choisi sans son modèle : les Réglages, à l'endroit du téléchargement.
+    help.models
+      ? el("button", { class: "btn small", onclick: api.handler(() => openParakeetSettings()) }, "⬇️ Télécharger le modèle Parakeet")
+      : null,
+    // Sur le PC d'abord : rien ne le quitte.
+    help.parakeet
+      ? el("button", { class: "btn small", title: "Rien ne quitte le PC.", onclick: switchTo("parakeet") }, "🔒 Passer à Parakeet sur le PC")
+      : null,
     help.offline
       ? el("button", { class: "btn small", title: "Rien ne quitte le PC.", onclick: switchTo("offline") }, "🔒 Passer à la dictée hors ligne")
       : null,

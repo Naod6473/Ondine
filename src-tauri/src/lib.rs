@@ -721,6 +721,11 @@ pub fn run() {
             diagnostics::bug_report_open,
             diagnostics::self_usage,
             services::perf::perf_state,
+            // Reconnaissance sur le PC (1.2.4) : les modèles Parakeet.
+            services::speech::speech_status,
+            services::speech::speech_download,
+            services::speech::speech_cancel,
+            services::speech::speech_remove,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
