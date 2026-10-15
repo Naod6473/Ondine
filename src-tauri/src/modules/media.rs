@@ -20,6 +20,12 @@
 // 10 s : sans nouvelle depuis 30 s, ou module coupé, le fil s'arrête. Un
 // nouveau morceau repart de zéro. Rien n'est gardé au-delà de 8 secondes.
 //
+// Aléatoire, répétition, volume et « ouvrir le lecteur » (1.2.4, carte
+// refaite) : commandes "shuffle" {on}, "repeat" {mode}, "volume" {value?,
+// muted?} (le volume DU LECTEUR seul, jamais celui du PC ; le front n'en
+// envoie pas plus d'un toutes les 120 ms pendant un glissé) et "open" (clic
+// sur la pochette : la fenêtre du lecteur passe devant).
+//
 // "media.pause" (bus) met en pause ce qui joue : l'Agenda le demande quand
 // vous rejoignez une réunion. Rien ne repart si c'était déjà en pause.
 //
@@ -103,6 +109,32 @@ impl RustModule for Media {
             "next" => media::control(Control::Next).map(|_| Value::Null),
             "previous" => media::control(Control::Previous).map(|_| Value::Null),
             "seek" => media::control(Control::Seek(seek_target(&args)?)).map(|_| Value::Null),
+            "shuffle" => {
+                let on = args.get("on").and_then(Value::as_bool).ok_or("état invalide")?;
+                media::control(Control::Shuffle(on))?;
+                self.remember(|p| p.shuffle = on);
+                Ok(Value::Null)
+            }
+            "repeat" => {
+                let mode = args.get("mode").and_then(Value::as_str).and_then(media::parse_repeat).ok_or("mode invalide")?;
+                media::control(Control::Repeat(mode))?;
+                self.remember(|p| p.repeat = mode);
+                Ok(Value::Null)
+            }
+            // { value?: 0…100, muted?: bool } : sans rien, on lit seulement.
+            "volume" => {
+                let Some(app) = self.player() else { return Ok(json!({ "volume": null, "muted": false })) };
+                let (value, muted) = volume_args(&args)?;
+                let level = if value.is_none() && muted.is_none() { media::player_volume(&app)? } else { media::set_player_volume(&app, value, muted)? };
+                Ok(match level {
+                    Some(l) => json!({ "volume": l.volume, "muted": l.muted }),
+                    None => json!({ "volume": null, "muted": false }),
+                })
+            }
+            "open" => {
+                let app = self.player().ok_or("aucun lecteur en cours")?;
+                media::open_player(&app).map(|_| Value::Null)
+            }
             other => Err(format!("commande inconnue : {other}")),
         }
     }
@@ -128,6 +160,37 @@ impl RustModule for Media {
             }
         });
     }
+}
+
+impl Media {
+    /// L'identifiant SMTC du lecteur en cours (« Spotify.exe »…), s'il y en a un.
+    fn player(&self) -> Option<String> {
+        self.state.locked().current.as_ref().map(|p| p.app.clone()).filter(|a| !a.is_empty())
+    }
+
+    /// Note tout de suite un changement accepté par le lecteur : le prochain
+    /// tour du fil ne le prendra pas pour une nouveauté à republier en double.
+    fn remember(&self, f: impl FnOnce(&mut NowPlaying)) {
+        if let Some(p) = self.state.locked().current.as_mut() {
+            f(p);
+        }
+    }
+}
+
+/// Le volume demandé par le front : `value` de 0 à 100 (arrondi), `muted` oui / non.
+fn volume_args(args: &Value) -> Result<(Option<u32>, Option<bool>), String> {
+    let value = match args.get("value") {
+        None | Some(Value::Null) => None,
+        Some(v) => match v.as_f64() {
+            Some(n) if (0.0..=100.0).contains(&n) => Some(n.round() as u32),
+            _ => return Err("volume invalide".into()),
+        },
+    };
+    let muted = match args.get("muted") {
+        None | Some(Value::Null) => None,
+        Some(v) => Some(v.as_bool().ok_or("coupure invalide")?),
+    };
+    Ok((value, muted))
 }
 
 /// La position demandée par le front (`{ "positionMs": 83000 }`), vérifiée :
@@ -293,6 +356,9 @@ fn differs(before: &Option<NowPlaying>, now: &Option<NowPlaying>) -> bool {
     if a.status != b.status || a.can_toggle != b.can_toggle || a.can_next != b.can_next || a.can_previous != b.can_previous || a.can_seek != b.can_seek {
         return true;
     }
+    if a.shuffle != b.shuffle || a.repeat != b.repeat || a.can_shuffle != b.can_shuffle || a.can_repeat != b.can_repeat {
+        return true;
+    }
     if a.duration_ms != b.duration_ms {
         return true;
     }
@@ -343,6 +409,10 @@ mod tests {
             can_next: true,
             can_previous: true,
             can_seek: true,
+            shuffle: false,
+            repeat: "none",
+            can_shuffle: true,
+            can_repeat: true,
         })
     }
 
@@ -359,6 +429,31 @@ mod tests {
         assert!(seek_target(&json!({ "positionMs": "12" })).is_err());
         assert!(seek_target(&json!({})).is_err());
         assert!(seek_target(&json!({ "positionMs": 90_000_000 })).is_err());
+    }
+
+    #[test]
+    fn shuffle_and_repeat_are_changes() {
+        let mut b = song("playing", 11_000);
+        b.as_mut().unwrap().shuffle = true;
+        assert!(differs(&song("playing", 10_000), &b));
+        let mut c = song("playing", 11_000);
+        c.as_mut().unwrap().repeat = "list";
+        assert!(differs(&song("playing", 10_000), &c));
+        let mut d = song("playing", 11_000);
+        d.as_mut().unwrap().can_repeat = false;
+        assert!(differs(&song("playing", 10_000), &d));
+    }
+
+    #[test]
+    fn volume_args_are_checked() {
+        assert_eq!(volume_args(&json!({})), Ok((None, None)));
+        assert_eq!(volume_args(&json!({ "value": 42.4 })), Ok((Some(42), None)));
+        assert_eq!(volume_args(&json!({ "value": 0, "muted": true })), Ok((Some(0), Some(true))));
+        assert_eq!(volume_args(&json!({ "muted": false, "value": null })), Ok((None, Some(false))));
+        assert!(volume_args(&json!({ "value": 101 })).is_err());
+        assert!(volume_args(&json!({ "value": -1 })).is_err());
+        assert!(volume_args(&json!({ "value": "50" })).is_err());
+        assert!(volume_args(&json!({ "muted": 1 })).is_err());
     }
 
     #[test]

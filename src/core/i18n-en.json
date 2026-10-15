@@ -664,7 +664,7 @@
 "Proposer les fichiers ouverts récemment": "Offer recently opened files",
 "Ceux des dossiers exclus (Confidentialité) ne sont jamais montrés.": "Those in excluded folders (Privacy) are never shown.",
 "Musique": "Music",
-"Montre ce qui joue en ce moment (Spotify, navigateur, VLC… tout ce qui apparaît dans le panneau multimédia de Windows) avec lecture/pause, suivant et précédent. Lit seulement ce que Windows expose déjà ; rien ne sort de l'ordinateur.": "Shows what's playing right now (Spotify, browser, VLC… anything that appears in the Windows media panel) with play/pause, next and previous. Only reads what Windows already exposes; nothing leaves the computer.",
+"Montre ce qui joue en ce moment (Spotify, navigateur, VLC… tout ce qui apparaît dans le panneau multimédia de Windows) avec lecture/pause, suivant, précédent, aléatoire, répétition et le volume du lecteur. Lit seulement ce que Windows expose déjà ; rien ne sort de l'ordinateur.": "Shows what's playing right now (Spotify, browser, VLC… anything that appears in the Windows media panel) with play/pause, next, previous, shuffle, repeat and the player's own volume. Only reads what Windows already exposes; nothing leaves the computer.",
 "Montrer l'île quand un nouveau morceau commence": "Show the island when a new track starts",
 "Afficher le morceau dans la pilule de l'île": "Show the track in the island's pill",
 "Boutons précédent / lecture / suivant dans la pilule": "Previous / play / next buttons in the pill",
@@ -2630,7 +2630,28 @@
 "Une nouveauté vous attend.": "Something new is waiting for you.",
 "1 nouveauté": "1 new thing",
 "Éclosion au démarrage": "Hatching at startup",
-"Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine vous dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement.": "On first launch and after an update, a drop comes out of the top of the screen and becomes the island, Ondine says hello, then the island folds back. Only with the island at the top of the screen."
+"Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine vous dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement.": "On first launch and after an update, a drop comes out of the top of the screen and becomes the island, Ondine says hello, then the island folds back. Only with the island at the top of the screen.",
+"Ouvrir le lecteur": "Open the player",
+"Aléatoire indisponible pour ce lecteur": "Shuffle isn't available for this player",
+"Aléatoire activé": "Shuffle on",
+"Aléatoire désactivé": "Shuffle off",
+"Répétition indisponible pour ce lecteur": "Repeat isn't available for this player",
+"Répéter ce morceau": "Repeat this track",
+"Répéter la liste": "Repeat the list",
+"Répétition désactivée": "Repeat off",
+"Volume du lecteur, pas celui du PC": "The player's own volume, not the PC's",
+"Volume indisponible pour ce lecteur": "Volume isn't available for this player",
+"Volume du lecteur": "Player volume",
+"Remettre le son du lecteur": "Unmute the player",
+"Couper le son du lecteur": "Mute the player",
+"Position dans le morceau": "Position in the track",
+"état invalide": "invalid state",
+"mode invalide": "invalid mode",
+"volume invalide": "invalid volume",
+"coupure invalide": "invalid mute value",
+"ce lecteur n'a pas de son à régler pour l'instant": "this player has no sound to adjust right now",
+"la fenêtre du lecteur est introuvable": "the player's window can't be found",
+"Windows a refusé de passer au lecteur": "Windows refused to switch to the player"
 },
 "patterns": [
 ["^Ondine (.+) est là !$", "Ondine $1 is here!"],
@@ -4558,6 +4579,10 @@
 [
 "^speed\\.cloudflare\\.com ne répond pas(.*)$",
 "speed.cloudflare.com isn't responding$1"
-]
+],
+["^volume refusé : (.+)$", "volume refused: $1"],
+["^coupure refusée : (.+)$", "mute refused: $1"],
+["^volume illisible : (.+)$", "volume unreadable: $1"],
+["^lecteur impossible à ouvrir : (.+)$", "couldn't open the player: $1"]
 ]
 }

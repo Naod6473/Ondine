@@ -1433,6 +1433,81 @@ et l'accès à Windows dans `src-tauri/src/platform/media.rs`.
 - Réglages : `danceTempo` (activé), `danceStyle` (`auto`, `rock`, `metal`,
   `rap`, `rnb`, `pop`, `electro`, `reggae`, `jazz`).
 
+### La carte Musique 1.2.4 (`src/modules/media/index.ts`, `logic.ts`)
+
+Refaite d'après la maquette « Musique » (et la carte Spotify de Coucou, MIT,
+pour la mise en page et la technique du volume ; dessins et code à nous).
+
+- **Vue ouverte**, construite une fois puis mise à jour en place (un message du
+  lecteur n'interrompt plus un glissé) : pochette de 84 px dans un bouton
+  (« Ouvrir le lecteur », commande `open`), pastille de couleur devant le titre,
+  artiste · album, nom de l'appli (`appName` : « MSEdge » → Edge, le code de
+  Firefox → Firefox). Progression : écoulé à gauche, restant « -2:13 » à droite
+  (`remaining`, arrondi vers le haut). Boutons : Aléatoire, Précédent, grand
+  bouton lecture rond et plein, Suivant (`data-scene-target="media-next"`
+  gardé), Répétition (rien → liste → morceau, icône « 1 » pour le morceau).
+  Aléatoire et Répétition sont en couleur quand ils sont actifs, grisés quand
+  le lecteur ne les expose pas (`buttons()` dans logic.ts). Volume DU LECTEUR :
+  icône à 4 niveaux (`volumeLevel` : coupé ou 0, < 34, < 67, plus), clic =
+  couper / remettre le son, barre, nombre ; grisé si le lecteur n'a pas de
+  session audio.
+- **Barres glissables** (`slider()`) : grises au repos ; sous la souris, au
+  clavier (focus) ou pendant un glissé, le remplissage prend la couleur et un
+  bouton rond de 14 px apparaît. Flèches : ±5 s (position), ±5 (volume). Le
+  volume part au plus une fois toutes les 120 ms pendant un glissé, la dernière
+  valeur toujours, tout de suite au lâcher (`throttle`, testé avec de fausses
+  minuteries).
+- **Couleur** : `coverTint()` (env-tint.ts), gardée pour le morceau en cours
+  (env-tint l'efface en pause), éclaircie sans changer de teinte (`cardTint` :
+  canal le plus fort à 235, mélange de blanc si elle reste sombre). Posée en
+  `--media-tint` / `--media-tint-soft` sur la carte et la mini-île ; sans
+  pochette colorée, l'accent du thème. Une lueur radiale douce
+  (`.media-glow`) en haut à gauche de la carte, plus forte en lecture.
+  `onCoverColors` fait repeindre quand la couleur arrive.
+- **Mini-île** : au repos pochette + titre · artiste + égaliseur (couleur de
+  la pochette) ; sous la souris (`.island:hover`) ou au clavier
+  (`:focus-within`), pochette et égaliseur se replient et lecture / suivant
+  apparaissent, seulement si `compactControls` est coché. La goutte, à côté,
+  danse déjà tant que la musique joue en mini-île (eggs.ts, inchangé).
+- **Icônes** : SVG au trait (formes pleines pour lecture, pause et les
+  triangles), identiques avec les icônes « Couleur » et « Épurées » : ce sont
+  des commandes, pas des pictogrammes. Les actions de la carte d'Accueil
+  gardent leurs emojis (home-cards).
+- **Animations réduites** : ni égaliseur ni ondulation, apparitions en fondu
+  (transitions limitées à l'opacité et aux couleurs), pas de zoom au survol.
+  Éco : égaliseur et ondulation coupés. La barre avance avec `pacedInterval`
+  (rien quand la page est cachée).
+
+Côté Rust (`modules/media.rs`, `platform/media.rs`) :
+
+- `NowPlaying` gagne `shuffle`, `repeat` (`none` / `track` / `list`),
+  `canShuffle`, `canRepeat` (GSMTC : `IsShuffleActive`, `AutoRepeatMode`,
+  `IsShuffleEnabled`, `IsRepeatEnabled`) ; un changement de l'un d'eux
+  republie `media.changed` (`differs`).
+- Commandes `shuffle` {on} (`TryChangeShuffleActiveAsync`), `repeat` {mode}
+  (`TryChangeAutoRepeatModeAsync`, `parse_repeat`), `volume` {value?, muted?}
+  (sans argument : lecture ; `volume_args` vérifie 0…100), `open`. Un
+  changement accepté est noté tout de suite dans l'état (`remember`) : pas de
+  republication en double.
+- **Volume du lecteur** : Core Audio, sessions de TOUTES les sorties actives
+  (`IAudioSessionManager2` → `IAudioSessionControl2` → `ISimpleAudioVolume`).
+  Le programme d'une session est reconnu par `player_matches(app_id,
+  chemin)` : « Spotify.exe » = même nom de fichier ; alias de navigateurs
+  (« MSEdge », « Chrome », le code hexadécimal de Firefox) ; appli du Store
+  « Paquet_éditeur!Appli » = dossier `WindowsApps\Paquet_…__éditeur` ; sinon le
+  même nom sans « .exe ». Repli quand le programme est illisible :
+  l'identifiant de la session le nomme (`session_matches`). Toutes les
+  sessions du lecteur reçoivent le même niveau ; le volume du PC n'est jamais
+  touché.
+- **Ouvrir le lecteur** : la première fenêtre visible (de premier plan vers
+  l'arrière) d'un programme qui correspond passe devant (restaurée si
+  réduite, astuce de la touche Alt, comme « Y aller » des agents) ; sans
+  fenêtre, une appli du Store est lancée par `explorer.exe
+  shell:AppsFolder\<id>` (identifiant vérifié par `launchable_aumid` :
+  lettres, chiffres, `._-` et un seul `!`).
+- **Démo** (`src/core/demo.ts`) : aléatoire, répétition et volume inventés
+  (`state.player`), `open` ne fait rien.
+
 ## Module Presse-papiers (phase 4)
 
 Front : `src/modules/clipboard/index.ts`. Rust : `src-tauri/src/modules/clipboard.rs`,

@@ -966,46 +966,6 @@ body {
     transform: translateX(var(--shift, 0));
   }
 }
-/* Les petits boutons de la pilule. */
-.media-minis {
-  display: flex;
-  flex: none;
-  gap: 1px;
-}
-.media-minis[hidden] {
-  display: none;
-}
-.media-mini {
-  width: 24px;
-  height: 24px;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--island-fg);
-  font-size: 12px;
-  line-height: 1;
-  cursor: pointer;
-  transition:
-    background 160ms ease,
-    transform 160ms var(--ease, ease);
-}
-.media-mini svg {
-  width: 13px;
-  height: 13px;
-  fill: currentColor;
-  display: block;
-  margin: auto;
-}
-.media-mini:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.14);
-}
-.media-mini:active:not(:disabled) {
-  transform: scale(0.88);
-}
-.media-mini:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
 /* Animations réduites : pas de défilement, le titre est coupé par « … ». */
 @media (prefers-reduced-motion: reduce) {
   .marquee.scrolling {
@@ -1018,6 +978,107 @@ body {
     animation: none;
   }
 }
+
+/* La couleur de la carte : celle de la pochette (posée par index.ts dans
+   --media-tint / --media-tint-soft), sinon l'accent du thème. */
+.media-compact,
+.media-card {
+  --mt: var(--media-tint, var(--accent));
+  --mt-soft: var(--media-tint-soft, rgba(124, 196, 255, 0.3));
+}
+
+/* Les icônes au trait (et les quelques formes pleines : lecture, pause,
+   triangles de précédent / suivant). Même dessin en icônes « Couleur » et
+   « Épurées » : ce sont des commandes, pas des pictogrammes. */
+.media-ico {
+  width: 18px;
+  height: 18px;
+  display: block;
+  overflow: visible;
+}
+.media-ico .line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.media-ico .fill {
+  fill: currentColor;
+  stroke: none;
+}
+
+/* ── La mini-île ── */
+/* Au repos : pochette, titre, égaliseur. Sous la souris (ou au clavier) : la
+   pochette et l'égaliseur s'effacent, lecture et suivant apparaissent. */
+.media-minis {
+  display: flex;
+  flex: none;
+  gap: 4px;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    max-width 320ms var(--ease, ease),
+    opacity 200ms ease;
+}
+.media-minis[hidden] {
+  display: none;
+}
+.media-mini {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--mt-soft);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--island-fg);
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    transform 160ms var(--ease, ease);
+}
+.media-mini .media-ico {
+  width: 11px;
+  height: 11px;
+}
+.media-mini .media-ico .line {
+  stroke-width: 2.6;
+}
+.media-mini:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
+}
+.media-mini:active:not(:disabled) {
+  transform: scale(0.88);
+}
+.media-mini:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.media-cover-slot,
+.media-eq-slot {
+  max-width: 40px;
+  transition:
+    max-width 320ms var(--ease, ease),
+    opacity 200ms ease,
+    margin 320ms var(--ease, ease);
+}
+.island:hover .media-compact.with-controls .media-minis,
+.media-compact.with-controls:focus-within .media-minis {
+  max-width: 64px;
+  opacity: 1;
+}
+.island:hover .media-compact.with-controls .media-cover-slot,
+.island:hover .media-compact.with-controls .media-eq-slot,
+.media-compact.with-controls:focus-within .media-cover-slot,
+.media-compact.with-controls:focus-within .media-eq-slot {
+  max-width: 0;
+  opacity: 0;
+  margin-right: -8px;
+}
 .media-cover {
   flex: none;
   object-fit: cover;
@@ -1026,34 +1087,114 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--muted);
 }
 .media-cover.small {
   width: 26px;
   height: 26px;
-  font-size: 14px;
+}
+.media-cover.small .media-ico {
+  width: 14px;
+  height: 14px;
 }
 .media-cover.large {
-  width: 120px;
-  height: 120px;
-  border-radius: 12px;
-  font-size: 44px;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
 }
-.media-full {
+.media-cover.large .media-ico {
+  width: 36px;
+  height: 36px;
+}
+
+/* ── La carte ouverte ── */
+.media-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--line);
+}
+/* Une lueur douce de la couleur de la pochette, en haut à gauche. */
+.media-glow {
+  position: absolute;
+  z-index: -1;
+  left: -80px;
+  top: -120px;
+  width: 380px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--mt-soft), transparent);
+  pointer-events: none;
+  opacity: 0.75;
+  transition: opacity 600ms ease;
+}
+.media-card.on .media-glow {
+  opacity: 1;
+}
+.media-head {
   display: flex;
   gap: 16px;
   align-items: center;
-  padding-top: 6px;
+  min-width: 0;
+}
+/* La pochette : un bouton qui ouvre le lecteur. */
+.media-cover-btn {
+  width: 84px;
+  height: 84px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 10px 30px var(--mt-soft);
+  cursor: pointer;
+  transition:
+    transform 260ms var(--ease, ease),
+    box-shadow 260ms ease;
+}
+.media-cover-btn:hover {
+  transform: scale(1.04);
+}
+.media-cover-btn:active {
+  transform: scale(0.96);
+}
+.media-cover-btn:focus-visible {
+  outline: 2px solid var(--mt);
+  outline-offset: 3px;
 }
 .media-info {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
+}
+.media-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+/* La pastille de couleur devant le titre. */
+.media-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--mt);
+  box-shadow: 0 0 8px var(--mt);
 }
 .media-title {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1064,94 +1205,215 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.media-artist {
+  font-size: 13px;
+  color: var(--island-fg);
+  opacity: 0.75;
+}
 .media-app {
-  font-size: 11px;
+  font-size: 12px;
+  color: var(--muted);
 }
+
+/* Progression : écoulé à gauche, restant (« -2:13 ») à droite. */
 .media-progress {
-  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
-.media-bar {
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.12);
-  overflow: hidden;
+.media-progress[hidden] {
+  display: none;
 }
-.media-bar-fill {
-  height: 100%;
-  width: 0;
-  background: var(--accent);
-  transition: width 500ms linear;
+.media-time {
+  width: 40px;
+  flex: none;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
-/* La zone cliquable autour de la barre (module Musique : seekable). */
-.media-seek {
+.media-time.left {
+  text-align: right;
+}
+
+/* Une barre glissable (position, volume) : grise au repos ; sous la souris
+   ou pendant un glissé, elle prend la couleur et montre un bouton rond. */
+.media-slider {
   position: relative;
-  padding: 6px 0;
-}
-.media-seek.seekable {
+  flex: 1;
+  min-width: 0;
+  height: 16px;
   cursor: pointer;
-}
-.media-seek:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  touch-action: none;
   border-radius: 4px;
 }
-/* La pastille : apparaît au survol, suit la position. */
-.media-thumb {
+.media-slider.disabled {
+  cursor: default;
+}
+.media-slider:focus-visible {
+  outline: 2px solid var(--mt);
+  outline-offset: 2px;
+}
+.media-track,
+.media-fill {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 5px;
+  margin-top: -2.5px;
+  border-radius: 3px;
+  transition:
+    height 220ms var(--ease, ease),
+    margin 220ms var(--ease, ease),
+    background 200ms ease;
+}
+.media-track {
+  right: 0;
+  background: rgba(255, 255, 255, 0.12);
+}
+.media-fill {
+  width: var(--f, 0%);
+  background: #c5ccd8;
+}
+.media-knob {
   position: absolute;
   top: 50%;
-  left: var(--f, 0%);
-  width: 12px;
-  height: 12px;
-  margin: -6px 0 0 -6px;
+  left: clamp(0px, calc(var(--f, 0%) - 7px), calc(100% - 14px));
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.12);
   transform: scale(0);
-  transition: transform 220ms var(--ease);
+  transition: transform 220ms var(--ease, ease);
   pointer-events: none;
 }
-.media-seek.seekable:hover .media-thumb,
-.media-seek.scrubbing .media-thumb {
+.media-slider:not(.disabled):hover .media-fill,
+.media-slider:not(.disabled):focus-visible .media-fill,
+.media-slider.scrubbing .media-fill {
+  background: var(--mt);
+}
+.media-slider:not(.disabled):hover .media-knob,
+.media-slider:not(.disabled):focus-visible .media-knob,
+.media-slider.scrubbing .media-knob {
   transform: scale(1);
 }
-.media-seek.scrubbing .media-bar-fill {
-  transition: none;
+.media-slider.disabled .media-fill {
+  background: rgba(255, 255, 255, 0.28);
 }
-.media-seek.seekable:hover .media-bar,
-.media-seek.scrubbing .media-bar {
-  height: 6px;
-  border-radius: 3px;
-}
-.media-times {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  color: var(--muted);
-  margin-top: 2px;
-}
+
+/* Les boutons. */
 .media-controls {
   display: flex;
-  gap: 10px;
-  margin-top: 4px;
+  align-items: center;
+  gap: 6px;
+}
+.media-grow {
+  flex: 1;
 }
 .media-btn {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
   border-radius: 50%;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--island-fg);
-  font-size: 16px;
+  background: none;
+  color: #c5ccd8;
   cursor: pointer;
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    transform 160ms var(--ease, ease);
+}
+.media-btn.toggle .media-ico {
+  width: 17px;
+  height: 17px;
 }
 .media-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+.media-btn:active:not(:disabled) {
+  transform: scale(0.9);
+}
+/* Aléatoire, répétition : grisés quand ils sont coupés, en couleur quand ils marchent. */
+.media-btn.toggle {
+  color: #6b7385;
+}
+.media-btn.toggle.on {
+  color: var(--mt);
 }
 .media-btn:disabled {
   opacity: 0.35;
   cursor: default;
 }
-/* Trois barres qui dansent pendant la lecture. */
+/* Le grand bouton lecture : rond et plein. */
+.media-play {
+  width: 48px;
+  height: 48px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  color: #05070b;
+  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+  transition:
+    transform 200ms var(--ease, ease),
+    box-shadow 200ms ease;
+}
+.media-play:hover:not(:disabled) {
+  transform: scale(1.06);
+}
+.media-play:active:not(:disabled) {
+  transform: scale(0.92);
+}
+.media-play:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.media-play:focus-visible,
+.media-btn:focus-visible {
+  outline: 2px solid var(--mt);
+  outline-offset: 2px;
+}
+
+/* Le volume du lecteur (pas celui du PC). */
+.media-volume {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 180px;
+  flex: none;
+}
+.media-volume.disabled {
+  opacity: 0.45;
+}
+.media-vol-icon {
+  width: 30px;
+  height: 30px;
+  color: #aeb7c8;
+}
+.media-vol-icon .media-ico {
+  width: 17px;
+  height: 17px;
+}
+.media-vol-num {
+  width: 26px;
+  flex: none;
+  text-align: right;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Trois barres qui dansent pendant la lecture (couleur de la pochette). */
 .media-eq {
   display: flex;
   align-items: flex-end;
@@ -1162,8 +1424,8 @@ body {
 .media-eq i {
   width: 3px;
   height: 4px;
-  border-radius: 1px;
-  background: var(--accent);
+  border-radius: 2px;
+  background: var(--mt);
 }
 /* En mini-île, la bulle du titre ondule au rythme tant que ça joue (classe
    « playing », posée par le module quand les animations ne sont pas réduites). */
@@ -1179,23 +1441,43 @@ body {
     translate: 0 -1.2px;
   }
 }
-body[data-perf="eco"] .media-compact.playing .marquee {
+body[data-perf="eco"] .media-compact.playing .marquee,
+body[data-perf="eco"] .media-compact.on .media-eq i {
   animation: none;
 }
-.media-eq.on i {
+.media-compact.on .media-eq i {
   animation: media-eq 900ms ease-in-out infinite alternate;
 }
-.media-eq.on i:nth-child(2) {
+.media-compact.on .media-eq i:nth-child(2) {
   animation-delay: -300ms;
 }
-.media-eq.on i:nth-child(3) {
+.media-compact.on .media-eq i:nth-child(3) {
   animation-delay: -600ms;
 }
-/* Animations réduites : l'égaliseur et le titre restent immobiles. */
+/* Animations réduites : l'égaliseur et le titre restent immobiles, les
+   boutons apparaissent en fondu, sans glisser. */
 @media (prefers-reduced-motion: reduce) {
-  .media-eq.on i,
+  .media-compact.on .media-eq i,
   .media-compact.playing .marquee {
     animation: none;
+  }
+  .media-compact.on .media-eq i {
+    height: 9px;
+  }
+  .media-minis,
+  .media-cover-slot,
+  .media-eq-slot,
+  .media-track,
+  .media-fill,
+  .media-knob,
+  .media-cover-btn,
+  .media-play,
+  .media-btn {
+    transition-property: opacity, color, background;
+  }
+  .media-cover-btn:hover,
+  .media-play:hover:not(:disabled) {
+    transform: none;
   }
 }
 @keyframes media-eq {
@@ -4611,12 +4893,10 @@ body.presenting .island[data-state="hidden"] {
 }
 
 /* Musique : la barre de progression s'épaissit au survol. */
-.media-bar {
-  transition: height 300ms var(--ease), border-radius 300ms var(--ease);
-}
-.motion-studio .media-seek.seekable:hover .media-bar,
-.motion-studio .media-seek.scrubbing .media-bar {
+.motion-studio .media-seek:not(.disabled):hover :is(.media-track, .media-fill),
+.motion-studio .media-seek.scrubbing :is(.media-track, .media-fill) {
   height: 9px;
+  margin-top: -4.5px;
   border-radius: 5px;
 }
 

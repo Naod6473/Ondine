@@ -3,7 +3,7 @@
   "name": "Musique",
   "tip": "Cliquez sur la barre de progression pour avancer ou reculer dans le morceau.",
   "icon": "🎵",
-  "description": "Montre ce qui joue en ce moment (Spotify, navigateur, VLC… tout ce qui apparaît dans le panneau multimédia de Windows) avec lecture/pause, suivant et précédent. Lit seulement ce que Windows expose déjà ; rien ne sort de l'ordinateur.",
+  "description": "Montre ce qui joue en ce moment (Spotify, navigateur, VLC… tout ce qui apparaît dans le panneau multimédia de Windows) avec lecture/pause, suivant, précédent, aléatoire, répétition et le volume du lecteur. Lit seulement ce que Windows expose déjà ; rien ne sort de l'ordinateur.",
   "version": "0.1.0",
   "permissions": [],
   "settings": {
@@ -17,7 +17,7 @@
     ]
   },
   "views": ["compact", "expanded"],
-  "commands": ["state", "artwork", "toggle", "next", "previous", "seek", "tempo"],
+  "commands": ["state", "artwork", "toggle", "next", "previous", "seek", "tempo", "shuffle", "repeat", "volume", "open"],
   "events": {
     "emits": ["media.changed", "media.tempo"],
     "listens": ["media.changed", "media.pause"]
