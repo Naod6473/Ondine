@@ -3471,6 +3471,8 @@ body[data-perf="eco"] .gh-today.gh-zero {
 }
 /* La conversation : vos messages à droite, ceux d'Ondine à gauche. */
 .ask-thread {
+  /* relative : une bulle qui s'en va est posée par-dessus (flow.ts, leave). */
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -3650,10 +3652,69 @@ body[data-perf="eco"] .gh-today.gh-zero {
   color: #ff8a8a;
   font-size: 12px;
 }
-/* La voix : la bulle des sous-titres en direct, le point rouge du micro, le bouton. */
-.ask-bubble.live {
-  min-width: 46%;
+/* La voix : la bulle des sous-titres en direct, le point rouge du micro, le bouton.
+   Le pointillé est dessiné par-dessus (::after) : quand la bulle devient votre
+   message, il s'efface sans rien décaler (flow.ts, morphBubble). */
+.ask-bubble.me {
+  position: relative;
+}
+.ask-bubble.me::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   border: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* Pendant l'écoute, la bulle a toute sa largeur : vos mots, alignés à gauche,
+   ne bougent plus quand un mot s'ajoute (une bulle à droite qui s'élargit les
+   pousserait à chaque mot). Elle se resserre en devenant votre message. */
+.ask-bubble.live {
+  width: 85%;
+}
+.ask-bubble.live::after {
+  opacity: 1;
+}
+/* Le texte qui bouge (src/modules/askclaude/flow.ts) : vos mots en direct, la
+   réponse qui s'écrit. .ask-flow : sa hauteur naturelle, que la bulle suit en
+   glissant. */
+.ask-flow {
+  display: block;
+}
+.ask-w.ask-in {
+  animation: ask-word-in 300ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes ask-word-in {
+  from {
+    opacity: 0;
+    filter: blur(3px);
+  }
+}
+.ask-ch {
+  animation: ask-char-in 220ms ease-out both;
+}
+@keyframes ask-char-in {
+  from {
+    opacity: 0;
+  }
+}
+/* La fin du mot qui s'écrit : à sa place, invisible (le mot ne saute pas à la ligne). */
+.ask-ghost {
+  opacity: 0;
+}
+/* Deux textes au même endroit, le temps d'un fondu croisé. */
+.ask-swap,
+.ask-stack {
+  display: inline-grid;
+}
+.ask-swap > *,
+.ask-stack > * {
+  grid-area: 1 / 1;
+}
+body[data-perf="eco"] .ask-w.ask-in {
+  animation-name: ask-char-in;
 }
 .ask-live-head {
   display: flex;
@@ -3701,8 +3762,13 @@ body[data-perf="eco"] .gh-today.gh-zero {
   font-size: 11px;
 }
 @media (prefers-reduced-motion: reduce) {
-  .ask-mic-dot.on {
+  .ask-mic-dot.on,
+  .ask-w.ask-in,
+  .ask-ch {
     animation: none;
+  }
+  .ask-bubble.me::after {
+    transition: none;
   }
 }
 

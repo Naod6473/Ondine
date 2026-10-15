@@ -45,6 +45,10 @@ export const FIT_W_FILL = 0.85;
 /** Dans un contenu `both`, la partie dont la largeur compte (une liste de
     bulles), quand le reste (champ de saisie, notes) s'adapte à toute largeur. */
 export const FIT_W_ATTR = "data-island-fit-w";
+/** Sur le contenu marqué : un échange est en cours (vous parlez, Ondine répond),
+    l'île peut grandir mais ne rétrécit pas, pour ne pas faire le yoyo quand
+    une bulle en remplace une autre. Elle reprend sa taille à la fin. */
+export const FIT_HOLD_ATTR = "data-island-fit-hold";
 
 /** Ce que demande la valeur de l'attribut : la hauteur seule (par défaut), ou aussi la largeur. */
 export function fitMode(value: string | null): "height" | "both" {
@@ -88,9 +92,12 @@ export function naturalWidth(el: HTMLElement): number {
  * grandit dès que le contenu le demande (rien n'est jamais coupé), mais ne
  * rétrécit que si elle est nettement trop grande (plus de 2 × `step` px,
  * hystérésis) : un mot qui passe à la ligne puis revient ne la fait pas
- * trembler. Sans page ni horloge (testé par Node).
+ * trembler. `hold` : elle ne rétrécit pas du tout (un échange en cours,
+ * attribut FIT_HOLD_ATTR). Sans page ni horloge (testé par Node).
  */
-export function settle(current: number | null, want: number | null, step = 8): number | null {
+export function settle(current: number | null, want: number | null, step = 8, hold = false): number | null {
+  // Pendant un échange (FIT_HOLD_ATTR) : elle ne rétrécit pas du tout.
+  if (hold && current !== null && (want === null || want < current)) return current;
   if (want === null || current === null) return want;
   if (want >= current) return want;
   return current - want > step * 2 ? want : current;

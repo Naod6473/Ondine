@@ -1202,7 +1202,10 @@ function demoVoice(bus: Bus) {
     bus.inject("voice.level", { level: Math.round((0.35 + 0.3 * Math.sin(t * 9) * Math.sin(t * 2.3)) * 100) / 100 }, "askclaude");
   }, 80);
   words.forEach((_, i) => {
-    window.setTimeout(() => bus.inject("askclaude.voice", { kind: "partial", text: words.slice(0, i + 1).join(" ").replace(" ?", " ?") }, "askclaude"), 500 + i * 260);
+    // Comme un vrai moteur, il se reprend une fois : « il » devient « île en » (fondu croisé).
+    const said = words.slice(0, i + 1).join(" ");
+    const text = words[i] === "île" ? said.replace(/île$/, "il") : said;
+    window.setTimeout(() => bus.inject("askclaude.voice", { kind: "partial", text }, "askclaude"), 500 + i * 260);
   });
   window.setTimeout(() => {
     window.clearInterval(level);

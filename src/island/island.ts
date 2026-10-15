@@ -28,7 +28,7 @@ import { clear, el } from "./dom";
 import { icon } from "./icon";
 import { IslandStateMachine, type IslandState } from "./island-state";
 import { IslandForms, islandStyle } from "./island-forms";
-import { contentHeight, FIT_ATTR, FIT_MAX_W, FIT_MAX_W_SIDE, FIT_W_ATTR, fitHeight, fitMode, fitWidth, naturalWidth, settle } from "./fit";
+import { contentHeight, FIT_ATTR, FIT_HOLD_ATTR, FIT_MAX_W, FIT_MAX_W_SIDE, FIT_W_ATTR, fitHeight, fitMode, fitWidth, naturalWidth, settle } from "./fit";
 import { attachHalo } from "./halo";
 import { attachLiquid } from "./liquid";
 import { enableGestures, grabZone, horizontal, type Edge } from "./gestures";
@@ -605,7 +605,8 @@ export class Island {
     // Le contenu change (un QR code s'ouvre, un autre onglet) : l'île ouverte
     // grandit pour le montrer en entier, ou reprend sa taille (fit.ts).
     // characterData : le texte d'une réponse qui s'écrit mot à mot.
-    new MutationObserver(() => this.scheduleFit()).observe(this.content, { childList: true, subtree: true, characterData: true });
+    // attributes : un échange qui commence ou finit (FIT_HOLD_ATTR).
+    new MutationObserver(() => this.scheduleFit()).observe(this.content, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: [FIT_ATTR, FIT_HOLD_ATTR] });
   }
 
   private scheduleFit() {
@@ -745,8 +746,9 @@ export class Island {
     this.watchFit(marked, wide);
     const wantW = view && wide ? fitWidth(this.shell.offsetWidth, view.clientWidth, naturalWidth(wide), this.tabsWidth(), horizontal(this.edge()) ? FIT_MAX_W : FIT_MAX_W_SIDE) : null;
     // Sans va-et-vient : elle grandit tout de suite, ne rétrécit que nettement.
-    const target = settle(this.fitH, wantH);
-    const width = settle(this.fitW, wantW);
+    const hold = marked?.hasAttribute(FIT_HOLD_ATTR) ?? false;
+    const target = settle(this.fitH, wantH, undefined, hold);
+    const width = settle(this.fitW, wantW, undefined, hold);
     if (target === this.fitH && width === this.fitW) return;
     // Un contenu qui change pendant qu'il est montré : la gelée glisse (sans rebond).
     this.jelly.setGlide(target !== null || width !== null);

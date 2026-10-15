@@ -412,6 +412,10 @@ export class Jelly {
       return;
     }
     if (this.running) return;
+    // Au repos, l'île suit son CSS (aucun style en ligne) : la nouvelle forme
+    // voulue s'y verrait d'un coup pendant une image, avant le premier pas du
+    // ressort. On pose donc tout de suite la forme actuelle des ressorts.
+    if (!this.styled) this.paint();
     this.last = performance.now();
     this.schedule();
   }

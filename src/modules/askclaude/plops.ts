@@ -14,6 +14,8 @@
 // Animations réduites (Windows) ou mascotte « Calme » : le texte s'affiche
 // d'un coup, la bouche ne bouge pas ; seules quelques gouttes sonnent.
 
+import { revealTimes, shownAt } from "./flow-logic";
+
 /** Un timbre : forme d'onde, fréquence de départ (Hz), glissé (×), durée (s). */
 export interface Timbre {
   wave: OscillatorType | "noise";
@@ -151,6 +153,8 @@ export interface SpeakOptions {
   volume: number;
   /** Tout d'un coup (animations réduites, mascotte Calme). */
   instant: boolean;
+  /** Au plus tant d'images par seconde (mode Économie) ; sinon une par image. */
+  maxFps?: number;
   /** Le texte visible a maintenant `n` caractères. */
   onText: (n: number) => void;
   /** Une syllabe : la bouche s'ouvre (0..1) ; `brow` sur « ? » et « ! ». */
@@ -158,8 +162,6 @@ export interface SpeakOptions {
   onEnd: () => void;
 }
 
-/** Une pause un peu plus longue après la ponctuation (ms). */
-const PAUSES: Record<string, number> = { ".": 220, "!": 220, "?": 220, ",": 110, ";": 140, ":": 140, "\n": 160 };
 /** Les gouttes ne se suivent pas à moins de ça (ms). */
 const MIN_GAP = 70;
 
@@ -180,44 +182,59 @@ export function speak(text: string, o: SpeakOptions): () => void {
       window.clearTimeout(done);
     };
   }
-  // ~55 caractères par seconde, plus vite pour un long texte (7 s au plus).
-  const cps = Math.max(55, text.length / 7);
+  // Le moment de chaque lettre est fixé d'avance (flow-logic.ts : ~55 lettres
+  // par seconde, plus vite pour un long texte, pauses après la ponctuation) ;
+  // chaque image montre les lettres dont le moment est passé. Le rythme reste
+  // régulier même si une image arrive en retard : jamais de paquets.
+  const times = revealTimes(text);
   const starts = new Set(syllableStarts(text));
+  const t0 = performance.now() + 60;
+  const minFrame = o.maxFps ? 1000 / o.maxFps - 2 : 0;
   let shown = 0;
-  let lastPlop = 0;
+  let lastPlop = -Infinity;
+  let lastFrame = -Infinity;
+  let raf = 0;
   let timer = 0;
   let stopped = false;
   const step = () => {
+    window.cancelAnimationFrame(raf);
+    window.clearTimeout(timer);
+    raf = timer = 0;
     if (stopped) return;
-    const chunk = Math.max(1, Math.round(cps / 30));
-    const end = Math.min(text.length, shown + chunk);
-    let pause = 0;
-    for (let i = shown; i < end; i++) {
-      const ch = text[i];
-      const now = performance.now();
-      if (starts.has(i) && now - lastPlop >= MIN_GAP) {
-        lastPlop = now;
-        plop(o.timbre, shift + (Math.random() * 4 - 2), o.volume);
-        o.onMouth(mouthFor(ch));
+    const now = performance.now();
+    if (now - lastFrame >= minFrame) {
+      lastFrame = now;
+      const n = shownAt(times, now - t0);
+      for (let i = shown; i < n; i++) {
+        const ch = text[i];
+        if (starts.has(i) && now - lastPlop >= MIN_GAP) {
+          lastPlop = now;
+          plop(o.timbre, shift + (Math.random() * 4 - 2), o.volume);
+          o.onMouth(mouthFor(ch));
+        }
+        if (ch === "?") o.onMouth(0.3, "question");
+        else if (ch === "!") o.onMouth(0.5, "exclaim");
       }
-      if (ch === "?") o.onMouth(0.3, "question");
-      else if (ch === "!") o.onMouth(0.5, "exclaim");
-      pause = Math.max(pause, PAUSES[ch] ?? 0);
+      if (n > shown) {
+        shown = n;
+        o.onText(shown);
+      }
+      if (shown >= text.length) {
+        stopped = true;
+        o.onMouth(0);
+        o.onEnd();
+        return;
+      }
     }
-    shown = end;
-    o.onText(shown);
-    if (shown >= text.length) {
-      stopped = true;
-      o.onMouth(0);
-      o.onEnd();
-      return;
-    }
-    timer = window.setTimeout(step, 33 + pause);
+    // Une image par image ; si la fenêtre ne dessine plus (cachée), le texte avance quand même.
+    raf = window.requestAnimationFrame(step);
+    timer = window.setTimeout(step, 150);
   };
   timer = window.setTimeout(step, 60);
   return () => {
     if (stopped) return;
     stopped = true;
+    window.cancelAnimationFrame(raf);
     window.clearTimeout(timer);
     o.onText(text.length);
     o.onMouth(0);

@@ -41,6 +41,9 @@ import { settingsStore } from "../../core/settings-store";
 import { reducedMotion } from "../../island/tab-pill";
 import { cleanFirstName } from "../../core/setup-plan";
 import { DEFAULT_TIMBRE, speak, TIMBRES } from "./plops";
+import { HeightTween, LiveWords, morphBubble, rekey, ScrollFollow, snapshot, swapText, syncThread, Typewriter, type ThreadItem } from "./flow";
+import { FIT_HOLD_ATTR } from "../../island/fit";
+import { ECO_FPS, perfMode } from "../../core/perf";
 import { openParakeetSettings } from "../../settings/voice/parakeet-link";
 
 /** Le premier mot d'Ondine, avec le prénom donné à l'assistant de premier lancement. */
@@ -171,8 +174,12 @@ const state: {
   error: string;
   /** L'échange arrêté sur une demande d'accord, et ce qu'Ondine a déjà fait. */
   pending: { ask: Ask; activity: Activity[] } | null;
-  /** L'écoute : en cours, « Regarde ça », touche tenue, sous-titres, texte en cours d'écriture, petite note. */
-  voice: { on: boolean; look: boolean; hold: boolean; partial: string; transcribing: boolean; note: string };
+  /**
+   * L'écoute : en cours, « Regarde ça », touche tenue, sous-titres, texte en
+   * cours d'écriture, petite note ; `id` change à chaque écoute ; `handoff` :
+   * le texte final, quand la bulle en direct devient votre message.
+   */
+  voice: { on: boolean; look: boolean; hold: boolean; partial: string; transcribing: boolean; note: string; id: number; handoff: string };
   /** Le message en cours venait de la voix (mains libres après la réponse). */
   spoken: boolean;
   /** Après un échec de l'écoute (`error` : son message, les boutons ne vont qu'avec lui) : la page des Paramètres Windows à ouvrir, et la transcription par l'API à proposer. */
@@ -185,16 +192,47 @@ const state: {
   busy: false,
   error: "",
   pending: null,
-  voice: { on: false, look: false, hold: false, partial: "", transcribing: false, note: "" },
+  voice: { on: false, look: false, hold: false, partial: "", transcribing: false, note: "", id: 0, handoff: "" },
   spoken: false,
   voiceHelp: null,
 };
-/** La réponse qui s'écrit petit à petit (son indice, ce qui est visible, de quoi l'arrêter). */
-let reveal: { index: number; shown: number; stop: () => void } | null = null;
+/** La réponse qui s'écrit petit à petit (son indice, ce qui est visible, de quoi l'arrêter, son dessin lettre à lettre). */
+let reveal: { index: number; shown: number; stop: () => void; writer: Typewriter } | null = null;
 /** Les bulles déjà apparues : seules les nouvelles s'animent à l'arrivée. */
 let shown = 0;
 const redraws = new Set<() => void>();
 const redraw = () => redraws.forEach((r) => r());
+
+/**
+ * Sans fondu ni glissement : « Réduire les animations » (Windows) ou la
+ * mascotte « Calme ». Le texte s'affiche alors tout de suite.
+ */
+function instant(): boolean {
+  return reducedMotion() || settingsStore.current.mascot.calm === true;
+}
+
+/**
+ * Vos mots en direct et l'étape de l'écoute : la bulle est mise à jour sur
+ * place (flow.ts), jamais toute la vue. Plusieurs morceaux arrivés pendant
+ * la même image n'en font qu'une mise à jour.
+ */
+const liveUpdates = new Set<() => void>();
+let liveQueued = 0;
+function scheduleLive() {
+  if (liveQueued) return;
+  const run = () => {
+    window.cancelAnimationFrame(liveQueued);
+    window.clearTimeout(liveTimer);
+    liveQueued = 0;
+    liveUpdates.forEach((u) => u());
+  };
+  liveQueued = window.requestAnimationFrame(run);
+  // Fenêtre qui ne dessine pas (cachée) : la mise à jour se fait quand même.
+  liveTimer = window.setTimeout(run, 120);
+}
+let liveTimer = 0;
+/** Le défilement doux de chaque vue ouverte (la réponse qui s'écrit le fait avancer). */
+const follows = new Set<ScrollFollow>();
 
 const IMAGE_EXT = ["png", "jpg", "jpeg", "gif", "webp"];
 const TEXT_EXT = ["txt", "log", "md", "json", "xml", "csv", "yml", "yaml", "toml", "ini", "cfg", "conf", "ps1", "bat", "cmd", "py", "rs", "ts", "js", "html", "css", "cs", "java", "go", "sql"];
@@ -265,29 +303,32 @@ async function startReveal(api: ModuleApi, index: number, text: string, mood: st
   reveal?.stop();
   const spoken = state.spoken;
   state.spoken = false;
-  const r = { index, shown: 0, stop: () => {} };
+  const r = { index, shown: 0, stop: () => {}, writer: new Typewriter(text, instant) };
   reveal = r;
   const volume = await plopVolume(api);
   if (reveal !== r) return;
-  const instant = reducedMotion() || settingsStore.current.mascot.calm === true;
-  if (!instant) api.emit("mascot.emote", { emotion: "talk" });
+  const now = instant();
+  if (!now) api.emit("mascot.emote", { emotion: "talk" });
+  // Chaque vue qui montre la réponse (l'île, la bulle d'Ondine sur le bureau).
+  const boxes = () => document.querySelectorAll<HTMLElement>(`[data-reveal="${index}"]`);
   r.stop = speak(text, {
     timbre: TIMBRES[settingsStore.current.mascot.id] ?? DEFAULT_TIMBRE,
     mood,
     volume,
-    instant,
+    instant: now,
+    maxFps: perfMode() === "eco" ? ECO_FPS : undefined,
     onText: (n) => {
       r.shown = n;
-      const node = document.querySelector<HTMLElement>(`[data-reveal="${index}"]`);
-      if (!node) return;
-      node.textContent = text.slice(0, n);
-      const list = node.closest<HTMLElement>(".ask-thread");
-      if (list) list.scrollTop = list.scrollHeight;
+      // Les nouvelles lettres en fondu, sans redessiner la bulle (flow.ts).
+      boxes().forEach((box) => r.writer.show(box, n));
+      follows.forEach((f) => f.follow());
     },
     onMouth: (open, brow) => {
-      if (!instant) api.emit("mascot.talk", brow ? { open, brow } : { open });
+      if (!now) api.emit("mascot.talk", brow ? { open, brow } : { open });
     },
     onEnd: () => {
+      r.writer.done();
+      boxes().forEach((box) => box.removeAttribute("data-reveal"));
       if (reveal === r) reveal = null;
       if (mood) api.emit("mascot.emote", { emotion: mood });
       redraw();
@@ -390,7 +431,7 @@ function wireVoice(api: ModuleApi, owner: () => boolean) {
     switch (p.kind) {
       case "open":
         reveal?.stop();
-        state.voice = { on: true, look: !!p.look, hold: !!p.hold, partial: "", transcribing: false, note: "" };
+        state.voice = { on: true, look: !!p.look, hold: !!p.hold, partial: "", transcribing: false, note: "", id: v.id + 1, handoff: "" };
         state.error = "";
         state.voiceHelp = null;
         if (mine) {
@@ -401,14 +442,18 @@ function wireVoice(api: ModuleApi, owner: () => boolean) {
           listenTimer = window.setTimeout(() => state.voice.on && api.emit("mascot.emote", { emotion: "listening" }), 700);
         }
         break;
+      // Vos mots et l'étape de l'écoute : seulement la bulle en direct, à la prochaine image.
       case "partial":
         v.partial = p.text ?? "";
-        break;
+        scheduleLive();
+        return;
       case "transcribing":
         v.transcribing = true;
-        break;
+        scheduleLive();
+        return;
       case "final":
-        state.voice = { ...v, on: false, transcribing: false, partial: "" };
+        // La bulle en direct devient votre message (morphBubble), sauf « Regarde ça ».
+        state.voice = { ...v, on: false, transcribing: false, partial: p.text ?? "", handoff: mine && p.text && !p.look ? p.text.trim() : "" };
         if (mine && p.text) void heard(api, p.text, !!p.look);
         break;
       case "empty":
@@ -708,8 +753,59 @@ export const askclaude: IslandModule = {
       // data-island-fit : l'île grandit avec la conversation, jusqu'à sa taille
       // maximale (fit.ts), sauf si le réglage « autoGrow » est coupé.
       const box = el("div", { class: "ask" });
+      // La conversation reste la même d'un dessin à l'autre (son défilement,
+      // les bulles déjà là et leurs animations) : seules les bulles qui
+      // changent sont refaites (syncThread, flow.ts).
+      const list = el("div", { class: "ask-thread", role: "log", "aria-live": "polite", "data-island-fit-w": "" });
+      box.append(list);
       root.append(box);
-      let list: HTMLElement | null = null;
+      const follow = new ScrollFollow(list, instant);
+      follows.add(follow);
+      let drawn = -1;
+      /** La bulle en direct de cette vue, mise à jour sur place. */
+      let live: { node: HTMLElement; dot: HTMLElement; labels: HTMLElement; label: string; text: HTMLElement; hint: HTMLElement | null; words: LiveWords; id: number } | null = null;
+      const liveLabel = () => (state.voice.transcribing ? "J'écris ce que vous avez dit…" : state.voice.look ? "Je regarde et j'écoute…" : "J'écoute…");
+      const buildLive = (): HTMLElement => {
+        const v = state.voice;
+        const label = liveLabel();
+        const dot = el("span", { class: `ask-mic-dot${v.on && !v.transcribing ? " on" : ""}`, "aria-hidden": "true" });
+        const labels = el("span", { class: "ask-stack" }, el("small", {}, label));
+        const flow = el("span", { class: "ask-flow" });
+        // data-no-i18n : vos mots ne passent pas par la traduction de l'interface.
+        const text = el("div", { class: "ask-bubble-text", "data-no-i18n": "" }, flow);
+        const hint = v.on && !v.transcribing ? el("small", { class: "muted ask-live-hint" }, v.hold ? "Relâchez les touches quand vous avez fini · Échap pour annuler" : "Parlez, je m'arrête quand vous vous taisez · Échap pour annuler") : null;
+        const node = el("div", { class: "ask-bubble me live" }, el("div", { class: "ask-live-head" }, dot, labels), text, hint);
+        // Une ligne de plus : la bulle grandit en glissant (et l'île avec elle).
+        new HeightTween(text, flow, instant);
+        const words = new LiveWords(flow, instant);
+        words.set(v.partial);
+        live = { node, dot, labels, label, text, hint, words, id: v.id };
+        return node;
+      };
+      /** Vos mots et l'étape de l'écoute, sans rien redessiner d'autre. */
+      const updateLive = () => {
+        const v = state.voice;
+        box.toggleAttribute(FIT_HOLD_ATTR, exchanging());
+        if (!live || !live.node.isConnected) return;
+        // Le micro est fermé dès que l'écriture commence : le point rouge s'arrête.
+        const listening = v.on && !v.transcribing;
+        live.dot.classList.toggle("on", listening);
+        const label = liveLabel();
+        if (label !== live.label) {
+          live.label = label;
+          swapText(live.labels, label, instant(), (t) => el("small", {}, t));
+        }
+        if (!listening && live.hint) {
+          // « Parlez, je m'arrête… » s'efface sur place, la bulle se resserre en glissant.
+          const hint = live.hint;
+          live.hint = null;
+          morphBubble(live.node, [hint], live.text, instant(), () => hint.remove());
+        }
+        live.words.set(v.partial);
+      };
+      liveUpdates.add(updateLive);
+      /** Un échange en cours (écoute, envoi, réponse qui s'écrit) : l'île ne rétrécit pas (fit.ts). */
+      const exchanging = () => state.voice.on || state.voice.transcribing || state.busy || reveal !== null;
 
       const activityList = (items: Activity[]): HTMLElement =>
         el(
@@ -799,6 +895,16 @@ export const askclaude: IslandModule = {
         );
       };
 
+      // Le texte d'une réponse ; celle qui s'écrit (`writing`) grandit en glissant, ligne par ligne.
+      const ondineText = (text: string, writing: number | null): HTMLElement => {
+        if (writing === null) return el("div", { class: "ask-bubble-text", "data-no-i18n": "" }, text);
+        const flow = el("span", { class: "ask-flow", "data-reveal": String(writing) });
+        const outer = el("div", { class: "ask-bubble-text", "data-no-i18n": "" }, flow);
+        if (reveal) reveal.writer.show(flow, reveal.shown);
+        new HeightTween(outer, flow, instant);
+        return outer;
+      };
+
       const bubble = (b: Bubble, i: number): HTMLElement => {
         const fresh = i >= shown ? " fresh" : "";
         if (b.user) {
@@ -816,7 +922,7 @@ export const askclaude: IslandModule = {
           "div",
           { class: `ask-bubble ondine${fresh}` },
           b.activity?.length ? activityList(b.activity) : null,
-          b.text ? el("div", { class: "ask-bubble-text", "data-no-i18n": "", "data-reveal": writing ? String(i) : undefined }, writing ? b.text.slice(0, reveal?.shown ?? 0) : b.text) : null,
+          b.text ? ondineText(b.text, writing ? i : null) : null,
           ...(b.cards ?? []).map(fileCard),
           el(
             "div",
@@ -905,35 +1011,35 @@ export const askclaude: IslandModule = {
         if (unset.length && !state.pending) parts.push(grantPanel(api, unset, redraw));
 
         // La conversation. Le premier mot d'Ondine est écrit ici : il ne coûte rien.
-        list = el(
-          "div",
-          { class: "ask-thread", role: "log", "aria-live": "polite", "data-island-fit-w": "" },
-          state.bubbles.length === 0
-            ? el(
-                "div",
-                { class: "ask-bubble ondine hello" },
-                el("div", { class: "ask-bubble-text" }, helloBubble()),
-              )
-            : null,
-          ...state.bubbles.map(bubble),
-          state.pending ? askCard(state.pending) : null,
-          // Pendant l'écoute : vos mots s'écrivent en direct, avec le point rouge du micro.
-          state.voice.on || state.voice.transcribing
-            ? el(
-                "div",
-                { class: "ask-bubble me live" },
-                el(
-                  "div",
-                  { class: "ask-live-head" },
-                  el("span", { class: `ask-mic-dot${state.voice.on ? " on" : ""}`, "aria-hidden": "true" }),
-                  el("small", {}, state.voice.transcribing ? "J'écris ce que vous avez dit…" : state.voice.look ? "Je regarde et j'écoute…" : "J'écoute…"),
-                ),
-                state.voice.partial ? el("div", { class: "ask-bubble-text", "data-no-i18n": "" }, state.voice.partial) : null,
-                state.voice.on ? el("small", { class: "muted" }, state.voice.hold ? "Relâchez les touches quand vous avez fini · Échap pour annuler" : "Parlez, je m'arrête quand vous vous taisez · Échap pour annuler") : null,
-              )
-            : null,
-          state.busy ? el("div", { class: "ask-bubble ondine typing fresh", "aria-label": `${who} réfléchit…` }, el("span", {}), el("span", {}), el("span", {})) : null,
-        );
+        const items: ThreadItem[] = [];
+        if (state.bubbles.length === 0) items.push({ key: "hello", sig: helloBubble(), build: () => el("div", { class: "ask-bubble ondine hello" }, el("div", { class: "ask-bubble-text" }, helloBubble())) });
+        state.bubbles.forEach((b, i) => items.push({ key: `b${i}`, sig: JSON.stringify(b), build: () => bubble(b, i) }));
+        if (state.pending) {
+          const pending = state.pending;
+          items.push({ key: "pending", sig: `${JSON.stringify(pending)}${state.busy}`, build: () => askCard(pending) });
+        }
+        // Pendant l'écoute : vos mots s'écrivent en direct, avec le point rouge du micro.
+        if (state.voice.on || state.voice.transcribing) items.push({ key: "live", sig: `live${state.voice.id}`, build: buildLive });
+        if (state.busy) items.push({ key: "typing", sig: who, build: () => el("div", { class: "ask-bubble ondine typing fresh", "aria-label": `${who} réfléchit…` }, el("span", {}), el("span", {}), el("span", {})) });
+        // Ce que vous avez dit vient de partir : la bulle en direct devient votre message, sans clignoter.
+        const last = state.bubbles.length - 1;
+        const handoff = state.voice.handoff;
+        // Où sont les bulles avant le changement : elles glisseront à leur nouvelle place.
+        const before = snapshot(list);
+        if (handoff && live && live.node.isConnected && live.id === state.voice.id && state.bubbles[last]?.user && state.bubbles[last].text === handoff) {
+          const l = live;
+          const b = state.bubbles[last];
+          live = null;
+          morphBubble(l.node, [l.node.querySelector(".ask-live-head") as HTMLElement, l.hint].filter((x): x is HTMLElement => !!x), l.text, instant(), () => {
+            l.node.querySelector(".ask-live-head")?.remove();
+            l.hint?.remove();
+            l.node.classList.remove("live");
+            l.words.set(b.text);
+          });
+          rekey(l.node, `b${last}`, JSON.stringify(b));
+        }
+        syncThread(list, items, instant(), before);
+        if (live && !live.node.isConnected) live = null;
         parts.push(list);
 
         if (state.error) parts.push(el("p", { class: "ask-error" }, `⚠️ ${state.error}`));
@@ -1025,9 +1131,17 @@ export const askclaude: IslandModule = {
         );
 
         const hadFocus = document.activeElement?.classList.contains("ask-input") ?? false;
-        box.replaceChildren(...parts.filter((x): x is HTMLElement => x !== null));
+        // Tout autour de la conversation est refait ; elle, jamais (voir syncThread).
+        for (const c of [...box.children]) if (c !== list) c.remove();
+        const at = parts.indexOf(list);
+        list.before(...parts.slice(0, at).filter((x): x is HTMLElement => x !== null));
+        list.after(...parts.slice(at + 1).filter((x): x is HTMLElement => x !== null));
+        box.toggleAttribute(FIT_HOLD_ATTR, exchanging());
         shown = state.bubbles.length;
-        list.scrollTop = list.scrollHeight;
+        // En bas : tout de suite à l'ouverture, en glissant ensuite (et toujours après un nouveau message).
+        if (drawn < 0) list.scrollTop = list.scrollHeight;
+        else follow.follow(state.bubbles.length > drawn);
+        drawn = state.bubbles.length;
         if (hadFocus) area.focus({ preventScroll: true });
       };
 
@@ -1039,6 +1153,8 @@ export const askclaude: IslandModule = {
       draw();
       return () => {
         redraws.delete(draw);
+        liveUpdates.delete(updateLive);
+        follows.delete(follow);
         offSettings();
       };
     },
