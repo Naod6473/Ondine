@@ -3,13 +3,15 @@
 // dessine les lignes, vérifie les valeurs et les enregistre.
 //
 // Chaque champ devient une ligne (voir controls.ts) : interrupteur pour un
-// oui/non, − + pour un nombre, segmenté ou liste pour un choix, champ texte,
+// oui/non, − + pour un nombre, segmenté ou liste pour un choix, raccourci
+// clavier (choix proposés ou « Personnalisé… », hotkey-input.ts), champ texte,
 // ou liste de dossiers / fichiers / calendriers sur toute la largeur.
 
 import type { CalendarEntry, FieldCheck, SettingField } from "../core/module-types";
 import { coerce } from "../core/settings-store";
 import { calendarsInput } from "./calendars-input";
 import { fieldWarnings } from "./field-checks";
+import { hotkeyInput } from "./hotkey-input";
 import { Bridge, IS_TAURI } from "../core/bridge";
 import { el } from "../island/dom";
 import { errorText } from "../core/log";
@@ -37,6 +39,8 @@ export function settingsRows(fields: SettingField[], values: Record<string, unkn
           choice(String(current), field.options.map((o) => [o.value, o.label]), (v) => onChange(field.key, v)),
           field.help,
         );
+      case "hotkey":
+        return row(field.label, hotkeyInput(field.key, String(current ?? ""), field.options ?? [], (v) => onChange(field.key, coerce(field, v))), field.help);
       case "string": {
         // Plusieurs lignes (une grille, une liste) : une zone de texte, en pleine largeur.
         const txt = (

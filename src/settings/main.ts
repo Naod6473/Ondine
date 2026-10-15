@@ -138,7 +138,7 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
     { id: "general", label: "Général", keys: [] },
     { id: "models", label: "Fournisseur et modèles", keys: ["provider", "model", "openaiModel", "geminiModel", "localUrl", "localModel", "openrouterModel", "maxTokens"] },
     { id: "persona", label: "Personnalité et affichage", keys: ["personality", "autoGrow", "emotions", "showDrop"] },
-    { id: "voice", label: "Voix et sons", keys: ["voiceHotkey", "micMode", "voiceEngine", "lookHotkey", "handsFree", "quickCommands", "plops", "plopVolume", "discreet"] },
+    { id: "voice", label: "Voix et sons", keys: ["micDevice", "voiceHotkey", "micMode", "voiceEngine", "lookHotkey", "wakeWord", "handsFree", "quickCommands", "plops", "plopVolume", "discreet"] },
     { id: "files", label: "Fichiers et PC", keys: ["fileTools", "pcTools", "filesFolder"] },
   ],
   // Équipe (réseau local).
@@ -149,6 +149,13 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
     { id: "chat", label: "Chat", keys: ["chatReceipts", "chatKeep"] },
   ],
 };
+
+/**
+ * Des champs de manifeste que la page du module dessine elle-même (pas de
+ * ligne générée) : le micro et le mot d'appel de Parler à Ondine
+ * (askclaude-page.ts, 1.2.4).
+ */
+const PAGE_DRAWN: Record<string, string[]> = { askclaude: ["micDevice", "wakeWord"] };
 
 /**
  * Des mots de la recherche qui ne sont pas le libellé d'une ligne : la ligne où
@@ -1692,7 +1699,7 @@ function modulePage(main: HTMLElement, man: ModuleManifest, compact = false) {
   main.append(sections ? inSub(sections[0].id, top) : top);
   // Des champs montrés sur une autre page (layout.ts, MOVED_FIELDS) : un lien à leur place.
   const moved = MOVED_FIELDS[man.id];
-  const fields = (man.settings?.fields ?? []).filter((f) => !moved?.keys.includes(f.key));
+  const fields = (man.settings?.fields ?? []).filter((f) => !moved?.keys.includes(f.key) && (compact || !PAGE_DRAWN[man.id]?.includes(f.key)));
   if (!fields.length) {
     if (!compact) main.append(el("p", { class: "empty" }, "Ce module n'a pas de réglage."));
     return;

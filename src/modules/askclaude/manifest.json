@@ -71,9 +71,9 @@
       },
       {
         "key": "voiceHotkey",
-        "type": "select",
+        "type": "hotkey",
         "label": "Raccourci pour parler à Ondine",
-        "help": "Ouvre Parler à Ondine et écoute, de n'importe où. Échap annule. Un point rouge reste visible tant que le micro écoute ; rien n'est enregistré sur le disque.",
+        "help": "Ouvre Parler à Ondine et écoute, de n'importe où. Échap annule. Un point rouge reste visible tant que le micro écoute ; rien n'est enregistré sur le disque. « Personnalisé… » : appuyez sur la combinaison de votre choix (avec Ctrl, Alt, Maj ou Win, ou une touche F1 à F24).",
         "default": "Ctrl+Alt+V",
         "options": [
           { "value": "Ctrl+Alt+V", "label": "Ctrl + Alt + V" },
@@ -107,7 +107,7 @@
       },
       {
         "key": "lookHotkey",
-        "type": "select",
+        "type": "hotkey",
         "label": "Raccourci « Regarde ça »",
         "help": "Comme le raccourci pour parler, et Ondine prend une image de la fenêtre active pour la joindre à votre question. Elle vous est montrée avant l'envoi : rien ne part sans votre clic.",
         "default": "",
@@ -117,6 +117,8 @@
           { "value": "Alt+Shift+G", "label": "Alt + Maj + G" }
         ]
       },
+      { "key": "micDevice", "type": "string", "label": "Micro", "help": "Le micro qu'Ondine écoute. Vide = le micro par défaut de Windows.", "default": "", "maxLength": 512 },
+      { "key": "wakeWord", "type": "boolean", "label": "« Dis Ondine » pour lui parler", "help": "Le micro reste ouvert en permanence et l'écoute se fait entièrement sur le PC (Parakeet) : rien n'est enregistré ni envoyé tant que vous n'avez pas dit « Dis Ondine » ou « Hey Ondine ».", "default": false },
       { "key": "handsFree", "type": "boolean", "label": "Mains libres", "help": "Après une réponse à une question dite à voix haute, le micro se rallume quelques secondes pour enchaîner.", "default": false },
       { "key": "quickCommands", "type": "boolean", "label": "Commandes rapides sans IA", "help": "« minuteur 10 minutes », « volume 30 », « musique suivante », « note : … », « luminosité 50 » : faits tout de suite sur le PC, sans clé et sans rien envoyer.", "default": true },
       { "key": "plops", "type": "boolean", "label": "Petits sons pendant qu'Ondine répond", "help": "Des « plop plip » de gouttes au rythme du texte, plus graves quand elle est triste, plus aigus quand elle est joyeuse, avec le timbre de votre mascotte.", "default": true },
@@ -126,9 +128,9 @@
     ]
   },
   "views": ["expanded", "drop"],
-  "commands": ["status", "prepare", "unprepare", "send", "confirm", "open_card", "reset", "copy", "listen", "voice_stop", "voice_state", "voice_fix", "quick", "models"],
+  "commands": ["status", "prepare", "unprepare", "send", "confirm", "open_card", "reset", "copy", "listen", "voice_stop", "voice_state", "voice_fix", "quick", "models", "mics", "mic_test", "hotkeys", "wake_state"],
   "events": {
-    "emits": ["mascot.emote", "mascot.talk", "timer.start", "shelf.add", "voice.listening", "voice.level", "askclaude.voice"],
+    "emits": ["mascot.emote", "mascot.talk", "timer.start", "shelf.add", "voice.listening", "voice.level", "voice.wake", "askclaude.voice"],
     "listens": ["askclaude.voice", "timer.focus", "agents.quiet"]
   }
 }

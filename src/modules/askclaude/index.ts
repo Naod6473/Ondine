@@ -136,7 +136,7 @@ interface VoiceMsg {
   hold?: boolean;
   why?: string;
   message?: string;
-  /** La page des Paramètres Windows qui règle l'échec (« speech », « mic », « language »). */
+  /** La page des Paramètres Windows qui règle l'échec (« speech », « mic », « language », « pack », « sound »). */
   fix?: string | null;
   /** La dictée de Windows a échoué et une clé OpenAI ou Gemini est rangée : où partirait l'audio. */
   apiTo?: string | null;
@@ -477,6 +477,10 @@ function voiceHelpRow(api: ModuleApi, help: { fix: string | null; apiTo: string 
           },
           "⚙️ Ouvrir les paramètres Windows",
         )
+      : null,
+    // Le micro ne donne rien (coupé, bloqué, pas le bon) : le choix du micro et « Tester le micro ».
+    help.fix === "mic" || help.fix === "sound"
+      ? el("button", { class: "btn small", onclick: api.handler(() => openParakeetSettings()) }, "🎙️ Choisir le micro")
       : null,
     // Parakeet choisi sans son modèle : les Réglages, à l'endroit du téléchargement.
     help.models

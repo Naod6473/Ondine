@@ -201,7 +201,7 @@ export function distanceTo(b: Box, x: number, y: number): number {
 
 // ── Les points d'état autour de l'encoche (idée 3) ───────────────────────────
 
-export type DotKind = "music" | "agent" | "timer" | "voice";
+export type DotKind = "music" | "agent" | "timer" | "voice" | "wake";
 
 /** La couleur de chaque point (gommes de gum-draw.ts : vert, violet, or, rose). */
 export const DOT_COLORS: Record<DotKind, string> = {
@@ -209,11 +209,13 @@ export const DOT_COLORS: Record<DotKind, string> = {
   agent: "#b98cff",
   timer: "#ffd24a",
   voice: "#ff9cc6",
+  /** Le mot d'appel écoute (« Dis Ondine », 1.2.4) : le point rouge du micro. */
+  wake: "#ff4d5e",
 };
 
-/** Les points à montrer, dans un ordre fixe (au plus trois). */
+/** Les points à montrer, dans un ordre fixe (au plus trois ; le micro ouvert d'abord). */
 export function nanoDots(status: Partial<Record<DotKind, boolean>>): DotKind[] {
-  return (["music", "agent", "timer", "voice"] as DotKind[]).filter((k) => status[k]).slice(0, 3);
+  return (["wake", "music", "agent", "timer", "voice"] as DotKind[]).filter((k) => status[k]).slice(0, 3);
 }
 
 /**

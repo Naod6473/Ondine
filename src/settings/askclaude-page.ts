@@ -7,6 +7,8 @@
 //   - « Parakeet sur le PC » (sous-menu Voix et sons, 1.2.4) : télécharger,
 //     annuler ou supprimer le modèle de la reconnaissance sur le PC
 //     (voice/parakeet-block.ts, partagé avec Dictée et Notes d'appel).
+//   - « Micro » et « « Dis Ondine » » (sous-menu Voix et sons, 1.2.4) : le
+//     choix du micro, « Tester le micro », le mot d'appel (mic-block.ts).
 //   - « Modèles du serveur » (sous-menu Fournisseur et modèles, 1.2.4) : pour
 //     un serveur local ou OpenRouter, la liste des modèles, demandée sur un
 //     clic ; un clic sur un modèle le choisit.
@@ -18,6 +20,7 @@ import { Bridge } from "../core/bridge";
 import { el } from "../island/dom";
 import { filterModels, localSentText, modelKey, type ServerModel } from "./askclaude-models";
 import { group, inSub, wideRow } from "./controls";
+import { micBlock, wakeBlock, watchHotkeyProblems } from "./mic-block";
 import { parakeetBlock } from "./voice/parakeet-block";
 
 interface Status {
@@ -51,7 +54,8 @@ export function voiceText(engine: string, destination: string | null, offlineRea
 }
 
 /** Les deux blocs, rangés dans leur sous-menu (`general`, `persona`). */
-export function askclaudeGroups(pick?: (key: string, value: string) => void): HTMLElement[] {
+export function askclaudeGroups(pick: (key: string, value: unknown) => void): HTMLElement[] {
+  watchHotkeyProblems();
   const models = el("div", { class: "ask-models" });
   const sent = el("div", { class: "ask-sent" }, el("p", { class: "muted" }, "…"));
   const system = el("pre", { class: "ask-system", hidden: true, "data-no-i18n": "" });
@@ -88,12 +92,14 @@ export function askclaudeGroups(pick?: (key: string, value: string) => void): HT
         wideRow("La consigne envoyée à chaque message", el("div", {}, show, system), "La personnalité, puis les consignes des humeurs et des outils, telles qu'elles partent.", "Voir la consigne exacte"),
       ]),
     ),
+    micBlock(pick),
     inSub("voice", parakeetBlock()),
+    wakeBlock(pick),
   ];
 }
 
 /** Serveur local, OpenRouter : « Lister les modèles » (sur votre clic), puis un clic choisit. */
-function drawModels(box: HTMLElement, s: Status, pick?: (key: string, value: string) => void): void {
+function drawModels(box: HTMLElement, s: Status, pick?: (key: string, value: unknown) => void): void {
   const key = modelKey(s.provider ?? "");
   const group = box.closest<HTMLElement>(".group") ?? box;
   if (!key) {

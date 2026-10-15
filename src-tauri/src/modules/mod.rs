@@ -25,6 +25,8 @@ mod askclaude_tools;
 mod askclaude_pc;
 // Sa voix : raccourci, écoute, transcription (Windows ou API), « Regarde ça ».
 mod askclaude_voice;
+// Le mot d'appel « Dis Ondine » (1.2.4, coupé par défaut).
+mod askclaude_wake;
 // Ses commandes rapides comprises sans IA (minuteur, volume, note…).
 mod askclaude_quick;
 // Notes d'appel (1.2.4) : micro + son du PC, transcription personne par personne, résumé.

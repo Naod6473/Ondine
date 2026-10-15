@@ -519,6 +519,17 @@ impl RustModule for AskClaude {
                 crate::platform::shell_open(fix.uri())?;
                 Ok(Value::Null)
             }
+            // Réglages (1.2.4) : les micros du PC et celui choisi.
+            "mics" => Ok(speech::mics()),
+            // { device } : « Tester le micro » (niveau puis bilan par l'événement « mic-test »).
+            "mic_test" => {
+                speech::mic_test(ctx.app, args.get("device").and_then(Value::as_str).unwrap_or(""))?;
+                Ok(Value::Null)
+            }
+            // Réglages : le dernier refus de chaque raccourci (pris par un autre logiciel…).
+            "hotkeys" => Ok(speech::hotkey_errors()),
+            // Réglages : le mot d'appel (« Dis Ondine »), écoute ou pause et pourquoi.
+            "wake_state" => Ok(super::askclaude_wake::state()),
             // L'écoute en cours, et s'il faut rester discrète (plops muets).
             "voice_state" => Ok(json!({ "listening": speech::listening(), "discreet": speech::discreet(ctx.app) })),
             // { text } : une commande rapide (sans IA) ? Faite tout de suite,

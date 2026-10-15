@@ -67,7 +67,8 @@ use crate::services::log;
 use crate::services::speech as stt;
 
 const ID: &str = "askclaude";
-/// Les raccourcis proposés (les autres valeurs sont refusées).
+/// Les raccourcis proposés. Un raccourci personnalisé (1.2.4) est accepté
+/// s'il passe `check_hotkey`.
 pub const HOTKEYS: &[&str] = &["Ctrl+Alt+V", "Alt+Shift+V", "Ctrl+Alt+Enter"];
 pub const LOOK_HOTKEYS: &[&str] = &["Ctrl+Alt+G", "Alt+Shift+G"];
 const DEFAULT_HOTKEY: &str = "Ctrl+Alt+V";
@@ -83,6 +84,14 @@ const LEVEL_EVERY: Duration = Duration::from_millis(66);
 pub(super) const OPENAI_STT_MODEL: &str = "gpt-4o-mini-transcribe";
 /// Une image de la fenêtre active : son plus grand côté, au plus.
 const LOOK_MAX_SIDE: u32 = 1600;
+/// Parakeet : au-dessus de ce niveau crête, on écrit même si le seuil de
+/// silence n'a rien vu (voix faible, micro loin).
+const QUIET_SPEECH_PEAK: f32 = 0.02;
+/// « Tester le micro » : durée.
+const MIC_TEST: Duration = Duration::from_secs(4);
+/// L'événement Tauri de « Tester le micro » (niveau, puis le bilan).
+pub const MIC_TEST_EVENT: &str = "mic-test";
+static MIC_TESTING: AtomicBool = AtomicBool::new(false);
 
 /// L'écoute en cours (une seule à la fois).
 struct Session {
@@ -102,6 +111,8 @@ static FOCUS: AtomicBool = AtomicBool::new(false);
 static QUIET: AtomicBool = AtomicBool::new(false);
 /// Numéro de la dernière écoute (une écoute finie n'efface pas la suivante).
 static NEXT: AtomicU64 = AtomicU64::new(0);
+/// Le dernier refus de chaque raccourci (voix, regarde ça), pour les Réglages.
+static HOTKEY_ERRORS: Mutex<(String, String)> = Mutex::new((String::new(), String::new()));
 
 /// Comment écouter.
 #[derive(Clone, Copy, Debug)]
@@ -132,17 +143,34 @@ fn hold_mode(s: &serde_json::Map<String, Value>) -> bool {
 /// Le fil de fond : toutes les secondes, les raccourcis suivent les réglages
 /// (et le module activé).
 pub fn start(app: AppHandle) {
+    // Le mot d'appel (« Dis Ondine »), coupé par défaut, a son propre fil.
+    super::askclaude_wake::start(app.clone());
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_secs(2)); // le temps que les réglages soient chargés
         loop {
             let step = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                // Le micro choisi sert à toutes les captures d'Ondine, même module coupé.
+                voice::set_mic(&mic_setting(&app));
                 let (voice, look) = if super::is_active(&app, ID) {
                     let s = settings(&app);
-                    let pick = |key: &str, default: &str, list: &[&str]| {
-                        let v = s.get(key).and_then(Value::as_str).unwrap_or(default);
-                        if list.contains(&v) { v.to_string() } else { String::new() }
-                    };
-                    (pick("voiceHotkey", DEFAULT_HOTKEY, HOTKEYS), pick("lookHotkey", "", LOOK_HOTKEYS))
+                    let voice = pick_hotkey(s.get("voiceHotkey").and_then(Value::as_str).unwrap_or(DEFAULT_HOTKEY), HOTKEYS);
+                    let look = pick_hotkey(s.get("lookHotkey").and_then(Value::as_str).unwrap_or(""), LOOK_HOTKEYS);
+                    let mut guard = HOTKEY_ERRORS.locked();
+                    let errors = &mut *guard;
+                    for (picked, slot) in [(&voice, &mut errors.0), (&look, &mut errors.1)] {
+                        if let Err(e) = picked {
+                            if slot != e {
+                                log::warn(format!("parler à Ondine : {e}"));
+                                *slot = e.clone();
+                            }
+                        }
+                    }
+                    drop(guard);
+                    let voice = voice.unwrap_or_default();
+                    // Le même raccourci pour les deux : seulement « parler ».
+                    let look = look.unwrap_or_default();
+                    let look = if !look.is_empty() && same_hotkey(&look, &voice) { String::new() } else { look };
+                    (voice, look)
                 } else {
                     (String::new(), String::new())
                 };
@@ -154,6 +182,123 @@ pub fn start(app: AppHandle) {
             std::thread::sleep(Duration::from_secs(1));
         }
     });
+}
+
+/// Le micro choisi (`micDevice`), lu dans les réglages enregistrés.
+fn mic_setting(app: &AppHandle) -> String {
+    use tauri::Manager;
+    let Some(shared) = app.try_state::<crate::Shared>() else { return String::new() };
+    let st = shared.settings.locked();
+    st.modules.get(ID).and_then(|m| m.values.get("micDevice")).and_then(Value::as_str).unwrap_or("").to_string()
+}
+
+/// La valeur d'un réglage de raccourci → le raccourci à poser ("" = aucun),
+/// ou pourquoi il est refusé.
+fn pick_hotkey(value: &str, presets: &[&str]) -> Result<String, String> {
+    let value = value.trim();
+    if value.is_empty() || presets.contains(&value) {
+        return Ok(value.to_string());
+    }
+    check_hotkey(value).map(|()| value.to_string()).map_err(|why| format!("le raccourci {} est refusé : {why}", pretty_hotkey(value)))
+}
+
+/// Deux écritures du même raccourci (« Alt+Ctrl+K » et « Ctrl+Alt+K ») ?
+fn same_hotkey(a: &str, b: &str) -> bool {
+    use tauri_plugin_global_shortcut::Shortcut;
+    match (a.parse::<Shortcut>(), b.parse::<Shortcut>()) {
+        (Ok(x), Ok(y)) => x.mods == y.mods && x.key == y.key,
+        _ => a == b,
+    }
+}
+
+/// Un raccourci personnalisé est-il acceptable ? Il doit se lire comme un
+/// `Shortcut` du greffon de raccourcis globaux, avoir au moins un
+/// modificateur (Ctrl, Alt, Maj, Win ; sauf F1 à F24), ne pas gêner la frappe
+/// (Maj seule avec une touche) ni prendre un raccourci de Windows (Alt+F4,
+/// Ctrl+Alt+Suppr, Win+L…) ou un raccourci d'édition (Ctrl+C…), qu'Ondine
+/// volerait à toutes les applis.
+pub fn check_hotkey(value: &str) -> Result<(), &'static str> {
+    use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut};
+    let sc: Shortcut = value.parse().map_err(|_| "raccourci illisible")?;
+    let (m, k) = (sc.mods, sc.key);
+    let fkey = matches!(
+        k,
+        Code::F1 | Code::F2 | Code::F3 | Code::F4 | Code::F5 | Code::F6 | Code::F7 | Code::F8 | Code::F9 | Code::F10 | Code::F11 | Code::F12 | Code::F13 | Code::F14 | Code::F15 | Code::F16 | Code::F17 | Code::F18 | Code::F19 | Code::F20 | Code::F21 | Code::F22 | Code::F23 | Code::F24
+    );
+    let (ctrl, alt, shift, win) = (Modifiers::CONTROL, Modifiers::ALT, Modifiers::SHIFT, Modifiers::SUPER);
+    let allowed = ctrl | alt | shift | win;
+    if !allowed.contains(m) {
+        return Err("seules les touches Ctrl, Alt, Maj et Win peuvent accompagner la touche");
+    }
+    if m.is_empty() && !fkey {
+        return Err("il faut au moins une touche Ctrl, Alt, Maj ou Win (sauf pour F1 à F24)");
+    }
+    if m.is_empty() && k == Code::F12 {
+        return Err("F12 seule est réservée par Windows");
+    }
+    if m == shift && !fkey {
+        return Err("Maj seule avec une touche gênerait la frappe : ajoutez Ctrl, Alt ou Win");
+    }
+    let windows: &[(Modifiers, Code)] = &[
+        (alt, Code::F4),
+        (alt, Code::Tab),
+        (alt | shift, Code::Tab),
+        (alt, Code::Escape),
+        (alt, Code::Space),
+        (ctrl, Code::Escape),
+        (ctrl | shift, Code::Escape),
+        (ctrl | alt, Code::Delete),
+        (ctrl | alt, Code::Tab),
+        (win, Code::KeyL),
+        (win, Code::KeyD),
+        (win, Code::KeyE),
+        (win, Code::KeyR),
+        (win, Code::KeyI),
+        (win, Code::KeyX),
+        (win, Code::KeyA),
+        (win, Code::KeyS),
+        (win, Code::KeyV),
+        (win, Code::KeyH),
+        (win, Code::KeyM),
+        (win, Code::Tab),
+        (win, Code::Period),
+        (win | shift, Code::KeyS),
+        (win | ctrl, Code::KeyD),
+        (win | ctrl, Code::ArrowLeft),
+        (win | ctrl, Code::ArrowRight),
+        (win | ctrl, Code::F4),
+    ];
+    let editing = [Code::KeyA, Code::KeyC, Code::KeyF, Code::KeyN, Code::KeyO, Code::KeyP, Code::KeyS, Code::KeyT, Code::KeyV, Code::KeyW, Code::KeyX, Code::KeyY, Code::KeyZ];
+    if windows.iter().any(|&(wm, wk)| wm == m && wk == k) || (m == win && matches!(k, Code::Digit0 | Code::Digit1 | Code::Digit2 | Code::Digit3 | Code::Digit4 | Code::Digit5 | Code::Digit6 | Code::Digit7 | Code::Digit8 | Code::Digit9)) {
+        return Err("ce raccourci sert déjà à Windows");
+    }
+    if m == ctrl && editing.contains(&k) {
+        return Err("ce raccourci sert à toutes les applis (copier, coller, enregistrer…)");
+    }
+    Ok(())
+}
+
+/// Un raccourci à lire (« Ctrl + Alt + Maj + K »).
+fn pretty_hotkey(value: &str) -> String {
+    value
+        .split('+')
+        .map(|t| match t.trim() {
+            "Shift" => "Maj".to_string(),
+            "Super" => "Win".to_string(),
+            "Enter" => "Entrée".to_string(),
+            "Space" => "Espace".to_string(),
+            "Delete" => "Suppr".to_string(),
+            "Escape" => "Échap".to_string(),
+            k => k.strip_prefix("Key").or_else(|| k.strip_prefix("Digit")).unwrap_or(k).to_string(),
+        })
+        .collect::<Vec<_>>()
+        .join(" + ")
+}
+
+/// Pour les Réglages : le dernier refus de chaque raccourci ("" = aucun).
+pub fn hotkey_errors() -> Value {
+    let e = HOTKEY_ERRORS.locked();
+    json!({ "voiceHotkey": e.0, "lookHotkey": e.1 })
 }
 
 /// Enregistre (ou retire) les deux raccourcis s'ils ont changé.
@@ -169,6 +314,11 @@ fn apply_hotkeys(app: &AppHandle, voice: &str, look: &str) {
             let _ = gs.unregister(current.as_str());
         }
         *current = wanted.to_string();
+        {
+            let mut errors = HOTKEY_ERRORS.locked();
+            let slot = if is_look { &mut errors.1 } else { &mut errors.0 };
+            slot.clear();
+        }
         if wanted.is_empty() {
             continue;
         }
@@ -180,13 +330,17 @@ fn apply_hotkeys(app: &AppHandle, voice: &str, look: &str) {
         });
         if let Err(e) = result {
             let text = e.to_string();
-            let pretty = wanted.replace("Shift", "Maj").replace("Enter", "Entrée");
+            let pretty = pretty_hotkey(wanted);
             let msg = if text.contains("already registered") {
                 format!("{pretty} est déjà pris par un autre logiciel : choisissez un autre raccourci dans les réglages de Parler à Ondine")
             } else {
                 format!("le raccourci {pretty} est refusé : {text}")
             };
             log::warn(format!("parler à Ondine : {msg}"));
+            {
+                let mut errors = HOTKEY_ERRORS.locked();
+                *(if is_look { &mut errors.1 } else { &mut errors.0 }) = msg.clone();
+            }
             voice_event(app, "error", json!({ "message": msg }));
         }
     }
@@ -335,6 +489,15 @@ pub fn listen(app: &AppHandle, opts: Options) -> Result<(), String> {
     Ok(())
 }
 
+/// Le mot d'appel suivi d'une question (« Hey Ondine, quel temps fait-il ? ») :
+/// comme une écoute finie, la question part dans Parler à Ondine.
+pub fn heard_text(app: &AppHandle, text: &str) {
+    let id = NEXT.fetch_add(1, Ordering::SeqCst) + 1;
+    log::info(format!("parler à Ondine : mot d'appel suivi d'une question ({} caractères)", text.chars().count()));
+    voice_event(app, "open", json!({ "look": false, "hold": false, "id": id }));
+    voice_event(app, "final", json!({ "text": text.trim(), "look": false, "id": id }));
+}
+
 /// Échap annule l'écoute : un raccourci global posé le temps de l'écoute.
 fn set_escape(app: &AppHandle, on: bool) {
     let gs = app.global_shortcut();
@@ -425,7 +588,7 @@ fn run(app: &AppHandle, s: &Session, opts: Options) -> Result<String, voice::Fai
             return Err(voice::Failure::from(stt::MISSING.to_string()));
         }
         let mut gate = SilenceGate::new(opts.hold, silence as u64);
-        let pcm = voice::record(&s.stop, &mut |chunk, rate| {
+        let (pcm, info) = voice::record_info(&s.stop, &mut |chunk, rate| {
             let rms = rms(chunk);
             level((rms * 6.0).sqrt().min(1.0));
             if started.elapsed() > max {
@@ -433,8 +596,19 @@ fn run(app: &AppHandle, s: &Session, opts: Options) -> Result<String, voice::Fai
             }
             gate.push(rms, chunk.len() as u64 * 1000 / u64::from(rate.max(1)))
         })?;
-        if s.stop.load(Ordering::SeqCst) == voice::CANCEL || !gate.heard {
-            return Ok(String::new()); // personne n'a parlé : rien ne part
+        if s.stop.load(Ordering::SeqCst) == voice::CANCEL {
+            return Ok(String::new());
+        }
+        if !gate.heard {
+            // Un micro muet (coupé, volume à 0, bloqué, pas le bon) : le dire.
+            if let Some(f) = voice::silent_mic(&info, None) {
+                return Err(f);
+            }
+            // Parakeet (rien ne part) : une voix faible mais présente est
+            // quand même écrite. L'API : personne n'a parlé, rien ne part.
+            if engine == VoiceEngine::Api || info.peak < QUIET_SPEECH_PEAK {
+                return Ok(String::new());
+            }
         }
         voice_event(app, "transcribing", json!({}));
         let Some((provider, key, model)) = api else {
@@ -473,6 +647,60 @@ fn run(app: &AppHandle, s: &Session, opts: Options) -> Result<String, voice::Fai
         return voice::dictate_offline(tag, opts.hold, silence, cb);
     }
     voice::dictate(tag, opts.hold, silence, cb)
+}
+
+// ── Le micro : la liste et « Tester le micro » (Réglages, 1.2.4) ─────────────
+
+/// Les micros du PC et celui choisi, pour les Réglages.
+pub fn mics() -> Value {
+    json!({
+        "supported": cfg!(windows),
+        "mics": voice::microphones(),
+        "chosen": voice::chosen_mic(),
+        "testing": MIC_TESTING.load(Ordering::SeqCst),
+    })
+}
+
+/// Écoute le micro `device` (vide = celui par défaut) quelques secondes :
+/// l'événement `mic-test` porte le niveau (~15 fois par seconde), puis le
+/// bilan `{done, info?, problem?, fix?}`. Rien n'est gardé ni envoyé.
+pub fn mic_test(app: &AppHandle, device: &str) -> Result<(), String> {
+    use tauri::Emitter;
+    if MIC_TESTING.swap(true, Ordering::SeqCst) {
+        return Err("le test du micro est déjà en cours".into());
+    }
+    let app = app.clone();
+    let device = device.to_string();
+    std::thread::spawn(move || {
+        let stop = AtomicU8::new(0);
+        let started = Instant::now();
+        let mut last = Instant::now() - LEVEL_EVERY;
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            voice::mic_test(&device, &stop, &mut |chunk, _rate| {
+                if last.elapsed() >= LEVEL_EVERY {
+                    last = Instant::now();
+                    let level = (rms(chunk) * 6.0).sqrt().min(1.0);
+                    let _ = app.emit(MIC_TEST_EVENT, json!({ "level": (level * 100.0).round() / 100.0 }));
+                }
+                started.elapsed() < MIC_TEST
+            })
+        }));
+        MIC_TESTING.store(false, Ordering::SeqCst);
+        let end = match result {
+            Ok(Ok(info)) => {
+                let problem = voice::silent_mic(&info, None);
+                log::info(format!("test du micro : {}", voice::mic_detail(&info)));
+                json!({ "done": true, "info": info, "problem": problem.as_ref().map(|f| f.message.clone()), "fix": problem.and_then(|f| f.fix).map(voice::Fix::id) })
+            }
+            Ok(Err(f)) => {
+                log::warn(format!("test du micro : {} [{}]", f.message, f.detail));
+                json!({ "done": true, "problem": f.message, "fix": f.fix.map(voice::Fix::id) })
+            }
+            Err(_) => json!({ "done": true, "problem": "erreur inattendue pendant le test du micro" }),
+        };
+        let _ = app.emit(MIC_TEST_EVENT, end);
+    });
+    Ok(())
 }
 
 // ── La transcription par l'API ───────────────────────────────────────────────
@@ -607,8 +835,9 @@ impl SilenceGate {
     fn push(&mut self, rms: f32, ms: u64) -> bool {
         self.elapsed_ms += ms;
         self.floor = self.floor.min(rms.max(0.0005));
-        // Seuil bas (−40 dB) : un micro de portable capte souvent la voix assez faiblement.
-        let speaking = rms > (self.floor * 3.0).max(0.01);
+        // Seuil bas (−44 dB) : un micro de portable ou de casque capte souvent
+        // la voix assez faiblement.
+        let speaking = rms > (self.floor * 3.0).max(0.006);
         if speaking {
             self.heard = true;
             self.quiet_ms = 0;
@@ -692,6 +921,48 @@ mod tests {
     }
 
     #[test]
+    fn custom_hotkeys_follow_the_rules() {
+        for ok in ["Ctrl+Alt+K", "Ctrl+Shift+F9", "F9", "F24", "Shift+F2", "Alt+Shift+M", "Super+Alt+Space", "Ctrl+Alt+Numpad1", "Ctrl+Shift+V"] {
+            assert_eq!(check_hotkey(ok), Ok(()), "{ok}");
+        }
+        for bad in ["", "Ctrl+", "Ctrl+Alt", "Ctrl+Truc", "K", "Space", "Shift+K", "F12", "Alt+F4", "Ctrl+Alt+Delete", "Super+L", "Super+D", "Alt+Tab", "Ctrl+Shift+Escape", "Ctrl+C", "Ctrl+V", "Super+1"] {
+            assert!(check_hotkey(bad).is_err(), "{bad}");
+        }
+        // Les choix proposés passent aussi les règles.
+        for k in HOTKEYS.iter().chain(LOOK_HOTKEYS) {
+            assert_eq!(check_hotkey(k), Ok(()), "{k}");
+        }
+    }
+
+    #[test]
+    fn hotkey_settings_are_picked_or_refused() {
+        assert_eq!(pick_hotkey("", HOTKEYS), Ok(String::new()));
+        assert_eq!(pick_hotkey("Ctrl+Alt+V", HOTKEYS), Ok("Ctrl+Alt+V".into()));
+        assert_eq!(pick_hotkey("Ctrl+Alt+K", HOTKEYS), Ok("Ctrl+Alt+K".into()));
+        let refused = pick_hotkey("Alt+F4", HOTKEYS).unwrap_err();
+        assert!(refused.contains("Alt + F4") && refused.contains("Windows"), "{refused}");
+        assert!(same_hotkey("Alt+Ctrl+K", "Ctrl+Alt+K"));
+        assert!(!same_hotkey("Ctrl+Alt+K", "Ctrl+Alt+J"));
+        assert_eq!(pretty_hotkey("Ctrl+Shift+Super+KeyK"), "Ctrl + Maj + Win + K");
+        assert_eq!(pretty_hotkey("Ctrl+Alt+Enter"), "Ctrl + Alt + Entrée");
+    }
+
+    #[test]
+    fn hotkey_fields_of_the_manifest() {
+        let manifest: Value = serde_json::from_str(include_str!("../../../src/modules/askclaude/manifest.json")).unwrap();
+        let fields = manifest["settings"]["fields"].as_array().unwrap();
+        for (key, presets) in [("voiceHotkey", HOTKEYS), ("lookHotkey", LOOK_HOTKEYS)] {
+            let f = fields.iter().find(|f| f["key"] == key).unwrap();
+            assert_eq!(f["type"], "hotkey", "{key}");
+            let values: Vec<&str> = f["options"].as_array().unwrap().iter().filter_map(|o| o["value"].as_str()).filter(|v| !v.is_empty()).collect();
+            assert_eq!(values, presets, "{key}");
+        }
+        // Le mot d'appel est coupé par défaut ; le micro, celui de Windows.
+        assert_eq!(fields.iter().find(|f| f["key"] == "wakeWord").unwrap()["default"], false);
+        assert_eq!(fields.iter().find(|f| f["key"] == "micDevice").unwrap()["default"], "");
+    }
+
+        #[test]
     fn discretion() {
         assert_eq!(why_discreet(&["Zoom".into()], false, false), Some("call"));
         assert_eq!(why_discreet(&["Ondine".into()], false, false), None);
