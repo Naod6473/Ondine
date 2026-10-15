@@ -9,7 +9,9 @@
 
 import { errorText } from "../../core/log";
 import type { ModuleApi } from "../../core/module-types";
+import { settingsStore } from "../../core/settings-store";
 import { el } from "../../island/dom";
+import { reducedMotion } from "../../island/tab-pill";
 import { ageText, effectivePct, pctText, planLevel, resetText, type PlanLimits, type PlanReport, type PlanWindow } from "./plan";
 
 export interface PlanSection {
@@ -26,6 +28,8 @@ export function planOn(api: ModuleApi): boolean {
 function gauge(label: string, w: PlanWindow, week: boolean): HTMLElement {
   const pct = effectivePct(w);
   const fill = el("i", { class: "agents-plan-fill" });
+  // « Réduire les animations » ou Calme : la barre se pose sans glisser.
+  if (reducedMotion() || settingsStore.current.mascot.calm === true) fill.style.transition = "none";
   fill.style.setProperty("--pct", String(pct / 100));
   return el(
     "div",

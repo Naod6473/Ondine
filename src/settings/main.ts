@@ -115,7 +115,7 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
       label: "Outils proposés",
       keys: ["launchClaude", "launchCodex", "launchGemini", "launchCopilot", "launchCursor", "launchQwen", "launchGoose", "launchOpencode", "launchKiro", "launchHermes", "launchAider", "launchAmp", "otherTool"],
     },
-    { id: "notify", label: "Notifications", keys: ["notifyWaiting", "notifyDone", "remindWaiting", "showChanges", "doneSummary", "resumePreview", "mascot"] },
+    { id: "notify", label: "Notifications", keys: ["notifyWaiting", "notifyDone", "remindWaiting", "showChanges", "liveFiles", "doneSummary", "resumePreview", "mascot"] },
     { id: "perms", label: "Autorisations et MCP", keys: ["mcp", "permissions", "permissionWait"] },
     { id: "tokens", label: "Jetons et budget", keys: ["usage", "planLimits", "prices", "dailyBudget"] },
     { id: "github", label: "GitHub", keys: ["githubLogin", "githubToken"] },

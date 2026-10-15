@@ -85,6 +85,13 @@
         "default": true
       },
       {
+        "key": "liveFiles",
+        "type": "boolean",
+        "label": "Montrer les fichiers modifiés en direct",
+        "help": "Pendant qu'un agent écrit, chaque fichier modifié apparaît sous sa session avec +N −M ; un clic montre le changement en lecture seule. Le calcul se fait sur votre PC, rien n'est écrit sur le disque ni envoyé. Dossiers exclus respectés. Il faut (ré)installer les hooks de Claude Code ou de Gemini CLI.",
+        "default": true
+      },
+      {
         "key": "mcp",
         "type": "boolean",
         "label": "Accepter les outils MCP (message, progression, minuteur, question)",
@@ -287,7 +294,9 @@
     "plan",
     "plan_install",
     "plan_remove",
-    "plan_codex"
+    "plan_codex",
+    "live",
+    "live_diff"
   ],
   "events": {
     "emits": [
@@ -309,10 +318,12 @@
       "notes.add",
       "shelf.add",
       "capture.request",
-      "mascot.emote"
+      "mascot.emote",
+      "agents.live"
     ],
     "listens": [
       "agents.event",
+      "agents.live",
       "agents.launch",
       "agents.changed",
       "agents.ask",

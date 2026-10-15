@@ -27,7 +27,22 @@ use crate::platform;
 pub const MAX_MESSAGE: usize = 64 * 1024;
 
 pub fn notify(args: Vec<String>) {
-    let mut message = build(&args, read_stdin());
+    let stdin = read_stdin();
+    // Un fichier modifié par l'agent (PostToolUse, AfterTool) : le résumé du
+    // changement, calculé ici (modules/agents_live.rs), jamais le fichier entier.
+    if let Some(hook) = stdin.as_deref().and_then(|t| serde_json::from_str::<Value>(t).ok()).filter(|h| matches!(h["hook_event_name"].as_str(), Some("PostToolUse" | "AfterTool"))) {
+        let source = args.iter().position(|a| a == "--source").and_then(|i| args.get(i + 1)).cloned().unwrap_or_else(|| "outil".into());
+        if let Some(mut m) = crate::modules::agents_live::compact(&source, &hook) {
+            m["pids"] = json!(platform::ancestor_pids(12));
+            let _ = platform::send_agents_pipe(m.to_string().as_bytes());
+        }
+        if matches!(source.as_str(), "codex" | "gemini") {
+            println!("{{}}");
+        }
+        return;
+    }
+    // Les autres hooks : comme avant, 64 Ko au plus.
+    let mut message = build(&args, stdin.map(|t| cut_at(t, MAX_MESSAGE)));
     // Pour « Y aller » : les programmes au-dessus de nous (le terminal de
     // l'agent en fait partie) et notre console, si elle est visible.
     message["pids"] = json!(platform::ancestor_pids(12));
@@ -46,8 +61,25 @@ fn read_stdin() -> Option<String> {
         return None;
     }
     let mut text = String::new();
-    stdin.lock().take(MAX_MESSAGE as u64).read_to_string(&mut text).ok()?;
+    stdin.lock().take(MAX_HOOK as u64).read_to_string(&mut text).ok()?;
     Some(text)
+}
+
+/// Ce qu'on lit au plus sur l'entrée standard : un Write ou un Edit de Claude
+/// Code porte le texte du fichier (le résumé envoyé à l'île, lui, reste petit).
+const MAX_HOOK: usize = 4 * 1024 * 1024;
+
+/// Les `max` premiers octets d'un texte (sans couper un caractère). Au-delà,
+/// le JSON est coupé, donc illisible : comme avant la 1.2.4.
+fn cut_at(mut text: String, max: usize) -> String {
+    if text.len() > max {
+        let mut end = max;
+        while !text.is_char_boundary(end) {
+            end -= 1;
+        }
+        text.truncate(end);
+    }
+    text
 }
 
 /// Le message envoyé à l'île : les options, plus le JSON reçu (s'il en est un).
@@ -91,6 +123,12 @@ mod tests {
 
     fn args(v: &[&str]) -> Vec<String> {
         v.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn cut_at_keeps_whole_characters() {
+        assert_eq!(cut_at("été".into(), 2), "é");
+        assert_eq!(cut_at("abc".into(), 10), "abc");
     }
 
     #[test]
@@ -141,7 +179,7 @@ mod tests {
 const MAX_DETAIL: usize = 500;
 
 pub fn permission(args: Vec<String>) {
-    let message = build(&args, read_stdin());
+    let message = build(&args, read_stdin().map(|t| cut_at(t, MAX_MESSAGE)));
     let decision = permission_request(&message).unwrap_or(None);
     println!("{}", decision_json(decision.as_deref()));
 }

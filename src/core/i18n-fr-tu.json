@@ -316,7 +316,8 @@
 "Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine vous dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement.": "Au premier lancement et après une mise à jour, une goutte sort du haut de l'écran et devient l'île, Ondine te dit bonjour, puis l'île se replie. Avec l'île en haut de l'écran seulement.",
 "Ligne d'état branchée (la vôtre continue de s'afficher)": "Ligne d'état branchée (la tienne continue de s'afficher)",
 "La ligne d'état vise un autre ondine.exe : branchez-la de nouveau.": "La ligne d'état vise un autre ondine.exe : branche-la de nouveau.",
-"Claude Code donne ses limites à sa ligne d'état. Ondine peut s'y brancher : votre ligne d'état actuelle continuera de s'afficher.": "Claude Code donne ses limites à sa ligne d'état. Ondine peut s'y brancher : ta ligne d'état actuelle continuera de s'afficher."
+"Claude Code donne ses limites à sa ligne d'état. Ondine peut s'y brancher : votre ligne d'état actuelle continuera de s'afficher.": "Claude Code donne ses limites à sa ligne d'état. Ondine peut s'y brancher : ta ligne d'état actuelle continuera de s'afficher.",
+"Pendant qu'un agent écrit, chaque fichier modifié apparaît sous sa session avec +N −M ; un clic montre le changement en lecture seule. Le calcul se fait sur votre PC, rien n'est écrit sur le disque ni envoyé. Dossiers exclus respectés. Il faut (ré)installer les hooks de Claude Code ou de Gemini CLI.": "Pendant qu'un agent écrit, chaque fichier modifié apparaît sous sa session avec +N −M ; un clic montre le changement en lecture seule. Le calcul se fait sur ton PC, rien n'est écrit sur le disque ni envoyé. Dossiers exclus respectés. Il faut (ré)installer les hooks de Claude Code ou de Gemini CLI."
 },
 "patterns": [
 ["^(\\d+) nouveautés vous attendent\\.$", "$1 nouveautés t'attendent."],

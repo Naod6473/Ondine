@@ -6,6 +6,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { ageText, effectivePct, highestPct, planLevel, resetText } from "../../src/modules/agents/plan";
+import { filesOf, lineClass, lineSymbol, liveCounts, type LiveFile } from "../../src/modules/agents/live-logic";
 
 const DICT = JSON.parse(readFileSync("src/core/i18n-en.json", "utf8")) as {
   exact: Record<string, string>;
@@ -60,5 +61,45 @@ describe("limites du forfait", () => {
     assert.equal(english(ageText(NOW - 12 * 60_000, NOW)), "read 12 min ago");
     assert.equal(english(ageText(NOW - 3 * 3_600_000, NOW)), "read 3 h ago");
     assert.equal(english(ageText(NOW, NOW)), "read just now");
+  });
+});
+
+describe("fichiers modifiés en direct", () => {
+  const file = (id: number, session: string, at: number, added = 1, removed = 0): LiveFile => ({
+    id,
+    session,
+    source: "claude-code",
+    name: `f${id}.ts`,
+    folder: "src",
+    added,
+    removed,
+    at,
+    isNew: false,
+    tooLarge: false,
+  });
+
+  test("+N −M, avec le vrai signe moins", () => {
+    assert.deepEqual(liveCounts({ added: 12, removed: 3 }), { plus: "+12", minus: "−3" });
+    assert.deepEqual(liveCounts({ added: 40, removed: 0 }), { plus: "+40", minus: "" });
+    assert.deepEqual(liveCounts({ added: 0, removed: 0 }), { plus: "", minus: "" });
+  });
+
+  test("les fichiers d'une session, les plus récents d'abord", () => {
+    const all = [file(1, "a", 10), file(2, "b", 20), file(3, "a", 30)];
+    assert.deepEqual(filesOf(all, "a").shown.map((f) => f.id), [3, 1]);
+    assert.equal(filesOf(all, "c").shown.length, 0);
+    const many = Array.from({ length: 9 }, (_, i) => file(i, "a", i));
+    const { shown, more } = filesOf(many, "a");
+    assert.equal(shown.length, 6);
+    assert.equal(more, 3);
+    assert.equal(shown[0].id, 8);
+  });
+
+  test("symboles et classes des lignes", () => {
+    assert.equal(lineSymbol("+"), "+");
+    assert.equal(lineSymbol("-"), "−");
+    assert.equal(lineSymbol("~"), "⋯");
+    assert.equal(lineClass("-"), "removed");
+    assert.equal(lineClass(" "), "context");
   });
 });
