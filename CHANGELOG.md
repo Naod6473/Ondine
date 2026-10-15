@@ -135,6 +135,16 @@
   keyboard, optional (off by default): listening happens entirely on the PC,
   a red dot stays visible, paused during calls, presentations, when the PC is
   locked and in power saving
+- Parler à Ondine à voix haute sans saccades : vos mots s'écrivent en place
+  et en fondu (une reprise du moteur passe en fondu croisé), la bulle devient
+  votre message sans clignoter, la réponse s'écrit lettre après lettre à un
+  rythme régulier, l'île grandit ligne par ligne en douceur ; avec Parakeet,
+  vos mots s'affichent maintenant pendant que vous parlez (sauf en mode
+  Économie) · Talking to Ondine out loud without stutter: your words appear
+  in place with a soft fade (an engine correction cross-fades), the bubble
+  becomes your message without flashing, the answer is written letter by
+  letter at a steady pace, the island grows smoothly line by line; with
+  Parakeet, your words now show while you speak (except in Eco mode)
 - L'éclosion de l'île : au premier lancement et après une mise à jour, une
   goutte sort du haut de l'écran et s'étire en île, l'île éclate en
   paillettes, Ondine dit bonjour, les aspire et les souffle dans trois anneaux
