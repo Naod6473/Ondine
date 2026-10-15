@@ -1,11 +1,20 @@
-// Module « Musique » : ce qui joue en ce moment, avec lecture/pause, suivant
-// et précédent. La barre de progression est cliquable (et glissable) quand le
-// lecteur accepte qu'on change la position.
+// Module « Musique » : ce qui joue en ce moment, avec lecture/pause, suivant,
+// précédent, aléatoire, répétition et le volume DU LECTEUR (pas celui du PC).
+// La barre de progression est cliquable (et glissable) quand le lecteur
+// accepte qu'on change la position.
+//
+// La carte (1.2.4) suit la maquette « Musique » : pochette cliquable (ouvre le
+// lecteur), pastille de couleur devant le titre, temps écoulé et restant,
+// barre grise au repos qui prend la couleur sous la souris avec un petit
+// bouton rond, icônes au trait, grand bouton lecture rond et plein. La couleur
+// vient de la pochette (coverTint, src/mascot/env-tint.ts), avec une lueur
+// douce dans la carte. Idée et mise en page inspirées de la carte Spotify de
+// Coucou (MIT) ; dessins et code à nous.
 //
 // Le Rust (src-tauri/src/modules/media.rs) surveille le lecteur de Windows et
 // publie "media.changed" quand quelque chose change. Entre deux messages, on
 // fait avancer la barre de progression ici, à partir de la dernière position
-// connue.
+// connue. Les calculs sans DOM sont dans logic.ts.
 
 import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
@@ -13,23 +22,8 @@ import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-
 import { el } from "../../island/dom";
 import { pacedInterval, perfMode, setText } from "../../core/perf";
 import { reducedMotion } from "../../island/tab-pill";
-import { coverTint, setCover } from "../../mascot/env-tint";
-
-/** Miroir de `NowPlaying` (src-tauri/src/platform/media.rs). */
-interface NowPlaying {
-  app: string;
-  title: string;
-  artist: string;
-  album: string;
-  status: "playing" | "paused" | "stopped" | "changing";
-  positionMs: number | null;
-  durationMs: number | null;
-  canToggle: boolean;
-  canNext: boolean;
-  canPrevious: boolean;
-  /** Le lecteur accepte-t-il qu'on change la position ? */
-  canSeek: boolean;
-}
+import { coverTint, onCoverColors, setCover } from "../../mascot/env-tint";
+import { appName, buttons, cardTint, clock, nextRepeat, remaining, throttle, volumeLevel, type NowPlaying, type PlayerVolume, type RepeatMode } from "./logic";
 
 interface MediaState {
   playing: NowPlaying | null;
@@ -44,6 +38,10 @@ let playing: NowPlaying | null = null;
 let receivedAt = 0;
 let artworkId = 0;
 let artworkUrl: string | null = null;
+/** Le volume du lecteur (null tant qu'on ne l'a pas lu). */
+let volume: PlayerVolume | null = null;
+/** La couleur de la pochette, gardée pour ce morceau (coverTint s'efface en pause). */
+let tintFor: { artwork: number; rgb: readonly [number, number, number] } | null = null;
 const redraws = new Set<() => void>();
 /** Pendant qu'on glisse sur la barre : la position visée (ms), sinon null. */
 let scrub: number | null = null;
@@ -65,29 +63,83 @@ function currentPosition(): number | null {
   return Math.min(playing.positionMs + elapsed, playing.durationMs ?? Infinity);
 }
 
-/** 83 000 → « 1:23 ». */
-function clock(ms: number): string {
-  const s = Math.floor(ms / 1000);
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+/** La couleur de la carte : celle de la pochette (gardée pendant la pause), sinon null (accent du thème). */
+function tint() {
+  const now = coverTint();
+  if (now) tintFor = { artwork: artworkId, rgb: now };
+  return cardTint(tintFor && tintFor.artwork === artworkId ? tintFor.rgb : null);
 }
 
-/**
- * Un nom lisible pour l'appli qui joue. Windows donne « Spotify.exe », ou pour
- * une appli du Store quelque chose comme « Microsoft.ZuneMusic_8wekyb3d8bbwe!Microsoft.ZuneMusic ».
- */
-function appName(id: string): string {
-  const last = id.split("!").pop() ?? id;
-  return last.replace(/\.exe$/i, "").replace(/^Microsoft\./, "").replace(/_[a-z0-9]{13}$/, "") || id;
+/** Pose la couleur de la pochette sur un élément (variables --media-tint et --media-tint-soft). */
+function paintTint(node: HTMLElement) {
+  const t = tint();
+  if (t) {
+    node.style.setProperty("--media-tint", t.tint);
+    node.style.setProperty("--media-tint-soft", t.soft);
+  } else {
+    node.style.removeProperty("--media-tint");
+    node.style.removeProperty("--media-tint-soft");
+  }
 }
 
-/** La pochette, ou une note de musique à la place. */
+// ── Icônes au trait (SVG, nettes à toute taille, de la couleur du texte) ─────
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+/** [tracé, rempli ?] : les icônes au trait ont un contour, les autres sont pleines. */
+const ICONS = {
+  previous: [["M6 5v14", false], ["M19 5.5v13L9 12z", true]],
+  next: [["M18 5v14", false], ["M5 5.5v13L15 12z", true]],
+  play: [["M8 5.2v13.6a.6.6 0 0 0 .9.5l10.6-6.8a.6.6 0 0 0 0-1L8.9 4.7a.6.6 0 0 0-.9.5z", true]],
+  pause: [["M7 5h3.5v14H7zM13.5 5H17v14h-3.5z", true]],
+  shuffle: [["M3 7h3c4 0 6 10 10 10h5M18 14l3 3-3 3M3 17h3c1.6 0 2.8-1.4 3.8-3M13 9.5C14 8 15 7 16 7h5M18 4l3 3-3 3", false]],
+  repeat: [["M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4", false]],
+  // Répéter ce morceau : la même boucle avec un petit « 1 » au milieu.
+  repeatOne: [["M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4M11 10.5l1.5-1v5", false]],
+  vol0: [["M4 9.5h3.2L12 5.5v13l-4.8-4H4zM15.5 9.5l5 5M20.5 9.5l-5 5", false]],
+  vol1: [["M4 9.5h3.2L12 5.5v13l-4.8-4H4zM15 9.8a3.2 3.2 0 0 1 0 4.4", false]],
+  vol2: [["M4 9.5h3.2L12 5.5v13l-4.8-4H4zM15 9.8a3.2 3.2 0 0 1 0 4.4M17.4 7.6a6.4 6.4 0 0 1 0 8.8", false]],
+  vol3: [["M4 9.5h3.2L12 5.5v13l-4.8-4H4zM15 9.8a3.2 3.2 0 0 1 0 4.4M17.4 7.6a6.4 6.4 0 0 1 0 8.8M19.8 5.4a9.6 9.6 0 0 1 0 13.2", false]],
+  note: [["M9 18V6l10-2v12M9 18a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0M19 16a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0", false]],
+} satisfies Record<string, [string, boolean][]>;
+type IconName = keyof typeof ICONS;
+
+function icon(name: IconName): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  svg.classList.add("media-ico");
+  for (const [d, filled] of ICONS[name]) {
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", d);
+    path.setAttribute("class", filled ? "fill" : "line");
+    svg.append(path);
+  }
+  return svg;
+}
+
+/** Change l'icône d'un bouton seulement si elle a changé (pas de clignotement). */
+function setIcon(button: HTMLElement, name: IconName) {
+  if (button.dataset.icon === name) return;
+  button.dataset.icon = name;
+  button.replaceChildren(icon(name));
+}
+
+/** Change la bulle et le nom lu d'un bouton. */
+function setLabel(node: HTMLElement, label: string) {
+  if (node.title !== label) node.title = label;
+  if (node.getAttribute("aria-label") !== label) node.setAttribute("aria-label", label);
+}
+
+/** La pochette, ou une note de musique au trait à la place. */
 function cover(size: "small" | "large"): HTMLElement {
-  if (artworkUrl) return el("img", { class: `media-cover ${size}`, src: artworkUrl, alt: "" });
-  return el("div", { class: `media-cover ${size} empty` }, "🎵");
+  if (artworkUrl) return el("img", { class: `media-cover ${size}`, src: artworkUrl, alt: "", draggable: "false" });
+  return el("div", { class: `media-cover ${size} empty` }, icon("note"));
 }
+
+type Command = "toggle" | "next" | "previous" | "seek" | "shuffle" | "repeat" | "open";
 
 /** Lance une commande du lecteur ; une erreur (lecteur fermé…) s'affiche sans compter comme plantage. */
-async function control(api: ModuleApi, command: "toggle" | "next" | "previous" | "seek", args?: Record<string, unknown>) {
+async function control(api: ModuleApi, command: Command, args?: Record<string, unknown>) {
   try {
     await api.invoke(command, args);
   } catch (err) {
@@ -95,84 +147,95 @@ async function control(api: ModuleApi, command: "toggle" | "next" | "previous" |
   }
 }
 
-/** Les pictogrammes des petits boutons de la pilule, dessinés en SVG (nets à toute taille). */
-const GLYPHS = {
-  previous: "M6 5h2v14H6zM20 5v14L9 12z",
-  next: "M16 5h2v14h-2zM4 5v14l11-7z",
-  play: "M7 4.5v15L20 12z",
-  pause: "M6 5h4v14H6zM14 5h4v14h-4z",
-};
-function glyph(kind: keyof typeof GLYPHS): SVGSVGElement {
-  const ns = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("aria-hidden", "true");
-  const path = document.createElementNS(ns, "path");
-  path.setAttribute("d", GLYPHS[kind]);
-  svg.append(path);
-  return svg;
+/** Relit le volume du lecteur (au montage de la carte, et quand le lecteur change). */
+async function readVolume(api: ModuleApi) {
+  try {
+    volume = await api.invoke<PlayerVolume>("volume");
+  } catch {
+    volume = null; // hors de l'appli, ou lecteur sans son : le curseur est grisé
+  }
+  redrawAll();
+}
+
+// ── Barre glissable (position dans le morceau, volume) ──────────────────────
+
+interface Slider {
+  el: HTMLElement;
+  /** Peut-on la toucher ? (sinon grise, sans bouton rond) */
+  enabled: boolean;
+  /** Place le remplissage (0…1) et le texte lu par les lecteurs d'écran. */
+  set(fraction: number, valueText: string): void;
+}
+
+/**
+ * Une barre grise au repos ; sous la souris (ou pendant un glissé), elle
+ * prend la couleur de la pochette et montre un petit bouton rond. Un clic va
+ * à cet endroit ; en glissant, `input` suit le doigt et `commit` part quand on
+ * lâche. Clavier : flèches gauche / droite (`step`).
+ */
+function slider(
+  cls: string,
+  label: string,
+  on: { input: (f: number) => void; commit: (f: number) => void; cancel?: () => void; step: (dir: 1 | -1) => void },
+): Slider {
+  const fill = el("i", { class: "media-fill" });
+  const knob = el("i", { class: "media-knob" });
+  const zone = el("div", { class: `media-slider ${cls}`, role: "slider", "aria-label": label, "aria-valuemin": "0", "aria-valuemax": "100" }, el("i", { class: "media-track" }), fill, knob);
+  let dragging = false;
+  const at = (e: PointerEvent) => {
+    const r = zone.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (e.clientX - r.left) / Math.max(1, r.width)));
+  };
+  const self: Slider = {
+    el: zone,
+    enabled: true,
+    set(f, text) {
+      zone.style.setProperty("--f", `${(Math.max(0, Math.min(1, f)) * 100).toFixed(2)}%`);
+      zone.setAttribute("aria-valuenow", String(Math.round(f * 100)));
+      zone.setAttribute("aria-valuetext", text);
+    },
+  };
+  zone.addEventListener("pointerdown", (e) => {
+    if (!self.enabled || e.button !== 0) return;
+    e.stopPropagation(); // un glissé dans la carte ne déplace pas l'île
+    dragging = true;
+    try {
+      zone.setPointerCapture(e.pointerId);
+    } catch {
+      // la capture est un plus
+    }
+    zone.classList.add("scrubbing");
+    on.input(at(e));
+  });
+  zone.addEventListener("pointermove", (e) => {
+    if (dragging) on.input(at(e));
+  });
+  const release = (e: PointerEvent, send: boolean) => {
+    if (!dragging) return;
+    dragging = false;
+    zone.classList.remove("scrubbing");
+    if (send) on.commit(at(e));
+    else on.cancel?.();
+  };
+  zone.addEventListener("pointerup", (e) => release(e, true));
+  zone.addEventListener("pointercancel", (e) => release(e, false));
+  zone.addEventListener("click", (e) => e.stopPropagation());
+  zone.addEventListener("keydown", (e) => {
+    const dir = e.key === "ArrowRight" || e.key === "ArrowUp" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowDown" ? -1 : 0;
+    if (!dir || !self.enabled) return;
+    e.preventDefault();
+    on.step(dir);
+  });
+  return self;
 }
 
 /** Un appui sur une flèche du clavier avance ou recule de… */
 const SEEK_STEP_MS = 5_000;
-
-/**
- * Rend la barre de progression cliquable : un clic va à cet endroit du
- * morceau ; en glissant, la barre et le temps suivent le doigt, et la position
- * part au lecteur quand on lâche. Clavier : flèches gauche / droite.
- */
-function seekable(api: ModuleApi, zone: HTMLElement, bar: HTMLElement, durationMs: number, show: () => void) {
-  zone.classList.add("seekable");
-  zone.tabIndex = 0;
-  zone.setAttribute("role", "slider");
-  zone.setAttribute("aria-label", "Position dans le morceau");
-  const at = (e: PointerEvent) => {
-    const r = bar.getBoundingClientRect();
-    return Math.round(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * durationMs);
-  };
-  const go = (ms: number) => {
-    // On montre tout de suite la nouvelle position, sans attendre le lecteur.
-    if (playing) {
-      playing.positionMs = ms;
-      receivedAt = performance.now();
-    }
-    void control(api, "seek", { positionMs: ms });
-  };
-  zone.addEventListener("pointerdown", (e) => {
-    zone.setPointerCapture(e.pointerId);
-    zone.classList.add("scrubbing");
-    scrub = at(e);
-    show();
-  });
-  zone.addEventListener("pointermove", (e) => {
-    if (scrub === null) return;
-    scrub = at(e);
-    show();
-  });
-  const release = (send: boolean) => {
-    if (scrub === null) return;
-    const target = scrub;
-    scrub = null;
-    zone.classList.remove("scrubbing");
-    if (send) go(target);
-    redrawAll(); // un message du lecteur a pu arriver pendant le glissé
-  };
-  zone.addEventListener("pointerup", () => release(true));
-  zone.addEventListener("pointercancel", () => release(false));
-  zone.addEventListener("keydown", (e) => {
-    const step = e.key === "ArrowRight" ? SEEK_STEP_MS : e.key === "ArrowLeft" ? -SEEK_STEP_MS : 0;
-    const pos = currentPosition();
-    if (!step || pos === null) return;
-    e.preventDefault();
-    go(Math.max(0, Math.min(durationMs, pos + step)));
-    show();
-  });
-}
+const VOLUME_STEP = 5;
 
 /** Trois petites barres qui dansent quand la musique joue. */
 function equalizer(): HTMLElement {
-  const on = playing?.status === "playing";
-  return el("span", { class: `media-eq ${on ? "on" : ""}`, "aria-hidden": "true" }, el("i"), el("i"), el("i"));
+  return el("span", { class: "media-eq", "aria-hidden": "true" }, el("i"), el("i"), el("i"));
 }
 
 export const media: IslandModule = {
@@ -185,6 +248,10 @@ export const media: IslandModule = {
       const wasShown = hasTrack();
       playing = state.playing;
       receivedAt = performance.now();
+
+      // Un autre lecteur, ou il vient de se mettre à jouer : son volume a pu changer.
+      if (playing && (!before || before.app !== playing.app || before.status !== playing.status)) void readVolume(api);
+      if (!playing) volume = null;
 
       if (state.artwork !== artworkId) {
         artworkId = state.artwork;
@@ -230,6 +297,9 @@ export const media: IslandModule = {
       .then(apply)
       .catch(() => {}); // hors de l'appli (navigateur) : rien en lecture
 
+    // La couleur de la pochette arrive un instant après l'image (env-tint.ts) : on repeint.
+    const offTint = onCoverColors(() => redrawAll());
+
     // Changer le réglage « pilule » doit changer la vue compacte tout de suite.
     api.onSettingsChange(() => api.refreshCompact());
 
@@ -259,9 +329,12 @@ export const media: IslandModule = {
     });
 
     return () => {
+      offTint();
       playing = null;
       artworkId = 0;
       artworkUrl = null;
+      volume = null;
+      tintFor = null;
       setCover(null);
     };
   },
@@ -269,20 +342,23 @@ export const media: IslandModule = {
   views: {
     compactWhen: (api) => hasTrack() && Boolean(api.settings().showCompact),
 
+    // La mini-île : au repos, pochette + titre + égaliseur ; sous la souris
+    // (ou au clavier), la pochette et l'égaliseur s'effacent, la goutte danse
+    // à côté, et lecture / suivant apparaissent (réglage compactControls).
     compact(root, api) {
       // La pilule est construite une fois, puis mise à jour : le titre qui
       // défile ne recommence pas à chaque message du lecteur.
       const text = el("span", { class: "marquee-text" });
       const box = el("span", { class: "marquee" }, text);
-      const mini = (icon: SVGSVGElement, title: string, command: "toggle" | "next" | "previous") =>
-        el("button", { class: "media-mini", title, "aria-label": title, onclick: api.handler(() => control(api, command)) }, icon) as HTMLButtonElement;
-      const prev = mini(glyph("previous"), "Précédent", "previous");
-      const play = mini(glyph("play"), "Lecture", "toggle");
-      const next = mini(glyph("next"), "Suivant", "next");
-      const controls = el("span", { class: "media-minis" }, prev, play, next);
+      const mini = (title: string, command: "toggle" | "next") =>
+        el("button", { class: "media-mini", title, "aria-label": title, onclick: api.handler(() => control(api, command)) }) as HTMLButtonElement;
+      const play = mini("Lecture", "toggle");
+      const next = mini("Suivant", "next");
+      setIcon(next, "next");
+      const controls = el("span", { class: "media-minis" }, play, next);
       const coverSlot = el("span", { class: "media-cover-slot" });
-      const eqSlot = el("span", { class: "media-eq-slot" });
-      const compact = el("div", { class: "media-compact" }, coverSlot, box, controls, eqSlot);
+      const eqSlot = el("span", { class: "media-eq-slot" }, equalizer());
+      const compact = el("div", { class: "media-compact" }, coverSlot, box, eqSlot, controls);
       root.append(compact);
 
       // Le titre défile seulement s'il est trop long pour la pilule.
@@ -316,20 +392,19 @@ export const media: IslandModule = {
           shownArtwork = artworkUrl;
           coverSlot.replaceChildren(cover("small"));
         }
-        const on = p.status === "playing";
-        if (play.dataset.on !== String(on)) {
-          play.dataset.on = String(on);
-          play.replaceChildren(glyph(on ? "pause" : "play"));
-        }
-        play.title = on ? "Pause" : "Lecture";
-        play.setAttribute("aria-label", play.title);
-        play.disabled = !p.canToggle;
-        prev.disabled = !p.canPrevious;
-        next.disabled = !p.canNext;
+        const b = buttons(p, volume);
+        setIcon(play, b.toggle.on ? "pause" : "play");
+        setLabel(play, b.toggle.label);
+        play.disabled = !b.toggle.enabled;
+        next.disabled = !b.next.enabled;
         controls.hidden = !api.settings().compactControls;
-        // La bulle du titre ondule tant que ça joue (island.css ; rien avec « Réduire les animations » ni en éco).
+        compact.classList.toggle("with-controls", !controls.hidden);
+        paintTint(compact);
+        const on = b.toggle.on;
+        // L'égaliseur bat tant que ça joue ; la bulle du titre ondule (island.css ; rien
+        // avec « Réduire les animations » ni en éco).
+        compact.classList.toggle("on", on);
         compact.classList.toggle("playing", on && !reducedMotion() && perfMode() !== "eco");
-        eqSlot.replaceChildren(equalizer());
       };
       draw();
       redraws.add(draw);
@@ -340,77 +415,218 @@ export const media: IslandModule = {
     },
 
     expanded(root, api) {
-      const draw = () => {
-        // Pendant un glissé sur la barre, on ne redessine pas (on perdrait la souris).
-        if (scrub !== null) return;
-        root.replaceChildren();
-        if (!hasTrack() || !playing) {
-          root.append(
-            el(
-              "p",
-              { class: "muted" },
-              "Rien en lecture. Lancez de la musique dans Spotify, votre navigateur ou un autre lecteur : elle apparaîtra ici.",
-            ),
-          );
+      const empty = el("p", { class: "muted" }, "Rien en lecture. Lancez de la musique dans Spotify, votre navigateur ou un autre lecteur : elle apparaîtra ici.");
+
+      // ── En-tête : pochette (ouvre le lecteur), titre, artiste · album, appli ──
+      const coverBtn = el("button", { class: "media-cover-btn", title: "Ouvrir le lecteur", "aria-label": "Ouvrir le lecteur", onclick: api.handler(() => control(api, "open")) });
+      const title = el("span", { class: "media-title" });
+      const sub = el("div", { class: "media-artist" });
+      const appLine = el("div", { class: "media-app" });
+      const head = el(
+        "div",
+        { class: "media-head" },
+        coverBtn,
+        el("div", { class: "media-info" }, el("div", { class: "media-title-row" }, el("span", { class: "media-dot", "aria-hidden": "true" }), title), sub, appLine),
+      );
+
+      // ── Progression : écoulé, barre, restant ──
+      const elapsed = el("span", { class: "media-time" });
+      const left = el("span", { class: "media-time left" });
+      const seek = slider("media-seek", "Position dans le morceau", {
+        input: (f) => {
+          scrub = Math.round(f * (playing?.durationMs ?? 0));
+          tick();
+        },
+        commit: (f) => {
+          scrub = null;
+          go(Math.round(f * (playing?.durationMs ?? 0)));
+        },
+        cancel: () => {
+          scrub = null;
+          sync();
+        },
+        step: (dir) => {
+          const pos = currentPosition();
+          const d = playing?.durationMs;
+          if (pos === null || !d) return;
+          go(Math.max(0, Math.min(d, pos + dir * SEEK_STEP_MS)));
+        },
+      });
+      const go = (ms: number) => {
+        // On montre tout de suite la nouvelle position, sans attendre le lecteur.
+        if (playing) {
+          playing.positionMs = ms;
+          receivedAt = performance.now();
+        }
+        tick();
+        void control(api, "seek", { positionMs: ms });
+      };
+      const progress = el("div", { class: "media-progress" }, elapsed, seek.el, left);
+
+      // ── Boutons : aléatoire, précédent, lecture, suivant, répétition ──
+      const btn = (cls: string, run: () => void, target?: string) =>
+        el("button", { class: cls, "data-scene-target": target, onclick: api.handler(run) }) as HTMLButtonElement;
+      const shuffleB = btn("media-btn toggle", () => {
+        if (!playing) return;
+        const on = !playing.shuffle;
+        playing.shuffle = on; // tout de suite à l'écran, le lecteur confirme ensuite
+        sync();
+        void control(api, "shuffle", { on });
+      });
+      const prevB = btn("media-btn", () => control(api, "previous"));
+      const playB = btn("media-play", () => control(api, "toggle"));
+      const nextB = btn("media-btn", () => control(api, "next"), "media-next");
+      const repeatB = btn("media-btn toggle", () => {
+        if (!playing) return;
+        const mode: RepeatMode = nextRepeat(playing.repeat);
+        playing.repeat = mode;
+        sync();
+        void control(api, "repeat", { mode });
+      });
+      setIcon(shuffleB, "shuffle");
+      setIcon(prevB, "previous");
+      setIcon(nextB, "next");
+
+      // ── Volume du lecteur : icône (couper / remettre), barre, nombre ──
+      let volDrag: number | null = null;
+      const sendVolume = throttle((v: number) => void setVolume({ value: v }), 120);
+      const setVolume = async (args: { value?: number; muted?: boolean }) => {
+        try {
+          const got = await api.invoke<PlayerVolume>("volume", args);
+          // Pendant un glissé, la réponse d'un envoi précédent ne fait pas reculer la barre.
+          if (volDrag === null) volume = got;
+        } catch (err) {
+          api.notify({ title: "Le lecteur ne répond pas", body: errorText(err), icon: "🎵", priority: "low", key: "media-error" });
+          void readVolume(api);
           return;
         }
-        const p = playing;
-        const button = (label: string, title: string, enabled: boolean, command: "toggle" | "next" | "previous") =>
-          el("button", { class: "media-btn", title, disabled: !enabled, "data-scene-target": command === "next" ? "media-next" : undefined, onclick: api.handler(() => control(api, command)) }, label);
-
-        const bar = el("div", { class: "media-bar" }, el("div", { class: "media-bar-fill" }));
-        const times = el("div", { class: "media-times" }, el("span"), el("span"));
-        // La zone cliquable est plus haute que la barre (4 px, trop fine pour viser).
-        const seek = el("div", { class: "media-seek" }, bar, el("span", { class: "media-thumb" }));
-        if (p.canSeek && p.durationMs) seekable(api, seek, bar, p.durationMs, () => tick());
-
-        root.append(
-          el(
-            "div",
-            { class: "media-full" },
-            cover("large"),
-            el(
-              "div",
-              { class: "media-info" },
-              el("div", { class: "media-title" }, p.title),
-              el("div", { class: "media-artist" }, [p.artist, p.album].filter(Boolean).join(" · ")),
-              el("div", { class: "muted media-app" }, appName(p.app)),
-              p.durationMs ? el("div", { class: "media-progress" }, seek, times) : null,
-              el(
-                "div",
-                { class: "media-controls" },
-                button("⏮", "Précédent", p.canPrevious, "previous"),
-                button(p.status === "playing" ? "⏸" : "▶", p.status === "playing" ? "Pause" : "Lecture", p.canToggle, "toggle"),
-                button("⏭", "Suivant", p.canNext, "next"),
-              ),
-            ),
-          ),
-        );
-        tick();
+        sync();
       };
+      const volIcon = btn("media-btn media-vol-icon", () => {
+        if (!volume || volume.volume === null) return;
+        const muted = !(volume.muted || volume.volume === 0);
+        // Remettre le son d'un lecteur à 0 : un niveau raisonnable.
+        const args = muted ? { muted: true } : volume.volume === 0 ? { muted: false, value: 30 } : { muted: false };
+        volume = { volume: args.value ?? volume.volume, muted };
+        sync();
+        void setVolume(args);
+      });
+      const volNum = el("span", { class: "media-vol-num" });
+      const vol = slider("media-volume-bar", "Volume du lecteur", {
+        input: (f) => {
+          volDrag = Math.round(f * 100);
+          sync();
+          sendVolume.push(volDrag);
+        },
+        commit: (f) => {
+          const v = Math.round(f * 100);
+          volDrag = null;
+          volume = { volume: v, muted: false };
+          sync();
+          sendVolume.push(v);
+          sendVolume.flush();
+        },
+        cancel: () => {
+          volDrag = null;
+          sync();
+        },
+        step: (dir) => {
+          if (!volume || volume.volume === null) return;
+          const v = Math.max(0, Math.min(100, volume.volume + dir * VOLUME_STEP));
+          volume = { volume: v, muted: false };
+          sync();
+          sendVolume.push(v);
+        },
+      });
+      const volBox = el("div", { class: "media-volume" }, volIcon, vol.el, volNum);
+      const controls = el("div", { class: "media-controls" }, shuffleB, prevB, playB, nextB, repeatB, el("span", { class: "media-grow" }), volBox);
+
+      const card = el("div", { class: "media-card" }, el("span", { class: "media-glow", "aria-hidden": "true" }), head, progress, controls);
 
       // La barre avance toute seule entre deux messages du Rust.
       const tick = () => {
-        const fill = root.querySelector<HTMLElement>(".media-bar-fill");
-        const [now, total] = root.querySelectorAll<HTMLElement>(".media-times span");
         const pos = currentPosition();
         const duration = playing?.durationMs;
-        if (!fill || pos === null || !duration) return;
-        const percent = Math.min(100, (pos / duration) * 100);
-        fill.style.width = `${percent}%`;
-        root.querySelector<HTMLElement>(".media-seek")?.style.setProperty("--f", `${percent}%`);
-        root.querySelector(".media-seek")?.setAttribute("aria-valuetext", clock(pos));
-        setText(now, clock(pos));
-        setText(total, clock(duration));
+        if (pos === null || !duration) return;
+        seek.set(pos / duration, clock(pos));
+        setText(elapsed, clock(pos));
+        setText(left, remaining(pos, duration));
       };
 
-      draw();
-      redraws.add(draw);
+      let shownArtwork: string | null | undefined;
+      let shownTrack = "";
+      const sync = () => {
+        if (!hasTrack() || !playing) {
+          if (card.isConnected || !empty.isConnected) root.replaceChildren(empty);
+          shownArtwork = undefined;
+          return;
+        }
+        if (!card.isConnected) root.replaceChildren(card);
+        const p = playing;
+        const key = `${p.title}\n${p.artist}\n${p.album}\n${p.app}`;
+        if (key !== shownTrack) {
+          shownTrack = key;
+          title.textContent = p.title;
+          title.title = p.title;
+          sub.textContent = [p.artist, p.album].filter(Boolean).join(" · ");
+          sub.hidden = !sub.textContent;
+          appLine.textContent = appName(p.app);
+        }
+        if (artworkUrl !== shownArtwork) {
+          shownArtwork = artworkUrl;
+          coverBtn.replaceChildren(cover("large"));
+        }
+        paintTint(card);
+        card.classList.toggle("on", p.status === "playing");
+
+        const b = buttons(p, volume);
+        const apply = (node: HTMLButtonElement, s: { enabled: boolean; on: boolean; label: string }) => {
+          node.disabled = !s.enabled;
+          node.classList.toggle("on", s.on);
+          setLabel(node, s.label);
+        };
+        apply(shuffleB, b.shuffle);
+        apply(repeatB, b.repeat);
+        setIcon(repeatB, p.repeat === "track" && b.repeat.enabled ? "repeatOne" : "repeat");
+        apply(prevB, b.previous);
+        apply(nextB, b.next);
+        apply(playB, { ...b.toggle, on: false });
+        setIcon(playB, b.toggle.on ? "pause" : "play");
+
+        // Progression : cachée si le lecteur ne donne pas la durée.
+        progress.hidden = !p.durationMs;
+        seek.enabled = p.canSeek && !!p.durationMs;
+        seek.el.classList.toggle("disabled", !seek.enabled);
+        seek.el.tabIndex = seek.enabled ? 0 : -1;
+        if (seek.enabled) seek.el.removeAttribute("aria-disabled");
+        else seek.el.setAttribute("aria-disabled", "true");
+
+        // Volume du lecteur.
+        const level = volDrag ?? (volume?.volume ?? 0);
+        const muted = volDrag === null && !!volume?.muted;
+        vol.enabled = b.volume.enabled;
+        vol.el.classList.toggle("disabled", !vol.enabled);
+        vol.el.tabIndex = vol.enabled ? 0 : -1;
+        vol.set(muted ? 0 : level / 100, `${muted ? 0 : level} %`);
+        volIcon.disabled = !b.volume.enabled;
+        setIcon(volIcon, `vol${volumeLevel(b.volume.enabled ? level : null, muted)}` as IconName);
+        setLabel(volIcon, !b.volume.enabled ? b.volume.label : muted || level === 0 ? "Remettre le son du lecteur" : "Couper le son du lecteur");
+        volBox.title = b.volume.label;
+        volBox.classList.toggle("disabled", !b.volume.enabled);
+        setText(volNum, b.volume.enabled ? String(muted ? 0 : level) : "–");
+        tick();
+      };
+
+      sync();
+      redraws.add(sync);
+      void readVolume(api);
       // Toutes les 500 ms (250 en haute, 1 s en économie d'énergie : src/core/perf.ts).
       const stopTick = pacedInterval(tick, "mediaProgress", true);
       return () => {
-        redraws.delete(draw);
+        redraws.delete(sync);
         stopTick();
+        sendVolume.flush();
+        scrub = null;
       };
     },
   },

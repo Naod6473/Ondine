@@ -2655,7 +2655,31 @@
 "Statistiques": "Statistics",
 "Dictionnaire": "Dictionary",
 "Styles": "Styles",
-"Bientôt.": "Coming soon."
+"Bientôt.": "Coming soon.",
+"Aucune télémétrie. Les outils de l'IA demandent votre accord.": "No telemetry. AI tools ask for your approval.",
+"Montre ce qui joue en ce moment (Spotify, navigateur, VLC… tout ce qui apparaît dans le panneau multimédia de Windows) avec lecture/pause, suivant, précédent, aléatoire, répétition et le volume du lecteur. Lit seulement ce que Windows expose déjà ; rien ne sort de l'ordinateur.": "Shows what's playing right now (Spotify, browser, VLC… anything that appears in the Windows media panel) with play/pause, next, previous, shuffle, repeat and the player's own volume. Only reads what Windows already exposes; nothing leaves the computer.",
+"Ondine regarde sur GitHub s'il existe une nouvelle version. Rien ne s'installe sans votre accord.": "Ondine checks GitHub for a new version. Nothing installs without your consent.",
+"Ouvrir le lecteur": "Open the player",
+"Aléatoire indisponible pour ce lecteur": "Shuffle isn't available for this player",
+"Aléatoire activé": "Shuffle on",
+"Aléatoire désactivé": "Shuffle off",
+"Répétition indisponible pour ce lecteur": "Repeat isn't available for this player",
+"Répéter ce morceau": "Repeat this track",
+"Répéter la liste": "Repeat the list",
+"Répétition désactivée": "Repeat off",
+"Volume du lecteur, pas celui du PC": "The player's own volume, not the PC's",
+"Volume indisponible pour ce lecteur": "Volume isn't available for this player",
+"Volume du lecteur": "Player volume",
+"Remettre le son du lecteur": "Unmute the player",
+"Couper le son du lecteur": "Mute the player",
+"Position dans le morceau": "Position in the track",
+"état invalide": "invalid state",
+"mode invalide": "invalid mode",
+"volume invalide": "invalid volume",
+"coupure invalide": "invalid mute value",
+"ce lecteur n'a pas de son à régler pour l'instant": "this player has no sound to adjust right now",
+"la fenêtre du lecteur est introuvable": "the player's window can't be found",
+"Windows a refusé de passer au lecteur": "Windows refused to switch to the player"
 },
 "patterns": [
 ["^Ondine (.+) est là !$", "Ondine $1 is here!"],
@@ -4587,6 +4611,10 @@
 [
 "^version (.+) disponible$",
 "version $1 available"
-]
+],
+["^volume refusé : (.+)$", "volume refused: $1"],
+["^coupure refusée : (.+)$", "mute refused: $1"],
+["^volume illisible : (.+)$", "volume unreadable: $1"],
+["^lecteur impossible à ouvrir : (.+)$", "couldn't open the player: $1"]
 ]
 }
