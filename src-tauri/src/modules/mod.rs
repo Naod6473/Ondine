@@ -87,6 +87,9 @@ mod team_net;
 // Son protocole (messages, chiffrement, appairage), en code pur testé.
 mod team_proto;
 mod terminal;
+// Mises à jour des logiciels (winget) : la file, et la lecture de sa sortie (pure, testée).
+mod updates;
+mod updates_parse;
 pub(crate) mod clipboard_qr;
 mod weather;
 // Le bilan de la semaine (Pomodoros, concentration, tâches cochées).
@@ -313,6 +316,7 @@ impl Registry {
             Box::new(winnotifs::WinNotifs::default()),
             Box::new(games::Games::default()),
             Box::new(convert::Convert),
+            Box::new(updates::Updates::default()),
         ];
 
         let mut entries = Vec::new();

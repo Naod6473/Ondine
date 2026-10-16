@@ -164,6 +164,11 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
     { id: "mine", label: "Entre mes PC", keys: ["clipboardSync", "mascotSync"] },
     { id: "chat", label: "Chat", keys: ["chatReceipts", "chatKeep"] },
   ],
+  // Mises à jour des logiciels (winget).
+  updates: [
+    { id: "check", label: "Vérification", keys: ["checkEvery", "notify", "dot"] },
+    { id: "ignored", label: "Applis ignorées", keys: ["ignored"] },
+  ],
 };
 
 /**
