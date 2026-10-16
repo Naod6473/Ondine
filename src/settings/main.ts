@@ -44,6 +44,7 @@ import { chip, choice, group, inSub, row, segmented, stepper, toggle, wideRow } 
 import { settingsRows } from "./form";
 import { GlassPill, still } from "./glass-pill";
 import { close as closeGlassSelect, upgradeSelects } from "./glass-select";
+import { selfViewDeviceRows } from "./selfview-devices";
 import { column2, crumbs, direction, IOS_EASE, pageForRubric, RUBRIC_ICONS, rubricCounts, type NavPage, type NavPlace } from "./nav-logic";
 import { NavHistory } from "./nav-history";
 import { applyPatchInPlace, typingTarget, UndoStack, type UndoEntry } from "./undo";
@@ -157,6 +158,11 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
     { id: "voice", label: "Voix et sons", keys: ["micDevice", "voiceHotkey", "micMode", "voiceEngine", "lookHotkey", "wakeWord", "handsFree", "quickCommands", "plops", "plopVolume", "discreet"] },
     { id: "files", label: "Fichiers et PC", keys: ["fileTools", "pcTools", "filesFolder"] },
   ],
+  // Agenda : « Avant une réunion » (Rejoindre, l'aperçu « Se voir »).
+  agenda: [
+    { id: "general", label: "Calendriers", keys: [] },
+    { id: "meeting", label: "Avant une réunion", keys: ["joinMin", "mirrorMode", "mirrorCamera", "mirrorMic"] },
+  ],
   // Équipe (réseau local).
   team: [
     { id: "general", label: "Général", keys: ["visible", "name", "visits", "autoStatus"] },
@@ -171,7 +177,7 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
  * ligne générée) : le micro et le mot d'appel de Parler à Ondine
  * (askclaude-page.ts, 1.2.4).
  */
-const PAGE_DRAWN: Record<string, string[]> = { askclaude: ["micDevice", "wakeWord"] };
+const PAGE_DRAWN: Record<string, string[]> = { askclaude: ["micDevice", "wakeWord"], agenda: ["mirrorCamera", "mirrorMic"] };
 
 /**
  * Des mots de la recherche qui ne sont pas le libellé d'une ligne : la ligne où
@@ -2255,7 +2261,9 @@ function modulePage(main: HTMLElement, man: ModuleManifest, compact = false) {
     const listed = new Set(sections.slice(1).flatMap((s) => s.keys));
     sections.forEach((s, i) => {
       const mine = i === 0 ? fields.filter((f) => !listed.has(f.key)) : fields.filter((f) => s.keys.includes(f.key));
-      if (mine.length) main.append(inSub(s.id, group(i === 0 ? "Réglages" : null, rowsOf(mine))));
+      // Agenda : la caméra et le micro de « Se voir », dans deux menus en verre (selfview-devices.ts).
+      const extra = man.id === "agenda" && s.id === "meeting" ? selfViewDeviceRows(settingsStore.moduleValues(man), (key, value) => save((d) => ((d.modules.agenda ??= { enabled: settingsStore.moduleEnabled("agenda"), values: {} }).values[key] = value))) : [];
+      if (mine.length) main.append(inSub(s.id, group(i === 0 ? "Réglages" : null, [...rowsOf(mine), ...extra])));
     });
   }
   if (!compact && man.id === "weekly") main.append(weeklyGroup(man));

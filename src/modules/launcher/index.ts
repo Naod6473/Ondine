@@ -187,6 +187,13 @@ function islandActions(api: ModuleApi, query: string): Result[] {
     if (on("aquarium")) add("game-aquarium", "Aquarium de gouttes", "🐠", ["aquarium", "gouttes", "jouer", "jeux"], play("aquarium"));
     if (on("race")) add("game-race", "Course de gouttes", "🏁", ["course", "pari", "jouer", "jeux"], play("race"));
   }
+  // « Se voir » (module Agenda) : l'aperçu de la caméra et du micro, sans réunion.
+  if (settingsStore.moduleEnabled("agenda")) {
+    add("mirror", "Se voir : caméra et micro", "📷", ["miroir", "camera", "webcam", "se voir", "micro", "visio"], () => {
+      close();
+      api.emit("agenda.mirror", {});
+    });
+  }
   add("settings", "Réglages de l'île", "⚙️", ["parametres", "options", "preferences"], async () => {
     await Bridge.openSettingsWindow();
     close();

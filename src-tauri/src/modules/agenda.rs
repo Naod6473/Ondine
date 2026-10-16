@@ -16,7 +16,7 @@
 //     de 2 min (réglage « joinMin ») : "agenda.join", une seule fois par
 //     rendez-vous, à la place du rappel s'ils tombent ensemble. « Rejoindre »
 //     (commande "join") ouvre le lien, publie "media.pause" et dit si le
-//     micro est coupé.
+//     micro est coupé ; l'aperçu « Se voir » le demande aussi (commande "mic").
 //
 // Comme pour les notes, les messages du bus ne contiennent pas le texte des
 // rendez-vous : le front le demande avec la commande "upcoming". Rien n'est
@@ -141,12 +141,19 @@ impl RustModule for Agenda {
             "join" => {
                 open_link(&self.state, &args)?;
                 ctx.emit("media.pause", Value::Null);
-                let mic_muted = super::is_active(ctx.app, "controls") && audio::get(Device::Microphone).is_ok_and(|l| l.muted);
-                Ok(json!({ "micMuted": mic_muted }))
+                Ok(json!({ "micMuted": mic_muted(ctx) }))
             }
+            // L'aperçu « Se voir » : le micro est-il coupé (même règle que « join ») ?
+            "mic" => Ok(json!({ "micMuted": mic_muted(ctx) })),
             other => Err(format!("commande inconnue : {other}")),
         }
     }
+}
+
+/// Le micro par défaut de Windows est-il coupé ? Seulement si le module
+/// Contrôles, qui sait le rétablir, est actif (sinon : faux).
+fn mic_muted(ctx: &ModuleContext) -> bool {
+    super::is_active(ctx.app, "controls") && audio::get(Device::Microphone).is_ok_and(|l| l.muted)
 }
 
 /// Ouvre le lien d'un rendez-vous affiché (`{calendar, key}` : le front ne
