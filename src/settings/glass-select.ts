@@ -18,6 +18,8 @@ import { el } from "../island/dom";
 import { reducedMotion } from "../island/tab-pill";
 
 const ENHANCED = new WeakSet<HTMLSelectElement>();
+/** Une classe de plus sur la liste d'un menu (l'île la décore à sa façon : « Se voir » de l'Agenda). */
+const MENU_CLASS = new WeakMap<HTMLSelectElement, string>();
 let listId = 0;
 
 /** La liste ouverte (une seule à la fois). */
@@ -35,9 +37,10 @@ function shownText(select: HTMLSelectElement): string {
  * Habille un <select> : renvoie la pilule (qui contient le <select> caché).
  * Un <select> déjà habillé renvoie son habit.
  */
-export function glassSelect(select: HTMLSelectElement): HTMLElement {
+export function glassSelect(select: HTMLSelectElement, opts: { menuClass?: string } = {}): HTMLElement {
   if (ENHANCED.has(select)) return (select.closest(".gsel") as HTMLElement) ?? select;
   ENHANCED.add(select);
+  if (opts.menuClass) MENU_CLASS.set(select, opts.menuClass);
   const value = el("span", { class: "gsel-value" });
   const button = el("button", { type: "button", class: "gsel-btn", "aria-haspopup": "listbox", "aria-expanded": "false" }, value) as HTMLButtonElement;
   button.insertAdjacentHTML("beforeend", CHEVRON);
@@ -110,7 +113,7 @@ function show(button: HTMLButtonElement, select: HTMLSelectElement) {
   close();
   if (button.disabled) return;
   const id = `gsel-list-${++listId}`;
-  const menu = el("div", { class: "gsel-menu", role: "listbox", id, tabindex: "-1" });
+  const menu = el("div", { class: `gsel-menu ${MENU_CLASS.get(select) ?? ""}`.trim(), role: "listbox", id, tabindex: "-1" });
   const label = button.getAttribute("aria-label");
   if (label) menu.setAttribute("aria-label", label);
   else if (button.getAttribute("aria-labelledby")) menu.setAttribute("aria-labelledby", button.getAttribute("aria-labelledby")!);

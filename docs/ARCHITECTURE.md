@@ -1742,6 +1742,53 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   une alerte « Votre micro est coupé » propose « Rétablir le micro »
   (`controls.mic-set {muted: false}`).
 
+#### « Se voir » avant une réunion (nf16, `src/modules/agenda/selfview.ts`, `selfview-logic.ts`, `src/styles/selfview.css`)
+
+- L'alerte « Réunion dans 2 min » (et le rappel d'une réunion) a « Rejoindre »
+  **et « Se voir »** (`linkAction`). « Se voir » remplace l'alerte (même clé)
+  par une alerte dont le contenu est l'aperçu (`content` de la notification :
+  `mountSelfView(host, api)`), avec « Rejoindre ». Réglage `mirrorMode` :
+  `click` (défaut), `auto` (l'alerte de `agenda.join` montre l'aperçu tout de
+  suite : la caméra s'allume sans clic, au choix de la personne), `off`.
+  Sans réunion : Lanceur « miroir », « caméra », « webcam » → événement
+  `agenda.mirror` (Agenda l'écoute) → même aperçu sans « Rejoindre ».
+- Caméra et micro : deux `getUserMedia` (vidéo 640 × 360, son sans
+  traitement) dans deux `AsyncResource` (comme le QR de l'Équipe, qr.ts :
+  une ouverture tardive après fermeture est relâchée aussitôt). Ils se
+  ferment dans la fonction rendue par `mountSelfView`, que l'île appelle dès
+  que la carte disparaît (×, fin du délai, autre alerte, pause), et par
+  `closeSelfView()` au début de `join()` : Teams / Meet / Zoom trouvent la
+  caméra libre. Un seul aperçu à la fois. Délai : 5 min après le début de la
+  réunion (10 min au plus, 10 min sans réunion). Points vert / orange sur
+  l'image tant que chaque flux est ouvert. Rien n'est enregistré ni envoyé.
+- Jauge : `AnalyserNode` (non relié aux haut-parleurs), moyenne quadratique
+  en dB de −60 à 0 (`meterLevel`), montée immédiate et descente douce
+  (`smoothLevel`). Une seule boucle `frameLoop` (arrêtée île cachée, 30 i/s en
+  Économie) ; une fois par seconde, la luminance moyenne d'une image de
+  32 × 18 (`meanLuma`) décide « Image sombre » avec un écart 55 / 70
+  (`tooDark`).
+- Appareils : on retient le **nom** (`mirrorCamera`, `mirrorMic`, écrits par
+  `settingsStore.update` quand on choisit dans l'aperçu), retrouvé dans
+  `enumerateDevices` (`pickDevice`) ; les noms n'existent qu'après
+  l'autorisation, donc au premier aperçu celui de Windows s'ouvre puis on
+  passe sur le choisi. Menus : `glassSelect(select, { menuClass:
+  "selfview-menu" })` (option ajoutée à glass-select.ts ; le CSS de l'île est
+  rangé sous `.selfview` / `.selfview-menu`, ce fichier étant aussi chargé
+  par les Réglages).
+- Micro coupé : commande Rust `mic` (même règle que `join` : Core Audio, si
+  Contrôles est actif) puis `controls.mic-muted` en direct ; « Rallumer le
+  micro » publie `controls.mic-set {muted: false}`. Ondine fait un clin d'œil
+  (`mascot.emote {emotion: "wink"}`) quand l'image arrive.
+- Réglages : la page Agenda a deux sous-menus (`MODULE_SECTIONS.agenda` :
+  « Calendriers », « Avant une réunion » = `joinMin`, `mirrorMode`,
+  `mirrorCamera`, `mirrorMic`). Caméra et micro préférés sont dessinés par
+  `src/settings/selfview-devices.ts` (`PAGE_DRAWN`), menus en verre, avec
+  `data-field` pour « Modifié ».
+- Permission : rien de propre à Ondine ; WebView2 applique son comportement
+  par défaut (sa boîte de demande), comme pour la webcam du QR. À vérifier
+  sous Windows : `docs/tests/TESTS-nf16-miroir.md`. Tests :
+  `tests/front/selfview.test.ts`.
+
 ## Phase 7 : automatisation
 
 ### Module Terminal (`src/modules/terminal/`, `src-tauri/src/modules/terminal.rs`)
