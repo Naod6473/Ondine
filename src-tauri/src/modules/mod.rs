@@ -29,6 +29,9 @@ mod askclaude_voice;
 mod askclaude_wake;
 // Ses commandes rapides comprises sans IA (minuteur, volume, note…).
 mod askclaude_quick;
+// Rester éveillé et arrêt programmé (public : lib.rs le relâche avant de quitter).
+pub mod awake;
+mod awake_logic;
 // Notes d'appel (1.2.4) : micro + son du PC, transcription personne par personne, résumé.
 mod callnotes;
 mod callnotes_audio;
@@ -319,6 +322,7 @@ impl Registry {
             Box::new(games::Games::default()),
             Box::new(convert::Convert),
             Box::new(updates::Updates::default()),
+            Box::new(awake::Awake::default()),
         ];
 
         let mut entries = Vec::new();
@@ -598,6 +602,20 @@ mod tests {
             assert!(m.commands.iter().any(|x| x == c), "{c}");
         }
         assert!(crate::services::settings::MODULES_OFF_BY_DEFAULT.contains(&"winnotifs"));
+    }
+
+    #[test]
+    fn awake_manifest_is_valid() {
+        let m = check_manifest(awake::Awake::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "awake");
+        assert!(m.permissions.is_empty());
+        for t in ["awake.state", "awake.warn", "agents.busy-ask"] {
+            assert!(m.events.emits.iter().any(|e| e == t), "{t}");
+        }
+        for t in ["agents.busy", "awake.toggle", "awake.start"] {
+            assert!(m.events.listens.iter().any(|l| l == t), "{t}");
+        }
+        assert!(crate::services::settings::MODULES_OFF_BY_DEFAULT.contains(&"awake"));
     }
 
     #[test]

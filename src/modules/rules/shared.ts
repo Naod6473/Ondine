@@ -37,7 +37,8 @@ export type Action =
   | { type: "unzip"; to: string; shelf?: boolean }
   | { type: "copyPath"; nameOnly?: boolean }
   | { type: "mascot"; gesture: Gesture; emotion?: string; text?: string }
-  | { type: "quiet"; minutes: number };
+  | { type: "quiet"; minutes: number }
+  | { type: "awake"; minutes: number };
 
 export interface Conditions {
   extensions: string[];
@@ -165,11 +166,12 @@ export const ACTION_LABELS: Record<Action["type"], string> = {
   copyPath: "Copier le chemin ou le nom",
   mascot: "Mascotte : danser, expression, pancarte",
   quiet: "Calme / Ne pas déranger",
+  awake: "Garder le PC éveillé",
 };
 
 /** Les actions possibles selon le déclencheur (miroir de la validation Rust). */
 export function allowedActions(t: Trigger): Action["type"][] {
-  const always: Action["type"][] = ["notify", "addNote", "mascot", "quiet", "openIsland", "timer", "terminal", "pastePlain"];
+  const always: Action["type"][] = ["notify", "addNote", "mascot", "quiet", "awake", "openIsland", "timer", "terminal", "pastePlain"];
   if (givesFile(t)) return ["move", "copy", "rename", "trash", "unzip", "shelf", "reveal", "copyPath", ...always];
   if (t.type === "drive" && !t.removed) return ["reveal", "shelf", "copyPath", ...always];
   return always;
@@ -240,6 +242,8 @@ export function actionText(a: Action): string {
       return a.gesture === "dance" ? "la mascotte danse" : a.gesture === "sign" ? `pancarte « ${a.text ?? ""} »` : "expression de la mascotte";
     case "quiet":
       return `Calme ${a.minutes} min`;
+    case "awake":
+      return a.minutes ? `éveillé ${a.minutes} min` : "rester éveillé";
     default:
       return ACTION_LABELS[a.type].toLowerCase();
   }

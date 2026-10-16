@@ -169,6 +169,11 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
     { id: "battery", label: "Batterie", keys: ["batteryLowPct", "batteryCriticalPct", "batteryFullAlert"] },
     { id: "disks", label: "Disques", keys: ["diskAlertPct", "oldDownloadsDays"] },
   ],
+  // Rester éveillé : l'éveil, puis l'arrêt programmé.
+  awake: [
+    { id: "keep", label: "Éveil", keys: ["clickDuration", "display", "coffee", "pill"] },
+    { id: "plan", label: "Arrêt programmé", keys: ["planAction", "planMinutes"] },
+  ],
   // Équipe (réseau local).
   team: [
     { id: "general", label: "Général", keys: ["visible", "name", "visits", "autoStatus"] },
@@ -2553,6 +2558,7 @@ function mascot(main: HTMLElement) {
             ["launcher", "Lanceur"],
             ["capture", "Capture"],
             ["note", "Note rapide"],
+            ["awake", "Rester éveillé"],
             ["none", "Rien"],
           ],
           (v) => save((d) => (d.mascot.doubleClick = v as NonNullable<Settings["mascot"]["doubleClick"]>)),

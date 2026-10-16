@@ -219,7 +219,8 @@ export interface MascotManifest {
  * Ce que la mascotte porte en plus de son animation, tant que ça dure
  * (`MascotRenderer.setExtras`, poussé par mascot-state.ts) : les moufles sur
  * les oreilles (concentration), la pancarte « ? » (une question d'agent
- * ouverte), le parapluie (la Météo annonce la pluie).
+ * ouverte), le parapluie (la Météo annonce la pluie), la tasse de café (le
+ * PC reste éveillé, module Rester éveillé).
  */
 export interface MascotExtras {
   ears: boolean;
@@ -227,6 +228,8 @@ export interface MascotExtras {
   /** Le mot écrit sur la pancarte (« Occupé »…, message mascot.sign) ; "" : le « ? ». */
   signText: string;
   umbrella: boolean;
+  /** Une petite tasse de café fumante (`awake.state` : le PC reste éveillé). */
+  coffee: boolean;
 }
 
-export const NO_EXTRAS: MascotExtras = { ears: false, sign: false, signText: "", umbrella: false };
+export const NO_EXTRAS: MascotExtras = { ears: false, sign: false, signText: "", umbrella: false, coffee: false };

@@ -59,6 +59,8 @@ pub mod winnotifs;
 pub mod convert;
 // « Qu'est-ce qui remplit mon disque ? » (Système) : taille sur le disque, Corbeille. Contient sa propre version Linux.
 pub mod diskuse;
+// Rester éveillé et arrêt programmé (module awake). Contient sa propre version Linux.
+pub mod power;
 
 #[cfg(windows)]
 mod drop_target;

@@ -118,13 +118,15 @@
       "games.play",
       "agenda.mirror",
       "updates.check",
-      "system.disk-open"
+      "system.disk-open",
+      "awake.toggle"
     ],
     "listens": [
       "launcher.open",
       "launcher.hotkey-error",
       "remote.changed",
-      "agents.projects"
+      "agents.projects",
+      "awake.state"
     ]
   }
 }

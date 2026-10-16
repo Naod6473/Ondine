@@ -1,0 +1,187 @@
+/* Rester éveillé (src/modules/awake/index.ts) : la pilule de la mini-île,
+ * l'onglet (Éveil, Arrêt programmé) et le dernier avertissement. Couleur :
+ * un caramel doux pour l'éveil, un corail pour l'arrêt programmé.
+ * Rien ne bouge en boucle ici : la vapeur du café est dessinée par la
+ * mascotte (gum-draw.ts), et fixe si Windows réduit les animations. */
+
+:root {
+  --awake-tint: #ffc98a;
+  --awake-plan: #ff9a7a;
+}
+
+/* ── La mini-île ─────────────────────────────────────────────────────────── */
+.awake-compact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  min-width: 0;
+  padding: 0 6px 0 10px;
+  color: var(--island-fg, #fff);
+  font-variant-numeric: tabular-nums;
+}
+.awake-compact-icon {
+  flex: none;
+  color: var(--awake-tint);
+}
+.awake-compact.plan .awake-compact-icon {
+  color: var(--awake-plan);
+}
+.awake-compact-text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  font-size: 13.5px;
+}
+.awake-compact-stop {
+  flex: none;
+  margin-left: auto;
+  height: 26px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 13px;
+  background: rgba(255, 201, 138, 0.18);
+  color: #ffe2bf;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 160ms var(--ease, ease), scale 160ms var(--ease, ease);
+}
+.awake-compact.plan .awake-compact-stop {
+  background: rgba(255, 154, 122, 0.22);
+  color: #ffc4b2;
+}
+.awake-compact-stop:hover {
+  background: rgba(255, 201, 138, 0.3);
+}
+.awake-compact-stop:active {
+  scale: 0.96;
+}
+
+/* ── L'onglet ────────────────────────────────────────────────────────────── */
+.awake-seg {
+  margin-bottom: 10px;
+}
+.awake-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.awake-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+}
+.awake-status.on {
+  background: rgba(255, 201, 138, 0.09);
+  border-color: rgba(255, 201, 138, 0.28);
+}
+.awake-status.on.plan {
+  background: rgba(255, 154, 122, 0.1);
+  border-color: rgba(255, 154, 122, 0.32);
+}
+.awake-cup {
+  flex: none;
+  font-size: 20px;
+  color: var(--awake-tint);
+}
+.awake-status.plan .awake-cup {
+  color: var(--awake-plan);
+}
+.awake-status-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.awake-status-text span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.awake-left {
+  font-variant-numeric: tabular-nums;
+}
+.awake-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.awake-body .btn.on {
+  background: rgba(255, 201, 138, 0.2);
+  border-color: rgba(255, 201, 138, 0.45);
+}
+.awake-body .btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.awake-time,
+.awake-num {
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--island-fg);
+  font: inherit;
+  font-size: 12px;
+  color-scheme: dark;
+}
+.awake-num {
+  width: 64px;
+}
+.awake-whens {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.awake-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.awake-check {
+  accent-color: var(--awake-tint);
+}
+.awake-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(255, 154, 122, 0.1);
+  border: 1px solid rgba(255, 154, 122, 0.35);
+}
+.awake-error {
+  margin: 0;
+  min-height: 0;
+  color: #ffb4a3;
+  font-size: 12px;
+}
+.awake-error:empty {
+  display: none;
+}
+
+/* ── Le dernier avertissement ────────────────────────────────────────────── */
+.awake-warn-left {
+  display: block;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  color: var(--awake-plan);
+}
+.awake-warn-note {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+

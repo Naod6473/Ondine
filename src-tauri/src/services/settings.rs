@@ -207,7 +207,7 @@ pub struct MascotPrefs {
     /// Elle se promène un peu quand personne ne touche le PC.
     pub pet_wander: bool,
     /// Double-clic sur Ondine dans l'île : "ask" (Parler à Ondine, par défaut),
-    /// "launcher", "capture", "note" (note rapide) ou "none" (src/island/mascot-double-click.ts).
+    /// "launcher", "capture", "note" (note rapide), "awake" (Rester éveillé) ou "none" (src/island/mascot-double-click.ts).
     pub double_click: String,
 }
 
@@ -359,7 +359,7 @@ impl Settings {
         if !matches!(m.surprises.as_str(), "all" | "seasonal" | "none") {
             m.surprises = "all".into();
         }
-        if !matches!(m.double_click.as_str(), "ask" | "launcher" | "capture" | "note" | "none") {
+        if !matches!(m.double_click.as_str(), "ask" | "launcher" | "capture" | "note" | "awake" | "none") {
             m.double_click = "ask".into();
         }
         if !is_hex_color(&m.custom_color) {
@@ -406,8 +406,8 @@ impl Settings {
 
 /// Les modules désactivés tant qu'on ne les a pas allumés (ceux qui ouvrent un
 /// port sur le réseau local, l'écran de veille, la dictée, les notifications de
-/// Windows qui lisent celles des autres applis). Même liste dans src/core/settings-store.ts.
-pub const MODULES_OFF_BY_DEFAULT: &[&str] = &["team", "screensaver", "dictation", "winnotifs"];
+/// Windows qui lisent celles des autres applis, Rester éveillé qui peut éteindre le PC). Même liste dans src/core/settings-store.ts.
+pub const MODULES_OFF_BY_DEFAULT: &[&str] = &["team", "screensaver", "dictation", "winnotifs", "awake"];
 
 /// Une couleur « #rrggbb » (sept caractères, hexadécimaux).
 fn is_hex_color(s: &str) -> bool {

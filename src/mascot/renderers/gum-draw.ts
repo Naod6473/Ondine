@@ -309,6 +309,8 @@ export interface GumScene {
   wear: Wear;
   /** Un parapluie au-dessus d'elle (la Météo annonce la pluie), 0 à 1 (il apparaît en fondu). */
   umbrella: number;
+  /** Une tasse de café fumante tenue contre elle (le PC reste éveillé), 0 à 1 (en fondu). */
+  coffee: number;
   extra: Overlay;
   weather: WeatherFx;
   t: number;
@@ -500,6 +502,9 @@ export function drawGum(ctx: CanvasRenderingContext2D, w: number, h: number, sc:
   if (sc.props.cap > 0.02 && sc.wear.head === "none") wearHead(ctx, sc, R, "cap", sc.props.cap);
   if (sc.umbrella > 0.02) drawUmbrella(ctx, sc, R);
   ctx.restore(); // fin de l'étirement
+
+  // La tasse de café (Rester éveillé) : devant le corps, sous la moufle droite qui la tient.
+  if (sc.coffee > 0.02) drawCoffee(ctx, sc, R, sx, sy);
 
   // Les mains devant le corps.
   if (sc.hands && sc.handsAlpha > 0.02) {
@@ -1279,6 +1284,75 @@ function drawUmbrella(ctx: CanvasRenderingContext2D, sc: GumScene, R: number) {
     ctx.beginPath();
     ctx.moveTo(x, y);
     ctx.lineTo(x - R * 0.02, y + R * 0.12);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/**
+ * Une petite tasse au trait, dans le style des accessoires de la gomme (encre
+ * douce, reflet), contre son flanc droit (la moufle de repos passe devant et
+ * semble la tenir). Deux filets de vapeur montent et ondulent lentement ; avec
+ * « Réduire les animations », le moteur ne redessine pas : la vapeur reste
+ * immobile. Assez grosse pour se lire dans la mini-île (32 px).
+ */
+function drawCoffee(ctx: CanvasRenderingContext2D, sc: GumScene, R: number, sx: number, sy: number) {
+  const k = sc.coffee;
+  // Le bord droit du corps à mi-hauteur basse, là où pend la moufle de repos.
+  let edge = 0;
+  for (const p of sc.pts) if (Math.abs(p.y - 0.55) < 0.14) edge = Math.max(edge, p.x);
+  if (edge <= 0) edge = 0.8;
+  const x = (edge - 0.02) * R * sx;
+  const y = 0.56 * R * sy;
+  const w = R * 0.62;
+  const h = R * 0.54;
+  ctx.save();
+  ctx.globalAlpha = k;
+  ctx.translate(x, y + (1 - k) * R * 0.15);
+  ctx.rotate(-0.08);
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  const line = Math.max(1, R * 0.06);
+  // l'anse, à droite
+  ctx.strokeStyle = "#7a4a2c";
+  ctx.lineWidth = line;
+  ctx.beginPath();
+  ctx.ellipse(w * 0.5, h * 0.02, w * 0.2, h * 0.24, 0, -Math.PI / 2, Math.PI / 2);
+  ctx.stroke();
+  // la tasse : un U arrondi, crème, au trait brun
+  ctx.fillStyle = "#fff3e2";
+  ctx.beginPath();
+  ctx.moveTo(-w / 2, -h / 2);
+  ctx.lineTo(w / 2, -h / 2);
+  ctx.lineTo(w * 0.42, h * 0.28);
+  ctx.quadraticCurveTo(w * 0.36, h / 2, 0, h / 2);
+  ctx.quadraticCurveTo(-w * 0.36, h / 2, -w * 0.42, h * 0.28);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  // le café, vu par le bord
+  ctx.fillStyle = "#8a5634";
+  ctx.beginPath();
+  ctx.ellipse(0, -h / 2, w * 0.46, h * 0.12, 0, 0, TAU);
+  ctx.fill();
+  ctx.stroke();
+  gloss(ctx, -w * 0.22, -h * 0.08, R * 0.05, R * 0.11, 0);
+  // la vapeur : deux filets qui montent, ondulent et pâlissent
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+  ctx.lineWidth = Math.max(1, R * 0.06);
+  for (let i = 0; i < 2; i++) {
+    const ph = (sc.t * 0.35 + i * 0.5) % 1;
+    const bx = (i ? 0.26 : 0.02) * w;
+    const top = -h / 2 - R * 0.08 - ph * R * 0.18;
+    ctx.globalAlpha = k * 0.85 * Math.sin(Math.PI * Math.min(1, 0.15 + ph * 0.85));
+    ctx.beginPath();
+    for (let j = 0; j <= 6; j++) {
+      const f = j / 6;
+      const px = bx + Math.sin(f * 5 + sc.t * 1.4 + i * 2) * R * 0.05;
+      const py = top - f * R * 0.34;
+      if (j === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
     ctx.stroke();
   }
   ctx.restore();

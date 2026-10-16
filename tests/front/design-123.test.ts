@@ -183,7 +183,7 @@ describe("double-clic sur Ondine", () => {
   test("action : Parler à Ondine par défaut, les autres reconnues", () => {
     assert.equal(doubleClickActionOf(undefined), "ask");
     assert.equal(doubleClickActionOf("n'importe quoi"), "ask");
-    for (const a of ["ask", "launcher", "capture", "note", "none"]) assert.equal(doubleClickActionOf(a), a);
+    for (const a of ["ask", "launcher", "capture", "note", "awake", "none"]) assert.equal(doubleClickActionOf(a), a);
   });
   test("deux clics rapprochés, puis rien : l'action part", () => {
     const d = new DoubleClick();

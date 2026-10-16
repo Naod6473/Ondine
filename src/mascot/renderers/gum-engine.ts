@@ -248,6 +248,8 @@ export class GumEngine implements MascotRenderer {
   private extras: MascotExtras = NO_EXTRAS;
   /** Le parapluie apparaît et disparaît en fondu. */
   private umbrella = 0;
+  /** La tasse de café aussi (Rester éveillé). */
+  private coffee = 0;
   /** Une couleur imposée (le podium des Réglages : une couleur par mascotte), à la place du réglage. */
   private tintOverride: GumTint | null = null;
   /** Le temps de la musique (mascot.dance, src/mascot/beat.ts) ; null : le tempo typique du style. */
@@ -617,6 +619,7 @@ export class GumEngine implements MascotRenderer {
         this.extras.sign,
         this.extras.signText,
         this.extras.umbrella,
+        this.extras.coffee,
         this.lookTarget ? `${this.lookTarget.x.toFixed(2)},${this.lookTarget.y.toFixed(2)}` : "-",
         this.talkWant > 0 && now - this.talkAt < 180 ? this.talkWant.toFixed(1) : "0",
         this.flinch > 0,
@@ -924,6 +927,7 @@ export class GumEngine implements MascotRenderer {
     // La pancarte et la pile vide se montrent même sans mains : c'est une information, pas un geste.
     const showHands = mode === "always" || pose === "sign" || pose === "panic" || (mode === "gestures" && pose !== "rest");
     this.umbrella += ((this.extras.umbrella ? 1 : 0) - this.umbrella) * (calm ? 1 : 1 - Math.exp(-dt * 6));
+    this.coffee += ((this.extras.coffee ? 1 : 0) - this.coffee) * (calm ? 1 : 1 - Math.exp(-dt * 5));
     this.handsAlpha += ((showHands ? 1 : 0) - this.handsAlpha) * (calm ? 1 : 1 - Math.exp(-dt * 10));
     let goals = pose in HANDS ? HANDS[pose as HandPose](t, p, S) : DANCE_HANDS[pose as DanceHandPose](t, p, S);
     // Le geste de l'autre côté : les mains changent de côté.
@@ -980,6 +984,7 @@ export class GumEngine implements MascotRenderer {
       leftFront: pose === "crossed",
       wear: this.prefs.wear,
       umbrella: this.umbrella,
+      coffee: this.coffee,
       extra: f.extra ?? "none",
       weather: this.dynamic === "meteo" ? this.weatherFx : "none",
       t: this.clock,

@@ -544,6 +544,8 @@ function defaultAction(type: Action["type"]): Action {
       return { type, gesture: "dance", emotion: "happy", text: "" };
     case "quiet":
       return { type, minutes: 30 };
+    case "awake":
+      return { type, minutes: 60 };
     default:
       return { type } as Action;
   }
@@ -562,6 +564,7 @@ function actionRow(r: Rule, a: Action, i: number) {
   else if (a.type === "notify") param = textInput(a.text, "{nom} est arrivé", (v) => (a.text = v), 200);
   else if (a.type === "timer") param = numberInput(a.minutes, 1, 180, (v) => (a.minutes = v ?? 5));
   else if (a.type === "quiet") param = numberInput(a.minutes, 1, 240, (v) => (a.minutes = v ?? 30));
+  else if (a.type === "awake") param = numberInput(a.minutes, 0, 1440, (v) => (a.minutes = v ?? 60));
   else if (a.type === "addNote") {
     param = el(
       "span",
@@ -618,7 +621,9 @@ function actionRow(r: Rule, a: Action, i: number) {
         ? "{nom} = le nom du fichier, du lecteur ou de l'agent ; {date} et {heure} aussi."
         : a.type === "unzip"
           ? "Dans un nouveau dossier au nom de l'archive : rien n'est écrasé, « Annuler » le met à la Corbeille."
-          : a.type === "quiet"
+          : a.type === "awake"
+            ? "En minutes ; 0 = la durée d'un clic du module Rester éveillé (à activer dans Modules). Une règle n'éteint jamais le PC."
+            : a.type === "quiet"
             ? "L'île garde ses notifications pour plus tard et la mascotte se calme. Les alertes importantes passent quand même."
             : a.type === "mascot" && a.gesture === "sign"
               ? "Un mot court, levé au-dessus de sa tête pendant 8 s : « Occupé », « En réunion », « Pause », « ? »… (14 caractères au plus sur la pancarte). Un clic sur elle la baisse."

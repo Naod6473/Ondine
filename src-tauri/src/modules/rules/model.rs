@@ -181,6 +181,10 @@ pub enum Action {
     },
     /// Mode Calme / Ne pas déranger de l'île pendant `minutes`.
     Quiet { minutes: u32 },
+    /// Garder le PC éveillé (module Rester éveillé) pendant `minutes` ;
+    /// 0 = la durée d'un clic de ses réglages. Jamais d'arrêt du PC par une
+    /// règle : l'arrêt programmé demande une confirmation à chaque fois.
+    Awake { minutes: u32 },
 }
 
 /// Ce que fait la mascotte.
@@ -285,6 +289,7 @@ pub fn validate(rule: &Rule) -> Result<(), String> {
                 return Err("le texte de la pancarte doit faire de 1 à 40 caractères".into());
             }
             Action::Quiet { minutes } if !(1..=240).contains(minutes) => return Err("Calme : de 1 à 240 minutes".into()),
+            Action::Awake { minutes } if *minutes > 1440 => return Err("Rester éveillé : au plus 24 heures".into()),
             _ => {}
         }
     }
@@ -707,6 +712,9 @@ mod tests {
         assert!(validate(&rule(agent(), vec![Action::Mascot { gesture: Gesture::Emote, emotion: "rm -rf".into(), text: String::new() }])).is_err());
         assert!(validate(&rule(agent(), vec![Action::Mascot { gesture: Gesture::Sign, emotion: String::new(), text: " ".into() }])).is_err());
         assert!(validate(&rule(agent(), vec![Action::Quiet { minutes: 0 }])).is_err());
+        assert!(validate(&rule(agent(), vec![Action::Awake { minutes: 0 }])).is_ok(), "0 = la durée d'un clic");
+        assert!(validate(&rule(agent(), vec![Action::Awake { minutes: 120 }])).is_ok());
+        assert!(validate(&rule(agent(), vec![Action::Awake { minutes: 1441 }])).is_err());
         assert!(validate(&rule(agent(), vec![Action::AddNote { text: "{nom} a fini".into(), todo: true }])).is_ok());
         assert!(validate(&rule(agent(), vec![Action::CopyPath { name_only: false }])).is_err());
         assert!(validate(&rule(agent(), vec![Action::Unzip { to: "C:\\x".into(), shelf: true }])).is_err());

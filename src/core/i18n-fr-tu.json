@@ -419,7 +419,13 @@
 "Toutes vos applis connues de winget sont à jour.": "Toutes tes applis connues de winget sont à jour.",
 "Windows le refait quand vous ouvrez un dossier": "Windows le refait quand tu ouvres un dossier",
 "Videz la Corbeille pour libérer la place.": "Vide la Corbeille pour libérer la place.",
-"cette analyse n'existe plus : relancez-la": "cette analyse n'existe plus : relance-la"
+"cette analyse n'existe plus : relancez-la": "cette analyse n'existe plus : relance-la",
+"Garde le PC éveillé le temps qu'il faut (30 min, 1 h, jusqu'à une heure, sans limite, jusqu'à la fin d'un téléchargement ou d'un agent IA) : Ondine boit un café pendant ce temps. Programme aussi l'arrêt, la veille, le redémarrage ou le verrouillage du PC, avec un compte à rebours annulable et un dernier avertissement une minute avant. Rien ne se passe sans votre clic, et les applis ne sont jamais fermées de force : une appli qui a un document à enregistrer peut toujours arrêter l'arrêt.": "Garde le PC éveillé le temps qu'il faut (30 min, 1 h, jusqu'à une heure, sans limite, jusqu'à la fin d'un téléchargement ou d'un agent IA) : Ondine boit un café pendant ce temps. Programme aussi l'arrêt, la veille, le redémarrage ou le verrouillage du PC, avec un compte à rebours annulable et un dernier avertissement une minute avant. Rien ne se passe sans ton clic, et les applis ne sont jamais fermées de force : une appli qui a un document à enregistrer peut toujours arrêter l'arrêt.",
+"Quand vous l'activez d'un clic : le Lanceur (« éveillé », « caféine »), une règle sans durée, ou le double-clic sur Ondine s'il est réglé sur Rester éveillé.": "Quand tu l'actives d'un clic : le Lanceur (« éveillé », « caféine »), une règle sans durée, ou le double-clic sur Ondine s'il est réglé sur Rester éveillé.",
+"Enregistrez votre travail : les applis ne sont pas fermées de force.": "Enregistre ton travail : les applis ne sont pas fermées de force.",
+"Tapez une heure comme 18:30.": "Tape une heure comme 18:30.",
+"Choisissez de 1 à 1440 minutes.": "Choisis de 1 à 1440 minutes.",
+"Choisissez une durée : le PC ne se met pas en veille jusque-là.": "Choisis une durée : le PC ne se met pas en veille jusque-là."
 },
 "patterns": [
 ["^(\\d+) nouveautés vous attendent\\.$", "$1 nouveautés t'attendent."],

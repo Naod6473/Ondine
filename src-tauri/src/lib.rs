@@ -796,6 +796,7 @@ pub fn run() {
             // rester caché dans le trou noir (Ondine et les fenêtres).
             if let tauri::RunEvent::Exit = event {
                 modules::windowlife_hole::release_all("Ondine quitte");
+                modules::awake::release_now();
             }
         });
 }

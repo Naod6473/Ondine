@@ -130,7 +130,7 @@ export interface Settings {
     /** Elle se promène un peu quand personne ne touche le PC. */
     petWander: boolean;
     /** Double-clic sur Ondine dans l'île (src/island/mascot-double-click.ts). */
-    doubleClick?: "ask" | "launcher" | "capture" | "note" | "none";
+    doubleClick?: "ask" | "launcher" | "capture" | "note" | "awake" | "none";
   };
   privacy: {
     excludedFolders: string[];

@@ -10,9 +10,9 @@
 // troisième n'est venu. Une série de trois clics ou plus ne lance rien, jusqu'à
 // une pause.
 
-export type DoubleClickAction = "ask" | "launcher" | "capture" | "note" | "none";
+export type DoubleClickAction = "ask" | "launcher" | "capture" | "note" | "awake" | "none";
 
-export const DOUBLE_CLICK_ACTIONS: readonly DoubleClickAction[] = ["ask", "launcher", "capture", "note", "none"];
+export const DOUBLE_CLICK_ACTIONS: readonly DoubleClickAction[] = ["ask", "launcher", "capture", "note", "awake", "none"];
 
 /** Une valeur des réglages → une action connue (inconnue : « Parler à Ondine »). */
 export function doubleClickActionOf(v: unknown): DoubleClickAction {
@@ -25,6 +25,8 @@ export const ACTION_MODULE: Record<Exclude<DoubleClickAction, "none">, string> =
   launcher: "launcher",
   capture: "capture",
   note: "notes",
+  // Rester éveillé : active ou coupe l'éveil (la durée d'un clic de ses réglages).
+  awake: "awake",
 };
 
 /** Au plus ce délai entre deux clics d'un double-clic (ms). */
