@@ -74,6 +74,18 @@ Les nouveautés de la version 1.2.4 (la liste complète est dans le
 - **Agents IA en pilules** : une pilule par agent, de sa couleur, avec son
   état ; un clic ramène sa fenêtre. La liste de tâches de l'agent en barre de
   progression.
+- **Rester éveillé et arrêt programmé** : garder le PC éveillé le temps d'un
+  téléchargement, d'un agent IA ou jusqu'à ce soir (Ondine boit un café), et
+  programmer l'arrêt ou la veille avec un compte à rebours annulable.
+- **Mises à jour des logiciels** : winget dit quelles applis ont une nouvelle
+  version, Ondine les met à jour d'un clic, une à la fois.
+- **Qu'est-ce qui remplit mon disque ?** Les plus gros dossiers d'un disque en
+  un coup d'œil, et un nettoyage sûr, toujours confirmé.
+- **Se voir avant une visio** : à côté de « Rejoindre », votre image et le
+  niveau du micro ; tout se ferme dès que vous entrez.
+- **Home Assistant** : les appareils de la maison en boutons dans l'île et à
+  la voix (Assist d'abord, sans IA), avec une confirmation obligatoire pour
+  les serrures, l'alarme, le garage et les portails.
 - **Et aussi** : notifications de Windows dans l'île (coupées par défaut),
   « trou noir » pour cacher une fenêtre, presse-papiers qui ignore les clés
   et jetons, icônes au trait partout en style épuré, l'éclosion de l'île au premier lancement, limites du forfait

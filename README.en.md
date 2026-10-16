@@ -71,6 +71,18 @@ What's new in version 1.2.4 (the full list is in the
   mini-island (long press on Ondine), a drop aquarium and drop races.
 - **AI agents as pills**: one pill per agent, in its colour, with its state;
   a click brings its window back. The agent's task list as a progress bar.
+- **Stay awake and scheduled shutdown**: keep the PC awake through a download,
+  an AI agent or until tonight (Ondine drinks a coffee), and schedule shutdown
+  or sleep with a cancellable countdown.
+- **Software updates**: winget tells which apps have a new version, Ondine
+  updates them in one click, one at a time.
+- **What's filling up my disk?** A disk's biggest folders at a glance, and a
+  safe cleanup, always confirmed.
+- **See yourself before a video call**: next to "Join", your picture and the
+  microphone level; everything closes as soon as you go in.
+- **Home Assistant**: your home's devices as buttons in the island and by
+  voice (Assist first, no AI), with a mandatory confirmation for locks, alarm,
+  garage and gates.
 - **And also**: Windows notifications in the island (off by default), a
   "black hole" to hide a window, a clipboard that ignores keys and tokens,
   line icons everywhere in the clean style, the island hatching on first launch, Claude and Codex plan
