@@ -4817,3 +4817,72 @@ Module `awake`, « Le PC au quotidien », **coupé par défaut**
   « Encore 15 min », noms de fichiers partiels), `tests/front/awake.test.ts`
   (textes, heure locale, arguments, traductions) ; à faire sur Windows :
   `docs/tests/TESTS-nf16-eveil.md`.
+
+## Home Assistant (nf16, `src-tauri/src/modules/homeassistant.rs`, `homeassistant_logic.rs`, `askclaude_home.rs`, `src/modules/homeassistant/`, `src/settings/homeassistant-page.ts`)
+
+Module `homeassistant` (« Home Assistant », pas de logo : icône 🏡 au trait
+`icons-line/homeassistant.svg`), catégorie « Le PC au quotidien », **coupé par
+défaut** (`MODULES_OFF_BY_DEFAULT`, Rust et front). Permissions `network`,
+`credentials`.
+
+- **Connexion** : réglage `url` vérifié par `base_url` (http(s)://hôte[:port][/chemin],
+  sans identifiant, `?`, `#`) ; jeton longue durée dans le Gestionnaire
+  d'identifiants (`homeassistant-token`, champ `secret`), lu seulement dans le
+  Rust, jamais renvoyé ni journalisé. Client `ureq` (TLS de Windows),
+  `proxy(None)`, `max_redirects(0)` : rien ne part ailleurs qu'à l'adresse
+  donnée ; `insecure` (coupé) = `disable_verification` pour un certificat
+  auto-signé. Erreurs traduites sans recopier le jeton ni l'adresse complète.
+- **API REST** : `GET /api/config` (« Tester la connexion »), `GET /api/states`
+  (favoris, liste des appareils ; gardée 10 min en cache pour le tri des
+  phrases), `GET /api/states/<id>` (classe et bornes avant une action),
+  `POST /api/services/<domaine>/<service>` (la réponse donne le nouvel état),
+  `POST /api/template` (pièces via `area_name`, facultatif : compte
+  administrateur), `POST /api/conversation/process` (Assist).
+- **Sécurité** : domaines `DOMAINS` et services `services(domaine)` en liste
+  fermée, valeurs bornées (`service_data`). Sensible = `lock`,
+  `alarm_control_panel`, `cover` de classe garage / gate / door (un volet
+  illisible est traité comme sensible), et les ids de `values.sensitive`.
+  `call` sur un sensible renvoie `{confirm: {id, label}}` (gardé 5 min) ; rien
+  avant `confirm_call {id}` ; `source: "rule"` est refusé.
+- **Favoris** : `values.favorites` = `[{id, name, area}]` (hors des champs du
+  manifeste, comme `dropPills` de l'Étagère : exportés, annulables),
+  `values.sensitive` = `[id]`. 60 au plus.
+- **Île** : vue `expanded` (pastilles `.ctl-toggle` dans des `.ctl-card` par
+  pièce, `byArea`), clic = `mainService` + réglages fins dessous (luminosité,
+  position, consigne, volume) ; barre `.ha-confirm` pour un sensible (30 s).
+  Relue par `pacedInterval(…, "homeassistantTab", true)` seulement tant que
+  la vue est montée et la fenêtre visible. Carte d'Accueil « Maison »
+  (`load` toutes les 30 s seulement quand l'Accueil est affiché, 3 boutons non
+  sensibles). Pas dans l'onglet Contrôles (il faudrait qu'un module appelle
+  les commandes d'un autre).
+- **Voix** (`askclaude_home.rs`) : la commande `quick` de Parler à Ondine,
+  après les commandes rapides, appelle `homeassistant.assist {text}` si le
+  module est actif. `assist` : réglage `assistFirst` (vrai par défaut) ;
+  `looks_like_home` (mots de la maison FR/EN, ou un nom de favori, de pièce,
+  d'appareil connu ; 16 mots au plus) sinon rien ne part ; `mentions_sensitive`
+  (serrure, alarme, garage, portail, porte, ou le nom d'un sensible) : jamais
+  envoyé à Assist (Assist agirait sans confirmation) ; puis
+  `/api/conversation/process` avec la langue de l'appli. `parse_assist` :
+  géré si `action_done`, `query_answer`, ou une erreur autre que
+  `no_intent_match` / `no_valid_targets`. Géré : la réponse d'Assist
+  devient la bulle d'Ondine (tour gardé avec la note « [Fait par Assist…] »),
+  sans IA.
+- **Outil `maison`** (réglage `aiTool`, coupé) : décrit seulement si le module
+  est actif, l'outil allumé et qu'il y a des favoris ; la consigne liste les
+  favoris (nom, pièce, id). `ai_call` n'accepte qu'un favori ; `etat` lit
+  l'état. Sensible → `Action::Home` (carte « Faire / Annuler » d'askclaude.rs,
+  `confirm_call` au clic, `cancel_call` au refus). Activité `{kind: "did",
+  what: "home", value}` (phrase faite par le Rust, dans la langue de l'appli).
+- **Réaction** (réglage `react`) : lumière allumée → `mascot.emote wink`,
+  scène → `happy`.
+- **Règles** : action `homeAssistant {entity, service, value?}`
+  (`rules/model.rs`, validée par `service_data`), exécutée par
+  `homeassistant.call` avec `source: "rule"` ; proposée dans l'éditeur
+  seulement quand le module est activé, avec les favoris en liste.
+- **Réglages** : `MODULE_SECTIONS.homeassistant` = Connexion (`url`,
+  `token`, `insecure` + « Tester la connexion »), Appareils favoris
+  (`homeCard` + vos favoris, « Afficher les appareils », recherche, Sensible),
+  Voix (`assistFirst`, `aiTool`, `react` + « Comment ça marche »).
+- Tests : `homeassistant_logic.rs` (JSON réalistes de `/api/states` et de
+  `/api/conversation/process`), `homeassistant.rs` (faux serveur HTTP local
+  sur 127.0.0.1), `tests/front/homeassistant.test.ts`.

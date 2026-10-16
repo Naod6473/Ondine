@@ -26,7 +26,7 @@ export const MODULE_CATEGORIES: { id: string; label: string; modules: string[] }
   { id: "files", label: "Fichiers", modules: ["shelf", "clipboard", "capture", "launcher", "convert"] },
   { id: "organize", label: "Organisation", modules: ["timer", "notes", "agenda", "pauses", "weekly"] },
   { id: "it", label: "Outils IT", modules: ["terminal", "system", "remote", "nettools", "updates", "team"] },
-  { id: "daily", label: "Le PC au quotidien", modules: ["home", "media", "controls", "winnotifs", "weather", "screensaver", "awake", "games"] },
+  { id: "daily", label: "Le PC au quotidien", modules: ["home", "media", "controls", "homeassistant", "winnotifs", "weather", "screensaver", "awake", "games"] },
   { id: "other", label: "Autres modules", modules: [] },
 ];
 

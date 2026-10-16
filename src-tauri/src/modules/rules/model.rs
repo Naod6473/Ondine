@@ -185,6 +185,14 @@ pub enum Action {
     /// 0 = la durée d'un clic de ses réglages. Jamais d'arrêt du PC par une
     /// règle : l'arrêt programmé demande une confirmation à chaque fois.
     Awake { minutes: u32 },
+    /// Home Assistant : appeler un service sur un appareil (jamais un
+    /// appareil sensible : le module le refuse sans clic).
+    HomeAssistant {
+        entity: String,
+        service: String,
+        #[serde(default)]
+        value: Option<f64>,
+    },
 }
 
 /// Ce que fait la mascotte.
@@ -290,6 +298,9 @@ pub fn validate(rule: &Rule) -> Result<(), String> {
             }
             Action::Quiet { minutes } if !(1..=240).contains(minutes) => return Err("Calme : de 1 à 240 minutes".into()),
             Action::Awake { minutes } if *minutes > 1440 => return Err("Rester éveillé : au plus 24 heures".into()),
+            Action::HomeAssistant { entity, service, value } => {
+                crate::modules::homeassistant_logic::service_data(entity, service, *value, None).map_err(|e| format!("Home Assistant : {e}"))?;
+            }
             _ => {}
         }
     }
@@ -716,6 +727,11 @@ mod tests {
         assert!(validate(&rule(agent(), vec![Action::Awake { minutes: 120 }])).is_ok());
         assert!(validate(&rule(agent(), vec![Action::Awake { minutes: 1441 }])).is_err());
         assert!(validate(&rule(agent(), vec![Action::AddNote { text: "{nom} a fini".into(), todo: true }])).is_ok());
+        let ha = |entity: &str, service: &str| Action::HomeAssistant { entity: entity.into(), service: service.into(), value: None };
+        assert!(validate(&rule(agent(), vec![ha("light.salon", "turn_on")])).is_ok());
+        assert!(validate(&rule(agent(), vec![ha("light.salon", "delete")])).is_err());
+        assert!(validate(&rule(agent(), vec![ha("homeassistant.restart", "turn_on")])).is_err());
+        assert!(validate(&rule(agent(), vec![ha("cover.salon", "set_cover_position")])).is_err());
         assert!(validate(&rule(agent(), vec![Action::CopyPath { name_only: false }])).is_err());
         assert!(validate(&rule(agent(), vec![Action::Unzip { to: "C:\\x".into(), shelf: true }])).is_err());
         assert!(validate(&rule(downloads(), vec![Action::Unzip { to: "C:\\x".into(), shelf: true }, Action::CopyPath { name_only: true }])).is_ok());

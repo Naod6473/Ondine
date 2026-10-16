@@ -51,6 +51,8 @@ const BY_EMOJI: Record<string, string> = {
   "🧺": "shelf",
   // Ondine convertit (1.2.4) : au trait seulement, l'emoji en couleur.
   "🔀": "convert",
+  // Home Assistant : au trait seulement (une maison reliée), l'emoji en couleur.
+  "🏡": "homeassistant",
   "📊": "system",
   "🖥️": "terminal",
   "⏱️": "timer",
@@ -97,6 +99,9 @@ const LINE_ONLY: Record<string, string> = {
   // Rester éveillé → Éteindre (power de Phosphor, dessiné ici).
   "📴": "power",
   "⚠": "warning",
+  // Home Assistant : lumières, portes (garage, portail).
+  "💡": "lightbulb",
+  "🚪": "door-open",
   "📄": "file",
   "✅": "check-circle",
   "✔": "check-circle",

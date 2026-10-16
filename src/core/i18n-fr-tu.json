@@ -425,7 +425,32 @@
 "Enregistrez votre travail : les applis ne sont pas fermées de force.": "Enregistre ton travail : les applis ne sont pas fermées de force.",
 "Tapez une heure comme 18:30.": "Tape une heure comme 18:30.",
 "Choisissez de 1 à 1440 minutes.": "Choisis de 1 à 1440 minutes.",
-"Choisissez une durée : le PC ne se met pas en veille jusque-là.": "Choisis une durée : le PC ne se met pas en veille jusque-là."
+"Choisissez une durée : le PC ne se met pas en veille jusque-là.": "Choisis une durée : le PC ne se met pas en veille jusque-là.",
+"Vos lumières, prises, volets, scènes, scripts, thermostats et enceintes de Home Assistant en boutons dans l'île, et à la voix avec Parler à Ondine (« Dis Ondine, allume la lumière du salon »). Désactivé par défaut. Ondine ne parle qu'à l'adresse que vous donnez (souvent sur votre réseau local), avec un jeton d'accès longue durée gardé dans le Gestionnaire d'identifiants Windows. Les serrures, l'alarme, le garage, les portails et les appareils que vous marquez sensibles demandent toujours un clic de confirmation.": "Tes lumières, prises, volets, scènes, scripts, thermostats et enceintes de Home Assistant en boutons dans l'île, et à la voix avec Parler à Ondine (« Dis Ondine, allume la lumière du salon »). Désactivé par défaut. Ondine ne parle qu'à l'adresse que tu donnes (souvent sur ton réseau local), avec un jeton d'accès longue durée gardé dans le Gestionnaire d'identifiants Windows. Les serrures, l'alarme, le garage, les portails et les appareils que tu marques sensibles demandent toujours un clic de confirmation.",
+"Vos lumières, prises, volets, scènes, scripts, thermostats et enceintes de Home Assistant en boutons dans l'île, et à la voix avec Parler à Ondine (« Dis Ondine, allume la lumière du salon »).": "Tes lumières, prises, volets, scènes, scripts, thermostats et enceintes de Home Assistant en boutons dans l'île, et à la voix avec Parler à Ondine (« Dis Ondine, allume la lumière du salon »).",
+"Cliquez sur un appareil pour l'allumer ou l'éteindre.": "Clique sur un appareil pour l'allumer ou l'éteindre.",
+"Dans Home Assistant : votre profil → Sécurité → Jetons d'accès longue durée → Créer un jeton. Il est gardé dans le Gestionnaire d'identifiants Windows ; l'île ne peut jamais le réafficher.": "Dans Home Assistant : ton profil → Sécurité → Jetons d'accès longue durée → Créer un jeton. Il est gardé dans le Gestionnaire d'identifiants Windows ; l'île ne peut jamais le réafficher.",
+"Vos premiers favoris en petits boutons sur l'Accueil de l'île.": "Tes premiers favoris en petits boutons sur l'Accueil de l'île.",
+"Quand vous parlez à Ondine d'un appareil de la maison, la phrase part d'abord à Assist de Home Assistant (sans IA). S'il ne comprend pas, elle continue vers Parler à Ondine.": "Quand tu parles à Ondine d'un appareil de la maison, la phrase part d'abord à Assist de Home Assistant (sans IA). S'il ne comprend pas, elle continue vers Parler à Ondine.",
+"L'IA peut commander vos favoris": "L'IA peut commander tes favoris",
+"Si Assist ne comprend pas, l'IA de Parler à Ondine reçoit la liste de vos favoris (noms et pièces) et peut les commander. Les appareils sensibles demandent toujours votre clic.": "Si Assist ne comprend pas, l'IA de Parler à Ondine reçoit la liste de tes favoris (noms et pièces) et peut les commander. Les appareils sensibles demandent toujours ton clic.",
+"Reliez Home Assistant : son adresse et un jeton d'accès, dans les réglages.": "Relie Home Assistant : son adresse et un jeton d'accès, dans les réglages.",
+"Choisissez vos appareils favoris dans les réglages.": "Choisis tes appareils favoris dans les réglages.",
+"Choisissez d'abord des favoris (Modules → Home Assistant → Appareils favoris).": "Choisis d'abord des favoris (Modules → Home Assistant → Appareils favoris).",
+"Vos favoris de Home Assistant. Les serrures, l'alarme, le garage, les portails et les appareils marqués sensibles ne se commandent jamais par une règle : ils demandent toujours un clic.": "Tes favoris de Home Assistant. Les serrures, l'alarme, le garage, les portails et les appareils marqués sensibles ne se commandent jamais par une règle : ils demandent toujours un clic.",
+"Ondine demande à Home Assistant qui il est, avec votre jeton : rien d'autre ne part.": "Ondine demande à Home Assistant qui il est, avec ton jeton : rien d'autre ne part.",
+"Activez d'abord le module (en haut de la page).": "Active d'abord le module (en haut de la page).",
+"Aucun favori pour l'instant : affichez vos appareils pour en choisir.": "Aucun favori pour l'instant : affiche tes appareils pour en choisir.",
+"Vos favoris": "Tes favoris",
+"Un appareil sensible demande toujours votre clic, depuis l'île comme à la voix. Les serrures, l'alarme, le garage et les portails le sont d'office.": "Un appareil sensible demande toujours ton clic, depuis l'île comme à la voix. Les serrures, l'alarme, le garage et les portails le sont d'office.",
+"Vos phrases vont directement à l'IA de Parler à Ondine, qui peut commander vos favoris.": "Tes phrases vont directement à l'IA de Parler à Ondine, qui peut commander tes favoris.",
+"La voix ne commande pas la maison : activez « Assist d'abord » ou l'IA.": "La voix ne commande pas la maison : active « Assist d'abord » ou l'IA.",
+"« Dis Ondine, allume la lumière du salon » : Assist de Home Assistant s'en charge, sans IA. S'il ne comprend pas, l'IA de Parler à Ondine prend le relais avec vos favoris.": "« Dis Ondine, allume la lumière du salon » : Assist de Home Assistant s'en charge, sans IA. S'il ne comprend pas, l'IA de Parler à Ondine prend le relais avec tes favoris.",
+"ajoutez le jeton d'accès (Réglages → Home Assistant → Connexion)": "ajoute le jeton d'accès (Réglages → Home Assistant → Connexion)",
+"jeton refusé par Home Assistant (créez un jeton d'accès longue durée dans votre profil)": "jeton refusé par Home Assistant (crée un jeton d'accès longue durée dans ton profil)",
+"Home Assistant répond par une redirection : vérifiez l'adresse (http ou https ?)": "Home Assistant répond par une redirection : vérifie l'adresse (http ou https ?)",
+"indiquez l'adresse de Home Assistant": "indique l'adresse de Home Assistant",
+"cette confirmation n'est plus valable : recommencez": "cette confirmation n'est plus valable : recommence"
 },
 "patterns": [
 ["^(\\d+) nouveautés vous attendent\\.$", "$1 nouveautés t'attendent."],
@@ -622,6 +647,10 @@
 ["^La goutte (.+) gagne\\. Votre goutte (.+) finit plus loin\\.$", "La goutte $1 gagne. Ta goutte $2 finit plus loin."],
 ["^Votre pari : la goutte (.+)\\. Les tâches de l'agent la font avancer\\.$", "Ton pari : la goutte $1. Les tâches de l'agent la font avancer."],
 ["^(.+) n'est pas dans la liste : vérifiez de nouveau\\.$", "$1 n'est pas dans la liste : vérifie de nouveau."],
-["^Envoyer (\\d+) éléments à la Corbeille \\? Vous pourrez les y retrouver\\.$", "Envoyer $1 éléments à la Corbeille ? Tu pourras les y retrouver."]
+["^Envoyer (\\d+) éléments à la Corbeille \\? Vous pourrez les y retrouver\\.$", "Envoyer $1 éléments à la Corbeille ? Tu pourras les y retrouver."],
+["^(.+) injoignable \\(vérifiez l'adresse et le port\\)$", "$1 injoignable (vérifie l'adresse et le port)"],
+["^(.+) injoignable \\(vérifiez l'adresse, le port et le certificat\\)$", "$1 injoignable (vérifie l'adresse, le port et le certificat)"],
+["^(.+) introuvable sur le réseau \\(vérifiez le nom, ou essayez l'adresse IP\\)$", "$1 introuvable sur le réseau (vérifie le nom, ou essaie l'adresse IP)"],
+["^(.+) : certificat refusé \\(auto-signé \\? cochez l'option dans Connexion\\)$", "$1 : certificat refusé (auto-signé ? coche l'option dans Connexion)"]
 ]
 }

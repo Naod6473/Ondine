@@ -1,0 +1,204 @@
+/* Module Home Assistant (src/modules/homeassistant/) : les favoris en
+ * pastilles rondes, rangés par pièce, dans le même verre que l'onglet
+ * Contrôles (.ctl-card, .ctl-toggle, .ctl-dot de island.css).
+ * « Réduire les animations » : rien ne bouge (bas du fichier). */
+
+.ha {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.ha-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ha-area {
+  flex: 1 1 auto;
+  padding: 8px 10px 10px;
+  border-radius: 20px;
+  min-width: 0;
+}
+.ha-area-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 0 2px 6px;
+}
+.ha-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 6px;
+}
+.ha-tile {
+  width: 62px;
+}
+.ha-tile .ctl-toggle-name {
+  max-width: 62px;
+}
+.ha-state {
+  font-size: 10px;
+  color: var(--muted);
+  max-width: 62px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ha-tile .ctl-dot .icon-line,
+.ha-tile .ctl-dot > span {
+  margin: auto;
+}
+/* Allumée : la bille brille (couleur selon l'appareil). */
+.ha-tile.on[data-kind="light"] .ctl-dot {
+  --glow: #ffb340;
+}
+.ha-tile.on[data-kind="cover"] .ctl-dot {
+  --glow: #4fb8ff;
+}
+.ha-tile.on[data-kind="climate"] .ctl-dot {
+  --glow: #ff7a45;
+}
+.ha-tile.on[data-kind="media_player"] .ctl-dot {
+  --glow: #a26bff;
+}
+.ha-tile.on:is([data-kind="lock"], [data-kind="alarm_control_panel"]) .ctl-dot {
+  --glow: #ff4f4f;
+}
+/* Un appareil sensible : un petit cadenas discret au coin. */
+.ha-tile.sensitive .ctl-dot::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  top: -1px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ff9f0a;
+  box-shadow: 0 0 0 2px var(--island-bg);
+}
+.ha-detail,
+.ha-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  animation: ha-in 320ms var(--ease) both;
+}
+.ha-detail[hidden] {
+  display: none;
+}
+.ha-detail-name {
+  font-weight: 600;
+  margin-right: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+.ha-range {
+  flex: 1 1 120px;
+  min-width: 90px;
+  accent-color: var(--accent);
+}
+.ha-temp {
+  min-width: 56px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.ha-confirm {
+  background: color-mix(in srgb, #ff9f0a 16%, transparent);
+  border-color: color-mix(in srgb, #ff9f0a 40%, transparent);
+}
+.ha-confirm-text {
+  margin-right: auto;
+}
+.ha-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 2px;
+  font-size: 13px;
+}
+.ha-empty p {
+  margin: 0;
+}
+.ha-note:empty {
+  display: none;
+}
+.ha-note {
+  font-size: 12px;
+}
+@keyframes ha-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ha-detail,
+  .ha-confirm {
+    animation: none;
+  }
+}
+
+/* ── Réglages → Home Assistant → Appareils favoris (src/settings/homeassistant-page.ts) ── */
+.ha-fav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ha-fav,
+.ha-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  min-width: 0;
+}
+.ha-fav-name {
+  font-weight: 600;
+}
+.ha-fav > .btn {
+  margin-left: auto;
+}
+.ha-fav .ha-sens,
+.ha-fav .chip {
+  margin-left: auto;
+}
+.ha-fav .ha-sens + .btn,
+.ha-fav .chip + .btn {
+  margin-left: 0;
+}
+.ha-sens {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.ha-picker {
+  margin-top: 8px;
+  max-height: 360px;
+  overflow: auto;
+}
+.ha-pick-group + .ha-pick-group {
+  margin-top: 8px;
+}
+.ha-pick-title {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.7;
+  margin-bottom: 2px;
+}
+.ha-pick code {
+  font-size: 11px;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
