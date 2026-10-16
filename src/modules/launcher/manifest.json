@@ -117,7 +117,8 @@
       "easter.word",
       "games.play",
       "agenda.mirror",
-      "updates.check"
+      "updates.check",
+      "system.disk-open"
     ],
     "listens": [
       "launcher.open",

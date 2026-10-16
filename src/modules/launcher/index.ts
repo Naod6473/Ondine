@@ -201,6 +201,10 @@ function islandActions(api: ModuleApi, query: string): Result[] {
       api.emit("updates.check", {});
     });
   }
+  // « Qu'est-ce qui remplit mon disque ? » (module Système) : l'analyse du disque le plus plein.
+  if (settingsStore.moduleEnabled("system")) {
+    add("disk", "Voir ce qui prend la place sur le disque", "💽", ["disque", "place", "disque plein", "espace disque", "faire de la place", "nettoyer", "disk", "space"], () => api.emit("system.disk-open", {}));
+  }
   add("settings", "Réglages de l'île", "⚙️", ["parametres", "options", "preferences"], async () => {
     await Bridge.openSettingsWindow();
     close();

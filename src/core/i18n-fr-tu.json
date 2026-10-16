@@ -416,7 +416,10 @@
 "ℹ️ Une appli installée pour tous les utilisateurs peut demander l'administrateur : Windows affiche alors sa fenêtre, qu'Ondine ne peut pas valider à votre place.": "ℹ️ Une appli installée pour tous les utilisateurs peut demander l'administrateur : Windows affiche alors sa fenêtre, qu'Ondine ne peut pas valider à ta place.",
 "Une appli installée pour tous les utilisateurs peut demander l'administrateur : Windows affiche alors sa fenêtre, qu'Ondine ne peut pas valider à votre place.": "Une appli installée pour tous les utilisateurs peut demander l'administrateur : Windows affiche alors sa fenêtre, qu'Ondine ne peut pas valider à ta place.",
 "Une vérification est en cours : réessayez dans un instant.": "Une vérification est en cours : réessaie dans un instant.",
-"Toutes vos applis connues de winget sont à jour.": "Toutes tes applis connues de winget sont à jour."
+"Toutes vos applis connues de winget sont à jour.": "Toutes tes applis connues de winget sont à jour.",
+"Windows le refait quand vous ouvrez un dossier": "Windows le refait quand tu ouvres un dossier",
+"Videz la Corbeille pour libérer la place.": "Vide la Corbeille pour libérer la place.",
+"cette analyse n'existe plus : relancez-la": "cette analyse n'existe plus : relance-la"
 },
 "patterns": [
 ["^(\\d+) nouveautés vous attendent\\.$", "$1 nouveautés t'attendent."],
@@ -612,6 +615,7 @@
 ["^La goutte (.+) gagne\\. Votre goutte (.+) finit 2e\\.$", "La goutte $1 gagne. Ta goutte $2 finit 2e."],
 ["^La goutte (.+) gagne\\. Votre goutte (.+) finit plus loin\\.$", "La goutte $1 gagne. Ta goutte $2 finit plus loin."],
 ["^Votre pari : la goutte (.+)\\. Les tâches de l'agent la font avancer\\.$", "Ton pari : la goutte $1. Les tâches de l'agent la font avancer."],
-["^(.+) n'est pas dans la liste : vérifiez de nouveau\\.$", "$1 n'est pas dans la liste : vérifie de nouveau."]
+["^(.+) n'est pas dans la liste : vérifiez de nouveau\\.$", "$1 n'est pas dans la liste : vérifie de nouveau."],
+["^Envoyer (\\d+) éléments à la Corbeille \\? Vous pourrez les y retrouver\\.$", "Envoyer $1 éléments à la Corbeille ? Tu pourras les y retrouver."]
 ]
 }

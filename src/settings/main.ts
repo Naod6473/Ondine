@@ -163,6 +163,12 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
     { id: "general", label: "Calendriers", keys: [] },
     { id: "meeting", label: "Avant une réunion", keys: ["joinMin", "mirrorMode", "mirrorCamera", "mirrorMic"] },
   ],
+  // Système : le seuil d'alerte du disque et le nettoyage dans « Disques » (NF16).
+  system: [
+    { id: "general", label: "Général", keys: ["ondineMood", "worldClocks", "rebootReminder"] },
+    { id: "battery", label: "Batterie", keys: ["batteryLowPct", "batteryCriticalPct", "batteryFullAlert"] },
+    { id: "disks", label: "Disques", keys: ["diskAlertPct", "oldDownloadsDays"] },
+  ],
   // Équipe (réseau local).
   team: [
     { id: "general", label: "Général", keys: ["visible", "name", "visits", "autoStatus"] },

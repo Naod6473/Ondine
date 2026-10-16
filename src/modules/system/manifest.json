@@ -3,7 +3,7 @@
   "name": "Système",
   "tip": "Cliquez sur « Copier pour le support » : tout est prêt à coller dans un ticket.",
   "icon": "📊",
-  "description": "L'état du PC d'un coup d'œil : processeur, mémoire, disques, adresses IP et MAC, batterie, version de Windows, redémarrage en attente. Un bouton copie un résumé à coller dans un ticket de support. Prévient quand un disque est presque plein, quand la batterie est faible ou chargée, avec un halo de couleur autour de l'île (vert en charge, orange faible, rouge critique). Ondine transpire quand le processeur est à fond. Tout est lu sur le PC : rien ne part sur Internet.",
+  "description": "L'état du PC d'un coup d'œil : processeur, mémoire, disques, adresses IP et MAC, batterie, version de Windows, redémarrage en attente. Un bouton copie un résumé à coller dans un ticket de support. Prévient quand un disque est presque plein, quand la batterie est faible ou chargée, avec un halo de couleur autour de l'île (vert en charge, orange faible, rouge critique). Ondine transpire quand le processeur est à fond. « Voir ce qui prend la place » montre les plus gros dossiers d'un disque et propose un nettoyage (Corbeille, fichiers temporaires, vieux téléchargements envoyés à la Corbeille). Tout est lu sur le PC : rien ne part sur Internet.",
   "version": "0.1.0",
   "permissions": [
     "clipboard",
@@ -20,6 +20,17 @@
         "default": 10,
         "min": 0,
         "max": 50,
+        "step": 1,
+        "help": "Une notification « Disque presque plein », avec « Voir ce qui prend la place »."
+      },
+      {
+        "key": "oldDownloadsDays",
+        "type": "number",
+        "label": "Vieux téléchargements : plus de (jours)",
+        "help": "Le nettoyage du disque propose les fichiers du dossier Téléchargements qui n'ont pas bougé depuis ce nombre de jours. Ils vont à la Corbeille, jamais supprimés.",
+        "default": 90,
+        "min": 7,
+        "max": 3650,
         "step": 1
       },
       {
@@ -133,7 +144,13 @@
     "ticket",
     "reboot",
     "open_update",
-    "battery"
+    "battery",
+    "disk_scan",
+    "disk_view",
+    "disk_cancel",
+    "disk_open",
+    "disk_estimate",
+    "disk_clean"
   ],
   "events": {
     "emits": [
@@ -143,7 +160,12 @@
       "system.cpu-busy",
       "system.battery-plug",
       "system.battery-critical",
-      "mascot.emote"
+      "mascot.emote",
+      "system.disk-scan",
+      "mascot.scene",
+      "task.started",
+      "task.finished",
+      "task.failed"
     ],
     "listens": [
       "system.disk-low",
@@ -152,7 +174,9 @@
       "weather.updated",
       "controls.media-use",
       "system.battery-plug",
-      "system.battery-critical"
+      "system.battery-critical",
+      "system.disk-scan",
+      "system.disk-open"
     ]
   }
 }

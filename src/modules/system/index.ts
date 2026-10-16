@@ -13,6 +13,7 @@ import { pacedInterval } from "../../core/perf";
 import { worldClocks } from "./world-clocks";
 import { rebootRow, watchReboot } from "./reboot";
 import { watchBattery } from "./battery-halo";
+import { diskPane } from "./disk-view";
 
 interface Disk {
   mount: string;
@@ -47,6 +48,25 @@ interface WeatherLine {
   detail: string;
 }
 let weather: WeatherLine | null = null;
+
+// « Voir ce qui prend la place » (disk-view.ts) demandé depuis l'alerte ou le
+// Lanceur : l'onglet ouvert le prend tout de suite (diskHook), sinon il le
+// trouve en s'ouvrant (diskRequest). "" : le disque le plus plein.
+let diskRequest: string | null = null;
+let diskHook: ((mount: string) => void) | null = null;
+
+function askDisk(api: ModuleApi, mount: string) {
+  if (diskHook) diskHook(mount);
+  else diskRequest = mount;
+  api.openIsland("system");
+}
+
+/** Le disque fixe le plus plein (C: à égalité), pour « Voir ce qui prend la place » sans disque précis. */
+export function fullestDisk(disks: Disk[]): string {
+  const fixed = disks.filter((d) => !d.removable && d.totalGb > 0);
+  const free = (d: Disk) => d.freeGb / d.totalGb - (/^c:/i.test(d.mount) ? 0.001 : 0);
+  return fixed.sort((a, b) => free(a) - free(b))[0]?.mount ?? "C:\\";
+}
 
 /** « 3 j 4 h », « 5 h 12 min », « 7 min ». */
 export function uptimeText(secs: number): string {
@@ -111,8 +131,11 @@ export const system: IslandModule = {
         icon: "💽",
         priority: "normal",
         key: `disk-low-${p.mount}`,
+        actions: [{ label: "Voir ce qui prend la place", run: () => askDisk(api, p.mount ?? "") }],
       });
     });
+    // Le Lanceur (« disque », « place ») : l'analyse du disque le plus plein.
+    api.on("system.disk-open", (msg) => askDisk(api, String((msg.payload as { mount?: string } | null)?.mount ?? "")));
     // La batterie : notifications et halos autour de l'île (battery-halo.ts).
     const stopBattery = watchBattery(api);
     // Redémarrage en attente (reboot.ts) : le rappel doux.
@@ -224,12 +247,31 @@ export const system: IslandModule = {
       const clocks = worldClocks(api);
       // Redémarrage en attente (reboot.ts) : une ligne sous les jauges, cachée sinon.
       const reboot = rebootRow(api);
-      root.append(
-        el("div", { class: "sys" }, el("div", { class: "sys-top" }, cpu.node, mem.node, disk.node, el("div", { class: "sys-side" }, facts, el("div", { class: "btn-row" }, copy, ticketBtn))), reboot.node, clocks.node, details),
-      );
+      const sysNode = el("div", { class: "sys" }, el("div", { class: "sys-top" }, cpu.node, mem.node, disk.node, el("div", { class: "sys-side" }, facts, el("div", { class: "btn-row" }, copy, ticketBtn))), reboot.node, clocks.node, details);
+      root.append(sysNode);
 
       let alive = true;
+      // « Voir ce qui prend la place » : le panneau du disque prend la place de l'onglet (disk-view.ts).
+      let pane: ReturnType<typeof diskPane> | null = null;
+      let lastDisks: Disk[] = [];
+      const closeDisk = () => {
+        pane?.stop();
+        pane?.node.remove();
+        pane = null;
+        sysNode.hidden = false;
+        shownDetails = "";
+        void refresh();
+      };
+      const openDisk = (mount: string) => {
+        pane?.stop();
+        pane?.node.remove();
+        pane = diskPane(api, mount || fullestDisk(lastDisks), closeDisk);
+        sysNode.hidden = true;
+        root.append(pane.node);
+      };
+      diskHook = openDisk;
       const draw = (s: Snapshot) => {
+        lastDisks = s.disks;
         cpu.set(s.cpu.usage, `${Math.round(s.cpu.usage)} %`, `${s.cpu.cores} cœurs`);
         const memPct = s.mem.totalGb ? (s.mem.usedGb / s.mem.totalGb) * 100 : 0;
         mem.set(memPct, `${Math.round(memPct)} %`, `${fmt(s.mem.usedGb)} / ${fmt(s.mem.totalGb)} Go`);
@@ -268,10 +310,11 @@ export const system: IslandModule = {
             bar.style.width = `${used}%`;
             return el(
               "div",
-              { class: "sys-disk", "data-level": level(used) },
+              { class: "sys-disk lookable", "data-level": level(used) },
               el("span", {}, `${d.removable ? "🔌" : "💽"} ${d.mount}${d.label ? ` ${d.label}` : ""}`),
               el("span", { class: "sys-bar" }, bar),
               el("span", { class: "muted" }, `${fmt(d.freeGb)} Go libres / ${fmt(d.totalGb)}`),
+              el("button", { class: "btn small sys-disk-look", title: "Voir ce qui prend la place", onclick: () => openDisk(d.mount) }, "🔍"),
             );
           }),
           el("div", { class: "sys-title muted" }, "Réseau"),
@@ -284,6 +327,7 @@ export const system: IslandModule = {
       };
 
       const refresh = async () => {
+        if (pane) return; // le panneau du disque est ouvert : l'onglet attend
         try {
           const s = await api.invoke<Snapshot>("snapshot");
           if (alive) draw(s);
@@ -292,9 +336,18 @@ export const system: IslandModule = {
         }
       };
       void refresh();
+      if (diskRequest !== null) {
+        const mount = diskRequest;
+        diskRequest = null;
+        // Sans disque précis, on attend la première mesure pour choisir le plus plein.
+        if (mount) openDisk(mount);
+        else void api.invoke<Snapshot>("snapshot").then((s) => alive && openDisk(fullestDisk(s.disks)), () => alive && openDisk(""));
+      }
       const stopTimer = pacedInterval(() => void refresh(), "systemTab", true);
       return () => {
         alive = false;
+        if (diskHook === openDisk) diskHook = null;
+        pane?.stop();
         stopTimer();
         clocks.stop();
         reboot.stop();
