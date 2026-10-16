@@ -725,6 +725,10 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `agents.ask`, `agents.event` « waiting » | Agents IA | question (la goutte violette et son « ? ») |
 | `mascot.state` | mascotte | |
 | `mascot.look-at` `{x, y}` | tout module (l'Accueil…) | elle regarde ce point (px de la fenêtre de l'île) pendant 1,5 s ; la souris ne la fait pas regarder ailleurs entre-temps (src/island/scenes/) |
+| `mascot.long-press` | île (appui long de 550 ms sur Ondine, sans la déplacer) | 1.2.5 : le module Jeux ouvre le morpion express dans la mini-île |
+| `games.play` `{game}` | Lanceur, Jeux | 1.2.5 : `connect4`, `ttt`, `aquarium`, `race` ouvrent l'onglet Jeux sur ce jeu ; `ttt-express` : le morpion de la mini-île |
+| `games.changed` `{gained}` | Jeux (Rust, games.rs) | 1.2.5 : l'aquarium a changé (gouttes gagnées, achat) ; les vues redemandent `state` |
+| `pauses.taken` `{minutes}` | Pauses | 1.2.5 : une vraie absence (5 min au moins), une fois par absence ; l'aquarium y gagne des gouttes |
 | `mascot.walk` `{active}` | île (src/island/scenes/) | elle quitte sa case (`true`) ou y revient (`false`) pendant une scène |
 | `mascot.scene` `{scene, name?, demo?}` | Notes, Règles, mode démo | joue une scène d'Ondine qui se déplace (`note-save`, `rules-run` {name}…) ; `demo: true` : sur le premier élément venu, l'onglet s'ouvre d'abord |
 | `mascot.dance` `{on}` | surprises (src/eggs/) | elle danse en boucle (musique + mini-île) ; les autres réactions passent puis la danse reprend |
@@ -4306,3 +4310,71 @@ THIRD-PARTY.md). Aucune commande Rust nouvelle : tout passe par `history`,
 - Mode démo : `agents.plan` et `agents.live` ont maintenant une réponse
   inventée (`demo.ts`).
 - Tests : `tests/front/agents-pills.test.ts`.
+## Mini-jeux (1.2.5, `src/modules/games/`, `src-tauri/src/modules/games.rs`, `src/styles/games.css`)
+Le module « Jeux » (🎮, catégorie « Au quotidien ») : un onglet à quatre
+pastilles (`TabPill`, comme le Minuteur). Toutes les parties vivent dans un
+objet `Live` créé au démarrage du module : fermer l'onglet ne perd rien.
+- **Lancer.** L'onglet ; le Lanceur (« jouer », « puissance 4 », « morpion »,
+  « aquarium », « course » → `games.play {game}`) ; un **appui long sur
+  Ondine** (550 ms sans bouger, `island.ts` `wireCarry` → `mascot.long-press` ;
+  le geste n'était pris par rien, le clic qui suit est mangé) → morpion express.
+- **Le kit commun (`kit.ts`).** `Quiet` : pause et silence pendant un appel
+  (`controls.media-use` avec le micro pris, `callnotes.state` qui enregistre)
+  et pendant une présentation ou une appli en plein écran (la classe
+  `presenting` posée par `island.ts`, observée par un `MutationObserver`).
+  `Kit.emote` / `lookAt` passent par `mascot.emote` / `mascot.look-at`, se
+  taisent pendant une pause et, en mode Calme, ne gardent que l'essentiel.
+  Les sons sont ceux de l'île (réglage « Sons des jeux »).
+- **Puissance 4 (`connect4-logic.ts`, `connect4-view.ts`, `jelly-drop.ts`).**
+  Plateau 7 × 6 en tableau plat (lignes de bas en haut) + hauteurs. IA :
+  négamax alpha-bêta, ordre des coups depuis le centre, approfondissement
+  itératif avec un **budget de nœuds** (exception `OutOfBudget` : on garde la
+  dernière profondeur finie). Évaluation : les 69 fenêtres de 4 + la colonne
+  du milieu. Niveaux : Facile (profondeur 1, 34 % de coups au hasard, sauf
+  quand elle peut gagner tout de suite ; elle oublie parfois de bloquer),
+  Normal (4, 8 %, gagne et bloque toujours ce qui est immédiat), Malin (jusqu'à 12, 150 000
+  nœuds, quelques dizaines de ms). Ondine « réfléchit » (`pensive`), regarde
+  deux colonnes puis la sienne (`mascot.look-at` sur la colonne), lâche une
+  goutte en gelée (gravité + rebond + écrasement au ressort), boude si vous
+  gagnez, fête si elle gagne, `mischief` quand elle prépare un coup gagnant.
+  Clavier : ← → Entrée, 1 à 7.
+- **Morpion (`ttt-logic.ts`, `ttt-view.ts`).** Minimax complet (9 cases).
+  Malin ne perd jamais (testé sur toutes les parties) ; Facile (45 %) et
+  Normal (20 %) jouent parfois au hasard, mais prennent toujours un coup
+  gagnant. **Express** : une alerte de l'île (`notify` haute, `sticky`, clé
+  `games-ttt`) dont le `content` est la grille ; `games.css` agrandit l'alerte
+  (`:has(.ttt-mini)`). Fermée après 30 s sans jouer, 2,8 s après la fin
+  (remplacée par une petite notification du résultat), ou à un appel.
+- **Aquarium (`aquarium-logic.ts`, `aquarium-view.ts`, `aquarium.json`).**
+  Le catalogue et les gains sont dans `aquarium.json`, lu par le front et par
+  le Rust (`include_str!`). Gains : tâche finie d'un agent (`agents.event`
+  done) 5, pause faite (`pauses.taken`, au plus une toutes les 20 min) 3,
+  Pomodoro fini (`timer.work-session` completed) 4, parties (selon le niveau),
+  course gagnée 8 ; **150 gouttes par jour au plus**. Dépenses : 9 décors,
+  12 accessoires de la famille gomme (chapeaux, lunettes, cou). L'aquarium
+  grandit par paliers (gouttes gagnées en tout). Dessin : un canvas (eau,
+  sable, décors, poissons, bulles) + l'Ondine gomme (`GumEngine`, tenue de
+  l'aquarium) ; Réduire les animations : une image fixe ; Calme : plus lent ;
+  Économie : moins de bulles ; le flou seulement en Studio. « Porter dans
+  l'île » copie la tenue dans `mascot.wearHead/Eyes/Neck`. Pas de notification
+  quand on gagne des gouttes.
+- **Stockage.** `games.rs` : `%APPDATA%\Ondine\games.json` (gouttes, gains
+  du jour, objets, tenue, victoires/défaites ; écrit en .tmp puis renommé ;
+  un fichier abîmé est mis de côté). Commandes `state`, `result`, `buy`,
+  `wear` ; chaque changement publie `games.changed`. Les gains venus du bus
+  sont comptés côté Rust (même onglet fermé) ; rien n'est compté en mode
+  démo. En mode démo et dans le navigateur, `AquaStore` garde tout en mémoire
+  (mêmes règles, `aquarium-logic.ts`) avec un aquarium déjà garni.
+- **Course (`race-logic.ts`, `race-view.ts`).** `agents.todos {session, done,
+  total}` : une liste d'au moins 3 tâches dont 2 à faire lance une course de
+  4 gouttes ; chaque tâche finie fait avancer chaque goutte d'un pas au hasard
+  (plafonné avant l'arrivée) ; la liste finie ou l'agent « done » : l'arrivée.
+  Pari sur une couleur jusqu'à mi-course ; gagnante 8 gouttes, 2e 2 gouttes.
+  Une session effacée avant la fin annule la course. En mode démo, une fausse
+  liste de 6 tâches avance toute seule.
+- **Réglages** (6) : un interrupteur par jeu, le niveau d'Ondine, les sons.
+- **Tests** : `tests/front/games.test.ts` (IA, règles, gains), `games.rs`
+  (gains, plafond, achats, fichier), `games_manifest_is_valid`.
+- **Limites.** Une tâche d'agent n'est comptée que si `agents.event` done est
+  publié (pas en mode discret ni si « Prévenir quand c'est fini » est coupé).
+  La pause pendant une présentation suit le réglage « presentationQuiet ».

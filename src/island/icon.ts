@@ -76,6 +76,8 @@ const BY_EMOJI: Record<string, string> = {
   "🎙": "microphone",
   // Notifications de Windows (1.2.5) : la cloche au trait, l'emoji en couleur.
   "🔔": "bell",
+  // Jeux (1.2.5) : la manette au trait, l'emoji en couleur.
+  "🎮": "games",
 };
 
 /**
@@ -230,6 +232,11 @@ const LINE_ONLY: Record<string, string> = {
   "🏞": "mountains",
   "🚆": "train",
   "📚": "books",
+  // Jeux (1.2.5) : Puissance 4, Morpion, Aquarium, Course.
+  "🟡": "circles-four",
+  "⭕": "grid-nine",
+  "🐠": "fish",
+  "🏁": "flag-checkered",
 };
 
 /** Les images connues. Une clé « logo: » absente retombe sur FALLBACK. */
