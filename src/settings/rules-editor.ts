@@ -14,6 +14,8 @@ import { errorText } from "../core/log";
 import { el } from "../island/dom";
 import { glassSelect } from "./glass-select";
 import { ALL_MODULES } from "../modules";
+import { settingsStore } from "../core/settings-store";
+import { readFavorites, SERVICE_LABELS, serviceValue, servicesFor } from "../modules/homeassistant/logic";
 import {
   ACTION_LABELS,
   allowedActions,
@@ -449,7 +451,8 @@ function editor(main: HTMLElement, r: Rule) {
 
   // ── Alors ──
   const then = el("section", { class: "card rule-block" }, el("h3", {}, "Alors…"));
-  const allowed = allowedActions(t);
+  // Home Assistant : seulement quand son module est activé.
+  const allowed = allowedActions(t).filter((x) => x !== "homeAssistant" || settingsStore.moduleEnabled("homeassistant"));
   r.actions.forEach((a, i) => then.append(actionRow(r, a, i)));
   const add = selectInput("", [["", "＋ Ajouter une action…"], ...allowed.map((x): [string, string] => [x, ACTION_LABELS[x]])], (v) => {
     if (!v) return;
@@ -544,6 +547,10 @@ function defaultAction(type: Action["type"]): Action {
       return { type, gesture: "dance", emotion: "happy", text: "" };
     case "quiet":
       return { type, minutes: 30 };
+    case "homeAssistant": {
+      const first = readFavorites(settingsStore.current.modules.homeassistant?.values?.favorites)[0];
+      return { type, entity: first?.id ?? "", service: first ? (servicesFor(first.id)[0] ?? "") : "" };
+    }
     default:
       return { type } as Action;
   }
@@ -607,6 +614,7 @@ function actionRow(r: Rule, a: Action, i: number) {
     if (a.gesture === "emote" && !a.emotion) a.emotion = "happy";
     param = el("span", { class: "rule-param" }, gesture, extra);
   }
+  else if (a.type === "homeAssistant") param = homeAssistantParam(a);
   else if (a.type === "openIsland") {
     const tabs = ALL_MODULES.filter((m) => m.views?.expanded).map((m): [string, string] => [m.manifest.id, `${m.manifest.icon} ${m.manifest.name}`]);
     param = selectInput(a.tab, [["", "Le dernier onglet ouvert"], ...tabs], (v) => (a.tab = v));
@@ -618,7 +626,9 @@ function actionRow(r: Rule, a: Action, i: number) {
         ? "{nom} = le nom du fichier, du lecteur ou de l'agent ; {date} et {heure} aussi."
         : a.type === "unzip"
           ? "Dans un nouveau dossier au nom de l'archive : rien n'est écrasé, « Annuler » le met à la Corbeille."
-          : a.type === "quiet"
+          : a.type === "homeAssistant"
+            ? "Vos favoris de Home Assistant. Les serrures, l'alarme, le garage, les portails et les appareils marqués sensibles ne se commandent jamais par une règle : ils demandent toujours un clic."
+            : a.type === "quiet"
             ? "L'île garde ses notifications pour plus tard et la mascotte se calme. Les alertes importantes passent quand même."
             : a.type === "mascot" && a.gesture === "sign"
               ? "Un mot court, levé au-dessus de sa tête pendant 8 s : « Occupé », « En réunion », « Pause », « ? »… (14 caractères au plus sur la pancarte). Un clic sur elle la baisse."
@@ -632,4 +642,32 @@ function actionRow(r: Rule, a: Action, i: number) {
     el("button", { class: "btn", title: "Descendre", disabled: i === r.actions.length - 1, onclick: () => move(1) }, "↓"),
     el("button", { class: "btn", title: "Retirer", onclick: () => (r.actions.splice(i, 1), redraw()) }, "✕"),
   );
+}
+
+/** Home Assistant : l'appareil (un favori), le service, et sa valeur s'il en faut une. */
+function homeAssistantParam(a: Extract<Action, { type: "homeAssistant" }>): HTMLElement {
+  const favorites = readFavorites(settingsStore.current.modules.homeassistant?.values?.favorites);
+  const options: [string, string][] = favorites.map((f) => [f.id, f.area ? `${f.name ?? f.id} · ${f.area}` : (f.name ?? f.id)]);
+  if (a.entity && !favorites.some((f) => f.id === a.entity)) options.unshift([a.entity, a.entity]);
+  if (!options.length) return el("span", { class: "muted" }, "Choisissez d'abord des favoris (Modules → Home Assistant → Appareils favoris).");
+  const services = () => servicesFor(a.entity).map((s): [string, string] => [s, SERVICE_LABELS[s] ?? s]);
+  const box = el("span", { class: "rule-param" });
+  const draw = () => {
+    if (!servicesFor(a.entity).includes(a.service)) a.service = servicesFor(a.entity)[0] ?? "";
+    const need = serviceValue(a.entity.split(".")[0], a.service);
+    if (!need) a.value = null;
+    box.replaceChildren(
+      selectInput(a.entity, options, (v) => {
+        a.entity = v;
+        draw();
+      }),
+      selectInput(a.service, services(), (v) => {
+        a.service = v;
+        draw();
+      }),
+      need ? numberInput(a.value ?? null, need.min, need.max, (v) => (a.value = v)) : "",
+    );
+  };
+  draw();
+  return box;
 }

@@ -56,6 +56,7 @@ import { profilesPage, profileSubs } from "./profiles-page";
 import { mascotPodium, type Podium } from "./podium";
 import { aboutGroup } from "./about";
 import { askclaudeGroups } from "./askclaude-page";
+import { homeassistantGroups } from "./homeassistant-page";
 import { winnotifsGroup } from "./winnotifs-group";
 import { dropPillsGroup } from "./drop-pills-group";
 import { customSoundRows } from "./sounds-page";
@@ -156,6 +157,12 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
     { id: "persona", label: "Personnalité et affichage", keys: ["personality", "autoGrow", "emotions"] },
     { id: "voice", label: "Voix et sons", keys: ["micDevice", "voiceHotkey", "micMode", "voiceEngine", "lookHotkey", "wakeWord", "handsFree", "quickCommands", "plops", "plopVolume", "discreet"] },
     { id: "files", label: "Fichiers et PC", keys: ["fileTools", "pcTools", "filesFolder"] },
+  ],
+  // Home Assistant : Connexion (et « Tester »), Appareils favoris, Voix (homeassistant-page.ts).
+  homeassistant: [
+    { id: "connection", label: "Connexion", keys: ["url", "token", "insecure"] },
+    { id: "favorites", label: "Appareils favoris", keys: ["homeCard"] },
+    { id: "voice", label: "Voix", keys: ["assistFirst", "aiTool", "react"] },
   ],
   // Équipe (réseau local).
   team: [
@@ -2265,6 +2272,8 @@ function modulePage(main: HTMLElement, man: ModuleManifest, compact = false) {
   if (!compact && man.id === "shelf") main.append(dropPillsGroup((change) => save(change)));
   // Animations de l'île : l'aperçu du halo, en direct, avec les réglages choisis.
   // Parler à Ondine : ce qui part et la consigne exacte (askclaude-page.ts).
+  // Home Assistant : Tester la connexion, les favoris, ce que fait la voix.
+  if (!compact && man.id === "homeassistant") main.append(...homeassistantGroups((change) => save(change)));
   if (!compact && man.id === "askclaude") main.append(...askclaudeGroups((key, value) => save((d) => ((d.modules.askclaude ??= { enabled: settingsStore.moduleEnabled("askclaude"), values: {} }).values[key] = value), true)));
   if (!compact) main.append(el("p", { class: "version" }, `${man.name} · version ${man.version}`));
 }

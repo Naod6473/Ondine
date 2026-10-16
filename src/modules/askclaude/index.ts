@@ -633,6 +633,9 @@ function doneText(what: string, value: string): string {
       return "Bluetooth allumé";
     case "bluetooth-off":
       return "Bluetooth coupé";
+    // Home Assistant (outil « maison ») : la phrase vient du Rust, dans la langue de l'appli.
+    case "home":
+      return `Maison : ${value}`;
     default:
       return what;
   }
@@ -708,6 +711,8 @@ function askText(what: string, value: string): string {
       return "allumer le Bluetooth";
     case "bluetooth-off":
       return "couper le Bluetooth";
+    case "home":
+      return value;
     default:
       return what;
   }

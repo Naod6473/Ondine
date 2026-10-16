@@ -32,6 +32,7 @@ import { windowlife } from "./windowlife";
 import { winnotifs } from "./winnotifs";
 import { screensaver } from "./screensaver";
 import { dictation } from "./dictation";
+import { homeassistant } from "./homeassistant";
 
 // L'Accueil (home) en premier, puis « Parler à Ondine » (askclaude) : les deux
 // premiers onglets au premier lancement. Pour une île déjà rangée, l'Accueil
@@ -39,5 +40,5 @@ import { dictation } from "./dictation";
 // Notes d'appel juste après (ni l'un ni l'autre n'a de vue compacte) : la
 // sienne, le point rouge de l'enregistrement, passe avant celle des autres.
 // Il n'a pas d'onglet.
-export const ALL_MODULES: IslandModule[] = [home, askclaude, callnotes, convert, shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, team, agents, launcher, rules, media, controls, winnotifs, pauses, games, weather, weekly, halos, windowlife, screensaver, dictation];
+export const ALL_MODULES: IslandModule[] = [home, askclaude, callnotes, convert, shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, team, agents, launcher, rules, media, controls, homeassistant, winnotifs, pauses, games, weather, weekly, halos, windowlife, screensaver, dictation];
 

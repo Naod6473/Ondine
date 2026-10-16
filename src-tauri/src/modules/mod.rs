@@ -29,6 +29,8 @@ mod askclaude_voice;
 mod askclaude_wake;
 // Ses commandes rapides comprises sans IA (minuteur, volume, note…).
 mod askclaude_quick;
+// Home Assistant : Assist d'abord, puis l'outil « maison » de l'IA.
+mod askclaude_home;
 // Notes d'appel (1.2.4) : micro + son du PC, transcription personne par personne, résumé.
 mod callnotes;
 mod callnotes_audio;
@@ -118,6 +120,9 @@ pub(crate) mod agents_live;
 pub(crate) mod agents_todos;
 // Animations de l'île : sortie de veille, Verr Maj, copier / coller, volume, Wi-Fi, niveaux sonores.
 mod halos;
+// Home Assistant (coupé par défaut) : les appareils de la maison en boutons et à la voix.
+mod homeassistant;
+pub(crate) mod homeassistant_logic;
 // Ondine et les fenêtres (public : island/mod.rs lui demande le « lancer »).
 pub mod windowlife;
 // Notifications de Windows : les bulles des autres applis dans l'île (désactivé par défaut).
@@ -313,6 +318,7 @@ impl Registry {
             Box::new(winnotifs::WinNotifs::default()),
             Box::new(games::Games::default()),
             Box::new(convert::Convert),
+            Box::new(homeassistant::HomeAssistant::default()),
         ];
 
         let mut entries = Vec::new();
@@ -592,6 +598,17 @@ mod tests {
             assert!(m.commands.iter().any(|x| x == c), "{c}");
         }
         assert!(crate::services::settings::MODULES_OFF_BY_DEFAULT.contains(&"winnotifs"));
+    }
+
+    #[test]
+    fn homeassistant_manifest_is_valid() {
+        let m = check_manifest(homeassistant::HomeAssistant::default().manifest_json()).unwrap();
+        assert_eq!(m.id, homeassistant::ID);
+        for c in ["status", "test", "entities", "favorites", "call", "confirm_call", "cancel_call", "assist", "ai_call"] {
+            assert!(m.commands.iter().any(|x| x == c), "{c}");
+        }
+        assert!(m.events.emits.iter().any(|e| e == "mascot.emote"));
+        assert!(crate::services::settings::MODULES_OFF_BY_DEFAULT.contains(&"homeassistant"));
     }
 
     #[test]

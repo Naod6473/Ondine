@@ -771,6 +771,15 @@ fn run_action(
             });
             Ok(format!("Calme pendant {minutes} min"))
         }
+        Action::HomeAssistant { entity, service, value } => {
+            // Le module Home Assistant fait l'action (et refuse un appareil sensible).
+            let mut args = json!({ "entity": entity, "service": service, "source": "rule" });
+            if let Some(v) = value {
+                args["value"] = json!(v);
+            }
+            let v = super::invoke(ctx.app, "homeassistant", "call", args)?;
+            Ok(format!("Home Assistant : {}", v["label"].as_str().unwrap_or(service)))
+        }
     }
 }
 
@@ -831,6 +840,7 @@ fn preview(rule: &Rule, path: Option<&Path>) -> Vec<String> {
             Action::Mascot { gesture: Gesture::Emote, emotion, .. } => format!("La mascotte montre l'expression « {emotion} »"),
             Action::Mascot { gesture: Gesture::Sign, text, .. } => format!("La mascotte tient une pancarte « {} »", model::fill(text, &label)),
             Action::Quiet { minutes } => format!("Calme et Ne pas déranger pendant {minutes} min"),
+            Action::HomeAssistant { entity, service, .. } => format!("Home Assistant : {service} sur {entity}"),
         };
         out.push(line);
     }
