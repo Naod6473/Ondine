@@ -719,8 +719,8 @@ function size(bytes: number): string {
   return bytes < 1024 ? `${bytes} o` : `${(bytes / 1024).toFixed(bytes < 10240 ? 1 : 0)} Ko`;
 }
 
+/** « Parler à Ondine » (montrée ou masquée dans Réglages → Étagère → Pilules du dépôt). */
 function dropTargets(api: ModuleApi): DropTarget[] {
-  if (api.settings().showDrop === false) return [];
   return [
     {
       id: "askclaude-drop",

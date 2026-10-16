@@ -4378,3 +4378,134 @@ objet `Live` créé au démarrage du module : fermer l'onglet ne perd rien.
 - **Limites.** Une tâche d'agent n'est comptée que si `agents.event` done est
   publié (pas en mode discret ni si « Prévenir quand c'est fini » est coupé).
   La pause pendant une présentation suit le réglage « presentationQuiet ».
+## Conversion de fichiers (Ondine convertit)
+1.2.5. Un fichier glissé sur l'île : elle s'ouvre et montre tout en pilules
+(« dépôt unifié », version A de la maquette : tout dans l'île) ; lâché sur un
+format, Ondine l'avale, mâche, recrache le nouveau fichier. Idées reprises de Filee (MIT, voir THIRD-PARTY.md), réécrites.
+- **Qui fait quoi** :
+  - `src/island/drop-panel.ts` : le contenu de l'île en mode dépôt
+    (en-tête, trois lignes de pilules, phrase), le survol et le choix au
+    lâcher (`DropChoice` : un format ou une cible) ;
+  - `src/island/drop-pills-logic.ts` (pur, testé) : les pilules connues
+    (ligne, libellé, icône), la disposition (ordre, masquées), la reprise des
+    anciens interrupteurs, l'en-tête (`headerFor`) et les phrases ;
+  - `src/settings/drop-pills-group.ts` : Réglages → Étagère → « Pilules du
+    dépôt » ;
+  - `src/island/convert-gesture.ts` : le travail, une fois le format choisi
+    (avaler, mâcher, liquide, pilules de progression et de résultat) ;
+  - `src/island/convert-plan.ts` : son minutage et ses poses, en fonctions
+    pures testées (`pillDelay`, `workY`, `resultWidth`, `Dwell`,
+    `swallowPose`, `arcPose`, `expressionAt`, `liquidLevel`) ;
+  - `src/modules/convert/` : le module (manifeste, vue compacte « Je mâche…
+    42 % », appels au Rust), et `convert-logic.ts` (pur, testé : pilules
+    proposées, libellés, tailles, résumé du résultat) ;
+  - `src-tauri/src/modules/convert.rs` : le travail ; `convert_logic.rs`
+    (pur, testé) : formats, noms libres, PDF, extraction de ZIP ;
+  - `src-tauri/src/platform/convert.rs` : ce que Windows sait déjà faire
+    (WIC, `Windows.Data.Pdf`, `MediaTranscoder`, sélection dans
+    l'Explorateur). Sous les autres systèmes, « disponible seulement sous
+    Windows ».
+- **Le glisser** : la cible de dépôt de l'île (`platform/drop_target.rs`)
+  envoie maintenant `shift` (touche Maj, `MK_SHIFT`) avec `file-drag`. Dans
+  un navigateur (npm run dev, démo), `bridge.ts` traduit le glisser-déposer
+  HTML5 en ces mêmes événements (noms de fichiers, pas de chemins).
+- **Le dépôt unifié** : plus aucune pilule hors de l'île. `island.ts`,
+  `onDrag` : `enter` → `DropPanel.prepare(paths)` (et `convert.probe` pour
+  la taille ou le nombre d'éléments d'un dossier) puis `fsm.dragEnter` ;
+  `over` → `DropPanel.over(pos, shift)` (pilule visée : couleur d'Ondine,
+  léger grossissement, Ondine la regarde) ; `drop` → `DropPanel.drop` rend
+  un format (`convert.start`) ou une cible (`registry.drop`, comme avant),
+  sinon rien et l'île se referme (`fsm.dragLeave`, pas de notification).
+  - L'île en mode dépôt fait 700 px de large ; sa hauteur suit le contenu
+    (`ResizeObserver` → `fitDrop`, `--drop-h`, ressort). Si elle dépasse le
+    panneau de 320 px (380 sur un côté), `Bridge.islandSetTall` demande le
+    panneau haut, rendu dès que l'état n'est plus `drop`.
+  - En-tête : Ondine surprise, nom (ou « N fichiers »), type et taille (ou
+    « Dossier · N éléments »), et la pilule d'option. Pas de pilule
+    d'option pour un dossier, ni sans format possible.
+  - Lignes Convertir (formats de `pillsFor`, puis « Redimensionner… » pour
+    des images, puis ZIP), Ranger (Étagère, Copier, Déplacer, dossiers
+    favoris, Corbeille), Outils (Parler à Ondine, Renommer, Chemin, Empreinte,
+    Terminal ici, collègues). Une ligne vide est masquée. Les cibles
+    viennent toujours de `dropTargets()` des modules ; celles qu'on ne
+    connaît pas vont dans Outils.
+  - Sans doublons : la pilule ZIP est `zip` d'Ondine convertit, ou
+    `shelf-zip` (« Compresser ») si ce module est coupé ; « Images… »
+    devient « Redimensionner… » (même boîte de largeur qu'avant).
+  - Réglages : `modules.shelf.values.dropPills` = `{v:1, order, hidden}`.
+    Tant qu'il n'existe pas, `legacyHidden` reprend les anciens
+    interrupteurs (`showTrash`, `showCompress`, `showTools`, `showHash`,
+    `showDrop` du terminal et de Demander) : une pilule masquée avant le
+    reste. Une ligne jamais réordonnée garde l'ordre propre au type de
+    fichier (`arrangeFormats`).
+  - Île à gauche ou à droite : même contenu, l'île s'étend vers le centre.
+    Île en bas : elle grandit vers le haut. Pendant le travail, la mini-île
+    prend la classe `convert-work` (place pour la pilule de progression,
+    `workY`), puis s'élargit à la pilule de résultat (`resultWidth`).
+  - Animations : arrivée des pilules en ressort décalé (`pillDelay`), fondu
+    en mode Calme ou « Réduire les animations », rien en mode Économie.
+- `probe {paths}` (Rust) : `{dir, size, count}` par chemin (10 000 éléments
+  comptés au plus), rien d'autre ; la démo répond pour un nom sans extension
+  par un dossier de 214 éléments.
+- **Les pilules** : `pillsFor` (dernier format choisi en premier, retenu par
+  type dans `localStorage` « ondine.convert.last » ; pas le format que les
+  fichiers ont déjà ; « Un seul ZIP » toujours possible pour plusieurs).
+  Images : JPG, PNG, WebP, PDF (« Un seul PDF » pour plusieurs), Alléger,
+  GIF, BMP, TIFF, ICO. PDF : PNG, JPG (une image par page). Vidéo : MP4,
+  Alléger, MP3, M4A, WAV (le son seul). Son : MP3, M4A, WAV. ZIP : Extraire.
+  La pilule d'option (Conserver à côté / Remplacer l'original / Sur le
+  bureau, en haut de l'île) tourne après 0,5 s de survol (`Dwell`), à la
+  touche Maj (Remplacer) ou au clic ; sa valeur de départ est le réglage
+  `dest`.
+- **Le travail** (Rust, `start {paths, format, dest}`) : un thread, une
+  conversion à la fois (« j'ai déjà la bouche pleine »), 100 fichiers au plus,
+  chaque chemin validé (`privacy::check_path`), un fichier après l'autre, un
+  échec n'arrête pas les autres ; `cancel` (clic sur la pilule qui se
+  remplit). `convert.progress {job, index, total, fraction, name}` (au plus
+  toutes les 100 ms), puis `convert.done {job, ok, format, dest, total,
+  failed, cancelled, replaced, note, undoId, results: [{name, out, outName,
+  before, after, error}]}`. Le nom et le chemin ne vont qu'au front (bus
+  local), jamais au journal.
+  - Images : crate `image` (orientation EXIF appliquée, métadonnées gardées
+    ou retirées selon le réglage), repli sur WIC pour HEIC/AVIF/TIFF ;
+    qualité Petite/Normale/Haute (JPEG 70/85/94, Alléger : côté le plus long
+    1280/1920/2560). WebP : sans perte seulement (le crate `image` n'écrit
+    pas de WebP avec perte).
+  - Images → un PDF : `PdfWriter` (pages A4, images en JPEG/DCTDecode, 300
+    pages au plus), écrit à la main, sans dépendance.
+  - PDF → images : `Windows.Data.Pdf` (96/150/220 ppp), « page 01.png »…
+    dans un dossier au nom du PDF.
+  - Vidéo et son : `MediaTranscoder` (profils MP4/M4A/MP3/WAV, progression
+    réelle, annulation ; fichier à moitié écrit à la Corbeille).
+  - ZIP : `files::zip_into` (même code que « Compresser ») ; extraction
+    sûre (`enclosed_name`, 20 000 éléments et 16 Gio au plus).
+  - Ensuite : date d'origine recopiée (réglage), « Remplacer » (l'original à
+    la Corbeille seulement après une réussite, le nouveau prend son nom s'il
+    est libre), « Annuler » 10 s par le service d'annulation (remet
+    l'original, envoie le nouveau à la Corbeille), sélection du fichier dans
+    l'Explorateur si une de ses fenêtres montre déjà le dossier
+    (`IShellWindows`, `SHOpenFolderAndSelectItems`, rien n'est ouvert sinon).
+  - `open {path}` : seulement un fichier de la dernière conversion.
+- **Jamais d'écrasement** : `free_path` donne « photo (2).jpg » ; le même nom
+  que l'original n'est jamais écrit par-dessus.
+- **L'île pendant le travail** : `IslandStateMachine.keepOpen("convert")`
+  garde la mini-île (et la nano en mini) tant qu'Ondine mâche et que la
+  pilule de résultat est là ; `island.ts` agrandit le rectangle qui prend la
+  souris aux pilules cliquables (`convert.hitRect()`), et ne montre pas la
+  notification « Annuler » de `undo.offered` pour ce module (le bouton est
+  dans la pilule de résultat).
+- **Mascotte** : `mascot.play {animation, emotion}` ; une mascotte sans
+  l'animation de la goutte gomme (surpris, ecoute, eating, mange-vite,
+  concentree, sursaut, fiere, celebrate, oups, genee) joue l'émotion proche
+  (`mascot-state.ts`). Mode Calme ou « Réduire les animations » : les mêmes
+  étapes en fondus, pas de grimaces, pas de paillettes. Flou derrière les
+  pilules seulement en style Studio.
+- **Traductions** : la pilule de résultat mêle un nom, des tailles et une
+  raison ; `summarize` reçoit `t()` et l'unité (Ko/KB) et rend des textes
+  déjà traduits (`data-no-i18n` sur ces nœuds).
+- **Démo** : `demo.ts` simule `convert.start` (avancement puis résultat ; un
+  nom qui contient « abîm » échoue).
+- **Pas fait (plus tard)** : FFmpeg, LibreOffice, Règles, « Envoyer vers »,
+  vidéo → GIF (MediaTranscoder ne sait pas écrire de GIF : il faudrait
+  décoder les images une à une), WebP avec perte, métadonnées gardées pour
+  HEIC (WIC les lit, on ne les recopie pas).

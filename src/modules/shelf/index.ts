@@ -1,7 +1,11 @@
 // Module « Étagère » : ce qu'on fait des fichiers glissés sur l'île.
 //
 //   - cibles de dépôt : Étagère, Copier vers…, Déplacer vers…, un favori par
-//     dossier choisi dans les réglages, Copier le chemin, Compresser, Corbeille ;
+//     dossier choisi dans les réglages, Corbeille, Renommer…, Copier le
+//     chemin, Empreinte, Redimensionner…, Compresser (pilule « ZIP »). L'île
+//     les montre en pilules (dépôt unifié, src/island/drop-panel.ts) ; leur
+//     ordre et celles qui sont masquées se règlent dans la page de l'Étagère
+//     (« Pilules du dépôt », src/settings/drop-pills-group.ts) ;
 //   - vue agrandie : la liste de l'étagère, avec les mêmes actions, pour tout
 //     le contenu ou pour un seul élément ;
 //   - sortir un élément : le glisser vers l'Explorateur, le Bureau ou une autre
@@ -211,11 +215,25 @@ function toFavorite(api: ModuleApi, paths: string[], folder: string) {
   return api.settings().favoriteAction === "move" ? actions.moveTo(api, paths, folder) : actions.copyTo(api, paths, folder);
 }
 
-/** Les cibles, recalculées à chaque glisser (elles dépendent des réglages). */
+/**
+ * Les cibles, recalculées à chaque glisser (les favoris dépendent des
+ * réglages). Toutes sont données : l'île les range en lignes, en masque et
+ * les ordonne selon Réglages → Étagère → Pilules du dépôt (src/island/
+ * drop-pills-logic.ts). « Compresser » y devient la pilule « ZIP » de la
+ * ligne Convertir (celle d'Ondine convertit quand il est là) ; « Images… »
+ * y devient « Redimensionner… » (pour des images : la largeur, ce que
+ * « Alléger » ne choisit pas).
+ */
 function dropTargets(api: ModuleApi): DropTarget[] {
   const s = api.settings();
   const favorites = (s.favorites as string[]).slice(0, 6);
-  const targets: DropTarget[] = [
+  // Les outils s'ouvrent dans l'île : on règle, on voit l'aperçu, puis on confirme.
+  const open = (kind: "images" | "rename") => (paths: string[]) => {
+    tool = { kind, paths };
+    for (const r of redraws) r();
+    api.openIsland("shelf");
+  };
+  return [
     { id: "shelf-add", label: "Étagère", icon: "🧺", onDrop: (paths) => actions.addToShelf(api, paths) },
     { id: "shelf-copy", label: "Copier vers…", icon: "📄", onDrop: (paths) => actions.copyTo(api, paths) },
     { id: "shelf-move", label: "Déplacer vers…", icon: "📦", onDrop: (paths) => actions.moveTo(api, paths) },
@@ -224,26 +242,17 @@ function dropTargets(api: ModuleApi): DropTarget[] {
       (folder, i): DropTarget => ({
         id: `shelf-fav-${i}`,
         label: baseName(folder),
-        icon: "⭐",
+        icon: "📁",
         onDrop: (paths) => toFavorite(api, paths, folder),
       }),
     ),
+    { id: "shelf-trash", label: "Corbeille", icon: "🗑️", onDrop: (paths) => actions.trash(api, paths) },
+    { id: "shelf-rename", label: "Renommer…", icon: "✏️", onDrop: open("rename") },
     { id: "shelf-path", label: "Copier le chemin", icon: "📋", onDrop: (paths) => actions.copyPaths(api, paths) },
+    hashTarget(api),
+    { id: "shelf-images", label: "Redimensionner…", icon: "📏", onDrop: open("images") },
+    { id: "shelf-zip", label: "Compresser", icon: "🗜️", onDrop: (paths) => actions.compress(api, paths) },
   ];
-  // Les outils s'ouvrent dans l'île : on règle, on voit l'aperçu, puis on confirme.
-  if (s.showTools !== false) {
-    const open = (kind: "images" | "rename") => (paths: string[]) => {
-      tool = { kind, paths };
-      for (const r of redraws) r();
-      api.openIsland("shelf");
-    };
-    targets.push({ id: "shelf-images", label: "Images…", icon: "🖼️", onDrop: open("images") });
-    targets.push({ id: "shelf-rename", label: "Renommer…", icon: "✏️", onDrop: open("rename") });
-  }
-  if (s.showHash !== false) targets.push(hashTarget(api));
-  if (s.showCompress) targets.push({ id: "shelf-zip", label: "Compresser", icon: "🗜️", onDrop: (paths) => actions.compress(api, paths) });
-  if (s.showTrash) targets.push({ id: "shelf-trash", label: "Corbeille", icon: "🗑️", onDrop: (paths) => actions.trash(api, paths) });
-  return targets;
 }
 
 // ── Les outils : images et renommage ─────────────────────────────────────────

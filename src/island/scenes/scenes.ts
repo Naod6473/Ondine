@@ -985,7 +985,7 @@ export class Scenes {
     if (!on) return;
     let last: Element | null = null;
     this.dropObserver = new MutationObserver(() => {
-      const hover = this.h.content.querySelector<HTMLElement>(".drop-target.hover");
+      const hover = this.h.content.querySelector<HTMLElement>(".dp-pill.hot");
       if (!hover || hover === last) return;
       last = hover;
       this.play("drop-catch", async (a) => {

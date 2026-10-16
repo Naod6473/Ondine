@@ -40,6 +40,10 @@ mod clipboard_secrets;
 mod controls;
 // Jeux (1.2.5) : la progression de l'aquarium de gouttes (les jeux sont dans le front).
 mod games;
+// Ondine convertit (1.2.5) : un fichier glissé sur une pilule de format sous l'île.
+mod convert;
+// Sa partie pure (types, formats, noms, PDF, ZIP) ; publique pour platform/convert.rs.
+pub(crate) mod convert_logic;
 // La dictée partout : la touche, la pilule, le collage (avec sa logique, ses mots et son fichier).
 mod dictation;
 mod dictation_logic;
@@ -308,6 +312,7 @@ impl Registry {
             Box::new(dictation::Dictation),
             Box::new(winnotifs::WinNotifs::default()),
             Box::new(games::Games::default()),
+            Box::new(convert::Convert),
         ];
 
         let mut entries = Vec::new();

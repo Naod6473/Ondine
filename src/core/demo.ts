@@ -32,7 +32,7 @@ export type DemoScene = (typeof DEMO_SCENES)[number];
 const REAL_DATA = [
   "agenda.", "agents.", "claude.", "capture.", "clipboard.changed", "clipboard.link-cleaned", "clipboard.secret-ignored", "controls.",
   "media.", "nettools.", "notes.", "remote.", "rules.notify", "shelf.", "system.", "task.",
-  "weather.", "halos.", "team.",
+  "weather.", "halos.", "team.", "convert.",
 ];
 
 export function hidesRealData(msg: BusMessage): boolean {
@@ -495,12 +495,81 @@ function demoHooks() {
   );
 }
 
+// ── Ondine convertit (démo) ─────────────────────────────────────────────────
+
+let demoConvertJob = 0;
+let demoConvertCancelled = false;
+
+/** Une conversion simulée : l'avancement, puis le résultat. Un nom avec « abîm » échoue. */
+function demoConvert(bus: Bus, args: Record<string, unknown>) {
+  const paths = (Array.isArray(args.paths) ? args.paths : []).filter((p): p is string => typeof p === "string");
+  const format = typeof args.format === "string" ? args.format : "jpg";
+  const dest = typeof args.dest === "string" ? args.dest : "keep";
+  const job = ++demoConvertJob;
+  demoConvertCancelled = false;
+  const combined = (format === "pdf" || format === "zip") && paths.length > 1;
+  const name = (p: string) => p.split(/[\\/]/).pop() ?? p;
+  const stem = (p: string) => name(p).replace(/\.[^.]+$/, "");
+  const ext = (p: string) => (/\.([^.]+)$/.exec(name(p))?.[1] ?? "").toLowerCase();
+  const items = combined ? [paths[0]] : paths;
+  const steps = 14;
+  let step = 0;
+  const tick = () => {
+    if (job !== demoConvertJob) return;
+    if (demoConvertCancelled) {
+      bus.inject("convert.done", { job, ok: false, total: items.length, failed: 0, cancelled: true, dest, results: [] }, "convert");
+      return;
+    }
+    step++;
+    const done = step / steps;
+    const index = Math.min(items.length - 1, Math.floor(done * items.length));
+    const fraction = done * items.length - index;
+    if (step < steps) {
+      bus.inject("convert.progress", { job, index, total: items.length, fraction: Math.min(1, fraction), name: name(items[index]) }, "convert");
+      window.setTimeout(tick, 150);
+      return;
+    }
+    const results = items.map((p, i) => {
+      const before = 3_400_000 - i * 210_000;
+      if (/abîm/i.test(name(p))) return { name: name(p), out: null, outName: null, before, after: 0, error: "cette image semble abîmée" };
+      const outExt = format === "shrink" ? ext(p) : format === "unzip" ? "" : format;
+      const outName = combined ? `${paths.length} fichiers.${format}` : format === "unzip" ? stem(p) : `${stem(p)}${format === "shrink" ? " (réduite)" : ""}.${outExt}`;
+      return { name: name(p), out: `${HOME}\\Desktop\\${outName}`, outName, before, after: Math.round(before * 0.24), error: null };
+    });
+    const failed = results.filter((r) => r.error).length;
+    const ok = failed < results.length;
+    bus.inject("convert.done", { job, ok, format, dest, total: results.length, failed, cancelled: false, replaced: 0, note: null, undoId: null, results }, "convert");
+  };
+  window.setTimeout(tick, 300);
+}
+
 // ── Les réponses aux modules ─────────────────────────────────────────────────
 
 /** Ce que le Rust aurait répondu. Les actions ne font rien (ou changent les fausses données). */
 export async function demoInvoke(bus: Bus, module: string, command: string, raw: unknown): Promise<unknown> {
   const args = (raw ?? {}) as Record<string, unknown>;
   switch (`${module}.${command}`) {
+    // Ondine convertit : une fausse conversion, avec son avancement.
+    case "convert.start":
+      demoConvert(bus, args);
+      return null;
+    case "convert.cancel":
+      demoConvertCancelled = true;
+      return null;
+    // L'en-tête du dépôt : un nom sans extension est un dossier, le reste a une taille crédible.
+    case "convert.probe": {
+      const paths = (Array.isArray(args.paths) ? args.paths : []).filter((p): p is string => typeof p === "string");
+      const sizes: Record<string, number> = { heic: 3_400_000, jpg: 2_100_000, png: 1_800_000, pdf: 1_200_000, mov: 48_000_000, mp4: 36_000_000, mp3: 5_200_000, zip: 12_000_000 };
+      return {
+        items: paths.map((p) => {
+          const ext = /\.([^.\\/]+)$/.exec(p)?.[1]?.toLowerCase();
+          return ext ? { dir: false, size: sizes[ext] ?? 640_000, count: null } : { dir: true, size: 0, count: 214 };
+        }),
+      };
+    }
+    case "convert.open":
+      return null; // en démo, pas de vrai fichier à ouvrir
+
     // Musique
     case "media.state":
       return mediaState();

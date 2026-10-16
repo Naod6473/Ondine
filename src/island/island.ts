@@ -28,7 +28,7 @@ import { clear, el } from "./dom";
 import { icon } from "./icon";
 import { IslandStateMachine, type IslandState } from "./island-state";
 import { IslandForms, islandStyle } from "./island-forms";
-import { contentHeight, FIT_ATTR, FIT_HOLD_ATTR, FIT_MAX_W, FIT_MAX_W_SIDE, FIT_W_ATTR, fitHeight, fitMode, fitWidth, naturalWidth, settle } from "./fit";
+import { contentHeight, FIT_ATTR, FIT_HOLD_ATTR, FIT_MAX_H, FIT_MAX_W, FIT_MAX_W_SIDE, FIT_W_ATTR, fitHeight, fitMode, fitWidth, naturalWidth, settle } from "./fit";
 import { attachHalo } from "./halo";
 import { attachLiquid } from "./liquid";
 import { enableGestures, grabZone, horizontal, type Edge } from "./gestures";
@@ -43,6 +43,9 @@ import { attachScenes, type Scenes } from "./scenes/scenes";
 import { reducedMotion, TabPill } from "./tab-pill";
 import { Tips } from "./tips";
 import { playHatch, type HatchTexts } from "./hatch";
+import { ConvertGesture } from "./convert-gesture";
+import { DropPanel } from "./drop-panel";
+import { effectiveLayout, keyOf, LAYOUT_KEY, LAYOUT_MODULE, ROWS, rowOf, isShown, arrange, bareLabel, type DropLayout, type Probe } from "./drop-pills-logic";
 import type { Ring } from "./hatch-plan";
 
 const log = logger("island");
@@ -57,6 +60,13 @@ type MascotReaction = Parameters<NonNullable<MascotRenderer["react"]>>[0];
  * plus), on n'attend jamais plus que ça (ms).
  */
 const SETTLE_FALLBACK_MS = 1500;
+/** La hauteur du panneau de la fenêtre (src-tauri/src/island/mod.rs : PANEL_H, SIDE_PANEL_H). */
+const PANEL_H = 320;
+const SIDE_PANEL_H = 380;
+/** Les marges haute et basse de l'île en mode dépôt (island.css : 12 + 10 px). */
+const DROP_PAD_Y = 22;
+/** La place gardée dans la fenêtre pour l'étirement à la souris (gestures.ts). */
+const STRETCH_ROOM = 40;
 /** Zone au bord de l'écran qui compte comme « survol » même si l'île est minuscule. */
 const EDGE_ZONE = { len: 240, depth: 14 };
 /** L'île qui s'écarte d'une fenêtre : la peur d'Ondine au plus toutes les… (ms). */
@@ -149,8 +159,10 @@ export class Island {
   private expandedUi: { tabs: Map<string, HTMLElement>; pill: TabPill; stage: HTMLElement; body: HTMLElement } | null = null;
   /** Dernier état dessiné, pour animer l'arrivée du contenu quand il change. */
   private renderedState: IslandState | null = null;
-  /** Cible de dépôt sous le curseur pendant un glisser. */
-  private dropHover: HTMLElement | null = null;
+  /** L'île en mode dépôt a demandé le panneau haut (fitDrop) : il faudra le rendre. */
+  private dropTall = false;
+  /** Suit la hauteur des pilules du dépôt (fitDrop). */
+  private dropObserver: ResizeObserver | null = null;
   private collapseTimer: number | null = null;
   /** L'île ouverte agrandie pour un contenu à montrer en entier (fit.ts) : sa hauteur, sinon null. */
   private fitH: number | null = null;
@@ -192,6 +204,10 @@ export class Island {
   private scenes: Scenes;
   /** L'éclosion joue (hatch.ts) : la vraie île est cachée, la fenêtre reste grande. */
   private hatching = false;
+  /** Ondine convertit (1.2.5) : le geste après un lâcher sur une pilule de format. */
+  private convert: ConvertGesture;
+  /** Le dépôt unifié (1.2.5) : toutes les pilules dans l'île pendant un glisser. */
+  private dropPanel: DropPanel;
 
   constructor(
     private readonly root: HTMLElement,
@@ -244,6 +260,31 @@ export class Island {
       this.bus,
       this.notifications,
     );
+    // Ondine convertit : le geste après le lâcher (convert-gesture.ts).
+    this.convert = new ConvertGesture({
+      root: this.root,
+      shell: this.shell,
+      slot: this.mascotSlot,
+      bus: this.bus,
+      keepOpen: (on) => this.fsm.keepOpen("convert", on),
+      rectChanged: () => this.pushRect(),
+      reshape: () => this.scheduleRetarget(),
+    });
+    // Le dépôt unifié : formats, rangements et outils, en pilules dans l'île (drop-panel.ts).
+    this.dropPanel = new DropPanel({
+      convert: this.convert,
+      targets: () => this.registry.dropTargets(),
+      layout: () => this.dropLayout(),
+      favoriteMove: () => settingsStore.current.modules.shelf?.values?.favoriteAction === "move",
+      lookAt: (point) => this.lookAtPoint(point),
+      // La taille des fichiers, pour l'en-tête : le module Ondine convertit répond (convert.probed).
+      probe: (paths, id) => this.bus.emit("convert.probe", { id, paths }),
+    });
+    this.bus.on("convert.probed", (msg) => {
+      const p = msg.payload as { id?: unknown; items?: unknown } | null;
+      if (typeof p?.id !== "number" || !Array.isArray(p.items)) return;
+      this.dropPanel.probed(p.id, p.items.map((x) => (x && typeof x === "object" ? (x as Probe) : null)));
+    });
     // Ondine quitte sa case pour agir dans l'île (les 22 scènes, scenes/).
     this.scenes = attachScenes({
       shell: this.shell,
@@ -1137,17 +1178,31 @@ export class Island {
     // Île-bouche : l'île et le corps d'Ondine autour (rien quand elle est partie avec Ondine).
     const body = this.forms.hitRect();
     if (body) {
-      void Bridge.islandSetRect(body.x, body.y, body.w, body.h);
+      this.setRect(body.x, body.y, body.w, body.h);
       return;
     }
     // Île cachée et Ondine au bord : seul son petit rectangle prend la souris.
     const hang = this.fsm.state === "hidden" ? this.hanger.rect() : null;
     if (hang) {
-      void Bridge.islandSetRect(hang.left, hang.top, hang.width, hang.height);
+      this.setRect(hang.left, hang.top, hang.width, hang.height);
       return;
     }
     const r = this.shell.getBoundingClientRect();
-    void Bridge.islandSetRect(r.left, r.top, r.width, r.height);
+    this.setRect(r.left, r.top, r.width, r.height);
+  }
+
+  /** Le rectangle qui prend la souris, agrandi aux pilules cliquables d'Ondine convertit. */
+  private setRect(x: number, y: number, w: number, h: number) {
+    const c = this.convert?.hitRect();
+    if (c) {
+      const left = Math.min(x, c.x);
+      const top = Math.min(y, c.y);
+      const right = Math.max(x + w, c.x + c.w);
+      const bottom = Math.max(y + h, c.y + c.h);
+      void Bridge.islandSetRect(left, top, right - left, bottom - top);
+      return;
+    }
+    void Bridge.islandSetRect(x, y, w, h);
   }
 
   /** Position de la souris (px logiques de la fenêtre). */
@@ -1203,29 +1258,68 @@ export class Island {
     if (e.type !== "over") log.info(`glisser-déposer : ${e.type} (état ${this.fsm.state})`);
     switch (e.type) {
       case "enter":
+        // Le dépôt unifié prépare ses pilules (formats de CE fichier) avant
+        // que l'île passe en mode dépôt et les dessine (renderDrop).
+        this.dropPanel.prepare(e.paths ?? []);
         this.fsm.dragEnter();
         break;
       case "over":
-        this.highlightDropTarget(e.position);
+        this.dropPanel.over(this.cssPos(e.position), !!e.shift);
         break;
       case "leave":
-        this.highlightDropTarget(undefined);
+        this.dropPanel.leave();
         this.fsm.dragLeave();
         break;
       case "drop": {
         const paths = e.paths ?? [];
-        const target = this.dropTargetAt(e.position);
-        this.highlightDropTarget(undefined);
-        this.fsm.dropped();
-        if (paths.length) sounds.drop();
-        this.bus.emit("island.files-dropped", { count: paths.length, target: target?.target.id ?? null });
-        if (target) void this.registry.drop(target.moduleId, target.target, paths);
-        else if (paths.length) {
-          this.notifications.push({ moduleId: "island", title: "Lâcher le fichier sur une cible", icon: "🎯", priority: "low" });
+        // Sur une pilule de format : Ondine convertit ; sur une autre pilule,
+        // la cible du module ; ailleurs, rien (l'île se referme).
+        const choice = this.dropPanel.drop(paths, this.cssPos(e.position));
+        if (!choice || !paths.length) {
+          this.fsm.dragLeave();
+          break;
         }
+        if (choice.type === "convert") this.convert.start(choice.start);
+        this.fsm.dropped();
+        sounds.drop();
+        const id = choice.type === "convert" ? "convert" : choice.target.target.id;
+        this.bus.emit("island.files-dropped", { count: paths.length, target: id });
+        if (choice.type === "target") void this.registry.drop(choice.target.moduleId, choice.target.target, paths);
         break;
       }
     }
+  }
+
+  /** Ondine regarde un point de la fenêtre (une pilule visée), ou rien de précis (null). */
+  private lookAtPoint(point: { x: number; y: number } | null) {
+    if (!this.mascot || !point || this.scenes.gazeHeld()) return;
+    const m = this.mascotSlot.getBoundingClientRect();
+    this.mascot.lookAt(point.x - (m.left + m.width / 2), point.y - (m.top + m.height / 2));
+  }
+
+  /**
+   * La disposition des pilules du dépôt (Réglages → Étagère → Pilules du
+   * dépôt). La première fois, les anciens interrupteurs sont repris
+   * (drop-pills-logic.ts, legacyHidden).
+   */
+  private dropLayout(): DropLayout {
+    const mods = settingsStore.current.modules;
+    const shelf = mods[LAYOUT_MODULE]?.values ?? {};
+    return effectiveLayout(shelf[LAYOUT_KEY], {
+      showTrash: shelf.showTrash,
+      showCompress: shelf.showCompress,
+      showTools: shelf.showTools,
+      showHash: shelf.showHash,
+      terminalDrop: mods.terminal?.values?.showDrop,
+      askDrop: mods.askclaude?.values?.showDrop,
+    });
+  }
+
+  /** Les cibles montrées, dans l'ordre des réglages (pour la bulle d'Ondine sur le bureau). */
+  private visibleTargets(): ReturnType<ModuleRegistry["dropTargets"]> {
+    const layout = this.dropLayout();
+    const all = this.registry.dropTargets();
+    return ROWS.flatMap((row) => arrange(layout, row, all.filter((t) => rowOf(keyOf(t.target.id)) === row), (t) => keyOf(t.target.id))).filter((t) => isShown(layout, keyOf(t.target.id)));
   }
 
   /**
@@ -1240,9 +1334,9 @@ export class Island {
       const paths = ((msg.payload as { paths?: unknown } | null)?.paths ?? []) as unknown[];
       const clean = paths.filter((p): p is string => typeof p === "string").slice(0, 50);
       if (!clean.length) return;
-      const targets = this.registry.dropTargets();
+      const targets = this.visibleTargets();
       pending = { id: nextId++, paths: clean, targets };
-      this.bus.emit("island.drop-choices", { id: pending.id, count: clean.length, choices: targets.map((t) => ({ label: t.target.label, icon: t.target.icon })) });
+      this.bus.emit("island.drop-choices", { id: pending.id, count: clean.length, choices: targets.map((t) => ({ label: t.target.id === "shelf-zip" ? "ZIP" : bareLabel(t.target.label), icon: t.target.icon })) });
     });
     this.bus.on("pet.drop-choice", (msg) => {
       const p = msg.payload as { id?: number; index?: number } | null;
@@ -1257,33 +1351,18 @@ export class Island {
     });
   }
 
-  /** La cible sous ce point. La position de Tauri est en pixels physiques (à vérifier sur ta machine). */
-  private dropTargetAt(pos: { x: number; y: number } | undefined) {
-    // Même avec une seule cible, il faut lâcher dessus : lâcher ailleurs sur
-    // l'île ne doit rien déclencher (la cible pourrait être la Corbeille).
-    const targets = this.registry.dropTargets();
-    if (!pos) return null;
+  /** Une position du glisser (px physiques) en px CSS de la fenêtre. */
+  private cssPos(pos: { x: number; y: number } | undefined) {
+    if (!pos) return undefined;
     const dpr = window.devicePixelRatio || 1;
-    const hit = document.elementFromPoint(pos.x / dpr, pos.y / dpr)?.closest<HTMLElement>("[data-drop-index]");
-    if (!hit) return null;
-    return targets[Number(hit.dataset.dropIndex)] ?? null;
-  }
-
-  private highlightDropTarget(pos: { x: number; y: number } | undefined) {
-    this.dropHover?.classList.remove("hover");
-    this.dropHover = null;
-    if (!pos) return;
-    const dpr = window.devicePixelRatio || 1;
-    const hit = document.elementFromPoint(pos.x / dpr, pos.y / dpr)?.closest<HTMLElement>("[data-drop-index]");
-    if (hit) {
-      hit.classList.add("hover");
-      this.dropHover = hit;
-    }
+    return { x: pos.x / dpr, y: pos.y / dpr };
   }
 
   /** « Annuler » : le service d'annulation (Rust) propose, l'île affiche. */
   private wireUndo() {
     this.bus.on("undo.offered", (msg) => {
+      // Ondine convertit a son propre « Annuler » dans la pilule de résultat.
+      if (msg.source === "convert") return;
       const p = msg.payload as { id: number; label: string; expiresInMs: number };
       this.notifications.push({
         moduleId: msg.source,
@@ -1334,6 +1413,7 @@ export class Island {
     this.expandedUi = null;
     clear(this.content);
 
+    if (state !== "drop") this.releaseDropTall();
     switch (state) {
       case "hidden":
       case "peek":
@@ -1602,15 +1682,50 @@ export class Island {
   }
 
   private renderDrop() {
-    const targets = this.registry.dropTargets();
-    const row = el("div", { class: "drop-row" });
-    targets.forEach(({ target }, i) => {
-      row.append(
-        el("div", { class: "drop-target", "data-drop-index": i }, el("span", { class: "drop-icon" }, icon(target.icon)), el("span", {}, target.label)),
-      );
-    });
-    if (!targets.length) row.append(el("span", { class: "muted" }, "Aucune cible de dépôt active."));
-    this.content.append(row);
+    const panel = this.dropPanel.build();
+    this.content.append(panel);
+    // La hauteur suit le contenu (l'en-tête complété par le Rust, une police chargée…).
+    this.dropObserver?.disconnect();
+    this.dropObserver = new ResizeObserver(() => void this.fitDrop());
+    this.dropObserver.observe(panel);
+  }
+
+  /**
+   * L'île en mode dépôt prend la hauteur de ses pilules (--drop-h, island.css),
+   * avec le ressort de la gelée. Plus haute que le panneau habituel : la
+   * fenêtre passe d'abord au panneau haut (comme fit.ts), rendu à la fin.
+   */
+  private async fitDrop() {
+    if (this.fsm.state !== "drop") return;
+    const panel = this.content.querySelector<HTMLElement>("[data-drop-panel]");
+    if (!panel) return;
+    // Les marges de l'île en mode dépôt (island.css) : pas lues sur l'île, que
+    // la gelée est peut-être en train d'animer (ses marges aussi).
+    const h = Math.min(FIT_MAX_H, Math.ceil(panel.offsetHeight + DROP_PAD_Y));
+    if (this.shell.style.getPropertyValue("--drop-h") === `${h}px`) return;
+    const room = (horizontal(this.edge()) ? PANEL_H : SIDE_PANEL_H) - STRETCH_ROOM;
+    if (h > room && !this.tall && !this.dropTall) {
+      this.dropTall = true;
+      await Bridge.islandSetTall(true);
+      if (this.fsm.state !== "drop") return this.releaseDropTall();
+    }
+    this.shell.style.setProperty("--drop-h", `${h}px`);
+    this.jelly.retarget();
+  }
+
+  /** Fin du mode dépôt : la fenêtre rend le panneau haut, une fois l'île revenue à sa taille. */
+  private releaseDropTall() {
+    this.dropObserver?.disconnect();
+    this.dropObserver = null;
+    this.shell.style.removeProperty("--drop-h");
+    if (!this.dropTall) return;
+    const shrink = () => {
+      if (!this.dropTall || this.fsm.state === "drop") return;
+      this.dropTall = false;
+      if (!this.tall) void Bridge.islandSetTall(false);
+    };
+    window.setTimeout(shrink, SETTLE_FALLBACK_MS);
+    this.jelly.whenSettled(shrink);
   }
 
   /** Dans la vue agrandie, une notification normale s'affiche en bandeau sans tout redessiner. */

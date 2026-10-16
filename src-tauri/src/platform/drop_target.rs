@@ -28,7 +28,7 @@ use ::windows::Win32::System::Ole::{
     IDropTarget, IDropTarget_Impl, RegisterDragDrop, ReleaseStgMedium, RevokeDragDrop, CF_HDROP, DROPEFFECT,
     DROPEFFECT_COPY, DROPEFFECT_NONE,
 };
-use ::windows::Win32::System::SystemServices::MODIFIERKEYS_FLAGS;
+use ::windows::Win32::System::SystemServices::{MK_SHIFT, MODIFIERKEYS_FLAGS};
 use ::windows::Win32::UI::Shell::{DragQueryFileW, HDROP};
 use ::windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW, IsWindow};
 
@@ -42,6 +42,9 @@ struct FileDrag {
     paths: Vec<String>,
     /// En pixels physiques, depuis le coin haut-gauche de la page.
     position: Option<Position>,
+    /// La touche Maj est enfoncée (Ondine convertit : Maj = « Remplacer »).
+    /// Pendant un glisser, la page ne reçoit pas le clavier : on le lit ici.
+    shift: bool,
 }
 
 #[derive(Serialize, Clone)]
@@ -105,13 +108,14 @@ struct DropTarget {
 }
 
 impl DropTarget {
-    fn send(&self, kind: &'static str, paths: Vec<String>, pt: Option<&POINTL>) {
+    fn send(&self, kind: &'static str, paths: Vec<String>, pt: Option<&POINTL>, keys: MODIFIERKEYS_FLAGS) {
         let position = pt.map(|pt| {
             let mut p = POINT { x: pt.x, y: pt.y };
             let _ = unsafe { ScreenToClient(self.hwnd, &mut p) };
             Position { x: p.x, y: p.y }
         });
-        let _ = self.app.emit_to(self.label, "file-drag", FileDrag { kind, paths, position });
+        let shift = keys.0 & MK_SHIFT.0 != 0;
+        let _ = self.app.emit_to(self.label, "file-drag", FileDrag { kind, paths, position, shift });
     }
 }
 
@@ -149,7 +153,7 @@ impl IDropTarget_Impl for DropTarget_Impl {
     fn DragEnter(
         &self,
         data: Ref<'_, IDataObject>,
-        _keys: MODIFIERKEYS_FLAGS,
+        keys: MODIFIERKEYS_FLAGS,
         pt: &POINTL,
         effect: *mut DROPEFFECT,
     ) -> ::windows::core::Result<()> {
@@ -158,15 +162,15 @@ impl IDropTarget_Impl for DropTarget_Impl {
         let paths = if super::drag_out::active() { None } else { file_paths(data) };
         self.valid.set(paths.is_some());
         if let Some(paths) = paths {
-            self.send("enter", paths, Some(pt));
+            self.send("enter", paths, Some(pt), keys);
         }
         unsafe { *effect = if self.valid.get() { DROPEFFECT_COPY } else { DROPEFFECT_NONE } };
         Ok(())
     }
 
-    fn DragOver(&self, _keys: MODIFIERKEYS_FLAGS, pt: &POINTL, effect: *mut DROPEFFECT) -> ::windows::core::Result<()> {
+    fn DragOver(&self, keys: MODIFIERKEYS_FLAGS, pt: &POINTL, effect: *mut DROPEFFECT) -> ::windows::core::Result<()> {
         if self.valid.get() {
-            self.send("over", Vec::new(), Some(pt));
+            self.send("over", Vec::new(), Some(pt), keys);
         }
         unsafe { *effect = if self.valid.get() { DROPEFFECT_COPY } else { DROPEFFECT_NONE } };
         Ok(())
@@ -174,7 +178,7 @@ impl IDropTarget_Impl for DropTarget_Impl {
 
     fn DragLeave(&self) -> ::windows::core::Result<()> {
         if self.valid.replace(false) {
-            self.send("leave", Vec::new(), None);
+            self.send("leave", Vec::new(), None, MODIFIERKEYS_FLAGS(0));
         }
         Ok(())
     }
@@ -182,13 +186,13 @@ impl IDropTarget_Impl for DropTarget_Impl {
     fn Drop(
         &self,
         data: Ref<'_, IDataObject>,
-        _keys: MODIFIERKEYS_FLAGS,
+        keys: MODIFIERKEYS_FLAGS,
         pt: &POINTL,
         effect: *mut DROPEFFECT,
     ) -> ::windows::core::Result<()> {
         if self.valid.replace(false) {
             let paths = file_paths(data).unwrap_or_default();
-            self.send("drop", paths, Some(pt));
+            self.send("drop", paths, Some(pt), keys);
             unsafe { *effect = DROPEFFECT_COPY };
         } else {
             unsafe { *effect = DROPEFFECT_NONE };

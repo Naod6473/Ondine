@@ -90,6 +90,8 @@ export class IslandStateMachine {
   private pulseTimer: number | null = null;
   /** Les activités qui gardent la mini-île tant qu'elles durent (setBusy). */
   private busy = new Set<string>();
+  /** Un travail montré dans la mini-île (une conversion) : elle ne se replie pas (keepOpen). */
+  private kept = new Set<string>();
   /** La forme affichée de l'île compacte (voir `form()`). */
   shownForm: CompactForm = "mini";
 
@@ -287,6 +289,20 @@ export class IslandStateMachine {
     this.refreshForm();
   }
 
+  /**
+   * Un travail montré dans la mini-île (Ondine convertit : elle mâche, puis
+   * la pilule de résultat) : tant qu'il dure, l'île compacte ne se replie pas
+   * et la nano reste mini-île. Fini, elle se replie comme d'habitude.
+   */
+  keepOpen(key: string, on: boolean) {
+    if (on === this.kept.has(key)) return;
+    if (on) this.kept.add(key);
+    else this.kept.delete(key);
+    if (on && this.state === "compact") this.cancelTimer();
+    if (!on) this.scheduleCollapse();
+    this.refreshForm();
+  }
+
   /** Les raisons d'être en mini-île en ce moment (pour les tests et le journal). */
   wideReasons(): string[] {
     const out: string[] = [];
@@ -294,6 +310,7 @@ export class IslandStateMachine {
     if (this.holding) out.push("notification");
     if (this.pulsing) out.push("pulse");
     for (const k of this.busy) out.push(k);
+    for (const k of this.kept) out.push(k);
     return out;
   }
 
@@ -334,7 +351,7 @@ export class IslandStateMachine {
   private scheduleCollapse() {
     this.cancelTimer();
     if (this.hovering) return;
-    if (this.holding && this.state === "compact") return;
+    if ((this.holding || this.kept.size) && this.state === "compact") return;
     switch (this.state) {
       case "peek":
         this.later(this.timings.peekToHiddenMs, () => this.go("hidden"));
@@ -345,7 +362,7 @@ export class IslandStateMachine {
         break;
       case "expanded":
         // D'un coup jusqu'à l'état de repos, sauf si une notification attend d'être lue.
-        this.later(this.timings.collapseMs, () => this.go(this.holding ? "compact" : this.rest()));
+        this.later(this.timings.collapseMs, () => this.go(this.holding || this.kept.size ? "compact" : this.rest()));
         break;
       default:
         break; // hidden, drop, alert : rien à programmer

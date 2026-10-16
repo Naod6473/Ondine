@@ -1,0 +1,96 @@
+{
+  "id": "convert",
+  "name": "Ondine convertit",
+  "icon": "🔀",
+  "description": "Glissez un fichier sur l'île : elle s'ouvre et montre en pilules les formats possibles (JPG, PNG, PDF, MP3, ZIP…), à côté de Ranger et Outils. Lâchez-le sur l'une d'elles : Ondine l'avale, le convertit et recrache le nouveau fichier à côté de l'original, à sa place (l'original part à la Corbeille, « Annuler » le remet) ou sur le Bureau. La pilule d'option, en haut de l'île, change ce choix (survol d'une demi-seconde, Maj ou clic). Images (HEIC et AVIF avec l'extension de Windows), images en un seul PDF, PDF en images, vidéo et son courants (MP4, M4A, MP3, WAV), ZIP. Tout se fait sur ce PC avec ce que Windows sait déjà faire : rien ne part sur Internet, et le journal ne note ni les noms ni le contenu des fichiers.",
+  "version": "0.1.0",
+  "permissions": [
+    "files"
+  ],
+  "settings": {
+    "version": 1,
+    "fields": [
+      {
+        "key": "quality",
+        "essential": true,
+        "type": "select",
+        "label": "Qualité",
+        "help": "Petite : des fichiers légers. Haute : au plus près de l'original.",
+        "default": "normal",
+        "options": [
+          {
+            "value": "small",
+            "label": "Petite"
+          },
+          {
+            "value": "normal",
+            "label": "Normale"
+          },
+          {
+            "value": "high",
+            "label": "Haute"
+          }
+        ]
+      },
+      {
+        "key": "keepDate",
+        "essential": true,
+        "type": "boolean",
+        "label": "Garder la date d'origine",
+        "default": true
+      },
+      {
+        "key": "stripMetadata",
+        "essential": true,
+        "type": "boolean",
+        "label": "Retirer les métadonnées des photos (lieu, appareil)",
+        "default": true
+      },
+      {
+        "key": "dest",
+        "type": "select",
+        "label": "Où va le résultat, au départ",
+        "help": "Pendant le glissement, survolez la pilule du dessous une demi-seconde pour changer ; la touche Maj donne « Remplacer ».",
+        "default": "keep",
+        "options": [
+          {
+            "value": "keep",
+            "label": "Conserver à côté"
+          },
+          {
+            "value": "replace",
+            "label": "Remplacer l'original"
+          },
+          {
+            "value": "desk",
+            "label": "Sur le bureau"
+          }
+        ]
+      }
+    ]
+  },
+  "views": [
+    "compact"
+  ],
+  "commands": [
+    "start",
+    "probe",
+    "cancel",
+    "open"
+  ],
+  "events": {
+    "emits": [
+      "convert.progress",
+      "convert.done",
+      "convert.probed"
+    ],
+    "listens": [
+      "convert.request",
+      "convert.probe",
+      "convert.open",
+      "convert.cancel",
+      "convert.progress",
+      "convert.done"
+    ]
+  }
+}

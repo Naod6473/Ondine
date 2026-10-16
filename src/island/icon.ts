@@ -49,6 +49,8 @@ const BY_EMOJI: Record<string, string> = {
   "📡": "remote",
   "⚡": "rules",
   "🧺": "shelf",
+  // Ondine convertit (1.2.5) : au trait seulement, l'emoji en couleur.
+  "🔀": "convert",
   "📊": "system",
   "🖥️": "terminal",
   "⏱️": "timer",
@@ -310,6 +312,21 @@ function draw(name: string, p: IconPack): Node {
   const span = document.createElement("span");
   span.textContent = name.includes(":") ? FALLBACK : name;
   return span;
+}
+
+/**
+ * Toujours l'icône au trait, quel que soit le pack (les pilules du dépôt,
+ * drop-panel.ts : même style que les pilules de formats, couleur du texte).
+ * Sans icône au trait, l'icône habituelle.
+ */
+export function lineIcon(name: string): Node {
+  const url = LINE[name] ?? glyphLine(name);
+  return url ? lineSpan(url) : icon(name);
+}
+
+/** Ce pictogramme a-t-il une icône au trait ? */
+export function hasLineIcon(name: string): boolean {
+  return !!(LINE[name] ?? glyphLine(name));
 }
 
 function lineSpan(url: string): HTMLElement {

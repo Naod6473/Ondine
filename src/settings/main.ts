@@ -43,6 +43,7 @@ import { mascotPodium, type Podium } from "./podium";
 import { aboutGroup } from "./about";
 import { askclaudeGroups } from "./askclaude-page";
 import { winnotifsGroup } from "./winnotifs-group";
+import { dropPillsGroup } from "./drop-pills-group";
 import { customSoundRows } from "./sounds-page";
 import { perfGroup } from "./perf-group";
 import { phonesPage } from "./phone-certificate";
@@ -138,7 +139,7 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
   askclaude: [
     { id: "general", label: "Général", keys: [] },
     { id: "models", label: "Fournisseur et modèles", keys: ["provider", "model", "openaiModel", "geminiModel", "localUrl", "localModel", "openrouterModel", "maxTokens"] },
-    { id: "persona", label: "Personnalité et affichage", keys: ["personality", "autoGrow", "emotions", "showDrop"] },
+    { id: "persona", label: "Personnalité et affichage", keys: ["personality", "autoGrow", "emotions"] },
     { id: "voice", label: "Voix et sons", keys: ["micDevice", "voiceHotkey", "micMode", "voiceEngine", "lookHotkey", "wakeWord", "handsFree", "quickCommands", "plops", "plopVolume", "discreet"] },
     { id: "files", label: "Fichiers et PC", keys: ["fileTools", "pcTools", "filesFolder"] },
   ],
@@ -1720,6 +1721,8 @@ function modulePage(main: HTMLElement, man: ModuleManifest, compact = false) {
   if (!compact && man.id === "weekly") main.append(weeklyGroup(man));
   // Notifications de Windows : ce que Windows autorise, et le bouton vers ses Paramètres.
   if (!compact && man.id === "winnotifs") main.append(winnotifsGroup());
+  // Étagère : les pilules montrées quand on glisse un fichier sur l'île, et leur ordre.
+  if (!compact && man.id === "shelf") main.append(dropPillsGroup((change) => save(change)));
   // Animations de l'île : l'aperçu du halo, en direct, avec les réglages choisis.
   // Parler à Ondine : ce qui part et la consigne exacte (askclaude-page.ts).
   if (!compact && man.id === "askclaude") main.append(...askclaudeGroups((key, value) => save((d) => ((d.modules.askclaude ??= { enabled: settingsStore.moduleEnabled("askclaude"), values: {} }).values[key] = value), true)));
