@@ -51,6 +51,8 @@ const BY_EMOJI: Record<string, string> = {
   "🧺": "shelf",
   // Ondine convertit (1.2.4) : au trait seulement, l'emoji en couleur.
   "🔀": "convert",
+  // Home Assistant : au trait seulement (une maison reliée), l'emoji en couleur.
+  "🏡": "homeassistant",
   "📊": "system",
   "🖥️": "terminal",
   "⏱️": "timer",
@@ -78,8 +80,12 @@ const BY_EMOJI: Record<string, string> = {
   "🎙": "microphone",
   // Notifications de Windows (1.2.4) : la cloche au trait, l'emoji en couleur.
   "🔔": "bell",
+  // Rester éveillé : le soleil au trait, l'emoji en couleur.
+  "☀️": "sun",
   // Jeux (1.2.4) : la manette au trait, l'emoji en couleur.
   "🎮": "games",
+  // Mises à jour des logiciels : la flèche dans un cercle au trait (arrow-circle-up de Phosphor), l'emoji en couleur.
+  "🔃": "updates",
 };
 
 /**
@@ -90,7 +96,12 @@ const BY_EMOJI: Record<string, string> = {
  * ce sont déjà des caractères sobres, de la couleur du texte.
  */
 const LINE_ONLY: Record<string, string> = {
+  // Rester éveillé → Éteindre (power de Phosphor, dessiné ici).
+  "📴": "power",
   "⚠": "warning",
+  // Home Assistant : lumières, portes (garage, portail).
+  "💡": "lightbulb",
+  "🚪": "door-open",
   "📄": "file",
   "✅": "check-circle",
   "✔": "check-circle",

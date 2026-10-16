@@ -44,6 +44,7 @@ import { chip, choice, group, inSub, row, segmented, stepper, toggle, wideRow } 
 import { settingsRows } from "./form";
 import { GlassPill, still } from "./glass-pill";
 import { close as closeGlassSelect, upgradeSelects } from "./glass-select";
+import { selfViewDeviceRows } from "./selfview-devices";
 import { column2, crumbs, direction, IOS_EASE, pageForRubric, RUBRIC_ICONS, rubricCounts, type NavPage, type NavPlace } from "./nav-logic";
 import { NavHistory } from "./nav-history";
 import { applyPatchInPlace, typingTarget, UndoStack, type UndoEntry } from "./undo";
@@ -56,6 +57,7 @@ import { profilesPage, profileSubs } from "./profiles-page";
 import { mascotPodium, type Podium } from "./podium";
 import { aboutGroup } from "./about";
 import { askclaudeGroups } from "./askclaude-page";
+import { homeassistantGroups } from "./homeassistant-page";
 import { winnotifsGroup } from "./winnotifs-group";
 import { dropPillsGroup } from "./drop-pills-group";
 import { customSoundRows } from "./sounds-page";
@@ -157,12 +159,39 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
     { id: "voice", label: "Voix et sons", keys: ["micDevice", "voiceHotkey", "micMode", "voiceEngine", "lookHotkey", "wakeWord", "handsFree", "quickCommands", "plops", "plopVolume", "discreet"] },
     { id: "files", label: "Fichiers et PC", keys: ["fileTools", "pcTools", "filesFolder"] },
   ],
+  // Agenda : « Avant une réunion » (Rejoindre, l'aperçu « Se voir »).
+  agenda: [
+    { id: "general", label: "Calendriers", keys: [] },
+    { id: "meeting", label: "Avant une réunion", keys: ["joinMin", "mirrorMode", "mirrorCamera", "mirrorMic"] },
+  ],
+  // Système : le seuil d'alerte du disque et le nettoyage dans « Disques » (NF16).
+  system: [
+    { id: "general", label: "Général", keys: ["ondineMood", "worldClocks", "rebootReminder"] },
+    { id: "battery", label: "Batterie", keys: ["batteryLowPct", "batteryCriticalPct", "batteryFullAlert"] },
+    { id: "disks", label: "Disques", keys: ["diskAlertPct", "oldDownloadsDays"] },
+  ],
+  // Rester éveillé : l'éveil, puis l'arrêt programmé.
+  awake: [
+    { id: "keep", label: "Éveil", keys: ["clickDuration", "display", "coffee", "pill"] },
+    { id: "plan", label: "Arrêt programmé", keys: ["planAction", "planMinutes"] },
+  ],
+  // Home Assistant : Connexion (et « Tester »), Appareils favoris, Voix (homeassistant-page.ts).
+  homeassistant: [
+    { id: "connection", label: "Connexion", keys: ["url", "token", "insecure"] },
+    { id: "favorites", label: "Appareils favoris", keys: ["homeCard"] },
+    { id: "voice", label: "Voix", keys: ["assistFirst", "aiTool", "react"] },
+  ],
   // Équipe (réseau local).
   team: [
     { id: "general", label: "Général", keys: ["visible", "name", "visits", "autoStatus"] },
     { id: "files", label: "Fichiers et IT", keys: ["maxMb", "shareInventory"] },
     { id: "mine", label: "Entre mes PC", keys: ["clipboardSync", "mascotSync"] },
     { id: "chat", label: "Chat", keys: ["chatReceipts", "chatKeep"] },
+  ],
+  // Mises à jour des logiciels (winget).
+  updates: [
+    { id: "check", label: "Vérification", keys: ["checkEvery", "notify", "dot"] },
+    { id: "ignored", label: "Applis ignorées", keys: ["ignored"] },
   ],
 };
 
@@ -171,7 +200,7 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
  * ligne générée) : le micro et le mot d'appel de Parler à Ondine
  * (askclaude-page.ts, 1.2.4).
  */
-const PAGE_DRAWN: Record<string, string[]> = { askclaude: ["micDevice", "wakeWord"] };
+const PAGE_DRAWN: Record<string, string[]> = { askclaude: ["micDevice", "wakeWord"], agenda: ["mirrorCamera", "mirrorMic"] };
 
 /**
  * Des mots de la recherche qui ne sont pas le libellé d'une ligne : la ligne où
@@ -2255,7 +2284,9 @@ function modulePage(main: HTMLElement, man: ModuleManifest, compact = false) {
     const listed = new Set(sections.slice(1).flatMap((s) => s.keys));
     sections.forEach((s, i) => {
       const mine = i === 0 ? fields.filter((f) => !listed.has(f.key)) : fields.filter((f) => s.keys.includes(f.key));
-      if (mine.length) main.append(inSub(s.id, group(i === 0 ? "Réglages" : null, rowsOf(mine))));
+      // Agenda : la caméra et le micro de « Se voir », dans deux menus en verre (selfview-devices.ts).
+      const extra = man.id === "agenda" && s.id === "meeting" ? selfViewDeviceRows(settingsStore.moduleValues(man), (key, value) => save((d) => ((d.modules.agenda ??= { enabled: settingsStore.moduleEnabled("agenda"), values: {} }).values[key] = value))) : [];
+      if (mine.length) main.append(inSub(s.id, group(i === 0 ? "Réglages" : null, [...rowsOf(mine), ...extra])));
     });
   }
   if (!compact && man.id === "weekly") main.append(weeklyGroup(man));
@@ -2265,6 +2296,8 @@ function modulePage(main: HTMLElement, man: ModuleManifest, compact = false) {
   if (!compact && man.id === "shelf") main.append(dropPillsGroup((change) => save(change)));
   // Animations de l'île : l'aperçu du halo, en direct, avec les réglages choisis.
   // Parler à Ondine : ce qui part et la consigne exacte (askclaude-page.ts).
+  // Home Assistant : Tester la connexion, les favoris, ce que fait la voix.
+  if (!compact && man.id === "homeassistant") main.append(...homeassistantGroups((change) => save(change)));
   if (!compact && man.id === "askclaude") main.append(...askclaudeGroups((key, value) => save((d) => ((d.modules.askclaude ??= { enabled: settingsStore.moduleEnabled("askclaude"), values: {} }).values[key] = value), true)));
   if (!compact) main.append(el("p", { class: "version" }, `${man.name} · version ${man.version}`));
 }
@@ -2534,6 +2567,7 @@ function mascot(main: HTMLElement) {
             ["launcher", "Lanceur"],
             ["capture", "Capture"],
             ["note", "Note rapide"],
+            ["awake", "Rester éveillé"],
             ["none", "Rien"],
           ],
           (v) => save((d) => (d.mascot.doubleClick = v as NonNullable<Settings["mascot"]["doubleClick"]>)),

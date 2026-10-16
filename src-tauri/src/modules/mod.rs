@@ -29,6 +29,11 @@ mod askclaude_voice;
 mod askclaude_wake;
 // Ses commandes rapides comprises sans IA (minuteur, volume, note…).
 mod askclaude_quick;
+// Rester éveillé et arrêt programmé (public : lib.rs le relâche avant de quitter).
+pub mod awake;
+mod awake_logic;
+// Home Assistant : Assist d'abord, puis l'outil « maison » de l'IA.
+mod askclaude_home;
 // Notes d'appel (1.2.4) : micro + son du PC, transcription personne par personne, résumé.
 mod callnotes;
 mod callnotes_audio;
@@ -74,6 +79,8 @@ mod shelf_tools;
 // Écran de veille d'Ondine (1.2.3), désactivé par défaut.
 mod screensaver;
 mod system;
+// Système : « Qu'est-ce qui remplit mon disque ? » (analyse et nettoyage).
+mod system_disk;
 // Équipe : les Ondine du réseau local se parlent (découverte, appairage, échanges chiffrés).
 mod team;
 // Son chat (1.2.2) : conversations à deux, salon « Toute l'équipe », historique.
@@ -87,6 +94,9 @@ mod team_net;
 // Son protocole (messages, chiffrement, appairage), en code pur testé.
 mod team_proto;
 mod terminal;
+// Mises à jour des logiciels (winget) : la file, et la lecture de sa sortie (pure, testée).
+mod updates;
+mod updates_parse;
 pub(crate) mod clipboard_qr;
 mod weather;
 // Le bilan de la semaine (Pomodoros, concentration, tâches cochées).
@@ -118,6 +128,9 @@ pub(crate) mod agents_live;
 pub(crate) mod agents_todos;
 // Animations de l'île : sortie de veille, Verr Maj, copier / coller, volume, Wi-Fi, niveaux sonores.
 mod halos;
+// Home Assistant (coupé par défaut) : les appareils de la maison en boutons et à la voix.
+mod homeassistant;
+pub(crate) mod homeassistant_logic;
 // Ondine et les fenêtres (public : island/mod.rs lui demande le « lancer »).
 pub mod windowlife;
 // Notifications de Windows : les bulles des autres applis dans l'île (désactivé par défaut).
@@ -313,6 +326,9 @@ impl Registry {
             Box::new(winnotifs::WinNotifs::default()),
             Box::new(games::Games::default()),
             Box::new(convert::Convert),
+            Box::new(updates::Updates::default()),
+            Box::new(awake::Awake::default()),
+            Box::new(homeassistant::HomeAssistant::default()),
         ];
 
         let mut entries = Vec::new();
@@ -592,6 +608,31 @@ mod tests {
             assert!(m.commands.iter().any(|x| x == c), "{c}");
         }
         assert!(crate::services::settings::MODULES_OFF_BY_DEFAULT.contains(&"winnotifs"));
+    }
+
+    #[test]
+    fn awake_manifest_is_valid() {
+        let m = check_manifest(awake::Awake::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "awake");
+        assert!(m.permissions.is_empty());
+        for t in ["awake.state", "awake.warn", "agents.busy-ask"] {
+            assert!(m.events.emits.iter().any(|e| e == t), "{t}");
+        }
+        for t in ["agents.busy", "awake.toggle", "awake.start"] {
+            assert!(m.events.listens.iter().any(|l| l == t), "{t}");
+        }
+        assert!(crate::services::settings::MODULES_OFF_BY_DEFAULT.contains(&"awake"));
+    }
+
+    #[test]
+    fn homeassistant_manifest_is_valid() {
+        let m = check_manifest(homeassistant::HomeAssistant::default().manifest_json()).unwrap();
+        assert_eq!(m.id, homeassistant::ID);
+        for c in ["status", "test", "entities", "favorites", "call", "confirm_call", "cancel_call", "assist", "ai_call"] {
+            assert!(m.commands.iter().any(|x| x == c), "{c}");
+        }
+        assert!(m.events.emits.iter().any(|e| e == "mascot.emote"));
+        assert!(crate::services::settings::MODULES_OFF_BY_DEFAULT.contains(&"homeassistant"));
     }
 
     #[test]

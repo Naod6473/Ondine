@@ -52,6 +52,8 @@ use serde_json::{json, Value};
 use super::askclaude_compat as compat;
 use super::askclaude_providers::{self as providers, Attachment, Call, Provider, Request, Turn};
 use super::askclaude_pc as pc;
+// Home Assistant : Assist d'abord, et l'outil « maison » (askclaude_home.rs).
+use super::askclaude_home as home;
 use super::askclaude_quick as quick;
 use super::askclaude_voice as speech;
 use super::askclaude_tools::{self as tools, Found};
@@ -217,6 +219,8 @@ enum Action {
     Read { numero: u64, name: String, text: String },
     Create { name: String, content: String },
     Pc(pc::Act),
+    /// Home Assistant : un appareil sensible attend votre clic.
+    Home(home::Order),
 }
 
 /// Un fichier joint préparé : montré, puis envoyé tel quel.
@@ -450,6 +454,18 @@ impl RustModule for AskClaude {
                         exchange.activity.push(json!({ "kind": "refused-act", "what": act.what, "value": act.value }));
                         json!({ "refus": "la personne a refusé" })
                     }
+                    (false, Action::Home(order)) => {
+                        home::cancel(ctx, &order);
+                        exchange.activity.push(json!({ "kind": "refused-act", "what": "home", "value": order.label }));
+                        json!({ "refus": "la personne a refusé" })
+                    }
+                    (true, Action::Home(order)) => match home::perform(ctx, &order) {
+                        Ok((result, line)) => {
+                            exchange.activity.push(line);
+                            result
+                        }
+                        Err(e) => json!({ "erreur": e }),
+                    },
                     (true, Action::Pc(act)) => match pc::perform(ctx, &act) {
                         Ok((result, line)) => {
                             ctx.log_info(format!("action d'Ondine : {}", act.what));
@@ -536,10 +552,17 @@ impl RustModule for AskClaude {
             // et gardée dans la conversation ; sinon `handled: false`.
             "quick" => {
                 let text: String = args.get("text").and_then(Value::as_str).unwrap_or("").trim().chars().take(MAX_MESSAGE).collect();
-                if ctx.settings().get("quickCommands").and_then(Value::as_bool) == Some(false) {
-                    return Ok(json!({ "handled": false }));
-                }
-                let Some(call) = quick::parse(&text) else { return Ok(json!({ "handled": false })) };
+                let quick_on = ctx.settings().get("quickCommands").and_then(Value::as_bool) != Some(false);
+                let Some(call) = quick_on.then(|| quick::parse(&text)).flatten() else {
+                    // Home Assistant, Assist d'abord : « allume la lumière du salon » sans IA.
+                    let Some(answer) = home::assist(ctx, &text) else { return Ok(json!({ "handled": false })) };
+                    let mut turns = self.turns.locked();
+                    turns.push(Turn { user: true, text, attachment: None, notes: None });
+                    turns.push(Turn { user: false, text: answer.clone(), attachment: None, notes: Some("[Fait par Assist de Home Assistant, sans IA]".into()) });
+                    let keep = turns.len().saturating_sub(MAX_TURNS * 2);
+                    turns.drain(..keep);
+                    return Ok(json!({ "handled": true, "answer": answer, "activity": [], "home": true }));
+                };
                 let step = pc::plan_local(ctx, &call, &self.found.locked());
                 let (result, line) = match step {
                     pc::Step::Done(result, line) => (result, line),
@@ -642,6 +665,9 @@ impl AskClaude {
             if (pc_tools(ctx) || !x.extra.is_empty()) && !no_tools {
                 offered.extend(pc::tools());
             }
+            if (home::offered(ctx) || !x.extra.is_empty()) && !no_tools {
+                offered.push(home::tool());
+            }
             let (url, body) = providers::request(
                 x.provider,
                 &Request { model: &x.model, max_tokens: max_tokens(ctx), system: &x.system, turns: window(&x.turns), tools: &offered, extra: &x.extra },
@@ -682,6 +708,15 @@ impl AskClaude {
     fn tool(&self, ctx: &ModuleContext, x: &mut Exchange, call: &Call) -> Step {
         let numero = call.args.get("numero").and_then(Value::as_u64).unwrap_or(0);
         let err = |e: String| Step::Done(json!({ "erreur": e }));
+        if call.name == home::TOOL {
+            return match home::plan(ctx, call) {
+                home::Step::Done(result, line) => {
+                    x.activity.extend(line);
+                    Step::Done(result)
+                }
+                home::Step::Ask(order) => Step::Ask(Action::Home(order)),
+            };
+        }
         if pc::owns(&call.name) {
             match tool_choice(ctx, PC_TOOLS) {
                 Some(false) => return err("les outils du PC sont désactivés dans les réglages".into()),
@@ -807,6 +842,7 @@ fn ask_json(id: u64, action: &Action, destination: &str, ctx: &ModuleContext) ->
             })
         }
         Action::Pc(act) => json!({ "id": id, "kind": "action", "what": act.what, "value": act.value, "destination": destination }),
+        Action::Home(order) => json!({ "id": id, "kind": "action", "what": "home", "value": order.label, "destination": "Home Assistant" }),
         Action::Create { name, content } => json!({
             "id": id,
             "kind": "create",
@@ -983,6 +1019,10 @@ fn system_for(ctx: &ModuleContext, with_tools: bool) -> String {
     if pc_tools(ctx) && with_tools {
         s.push_str("\n\n");
         s.push_str(pc_hint(voice(ctx)));
+    }
+    if let Some(h) = home::hint(ctx, matches!(voice(ctx), Voice::English)).filter(|_| with_tools) {
+        s.push_str("\n\n");
+        s.push_str(&h);
     }
     s
 }

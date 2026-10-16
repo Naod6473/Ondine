@@ -1,0 +1,78 @@
+{
+  "id": "awake",
+  "name": "Rester éveillé",
+  "icon": "☀️",
+  "description": "Garde le PC éveillé le temps qu'il faut (30 min, 1 h, jusqu'à une heure, sans limite, jusqu'à la fin d'un téléchargement ou d'un agent IA) : Ondine boit un café pendant ce temps. Programme aussi l'arrêt, la veille, le redémarrage ou le verrouillage du PC, avec un compte à rebours annulable et un dernier avertissement une minute avant. Rien ne se passe sans votre clic, et les applis ne sont jamais fermées de force : une appli qui a un document à enregistrer peut toujours arrêter l'arrêt.",
+  "tip": "Choisissez une durée : le PC ne se met pas en veille jusque-là.",
+  "version": "0.1.0",
+  "permissions": [],
+  "settings": {
+    "version": 1,
+    "fields": [
+      {
+        "key": "clickDuration",
+        "essential": true,
+        "type": "select",
+        "label": "Durée d'un clic",
+        "help": "Quand vous l'activez d'un clic : le Lanceur (« éveillé », « caféine »), une règle sans durée, ou le double-clic sur Ondine s'il est réglé sur Rester éveillé.",
+        "default": "60",
+        "options": [
+          { "value": "30", "label": "30 min" },
+          { "value": "60", "label": "1 h" },
+          { "value": "120", "label": "2 h" },
+          { "value": "0", "label": "Sans limite" }
+        ]
+      },
+      {
+        "key": "display",
+        "essential": true,
+        "type": "boolean",
+        "label": "Garder aussi l'écran allumé",
+        "help": "Sinon, l'écran s'éteint à l'heure prévue par Windows, mais le PC ne se met pas en veille. L'économiseur d'écran et le verrouillage de Windows gardent leur heure.",
+        "default": false
+      },
+      {
+        "key": "coffee",
+        "type": "boolean",
+        "label": "Ondine boit un café",
+        "help": "Une petite tasse fumante tant que le PC reste éveillé (immobile si Windows réduit les animations).",
+        "default": true
+      },
+      {
+        "key": "pill",
+        "type": "boolean",
+        "label": "Le temps restant dans la mini-île",
+        "help": "Un arrêt programmé s'y affiche toujours.",
+        "default": true
+      },
+      {
+        "key": "planAction",
+        "essential": true,
+        "type": "select",
+        "label": "Action proposée",
+        "default": "shutdown",
+        "options": [
+          { "value": "shutdown", "label": "Éteindre" },
+          { "value": "sleep", "label": "Mettre en veille" },
+          { "value": "restart", "label": "Redémarrer" },
+          { "value": "lock", "label": "Verrouiller" }
+        ]
+      },
+      {
+        "key": "planMinutes",
+        "type": "number",
+        "label": "Délai proposé (minutes)",
+        "default": 60,
+        "min": 1,
+        "max": 1440,
+        "step": 5
+      }
+    ]
+  },
+  "views": ["compact", "expanded"],
+  "commands": ["status", "keep", "stop", "toggle", "plan", "cancel_plan", "snooze_plan"],
+  "events": {
+    "emits": ["awake.state", "awake.warn", "awake.error", "awake.toggle", "agents.busy-ask"],
+    "listens": ["awake.state", "awake.warn", "awake.error", "agents.busy", "awake.toggle", "awake.start", "awake.stop"]
+  }
+}

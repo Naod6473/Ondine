@@ -36,6 +36,8 @@ export const CADENCES = {
   controlsRadios: [1000, 2000, 4000],
   /** Onglet Contrôles : luminosité des écrans (lent à lire). */
   controlsScreens: [5000, 5000, 10000],
+  /** Onglet Home Assistant : l'état des appareils favoris (relu chez Home Assistant). */
+  homeassistantTab: [3000, 5000, 15000],
   /** Agenda : la pilule « Dans 12 min » doit-elle apparaître ? */
   agendaPill: [10000, 10000, 30000],
   /** Agenda : le texte de la pilule (à la minute) et la barre « En cours ». */

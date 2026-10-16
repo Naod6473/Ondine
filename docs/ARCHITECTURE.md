@@ -762,7 +762,9 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `clipboard.paste-plain` | Règles (Rust) | le Presse-papiers colle le texte sans mise en forme |
 | `launcher.open` | Lanceur (Rust, raccourci global) | l'île s'ouvre sur l'onglet Lanceur, recherche prête |
 | `launcher.hotkey-error` `{text}` | Lanceur (Rust) | notification : raccourci déjà pris |
-| `system.disk-low` `{mount, freePct, freeGb}` | Système (Rust, toutes les 30 s) | notification 💽 : disque presque plein |
+| `system.disk-low` `{mount, freePct, freeGb}` | Système (Rust, toutes les 30 s) | notification 💽 : disque presque plein, avec « Voir ce qui prend la place » |
+| `system.disk-scan` `{job, done, cancelled, bytes, files}` | Système (Rust, fil de l'analyse du disque) | le panneau du disque redemande la vue du dossier affiché (`disk_view`) |
+| `system.disk-open` `{mount?}` | Lanceur (« disque », « place ») | l'île s'ouvre sur Système et analyse ce disque (sans `mount` : le plus plein) |
 | `remote.changed` `{favorites: [{id, name, kind, wake}]}` | Accès distants (Rust, et front au démarrage) | le Lanceur met à jour ses serveurs (sans les adresses ni les MAC ; `wake` = a une adresse MAC) |
 | `remote.connect` `{id}` | Lanceur (front) | Accès distants ouvre ce favori |
 | `remote.wake` `{id}` | Lanceur (front) | Accès distants envoie le paquet Wake-on-LAN de ce favori |
@@ -1742,6 +1744,53 @@ l'OCR dans `src-tauri/src/platform/ocr.rs`.
   une alerte « Votre micro est coupé » propose « Rétablir le micro »
   (`controls.mic-set {muted: false}`).
 
+#### « Se voir » avant une réunion (nf16, `src/modules/agenda/selfview.ts`, `selfview-logic.ts`, `src/styles/selfview.css`)
+
+- L'alerte « Réunion dans 2 min » (et le rappel d'une réunion) a « Rejoindre »
+  **et « Se voir »** (`linkAction`). « Se voir » remplace l'alerte (même clé)
+  par une alerte dont le contenu est l'aperçu (`content` de la notification :
+  `mountSelfView(host, api)`), avec « Rejoindre ». Réglage `mirrorMode` :
+  `click` (défaut), `auto` (l'alerte de `agenda.join` montre l'aperçu tout de
+  suite : la caméra s'allume sans clic, au choix de la personne), `off`.
+  Sans réunion : Lanceur « miroir », « caméra », « webcam » → événement
+  `agenda.mirror` (Agenda l'écoute) → même aperçu sans « Rejoindre ».
+- Caméra et micro : deux `getUserMedia` (vidéo 640 × 360, son sans
+  traitement) dans deux `AsyncResource` (comme le QR de l'Équipe, qr.ts :
+  une ouverture tardive après fermeture est relâchée aussitôt). Ils se
+  ferment dans la fonction rendue par `mountSelfView`, que l'île appelle dès
+  que la carte disparaît (×, fin du délai, autre alerte, pause), et par
+  `closeSelfView()` au début de `join()` : Teams / Meet / Zoom trouvent la
+  caméra libre. Un seul aperçu à la fois. Délai : 5 min après le début de la
+  réunion (10 min au plus, 10 min sans réunion). Points vert / orange sur
+  l'image tant que chaque flux est ouvert. Rien n'est enregistré ni envoyé.
+- Jauge : `AnalyserNode` (non relié aux haut-parleurs), moyenne quadratique
+  en dB de −60 à 0 (`meterLevel`), montée immédiate et descente douce
+  (`smoothLevel`). Une seule boucle `frameLoop` (arrêtée île cachée, 30 i/s en
+  Économie) ; une fois par seconde, la luminance moyenne d'une image de
+  32 × 18 (`meanLuma`) décide « Image sombre » avec un écart 55 / 70
+  (`tooDark`).
+- Appareils : on retient le **nom** (`mirrorCamera`, `mirrorMic`, écrits par
+  `settingsStore.update` quand on choisit dans l'aperçu), retrouvé dans
+  `enumerateDevices` (`pickDevice`) ; les noms n'existent qu'après
+  l'autorisation, donc au premier aperçu celui de Windows s'ouvre puis on
+  passe sur le choisi. Menus : `glassSelect(select, { menuClass:
+  "selfview-menu" })` (option ajoutée à glass-select.ts ; le CSS de l'île est
+  rangé sous `.selfview` / `.selfview-menu`, ce fichier étant aussi chargé
+  par les Réglages).
+- Micro coupé : commande Rust `mic` (même règle que `join` : Core Audio, si
+  Contrôles est actif) puis `controls.mic-muted` en direct ; « Rallumer le
+  micro » publie `controls.mic-set {muted: false}`. Ondine fait un clin d'œil
+  (`mascot.emote {emotion: "wink"}`) quand l'image arrive.
+- Réglages : la page Agenda a deux sous-menus (`MODULE_SECTIONS.agenda` :
+  « Calendriers », « Avant une réunion » = `joinMin`, `mirrorMode`,
+  `mirrorCamera`, `mirrorMic`). Caméra et micro préférés sont dessinés par
+  `src/settings/selfview-devices.ts` (`PAGE_DRAWN`), menus en verre, avec
+  `data-field` pour « Modifié ».
+- Permission : rien de propre à Ondine ; WebView2 applique son comportement
+  par défaut (sa boîte de demande), comme pour la webcam du QR. À vérifier
+  sous Windows : `docs/tests/TESTS-nf16-miroir.md`. Tests :
+  `tests/front/selfview.test.ts`.
+
 ## Phase 7 : automatisation
 
 ### Module Terminal (`src/modules/terminal/`, `src-tauri/src/modules/terminal.rs`)
@@ -1949,6 +1998,45 @@ s'il n'existe pas ou est désactivé).
   n'est là (5 min sans clavier ni souris : il attend le retour). La règle est
   dans `reboot-text.ts` (testée).
 
+#### « Qu'est-ce qui remplit mon disque ? » (NF16, `system_disk.rs`, `platform/diskuse.rs`, `system/disk-view.ts`, `disk-logic.ts`)
+
+- Entrées : le bouton « Voir ce qui prend la place » de la notification
+  `system.disk-low`, le bouton 🔍 de chaque ligne de disque de l'onglet, le
+  Lanceur (« disque », « place » → `system.disk-open {}` : le disque fixe le
+  plus plein). Le panneau prend la place du contenu de l'onglet.
+- Analyse (`disk_scan {path}` → `{job}`, chemin validé par `check_path`) : un
+  fil à part, une seule analyse à la fois (une nouvelle arrête l'ancienne),
+  annulable (`disk_cancel {job, forget?}` ; le module coupé l'arrête aussi).
+  `read_dir` seulement (sous Windows, taille et attributs sans ouvrir le
+  fichier) ; liens et jonctions jamais suivis (`file_type().is_symlink()`,
+  qui sous Windows couvre les jonctions mais pas les dossiers OneDrive) ;
+  dossier fermé = « ignoré », sans erreur ; dossiers exclus (Confidentialité)
+  ni lus ni montrés. Taille sur le disque : arrondie à 4 Ko, 0 pour un
+  fichier en ligne seulement, `GetCompressedFileSizeW` pour un fichier
+  compressé ou creux. Mémoire bornée : un nœud par dossier jusqu'à 12
+  niveaux et 80 000 dossiers, au-delà les octets vont au dernier dossier
+  gardé ; pas plus bas que 64 niveaux.
+- Progression : `system.disk-scan {job, done, cancelled, bytes, files}` au
+  plus toutes les 400 ms ; le front redemande alors `disk_view {job, node}`
+  (le dossier affiché : 40 sous-dossiers au plus, les 6 plus gros fichiers,
+  « autres »). Barres ou carte proportionnelle (« squarified »,
+  `treemap()` de disk-logic.ts), choix gardé dans `localStorage`.
+  `disk_open {job, node}` / `{path}` : l'Explorateur.
+- Nettoyage (`disk_estimate`, puis `disk_clean {kind, paths?}` confirmé côté
+  front ; deux commandes « lentes » de `services/work.rs`) : `trash`
+  (`SHEmptyRecycleBinW` sans fenêtre), `temp` (%TEMP%, fichiers de plus de
+  24 h ; un fichier ouvert refuse la suppression et il est sauté, puis les
+  dossiers vides et anciens), `thumbs` (thumbcache_*.db de l'Explorateur),
+  `downloads` (éléments posés dans Téléchargements, inchangés depuis
+  `oldDownloadsDays` jours, hors cachés / système / liens / exclus ;
+  revérifiés un par un au moment du clic ; ENVOYÉS À LA CORBEILLE avec
+  « Annuler »). Rien d'autre n'est jamais supprimé.
+- Ondine : `task.started` / `task.finished` (ou `task.failed`) autour du
+  nettoyage, et `mascot.scene {scene: "sweep"}` (coup de balai, joué si
+  l'onglet Système est ouvert ; un geste sous « réduire les animations »).
+- Réglages : sous-menus Général / Batterie / Disques (`MODULE_SECTIONS` de
+  settings/main.ts) ; Disques = `diskAlertPct` et `oldDownloadsDays`.
+
 ### Module Accès distants (`src/modules/remote/`, `src-tauri/src/modules/remote.rs`)
 
 - Favoris RDP et SSH dans `%APPDATA%\Ondine\remote.json` : nom, type,
@@ -2007,6 +2095,59 @@ s'il n'existe pas ou est désactivé).
   Bus : `nettools.ai-status {services, change}` (notifications, point rouge
   de la mini-île, conseil « Claude a un incident en cours » sur les
   événements d'agents) et `mascot.emote` (inquiet / soulagé).
+
+### Module Mises à jour des logiciels (`src/modules/updates/`, `src-tauri/src/modules/updates.rs`, `updates_parse.rs`)
+
+- winget (App Installer) fait le travail. Chemin : l'alias
+  `%LOCALAPPDATA%\Microsoft\WindowsApps\winget.exe` (vu par
+  `symlink_metadata`, l'alias ne passe pas `is_file()`), sinon `find_program`.
+  Absent : l'onglet le dit et ouvre la page d'App Installer du Store
+  (`get_winget`, `ms-windows-store://pdp/?productid=9NBLGGH4NNS1`).
+- Lancé sans shell, chaque argument à part, `CREATE_NO_WINDOW`, depuis le
+  dossier temporaire. Liste : `upgrade --accept-source-agreements
+  --disable-interactivity` (relancé sans ce dernier si winget répond
+  0x8A150002, trop ancien). Une appli : `upgrade --id <Id> -e --silent
+  --accept-package-agreements --accept-source-agreements` (+ `--source`).
+  L'ID passe `valid_id` (ASCII, « . - _ + », pas de « - » au début, 128 au
+  plus) ET doit être dans la dernière liste lue.
+- Lecture (`updates_parse.rs`, pure, testée sur des sorties FR / EN / chinoises) :
+  séquences ANSI et morceaux réécrits par « \r » (roue, barres) enlevés ; la
+  ligne de tirets repère un tableau, la ligne au-dessus donne le début de
+  chaque colonne ; découpe en largeur d'affichage (caractère large = 2) ;
+  une ligne qui n'a pas une espace avant chaque colonne n'en est pas une
+  (bas de tableau) ; sinon relecture par la droite seulement si le dernier mot
+  est une source connue. ID coupé par winget (« … ») : ligne laissée de côté.
+  Second tableau (« ciblage explicite ») : `explicit`. Avancement : « 12 MB /
+  48 MB » ou « 42% », phase téléchargement / installation par mots-clés.
+- Résultat (`Outcome`) d'après le code de sortie (HRESULT de winget, codes
+  MSI 3010 / 1641) et la sortie : ok, reboot, upToDate, admin, cancelled,
+  inUse, busy, diskFull, network, hash, policy, noInstaller, notFound,
+  unsupported, timeout, failed. Le front écrit la phrase (`OUTCOME_TEXT`,
+  traduite). « Demande les droits d'administrateur » propose
+  `upgrade_admin` : la même commande dans une console élevée (`run_as_admin`,
+  `--wait`), dont Ondine ne connaît pas le résultat.
+- La file (un fil) : une à la fois ; `cancel` / `cancel_all` retirent ce qui
+  n'a pas commencé, celle en cours ne s'arrête pas (30 min au plus, sinon
+  arrêtée : timeout). Module coupé : la file s'arrête après celle en cours.
+  `task.started` puis `task.finished` (ou `task.failed` si tout a échoué),
+  envoyés par `bus::emit` même module coupé ; après chaque appli
+  `mascot.emote` : cheer, yawn (redémarrage), shy (annulée), pensive (échec).
+- Bus : `updates.changed` (l'onglet redemande `status`), `updates.progress`
+  `{id, phase, pct, index, total}` (4 fois par seconde au plus, seule la barre
+  est redessinée), `updates.available` `{count, fresh, scheduled, echo?}`
+  (pastille, notification si `scheduled` et du nouveau), `updates.finished`
+  `{ok, failed, reboot}`. Écoute `updates.check` (Lanceur).
+- Vérification automatique (`checkEvery` : off par défaut, daily, weekly) :
+  un fil regarde chaque minute (première fois 3 min après le démarrage).
+  `%APPDATA%\Ondine\updates.json` garde la date et la liste.
+- Applis ignorées : le réglage texte `ignored` (un ID par ligne), donc export,
+  « Modifié » et Annuler ; « Ne plus proposer » l'écrit par `update_settings`.
+- Pastille : `.upd-dot` dans island.ts (`wireUpdatesDot`, `data-updates`),
+  styles dans `src/styles/updates.css` (chargé avec le module). Réglage `dot`.
+- Réglages : catégorie Outils IT, sous-menus Vérification et Applis ignorées
+  (`MODULE_SECTIONS`). Lanceur : « Chercher les mises à jour des logiciels ».
+- Tests : `updates_parse.rs` / `updates.rs` (Rust), `tests/front/updates.test.ts` ;
+  à faire sur Windows : `docs/tests/TESTS-nf16-majlog.md`.
 
 ### Module Contrôles (`src/modules/controls/`, `src-tauri/src/modules/controls.rs`, `src-tauri/src/platform/audio.rs`)
 
@@ -4609,3 +4750,139 @@ format, Ondine l'avale, mâche, recrache le nouveau fichier. Idées reprises de 
   vidéo → GIF (MediaTranscoder ne sait pas écrire de GIF : il faudrait
   décoder les images une à une), WebP avec perte, métadonnées gardées pour
   HEIC (WIC les lit, on ne les recopie pas).
+
+## Rester éveillé et arrêt programmé (`src/modules/awake/`, `src-tauri/src/modules/awake.rs`, `awake_logic.rs`, `platform/power.rs`)
+
+Module `awake`, « Le PC au quotidien », **coupé par défaut**
+(`MODULES_OFF_BY_DEFAULT`, Rust et TS) ; activé, rien ne se passe sans clic.
+
+- **Éveil** (façon Caffeine) : 30 min, 1 h, 2 h, sans limite, jusqu'à une
+  heure, jusqu'à la fin du téléchargement en cours, jusqu'à ce que l'agent IA
+  ait fini ; option « Garder aussi l'écran allumé ». Un **fil Rust dédié**
+  (`run`) appelle `SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED
+  [| ES_DISPLAY_REQUIRED])` (la demande appartient à ce fil) et la relâche
+  (`ES_CONTINUOUS` seul) à la fin de la durée, à « Arrêter », module
+  désactivé (le fil vérifie `is_active` à chaque tour), et à la fermeture
+  d'Ondine (`awake::release_now`, depuis `RunEvent::Exit` de lib.rs ; un
+  plantage la relâche aussi : Windows l'oublie avec le fil). Le fil dort
+  (`recv` sans délai) tant que rien n'est en cours ; sinon un tour par seconde.
+- **Fin d'un téléchargement** : un fichier partiel (`.crdownload`, `.part`,
+  `.partial`, `.download`, `.opdownload`) modifié il y a moins de 5 min dans
+  le dossier Téléchargements, lu toutes les 3 s seulement quand on l'attend ;
+  « fini » = deux lectures de suite sans rien (`DownloadWatch`). Même dossier
+  que l'Étagère (`platform::downloads_dir`), indépendant de son réglage.
+- **Fin d'un agent** : Agents IA publie `agents.busy {working}` quand le
+  nombre de sessions au travail change (quel que soit son réglage « mascot »)
+  et répond à `agents.busy-ask` (posé par awake au premier `status`).
+  « Fin du téléchargement / de l'agent » est refusé s'il n'y en a pas en cours.
+- **Arrêt programmé** : éteindre, veille, redémarrer, verrouiller ; dans N min,
+  à une heure (instant calculé dans l'heure locale par le front, vérifié : au
+  plus 48 h), ou à la fin du téléchargement / de l'agent. La commande `plan`
+  exige `confirmed: true` (envoyé seulement par le bouton « Confirmer » de
+  l'onglet). Toujours un **dernier avertissement 60 s avant** (`awake.warn`) :
+  alerte `critical` qui compte les secondes, « Annuler » et « Encore 15 min » ;
+  une heure déjà passée sans avertissement (PC sorti de veille, fin d'un
+  téléchargement) est repoussée de 60 s (`plan_step`, testé). Éteindre /
+  redémarrer : `InitiateShutdownW` sans `SHUTDOWN_FORCE_*`, délai 0 (le compte
+  à rebours est celui d'Ondine), après avoir allumé `SeShutdownPrivilege` ;
+  veille : `SetSuspendState(false, false, false)` ; verrouiller :
+  `LockWorkStation`. Pas de `shutdown.exe` (`/t` > 0 y implique `/f`). Rien
+  n'est écrit sur le disque : un arrêt programmé ne survit pas à un redémarrage
+  d'Ondine.
+- **Île** : vue compacte (placée juste après Notes d'appel dans `ALL_MODULES`)
+  = l'arrêt programmé (toujours) ou « Éveillé · 1:23:45 » (réglage `pill`),
+  avec « Annuler » / « Arrêter » ; onglet à deux volets (Éveil, Arrêt
+  programmé). Double-clic sur Ondine : nouvelle action `awake`
+  (`mascot.doubleClick`) qui publie `awake.toggle`. Lanceur : « éveillé »,
+  « caféine » (`awake.toggle`), « éteindre », « arrêt » (ouvre l'onglet).
+- **Mascotte** : `MascotExtras.coffee` (mascot-state.ts écoute `awake.state`,
+  champ `coffee` = réglage « Ondine boit un café ») ; gum-draw.ts
+  `drawCoffee` : une tasse au trait contre son flanc droit, sous la moufle de
+  repos, deux filets de vapeur. Montrée même en « Calme » (une information) ;
+  « Réduire les animations » : image fixe (le moteur ne redessine pas).
+- **Règles** : action `awake {minutes}` (0 = la durée d'un clic) → `awake.start`.
+  Pas d'arrêt du PC par une règle (il faut une confirmation à chaque fois).
+- **Écran de veille d'Ondine** (screensaver.rs) : inchangé, il ne demande
+  toujours rien à Windows. Les deux cohabitent : l'économiseur d'Ondine se
+  base sur l'inactivité du clavier et de la souris (GetLastInputInfo), que
+  SetThreadExecutionState ne change pas ; il peut donc s'afficher pendant un
+  éveil, et l'économiseur / le verrouillage de Windows gardent leur heure.
+- **Bus** : `awake.state {keep, plan, downloading, agentBusy, coffee}`,
+  `awake.warn {action, at}`, `awake.error {message}`, `awake.toggle`,
+  `awake.start {minutes}`, `awake.stop`, `agents.busy {working}`,
+  `agents.busy-ask`.
+- Réglages (deux sous-menus, `MODULE_SECTIONS.awake`) : Éveil (`clickDuration`,
+  `display`, `coffee`, `pill`), Arrêt programmé (`planAction`, `planMinutes`).
+- Tests : `awake_logic.rs` (durées, confirmation, avertissement, report,
+  « Encore 15 min », noms de fichiers partiels), `tests/front/awake.test.ts`
+  (textes, heure locale, arguments, traductions) ; à faire sur Windows :
+  `docs/tests/TESTS-nf16-eveil.md`.
+
+## Home Assistant (nf16, `src-tauri/src/modules/homeassistant.rs`, `homeassistant_logic.rs`, `askclaude_home.rs`, `src/modules/homeassistant/`, `src/settings/homeassistant-page.ts`)
+
+Module `homeassistant` (« Home Assistant », pas de logo : icône 🏡 au trait
+`icons-line/homeassistant.svg`), catégorie « Le PC au quotidien », **coupé par
+défaut** (`MODULES_OFF_BY_DEFAULT`, Rust et front). Permissions `network`,
+`credentials`.
+
+- **Connexion** : réglage `url` vérifié par `base_url` (http(s)://hôte[:port][/chemin],
+  sans identifiant, `?`, `#`) ; jeton longue durée dans le Gestionnaire
+  d'identifiants (`homeassistant-token`, champ `secret`), lu seulement dans le
+  Rust, jamais renvoyé ni journalisé. Client `ureq` (TLS de Windows),
+  `proxy(None)`, `max_redirects(0)` : rien ne part ailleurs qu'à l'adresse
+  donnée ; `insecure` (coupé) = `disable_verification` pour un certificat
+  auto-signé. Erreurs traduites sans recopier le jeton ni l'adresse complète.
+- **API REST** : `GET /api/config` (« Tester la connexion »), `GET /api/states`
+  (favoris, liste des appareils ; gardée 10 min en cache pour le tri des
+  phrases), `GET /api/states/<id>` (classe et bornes avant une action),
+  `POST /api/services/<domaine>/<service>` (la réponse donne le nouvel état),
+  `POST /api/template` (pièces via `area_name`, facultatif : compte
+  administrateur), `POST /api/conversation/process` (Assist).
+- **Sécurité** : domaines `DOMAINS` et services `services(domaine)` en liste
+  fermée, valeurs bornées (`service_data`). Sensible = `lock`,
+  `alarm_control_panel`, `cover` de classe garage / gate / door (un volet
+  illisible est traité comme sensible), et les ids de `values.sensitive`.
+  `call` sur un sensible renvoie `{confirm: {id, label}}` (gardé 5 min) ; rien
+  avant `confirm_call {id}` ; `source: "rule"` est refusé.
+- **Favoris** : `values.favorites` = `[{id, name, area}]` (hors des champs du
+  manifeste, comme `dropPills` de l'Étagère : exportés, annulables),
+  `values.sensitive` = `[id]`. 60 au plus.
+- **Île** : vue `expanded` (pastilles `.ctl-toggle` dans des `.ctl-card` par
+  pièce, `byArea`), clic = `mainService` + réglages fins dessous (luminosité,
+  position, consigne, volume) ; barre `.ha-confirm` pour un sensible (30 s).
+  Relue par `pacedInterval(…, "homeassistantTab", true)` seulement tant que
+  la vue est montée et la fenêtre visible. Carte d'Accueil « Maison »
+  (`load` toutes les 30 s seulement quand l'Accueil est affiché, 3 boutons non
+  sensibles). Pas dans l'onglet Contrôles (il faudrait qu'un module appelle
+  les commandes d'un autre).
+- **Voix** (`askclaude_home.rs`) : la commande `quick` de Parler à Ondine,
+  après les commandes rapides, appelle `homeassistant.assist {text}` si le
+  module est actif. `assist` : réglage `assistFirst` (vrai par défaut) ;
+  `looks_like_home` (mots de la maison FR/EN, ou un nom de favori, de pièce,
+  d'appareil connu ; 16 mots au plus) sinon rien ne part ; `mentions_sensitive`
+  (serrure, alarme, garage, portail, porte, ou le nom d'un sensible) : jamais
+  envoyé à Assist (Assist agirait sans confirmation) ; puis
+  `/api/conversation/process` avec la langue de l'appli. `parse_assist` :
+  géré si `action_done`, `query_answer`, ou une erreur autre que
+  `no_intent_match` / `no_valid_targets`. Géré : la réponse d'Assist
+  devient la bulle d'Ondine (tour gardé avec la note « [Fait par Assist…] »),
+  sans IA.
+- **Outil `maison`** (réglage `aiTool`, coupé) : décrit seulement si le module
+  est actif, l'outil allumé et qu'il y a des favoris ; la consigne liste les
+  favoris (nom, pièce, id). `ai_call` n'accepte qu'un favori ; `etat` lit
+  l'état. Sensible → `Action::Home` (carte « Faire / Annuler » d'askclaude.rs,
+  `confirm_call` au clic, `cancel_call` au refus). Activité `{kind: "did",
+  what: "home", value}` (phrase faite par le Rust, dans la langue de l'appli).
+- **Réaction** (réglage `react`) : lumière allumée → `mascot.emote wink`,
+  scène → `happy`.
+- **Règles** : action `homeAssistant {entity, service, value?}`
+  (`rules/model.rs`, validée par `service_data`), exécutée par
+  `homeassistant.call` avec `source: "rule"` ; proposée dans l'éditeur
+  seulement quand le module est activé, avec les favoris en liste.
+- **Réglages** : `MODULE_SECTIONS.homeassistant` = Connexion (`url`,
+  `token`, `insecure` + « Tester la connexion »), Appareils favoris
+  (`homeCard` + vos favoris, « Afficher les appareils », recherche, Sensible),
+  Voix (`assistFirst`, `aiTool`, `react` + « Comment ça marche »).
+- Tests : `homeassistant_logic.rs` (JSON réalistes de `/api/states` et de
+  `/api/conversation/process`), `homeassistant.rs` (faux serveur HTTP local
+  sur 127.0.0.1), `tests/front/homeassistant.test.ts`.

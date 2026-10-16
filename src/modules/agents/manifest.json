@@ -334,9 +334,11 @@
       "capture.request",
       "mascot.emote",
       "agents.live",
-      "agents.todos"
+      "agents.todos",
+      "agents.busy"
     ],
     "listens": [
+      "agents.busy-ask",
       "agents.event",
       "agents.live",
       "agents.todos",

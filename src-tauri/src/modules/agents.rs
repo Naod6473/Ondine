@@ -315,7 +315,10 @@ impl RustModule for Agents {
                 before > 0 && st.working() == 0
             };
             if emptied {
-                super::with_context(&a, ID, |ctx| ctx.emit("claude.done", Value::Null));
+                super::with_context(&a, ID, |ctx| {
+                    ctx.emit("claude.done", Value::Null);
+                    ctx.emit("agents.busy", json!({ "working": 0 }));
+                });
             }
         });
     }
@@ -325,6 +328,11 @@ impl RustModule for Agents {
     fn on_event(&self, ctx: &ModuleContext, msg: &BusMessage) {
         if msg.topic == "capture.done" {
             return capture_done(&self.state, &msg.payload);
+        }
+        // Rester éveillé (module awake) demande combien de sessions travaillent.
+        if msg.topic == "agents.busy-ask" {
+            let working = self.state.locked().working();
+            return ctx.emit("agents.busy", json!({ "working": working }));
         }
         if msg.topic != "agents.launch" {
             return;
@@ -1717,6 +1725,12 @@ fn receive(app: &AppHandle, state: &Shared, bytes: &[u8]) {
         let discreet = discreet::stay_discreet(on("quietWhenWatching"), event.kind, || watching_session(state, &event.session));
         if discreet {
             log::debug("agents : discrète (fenêtre de la session au premier plan)");
+        }
+        // Le nombre de sessions au travail change (Rester éveillé attend
+        // « jusqu'à ce que l'agent ait fini ») : quel que soit le réglage « mascot ».
+        if started || finished {
+            let working = state.locked().working();
+            ctx.emit("agents.busy", json!({ "working": working }));
         }
         if on("mascot") {
             if started {

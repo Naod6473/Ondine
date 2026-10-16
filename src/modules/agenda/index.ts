@@ -7,7 +7,9 @@
 // Un peu avant un rendez-vous, il publie "agenda.reminder" : l'île s'ouvre en alerte.
 // Deux minutes avant une réunion en ligne, "agenda.join" : « Réunion dans
 // 2 min » avec « Rejoindre » (lien ouvert, musique en pause, et un mot si le
-// micro est coupé, avec « Rétablir le micro »).
+// micro est coupé, avec « Rétablir le micro ») et « Se voir » : l'aperçu de la
+// caméra et la jauge du micro dans l'île (selfview.ts), fermés dès qu'on
+// rejoint ou que l'aperçu disparaît. Aussi depuis le Lanceur (« miroir »).
 //
 // Un clic sur un rendez-vous qui a un lien (réunion Teams, Meet, Zoom, page
 // web) l'ouvre : commande "open". On ne connaît que la SORTE de lien ;
@@ -24,6 +26,8 @@ import { el } from "../../island/dom";
 import { icon } from "../../island/icon";
 import { reducedMotion } from "../../island/tab-pill";
 import { pacedInterval, setText } from "../../core/perf";
+import { closeSelfView, mountSelfView } from "./selfview";
+import { mirrorMode } from "./selfview-logic";
 
 interface Meeting {
   key: string;
@@ -165,6 +169,8 @@ async function openLink(api: ModuleApi, m: Meeting) {
  * le rétablir.
  */
 async function join(api: ModuleApi, m: Meeting) {
+  // L'aperçu rend la caméra et le micro avant que l'appli de visio les demande.
+  closeSelfView();
   let micMuted = false;
   try {
     const r = await api.invoke<{ micMuted?: boolean } | null>("join", { calendar: m.calendar ?? "", key: m.key });
@@ -186,10 +192,36 @@ async function join(api: ModuleApi, m: Meeting) {
   });
 }
 
-/** Le bouton d'un rendez-vous dans une notification : « Rejoindre » une réunion, « Ouvrir » un lien web. */
+/**
+ * Les boutons d'un rendez-vous dans une notification : « Ouvrir » un lien web ;
+ * pour une réunion, « Rejoindre » et « Se voir » (sauf si l'aperçu est réglé
+ * sur « Jamais »).
+ */
 function linkAction(api: ModuleApi, m: Meeting) {
   if (!m.link) return undefined;
-  return m.link === "web" ? [{ label: "Ouvrir", run: () => void openLink(api, m) }] : [{ label: "Rejoindre", run: () => void join(api, m) }];
+  if (m.link === "web") return [{ label: "Ouvrir", run: () => void openLink(api, m) }];
+  const joinIt = { label: "Rejoindre", run: () => void join(api, m) };
+  return mirrorMode(api.settings().mirrorMode) === "off" ? [joinIt] : [joinIt, { label: "Se voir", run: () => showMirror(api, m) }];
+}
+
+/**
+ * L'aperçu « Se voir » dans l'alerte de l'île : avant une réunion (avec
+ * « Rejoindre »), ou seul (Lanceur : « miroir »). Il se ferme tout seul au
+ * plus tard 5 min après le début de la réunion (10 min sans réunion) : la
+ * caméra ne reste jamais allumée pour rien.
+ */
+function showMirror(api: ModuleApi, m?: Meeting) {
+  const left = m ? m.start - Date.now() : 0;
+  const min = Math.max(0, Math.ceil(left / MINUTE));
+  api.notify({
+    title: !m ? "Miroir : votre image et votre micro" : min > 0 ? `Réunion dans ${min} min : ${m.title}` : `La réunion commence : ${m.title}`,
+    icon: "📷",
+    priority: "high",
+    key: m ? `agenda-${m.key}` : "agenda-mirror",
+    durationMs: m ? Math.min(10 * MINUTE, Math.max(MINUTE, left + 5 * MINUTE)) : 10 * MINUTE,
+    content: (host) => mountSelfView(host, api),
+    actions: m ? [{ label: "Rejoindre", run: () => void join(api, m) }] : undefined,
+  });
 }
 
 /** La pastille de couleur du calendrier. */
@@ -237,6 +269,8 @@ export const agenda: IslandModule = {
 
   setup(api) {
     api.on("agenda.changed", () => void refresh(api));
+    // « Miroir », « caméra » dans le Lanceur : l'aperçu sans réunion.
+    api.on("agenda.mirror", () => showMirror(api));
     api.on("agenda.reminder", (msg) => {
       const { key } = (msg.payload ?? {}) as { key?: string };
       const m = listing.events.find((e) => e.key === key);
@@ -264,6 +298,8 @@ export const agenda: IslandModule = {
         }
         if (!m?.link) return;
         const meeting = m;
+        // Réglage « Automatiquement » : l'aperçu tout de suite, à côté de « Rejoindre ».
+        if (mirrorMode(api.settings().mirrorMode) === "auto") return showMirror(api, meeting);
         const left = meeting.start - Date.now();
         const min = Math.max(0, Math.ceil(left / MINUTE));
         api.notify({
@@ -352,6 +388,7 @@ export const agenda: IslandModule = {
 
     void refresh(api);
     return () => {
+      closeSelfView();
       off();
       stopPill();
       window.clearInterval(recap);

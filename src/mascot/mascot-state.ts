@@ -50,6 +50,8 @@
 //   « poses » montrent le « ? ») :
 //   agents.quiet {on} → les moufles sur les oreilles (concentration)
 //   weather.updated (pluie) → un parapluie au-dessus d'elle
+//   awake.state {keep, coffee} → une tasse de café fumante tant que le PC
+//     reste éveillé (même en « Calme » : c'est une information, pas un geste)
 //   agents.ask → la pancarte « ? » jusqu'à agents.ask.closed (même en « Calme » :
 //     un clic sur elle ouvre alors l'onglet Agents IA, voir island.ts)
 //   mascot.sign {text, secs} → une pancarte avec un mot court (« Occupé »…),
@@ -159,6 +161,8 @@ export class MascotController {
   private quiet = false;
   /** La Météo annonce la pluie. */
   private rainy = false;
+  /** Le PC reste éveillé (module Rester éveillé) : la tasse de café. */
+  private coffee = false;
   /** Ce qu'elle porte en ce moment (renderer.setExtras), pour ne pousser que les changements. */
   private extras: MascotExtras = NO_EXTRAS;
   /** Ce qu'une scène de l'île lui fait porter en plus (parapluie, mains sur les oreilles : src/island/scenes/). */
@@ -368,7 +372,7 @@ export class MascotController {
     const calm = calmMode();
     // La pancarte « ? » d'une question d'agent passe avant un mot (elle attend une réponse).
     const ask = this.asks.size > 0;
-    const next: MascotExtras = { ears: this.quiet && !calm, sign: ask || this.signWord !== "", signText: ask ? "" : this.signWord, umbrella: this.rainy && !calm, ...this.sceneExtras };
+    const next: MascotExtras = { ears: this.quiet && !calm, sign: ask || this.signWord !== "", signText: ask ? "" : this.signWord, umbrella: this.rainy && !calm, coffee: this.coffee, ...this.sceneExtras };
     const same = (Object.keys(next) as (keyof MascotExtras)[]).every((k) => next[k] === this.extras[k]);
     if (same) return;
     this.extras = next;
@@ -482,6 +486,11 @@ export class MascotController {
       if (!calmMode()) this.requestOr("sad", "bored");
     });
     on("system.battery-full", () => moodFollowsPc() && !calmMode() && this.request("happy"));
+    // Rester éveillé : elle boit un café tant que le PC reste éveillé (réglage « coffee »).
+    on("awake.state", (p: { keep?: unknown; coffee?: boolean } | null) => {
+      this.coffee = Boolean(p?.keep) && p?.coffee !== false;
+      this.pushExtras();
+    });
     on("weather.updated", (w: WeatherLike | null) => {
       this.renderer.setWeather?.(w?.icon ?? null);
       this.rainy = isRainy(w);

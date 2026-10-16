@@ -1,0 +1,313 @@
+/* « Qu'est-ce qui remplit mon disque ? » (onglet Système, src/modules/system/disk-view.ts).
+   Les barres glissent à leur nouvelle taille (transform, pas de mise en page),
+   les tuiles de la carte aussi. Les couleurs suivent l'île (thèmes clairs
+   compris) ; sous « réduire les animations », rien ne glisse. */
+
+.disk {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  font-variant-numeric: tabular-nums;
+}
+.disk-head,
+.disk-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.disk-head .btn-row,
+.disk-sub .btn-row {
+  margin: 0 0 0 auto;
+  flex-wrap: nowrap;
+}
+.disk-head .btn,
+.disk-sub .btn {
+  white-space: nowrap;
+}
+.disk-back {
+  min-width: 30px;
+}
+.disk-crumbs {
+  min-width: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+}
+.disk-status {
+  font-size: 12px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.disk-status b {
+  color: var(--island-fg);
+}
+.disk .link-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+}
+.disk .link-btn:hover {
+  text-decoration: underline;
+}
+.disk .btn.danger {
+  background: #ff7a6b;
+  border-color: transparent;
+  color: #1a0b08;
+  font-weight: 600;
+}
+.disk-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+.disk-empty {
+  margin: 18px 0;
+  text-align: center;
+}
+
+/* Les barres */
+.disk-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.disk-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.3fr) 2fr 64px 44px;
+  gap: 10px;
+  align-items: center;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+}
+button.disk-row {
+  cursor: pointer;
+}
+button.disk-row:hover,
+button.disk-row:focus-visible {
+  background: color-mix(in srgb, var(--island-fg) 7%, transparent);
+}
+.disk-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.disk-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--island-fg) 8%, transparent);
+  overflow: hidden;
+}
+.disk-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform 520ms var(--ease);
+}
+.disk-row.files .disk-bar i,
+.disk-tile.files {
+  background: color-mix(in srgb, var(--island-fg) 35%, transparent);
+}
+.disk-row.rest .disk-bar i,
+.disk-tile.rest {
+  background: color-mix(in srgb, var(--island-fg) 16%, transparent);
+}
+.disk-size {
+  text-align: right;
+  white-space: nowrap;
+}
+.disk-pct {
+  text-align: right;
+  font-size: 11px;
+}
+/* Un dossier encore en lecture : il respire doucement. */
+.disk-row.busy .disk-bar i,
+.disk-tile.busy {
+  animation: disk-breathe 1.6s ease-in-out infinite;
+}
+@keyframes disk-breathe {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* La carte proportionnelle */
+.disk-map {
+  position: relative;
+  height: 190px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.disk-tile {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--island-bg) 70%, transparent);
+  border-radius: 6px;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  color: #06223a;
+  font: inherit;
+  font-size: 11.5px;
+  text-align: left;
+  /* Le plus gros en couleur pleine, les suivants de plus en plus pâles. */
+  background: color-mix(in srgb, var(--accent) calc(100% - min(var(--i, 0), 10) * 6%), var(--island-bg));
+  transition:
+    left 480ms var(--ease),
+    top 480ms var(--ease),
+    width 480ms var(--ease),
+    height 480ms var(--ease),
+    filter 150ms ease;
+}
+button.disk-tile {
+  cursor: pointer;
+}
+button.disk-tile:hover,
+button.disk-tile:focus-visible {
+  filter: brightness(1.12);
+}
+.disk-tile.files,
+.disk-tile.rest {
+  color: var(--island-fg);
+}
+.disk-tile .disk-size {
+  text-align: left;
+  opacity: 0.8;
+}
+.disk-tile.tiny > * {
+  display: none;
+}
+
+/* Les plus gros fichiers */
+.disk-big {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.disk-file {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  font-size: 12px;
+  padding: 0 6px;
+}
+
+/* Faire de la place */
+.disk-clean {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.disk-cl {
+  border-radius: 10px;
+  padding: 6px 8px;
+  background: color-mix(in srgb, var(--island-fg) 5%, transparent);
+}
+.disk-cl.empty {
+  opacity: 0.55;
+}
+.disk-cl-main {
+  display: grid;
+  grid-template-columns: 22px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+}
+.disk-cl-main .btn-row {
+  margin: 0;
+}
+.disk-cl-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 13px;
+}
+.disk-cl-text small {
+  font-size: 11px;
+}
+.disk-ask {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  font-size: 12.5px;
+}
+.disk-ask .btn-row {
+  margin: 0 0 0 auto;
+}
+.disk-dl {
+  margin-top: 6px;
+}
+.disk-dl-list {
+  max-height: 128px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.disk-dl-item {
+  display: grid;
+  grid-template-columns: 18px 1fr auto 64px;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+.disk-dl-item:hover {
+  background: color-mix(in srgb, var(--island-fg) 6%, transparent);
+}
+.disk-dl-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12px;
+}
+.disk-dl-foot .btn {
+  margin-left: auto;
+}
+
+/* Le bouton « Voir ce qui prend la place » sur la ligne d'un disque. */
+.sys-disk.lookable {
+  grid-template-columns: 130px 1fr auto auto;
+}
+.sys-disk .sys-disk-look {
+  padding: 1px 7px;
+  font-size: 11px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .disk-bar i,
+  .disk-tile {
+    transition: none;
+  }
+  .disk-row.busy .disk-bar i,
+  .disk-tile.busy {
+    animation: none;
+  }
+}
+
+.disk [hidden] {
+  display: none !important;
+}

@@ -1,0 +1,299 @@
+/* « Se voir » avant une réunion (module Agenda, src/modules/agenda/selfview.ts) :
+   l'aperçu de la caméra (en miroir, coins arrondis), la jauge du micro et les
+   deux menus en verre, dans l'alerte de l'île. Tout est rangé sous .selfview
+   (ou .selfview-menu pour la liste ouverte) : ce fichier est aussi chargé par
+   la fenêtre de réglages, qui a ses propres menus (settings-nav.css). */
+
+.island[data-state="alert"]:has(.notif.custom .selfview) {
+  width: 600px;
+  height: 236px;
+}
+/* Le micro coupé ajoute une ligne : l'île grandit un peu (avec ses ressorts). */
+.island[data-state="alert"]:has(.notif.custom .selfview-muted:not([hidden])) {
+  height: 258px;
+}
+.selfview {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  margin-top: 4px;
+}
+
+/* ── L'image ─────────────────────────────────────────────────────────────── */
+.selfview-stage {
+  position: relative;
+  width: 240px;
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow:
+    inset 0 0 0 1px var(--line),
+    0 8px 22px -12px rgba(0, 0, 0, 0.6);
+  transform-origin: 50% 0;
+}
+.selfview-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Comme dans un miroir : on lève la main droite, l'image aussi. */
+  transform: scaleX(-1);
+}
+.selfview-note {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 10px 14px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.selfview-note[hidden] {
+  display: none;
+}
+/* Les points : vert = caméra, orange = micro (comme sur l'île, privacy-dot). */
+.selfview-dots {
+  position: absolute;
+  top: 8px;
+  left: 9px;
+  display: flex;
+  gap: 5px;
+}
+.selfview-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--d);
+  box-shadow: 0 0 7px var(--d);
+}
+.selfview-dot.cam {
+  --d: #30d158;
+}
+.selfview-dot.mic {
+  --d: #ff9f0a;
+}
+.selfview-dot[hidden] {
+  display: none;
+}
+.selfview-dark {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: #ffd27a;
+  font-size: 11px;
+  text-align: center;
+}
+.selfview-dark[hidden] {
+  display: none;
+}
+
+/* ── Le micro ────────────────────────────────────────────────────────────── */
+.selfview-side {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  align-content: start;
+}
+.selfview-label {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+}
+.selfview-meter {
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.selfview-meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #30d158, #a6e35b 65%, #ffcc4d);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+}
+.selfview-mic-note:empty {
+  display: none;
+}
+.selfview-muted {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 10px;
+  background: rgba(255, 69, 58, 0.14);
+  color: #ff8a80;
+  font-size: 12px;
+}
+.selfview-muted[hidden] {
+  display: none;
+}
+
+/* ── Les menus en verre (glass-select.ts), version île ───────────────────── */
+.selfview-menus {
+  display: grid;
+  gap: 5px;
+}
+.selfview .gsel {
+  display: flex;
+  min-width: 0;
+}
+.selfview .gsel-native {
+  display: none;
+}
+.selfview .gsel-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 4px 8px 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  color: var(--island-fg);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease;
+}
+.selfview .gsel-btn:hover,
+.selfview .gsel-btn[aria-expanded="true"] {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.12);
+}
+.selfview .gsel-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.selfview .gsel-chevron,
+.gsel-menu.selfview-menu .gsel-check {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.selfview .gsel-chevron {
+  transition: transform 320ms var(--ease);
+}
+.selfview .gsel-btn[aria-expanded="true"] .gsel-chevron {
+  transform: rotate(180deg);
+}
+.gsel-menu.selfview-menu {
+  position: fixed;
+  z-index: 80;
+  max-width: 320px;
+  overflow-y: auto;
+  padding: 5px;
+  border-radius: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: color-mix(in srgb, var(--island-bg) 72%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.7);
+  backdrop-filter: blur(20px) saturate(1.7);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 14px 30px -12px rgba(0, 0, 0, 0.55);
+  color: var(--island-fg);
+  font-size: 12px;
+  transform-origin: bottom right;
+  animation: selfview-menu-in 340ms var(--ease) both;
+  scrollbar-width: thin;
+  outline: none;
+}
+.gsel-menu.selfview-menu.out {
+  animation: selfview-menu-out 150ms ease-in both;
+  pointer-events: none;
+}
+body[data-perf="eco"] .gsel-menu.selfview-menu {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: var(--island-bg);
+}
+.gsel-menu.selfview-menu .gsel-option {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  outline: none;
+}
+.gsel-menu.selfview-menu .gsel-option .gsel-check {
+  color: var(--accent);
+  opacity: 0;
+}
+.gsel-menu.selfview-menu .gsel-option[aria-selected="true"] {
+  font-weight: 600;
+}
+.gsel-menu.selfview-menu .gsel-option[aria-selected="true"] .gsel-check {
+  opacity: 1;
+}
+.gsel-menu.selfview-menu .gsel-option:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.gsel-menu.selfview-menu .gsel-hl {
+  position: absolute;
+  top: 0;
+  left: 5px;
+  right: 5px;
+  z-index: 0;
+  border-radius: 8px;
+  pointer-events: none;
+  opacity: 0;
+  background: rgba(255, 255, 255, 0.1);
+  transition:
+    transform 280ms var(--ease),
+    height 280ms var(--ease),
+    opacity 150ms ease;
+}
+@keyframes selfview-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes selfview-menu-out {
+  to {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gsel-menu.selfview-menu,
+  .gsel-menu.selfview-menu.out {
+    animation: none;
+  }
+  .selfview .gsel-chevron,
+  .gsel-menu.selfview-menu .gsel-hl {
+    transition: none;
+  }
+}

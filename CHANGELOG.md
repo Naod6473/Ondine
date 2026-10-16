@@ -244,6 +244,76 @@
   Ondine says hello, swallows the glitter and blows it into three rings of
   what's ready, then the island folds back into the mini island inside a ring
   of light. With sounds; can be turned off in Settings → Appearance.
+- Rester éveillé (nouveau module, désactivé par défaut) : le PC ne se met plus
+  en veille pendant 30 min, 1 h, 2 h, jusqu'à une heure, sans limite, ou
+  jusqu'à la fin d'un téléchargement ou d'un agent IA ; Ondine boit un café
+  pendant ce temps (Lanceur « caféine », double-clic sur Ondine, Règles) ·
+  Stay awake (new module, off by default): the PC no longer sleeps for 30 min,
+  1 h, 2 h, until a set time, with no limit, or until a download or an AI
+  agent finishes; Ondine drinks a coffee meanwhile (Launcher "caffeine",
+  double-click Ondine, Rules)
+- Arrêt programmé : éteindre, mettre en veille, redémarrer ou verrouiller le
+  PC dans N min, à une heure ou à la fin d'un téléchargement ou d'un agent,
+  après confirmation, avec compte à rebours dans l'île et dernier
+  avertissement une minute avant (« Annuler », « Encore 15 min ») ; aucune
+  appli fermée de force · Scheduled shutdown: shut down, sleep, restart or
+  lock the PC in N min, at a set time or when a download or an agent finishes,
+  after confirmation, with a countdown in the island and a last warning one
+  minute before ("Cancel", "15 more min"); no app is force-closed
+- Mises à jour des logiciels (nouveau module, Outils IT) : la liste des applis
+  qui ont une nouvelle version (winget), mises à jour d'un clic ou toutes à la
+  fois, une par une, avec l'avancement et le résultat (réussie, échec avec sa
+  raison, redémarrage demandé) ; vérification d'un clic, ou chaque jour ou
+  chaque semaine (coupée par défaut), une petite pastille sur l'île, des
+  applis à ne plus proposer · Software updates (new module, IT tools): the
+  list of apps that have a new version (winget), updated in one click or all
+  at once, one by one, with progress and the result (done, failed with its
+  reason, restart requested); check on click, or every day or every week (off
+  by default), a small dot on the island, apps to stop suggesting
+- Système : « Qu'est-ce qui remplit mon disque ? » Depuis l'alerte « disque
+  presque plein », la ligne d'un disque ou le Lanceur, les plus gros dossiers
+  en barres ou en carte, on descend d'un clic, puis « Faire de la place » :
+  vieux téléchargements envoyés à la Corbeille, fichiers temporaires, cache
+  des miniatures, Corbeille, chaque fois avec la place gagnée et une
+  confirmation ; Ondine passe le balai · System: "What's filling up my disk?"
+  From the "disk almost full" alert, a disk's row or the Launcher: the biggest
+  folders as bars or a map, click to go deeper, then "Free up space": old
+  downloads sent to the Recycle Bin, temporary files, thumbnail cache, Recycle
+  Bin, each with the space gained and a confirmation; Ondine sweeps up
+- « Se voir » avant une visio : à côté de « Rejoindre », l'île montre votre
+  image en miroir et le niveau du micro, avec le choix de la caméra et du
+  micro, un mot si le micro est coupé (et de quoi le rallumer) ou si l'image
+  est trop sombre ; tout se ferme dès que vous rejoignez la réunion ; aussi
+  depuis le Lanceur (« miroir ») · "See myself" before a video call: next to
+  "Join", the island shows your mirrored picture and the microphone level,
+  with a choice of camera and microphone, a note if the mic is muted (and a
+  way to turn it back on) or if the picture is too dark; everything closes as
+  soon as you join the meeting; also from the Launcher ("mirror")
+- Home Assistant (nouveau module, désactivé par défaut) : vos lumières,
+  prises, volets, scènes, scripts, thermostats et enceintes en pastilles dans
+  l'île, rangés par pièce, et sur une carte de l'Accueil ; à la voix, « Dis
+  Ondine, allume la lumière du salon » passe d'abord par Assist de Home
+  Assistant, sans IA, puis, si vous l'activez, par l'IA de Parler à Ondine
+  avec vos favoris ; serrures, alarme, garage et portails demandent toujours
+  un clic ; adresse et jeton d'accès longue durée, gardé dans le Gestionnaire
+  d'identifiants · Home Assistant (new module, off by default): your lights,
+  plugs, blinds, scenes, scripts, thermostats and speakers as buttons in the
+  island, by room, and on a Home card; by voice, "Hey Ondine, turn on the
+  living room light" first goes to Home Assistant's Assist, with no AI, then,
+  if you turn it on, to Talk to Ondine's AI with your favorites; locks, alarm,
+  garage and gates always need a click; address and long-lived access token,
+  kept in Credential Manager
+- Réglages : sous-menus courts pour Système (Général, Batterie, Disques),
+  Agenda (Calendriers, Avant une réunion), Rester éveillé (Éveil, Arrêt
+  programmé), Mises à jour des logiciels (Vérification, Applis ignorées) et
+  Home Assistant (Connexion, Appareils favoris, Voix) ; Règles : actions «
+  Garder le PC éveillé » et « Home Assistant : appeler un service » (jamais
+  d'arrêt du PC ni d'appareil sensible) · Settings: short submenus for System
+  (General, Battery, Disks), Calendar (Calendars, Before a meeting), Stay
+  awake (Awake, Scheduled shutdown), Software updates (Check, Ignored apps)
+  and Home Assistant (Connection, Favorite devices, Voice); Rules: "Keep the
+  PC awake" and "Home Assistant: call a service" actions (never a shutdown or
+  a sensitive device)
 
 ## 1.2.3 · 2026-10-11
 

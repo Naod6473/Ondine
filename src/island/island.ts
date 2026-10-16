@@ -132,6 +132,8 @@ export class Island {
   private privacyDot = el("span", { class: "privacy-dot", "aria-hidden": "true" });
   /** Un service IA en panne (Réseau → services IA) : pastille rouge dans le coin. */
   private aiDot = el("span", { class: "ai-dot" });
+  /** Mises à jour des logiciels : un point bleu discret tant que des mises à jour attendent (updates.css). */
+  private updatesDot = el("span", { class: "upd-dot" });
   /** Qui utilise le micro et la caméra (message "controls.media-use" du module Contrôles). */
   private mediaUse: { mic: string[]; cam: string[] } = { mic: [], cam: [] };
   private mascot: MascotController | null = null;
@@ -217,7 +219,7 @@ export class Island {
   ) {
     this.fsm = new IslandStateMachine(timingsFrom(settingsStore.current));
     this.fsm.onTransition = (from, to) => this.onTransition(from, to);
-    this.shell.append(this.mascotSlot, this.content, this.privacyDot, this.aiDot);
+    this.shell.append(this.mascotSlot, this.content, this.privacyDot, this.aiDot, this.updatesDot);
     this.root.append(this.shell);
     // Le halo de lumière autour de l'île (halo.ts) : sous elle, sur toute la fenêtre.
     attachHalo(this.root, this.shell, this.bus, () => this.fsm.state);
@@ -372,6 +374,7 @@ export class Island {
     this.wireFocus();
     this.wireRulesQuiet();
     this.wireAiDot();
+    this.wireUpdatesDot();
     // On porte Ondine (sur le bureau) au-dessus de l'île : elle se montre pour l'accueillir.
     void onTauriEvent<boolean>("pet-over-island", (over) => {
       // Île-bouche partie avec elle : la bouche revient le temps de l'accueillir.
@@ -809,7 +812,7 @@ export class Island {
     const action = doubleClickActionOf(settingsStore.current.mascot.doubleClick);
     if (action === "none") return;
     if (!settingsStore.moduleEnabled(ACTION_MODULE[action])) {
-      const names = { ask: "Parler à Ondine", launcher: "Lanceur", capture: "Capture", note: "Notes" };
+      const names = { ask: "Parler à Ondine", launcher: "Lanceur", capture: "Capture", note: "Notes", awake: "Rester éveillé" };
       this.notifications.push({ moduleId: "island", title: `Module « ${names[action]} » désactivé`, body: "Activez-le dans les Réglages, ou choisissez une autre action du double-clic.", icon: "💧", priority: "low", key: "mascot-dblclick" });
       return;
     }
@@ -817,6 +820,7 @@ export class Island {
     if (action === "ask") this.registry.onOpenRequest("askclaude");
     else if (action === "launcher") this.bus.emit("launcher.open");
     else if (action === "capture") this.bus.emit("capture.request", { then: "save" });
+    else if (action === "awake") this.bus.emit("awake.toggle", {});
     else this.bus.emit("notes.quick");
   }
 
@@ -1119,6 +1123,16 @@ export class Island {
       this.shell.dataset.aiOutage = list.length ? "1" : "";
       this.aiDot.title = list.length ? `En panne : ${list.map((s) => s.name).join(", ")}` : "";
       this.aiDot.setAttribute("aria-label", this.aiDot.title);
+    });
+  }
+
+  /** "updates.available" {count} : la pastille des mises à jour de logiciels (réglage « Pastille sur l'île »). */
+  private wireUpdatesDot() {
+    this.bus.on("updates.available", (msg) => {
+      const n = Math.max(0, Number((msg.payload as { count?: number } | null)?.count) || 0);
+      const on = n > 0 && settingsStore.moduleEnabled("updates") && settingsStore.current.modules?.updates?.values?.dot !== false;
+      this.shell.dataset.updates = on ? "1" : "";
+      this.updatesDot.title = on ? (n === 1 ? "1 mise à jour de logiciel" : `${n} mises à jour de logiciels`) : "";
     });
   }
 

@@ -1,0 +1,24 @@
+{
+  "id": "homeassistant",
+  "name": "Home Assistant",
+  "icon": "🏡",
+  "tip": "Cliquez sur un appareil pour l'allumer ou l'éteindre.",
+  "description": "Vos lumières, prises, volets, scènes, scripts, thermostats et enceintes de Home Assistant en boutons dans l'île, et à la voix avec Parler à Ondine (« Dis Ondine, allume la lumière du salon »). Désactivé par défaut. Ondine ne parle qu'à l'adresse que vous donnez (souvent sur votre réseau local), avec un jeton d'accès longue durée gardé dans le Gestionnaire d'identifiants Windows. Les serrures, l'alarme, le garage, les portails et les appareils que vous marquez sensibles demandent toujours un clic de confirmation.",
+  "version": "0.1.0",
+  "permissions": ["network", "credentials"],
+  "settings": {
+    "version": 1,
+    "fields": [
+      { "key": "url", "essential": true, "type": "string", "label": "Adresse", "help": "Par exemple http://homeassistant.local:8123 ou http://192.168.1.20:8123. Ondine n'envoie rien ailleurs.", "default": "", "maxLength": 200 },
+      { "key": "token", "essential": true, "type": "secret", "label": "Jeton d'accès longue durée", "help": "Dans Home Assistant : votre profil → Sécurité → Jetons d'accès longue durée → Créer un jeton. Il est gardé dans le Gestionnaire d'identifiants Windows ; l'île ne peut jamais le réafficher.", "credential": "homeassistant-token", "placeholder": "Coller le jeton ici" },
+      { "key": "insecure", "type": "boolean", "label": "Accepter un certificat auto-signé", "help": "Seulement pour une adresse https dont le certificat n'est pas reconnu par Windows. À laisser coupé sinon.", "default": false },
+      { "key": "homeCard", "type": "boolean", "label": "Carte sur l'Accueil", "help": "Vos premiers favoris en petits boutons sur l'Accueil de l'île.", "default": true },
+      { "key": "assistFirst", "type": "boolean", "label": "Assist d'abord", "help": "Quand vous parlez à Ondine d'un appareil de la maison, la phrase part d'abord à Assist de Home Assistant (sans IA). S'il ne comprend pas, elle continue vers Parler à Ondine.", "default": true },
+      { "key": "aiTool", "type": "boolean", "label": "L'IA peut commander vos favoris", "help": "Si Assist ne comprend pas, l'IA de Parler à Ondine reçoit la liste de vos favoris (noms et pièces) et peut les commander. Les appareils sensibles demandent toujours votre clic.", "default": false },
+      { "key": "react", "type": "boolean", "label": "Ondine réagit", "help": "Une lumière qui s'allume : Ondine cligne de l'œil.", "default": true }
+    ]
+  },
+  "views": ["expanded"],
+  "commands": ["status", "test", "entities", "favorites", "call", "confirm_call", "cancel_call", "assist", "ai_call"],
+  "events": { "emits": ["mascot.emote"], "listens": [] }
+}

@@ -85,6 +85,8 @@ let servers: { id: number; name: string; kind: "rdp" | "ssh"; wake?: boolean }[]
 let agentProjects: { index: number; name: string }[] = [];
 let agentTools: string[] = ["claude"];
 const AGENT_NAMES: Record<string, string> = { claude: "Claude Code", codex: "Codex", gemini: "Gemini CLI" };
+/** Le PC reste éveillé (module Rester éveillé, sujet « awake.state »). */
+let awakeOn = false;
 /** La vue affichée, si elle l'est : pour remettre le focus dans la recherche. */
 let shown: { focus: () => void; redraw: () => void } | null = null;
 
@@ -186,6 +188,31 @@ function islandActions(api: ModuleApi, query: string): Result[] {
     if (on("ttt")) add("game-ttt", "Morpion express", "⭕", ["morpion", "tic tac toe", "jouer", "jeux"], () => (close(), play("ttt-express")()));
     if (on("aquarium")) add("game-aquarium", "Aquarium de gouttes", "🐠", ["aquarium", "gouttes", "jouer", "jeux"], play("aquarium"));
     if (on("race")) add("game-race", "Course de gouttes", "🏁", ["course", "pari", "jouer", "jeux"], play("race"));
+  }
+  // « Se voir » (module Agenda) : l'aperçu de la caméra et du micro, sans réunion.
+  if (settingsStore.moduleEnabled("agenda")) {
+    add("mirror", "Se voir : caméra et micro", "📷", ["miroir", "camera", "webcam", "se voir", "micro", "visio"], () => {
+      close();
+      api.emit("agenda.mirror", {});
+    });
+  }
+  // Mises à jour des logiciels (winget) : l'onglet s'ouvre et la vérification part (Entrée = votre clic).
+  if (settingsStore.moduleEnabled("updates")) {
+    add("updates-check", "Chercher les mises à jour des logiciels", "🔃", ["mises à jour", "maj", "winget", "upgrade", "updates", "logiciels"], () => {
+      api.openIsland("updates");
+      api.emit("updates.check", {});
+    });
+  }
+  // « Qu'est-ce qui remplit mon disque ? » (module Système) : l'analyse du disque le plus plein.
+  if (settingsStore.moduleEnabled("system")) {
+    add("disk", "Voir ce qui prend la place sur le disque", "💽", ["disque", "place", "disque plein", "espace disque", "faire de la place", "nettoyer", "disk", "space"], () => api.emit("system.disk-open", {}));
+  }
+  // Rester éveillé : « éveillé », « caféine »… active ou coupe (durée d'un clic
+  // de ses réglages) ; « éteindre », « arrêt »… ouvre son onglet (confirmation là-bas).
+  if (settingsStore.moduleEnabled("awake")) {
+    const words = ["eveille", "rester eveille", "cafeine", "caffeine", "awake", "pas de veille", "garder allume", "insomnie"];
+    add("awake", awakeOn ? "Ne plus rester éveillé" : "Rester éveillé", "☕", words, () => (api.emit("awake.toggle", {}), close()));
+    add("awake-plan", "Programmer l'arrêt du PC", "📴", ["arret", "eteindre", "shutdown", "mise en veille", "redemarrer", "verrouiller"], () => api.openIsland("awake"));
   }
   add("settings", "Réglages de l'île", "⚙️", ["parametres", "options", "preferences"], async () => {
     await Bridge.openSettingsWindow();
@@ -304,6 +331,9 @@ function listenLists(api: ModuleApi) {
   api.on("remote.changed", (msg) => {
     const list = (msg.payload as { favorites?: typeof servers } | null)?.favorites;
     if (Array.isArray(list)) servers = list;
+  });
+  api.on("awake.state", (msg) => {
+    awakeOn = Boolean((msg.payload as { keep?: unknown } | null)?.keep);
   });
 }
 
