@@ -115,7 +115,8 @@
       "notes.open",
       "capture.pick",
       "easter.word",
-      "games.play"
+      "games.play",
+      "system.disk-open"
     ],
     "listens": [
       "launcher.open",

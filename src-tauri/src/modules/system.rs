@@ -159,6 +159,8 @@ type Shared = Arc<Mutex<State>>;
 #[derive(Default)]
 pub struct SystemInfo {
     state: Shared,
+    /// « Qu'est-ce qui remplit mon disque ? » : l'analyse en cours (system_disk.rs).
+    disk: super::system_disk::DiskScans,
 }
 
 impl RustModule for SystemInfo {
@@ -192,8 +194,67 @@ impl RustModule for SystemInfo {
                 log::info("système : résumé copié pour le support");
                 Ok(Value::Null)
             }
+            // « Qu'est-ce qui remplit mon disque ? » (system_disk.rs).
+            "disk_scan" | "disk_view" | "disk_cancel" | "disk_open" | "disk_estimate" | "disk_clean" => disk_command(ctx, &self.disk, command, &args),
             other => Err(format!("commande inconnue : {other}")),
         }
+    }
+}
+
+/// Les commandes du disque :
+///   - `disk_scan {path}` → {job} : analyse ce dossier (validé : absolu, existant, pas exclu) ;
+///   - `disk_view {job, node}` → la vue d'un dossier de l'analyse (node 0 = le dossier analysé) ;
+///   - `disk_cancel {job, forget?}` : arrête (et oublie) l'analyse ;
+///   - `disk_open {job, node}` ou `{path}` : ouvre ce dossier, ou montre ce fichier, dans l'Explorateur ;
+///   - `disk_estimate {}` → la place que chaque nettoyage libérerait ;
+///   - `disk_clean {kind, paths?}` → {freed, files, skipped, trashed?} (confirmé côté front).
+fn disk_command(ctx: &ModuleContext, disk: &super::system_disk::DiskScans, command: &str, args: &Value) -> Result<Value, String> {
+    use super::system_disk as d;
+    let job = args.get("job").and_then(Value::as_u64).unwrap_or(0);
+    let node = args.get("node").and_then(Value::as_u64).unwrap_or(0).min(u32::MAX as u64) as u32;
+    let days = ctx.settings().get("oldDownloadsDays").and_then(Value::as_u64).unwrap_or(90).clamp(7, 3650);
+    match command {
+        "disk_scan" => {
+            let raw = args.get("path").and_then(Value::as_str).unwrap_or("");
+            let root = ctx.check_path(raw)?;
+            if !root.is_dir() {
+                return Err("ce n'est pas un dossier".into());
+            }
+            Ok(json!({ "job": disk.start(ctx.app, root) }))
+        }
+        "disk_view" => disk.view(job, node),
+        "disk_cancel" => {
+            disk.cancel(job, args.get("forget").and_then(Value::as_bool).unwrap_or(false));
+            Ok(Value::Null)
+        }
+        "disk_open" => {
+            if let Some(raw) = args.get("path").and_then(Value::as_str) {
+                let p = ctx.check_path(raw)?;
+                return if p.is_dir() { files::open_folder(&p) } else { files::reveal(&p) }.map(|_| Value::Null);
+            }
+            let p = ctx.check_path(&disk.path(job, node)?.display().to_string())?;
+            files::open_folder(&p).map(|_| Value::Null)
+        }
+        "disk_estimate" => {
+            ctx.require("files")?;
+            Ok(d::estimate(days, &d::excluded_folders(ctx.app)))
+        }
+        "disk_clean" => {
+            ctx.require("files")?;
+            let kind = args.get("kind").and_then(Value::as_str).unwrap_or("");
+            let paths: Vec<String> = args.get("paths").and_then(Value::as_array).map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect()).unwrap_or_default();
+            let (result, trashed) = d::clean(kind, days, &paths, &d::excluded_folders(ctx.app))?;
+            // Les téléchargements partis à la Corbeille : « Annuler » les remet en place.
+            if let Some(list) = trashed {
+                ctx.offer_undo(
+                    "Téléchargements à la Corbeille",
+                    crate::services::undo::DEFAULT_WINDOW,
+                    Box::new(move || list.iter().try_for_each(|p| files::restore_from_trash(p))),
+                );
+            }
+            Ok(result)
+        }
+        _ => Err(format!("commande inconnue : {command}")),
     }
 }
 

@@ -157,6 +157,12 @@ const MODULE_SECTIONS: Record<string, { id: string; label: string; keys: string[
     { id: "voice", label: "Voix et sons", keys: ["micDevice", "voiceHotkey", "micMode", "voiceEngine", "lookHotkey", "wakeWord", "handsFree", "quickCommands", "plops", "plopVolume", "discreet"] },
     { id: "files", label: "Fichiers et PC", keys: ["fileTools", "pcTools", "filesFolder"] },
   ],
+  // Système : le seuil d'alerte du disque et le nettoyage dans « Disques » (NF16).
+  system: [
+    { id: "general", label: "Général", keys: ["ondineMood", "worldClocks", "rebootReminder"] },
+    { id: "battery", label: "Batterie", keys: ["batteryLowPct", "batteryCriticalPct", "batteryFullAlert"] },
+    { id: "disks", label: "Disques", keys: ["diskAlertPct", "oldDownloadsDays"] },
+  ],
   // Équipe (réseau local).
   team: [
     { id: "general", label: "Général", keys: ["visible", "name", "visits", "autoStatus"] },

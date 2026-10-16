@@ -74,6 +74,8 @@ mod shelf_tools;
 // Écran de veille d'Ondine (1.2.3), désactivé par défaut.
 mod screensaver;
 mod system;
+// Système : « Qu'est-ce qui remplit mon disque ? » (analyse et nettoyage).
+mod system_disk;
 // Équipe : les Ondine du réseau local se parlent (découverte, appairage, échanges chiffrés).
 mod team;
 // Son chat (1.2.2) : conversations à deux, salon « Toute l'équipe », historique.

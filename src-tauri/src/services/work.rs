@@ -49,6 +49,8 @@ fn is_slow(module: &str, command: &str) -> bool {
             "status" | "speed_start" | "speed_stop" | "speed_status"
         ),
         "team" => matches!(command, "qr_scan" | "qr_frame" | "pair"),
+        // Système : l'estimation et le nettoyage du disque parcourent des milliers de fichiers.
+        "system" => matches!(command, "disk_estimate" | "disk_clean"),
         "agents" | "capture" | "weather" => true,
         _ => false,
     }

@@ -57,6 +57,8 @@ pub mod dictation;
 pub mod winnotifs;
 // Ondine convertit (1.2.4) : HEIC / AVIF / TIFF, PDF en images, vidéo et son, sélection dans l'Explorateur. Contient sa propre version Linux.
 pub mod convert;
+// « Qu'est-ce qui remplit mon disque ? » (Système) : taille sur le disque, Corbeille. Contient sa propre version Linux.
+pub mod diskuse;
 
 #[cfg(windows)]
 mod drop_target;

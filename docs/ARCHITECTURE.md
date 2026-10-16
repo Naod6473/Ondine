@@ -762,7 +762,9 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `clipboard.paste-plain` | Règles (Rust) | le Presse-papiers colle le texte sans mise en forme |
 | `launcher.open` | Lanceur (Rust, raccourci global) | l'île s'ouvre sur l'onglet Lanceur, recherche prête |
 | `launcher.hotkey-error` `{text}` | Lanceur (Rust) | notification : raccourci déjà pris |
-| `system.disk-low` `{mount, freePct, freeGb}` | Système (Rust, toutes les 30 s) | notification 💽 : disque presque plein |
+| `system.disk-low` `{mount, freePct, freeGb}` | Système (Rust, toutes les 30 s) | notification 💽 : disque presque plein, avec « Voir ce qui prend la place » |
+| `system.disk-scan` `{job, done, cancelled, bytes, files}` | Système (Rust, fil de l'analyse du disque) | le panneau du disque redemande la vue du dossier affiché (`disk_view`) |
+| `system.disk-open` `{mount?}` | Lanceur (« disque », « place ») | l'île s'ouvre sur Système et analyse ce disque (sans `mount` : le plus plein) |
 | `remote.changed` `{favorites: [{id, name, kind, wake}]}` | Accès distants (Rust, et front au démarrage) | le Lanceur met à jour ses serveurs (sans les adresses ni les MAC ; `wake` = a une adresse MAC) |
 | `remote.connect` `{id}` | Lanceur (front) | Accès distants ouvre ce favori |
 | `remote.wake` `{id}` | Lanceur (front) | Accès distants envoie le paquet Wake-on-LAN de ce favori |
@@ -1948,6 +1950,45 @@ s'il n'existe pas ou est désactivé).
   présentation ou plein écran (`Bridge.deskState().busy`), ni quand personne
   n'est là (5 min sans clavier ni souris : il attend le retour). La règle est
   dans `reboot-text.ts` (testée).
+
+#### « Qu'est-ce qui remplit mon disque ? » (NF16, `system_disk.rs`, `platform/diskuse.rs`, `system/disk-view.ts`, `disk-logic.ts`)
+
+- Entrées : le bouton « Voir ce qui prend la place » de la notification
+  `system.disk-low`, le bouton 🔍 de chaque ligne de disque de l'onglet, le
+  Lanceur (« disque », « place » → `system.disk-open {}` : le disque fixe le
+  plus plein). Le panneau prend la place du contenu de l'onglet.
+- Analyse (`disk_scan {path}` → `{job}`, chemin validé par `check_path`) : un
+  fil à part, une seule analyse à la fois (une nouvelle arrête l'ancienne),
+  annulable (`disk_cancel {job, forget?}` ; le module coupé l'arrête aussi).
+  `read_dir` seulement (sous Windows, taille et attributs sans ouvrir le
+  fichier) ; liens et jonctions jamais suivis (`file_type().is_symlink()`,
+  qui sous Windows couvre les jonctions mais pas les dossiers OneDrive) ;
+  dossier fermé = « ignoré », sans erreur ; dossiers exclus (Confidentialité)
+  ni lus ni montrés. Taille sur le disque : arrondie à 4 Ko, 0 pour un
+  fichier en ligne seulement, `GetCompressedFileSizeW` pour un fichier
+  compressé ou creux. Mémoire bornée : un nœud par dossier jusqu'à 12
+  niveaux et 80 000 dossiers, au-delà les octets vont au dernier dossier
+  gardé ; pas plus bas que 64 niveaux.
+- Progression : `system.disk-scan {job, done, cancelled, bytes, files}` au
+  plus toutes les 400 ms ; le front redemande alors `disk_view {job, node}`
+  (le dossier affiché : 40 sous-dossiers au plus, les 6 plus gros fichiers,
+  « autres »). Barres ou carte proportionnelle (« squarified »,
+  `treemap()` de disk-logic.ts), choix gardé dans `localStorage`.
+  `disk_open {job, node}` / `{path}` : l'Explorateur.
+- Nettoyage (`disk_estimate`, puis `disk_clean {kind, paths?}` confirmé côté
+  front ; deux commandes « lentes » de `services/work.rs`) : `trash`
+  (`SHEmptyRecycleBinW` sans fenêtre), `temp` (%TEMP%, fichiers de plus de
+  24 h ; un fichier ouvert refuse la suppression et il est sauté, puis les
+  dossiers vides et anciens), `thumbs` (thumbcache_*.db de l'Explorateur),
+  `downloads` (éléments posés dans Téléchargements, inchangés depuis
+  `oldDownloadsDays` jours, hors cachés / système / liens / exclus ;
+  revérifiés un par un au moment du clic ; ENVOYÉS À LA CORBEILLE avec
+  « Annuler »). Rien d'autre n'est jamais supprimé.
+- Ondine : `task.started` / `task.finished` (ou `task.failed`) autour du
+  nettoyage, et `mascot.scene {scene: "sweep"}` (coup de balai, joué si
+  l'onglet Système est ouvert ; un geste sous « réduire les animations »).
+- Réglages : sous-menus Général / Batterie / Disques (`MODULE_SECTIONS` de
+  settings/main.ts) ; Disques = `diskAlertPct` et `oldDownloadsDays`.
 
 ### Module Accès distants (`src/modules/remote/`, `src-tauri/src/modules/remote.rs`)
 

@@ -348,6 +348,40 @@ function islandSearch(query: string) {
   return { groups: groups.map((g) => ({ ...g, items: g.items.slice(0, 5) })).filter((g) => g.items.length) };
 }
 
+const GB = 1024 ** 3;
+
+/** Un faux dossier de l'analyse du disque (system.disk_view) : la racine et Users. */
+function demoDiskView(node: number) {
+  const root = [
+    { id: 1, name: "Users", bytes: 182 * GB, done: true, more: true },
+    { id: 2, name: "Windows", bytes: 31 * GB, done: true, more: true },
+    { id: 3, name: "Program Files", bytes: 24 * GB, done: true, more: true },
+    { id: 4, name: "ProgramData", bytes: 9.4 * GB, done: true, more: true },
+    { id: 5, name: "Program Files (x86)", bytes: 6.2 * GB, done: true, more: true },
+  ];
+  const users = [
+    { id: 6, name: "Vidéos", bytes: 96 * GB, done: true, more: true },
+    { id: 7, name: "AppData", bytes: 41 * GB, done: true, more: true },
+    { id: 8, name: "Downloads", bytes: 28 * GB, done: true, more: true },
+    { id: 9, name: "Documents", bytes: 12 * GB, done: true, more: true },
+    { id: 10, name: "Pictures", bytes: 5 * GB, done: true, more: false },
+  ];
+  const inUsers = node === 1;
+  const children = inUsers ? users : root;
+  const here = inUsers ? 0 : 22 * GB;
+  const bytes = children.reduce((s, c) => s + c.bytes, 0) + here + 2 * GB;
+  return {
+    job: 1, done: true, cancelled: false, files: 1_284_311, dirs: 211_406, skipped: 14, excluded: 0, folded: false, elapsedMs: 41_000,
+    total: 276.6 * GB,
+    node: { id: inUsers ? 1 : 0, name: inUsers ? "Users" : "C:\\", path: inUsers ? "C:\\Users" : "C:\\", bytes, done: true },
+    crumbs: inUsers ? [{ id: 0, name: "C:\\" }, { id: 1, name: "Users" }] : [{ id: 0, name: "C:\\" }],
+    children,
+    here,
+    big: inUsers ? [] : [{ name: "pagefile.sys", bytes: 16 * GB, path: "C:\\pagefile.sys" }, { name: "hiberfil.sys", bytes: 6 * GB, path: "C:\\hiberfil.sys" }],
+    rest: 2 * GB,
+  };
+}
+
 function system() {
   return {
     host: "PC-ONDINE",
@@ -724,6 +758,31 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     // Système, réseau, accès distants
     case "system.snapshot":
       return system();
+    // « Qu'est-ce qui remplit mon disque ? » : un faux disque C:, rien n'est lu ni supprimé.
+    case "system.disk_scan":
+      return { job: 1 };
+    case "system.disk_view":
+      return demoDiskView(Number(args.node ?? 0));
+    case "system.disk_cancel":
+    case "system.disk_open":
+      return null;
+    case "system.disk_estimate":
+      return {
+        trash: { bytes: 3.4 * GB, items: 212 },
+        temp: { bytes: 1.8 * GB, files: 4_210, partial: false },
+        thumbs: { bytes: 412 * 1024 ** 2, files: 9 },
+        downloads: {
+          days: 90,
+          bytes: 6.1 * GB,
+          items: [
+            { path: "C:\\Users\\Camille\\Downloads\\ubuntu-24.04.iso", name: "ubuntu-24.04.iso", bytes: 4.3 * GB, days: 214, dir: false },
+            { path: "C:\\Users\\Camille\\Downloads\\Photos vacances", name: "Photos vacances", bytes: 1.2 * GB, days: 160, dir: true },
+            { path: "C:\\Users\\Camille\\Downloads\\setup-ancien.exe", name: "setup-ancien.exe", bytes: 0.6 * GB, days: 380, dir: false },
+          ],
+        },
+      };
+    case "system.disk_clean":
+      return { freed: args.kind === "downloads" ? 0 : 1.8 * GB, trashed: 4.3 * GB, files: Array.isArray(args.paths) && args.paths.length ? args.paths.length : 4_210, skipped: 3 };
     case "nettools.status":
       return { internet: true, vpns: [], publicIp: "203.0.113.24" };
     case "nettools.ping":

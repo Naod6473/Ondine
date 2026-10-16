@@ -395,7 +395,10 @@
 "Survolez une demi-seconde pour changer : Conserver, Remplacer, Sur le bureau": "Survole une demi-seconde pour changer : Conserver, Remplacer, Sur le bureau",
 "Glissez des fichiers sur l'île : elle montre tout ce qu'Ondine sait en faire, en pilules. Ranger : poser sur l'étagère, copier ou déplacer (dossiers favoris compris), envoyer à la Corbeille. Outils : renommer plusieurs fichiers d'un coup (avec aperçu), copier leur chemin, calculer leur empreinte (SHA-256, ou comparer à une empreinte copiée). Convertir : redimensionner des images à une largeur, compresser en ZIP. L'ordre des pilules, et celles à masquer, se règlent ici (« Pilules du dépôt »). Toute action sur les fichiers est annulable quelques secondes. « Vers le téléphone » envoie un fichier à un téléphone du même Wi-Fi par un QR code : réseau local seulement, 5 minutes au plus, rien ne passe par Internet.": "Glisse des fichiers sur l'île : elle montre tout ce qu'Ondine sait en faire, en pilules. Ranger : poser sur l'étagère, copier ou déplacer (dossiers favoris compris), envoyer à la Corbeille. Outils : renommer plusieurs fichiers d'un coup (avec aperçu), copier leur chemin, calculer leur empreinte (SHA-256, ou comparer à une empreinte copiée). Convertir : redimensionner des images à une largeur, compresser en ZIP. L'ordre des pilules, et celles à masquer, se règlent ici (« Pilules du dépôt »). Toute action sur les fichiers est annulable quelques secondes. « Vers le téléphone » envoie un fichier à un téléphone du même Wi-Fi par un QR code : réseau local seulement, 5 minutes au plus, rien ne passe par Internet.",
 "Personnalisé : vos propres réglages.": "Personnalisé : tes propres réglages.",
-"Un halo discret, et seulement les moments qui vous servent : agents, minuteurs, fichiers, rendez-vous.": "Un halo discret, et seulement les moments qui te servent : agents, minuteurs, fichiers, rendez-vous."
+"Un halo discret, et seulement les moments qui vous servent : agents, minuteurs, fichiers, rendez-vous.": "Un halo discret, et seulement les moments qui te servent : agents, minuteurs, fichiers, rendez-vous.",
+"Windows le refait quand vous ouvrez un dossier": "Windows le refait quand tu ouvres un dossier",
+"Videz la Corbeille pour libérer la place.": "Vide la Corbeille pour libérer la place.",
+"cette analyse n'existe plus : relancez-la": "cette analyse n'existe plus : relance-la"
 },
 "patterns": [
 ["^(\\d+) nouveautés vous attendent\\.$", "$1 nouveautés t'attendent."],
@@ -590,6 +593,7 @@
 ["^Votre goutte (.+) gagne !$", "Ta goutte $1 gagne !"],
 ["^La goutte (.+) gagne\\. Votre goutte (.+) finit 2e\\.$", "La goutte $1 gagne. Ta goutte $2 finit 2e."],
 ["^La goutte (.+) gagne\\. Votre goutte (.+) finit plus loin\\.$", "La goutte $1 gagne. Ta goutte $2 finit plus loin."],
-["^Votre pari : la goutte (.+)\\. Les tâches de l'agent la font avancer\\.$", "Ton pari : la goutte $1. Les tâches de l'agent la font avancer."]
+["^Votre pari : la goutte (.+)\\. Les tâches de l'agent la font avancer\\.$", "Ton pari : la goutte $1. Les tâches de l'agent la font avancer."],
+["^Envoyer (\\d+) éléments à la Corbeille \\? Vous pourrez les y retrouver\\.$", "Envoyer $1 éléments à la Corbeille ? Tu pourras les y retrouver."]
 ]
 }

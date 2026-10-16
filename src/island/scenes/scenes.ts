@@ -573,10 +573,12 @@ export class Scenes {
     });
   }
 
-  /** `mascot.scene` publié par un module (Notes, Règles). */
+  /** `mascot.scene` publié par un module (Notes, Règles, Système). */
   private fromModule(id: SceneId, p: { name?: string }) {
     if (id === "note-save") window.setTimeout(() => this.noteSave(), 120);
     else if (id === "rules-run") this.rulesRun(String(p.name ?? ""));
+    // Système : le nettoyage du disque (coup de balai si l'onglet est ouvert).
+    else if (id === "sweep") this.sweep("system");
   }
 
   private onState(from: IslandStateName | undefined, to: IslandStateName | undefined) {
