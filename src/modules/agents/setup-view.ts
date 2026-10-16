@@ -1,4 +1,4 @@
-// La carte « Brancher » d'un agent (onglet Agents IA, 1.2.5) : elle remplace
+// La carte « Brancher » d'un agent (onglet Agents IA, 1.2.4) : elle remplace
 // l'ancien guide replié en bas de l'onglet. Au premier clic sur un agent pas
 // encore branché, une phrase, « Brancher <agent> » (l'installation
 // automatique : fusion dans le fichier de l'outil, copie .bak, voir

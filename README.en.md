@@ -62,7 +62,16 @@ What's new in version 1.2.4 (the full list is in the
   the top of the sidebar.
 - **Music card redone**: line icons, shuffle and repeat, the player's own
   volume, the cover's colour and glow.
-- **And also**: the island hatching on first launch, Claude and Codex plan
+- **Ondine converts**: drag a file to the island, drop it on a format pill
+  (images, PDF, video, sound, ZIP); next to the original, in its place or on
+  the Desktop. Everything runs on the PC.
+- **Mini-games**: Connect 4 against Ondine, quick tic-tac-toe in the
+  mini-island (long press on Ondine), a drop aquarium and drop races.
+- **AI agents as pills**: one pill per agent, in its colour, with its state;
+  a click brings its window back. The agent's task list as a progress bar.
+- **And also**: Windows notifications in the island (off by default), a
+  "black hole" to hide a window, a clipboard that ignores keys and tokens,
+  line icons everywhere in the clean style, the island hatching on first launch, Claude and Codex plan
   limits in the AI Agents tab, files modified by agents live (+N −M, click to
   see the change), Talk to Ondine with a local model (Ollama, LM Studio) or
   OpenRouter, your own sounds in %APPDATA%\Ondine\sounds.

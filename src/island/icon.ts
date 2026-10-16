@@ -49,7 +49,7 @@ const BY_EMOJI: Record<string, string> = {
   "📡": "remote",
   "⚡": "rules",
   "🧺": "shelf",
-  // Ondine convertit (1.2.5) : au trait seulement, l'emoji en couleur.
+  // Ondine convertit (1.2.4) : au trait seulement, l'emoji en couleur.
   "🔀": "convert",
   "📊": "system",
   "🖥️": "terminal",
@@ -76,9 +76,9 @@ const BY_EMOJI: Record<string, string> = {
   "🌙": "moon",
   // Dictée (1.2.4) : le micro au trait, l'emoji en couleur.
   "🎙": "microphone",
-  // Notifications de Windows (1.2.5) : la cloche au trait, l'emoji en couleur.
+  // Notifications de Windows (1.2.4) : la cloche au trait, l'emoji en couleur.
   "🔔": "bell",
-  // Jeux (1.2.5) : la manette au trait, l'emoji en couleur.
+  // Jeux (1.2.4) : la manette au trait, l'emoji en couleur.
   "🎮": "games",
 };
 
@@ -183,7 +183,7 @@ const LINE_ONLY: Record<string, string> = {
   "❌": "x-circle",
   "🎞": "film-strip",
   "🔴": "record",
-  // Les emojis restés en couleur dans le style épuré (relevés en 1.2.5).
+  // Les emojis restés en couleur dans le style épuré (relevés en 1.2.4).
   // Équipe : réactions, déjeuner, annonce, aide, visite, présence.
   "👍": "thumbs-up",
   "❤": "heart",
@@ -234,7 +234,7 @@ const LINE_ONLY: Record<string, string> = {
   "🏞": "mountains",
   "🚆": "train",
   "📚": "books",
-  // Jeux (1.2.5) : Puissance 4, Morpion, Aquarium, Course.
+  // Jeux (1.2.4) : Puissance 4, Morpion, Aquarium, Course.
   "🟡": "circles-four",
   "⭕": "grid-nine",
   "🐠": "fish",

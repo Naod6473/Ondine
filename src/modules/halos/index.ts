@@ -119,7 +119,7 @@ export const halos: IslandModule = {
       hideHalo("agent-work");
       hideHalo("agent-todos");
     });
-    // La liste de tâches de la session active (1.2.5) : un fin liseré qui
+    // La liste de tâches de la session active (1.2.4) : un fin liseré qui
     // avance avec les tâches faites (figé : pas d'heure de fin), éteint quand
     // tout est fait ou que la liste est vide.
     listen("agents.todos", (p) => {

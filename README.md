@@ -63,7 +63,17 @@ Les nouveautés de la version 1.2.4 (la liste complète est dans le
   groupe « Voix » en tête de la barre.
 - **Carte Musique refaite** : icônes au trait, aléatoire et répétition,
   volume du lecteur seul, couleur et lueur de la pochette.
-- **Et aussi** : l'éclosion de l'île au premier lancement, limites du forfait
+- **Ondine convertit** : glissez un fichier vers l'île, lâchez-le sur une
+  pilule de format (images, PDF, vidéo, son, ZIP) ; à côté de l'original, à
+  sa place ou sur le Bureau. Tout se fait sur le PC.
+- **Mini-jeux** : Puissance 4 contre Ondine, morpion express dans la
+  mini-île (appui long sur Ondine), aquarium de gouttes et course de gouttes.
+- **Agents IA en pilules** : une pilule par agent, de sa couleur, avec son
+  état ; un clic ramène sa fenêtre. La liste de tâches de l'agent en barre de
+  progression.
+- **Et aussi** : notifications de Windows dans l'île (coupées par défaut),
+  « trou noir » pour cacher une fenêtre, presse-papiers qui ignore les clés
+  et jetons, icônes au trait partout en style épuré, l'éclosion de l'île au premier lancement, limites du forfait
   Claude et Codex dans l'onglet Agents IA, fichiers modifiés par les agents en
   direct (+N −M, clic pour voir le changement), Parler à Ondine avec un modèle
   local (Ollama, LM Studio) ou OpenRouter, vos propres sons dans

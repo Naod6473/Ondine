@@ -1,4 +1,4 @@
-// Presse-papiers → « Ignorer les clés et jetons » (1.2.5) : reconnaître une
+// Presse-papiers → « Ignorer les clés et jetons » (1.2.4) : reconnaître une
 // copie qui ressemble à une clé d'API, un jeton ou une clé privée, pour ne pas
 // la garder dans l'historique (ni donc dans la recherche du Lanceur), ni
 // l'envoyer sur mes autres PC (Équipe), ni l'afficher dans un halo.

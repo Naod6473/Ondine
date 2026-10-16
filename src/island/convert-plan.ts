@@ -1,4 +1,4 @@
-// Ondine convertit (1.2.5) : le plan du geste, en fonctions pures (testées
+// Ondine convertit (1.2.4) : le plan du geste, en fonctions pures (testées
 // dans tests/front/convert.test.ts), comme hatch-plan.ts pour l'éclosion.
 //
 // Le geste (maquettes validées : animations-ile/maquette-conversion.html, puis

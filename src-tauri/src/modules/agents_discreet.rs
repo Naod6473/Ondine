@@ -1,4 +1,4 @@
-// Agents IA : rester discrète quand vous regardez déjà le terminal (1.2.5).
+// Agents IA : rester discrète quand vous regardez déjà le terminal (1.2.4).
 //
 // Quand une session passe « vous attend » ou « a fini » alors que la fenêtre
 // au premier plan EST celle de cette session (celle que « Y aller »

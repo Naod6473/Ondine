@@ -1,4 +1,4 @@
-// La liste de tâches de l'agent, en barre de progression (onglet Agents IA, 1.2.5).
+// La liste de tâches de l'agent, en barre de progression (onglet Agents IA, 1.2.4).
 //
 // Quand Claude Code met à jour sa liste de tâches, la carte de sa session
 // montre « 3/7 » et la tâche en cours (« Lance les tests »). Idée reprise de

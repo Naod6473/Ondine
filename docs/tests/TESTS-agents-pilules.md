@@ -1,4 +1,4 @@
-# Tests sous Windows : l'onglet Agents IA en pilules (1.2.5)
+# Tests sous Windows : l'onglet Agents IA en pilules (1.2.4)
 
 Captures avant / après : `captures-agents-pilules/` (avant-*.png, apres-*.png).
 

@@ -1,4 +1,4 @@
-// Tests d'Ondine convertit (1.2.5) : les pilules proposées, les textes, le
+// Tests d'Ondine convertit (1.2.4) : les pilules proposées, les textes, le
 // plan du geste (src/island/convert-plan.ts) et la mini-île gardée pendant
 // le travail (keepOpen, src/island/island-state.ts).
 

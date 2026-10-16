@@ -1,4 +1,4 @@
-# Tests sous Windows : liste de tâches des agents et discrétion (1.2.5)
+# Tests sous Windows : liste de tâches des agents et discrétion (1.2.4)
 
 À faire avec Claude Code (récent), et si possible Codex et Gemini CLI.
 

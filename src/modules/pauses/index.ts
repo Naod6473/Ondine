@@ -7,7 +7,7 @@
 //   - après `everyMin` minutes d'écran, on propose une pause, sauf pendant une
 //     présentation / un plein écran, ou un appel (micro utilisé, d'après le
 //     module Contrôles) : on attend que ce soit fini.
-// Une pause faite (absence de 5 min) publie « pauses.taken » (1.2.5).
+// Une pause faite (absence de 5 min) publie « pauses.taken » (1.2.4).
 
 import manifest from "./manifest.json";
 import { Bridge } from "../../core/bridge";

@@ -725,10 +725,10 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `agents.ask`, `agents.event` « waiting » | Agents IA | question (la goutte violette et son « ? ») |
 | `mascot.state` | mascotte | |
 | `mascot.look-at` `{x, y}` | tout module (l'Accueil…) | elle regarde ce point (px de la fenêtre de l'île) pendant 1,5 s ; la souris ne la fait pas regarder ailleurs entre-temps (src/island/scenes/) |
-| `mascot.long-press` | île (appui long de 550 ms sur Ondine, sans la déplacer) | 1.2.5 : le module Jeux ouvre le morpion express dans la mini-île |
-| `games.play` `{game}` | Lanceur, Jeux | 1.2.5 : `connect4`, `ttt`, `aquarium`, `race` ouvrent l'onglet Jeux sur ce jeu ; `ttt-express` : le morpion de la mini-île |
-| `games.changed` `{gained}` | Jeux (Rust, games.rs) | 1.2.5 : l'aquarium a changé (gouttes gagnées, achat) ; les vues redemandent `state` |
-| `pauses.taken` `{minutes}` | Pauses | 1.2.5 : une vraie absence (5 min au moins), une fois par absence ; l'aquarium y gagne des gouttes |
+| `mascot.long-press` | île (appui long de 550 ms sur Ondine, sans la déplacer) | 1.2.4 : le module Jeux ouvre le morpion express dans la mini-île |
+| `games.play` `{game}` | Lanceur, Jeux | 1.2.4 : `connect4`, `ttt`, `aquarium`, `race` ouvrent l'onglet Jeux sur ce jeu ; `ttt-express` : le morpion de la mini-île |
+| `games.changed` `{gained}` | Jeux (Rust, games.rs) | 1.2.4 : l'aquarium a changé (gouttes gagnées, achat) ; les vues redemandent `state` |
+| `pauses.taken` `{minutes}` | Pauses | 1.2.4 : une vraie absence (5 min au moins), une fois par absence ; l'aquarium y gagne des gouttes |
 | `mascot.walk` `{active}` | île (src/island/scenes/) | elle quitte sa case (`true`) ou y revient (`false`) pendant une scène |
 | `mascot.scene` `{scene, name?, demo?}` | Notes, Règles, mode démo | joue une scène d'Ondine qui se déplace (`note-save`, `rules-run` {name}…) ; `demo: true` : sur le premier élément venu, l'onglet s'ouvre d'abord |
 | `mascot.dance` `{on}` | surprises (src/eggs/) | elle danse en boucle (musique + mini-île) ; les autres réactions passent puis la danse reprend |
@@ -744,7 +744,7 @@ Sujets standard (un module peut en publier d'autres, préfixés par son id) :
 | `capture.done` `{action, ok, result, error}` | Capture (Rust) | notification ; l'onglet redemande le texte lu (`last`), qui n'est pas dans le message |
 | `shelf.add` `{paths}` | Capture (Rust) | l'Étagère valide les chemins et les pose sur l'étagère |
 | `clipboard.changed` `{count}` | Presse-papiers (Rust) | l'onglet redemande la liste (le message ne contient aucun texte copié) |
-| `clipboard.secret-ignored` `{kind, decodable}` | Presse-papiers (Rust) | 1.2.5 : une copie qui ressemblait à une clé n'a pas été gardée ; petite notification « Clé ignorée » (`kind` = la famille, jamais le texte) |
+| `clipboard.secret-ignored` `{kind, decodable}` | Presse-papiers (Rust) | 1.2.4 : une copie qui ressemblait à une clé n'a pas été gardée ; petite notification « Clé ignorée » (`kind` = la famille, jamais le texte) |
 | `timer.done` `{title}` | Minuteur (front) | (la notification et le son sont faits par le module) |
 | `dictation.state` `{phase, engine}` | Dictée (Rust) | 1.2.4 : `phase` = `idle`, `listening`, `handsFree` ou `thinking` ; `engine` = `parakeet`, `windows`, `offline` ou `api` |
 | `dictation.history` `{entry}` | Dictée (Rust) | une dictée vient d'être collée (`entry` null si l'historique n'est pas gardé) : les pages Voix se rechargent |
@@ -1539,9 +1539,9 @@ et l'accès à Windows dans `src-tauri/src/platform/windows.rs` (« Presse-papie
   `CanIncludeInClipboardHistory` = 0 (ce que font KeePass, Bitwarden,
   1Password…). Si oui, la copie n'est jamais lue. Presse-papiers occupé pendant
   la vérification = considéré sensible.
-- **Clés et jetons** (1.2.5, réglage « Ignorer les clés et jetons », activé par
+- **Clés et jetons** (1.2.4, réglage « Ignorer les clés et jetons », activé par
   défaut) : une copie qui EST une clé d'API ou un jeton est lue mais pas gardée.
-  Voir « 1.2.5 » à la fin (« Le Presse-papiers ignore les clés et jetons »).
+  Voir « 1.2.4 » à la fin (« Le Presse-papiers ignore les clés et jetons »).
 - **Historique** : en mémoire seulement (disparaît à la fermeture), le plus
   récent en haut, sans doublons, 50 copies par défaut (réglage), 100 000
   caractères au plus par copie. Recherche sans tenir compte des majuscules,
@@ -2182,7 +2182,7 @@ aucun compte, rien sur Internet. **Désactivé par défaut**
 
 Les outils extérieurs préviennent l'île par une porte d'entrée locale.
 
-L'onglet (refait en 1.2.5, voir « Agents IA : la rangée de pilules » plus
+L'onglet (refait en 1.2.4, voir « Agents IA : la rangée de pilules » plus
 bas) : une pilule par agent en haut, une seule carte dessous. Le gros guide
 « Brancher un outil » a disparu : chaque agent a sa carte « Brancher »
 (premier clic) et ses « Options avancées » (lien « Configurer »).
@@ -3154,7 +3154,7 @@ puis `stretch`), `tidyForgotten` (non) + `forgottenMins` (une notification
 propose « Réduire » : commande `minimize`, jamais fermer). Le « pont » de
 fichiers à travers l'île n'est pas fait (l'Étagère sait déjà glisser un
 fichier vers l'Explorateur). Et `swallow` (non) : le « trou noir », voir
-« 1.2.5 : le trou noir » à la fin.
+« 1.2.4 : le trou noir » à la fin.
 
 ## Fenêtre de réglages : catégories et sous-menus (`src/settings/main.ts`)
 
@@ -3965,7 +3965,7 @@ remplace ce son. Les noms sont les mêmes des deux côtés (test front).
   (`sounds_open_folder`, crée le dossier s'il manque), « Recharger les sons »
   (ici, et dans l'île par l'événement `sounds.reload`), les noms possibles.
 
-## 1.2.5 : nouveautés tirées des projets similaires
+## 1.2.4 : nouveautés tirées des projets similaires
 
 ### Le Presse-papiers ignore les clés et jetons (`clipboard_secrets.rs`)
 
@@ -4310,7 +4310,7 @@ THIRD-PARTY.md). Aucune commande Rust nouvelle : tout passe par `history`,
 - Mode démo : `agents.plan` et `agents.live` ont maintenant une réponse
   inventée (`demo.ts`).
 - Tests : `tests/front/agents-pills.test.ts`.
-## Mini-jeux (1.2.5, `src/modules/games/`, `src-tauri/src/modules/games.rs`, `src/styles/games.css`)
+## Mini-jeux (1.2.4, `src/modules/games/`, `src-tauri/src/modules/games.rs`, `src/styles/games.css`)
 Le module « Jeux » (🎮, catégorie « Au quotidien ») : un onglet à quatre
 pastilles (`TabPill`, comme le Minuteur). Toutes les parties vivent dans un
 objet `Live` créé au démarrage du module : fermer l'onglet ne perd rien.
@@ -4379,7 +4379,7 @@ objet `Live` créé au démarrage du module : fermer l'onglet ne perd rien.
   publié (pas en mode discret ni si « Prévenir quand c'est fini » est coupé).
   La pause pendant une présentation suit le réglage « presentationQuiet ».
 ## Conversion de fichiers (Ondine convertit)
-1.2.5. Un fichier glissé sur l'île : elle s'ouvre et montre tout en pilules
+1.2.4. Un fichier glissé sur l'île : elle s'ouvre et montre tout en pilules
 (« dépôt unifié », version A de la maquette : tout dans l'île) ; lâché sur un
 format, Ondine l'avale, mâche, recrache le nouveau fichier. Idées reprises de Filee (MIT, voir THIRD-PARTY.md), réécrites.
 - **Qui fait quoi** :

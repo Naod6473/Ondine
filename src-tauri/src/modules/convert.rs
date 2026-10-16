@@ -1,4 +1,4 @@
-// Ondine convertit (1.2.5) : un fichier glissé vers l'île, lâché sur une
+// Ondine convertit (1.2.4) : un fichier glissé vers l'île, lâché sur une
 // pilule de format (JPG, PDF, MP3, ZIP…), est converti ici.
 //
 // Le geste et les animations sont dans le front (src/island/convert-gesture.ts) ;

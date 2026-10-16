@@ -3,7 +3,7 @@
 // Le Rust (src-tauri/src/modules/agents.rs) écoute le canal local, comprend
 // les hooks et publie « agents.event » (une notification) et « agents.changed »
 // (le tableau des sessions a bougé). Ici : la notification avec « Y aller »
-// (ramène la fenêtre de l'agent devant) et l'onglet. Depuis la 1.2.5,
+// (ramène la fenêtre de l'agent devant) et l'onglet. Depuis la 1.2.4,
 // l'onglet est une rangée de pilules, une par agent (pills-logic.ts,
 // pills-view.ts), et UNE carte dessous : celle de l'agent choisi (ses
 // sessions, ses questions, ses fichiers, « Lancer », ses derniers messages),
@@ -20,7 +20,7 @@
 // Les outils en plus (Copilot CLI, Cursor, Qwen Code, Goose, OpenCode, Kiro,
 // Hermes, Aider, Amp, « Autre outil ») sont décrits dans tools.ts ; les
 // coucous de la mascotte pendant une attente dans wait-watch.ts ; la barre
-// « 3/7 » de la liste de tâches de l'agent dans todos-logic.ts (1.2.5).
+// « 3/7 » de la liste de tâches de l'agent dans todos-logic.ts (1.2.4).
 
 import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
@@ -432,7 +432,7 @@ export const agents: IslandModule = {
     api.on("agents.changed", () => redraws.forEach((r) => r()));
   },
 
-  // L'onglet (1.2.5) : une rangée de pilules (une par agent, « + », et à
+  // L'onglet (1.2.4) : une rangée de pilules (une par agent, « + », et à
   // droite les petites pilules du forfait, des jetons, de GitHub et de la
   // concentration), puis UNE carte : celle de l'agent au premier plan (ses
   // sessions, ses questions, ses fichiers, « Lancer », ses derniers messages),

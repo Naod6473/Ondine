@@ -1,4 +1,4 @@
-# Tests Windows 1.2.5 : le trou noir (Ondine et les fenêtres)
+# Tests Windows 1.2.4 : le trou noir (Ondine et les fenêtres)
 
 À vérifier sur Windows (le conteneur Linux ne peut pas le faire). Résultat attendu après la flèche.
 Réglages → Modules → Ondine et les fenêtres → allumer « Avaler une fenêtre lâchée sur l'île » (coupé par défaut).

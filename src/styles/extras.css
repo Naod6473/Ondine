@@ -1,5 +1,5 @@
 /* 1.2.4, les extras (importé en tête de island.css) : limites du forfait,
-   fichiers modifiés en direct et, en 1.2.5, la rangée de pilules (Agents IA). Les animations suivent --ease et
+   fichiers modifiés en direct et, en 1.2.4, la rangée de pilules (Agents IA). Les animations suivent --ease et
    s'arrêtent avec « Réduire les animations » et en mode éco. */
 
 /* ── Agents IA : limites du forfait (plan-view.ts) ─────────────────────── */
@@ -117,7 +117,7 @@
   }
 }
 
-/* ── Agents IA : la liste de tâches de l'agent (todos-logic.ts, 1.2.5) ─── */
+/* ── Agents IA : la liste de tâches de l'agent (todos-logic.ts, 1.2.4) ─── */
 .agents-todos {
   display: flex;
   align-items: center;
@@ -226,7 +226,7 @@ body[data-perf="eco"] .agents-live-file {
   animation: none;
 }
 
-/* ── Agents IA : la rangée de pilules et sa carte (pills-view.ts, 1.2.5) ── */
+/* ── Agents IA : la rangée de pilules et sa carte (pills-view.ts, 1.2.4) ── */
 /* Une pilule par agent, de sa couleur (--agent, posée par le code) : discrète
    au repos, colorée au survol et quand elle est au premier plan. Les
    transitions sont courtes ; « Réduire les animations » et le mode éco les coupent. */

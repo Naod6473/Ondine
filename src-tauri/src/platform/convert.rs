@@ -1,4 +1,4 @@
-// Ondine convertit (1.2.5) : ce que Windows sait déjà faire, sans rien installer.
+// Ondine convertit (1.2.4) : ce que Windows sait déjà faire, sans rien installer.
 //
 //   - lire HEIC, HEIF, AVIF, TIFF (et tout ce que WIC connaît) : décodeur
 //     d'images de Windows (`Windows.Graphics.Imaging.BitmapDecoder`). HEIC

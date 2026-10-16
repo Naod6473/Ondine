@@ -1,4 +1,4 @@
-// Le dépôt unifié (1.2.5) : la logique pure des pilules de l'île pendant un
+// Le dépôt unifié (1.2.4) : la logique pure des pilules de l'île pendant un
 // glisser, sans DOM ni Tauri (testée dans tests/front/drop-pills.test.ts).
 //
 // Un fichier glissé sur l'île : elle s'ouvre et montre TOUT dans le même

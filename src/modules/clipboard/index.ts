@@ -19,7 +19,7 @@
 // Le résultat s'affiche dans l'onglet, avec « Copier ». Pour une longue copie,
 // on demande au Rust le texte entier ("full") ; rien n'est journalisé.
 //
-// « Clé ignorée » (1.2.5, réglage « Ignorer les clés et jetons ») : le Rust ne
+// « Clé ignorée » (1.2.4, réglage « Ignorer les clés et jetons ») : le Rust ne
 // garde pas une copie qui est une clé d'API ou un jeton (clipboard_secrets.rs).
 // Il prévient ("clipboard.secret-ignored", sans le texte) : petite notification,
 // et une ligne discrète en haut de l'historique tant que la clé est encore dans

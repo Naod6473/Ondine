@@ -1,4 +1,4 @@
-// Ondine convertit (1.2.5) : le geste, dans la fenêtre de l'île.
+// Ondine convertit (1.2.4) : le geste, dans la fenêtre de l'île.
 //
 // Dépôt unifié (maquette-depot-unifie.html, version A) : un fichier glissé
 // vers l'île, elle s'ouvre et montre tout DANS l'île, en pilules du même

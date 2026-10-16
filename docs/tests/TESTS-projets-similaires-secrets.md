@@ -1,4 +1,4 @@
-# Tests Windows : « Ignorer les clés et jetons » (Presse-papiers, 1.2.5)
+# Tests Windows : « Ignorer les clés et jetons » (Presse-papiers, 1.2.4)
 
 Branche `ps-secrets`. Les tests automatiques (Rust et interface) sont verts et
 le code Windows compile (`cargo check --target x86_64-pc-windows-msvc`) ; rien
