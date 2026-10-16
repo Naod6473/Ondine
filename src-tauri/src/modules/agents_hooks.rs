@@ -255,7 +255,7 @@ pub fn status(format: Format, existing: Option<&str>, exe: &str) -> Status {
 
 /// Des hooks d'Ondine sont là, mais pas tous ceux d'aujourd'hui (`ours`,
 /// même forme que pour `install_text`) : un événement, ou un `matcher`, manque
-/// (par exemple PostToolUse sans TodoWrite, ajouté en 1.2.5). Il suffit de
+/// (par exemple PostToolUse sans TodoWrite, ajouté en 1.2.4). Il suffit de
 /// réinstaller (même fusion sûre). Faux si le fichier est illisible ou sans Ondine.
 pub fn incomplete(format: Format, existing: Option<&str>, ours: &str) -> bool {
     let Ok(root) = parse(format, existing) else { return false };

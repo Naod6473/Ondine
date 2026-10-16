@@ -1,4 +1,4 @@
-// Module « Jeux » (1.2.5) : la progression de l'aquarium de gouttes.
+// Module « Jeux » (1.2.4) : la progression de l'aquarium de gouttes.
 //
 // Les jeux eux-mêmes (Puissance 4, Morpion express, Course de gouttes) sont
 // entièrement dans le front (src/modules/games/). Le Rust tient seulement ce

@@ -1,4 +1,4 @@
-# Tests Windows 1.2.5 : Ondine convertit
+# Tests Windows 1.2.4 : Ondine convertit
 
 À vérifier sur Windows (le conteneur Linux ne peut pas le faire). Résultat attendu après la flèche.
 Réglages → Modules → Ondine convertit : allumé par défaut. Préparer un dossier avec : une photo d'iPhone .heic, un .jpg avec position GPS, un .png, un .avif, un .tif, un PDF de 3 pages, un PDF protégé par mot de passe, une vidéo .mp4 et une .mov, un .wav, un .zip, un fichier .jpg abîmé (un .txt renommé).

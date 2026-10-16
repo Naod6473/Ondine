@@ -1,4 +1,4 @@
-// Module « Jeux » (1.2.5) : quatre petits jeux contre Ondine, dans un onglet
+// Module « Jeux » (1.2.4) : quatre petits jeux contre Ondine, dans un onglet
 // à pastilles (Puissance 4, Morpion, Aquarium, Course).
 //
 //   - Puissance 4 (connect4-*.ts) : trois niveaux, IA alpha-bêta bornée ;

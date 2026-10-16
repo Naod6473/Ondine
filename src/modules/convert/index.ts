@@ -1,4 +1,4 @@
-// Module « Ondine convertit » (1.2.5) : un fichier glissé vers l'île, lâché
+// Module « Ondine convertit » (1.2.4) : un fichier glissé vers l'île, lâché
 // sur une pilule de format, est converti.
 //
 // Pas d'onglet. Les pilules (dans l'île, avec les autres cibles de dépôt :

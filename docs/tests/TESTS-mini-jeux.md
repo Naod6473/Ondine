@@ -1,4 +1,4 @@
-# Tests Windows 1.2.5 : les mini-jeux (module Jeux)
+# Tests Windows 1.2.4 : les mini-jeux (module Jeux)
 
 À vérifier sur Windows (le conteneur Linux ne peut pas le faire). Résultat attendu après la flèche.
 Réglages → Modules → Jeux : allumé par défaut, catégorie « Au quotidien ».

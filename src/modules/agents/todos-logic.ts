@@ -1,5 +1,5 @@
 // La liste de tâches de l'agent en barre de progression (onglet Agents IA,
-// 1.2.5) : la logique sans DOM, testée dans tests/front/agents.test.ts.
+// 1.2.4) : la logique sans DOM, testée dans tests/front/agents.test.ts.
 // Le Rust (src-tauri/src/modules/agents_todos.rs) comprend TodoWrite,
 // TaskCreate / TaskUpdate / TaskList (Claude Code), update_plan (Codex) et
 // write_todos (Gemini CLI), garde les listes en mémoire et ne donne ici que

@@ -55,7 +55,7 @@ pub mod winlife;
 pub mod dictation;
 // Les notifications des autres applis (Centre de notifications) pour « Notifications de Windows ». Contient sa propre version Linux.
 pub mod winnotifs;
-// Ondine convertit (1.2.5) : HEIC / AVIF / TIFF, PDF en images, vidéo et son, sélection dans l'Explorateur. Contient sa propre version Linux.
+// Ondine convertit (1.2.4) : HEIC / AVIF / TIFF, PDF en images, vidéo et son, sélection dans l'Explorateur. Contient sa propre version Linux.
 pub mod convert;
 
 #[cfg(windows)]

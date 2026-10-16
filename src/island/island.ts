@@ -204,9 +204,9 @@ export class Island {
   private scenes: Scenes;
   /** L'éclosion joue (hatch.ts) : la vraie île est cachée, la fenêtre reste grande. */
   private hatching = false;
-  /** Ondine convertit (1.2.5) : le geste après un lâcher sur une pilule de format. */
+  /** Ondine convertit (1.2.4) : le geste après un lâcher sur une pilule de format. */
   private convert: ConvertGesture;
-  /** Le dépôt unifié (1.2.5) : toutes les pilules dans l'île pendant un glisser. */
+  /** Le dépôt unifié (1.2.4) : toutes les pilules dans l'île pendant un glisser. */
   private dropPanel: DropPanel;
 
   constructor(
@@ -724,7 +724,7 @@ export class Island {
       const r = this.shell.getBoundingClientRect();
       return x < r.left - 24 || x > r.right + 24 || y < r.top - 24 || y > r.bottom + 24;
     };
-    // L'appui long (1.2.5) : le doigt reste sur elle sans bouger. Publié sur
+    // L'appui long (1.2.4) : le doigt reste sur elle sans bouger. Publié sur
     // le bus (« mascot.long-press ») : le module Jeux y lance le morpion
     // express. Le clic qui suit le lâcher est ignoré (comme après un transport).
     let hold = 0;

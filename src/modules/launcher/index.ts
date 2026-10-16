@@ -176,7 +176,7 @@ function islandActions(api: ModuleApi, query: string): Result[] {
       api.emit("capture.pick", {});
     });
   }
-  // Les jeux (module Jeux, 1.2.5) : « jouer », « puissance 4 », « morpion »…
+  // Les jeux (module Jeux, 1.2.4) : « jouer », « puissance 4 », « morpion »…
   // Le morpion se joue dans la mini-île : l'île se replie d'abord.
   if (settingsStore.moduleEnabled("games")) {
     const g = settingsStore.current.modules?.games?.values ?? {};

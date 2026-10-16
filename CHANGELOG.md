@@ -1,6 +1,6 @@
 # Changements · Changelog
 
-## 1.2.5 · à venir
+## 1.2.4 · à venir
 
 - Notifications de Windows dans l'île : les bulles des autres applis (Teams,
   Outlook, WhatsApp…) passent aussi par Ondine, avec le logo de l'appli et
@@ -57,8 +57,6 @@
   and shown pills in Settings → Shelf → Drop pills. Works with the island on
   the left, right or bottom. Images (HEIC, AVIF), images into one PDF, PDF
   into images, video and sound, ZIP; all on the PC
-
-## 1.2.4 · à venir
 
 - Nouvelle fenêtre des Réglages : fond noir profond, tout le contenu dans une
   grande carte, réglages en cartes ; le thème clair suit · New Settings

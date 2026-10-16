@@ -1785,7 +1785,7 @@ body[data-perf="eco"] .media-compact.on .media-eq i {
 .clip-qr-error {
   text-align: center;
 }
-/* « Clé ignorée » (1.2.5) : une ligne discrète en haut de l'historique. */
+/* « Clé ignorée » (1.2.4) : une ligne discrète en haut de l'historique. */
 .clip-ignored {
   display: flex;
   align-items: center;

@@ -462,7 +462,7 @@ impl RustModule for Agents {
                 for tool in HOOK_TOOLS {
                     let (file, format) = config_file(tool)?;
                     let (status, incomplete) = match hooks::read(&file) {
-                        // Incomplet : installé avant une nouveauté (la liste de tâches en 1.2.5) : réinstaller suffit.
+                        // Incomplet : installé avant une nouveauté (la liste de tâches en 1.2.4) : réinstaller suffit.
                         Ok(text) => (hooks::status(format, text.as_deref(), &exe), our_hooks(tool, &exe, false).is_ok_and(|o| hooks::incomplete(format, text.as_deref(), &o))),
                         Err(_) => (hooks::Status { state: "unreadable", permission: false, other_permission: false }, false),
                     };
@@ -1984,7 +1984,7 @@ const CLAUDE_TOOL_MATCHER: &str = "Edit|MultiEdit|Write|TodoWrite|TaskCreate|Tas
 fn claude_config(exe: &str) -> String {
     let entry = json!([{ "hooks": [{ "type": "command", "command": exe, "args": ["notify", "--source", "claude-code"] }] }]);
     // Fichiers modifiés en direct : seulement après une écriture (agents_live.rs).
-    // La liste de tâches en plus (1.2.5, agents_todos.rs) : TodoWrite, et les
+    // La liste de tâches en plus (1.2.4, agents_todos.rs) : TodoWrite, et les
     // outils par numéro TaskCreate / TaskUpdate / TaskList.
     let edits = json!([{ "matcher": CLAUDE_TOOL_MATCHER, "hooks": [{ "type": "command", "command": exe, "args": ["notify", "--source", "claude-code"] }] }]);
     let config = json!({
@@ -2014,7 +2014,7 @@ fn codex_blocks(exe: &str) -> String {
         out.push_str(&format!("\n[[hooks.{event}]]\n[[hooks.{event}.hooks]]\ntype = \"command\"\ncommand = {toml}\n"));
     }
     // Son plan (outil update_plan) : la barre de progression de la session
-    // (1.2.5, agents_todos.rs). La documentation des hooks de Codex range
+    // (1.2.4, agents_todos.rs). La documentation des hooks de Codex range
     // update_plan parmi les « local function tools » vus par PostToolUse.
     out.push_str(&format!("\n[[hooks.PostToolUse]]\nmatcher = \"update_plan\"\n[[hooks.PostToolUse.hooks]]\ntype = \"command\"\ncommand = {toml}\n"));
     out
@@ -2088,7 +2088,7 @@ fn gemini_config(exe: &str) -> String {
     let command = format!("$input | & '{}' notify --source gemini", exe.replace('\'', "''"));
     let entry = json!([{ "matcher": "*", "hooks": [{ "name": "ondine", "type": "command", "command": command, "timeout": 5000 }] }]);
     // Fichiers modifiés en direct : seulement après une écriture (agents_live.rs).
-    // Et sa liste de tâches (write_todos, 1.2.5, agents_todos.rs).
+    // Et sa liste de tâches (write_todos, 1.2.4, agents_todos.rs).
     let edits = json!([{ "matcher": "write_file|replace|write_todos", "hooks": [{ "name": "ondine", "type": "command", "command": command, "timeout": 5000 }] }]);
     let config = json!({
         "hooks": {

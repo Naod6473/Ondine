@@ -35,12 +35,12 @@ mod callnotes_audio;
 mod callnotes_text;
 mod capture;
 mod clipboard;
-// Presse-papiers → « Ignorer les clés et jetons » (1.2.5) : reconnaître une clé copiée.
+// Presse-papiers → « Ignorer les clés et jetons » (1.2.4) : reconnaître une clé copiée.
 mod clipboard_secrets;
 mod controls;
-// Jeux (1.2.5) : la progression de l'aquarium de gouttes (les jeux sont dans le front).
+// Jeux (1.2.4) : la progression de l'aquarium de gouttes (les jeux sont dans le front).
 mod games;
-// Ondine convertit (1.2.5) : un fichier glissé sur une pilule de format sous l'île.
+// Ondine convertit (1.2.4) : un fichier glissé sur une pilule de format sous l'île.
 mod convert;
 // Sa partie pure (types, formats, noms, PDF, ZIP) ; publique pour platform/convert.rs.
 pub(crate) mod convert_logic;
@@ -108,13 +108,13 @@ mod agents_tools;
 mod agents_mcp_extra;
 // Les rappels d'attente.
 mod agents_wait;
-// Rester discrète quand vous regardez déjà le terminal de la session (1.2.5).
+// Rester discrète quand vous regardez déjà le terminal de la session (1.2.4).
 mod agents_discreet;
 // Les limites du forfait de Claude et Codex (1.2.4) ; « ondine.exe statusline » s'en sert.
 pub(crate) mod agents_plan;
 // Les fichiers modifiés en direct par un agent (1.2.4) ; « ondine.exe notify » calcule le diff.
 pub(crate) mod agents_live;
-// La liste de tâches de l'agent en barre de progression (1.2.5) ; « ondine.exe notify » la résume.
+// La liste de tâches de l'agent en barre de progression (1.2.4) ; « ondine.exe notify » la résume.
 pub(crate) mod agents_todos;
 // Animations de l'île : sortie de veille, Verr Maj, copier / coller, volume, Wi-Fi, niveaux sonores.
 mod halos;

@@ -1,4 +1,4 @@
-# Tests Windows 1.2.5 : notifications de Windows dans l'île (zone « notifs »)
+# Tests Windows 1.2.4 : notifications de Windows dans l'île (zone « notifs »)
 
 Rien de ce qui touche Windows n'a tourné sur un vrai PC : le code a été
 compilé pour Windows (cargo clippy, cible msvc) et la logique pure est testée

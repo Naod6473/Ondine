@@ -8,7 +8,7 @@
 // Règles appliquées ici :
 //   - une copie que l'appli d'origine marque « sensible » (gestionnaire de mots
 //     de passe…) n'est JAMAIS lue : platform::clipboard_is_sensitive ;
-//   - « Ignorer les clés et jetons » (réglage, activé par défaut, 1.2.5) : une
+//   - « Ignorer les clés et jetons » (réglage, activé par défaut, 1.2.4) : une
 //     copie qui EST une clé d'API, un jeton ou une clé privée (sk-ant-…, ghp_…,
 //     JWT, « -----BEGIN … PRIVATE KEY----- », postgres://u:mdp@hôte…) est lue
 //     mais pas gardée : ni historique, ni recherche du Lanceur, ni envoi sur mes

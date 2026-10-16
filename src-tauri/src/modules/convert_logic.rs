@@ -1,4 +1,4 @@
-// Ondine convertit (1.2.5) : la partie pure, testée sous Linux.
+// Ondine convertit (1.2.4) : la partie pure, testée sous Linux.
 //
 //   - le type d'un fichier d'après son extension (image, PDF, vidéo, son,
 //     archive ZIP, dossier, autre) et les formats permis pour chaque type ;

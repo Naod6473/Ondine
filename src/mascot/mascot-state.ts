@@ -487,7 +487,7 @@ export class MascotController {
       this.rainy = isRainy(w);
       this.pushExtras();
     });
-    // `emotion` (facultatif, 1.2.5) : ce que montre une mascotte qui n'a pas
+    // `emotion` (facultatif, 1.2.4) : ce que montre une mascotte qui n'a pas
     // cette animation (Ondine convertit joue celles de la goutte gomme).
     on("mascot.play", (p: { animation?: string; emotion?: string } | null) => {
       if (!p?.animation) return;

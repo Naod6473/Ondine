@@ -1,4 +1,4 @@
-// Les pilules de l'onglet Agents IA (1.2.5) : une par agent (son icône, son
+// Les pilules de l'onglet Agents IA (1.2.4) : une par agent (son icône, son
 // nom, sa couleur, un badge rond « ! » / « ✓ » / « ✕ », le nombre de
 // sessions en cours s'il y en a plusieurs), « + » pour en ajouter, et les
 // petites pilules discrètes à droite (forfait, jetons, GitHub, concentration).

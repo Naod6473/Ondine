@@ -1,4 +1,4 @@
-// Le dépôt unifié (1.2.5) : ce que montre l'île pendant qu'on y glisse un
+// Le dépôt unifié (1.2.4) : ce que montre l'île pendant qu'on y glisse un
 // fichier. Maquette validée : animations-ile/maquette-depot-unifie.html,
 // version A (« tout dans l'île, modulable au besoin »).
 //

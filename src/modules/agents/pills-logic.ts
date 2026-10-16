@@ -1,4 +1,4 @@
-// La rangée de pilules de l'onglet Agents IA (1.2.5), sans DOM ni Tauri
+// La rangée de pilules de l'onglet Agents IA (1.2.4), sans DOM ni Tauri
 // (testée dans tests/front/agents-pills.test.ts) : quelles pilules montrer,
 // dans quel ordre, avec quel badge, si l'agent est « branché », et quelle
 // carte afficher sous la rangée. La vue est dans pills-view.ts et index.ts.

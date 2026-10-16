@@ -1,4 +1,4 @@
-// Ondine convertit (1.2.5) : la logique pure du module, sans DOM ni Tauri
+// Ondine convertit (1.2.4) : la logique pure du module, sans DOM ni Tauri
 // (testée dans tests/front/convert.test.ts).
 //
 //   - le type d'un fichier d'après son extension, et les pilules de formats à
@@ -60,7 +60,7 @@ export function commonKind(paths: string[]): Kind {
 /**
  * Les formats proposés par type, dans l'ordre des pilules (avant le « dernier
  * choix »). « ZIP » partout (sauf pour une archive) : c'est l'ancienne cible
- * « Compresser » de l'Étagère (dépôt unifié, 1.2.5).
+ * « Compresser » de l'Étagère (dépôt unifié, 1.2.4).
  */
 const FORMATS: Record<Kind, FormatId[]> = {
   image: ["jpg", "png", "webp", "pdf", "shrink", "gif", "bmp", "tiff", "ico", "zip"],

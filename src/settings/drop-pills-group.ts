@@ -1,4 +1,4 @@
-// Réglages → Étagère → Pilules du dépôt (1.2.5) : « modulable au besoin ».
+// Réglages → Étagère → Pilules du dépôt (1.2.4) : « modulable au besoin ».
 //
 // Quand on glisse un fichier sur l'île, elle montre ses pilules en trois
 // lignes (Convertir, Ranger, Outils : src/island/drop-panel.ts). Ici, une

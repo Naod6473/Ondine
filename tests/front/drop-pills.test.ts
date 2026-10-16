@@ -1,4 +1,4 @@
-// Tests du dépôt unifié (1.2.5) : la liste par défaut des pilules, la fusion
+// Tests du dépôt unifié (1.2.4) : la liste par défaut des pilules, la fusion
 // avec les cibles des modules, la migration des anciens interrupteurs, l'ordre,
 // et les phrases (src/island/drop-pills-logic.ts).
 
