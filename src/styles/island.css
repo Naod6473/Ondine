@@ -2954,10 +2954,6 @@ body[data-perf="eco"] .media-compact.on .media-eq i {
   flex-direction: column;
   gap: 6px;
 }
-.agents-status {
-  margin: 0;
-  font-size: 12px;
-}
 .agents-list {
   list-style: none;
   margin: 0;
@@ -2974,47 +2970,15 @@ body[data-perf="eco"] .media-compact.on .media-eq i {
 .agents-item.waiting {
   background: rgba(255, 198, 92, 0.09);
 }
-.agents-empty {
-  padding: 4px 8px;
-}
 @keyframes agents-in {
   from {
     opacity: 0;
     transform: translateY(-4px);
   }
 }
-.agents-guide {
-  font-size: 12px;
-}
-.agents-guide summary {
-  cursor: pointer;
-  color: var(--muted, rgba(255, 255, 255, 0.55));
-}
-.agents-guide ol {
-  margin: 6px 0;
-  padding-left: 18px;
-}
-.agents-guide code {
-  font-size: 11px;
-  user-select: text;
-  overflow-wrap: anywhere;
-}
 .agents-exe {
   display: block;
   margin-top: 2px;
-}
-/* Hooks installés / ancien chemin / non installé, et le fichier concerné. */
-.agents-hook-state {
-  margin: 6px 0 4px;
-  display: grid;
-  gap: 2px;
-}
-.agents-hook-badge {
-  font-weight: 600;
-}
-.agents-hook-badge.stale,
-.agents-hook-badge.unreadable {
-  color: var(--warning, #f5b14c);
 }
 @media (prefers-reduced-motion: reduce) {
   .agents-item {
@@ -3027,43 +2991,9 @@ body[data-perf="eco"] .media-compact.on .media-eq i {
   gap: 6px;
   flex-wrap: wrap;
 }
-.agents-launch-title {
-  font-weight: 600;
-  margin-right: 2px;
-}
-.agents-tools {
-  margin: 6px 0 2px;
-}
 .net-chip.active {
   background: rgba(255, 255, 255, 0.14);
   color: var(--island-fg);
-}
-.agents-launch-sep {
-  width: 1px;
-  height: 16px;
-  background: var(--line);
-  margin: 0 2px;
-}
-/* Une ligne par projet : nouvelle session, « Reprendre », la dernière phrase en petit. */
-.agents-projects {
-  list-style: none;
-  margin: 4px 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.agents-projects:empty {
-  display: none;
-}
-.agents-project {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-.agents-project .btn {
-  flex: none;
 }
 .agents-last {
   flex: 1;
@@ -3071,10 +3001,6 @@ body[data-perf="eco"] .media-compact.on .media-eq i {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-}
-.agents-subtitle {
-  font-size: 11px;
-  margin-top: 2px;
 }
 /* Le mode concentration */
 .agents-quiet {
@@ -3414,13 +3340,6 @@ body[data-perf="eco"] .gh-today.gh-zero {
 }
 .agents-session.waiting {
   background: rgba(255, 198, 92, 0.09);
-}
-.agents-go {
-  opacity: 0;
-  transition: opacity 160ms ease;
-}
-.agents-session:hover .agents-go {
-  opacity: 0.7;
 }
 /* Le point d'état : vert qui respire (au travail), orange (t'attend), gris (fini). */
 .agents-dot {
@@ -3813,10 +3732,6 @@ body[data-perf="eco"] .ask-w.ask-in {
   -webkit-mask: var(--src) center / contain no-repeat;
   mask: var(--src) center / contain no-repeat;
   pointer-events: none;
-}
-.agents-logo {
-  font-size: 14px;
-  line-height: 1;
 }
 
 /* ---- Contrôles : façon centre de contrôle, en verre liquide ---- */
@@ -5294,9 +5209,6 @@ body.retro .island .btn {
 .agents-file.gone code {
   opacity: 0.6;
   text-decoration: line-through;
-}
-.agents-other {
-  margin-top: 10px;
 }
 .agents-ask.capture,
 .agents-ask.open {

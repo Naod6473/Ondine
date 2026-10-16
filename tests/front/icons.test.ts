@@ -40,3 +40,40 @@ test("Animations de l'île, Ondine et les fenêtres, Équipe : image en couleur 
     assert.match(svg, /fill="currentColor"/);
   }
 });
+
+/** Les clés de BY_EMOJI et de LINE_ONLY (sans « ️ »), lues dans icon.ts. */
+function lineKeys(): Set<string> {
+  const src = readFileSync("src/island/icon.ts", "utf8");
+  const keys = new Set<string>();
+  for (const name of ["const BY_EMOJI", "const LINE_ONLY"]) {
+    const block = src.slice(src.indexOf(name), src.indexOf("};", src.indexOf(name)));
+    for (const m of block.matchAll(/"([^"]+)":\s*"([^"]+)"/g)) {
+      keys.add(m[1].replace(/️/g, ""));
+      assert.ok(existsSync(`src/assets/icons-line/${m[2]}.svg`), `icons-line/${m[2]}.svg manquant`);
+    }
+  }
+  return keys;
+}
+
+/** Les fichiers .ts d'un dossier, sous-dossiers compris. */
+function tsFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? tsFiles(join(dir, e.name)) : e.name.endsWith(".ts") ? [join(dir, e.name)] : [],
+  );
+}
+
+test("style épuré : les icônes des modules et des réglages ont toutes leur trait", () => {
+  const keys = lineKeys();
+  // Les icônes de notification (« icon: "🍽️" ») et les pictogrammes en tête
+  // d'un libellé entre guillemets (« "📣 Annonce" »). La mascotte et les
+  // scènes dessinent leurs emojis elles-mêmes : hors de ce test.
+  const rx = /(?:icon:\s*|["`])(\p{Extended_Pictographic}️?)/gu;
+  const missing = new Set<string>();
+  for (const file of [...tsFiles("src/modules"), ...tsFiles("src/settings"), "src/core/setup-plan.ts"]) {
+    for (const m of readFileSync(file, "utf8").matchAll(rx)) {
+      const e = m[1].replace(/️/g, "");
+      if (!keys.has(e) && !"→↑↓←↗‹✕✓↺↻＋★⚑○⋯".includes(e)) missing.add(`${e} (${file})`);
+    }
+  }
+  assert.deepEqual([...missing], []);
+});
