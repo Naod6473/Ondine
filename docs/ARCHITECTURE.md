@@ -3158,6 +3158,9 @@ fichier vers l'Explorateur). Et `swallow` (non) : le « trou noir », voir
 
 ## Fenêtre de réglages : catégories et sous-menus (`src/settings/main.ts`)
 
+> Depuis 1.2.5, la barre est remplacée par deux colonnes (voir « deux colonnes,
+> verre liquide, annuler » plus bas) ; le rangement des pages ci-dessous reste.
+
 - **Rangement 1.2.2** (`src/settings/layout.ts`, données pures testées dans
   `tests/front/settings-layout.test.ts`) : cinq groupes dans la barre
   (`NAV_GROUPS`, six depuis 1.2.4 avec **Voix** en premier, voir plus bas) :
@@ -3320,6 +3323,103 @@ fichier vers l'Explorateur). Et `swallow` (non) : le « trou noir », voir
   « désactivé » via `module`, recherche par leur nom, liens profonds
   `go("voice:dictation")` / « settings.goto ». `dictation` et `callnotes` sont
   dans `MODULES_ELSEWHERE` (pas de seconde page dans Modules).
+
+## Fenêtre de réglages : deux colonnes, verre liquide, annuler (1.2.5, `src/settings/main.ts`, `nav-logic.ts`, `src/styles/settings-nav.css`)
+
+Remplace la barre latérale repliable de 1.2.2 (catégories et sous-menus
+dépliés dans la barre, `nav-pill.ts` retiré). Rien n'est renommé : mêmes
+pages, mêmes ids, mêmes clés de réglages, mêmes liens profonds
+(`go(page, clé, sous-menu)`, « settings.goto », `resolvePlace`).
+
+- **1re colonne** (`.rail`, `drawRail`) : la recherche en haut, les **sept
+  rubriques** fixes (`NAV_GROUPS` : Ondine, Voix, L'île, Automatiser,
+  Modules, Système, À propos ; « Sécurité et système » s'appelle Système,
+  À propos est une rubrique : page `about`, sous-menus « Version et
+  nouveautés » et « Captures d'écran »), chacune avec son icône
+  (`RUBRIC_ICONS`, emoji tracé par icon.ts en style épuré) et son nombre de
+  pages ; Simple / Complet et la pastille d'état en bas. Rien ne s'y déplie.
+- **2e colonne** (`.col2`, `drawCol2`, lignes calculées par `column2`) : les
+  pages de la rubrique (Modules : sous les titres de `MODULE_CATEGORIES`), et
+  les sous-menus de la page affichée dépliés juste sous elle. Choisir une
+  rubrique rouvre sa dernière page vue (`pageForRubric`, `localStorage`
+  « settings.rubrics ») ; « settings.page » et « settings.subs » gardent
+  leur rôle. « settings.cats » n'existe plus (effacé au démarrage).
+- **Contenu** : le fil d'Ariane `Rubrique › Page › Sous-menu` (`crumbs` :
+  la rubrique mène à sa première page, la page à son premier sous-menu, le
+  dernier morceau ne mène nulle part ; un nom de profil n'est pas traduit),
+  puis la bande (hero.ts, inchangée), les outils de la page (préréglages,
+  « Réinitialiser la page ») et les blocs. Sous 900 px (`NARROW_PX`) la
+  2e colonne devient une bande de pages au-dessus du contenu et les
+  sous-menus reviennent en pilules (`subPills`) ; sous 700 px la 1re colonne
+  ne garde que les icônes.
+- **Mouvement façon iOS** (courbe `IOS_EASE`, `cubic-bezier(.32,.72,0,1)`) :
+  une pastille en verre par colonne (`glass-pill.ts`) glisse d'une ligne à
+  l'autre comme une goutte (`glideFrames` : quatre étapes WAAPI, elle
+  s'étire puis s'écrase un peu ; le reflet suit la souris via `--mx`) ; la
+  2e colonne arrive en cascade au changement de rubrique, les sous-menus en
+  cascade quand ils se déplient ; la page arrive de la droite quand on va
+  plus loin dans l'ordre de lecture, de la gauche quand on revient
+  (`direction`, sur `[rubrique, page, sous-menu]`). `still()` =
+  `reducedMotion() || perfMode() === "eco"` : tout saute à sa place.
+- **Verre liquide** (`settings-nav.css`) : colonnes translucides
+  (`backdrop-filter` flou et saturation) au-dessus d'un fond aux taches de
+  couleur qui bougent lentement (`.nav-backdrop`, plus discret en fond
+  « deep », noir profond en sombre) ; interrupteurs au pouce bombé qui
+  s'étire à l'appui. Mode Économie (`body[data-perf="eco"]`) : plus de flou
+  ni de taches qui bougent.
+- **Menu de choix** (`glass-select.ts`) : tout `<select>` des Réglages
+  (`controls.ts select()`, `rules-editor.ts`, et ceux qu'une page crée elle-
+  même, habillés par `upgradeSelects` au dessin de la page et par un
+  MutationObserver) devient une pilule et une liste en verre
+  (`role="listbox"`, options `role="option"`, coche sur le choix actuel,
+  pastille qui suit la souris ou les flèches, ↑ ↓ Début Fin, lettre, Entrée,
+  Échap, Tab). Le vrai `<select>` reste caché dans la page : choisir change
+  sa valeur et envoie `input` et `change` ; `select.value = …` écrit par le
+  code met la pilule à jour (accesseurs `value` / `selectedIndex` de
+  l'instance).
+- **« Modifié »** (`modified.ts`) : après chaque dessin (`markModified`),
+  une ligne dont la valeur diffère de son origine porte la pastille
+  « Modifié » et « Réinitialiser ». Origine : le `default` du manifeste pour
+  un champ de module (la ligne porte `data-field="<module>.<clé>"`, posé par
+  `fieldRows`), `defaultSettings()` aux chemins de `ISLAND_PATHS` (par page,
+  par libellé de ligne) pour les pages de l'île. « Réinitialiser la page »
+  demande confirmation dans la page (pas de `confirm()`), puis remet toutes
+  les lignes modifiées en un seul changement annulable.
+- **Annuler** (`undo.ts`, `UndoStack`) : `save()` retient, pour chaque
+  changement, les champs changés dans les deux sens (`settingsDiff`) ; un
+  même réglage changé encore dans les 1,2 s reste un seul changement. Une
+  bulle « <réglage> modifié · Annuler » reste quelques secondes ; Ctrl+Z
+  annule (dix changements au plus), Ctrl+Y ou Ctrl+Maj+Z refait, sauf dans
+  un champ de texte en cours de saisie (`typingTarget`). Annuler ne remet
+  que ces champs-là : ce qu'une autre fenêtre a changé entre-temps reste.
+  Changer de mode Simple / Complet n'est pas retenu.
+- **Chercher partout** : Ctrl+K, ou « / » hors d'un champ de texte, met le
+  curseur dans la recherche. Dans les résultats, un réglage simple
+  (interrupteur, menu de choix, segmenté) des pages `INLINE_PAGES` et des
+  champs de modules se change sur place (`inlineControl`) ; le reste mène à
+  sa ligne, comme avant.
+- **Préréglages** (`presets.ts`) : en haut d'Animations et halos (Calme,
+  Équilibré, Tout animé, calculés depuis le manifeste `halos` par
+  `animationPresets`) et d'Apparence (Sobre, Classique, Expressif sur
+  `island.motion` et `island.elasticity`). Un clic applique tout en un seul
+  changement annulable ; le préréglage qui correspond aux réglages actuels
+  est allumé (`activePreset`), sinon « Personnalisé ».
+- **Vignettes** (`vignettes.ts`) : Thème, Taille de la mini-île, Style de
+  l'île, Style des icônes et Bord de l'écran se choisissent sur de petits
+  dessins SVG au trait (groupe `role="radiogroup"`, flèches). Le podium de la
+  mascotte ne change pas.
+- **Pages de modules** : la ligne « Activé » et les permissions du manifeste
+  (en pilules) restent collées en haut (`section.module-bar`, `position:
+  sticky`).
+- **Retour / suivant** (`nav-history.ts`, `NavHistory`) : chaque place
+  visitée (page, sous-menu) est retenue ; le bouton 4 de la souris
+  (« retour », `button === 3`), Alt+← et la touche « Précédent » reviennent,
+  le bouton 5, Alt+→ et « Suivant » avancent. Une place qui disparaît (module
+  retiré) est oubliée (`forget`).
+- Tests : `tests/front/settings-nav.test.ts` (colonnes, fil d'Ariane, sens du
+  mouvement, trajet de la pastille, historique) et
+  `tests/front/settings-undo.test.ts` (annuler, préréglages, « Modifié ») ;
+  à faire sur Windows : `docs/tests/TESTS-reglages-deux-colonnes.md`.
 
 ## 1.2.3 : dictée hors ligne, pancarte, pont de fichier, nouvel appareil
 

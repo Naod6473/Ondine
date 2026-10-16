@@ -1,5 +1,40 @@
 # Changements · Changelog
 
+## 1.2.5 · à venir
+
+- Réglages en deux colonnes : à gauche, sept rubriques fixes (Ondine, Voix,
+  L'île, Automatiser, Modules, Système, À propos) ; au milieu, les pages de
+  la rubrique et les sous-menus de la page choisie ; en haut de la page, un
+  fil d'Ariane cliquable · Settings in two columns: on the left, seven fixed
+  sections (Ondine, Voice, The island, Automate, Modules, System, About); in
+  the middle, the section's pages and the chosen page's submenus; at the top
+  of the page, a clickable breadcrumb
+- Réglages en verre liquide : colonnes translucides, pastille qui glisse
+  comme une goutte, pages qui arrivent dans le sens de la navigation, menus de
+  choix en verre. Tout reste immobile si Windows réduit les animations, et
+  sans flou en mode Économie · Liquid-glass Settings: translucent columns, a
+  highlight that glides like a drop, pages that slide in the direction you
+  go, glass choice menus. Everything stays still if Windows reduces
+  animations, and without blur in Eco mode
+- Réglages : pastille « Modifié » et « Réinitialiser » sur chaque réglage
+  changé, « Réinitialiser la page », bulle « Annuler » après chaque
+  changement, Ctrl+Z et Ctrl+Y · Settings: a "Modified" badge and "Reset" on
+  each changed setting, "Reset the page", an "Undo" bubble after each change,
+  Ctrl+Z and Ctrl+Y
+- Réglages : Ctrl+K ou « / » pour chercher, et les réglages simples se
+  changent directement dans les résultats ; préréglages en un clic (Animations
+  et halos : Calme, Équilibré, Tout animé ; Apparence : Sobre, Classique,
+  Expressif) ; choix en vignettes (thème, bord de l'écran, style de l'île,
+  icônes) · Settings: Ctrl+K or "/" to search, and simple settings can be
+  changed right in the results; one-click presets (Animations and halos:
+  Calm, Balanced, All animated; Appearance: Sober, Classic, Expressive);
+  visual choices as thumbnails (theme, screen edge, island style, icons)
+- Réglages : sur la page d'un module, la ligne « Activé » reste en haut avec
+  ses permissions ; le bouton « retour » de la souris et Alt+← reviennent à
+  la page d'avant, Alt+→ y retourne · Settings: on a module's page, the
+  "Enabled" row stays at the top with its permissions; the mouse "back"
+  button and Alt+← go back to the previous page, Alt+→ goes forward again
+
 ## 1.2.4 · à venir
 
 - Notifications de Windows dans l'île : les bulles des autres applis (Teams,
