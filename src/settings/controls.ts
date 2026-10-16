@@ -1,12 +1,14 @@
 // Les briques de la fenêtre de réglages, toutes dans le même style :
 //   - group() : un bloc arrondi en verre dépoli, avec un titre au-dessus ;
 //   - row()   : une ligne du bloc, le libellé à gauche, la commande à droite ;
-//   - toggle(), segmented(), select(), stepper() : les commandes.
+//   - toggle(), segmented(), select(), stepper() : les commandes (select() :
+//     le menu de choix en verre, glass-select.ts).
 //
 // Chaque commande appelle `onChange` avec la nouvelle valeur ; c'est la page
 // qui l'enregistre. Rien ici ne connaît les réglages eux-mêmes.
 
 import { el } from "../island/dom";
+import { glassSelect } from "./glass-select";
 
 type Child = Node | string | null | undefined | false;
 let labelId = 0;
@@ -117,13 +119,17 @@ export function segmented(value: string, options: [string, string][], onChange: 
   return box;
 }
 
-/** Une liste déroulante. Au-delà de trois options, c'est plus lisible qu'un segmenté. */
+/**
+ * Une liste de choix. Au-delà de trois options, c'est plus lisible qu'un
+ * segmenté. Le menu est en verre (glass-select.ts, 1.2.4) ; le <select>
+ * caché dedans garde la valeur et envoie « change », comme avant.
+ */
 export function select(value: string, options: [string, string][], onChange: (v: string) => void): HTMLElement {
   const s = el("select", { class: "select" }) as HTMLSelectElement;
   for (const [v, l] of options) s.append(el("option", { value: v }, l));
   s.value = value;
   s.addEventListener("change", () => onChange(s.value));
-  return s;
+  return glassSelect(s);
 }
 
 /** Le bon contrôle pour un choix : segmenté pour 2-3 options courtes, sinon une liste. */

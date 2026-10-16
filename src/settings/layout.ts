@@ -8,14 +8,16 @@
 // le module Animations de l'île et les halos de batterie du module Système).
 
 /**
- * Les groupes de la barre latérale, dans l'ordre. « Voix » (1.2.4) vient en
- * premier : les pages de VOICE_PAGES (src/settings/voice/pages.ts).
+ * Les rubriques de la 1re colonne, dans l'ordre (1.2.4, deux colonnes :
+ * nav-logic.ts). « Voix » : les pages de VOICE_PAGES
+ * (src/settings/voice/pages.ts). « Système » s'appelait « Sécurité et
+ * système » ; « À propos », une page de ce groupe, est devenue une rubrique.
  */
-export const NAV_GROUPS = ["Voix", "Ondine", "L'île", "Automatiser", "Modules", "Sécurité et système"] as const;
+export const NAV_GROUPS = ["Ondine", "Voix", "L'île", "Automatiser", "Modules", "Système", "À propos"] as const;
 export type NavGroup = (typeof NAV_GROUPS)[number];
 
 /**
- * Les catégories de modules dans la barre (texte seul, repliables). Un module
+ * Les catégories de modules dans la 2e colonne (des titres en texte). Un module
  * qui n'est dans aucune va dans « Autres modules ». Dans une catégorie, les
  * modules gardent l'ordre des onglets.
  */

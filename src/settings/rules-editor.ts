@@ -12,6 +12,7 @@ import { Bridge } from "../core/bridge";
 import type { Bus } from "../core/bus";
 import { errorText } from "../core/log";
 import { el } from "../island/dom";
+import { glassSelect } from "./glass-select";
 import { ALL_MODULES } from "../modules";
 import {
   ACTION_LABELS,
@@ -105,7 +106,8 @@ function selectInput(value: string, options: [string, string][], onChange: (v: s
   for (const [v, l] of options) s.append(el("option", { value: v }, l));
   s.value = value;
   s.addEventListener("change", () => onChange(s.value));
-  return s;
+  // Le menu de choix en verre des Réglages (glass-select.ts) ; le <select> reste dedans.
+  return glassSelect(s);
 }
 
 /** Un chemin de dossier + bouton « Choisir… ». */

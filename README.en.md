@@ -62,6 +62,8 @@ What's new in version 1.2.4 (the full list is in the
   the top of the sidebar.
 - **Music card redone**: line icons, shuffle and repeat, the player's own
   volume, the cover's colour and glow.
+- **Settings redone**: two columns (seven sections, then the pages), in
+  liquid glass, with "Undo", Ctrl+K, presets and picture choices.
 - **Ondine converts**: drag a file to the island, drop it on a format pill
   (images, PDF, video, sound, ZIP); next to the original, in its place or on
   the Desktop. Everything runs on the PC.

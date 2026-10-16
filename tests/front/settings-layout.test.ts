@@ -53,8 +53,8 @@ describe("Animations et halos", () => {
 });
 
 describe("barre latérale", () => {
-  test("six groupes, dans l'ordre : Voix en premier (1.2.4)", () => {
-    assert.deepEqual([...NAV_GROUPS], ["Voix", "Ondine", "L'île", "Automatiser", "Modules", "Sécurité et système"]);
+  test("sept rubriques, dans l'ordre : Ondine puis Voix, À propos à la fin (1.2.4)", () => {
+    assert.deepEqual([...NAV_GROUPS], ["Ondine", "Voix", "L'île", "Automatiser", "Modules", "Système", "À propos"]);
   });
 
   test("Dictée et Notes d'appel ont leur page dans Voix, pas dans Modules", () => {
@@ -69,7 +69,7 @@ describe("barre latérale", () => {
     const ids = [...src.matchAll(/"(voice:[a-z]+)"/g)].map((m) => m[1]);
     assert.deepEqual([...new Set(ids)].sort(), ["voice:callnotes", "voice:dictation", "voice:dictionary", "voice:stats", "voice:styles"]);
     const main = readFileSync("src/settings/main.ts", "utf8");
-    assert.match(main, /\.\.\.VOICE_NAV, \.\.\.ONDINE_PAGES/, "Voix vient avant Ondine dans allPages()");
+    assert.match(main, /\.\.\.ONDINE_PAGES,[^\n]*\.\.\.VOICE_NAV/, "Ondine vient avant Voix dans allPages()");
     assert.match(main, /group: "Voix"/);
   });
 

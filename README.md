@@ -63,6 +63,9 @@ Les nouveautés de la version 1.2.4 (la liste complète est dans le
   groupe « Voix » en tête de la barre.
 - **Carte Musique refaite** : icônes au trait, aléatoire et répétition,
   volume du lecteur seul, couleur et lueur de la pochette.
+- **Réglages refaits** : deux colonnes (sept rubriques, puis les pages),
+  en verre liquide, avec « Annuler », Ctrl+K, des préréglages et des choix
+  en vignettes.
 - **Ondine convertit** : glissez un fichier vers l'île, lâchez-le sur une
   pilule de format (images, PDF, vidéo, son, ZIP) ; à côté de l'original, à
   sa place ou sur le Bureau. Tout se fait sur le PC.
