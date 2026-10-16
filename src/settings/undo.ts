@@ -1,4 +1,4 @@
-// Annuler un changement dans les Réglages (1.2.5) : après chaque changement,
+// Annuler un changement dans les Réglages (1.2.4) : après chaque changement,
 // une petite bulle « Annuler » reste quelques secondes, et Ctrl+Z annule le
 // dernier (Ctrl+Y le refait). Logique pure, sans DOM, testée dans
 // tests/front/settings-undo.test.ts ; main.ts l'appelle depuis save().

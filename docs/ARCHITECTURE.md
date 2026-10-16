@@ -3158,7 +3158,7 @@ fichier vers l'Explorateur). Et `swallow` (non) : le « trou noir », voir
 
 ## Fenêtre de réglages : catégories et sous-menus (`src/settings/main.ts`)
 
-> Depuis 1.2.5, la barre est remplacée par deux colonnes (voir « deux colonnes,
+> Depuis 1.2.4, la barre est remplacée par deux colonnes (voir « deux colonnes,
 > verre liquide, annuler » plus bas) ; le rangement des pages ci-dessous reste.
 
 - **Rangement 1.2.2** (`src/settings/layout.ts`, données pures testées dans
@@ -3324,7 +3324,7 @@ fichier vers l'Explorateur). Et `swallow` (non) : le « trou noir », voir
   `go("voice:dictation")` / « settings.goto ». `dictation` et `callnotes` sont
   dans `MODULES_ELSEWHERE` (pas de seconde page dans Modules).
 
-## Fenêtre de réglages : deux colonnes, verre liquide, annuler (1.2.5, `src/settings/main.ts`, `nav-logic.ts`, `src/styles/settings-nav.css`)
+## Fenêtre de réglages : deux colonnes, verre liquide, annuler (1.2.4, `src/settings/main.ts`, `nav-logic.ts`, `src/styles/settings-nav.css`)
 
 Remplace la barre latérale repliable de 1.2.2 (catégories et sous-menus
 dépliés dans la barre, `nav-pill.ts` retiré). Rien n'est renommé : mêmes

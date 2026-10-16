@@ -1,4 +1,4 @@
-// Tests des aides des Réglages (1.2.5) : annuler un changement
+// Tests des aides des Réglages (1.2.4) : annuler un changement
 // (src/settings/undo.ts), les préréglages en un clic (src/settings/presets.ts)
 // et la pastille « Modifié » (src/settings/modified.ts).
 

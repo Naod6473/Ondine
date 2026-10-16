@@ -8,7 +8,7 @@
 // le module Animations de l'île et les halos de batterie du module Système).
 
 /**
- * Les rubriques de la 1re colonne, dans l'ordre (1.2.5, deux colonnes :
+ * Les rubriques de la 1re colonne, dans l'ordre (1.2.4, deux colonnes :
  * nav-logic.ts). « Voix » : les pages de VOICE_PAGES
  * (src/settings/voice/pages.ts). « Système » s'appelait « Sécurité et
  * système » ; « À propos », une page de ce groupe, est devenue une rubrique.

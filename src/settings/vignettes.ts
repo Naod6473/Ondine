@@ -1,4 +1,4 @@
-// Les choix visuels des Réglages en vignettes (1.2.5) : au lieu de mots, une
+// Les choix visuels des Réglages en vignettes (1.2.4) : au lieu de mots, une
 // petite image de ce qu'on choisit (le bord de l'écran, le style de l'île, les
 // icônes, le thème). Les dessins sont au trait, en SVG, dans la couleur du
 // texte ; l'île y prend la couleur de la page. Aucune image de marque.

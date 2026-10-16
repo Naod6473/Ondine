@@ -1,4 +1,4 @@
-// Tests de la navigation des Réglages en deux colonnes (1.2.5) :
+// Tests de la navigation des Réglages en deux colonnes (1.2.4) :
 // src/settings/nav-logic.ts (les colonnes, le fil d'Ariane, le sens du
 // mouvement, la pastille qui glisse) et src/settings/nav-history.ts (le
 // bouton « retour » de la souris, Alt+← et Alt+→).

@@ -1,4 +1,4 @@
-# Tests Windows : Réglages en deux colonnes (1.2.5)
+# Tests Windows : Réglages en deux colonnes (1.2.4)
 
 À vérifier sur Windows (WebView2), en thème sombre puis clair, avec un
 fichier de réglages d'avant (1.2.4) : rien ne doit être perdu.

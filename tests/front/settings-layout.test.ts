@@ -53,7 +53,7 @@ describe("Animations et halos", () => {
 });
 
 describe("barre latérale", () => {
-  test("sept rubriques, dans l'ordre : Ondine puis Voix, À propos à la fin (1.2.5)", () => {
+  test("sept rubriques, dans l'ordre : Ondine puis Voix, À propos à la fin (1.2.4)", () => {
     assert.deepEqual([...NAV_GROUPS], ["Ondine", "Voix", "L'île", "Automatiser", "Modules", "Système", "À propos"]);
   });
 

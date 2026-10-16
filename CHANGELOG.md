@@ -1,6 +1,6 @@
 # Changements · Changelog
 
-## 1.2.5 · à venir
+## 1.2.4 · à venir
 
 - Réglages en deux colonnes : à gauche, sept rubriques fixes (Ondine, Voix,
   L'île, Automatiser, Modules, Système, À propos) ; au milieu, les pages de
@@ -34,8 +34,6 @@
   la page d'avant, Alt+→ y retourne · Settings: on a module's page, the
   "Enabled" row stays at the top with its permissions; the mouse "back"
   button and Alt+← go back to the previous page, Alt+→ goes forward again
-
-## 1.2.4 · à venir
 
 - Notifications de Windows dans l'île : les bulles des autres applis (Teams,
   Outlook, WhatsApp…) passent aussi par Ondine, avec le logo de l'appli et

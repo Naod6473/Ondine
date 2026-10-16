@@ -1,4 +1,4 @@
-// La pastille « Modifié » des Réglages (1.2.5) : un réglage différent de sa
+// La pastille « Modifié » des Réglages (1.2.4) : un réglage différent de sa
 // valeur d'origine le dit, avec « Réinitialiser » à côté. Logique pure, sans
 // DOM, testée dans tests/front/settings-undo.test.ts ; main.ts pose les
 // pastilles sur les lignes.

@@ -1,5 +1,5 @@
 // La pastille en verre sous la ligne choisie, dans les deux colonnes des
-// Réglages (1.2.5). Elle glisse d'une ligne à l'autre comme une goutte (les
+// Réglages (1.2.4). Elle glisse d'une ligne à l'autre comme une goutte (les
 // étapes : glideFrames, nav-logic.ts), et son reflet suit la souris.
 //
 // Une seule pastille par colonne, gardée quand la colonne se redessine : elle

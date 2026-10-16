@@ -1,4 +1,4 @@
-// La navigation des Réglages en deux colonnes (1.2.5) : logique pure, sans
+// La navigation des Réglages en deux colonnes (1.2.4) : logique pure, sans
 // DOM, testée dans tests/front/settings-nav.test.ts ; main.ts la dessine.
 //
 //   - 1re colonne : les sept rubriques fixes (NAV_GROUPS, layout.ts). Rien ne

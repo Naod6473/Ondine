@@ -121,7 +121,7 @@ export function segmented(value: string, options: [string, string][], onChange: 
 
 /**
  * Une liste de choix. Au-delà de trois options, c'est plus lisible qu'un
- * segmenté. Le menu est en verre (glass-select.ts, 1.2.5) ; le <select>
+ * segmenté. Le menu est en verre (glass-select.ts, 1.2.4) ; le <select>
  * caché dedans garde la valeur et envoie « change », comme avant.
  */
 export function select(value: string, options: [string, string][], onChange: (v: string) => void): HTMLElement {

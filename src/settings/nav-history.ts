@@ -1,4 +1,4 @@
-// L'historique de navigation des Réglages (1.2.5) : le bouton « retour » de
+// L'historique de navigation des Réglages (1.2.4) : le bouton « retour » de
 // la souris et Alt+← reviennent à la page d'avant, Alt+→ (ou le bouton
 // « suivant ») y retourne. Logique pure, sans DOM, testée dans
 // tests/front/settings-nav.test.ts ; main.ts écoute la souris et le clavier.

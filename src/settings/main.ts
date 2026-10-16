@@ -1,7 +1,7 @@
 // La fenêtre de réglages. Tout y est généré : les réglages des modules à partir
 // de leurs manifestes, la liste des mascottes à partir du dossier mascots/.
 //
-// Disposition (1.2.5, deux colonnes, logique dans nav-logic.ts) :
+// Disposition (1.2.4, deux colonnes, logique dans nav-logic.ts) :
 //   - 1re colonne, en verre : une recherche, les sept rubriques fixes (Ondine,
 //     Voix, L'île, Automatiser, Modules, Système, À propos, voir layout.ts),
 //     et en bas Simple / Complet et la pastille d'état. Rien ne s'y déplie ;
@@ -389,7 +389,7 @@ const SYSTEM_PAGES: Page[] = [
 ];
 
 /**
- * La rubrique « À propos » (1.2.5 : une page de « Sécurité et système »
+ * La rubrique « À propos » (1.2.4 : une page de « Sécurité et système »
  * devenue rubrique). Même id de page qu'avant : les liens profonds restent bons.
  */
 const ABOUT_PAGES: Page[] = [
@@ -540,7 +540,7 @@ async function start() {
     chosenSubs = JSON.parse(localStorage.getItem("settings.subs") ?? "{}") ?? {};
     const kept: unknown = JSON.parse(localStorage.getItem("settings.rubrics") ?? "null");
     if (kept && typeof kept === "object") rubricPages = Object.fromEntries(Object.entries(kept).filter(([, v]) => typeof v === "string"));
-    // Les catégories repliables de la barre d'avant 1.2.5 : plus rien à retenir.
+    // Les catégories repliables de la barre d'avant 1.2.4 : plus rien à retenir.
     localStorage.removeItem("settings.cats");
   } catch {
     // rien de retenu : premiers sous-menus, premières pages des rubriques
@@ -2230,7 +2230,7 @@ function modulePage(main: HTMLElement, man: ModuleManifest, compact = false) {
   });
   // Une page longue (MODULE_SECTIONS) : un bloc par sous-menu.
   const sections = compact ? undefined : MODULE_SECTIONS[man.id];
-  // La ligne « Activé » reste collée en haut de la page en défilant (1.2.5),
+  // La ligne « Activé » reste collée en haut de la page en défilant (1.2.4),
   // dans tous les sous-menus, avec les autorisations du module en pastilles.
   const enabled = row("Activé", enableToggle(man), "Désactivé, le module s'arrête et son onglet disparaît.", "Activé");
   if (!compact) enabled.querySelector(".row-text")?.append(el("div", { class: "chips module-perms", "data-key": "Permissions", role: "list", "aria-label": "Permissions" }, ...perms.map((c) => (c.setAttribute("role", "listitem"), c))));

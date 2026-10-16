@@ -1,4 +1,4 @@
-// Les préréglages en un clic, en haut de certaines pages des Réglages (1.2.5).
+// Les préréglages en un clic, en haut de certaines pages des Réglages (1.2.4).
 // Un préréglage est un ensemble de valeurs posées d'un coup (un seul
 // enregistrement, donc un seul « Annuler »). Logique pure, sans DOM, testée
 // dans tests/front/settings-undo.test.ts ; main.ts dessine les boutons.

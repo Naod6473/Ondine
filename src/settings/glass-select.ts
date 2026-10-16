@@ -1,4 +1,4 @@
-// Le menu de choix des Réglages (1.2.5), en verre : une pilule qui montre le
+// Le menu de choix des Réglages (1.2.4), en verre : une pilule qui montre le
 // choix actuel, et une liste qui sort du bouton avec un ressort, une pastille
 // qui suit la souris (ou les flèches) et une coche sur le choix actuel.
 //
