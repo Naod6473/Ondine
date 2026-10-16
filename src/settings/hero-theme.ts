@@ -7,14 +7,15 @@
 
 import { GUM_FAMILY } from "../mascot/gum-family";
 
-/** La couleur de chaque groupe de la barre latérale (les pages Voix ont chacune la leur). */
+/** La couleur de chaque rubrique (1re colonne ; les pages Voix ont chacune la leur). */
 export const GROUP_COLORS: Record<string, string> = {
   Voix: "#5fd4e6",
   Ondine: "#b79cff",
   "L'île": "#7cc4ff",
   Automatiser: "#ffb454",
   Modules: "#9fb4d8",
-  "Sécurité et système": "#8fd6b0",
+  Système: "#8fd6b0",
+  "À propos": "#f0a8c8",
 };
 
 /** La couleur de chaque catégorie de modules (layout.ts, MODULE_CATEGORIES). */
