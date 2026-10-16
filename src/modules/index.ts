@@ -13,6 +13,7 @@ import { launcher } from "./launcher";
 import { media } from "./media";
 import { notes } from "./notes";
 import { pauses } from "./pauses";
+import { games } from "./games";
 import { rules } from "./rules";
 import { shelf } from "./shelf";
 import { system } from "./system";
@@ -38,5 +39,5 @@ import { dictation } from "./dictation";
 // Notes d'appel juste après (ni l'un ni l'autre n'a de vue compacte) : la
 // sienne, le point rouge de l'enregistrement, passe avant celle des autres.
 // Il n'a pas d'onglet.
-export const ALL_MODULES: IslandModule[] = [home, askclaude, callnotes, convert, shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, team, agents, launcher, rules, media, controls, winnotifs, pauses, weather, weekly, halos, windowlife, screensaver, dictation];
+export const ALL_MODULES: IslandModule[] = [home, askclaude, callnotes, convert, shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, team, agents, launcher, rules, media, controls, winnotifs, pauses, games, weather, weekly, halos, windowlife, screensaver, dictation];
 

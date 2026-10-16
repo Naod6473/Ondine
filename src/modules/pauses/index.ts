@@ -7,6 +7,7 @@
 //   - après `everyMin` minutes d'écran, on propose une pause, sauf pendant une
 //     présentation / un plein écran, ou un appel (micro utilisé, d'après le
 //     module Contrôles) : on attend que ce soit fini.
+// Une pause faite (absence de 5 min) publie « pauses.taken » (1.2.5).
 
 import manifest from "./manifest.json";
 import { Bridge } from "../../core/bridge";
@@ -24,6 +25,8 @@ export const pauses: IslandModule = {
 
   setup(api) {
     let activeSince = Date.now();
+    /** Vrai pendant une absence déjà comptée comme pause. */
+    let away = false;
     let micInUse = false;
     const offMic = api.on("controls.media-use", (msg) => {
       micInUse = ((msg.payload as { mic?: string[] } | null)?.mic ?? []).length > 0;
@@ -34,11 +37,16 @@ export const pauses: IslandModule = {
       if (!every) return;
       const desk = await Bridge.deskState();
       if (!desk) return; // hors de l'appli
-      // Une vraie absence : la pause est faite.
+      // Une vraie absence : la pause est faite. Une fois par absence, on le
+      // dit sur le bus (« pauses.taken » : l'aquarium du module Jeux y gagne
+      // des gouttes, au plus une fois toutes les 20 min, games.rs).
       if (desk.idleMs >= BREAK_IDLE_MS) {
         activeSince = Date.now();
+        if (!away) api.emit("pauses.taken", { minutes: Math.round(desk.idleMs / 60_000) });
+        away = true;
         return;
       }
+      away = false;
       if (Date.now() - activeSince < every * 60_000) return;
       if (desk.busy) return;
       if (micInUse && api.settings().quietInCalls !== false) return;

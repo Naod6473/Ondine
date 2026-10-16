@@ -859,6 +859,16 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       githubAsked = true;
       return cal;
     }
+    // Les limites du forfait (petites pilules « 5 h · 42 % » de l'onglet) et les fichiers en direct.
+    case "agents.plan":
+      return {
+        claude: { fiveHour: { pct: 42, resetsAt: Date.now() + 80 * MIN }, week: { pct: 18, resetsAt: day(3, 9) }, updatedAt: Date.now() - 2 * MIN },
+        line: "installed",
+        file: `${HOME}\\.claude\\settings.json`,
+        codex: { fiveHour: { pct: 12, resetsAt: Date.now() + 200 * MIN }, week: { pct: 61, resetsAt: day(4, 9) }, plan: "plus", updatedAt: Date.now() - 30 * MIN },
+      };
+    case "agents.live":
+      return { files: [] };
     case "agents.answer":
       bus.inject("agents.ask.closed", { id: Number(args.id), expired: false }, "agents");
       return null;

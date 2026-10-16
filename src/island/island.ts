@@ -71,6 +71,8 @@ const STRETCH_ROOM = 40;
 const EDGE_ZONE = { len: 240, depth: 14 };
 /** L'île qui s'écarte d'une fenêtre : la peur d'Ondine au plus toutes les… (ms). */
 const FRIGHT_EVERY_MS = 4000;
+/** Un appui de cette durée sur Ondine, sans bouger, est un appui long (ms). */
+const LONG_PRESS_MS = 550;
 /** Survol prolongé de la mascotte → `love`. */
 const LONG_HOVER_MS = 2500;
 
@@ -722,14 +724,34 @@ export class Island {
       const r = this.shell.getBoundingClientRect();
       return x < r.left - 24 || x > r.right + 24 || y < r.top - 24 || y > r.bottom + 24;
     };
+    // L'appui long (1.2.5) : le doigt reste sur elle sans bouger. Publié sur
+    // le bus (« mascot.long-press ») : le module Jeux y lance le morpion
+    // express. Le clic qui suit le lâcher est ignoré (comme après un transport).
+    let hold = 0;
+    let longPressed = false;
+    const cancelHold = () => {
+      window.clearTimeout(hold);
+      hold = 0;
+    };
     slot.addEventListener("pointerdown", (e) => {
       if (e.button !== 0 || !this.mascot || !["compact", "expanded"].includes(this.fsm.state)) return;
       // La mascotte n'étire pas l'île et ne la déplace pas : on la prend, elle.
       e.stopPropagation();
       this.carried = false;
+      longPressed = false;
       start = { x: e.clientX, y: e.clientY, id: e.pointerId };
       slot.setPointerCapture(e.pointerId);
       this.react("poke", { x: 0, y: 0 });
+      cancelHold();
+      hold = window.setTimeout(() => {
+        hold = 0;
+        if (!start || moving) return;
+        longPressed = true;
+        this.carried = true;
+        this.doubleClick.reset();
+        log.info("appui long sur Ondine");
+        this.bus.emit("mascot.long-press");
+      }, LONG_PRESS_MS);
     });
     slot.addEventListener("pointermove", (e) => {
       if (!start || !e.buttons) return;
@@ -738,6 +760,7 @@ export class Island {
       if (!moving && Math.hypot(dx, dy) < 12) return;
       if (!moving) {
         moving = true;
+        cancelHold();
         slot.classList.add("carried");
         this.mascot?.request("surprise");
       }
@@ -746,7 +769,15 @@ export class Island {
       slot.classList.toggle("leaving", outside(e.clientX, e.clientY));
     });
     const end = (e: PointerEvent) => {
+      cancelHold();
       if (!start) return;
+      if (longPressed) {
+        // Le clic du lâcher ne compte pas : la surprise est déjà partie.
+        longPressed = false;
+        start = null;
+        window.setTimeout(() => (this.carried = false), 300);
+        return;
+      }
       const wasMoving = moving;
       start = null;
       moving = false;

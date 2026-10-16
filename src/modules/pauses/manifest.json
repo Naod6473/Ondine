@@ -15,7 +15,7 @@
   "views": [],
   "commands": [],
   "events": {
-    "emits": ["mascot.emote"],
+    "emits": ["mascot.emote", "pauses.taken"],
     "listens": ["controls.media-use"]
   }
 }

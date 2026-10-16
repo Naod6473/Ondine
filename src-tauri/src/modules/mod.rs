@@ -38,6 +38,8 @@ mod clipboard;
 // Presse-papiers → « Ignorer les clés et jetons » (1.2.5) : reconnaître une clé copiée.
 mod clipboard_secrets;
 mod controls;
+// Jeux (1.2.5) : la progression de l'aquarium de gouttes (les jeux sont dans le front).
+mod games;
 // Ondine convertit (1.2.5) : un fichier glissé sur une pilule de format sous l'île.
 mod convert;
 // Sa partie pure (types, formats, noms, PDF, ZIP) ; publique pour platform/convert.rs.
@@ -309,6 +311,7 @@ impl Registry {
             Box::new(callnotes::CallNotes::default()),
             Box::new(dictation::Dictation),
             Box::new(winnotifs::WinNotifs::default()),
+            Box::new(games::Games::default()),
             Box::new(convert::Convert),
         ];
 
@@ -445,6 +448,13 @@ pub fn dispatch_event(app: &AppHandle, msg: &BusMessage) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn games_manifest_is_valid() {
+        let m = check_manifest(games::Games::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "games");
+        assert!(m.permissions.is_empty());
+    }
 
     #[test]
     fn shelf_manifest_is_valid() {

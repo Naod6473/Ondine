@@ -4,10 +4,11 @@
 
 ## Préparer
 
-1. Onglet Agents IA → « Brancher un outil » → Claude Code. Avec des hooks
-   installés par la 1.2.4, l'état doit dire « ✅ Installé, sans les dernières
-   nouveautés (liste de tâches) : réinstallez pour les ajouter ».
-2. Cliquer sur « Installer automatiquement ». Attendu : « ✅ Installé » ; un
+1. Onglet Agents IA → pilule Claude Code. Avec des hooks installés par la
+   1.2.4, sa carte dit « Il manque une nouveauté : rebranchez-le. »
+   (depuis la refonte en pilules, voir TESTS-agents-pilules.md).
+2. Cliquer sur « Rebrancher Claude Code » puis « Confirmer ». Attendu : la
+   carte de l'agent revient (Options avancées : « Installé ») ; un
    `settings.ondine-<date>.bak` à côté de `%USERPROFILE%\.claude\settings.json` ;
    dans le fichier, `PostToolUse` a le matcher
    `Edit|MultiEdit|Write|TodoWrite|TaskCreate|TaskUpdate|TaskList` et vos
@@ -17,8 +18,8 @@
 ## Liste de tâches
 
 4. Demander à Claude une tâche en plusieurs étapes (« fais une liste de 4
-   tâches puis traite-les une par une »). Attendu : sous la session du tableau
-   « En cours », une barre fine « 0/4 » puis « 1/4 »… et à côté le texte de la
+   tâches puis traite-les une par une »). Attendu : sous la session (carte de
+   l'agent), une barre fine « 0/4 » puis « 1/4 »… et à côté le texte de la
    tâche en cours (« Lit le code… »). Un fin liseré bleu autour de l'île
    avance avec les tâches (case « Agents IA : au travail… » des Animations).
 5. À la fin (4/4, ou « Claude a fini ») : le liseré s'éteint ; la barre reste

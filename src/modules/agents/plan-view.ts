@@ -18,6 +18,8 @@ export interface PlanSection {
   box: HTMLElement;
   /** Relit les limites (mémoire de l'île et journaux de Codex : rien ne part). */
   load(): Promise<void>;
+  /** Les dernières limites lues (pour la petite pilule « 5 h · 42 % » de la rangée). */
+  report(): PlanReport | null;
 }
 
 export function planOn(api: ModuleApi): boolean {
@@ -131,5 +133,5 @@ export function planSection(api: ModuleApi): PlanSection {
     draw();
   };
   draw();
-  return { box, load };
+  return { box, load, report: () => report };
 }
