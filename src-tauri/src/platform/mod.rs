@@ -57,6 +57,8 @@ pub mod dictation;
 pub mod winnotifs;
 // Ondine convertit (1.2.4) : HEIC / AVIF / TIFF, PDF en images, vidéo et son, sélection dans l'Explorateur. Contient sa propre version Linux.
 pub mod convert;
+// Rester éveillé et arrêt programmé (module awake). Contient sa propre version Linux.
+pub mod power;
 
 #[cfg(windows)]
 mod drop_target;

@@ -4,6 +4,7 @@
 
 import type { IslandModule } from "../core/module-types";
 import { agenda } from "./agenda";
+import { awake } from "./awake";
 import { callnotes } from "./callnotes";
 import { convert } from "./convert";
 import { capture } from "./capture";
@@ -38,6 +39,7 @@ import { dictation } from "./dictation";
 // se met en tête sans bousculer le reste (LEAD_TABS, src/core/tab-order.ts).
 // Notes d'appel juste après (ni l'un ni l'autre n'a de vue compacte) : la
 // sienne, le point rouge de l'enregistrement, passe avant celle des autres.
-// Il n'a pas d'onglet.
-export const ALL_MODULES: IslandModule[] = [home, askclaude, callnotes, convert, shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, team, agents, launcher, rules, media, controls, winnotifs, pauses, games, weather, weekly, halos, windowlife, screensaver, dictation];
+// Il n'a pas d'onglet. Rester éveillé ensuite : le compte à rebours d'un arrêt
+// programmé passe avant la musique ou le minuteur.
+export const ALL_MODULES: IslandModule[] = [home, askclaude, callnotes, awake, convert, shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, team, agents, launcher, rules, media, controls, winnotifs, pauses, games, weather, weekly, halos, windowlife, screensaver, dictation];
 

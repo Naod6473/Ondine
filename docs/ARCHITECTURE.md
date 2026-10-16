@@ -4609,3 +4609,70 @@ format, Ondine l'avale, mâche, recrache le nouveau fichier. Idées reprises de 
   vidéo → GIF (MediaTranscoder ne sait pas écrire de GIF : il faudrait
   décoder les images une à une), WebP avec perte, métadonnées gardées pour
   HEIC (WIC les lit, on ne les recopie pas).
+
+## Rester éveillé et arrêt programmé (`src/modules/awake/`, `src-tauri/src/modules/awake.rs`, `awake_logic.rs`, `platform/power.rs`)
+
+Module `awake`, « Le PC au quotidien », **coupé par défaut**
+(`MODULES_OFF_BY_DEFAULT`, Rust et TS) ; activé, rien ne se passe sans clic.
+
+- **Éveil** (façon Caffeine) : 30 min, 1 h, 2 h, sans limite, jusqu'à une
+  heure, jusqu'à la fin du téléchargement en cours, jusqu'à ce que l'agent IA
+  ait fini ; option « Garder aussi l'écran allumé ». Un **fil Rust dédié**
+  (`run`) appelle `SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED
+  [| ES_DISPLAY_REQUIRED])` (la demande appartient à ce fil) et la relâche
+  (`ES_CONTINUOUS` seul) à la fin de la durée, à « Arrêter », module
+  désactivé (le fil vérifie `is_active` à chaque tour), et à la fermeture
+  d'Ondine (`awake::release_now`, depuis `RunEvent::Exit` de lib.rs ; un
+  plantage la relâche aussi : Windows l'oublie avec le fil). Le fil dort
+  (`recv` sans délai) tant que rien n'est en cours ; sinon un tour par seconde.
+- **Fin d'un téléchargement** : un fichier partiel (`.crdownload`, `.part`,
+  `.partial`, `.download`, `.opdownload`) modifié il y a moins de 5 min dans
+  le dossier Téléchargements, lu toutes les 3 s seulement quand on l'attend ;
+  « fini » = deux lectures de suite sans rien (`DownloadWatch`). Même dossier
+  que l'Étagère (`platform::downloads_dir`), indépendant de son réglage.
+- **Fin d'un agent** : Agents IA publie `agents.busy {working}` quand le
+  nombre de sessions au travail change (quel que soit son réglage « mascot »)
+  et répond à `agents.busy-ask` (posé par awake au premier `status`).
+  « Fin du téléchargement / de l'agent » est refusé s'il n'y en a pas en cours.
+- **Arrêt programmé** : éteindre, veille, redémarrer, verrouiller ; dans N min,
+  à une heure (instant calculé dans l'heure locale par le front, vérifié : au
+  plus 48 h), ou à la fin du téléchargement / de l'agent. La commande `plan`
+  exige `confirmed: true` (envoyé seulement par le bouton « Confirmer » de
+  l'onglet). Toujours un **dernier avertissement 60 s avant** (`awake.warn`) :
+  alerte `critical` qui compte les secondes, « Annuler » et « Encore 15 min » ;
+  une heure déjà passée sans avertissement (PC sorti de veille, fin d'un
+  téléchargement) est repoussée de 60 s (`plan_step`, testé). Éteindre /
+  redémarrer : `InitiateShutdownW` sans `SHUTDOWN_FORCE_*`, délai 0 (le compte
+  à rebours est celui d'Ondine), après avoir allumé `SeShutdownPrivilege` ;
+  veille : `SetSuspendState(false, false, false)` ; verrouiller :
+  `LockWorkStation`. Pas de `shutdown.exe` (`/t` > 0 y implique `/f`). Rien
+  n'est écrit sur le disque : un arrêt programmé ne survit pas à un redémarrage
+  d'Ondine.
+- **Île** : vue compacte (placée juste après Notes d'appel dans `ALL_MODULES`)
+  = l'arrêt programmé (toujours) ou « Éveillé · 1:23:45 » (réglage `pill`),
+  avec « Annuler » / « Arrêter » ; onglet à deux volets (Éveil, Arrêt
+  programmé). Double-clic sur Ondine : nouvelle action `awake`
+  (`mascot.doubleClick`) qui publie `awake.toggle`. Lanceur : « éveillé »,
+  « caféine » (`awake.toggle`), « éteindre », « arrêt » (ouvre l'onglet).
+- **Mascotte** : `MascotExtras.coffee` (mascot-state.ts écoute `awake.state`,
+  champ `coffee` = réglage « Ondine boit un café ») ; gum-draw.ts
+  `drawCoffee` : une tasse au trait contre son flanc droit, sous la moufle de
+  repos, deux filets de vapeur. Montrée même en « Calme » (une information) ;
+  « Réduire les animations » : image fixe (le moteur ne redessine pas).
+- **Règles** : action `awake {minutes}` (0 = la durée d'un clic) → `awake.start`.
+  Pas d'arrêt du PC par une règle (il faut une confirmation à chaque fois).
+- **Écran de veille d'Ondine** (screensaver.rs) : inchangé, il ne demande
+  toujours rien à Windows. Les deux cohabitent : l'économiseur d'Ondine se
+  base sur l'inactivité du clavier et de la souris (GetLastInputInfo), que
+  SetThreadExecutionState ne change pas ; il peut donc s'afficher pendant un
+  éveil, et l'économiseur / le verrouillage de Windows gardent leur heure.
+- **Bus** : `awake.state {keep, plan, downloading, agentBusy, coffee}`,
+  `awake.warn {action, at}`, `awake.error {message}`, `awake.toggle`,
+  `awake.start {minutes}`, `awake.stop`, `agents.busy {working}`,
+  `agents.busy-ask`.
+- Réglages (deux sous-menus, `MODULE_SECTIONS.awake`) : Éveil (`clickDuration`,
+  `display`, `coffee`, `pill`), Arrêt programmé (`planAction`, `planMinutes`).
+- Tests : `awake_logic.rs` (durées, confirmation, avertissement, report,
+  « Encore 15 min », noms de fichiers partiels), `tests/front/awake.test.ts`
+  (textes, heure locale, arguments, traductions) ; à faire sur Windows :
+  `docs/tests/TESTS-nf16-eveil.md`.

@@ -149,6 +149,8 @@ windows = { version = "0.61", features = [
   "Win32_System_Diagnostics_Debug",
   # Infos système : la batterie.
   "Win32_System_Power",
+  # Rester éveillé : éteindre, redémarrer, verrouiller (InitiateShutdownW, LockWorkStation).
+  "Win32_System_Shutdown",
   "Win32_NetworkManagement_IpHelper",
   "Win32_Networking_WinSock",
   "Win32_System_Pipes",

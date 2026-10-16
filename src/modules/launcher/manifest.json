@@ -115,13 +115,15 @@
       "notes.open",
       "capture.pick",
       "easter.word",
-      "games.play"
+      "games.play",
+      "awake.toggle"
     ],
     "listens": [
       "launcher.open",
       "launcher.hotkey-error",
       "remote.changed",
-      "agents.projects"
+      "agents.projects",
+      "awake.state"
     ]
   }
 }

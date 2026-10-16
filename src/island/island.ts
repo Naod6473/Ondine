@@ -809,7 +809,7 @@ export class Island {
     const action = doubleClickActionOf(settingsStore.current.mascot.doubleClick);
     if (action === "none") return;
     if (!settingsStore.moduleEnabled(ACTION_MODULE[action])) {
-      const names = { ask: "Parler à Ondine", launcher: "Lanceur", capture: "Capture", note: "Notes" };
+      const names = { ask: "Parler à Ondine", launcher: "Lanceur", capture: "Capture", note: "Notes", awake: "Rester éveillé" };
       this.notifications.push({ moduleId: "island", title: `Module « ${names[action]} » désactivé`, body: "Activez-le dans les Réglages, ou choisissez une autre action du double-clic.", icon: "💧", priority: "low", key: "mascot-dblclick" });
       return;
     }
@@ -817,6 +817,7 @@ export class Island {
     if (action === "ask") this.registry.onOpenRequest("askclaude");
     else if (action === "launcher") this.bus.emit("launcher.open");
     else if (action === "capture") this.bus.emit("capture.request", { then: "save" });
+    else if (action === "awake") this.bus.emit("awake.toggle", {});
     else this.bus.emit("notes.quick");
   }
 

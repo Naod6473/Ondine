@@ -771,6 +771,11 @@ fn run_action(
             });
             Ok(format!("Calme pendant {minutes} min"))
         }
+        Action::Awake { minutes } => {
+            // Le module Rester éveillé (s'il est activé) fait le reste.
+            ctx.emit("awake.start", json!({ "minutes": minutes }));
+            Ok(if *minutes == 0 { "Rester éveillé".into() } else { format!("Rester éveillé {minutes} min") })
+        }
     }
 }
 
@@ -831,6 +836,8 @@ fn preview(rule: &Rule, path: Option<&Path>) -> Vec<String> {
             Action::Mascot { gesture: Gesture::Emote, emotion, .. } => format!("La mascotte montre l'expression « {emotion} »"),
             Action::Mascot { gesture: Gesture::Sign, text, .. } => format!("La mascotte tient une pancarte « {} »", model::fill(text, &label)),
             Action::Quiet { minutes } => format!("Calme et Ne pas déranger pendant {minutes} min"),
+            Action::Awake { minutes: 0 } => "Le PC reste éveillé (durée d'un clic de Rester éveillé)".into(),
+            Action::Awake { minutes } => format!("Le PC reste éveillé pendant {minutes} min"),
         };
         out.push(line);
     }
