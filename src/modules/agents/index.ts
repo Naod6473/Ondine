@@ -3,9 +3,13 @@
 // Le Rust (src-tauri/src/modules/agents.rs) écoute le canal local, comprend
 // les hooks et publie « agents.event » (une notification) et « agents.changed »
 // (le tableau des sessions a bougé). Ici : la notification avec « Y aller »
-// (ramène la fenêtre de l'agent devant), les boutons pour lancer un agent
-// dans un projet, le tableau « En cours », les derniers messages, et la marche
-// à suivre pour brancher chaque outil.
+// (ramène la fenêtre de l'agent devant) et l'onglet. Depuis la 1.2.5,
+// l'onglet est une rangée de pilules, une par agent (pills-logic.ts,
+// pills-view.ts), et UNE carte dessous : celle de l'agent choisi (ses
+// sessions, ses questions, ses fichiers, « Lancer », ses derniers messages),
+// sa carte « Brancher » au premier clic s'il n'est pas branché
+// (setup-view.ts), ou celle d'une petite pilule de droite (forfait, jetons,
+// GitHub, concentration).
 //
 // « A fini » peut arriver avec un bilan (dépôt git du dossier de la session) :
 // « 3 fichiers modifiés, +120 −14 », avec « Ouvrir dans VS Code »,
@@ -29,14 +33,34 @@ import { pacedInterval } from "../../core/perf";
 import { diffPanel, liveOn, liveRow } from "./live-view";
 import type { LiveFile } from "./live-logic";
 import { agentIcon, icon } from "../../island/icon";
-import { mountGithub } from "./github-view";
+import { githubLogin, mountGithub } from "./github-view";
 import { changesLine, namesLine, since, type ChangeSummary } from "./texts";
-import { usageSection, watchBudget } from "./usage-view";
-import { planSection } from "./plan-view";
-import { HOOK_TOOLS, LAUNCH, launchName, sourceName, summaryLine } from "./tools";
+import { usageOn, usageSection, watchBudget } from "./usage-view";
+import { planOn, planSection } from "./plan-view";
+import { LAUNCH, launchName, sourceName, summaryLine } from "./tools";
 import { mountFilesPanel, requestFiles } from "./report-view";
 import { startWaitWatch } from "./wait-watch";
 import { todoBar, type TodoSummary } from "./todos-logic";
+import {
+  BASE_PILLS,
+  addable,
+  agentColor,
+  askPill,
+  buildPills,
+  cardFor,
+  defaultPill,
+  foldList,
+  hookKeyOf,
+  needsSetup,
+  parseIds,
+  pillOfSource,
+  planPill,
+  plugState,
+  type Panel,
+  type Plug,
+} from "./pills-logic";
+import { addPill, agentPill, arrowKeys, statPill } from "./pills-view";
+import { setupCard, setupKey, type HookState, type SetupContext } from "./setup-view";
 
 /** Le bilan d'une fin de tâche, avec ce qu'il faut pour ses boutons. */
 interface Changes extends ChangeSummary {
@@ -97,6 +121,36 @@ interface Session {
   todos?: TodoSummary;
 }
 
+/** Ce que rend la commande « history ». */
+interface History {
+  events: AgentEvent[];
+  working: number;
+  sessions: Session[];
+  asks: Ask[];
+  quiet: { until: number | null; held: number } | null;
+}
+
+/**
+ * La mémoire locale de l'onglet (navigateur de l'île) : la pilule choisie,
+ * les outils ajoutés avec « + », les agents pour qui on a dit « Plus tard ».
+ * Rien d'important : sans stockage, l'onglet repart de zéro.
+ */
+const STORE = { pill: "agents.pill", added: "agents.pills-added", later: "agents.pills-later" } as const;
+function readStore(key: string): string | null {
+  try {
+    return localStorage.getItem(key) || null;
+  } catch {
+    return null;
+  }
+}
+function writeStore(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // stockage indisponible : le choix vaut jusqu'à la fermeture
+  }
+}
+
 /** La barre de la liste de tâches sous une session (rien sans liste). */
 function todosRow(t: TodoSummary | undefined): HTMLElement | null {
   const bar = todoBar(t);
@@ -119,8 +173,6 @@ function todosRow(t: TodoSummary | undefined): HTMLElement | null {
 type LaunchTool = string;
 /** Le nom affiché d'une source de hooks. */
 const SOURCE_NAMES: Record<string, string> = { "claude-code": "Claude", codex: "Codex", gemini: "Gemini" };
-/** L'agent choisi pour « Lancer » (gardé tant que l'île est ouverte). */
-let chosenTool: LaunchTool = "claude";
 
 const ICON: Record<AgentEvent["kind"], string> = { waiting: "✋", done: "✅", info: "💬" };
 const redraws = new Set<() => void>();
@@ -380,55 +432,107 @@ export const agents: IslandModule = {
     api.on("agents.changed", () => redraws.forEach((r) => r()));
   },
 
+  // L'onglet (1.2.5) : une rangée de pilules (une par agent, « + », et à
+  // droite les petites pilules du forfait, des jetons, de GitHub et de la
+  // concentration), puis UNE carte : celle de l'agent au premier plan (ses
+  // sessions, ses questions, ses fichiers, « Lancer », ses derniers messages),
+  // sa carte « Brancher » au premier clic s'il n'est pas branché
+  // (setup-view.ts), ou la carte d'une petite pilule de droite. La logique
+  // (ordre, badge, branché, carte à montrer) est dans pills-logic.ts.
   views: {
     expanded(root, api: ModuleApi) {
-      const asks = el("ul", { class: "agents-asks" });
-      const quiet = el("div", { class: "agents-quiet" });
-      const board = el("ul", { class: "agents-board" });
-      // Le compteur de jetons (journaux locaux de Claude Code et Codex) : usage-view.ts.
-      const usage = usageSection(api);
-      const usageBox = usage.box;
-      // Les limites du forfait de Claude et Codex (plan-view.ts, 1.2.4), au-dessus du compteur.
-      const plan = planSection(api);
-      // Le calendrier de contributions GitHub (github-view.ts), sous le compteur.
-      const githubBox = el("section", { class: "agents-usage agents-github" });
-      const list = el("ul", { class: "agents-list" });
-      const status = el("p", { class: "muted agents-status" });
-      const guide = el("details", { class: "agents-guide" });
-      const launch = el("div", { class: "agents-launch" });
-      const projectRows = el("ul", { class: "agents-projects" });
-      // La liste des fichiers d'un bilan (report-view.ts), vide le reste du temps.
-      const filesBox = el("section", { class: "agents-files-box" });
-      // Le changement d'un fichier modifié en direct (live-view.ts, 1.2.4), en lecture seule.
-      const diffBox = el("section", { class: "agents-diff-box" });
-      const diff = diffPanel(api, diffBox);
-      root.append(
-        el("div", { class: "agents" }, launch, projectRows, asks, filesBox, status, quiet, board, diffBox, plan.box, usageBox, githubBox, el("div", { class: "muted agents-subtitle" }, "Derniers messages"), list, guide),
-      );
-      const stopFiles = mountFilesPanel(api, filesBox);
-      /** Le nom de l'agent choisi (« Autre outil » : le mot du réglage). */
-      const chosenName = () => launchName(chosenTool, String(api.settings().otherTool ?? ""));
+      // ── La mémoire locale : la pilule choisie, celles ajoutées avec « + », les « Plus tard ».
+      const remembered = (): string | null => readStore(STORE.pill);
+      const added = () => parseIds(readStore(STORE.added));
+      const later = () => parseIds(readStore(STORE.later));
+      const otherWord = () => String(api.settings().otherTool ?? "");
+      const nameOf = (id: string) => (LAUNCH[id] ? launchName(id, otherWord()) : sourceName(id));
 
-      // ── Lancer un agent ────────────────────────────────────────────────────
-      const start = (args: Record<string, unknown>) =>
-        api.handler(async () => {
-          try {
-            await api.invoke("launch", { tool: chosenTool, ...args });
-            api.closeIsland();
-          } catch (err) {
-            api.notify({ title: chosenName(), body: errorText(err), icon: "⚠️", priority: "low", key: "agents-error" });
-          }
-        });
-      const pick = api.handler(async () => {
-        const path = await Bridge.pickFolder(`Ouvrir ${chosenName()} dans…`);
-        if (path) await start({ path })();
-      });
-      // Les agents proposés, les projets du réglage, et la dernière session de
-      // Claude Code de chacun (pour « Reprendre »).
-      let tools: LaunchTool[] = [];
+      // ── Les données (relues à chaque dessin) ─────────────────────────────
+      let data: History = { events: [], working: 0, sessions: [], asks: [], quiet: null };
+      let live: LiveFile[] = [];
+      let tools: LaunchTool[] | null = null;
       let projects: { path: string; name: string }[] = [];
       let lastSessions: LastSession[] = [];
       let lastFetch = 0;
+      let hookStates: Record<string, HookState | undefined> | null = null;
+      let exeLine = "ondine.exe notify";
+      let otherLine = "ondine.exe notify --source other --event done";
+
+      // ── Ce qu'on regarde ────────────────────────────────────────────────
+      let panel: Panel = "agent";
+      let configOpen = false;
+      let messagesOpen = false;
+      /** La pilule au premier plan (après le dernier calcul). */
+      let selected: string | null = null;
+      /** Le projet choisi dans « Lancer » (index dans `projects`, « home » ou « pick »). */
+      let launchChoice = "0";
+
+      const row = el("div", { class: "agents-row", role: "toolbar", "aria-label": "Agents IA" });
+      const pillsBox = el("div", { class: "agents-pills" });
+      const statsBox = el("div", { class: "agents-stats" });
+      row.append(pillsBox, statsBox);
+      arrowKeys(row);
+      // La liste des fichiers d'un bilan (report-view.ts) et le changement d'un
+      // fichier modifié en direct (live-view.ts) : au-dessus de la carte, vides le reste du temps.
+      const filesBox = el("section", { class: "agents-files-box" });
+      const diffBox = el("section", { class: "agents-diff-box" });
+      const diff = diffPanel(api, diffBox);
+      const stage = el("div", { class: "agents-stage" });
+      root.append(el("div", { class: "agents" }, row, filesBox, diffBox, stage));
+      const stopFiles = mountFilesPanel(api, filesBox);
+
+      // Les sections déplacées hors de la colonne principale : chacune a sa carte.
+      const usage = usageSection(api);
+      const plan = planSection(api);
+      const githubBox = el("section", { class: "agents-usage agents-github" });
+      const stopGithub = mountGithub(githubBox, api);
+      const quiet = el("div", { class: "agents-quiet" });
+
+      // ── Choisir ─────────────────────────────────────────────────────────
+      const choose = (id: string) => {
+        // Un nouveau clic sur l'agent déjà au premier plan referme une petite carte de droite.
+        writeStore(STORE.pill, id);
+        if (id !== selected) {
+          configOpen = false;
+          messagesOpen = false;
+        }
+        panel = "agent";
+        render();
+      };
+      const openPanel = (p: Panel) => {
+        panel = panel === p ? "agent" : p;
+        if (panel === "usage") void usage.load();
+        render();
+      };
+      const back = () => {
+        panel = "agent";
+        render();
+      };
+
+      // ── Lancer un agent (le lanceur d'avant, réduit à une ligne) ─────────
+      const start = (tool: string, args: Record<string, unknown>) =>
+        api.handler(async () => {
+          try {
+            await api.invoke("launch", { tool, ...args });
+            api.closeIsland();
+          } catch (err) {
+            api.notify({ title: nameOf(tool), body: errorText(err), icon: "⚠️", priority: "low", key: "agents-error" });
+          }
+        });
+      const launchSelected = (tool: string, resume: boolean) =>
+        api.handler(async () => {
+          if (launchChoice === "pick") {
+            const path = await Bridge.pickFolder(`Ouvrir ${nameOf(tool)} dans…`);
+            if (path) await start(tool, { path })();
+            return;
+          }
+          const index = Number(launchChoice);
+          await start(tool, launchChoice === "home" || !projects[index] ? {} : { index, ...(resume ? { resume: true } : {}) })();
+        });
+      /** La dernière session de Claude Code d'un projet (pour « Reprendre » et sa dernière phrase). */
+      const lastOf = (tool: string, index: number) => (tool === "claude" ? lastSessions.find((l) => l.index === index && l.found) : undefined);
+      const resumable = (tool: string, index: number) => (tool === "claude" ? !!lastOf(tool, index) : !!LAUNCH[tool]?.resume);
       /** La dernière phrase échangée, en petit : « Vous : … · il y a 2 h ». */
       const lastLine = (last: LastSession) =>
         el(
@@ -441,53 +545,36 @@ export const agents: IslandModule = {
           last.text && last.at ? " · " : null,
           last.at ? el("span", {}, since(last.at)) : null,
         );
-      const drawLaunch = () => {
-        if (!tools.includes(chosenTool)) chosenTool = tools[0] ?? "claude";
-        if (!tools.length) {
-          projectRows.replaceChildren();
-          return launch.replaceChildren();
-        }
-        // Un agent proposé seulement : pas besoin de choisir.
-        const chips =
-          tools.length > 1
-            ? tools.map((t) =>
-                el("button", { class: `net-chip${t === chosenTool ? " active" : ""}`, onclick: api.handler(() => ((chosenTool = t), drawLaunch())) }, launchName(t, String(api.settings().otherTool ?? ""))),
-              )
-            : [el("span", { class: "agents-launch-title" }, chosenName())];
-        launch.replaceChildren(
-          el("span", { class: "agents-launch-title" }, "▶"),
-          ...chips,
-          el("span", { class: "agents-launch-sep" }),
-          ...(projects.length ? [] : [el("button", { class: "btn small primary", title: "Dans votre dossier utilisateur", onclick: start({}) }, "Lancer")]),
-          el("button", { class: "btn small", title: "Choisir le dossier du projet", onclick: pick }, "Autre dossier…"),
+      const launchRow = (tool: string): HTMLElement => {
+        if (!tools) return el("div", { class: "agents-launch" });
+        if (!tools.includes(tool))
+          return el("div", { class: "agents-launch muted", title: "Réglage « Proposer … » de l'onglet Agents IA" }, "Lancement désactivé dans les réglages.");
+        if (!["home", "pick"].includes(launchChoice) && !projects[Number(launchChoice)]) launchChoice = projects.length ? "0" : "home";
+        const select = el(
+          "select",
+          { class: "agents-launch-where", "aria-label": "Projet", title: "Dans quel dossier lancer l'agent" },
+          ...projects.map((p, i) => el("option", { value: String(i), "data-no-i18n": true }, p.name)),
+          ...(projects.length ? [] : [el("option", { value: "home" }, "Dossier utilisateur")]),
+          el("option", { value: "pick" }, "Autre dossier…"),
         );
-        // Une ligne par projet : une nouvelle session, ou « Reprendre » la
-        // dernière (Claude Code : s'il y en a une ; les autres : si l'outil le
-        // propose, voir tools.ts ; Gemini CLI, Aider, Amp : non).
-        projectRows.replaceChildren(
-          ...projects.map((p, i) => {
-            const last = chosenTool === "claude" ? lastSessions.find((l) => l.index === i && l.found) : undefined;
-            const info = LAUNCH[chosenTool];
-            const resumable = chosenTool === "claude" ? !!last : !!info?.resume;
-            return el(
-              "li",
-              { class: "agents-project" },
-              el("button", { class: "btn small", title: `Ouvrir ${chosenName()} dans ${p.path}`, onclick: start({ index: i }) }, `📁 ${p.name}`),
-              resumable
-                ? el(
-                    "button",
-                    {
-                      class: "btn small",
-                      title: info?.resumeTitle ?? "Reprendre la dernière session",
-                      onclick: start({ index: i, resume: true }),
-                    },
-                    "↻ Reprendre",
-                  )
-                : null,
-              last ? lastLine(last) : null,
-            );
-          }),
+        select.value = launchChoice;
+        const index = Number(launchChoice);
+        const canResume = launchChoice !== "pick" && launchChoice !== "home" && resumable(tool, index);
+        const last = canResume ? lastOf(tool, index) : undefined;
+        const line = el(
+          "div",
+          { class: "agents-launch" },
+          el("span", { class: "agents-launch-icon", "aria-hidden": "true" }, "▶"),
+          select,
+          el("button", { class: "btn small primary", title: `Ouvrir ${nameOf(tool)} dans ce dossier`, onclick: launchSelected(tool, false) }, "Lancer"),
+          canResume ? el("button", { class: "btn small", title: LAUNCH[tool]?.resumeTitle ?? "Reprendre la dernière session", onclick: launchSelected(tool, true) }, "↻ Reprendre") : null,
+          last ? lastLine(last) : null,
         );
+        select.addEventListener("change", () => {
+          launchChoice = select.value;
+          line.replaceWith(launchRow(tool));
+        });
+        return line;
       };
       /** Relit la dernière session de chaque projet (au plus toutes les 30 s). */
       const loadLast = async () => {
@@ -498,278 +585,50 @@ export const agents: IslandModule = {
         } catch {
           lastSessions = [];
         }
-        drawLaunch();
+        render();
       };
       void api.invoke<{ tools: LaunchTool[]; projects: { path: string; name: string }[] }>("projects").then(
         (r) => {
-          tools = r.tools;
-          projects = r.projects;
-          drawLaunch();
+          tools = r?.tools ?? [];
+          projects = r?.projects ?? [];
+          render();
           void loadLast();
         },
         () => {},
       );
 
-      // ── Brancher un outil : Claude Code, Codex, Gemini CLI, Copilot CLI, Cursor, Qwen Code, Goose (tools.ts)
-      type Tool = string;
-      const TOOLS = HOOK_TOOLS;
-      let tool: Tool = "claude-code";
-      const exe = el("code", { class: "agents-exe" });
-      const steps = el("ol", {});
-
-      // ── Installer automatiquement : Ondine écrit lui-même ses hooks dans le
-      // fichier de l'outil (fusion : le reste du fichier est gardé, copie .bak).
-      interface HookState {
-        file: string;
-        state: "installed" | "stale" | "absent" | "unreadable";
-        permission: boolean;
-        otherPermission: boolean;
-        /** Installé avant une nouveauté (la liste de tâches, 1.2.5) : réinstaller ajoute ce qui manque. */
-        incomplete?: boolean;
-      }
-      let hookStates: Partial<Record<Tool, HookState>> = {};
-      /** La copie de sécurité faite au dernier enregistrement, par outil. */
-      const backups: Partial<Record<Tool, string>> = {};
-      const hookState = el("div", { class: "agents-hook-state" });
-      /** Le chemin complet du fichier (sinon la forme %USERPROFILE%). */
-      const fileOf = (t: Tool) => hookStates[t]?.file || TOOLS[t].file;
+      // ── Les hooks : branché ou pas (setup-view.ts) ──────────────────────
       const loadHookStates = async () => {
         try {
-          const r = await api.invoke<{ tools: Partial<Record<Tool, HookState>> }>("hook_status");
+          const r = await api.invoke<{ tools: Record<string, HookState | undefined> }>("hook_status");
           hookStates = r?.tools ?? {};
         } catch {
-          hookStates = {};
+          hookStates = null;
         }
-        // Des hooks vers un ancien ondine.exe : on ouvre la marche à suivre.
-        if (Object.values(hookStates).some((s) => s?.state === "stale")) guide.open = true;
-        drawGuide();
+        render();
       };
-      const RESTART = (t: Tool) => TOOLS[t].restart;
-      const install = el(
-        "button",
-        {
-          class: "btn small primary",
-          title: "Ajoute les hooks d'Ondine au fichier de configuration, sans toucher au reste",
-          onclick: api.handler(async () => {
-            const t = tool;
-            try {
-              const r = await api.invoke<{ backup: string | null; changed: boolean; otherPermission: boolean } | null>("hook_install", { tool: t });
-              if (r?.backup) backups[t] = r.backup;
-              api.notify(
-                r && !r.changed
-                  ? { title: "Hooks déjà installés", body: "Rien à changer.", icon: "✔️", priority: "low", key: "agents-hooks" }
-                  : { title: "Hooks installés", body: RESTART(t), icon: "✅", priority: "normal", key: "agents-hooks" },
-              );
-              // Claude Code : un autre programme répond aussi aux demandes de permission.
-              if (r?.otherPermission)
-                api.notify({
-                  title: "Deux réponses aux permissions",
-                  body: "Un autre programme a aussi un hook PermissionRequest dans Claude Code : il peut répondre avant l'île, ou l'inverse. Ondine ne l'a pas retiré.",
-                  icon: "⚠️",
-                  priority: "normal",
-                  key: "agents-hooks-perm",
-                });
-            } catch (err) {
-              api.notify({ title: "Installation impossible", body: errorText(err), icon: "⚠️", priority: "normal", key: "agents-hooks" });
-            }
-            await loadHookStates();
-          }),
-        },
-        "⚡ Installer automatiquement",
-      );
-      const uninstall = el(
-        "button",
-        {
-          class: "btn small",
-          title: "Retire seulement les hooks d'Ondine de ce fichier",
-          onclick: api.handler(async () => {
-            const t = tool;
-            try {
-              const r = await api.invoke<{ backup: string | null; removed: number } | null>("hook_remove", { tool: t });
-              if (r?.backup) backups[t] = r.backup;
-              api.notify(
-                r && !r.removed
-                  ? { title: "Aucun hook d'Ondine dans ce fichier", icon: "ℹ️", priority: "low", key: "agents-hooks" }
-                  : { title: "Hooks d'Ondine retirés", body: "Les autres réglages et hooks du fichier sont gardés.", icon: "🧹", priority: "low", key: "agents-hooks" },
-              );
-            } catch (err) {
-              api.notify({ title: "Retrait impossible", body: errorText(err), icon: "⚠️", priority: "normal", key: "agents-hooks" });
-            }
-            await loadHookStates();
-          }),
-        },
-        "Retirer",
-      );
-      const drawHookState = () => {
-        const s = hookStates[tool];
-        if (!s) return hookState.replaceChildren();
-        const permOn = api.settings().permissions === true && (tool === "claude-code" || tool === "codex");
-        const label = {
-          installed:
-            permOn && !s.permission
-              ? "✅ Installé, sans « Autoriser depuis l'île » : réinstallez pour l'ajouter"
-              : s.incomplete
-                ? "✅ Installé, sans les dernières nouveautés (liste de tâches) : réinstallez pour les ajouter"
-                : "✅ Installé",
-          stale: "⚠️ Ancien chemin : ces hooks lancent un autre ondine.exe, que l'île refuse. Réinstallez-les.",
-          absent: "Non installé",
-          unreadable: "⚠️ Fichier illisible (JSON ou TOML invalide) : Ondine n'y touche pas. Corrigez-le ou utilisez la copie.",
-        }[s.state];
-        const backup = backups[tool];
-        hookState.replaceChildren(
-          el("div", { class: `agents-hook-badge ${s.state}` }, label),
-          el("div", { class: "muted" }, "Fichier : ", el("code", {}, s.file)),
-          ...(s.otherPermission && s.permission
-            ? [el("div", { class: "muted" }, "⚠️ Un autre programme répond aussi aux demandes de permission (PermissionRequest) : deux réponses concurrentes.")]
-            : []),
-          ...(backup ? [el("div", { class: "muted" }, `Copie de l'ancien fichier : ${backup}`)] : []),
-        );
-        uninstall.hidden = s.state !== "installed" && s.state !== "stale";
-        install.disabled = s.state === "unreadable";
-      };
-      const toolButtons = (Object.keys(TOOLS) as Tool[]).map((t) =>
-        el("button", { class: "net-chip", "data-tool": t, onclick: api.handler(() => ((tool = t), drawGuide())) }, TOOLS[t].name),
-      );
-      const copy = el(
-        "button",
-        {
-          class: "btn small",
-          onclick: api.handler(async () => {
-            try {
-              await api.invoke("copy_config", { tool });
-              api.notify({ title: "Configuration copiée", body: `Collez-la dans ${fileOf(tool)}.`, icon: "📋", priority: "low", key: "agents-copied" });
-            } catch (err) {
-              api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "agents-error" });
-            }
-          }),
-        },
-        "📋 Copier la configuration",
-      );
-      // Brancher l'île comme serveur MCP : l'agent peut alors l'appeler de lui-même.
-      const MCP_STEPS: Record<string, string> = {
-        "claude-code": "Collez la commande dans un terminal (une seule fois), puis relancez Claude Code.",
-        codex: "Collez les lignes à la fin de %USERPROFILE%\\.codex\\config.toml, puis relancez Codex.",
-        gemini: "Fusionnez le bloc « mcpServers » dans %USERPROFILE%\\.gemini\\settings.json, puis relancez Gemini CLI.",
-      };
-      const mcpSteps = el("p", { class: "muted agents-mcp-steps" });
-      const copyMcp = el(
-        "button",
-        {
-          class: "btn small",
-          onclick: api.handler(async () => {
-            try {
-              await api.invoke("copy_mcp", { tool });
-              api.notify({ title: "Configuration MCP copiée", body: MCP_STEPS[tool] ?? "", icon: "📋", priority: "low", key: "agents-copied" });
-            } catch (err) {
-              api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "agents-error" });
-            }
-          }),
-        },
-        "🔌 Copier la config MCP",
-      );
-      // Autoriser / Refuser depuis l'île : un hook à part, seulement si on le veut.
-      const permText = el("p", { class: "muted agents-mcp-steps" });
-      const copyPerm = el(
-        "button",
-        {
-          class: "btn small",
-          onclick: api.handler(async () => {
-            try {
-              await api.invoke("copy_config", { tool, permission: true });
-              api.notify({ title: "Hook d'autorisation copié", body: `Collez-le dans ${fileOf(tool)}, puis activez le réglage « Autoriser / Refuser depuis l'île ».`, icon: "📋", priority: "low", key: "agents-copied" });
-            } catch (err) {
-              api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "agents-error" });
-            }
-          }),
-        },
-        "🔐 Copier le hook d'autorisation",
-      );
-      const test = el("button", { class: "btn small", title: "Fait comme si Claude venait de finir", onclick: api.handler(() => api.invoke("test")) }, "Essayer");
-      const drawGuide = () => {
-        toolButtons.forEach((b) => b.classList.toggle("active", b.dataset.tool === tool));
-        drawHookState();
-        steps.replaceChildren(
-          el("li", {}, "Copiez la configuration."),
-          el("li", {}, "Ouvrez ", el("code", {}, fileOf(tool)), ". ", TOOLS[tool].steps),
-          el("li", {}, "Chaque hook lance : ", exe),
-        );
-        const withMcp = TOOLS[tool].mcp;
-        mcpSteps.textContent = withMcp
-          ? "En plus (facultatif) : branchez l'île comme serveur MCP. L'agent pourra alors vous envoyer un message, sa progression, lancer le minuteur, vous poser une question à choix, ajouter une note, déposer un fichier sur l'étagère, vous demander une capture d'écran ou l'ouverture d'un lien (toujours après votre clic). " +
-            (MCP_STEPS[tool] ?? "")
-          : `Serveur MCP : la configuration n'est pas proposée pour ${TOOLS[tool].name} (elle n'a pas été vérifiée). Seuls les hooks sont installés.`;
-        copyMcp.hidden = !withMcp;
-        const permOn = api.settings().permissions === true;
-        permText.textContent =
-          tool === "gemini"
-            ? "Autoriser / Refuser depuis l'île : Gemini CLI ne le permet pas (un hook peut refuser, pas autoriser). Répondez dans son terminal."
-            : !withMcp
-              ? "Autoriser / Refuser depuis l'île : seulement pour Claude Code et Codex. Répondez dans le terminal de cet outil."
-              : `Autoriser / Refuser depuis l'île (${permOn ? "activé" : "désactivé dans les réglages"}) : quand ${TOOLS[tool].name} demande une permission, l'île montre la commande avec « Autoriser » (à confirmer) et « Refuser ». Sans réponse à temps, la question passe au terminal. Collez ce hook en plus, de la même façon.`;
-        copyPerm.hidden = !withMcp || tool === "gemini";
-      };
-      // « Brancher un autre outil » : la commande à mettre en fin de tâche (le
-      // chemin vient du Rust : « hook_config » donne aussi cette ligne).
-      const otherLine = el("code", { class: "agents-exe", "data-no-i18n": true });
-      const otherGuide = el(
-        "div",
-        { class: "agents-other" },
-        el("div", { class: "muted agents-subtitle" }, "Brancher un autre outil"),
-        el(
-          "p",
-          { class: "muted" },
-          "Un outil qui sait lancer une commande en fin de tâche prévient l'île avec « --event done » (ou « waiting » quand il attend votre réponse, « working » quand il repart). Donnez-lui cette ligne, telle quelle : ",
-        ),
-        otherLine,
-        el("p", { class: "muted" }, "Pour le lancer d'ici, écrivez son mot de commande dans le réglage « Autre outil ». Rien n'est exécuté à sa demande : l'île affiche seulement « L'outil a fini »."),
-      );
-      guide.append(
-        el("summary", {}, "Brancher un outil (Claude Code, Codex, Gemini, Copilot, Cursor…)"),
-        el(
-          "ol",
-          { class: "muted agents-quick" },
-          el("li", {}, "Choisissez l'outil, puis cliquez sur « Installer automatiquement »."),
-          el("li", {}, "Relancez l'agent, puis cliquez sur « Essayer » : une notification doit apparaître."),
-          el("li", {}, "Pour répondre aux permissions depuis l'île : activez « Autoriser / Refuser depuis l'île » dans les réglages, puis réinstallez. L'agent ne demande rien en mode automatique."),
-        ),
-        el("div", { class: "net-chips agents-tools" }, ...toolButtons),
-        hookState,
-        el("div", { class: "btn-row" }, install, uninstall, test),
-        el("div", { class: "muted agents-subtitle" }, "Ou à la main"),
-        steps,
-        el("div", { class: "btn-row" }, copy),
-        mcpSteps,
-        el("div", { class: "btn-row" }, copyMcp),
-        permText,
-        el("div", { class: "btn-row" }, copyPerm),
-        otherGuide,
-      );
-      drawGuide();
       void loadHookStates();
+      void api.invoke<{ exe: string; other?: string }>("hook_config").then(
+        (c) => {
+          exeLine = `${c.exe} notify`;
+          otherLine = c.other ?? `"${c.exe}" notify --source other --event done`;
+        },
+        () => {},
+      );
+      const setupCtx: SetupContext = { api, hooks: () => hookStates, reload: loadHookStates, exe: () => exeLine, otherLine: () => otherLine };
+      const plugOf = (id: string) => plugState(id, hookStates, api.settings().permissions === true);
 
-      // Le mode concentration : les notifications des agents attendent, résumé à la fin.
-      const QUIET_CHOICES: [number, string][] = [[25, "25 min"], [60, "1 h"], [120, "2 h"], [0, "Jusqu'à l'arrêt"]];
-      const drawQuiet = (q: { until: number | null; held: number } | null) => {
-        if (q) {
-          const until = q.until ? ` jusqu'à ${new Date(q.until).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : "";
-          const held = q.held ? ` · ${q.held} en attente` : "";
-          quiet.className = "agents-quiet on";
-          quiet.replaceChildren(
-            el("span", {}, `🎧 Concentration${until}${held}`),
-            el("button", { class: "btn small", onclick: api.handler(() => api.invoke("quiet_stop")) }, "Arrêter"),
-          );
-        } else {
-          quiet.className = "agents-quiet";
-          quiet.replaceChildren(
-            el("span", { class: "muted", title: "Les notifications des agents attendent ; un résumé à la fin" }, "🎧 Concentration"),
-            ...QUIET_CHOICES.map(([minutes, label]) => el("button", { class: "net-chip", onclick: api.handler(() => api.invoke("quiet_start", { minutes })) }, label)),
-          );
-        }
-      };
-
-      // Une question en attente, dans l'onglet (aussi après avoir fermé sa notification).
+      // ── Une question en attente (aussi après avoir fermé sa notification) ─
+      // Gardée d'un dessin à l'autre : la confirmation « Vraiment autoriser ? » reste ouverte.
+      const askRows = new Map<number, HTMLElement>();
       const askRow = (q: Ask): HTMLElement => {
         const left = `encore ${Math.max(1, Math.ceil((q.until - Date.now()) / 60000))} min`;
+        const cached = askRows.get(q.id);
+        if (cached) {
+          const small = cached.querySelector(".agents-ask-left");
+          if (small) small.textContent = ` · ${left}`;
+          return cached;
+        }
         const isPerm = q.kind === "permission";
         const buttons = el("div", { class: "btn-row" });
         const plain = () =>
@@ -777,7 +636,7 @@ export const agents: IslandModule = {
             ...q.options.map((o, i) =>
               // Autoriser : d'abord la confirmation, sur place.
               isPerm && i === 0
-                ? el("button", { class: "btn small", onclick: api.handler(() => confirm()) }, `${o}…`)
+                ? el("button", { class: "btn small primary", onclick: api.handler(() => confirm()) }, `${o}…`)
                 : el("button", { class: "btn small", onclick: api.handler(() => answer(api, q.id, i)) }, o),
             ),
           );
@@ -790,114 +649,319 @@ export const agents: IslandModule = {
           );
         };
         plain();
-        return el(
+        const row = el(
           "li",
           { class: `agents-ask ${q.kind}` },
-          el("div", {}, el("b", {}, isPerm ? `🔐 ${q.question}` : q.kind === "capture" ? `✂️ ${q.question}` : q.kind === "open" ? `🔗 ${q.question}` : `❓ ${q.who} vous demande`), el("small", { class: "muted" }, ` · ${left}`)),
+          el("div", {}, el("b", {}, isPerm ? `🔐 ${q.question}` : q.kind === "capture" ? `✂️ ${q.question}` : q.kind === "open" ? `🔗 ${q.question}` : `❓ ${q.who} vous demande`), el("small", { class: "muted agents-ask-left" }, ` · ${left}`)),
           q.kind !== "question" ? (q.detail ? el("code", { class: "agents-ask-detail" }, q.detail) : null) : el("div", { class: "agents-ask-q" }, q.question),
           buttons,
         );
+        askRows.set(q.id, row);
+        return row;
       };
 
-      const stopGithub = mountGithub(githubBox, api);
+      // ── Les cartes ──────────────────────────────────────────────────────
+      const backButton = () => el("button", { class: "agents-back", title: "Retour à l'agent", onclick: api.handler(back) }, "‹");
+      /** Une carte avec « ‹ » pour revenir à l'agent. */
+      const backCard = (cls: string, title: string, ...body: HTMLElement[]) =>
+        el("div", { class: `agents-card ${cls}` }, el("div", { class: "agents-card-head" }, backButton(), el("b", {}, title)), ...body);
+      /** Une section qui a déjà son titre (forfait, jetons, GitHub) : « ‹ » se place à sa gauche. */
+      const panelCard = (box: HTMLElement) => el("div", { class: "agents-card agents-panel" }, backButton(), box);
+
+      const QUIET_CHOICES: [number, string][] = [[25, "25 min"], [60, "1 h"], [120, "2 h"], [0, "Jusqu'à l'arrêt"]];
+      const drawQuiet = () => {
+        const q = data.quiet;
+        if (q) {
+          const until = q.until ? ` jusqu'à ${new Date(q.until).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : "";
+          const held = q.held ? ` · ${q.held} en attente` : "";
+          quiet.className = "agents-quiet on";
+          quiet.replaceChildren(el("span", {}, `🎧 Concentration${until}${held}`), el("button", { class: "btn small", onclick: api.handler(() => api.invoke("quiet_stop")) }, "Arrêter"));
+        } else {
+          quiet.className = "agents-quiet";
+          quiet.replaceChildren(
+            el("span", { class: "muted" }, "Les notifications des agents attendent ; un résumé à la fin"),
+            ...QUIET_CHOICES.map(([minutes, label]) => el("button", { class: "net-chip", onclick: api.handler(() => api.invoke("quiet_start", { minutes })) }, label)),
+          );
+        }
+      };
+
+      const addCard = (shown: string[]) =>
+        backCard(
+          "agents-add",
+          "Ajouter un outil",
+          el(
+            "div",
+            { class: "agents-add-grid" },
+            ...addable(shown).map((id) =>
+              el(
+                "button",
+                {
+                  class: "agents-pill",
+                  style: `--agent: ${agentColor(id)}`,
+                  title: LAUNCH[id]?.source ? "Prévient l'île une fois branché" : "Lancement seulement",
+                  onclick: api.handler(() => {
+                    writeStore(STORE.added, JSON.stringify([...added(), id]));
+                    choose(id);
+                  }),
+                },
+                el("span", { class: "agents-pill-logo", "aria-hidden": "true" }, icon(agentIcon(id))),
+                el("span", { class: "agents-pill-name", "data-no-i18n": true }, nameOf(id)),
+              ),
+            ),
+          ),
+        );
+
+      const welcomeCard = () =>
+        el(
+          "div",
+          { class: "agents-card agents-welcome" },
+          el("p", { class: "muted" }, "Choisissez un agent pour le brancher ou le lancer."),
+          // Une question sans agent au premier plan : jamais cachée.
+          data.asks.length ? el("ul", { class: "agents-asks" }, ...data.asks.map(askRow)) : null,
+        );
+
+      /** Ce que fait une session, en bref. */
+      const what = (x: Session) =>
+        ({
+          working: `travaille depuis ${duration(x.since)}`,
+          waiting: `vous attend depuis ${duration(x.since)}`,
+          done: `a fini ${ago(x.since)}`,
+          idle: "sans nouvelles",
+        })[x.state];
+
+      const sessionRow = (x: Session, tool: string): HTMLElement => {
+        const index = projects.findIndex((p) => p.name === x.project);
+        const proj = index >= 0 ? projects[index] : undefined;
+        const last = index >= 0 && (x.state === "done" || x.state === "idle") ? lastOf(tool, index) : undefined;
+        const canResume = !!proj && (x.state === "done" || x.state === "idle") && resumable(tool, index) && !!tools?.includes(tool);
+        return el(
+          "li",
+          { class: `agents-session-item ${x.state}` },
+          el(
+            "div",
+            { class: `agents-session ${x.state}` },
+            el("i", { class: "agents-dot" }),
+            el("b", { "data-no-i18n": true }, x.project || "—"),
+            el("small", { class: "muted" }, what(x)),
+            el("span", { class: "agents-session-sep" }),
+            el("button", { class: "net-chip", title: "Revenir à sa fenêtre", onclick: api.handler(() => goTo(api, x.id)) }, "↗ Y aller"),
+            canResume ? el("button", { class: "net-chip", title: LAUNCH[tool]?.resumeTitle ?? "Reprendre la dernière session", onclick: start(tool, { index, resume: true }) }, "↻ Reprendre") : null,
+            proj ? el("button", { class: "net-chip", title: "Ouvrir le projet dans VS Code", onclick: api.handler(() => openVsCode(api, proj.path)) }, "VS Code") : null,
+          ),
+          todosRow(x.todos),
+          last?.text ? lastLine(last) : null,
+          live.some((f) => f.session === x.id) ? liveRow(live, x.id, (f) => void diff.show(f)) : null,
+        );
+      };
+
+      const agentCard = (id: string, plug: Plug): HTMLElement => {
+        const color = agentColor(id);
+        const mine = data.sessions.filter((x) => pillOfSource(x.source) === id);
+        // Ses questions, et celles qu'on ne sait rattacher à aucun agent (jamais cachées).
+        const asks = (data.asks ?? []).filter((q) => {
+          const p = askPill(q, data.sessions);
+          return p === id || p === null;
+        });
+        const events = data.events.filter((e) => pillOfSource(e.source) === id);
+        const { shown, hidden } = foldList(events, messagesOpen);
+        const hookTool = !!hookKeyOf(id);
+        const link = needsSetup(plug)
+          ? el("button", { class: "agents-link", title: "Brancher cet agent à l'île", onclick: api.handler(() => ((configOpen = true), render())) }, "Brancher")
+          : el("button", { class: "agents-link", title: hookTool ? "Hooks, serveur MCP, Autoriser / Refuser" : "Prévenir l'île depuis un autre outil", onclick: api.handler(() => ((configOpen = true), render())) }, "Configurer");
+        const summary = mine.length ? `${mine.length} session${mine.length > 1 ? "s" : ""}` : "Aucune session";
+        return el(
+          "div",
+          { class: "agents-card agents-agent", style: `--agent: ${color}` },
+          el(
+            "div",
+            { class: "agents-card-head" },
+            el("span", { class: "agents-setup-logo", "aria-hidden": "true" }, icon(agentIcon(id))),
+            el("b", { "data-no-i18n": true }, nameOf(id)),
+            el("small", { class: "muted" }, summary),
+            el("span", { class: "agents-session-sep" }),
+            link,
+          ),
+          asks.length ? el("ul", { class: "agents-asks" }, ...asks.map(askRow)) : null,
+          mine.length ? el("ul", { class: "agents-board" }, ...mine.map((x) => sessionRow(x, id))) : null,
+          launchRow(id),
+          shown.length
+            ? el(
+                "ul",
+                { class: "agents-list", "aria-label": "Derniers messages" },
+                ...shown.map((e) =>
+                  el(
+                    "li",
+                    { class: `agents-item ${e.kind}` },
+                    el("span", { class: "launch-icon" }, icon(ICON[e.kind] ?? "🤖")),
+                    el(
+                      "span",
+                      { class: "launch-text" },
+                      el("b", {}, e.changes?.files ? `${e.title} · ${changesLine(e.changes)}` : e.title),
+                      // « il y a 6 min » traduit à part : la ligne entière (projet, message) ne l'est pas.
+                      el("small", { class: "muted" }, [e.project, e.body, t(Date.now() - e.at > 86_400_000 ? since(e.at) : ago(e.at))].filter(Boolean).join(" · ")),
+                    ),
+                  ),
+                ),
+                hidden || messagesOpen
+                  ? el(
+                      "li",
+                      {},
+                      el(
+                        "button",
+                        { class: "agents-link", onclick: api.handler(() => ((messagesOpen = !messagesOpen), render())) },
+                        messagesOpen ? "Replier" : `Afficher ${hidden} de plus`,
+                      ),
+                    )
+                  : null,
+              )
+            : null,
+        );
+      };
+
+      // ── Le dessin ───────────────────────────────────────────────────────
+      let rowKey = "";
+      let stageKey = "";
+      const render = () => {
+        const permOn = api.settings().permissions === true;
+        const pills = buildPills({ proposed: tools, added: added(), sessions: data.sessions, asks: data.asks ?? [], hooks: hookStates, permOn });
+        selected = defaultPill(pills, remembered());
+        const plug = selected ? plugOf(selected) : "none";
+        const kind = cardFor({ panel, selected, plug, later: !!selected && later().includes(selected), configOpen });
+
+        // La rangée : redessinée seulement si elle change (le focus clavier reste en place).
+        const report = plan.report();
+        const claudePlan = planOn(api) ? planPill(report?.claude) : null;
+        const codexPlan = planOn(api) ? planPill(report?.codex) : null;
+        const q = data.quiet;
+        const key = JSON.stringify([pills, selected, panel, claudePlan, codexPlan, planOn(api), usageOn(api), githubLogin(api), q, otherWord()]);
+        if (key !== rowKey) {
+          rowKey = key;
+          const focused = (document.activeElement as HTMLElement | null)?.closest?.("[data-pill], [data-stat]") as HTMLElement | null;
+          const refocus = focused && row.contains(focused) ? (focused.dataset.pill ? `[data-pill="${focused.dataset.pill}"]` : `[data-stat="${focused.dataset.stat}"]`) : null;
+          pillsBox.replaceChildren(
+            ...pills.map((p) => agentPill({ ...p, name: nameOf(p.id), color: agentColor(p.id), pressed: panel === "agent" && p.id === selected, onClick: () => choose(p.id) })),
+            addPill(panel === "add", () => openPanel("add")),
+          );
+          const stats: HTMLElement[] = [];
+          if (planOn(api))
+            stats.push(
+              statPill({ key: "plan-claude", label: claudePlan?.label ?? "Forfait", iconName: "logo:claude", title: "Limites du forfait de Claude", pressed: panel === "plan", tone: claudePlan?.level, onClick: () => openPanel("plan") }),
+            );
+          if (codexPlan) stats.push(statPill({ key: "plan-codex", label: codexPlan.label, iconName: "logo:codex", title: "Limites du forfait de Codex", pressed: panel === "plan", tone: codexPlan.level, onClick: () => openPanel("plan") }));
+          if (usageOn(api)) stats.push(statPill({ key: "usage", label: "Jetons", title: "Compteur de jetons des agents", pressed: panel === "usage", onClick: () => openPanel("usage") }));
+          if (githubLogin(api)) stats.push(statPill({ key: "github", label: "GitHub", title: "Calendrier de contributions", pressed: panel === "github", onClick: () => openPanel("github") }));
+          const quietUntil = q?.until ? new Date(q.until).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "";
+          stats.push(
+            statPill({
+              key: "quiet",
+              label: q ? quietUntil || (q.held ? String(q.held) : "") : "",
+              iconName: "🎧",
+              title: q ? "Concentration en cours" : "Concentration : les notifications des agents attendent, résumé à la fin",
+              pressed: panel === "quiet",
+              tone: q ? "on" : undefined,
+              onClick: () => openPanel("quiet"),
+            }),
+          );
+          statsBox.replaceChildren(...stats);
+          if (refocus) row.querySelector<HTMLElement>(refocus)?.focus();
+        }
+
+        // La carte : redessinée seulement si ce qu'elle montre change (le
+        // focus, une liste déroulante ouverte, une confirmation restent en
+        // place), avec un petit fondu quand on passe à une autre carte.
+        const id = selected ?? "";
+        const minute = Math.floor(Date.now() / 60_000); // « depuis 4 min »
+        const content =
+          kind === "setup"
+            ? setupKey(setupCtx, setupOptions(id, plug))
+            : kind === "agent"
+              ? JSON.stringify([plug, data.sessions, data.asks.map((q) => q.id), data.events.filter((e) => pillOfSource(e.source) === id), live, tools, projects, lastSessions, messagesOpen, launchChoice, minute, otherWord()])
+              : kind === "welcome"
+                ? JSON.stringify(data.asks.map((q) => q.id))
+                : kind === "quiet"
+                  ? JSON.stringify([data.quiet, minute])
+                  : kind === "add"
+                    ? JSON.stringify([pills.map((p) => p.id), otherWord()])
+                    : "";
+        const head = `${kind}:${id}`;
+        const sKey = `${head}|${content}`;
+        if (sKey === stageKey) return;
+        const swap = !stageKey.startsWith(`${head}|`);
+        // Une liste déroulante ouverte dans la carte : on attend qu'elle se ferme.
+        if (!swap && (document.activeElement as HTMLElement | null)?.tagName === "SELECT" && stage.contains(document.activeElement)) return;
+        stageKey = sKey;
+        let card: HTMLElement;
+        if (kind === "welcome") card = welcomeCard();
+        else if (kind === "setup") card = setupCard(setupCtx, setupOptions(id, plug));
+        else if (kind === "agent") card = agentCard(id, plug);
+        else if (kind === "plan") card = panelCard(plan.box);
+        else if (kind === "usage") card = panelCard(usage.box);
+        else if (kind === "github") card = panelCard(githubBox);
+        else if (kind === "quiet") {
+          drawQuiet();
+          card = backCard("agents-quiet-box", "Concentration", quiet);
+        } else card = addCard(pills.map((p) => p.id));
+        if (swap) card.classList.add("agents-card-in");
+        stage.replaceChildren(card);
+      };
+      const setupOptions = (id: string, plug: Plug) => ({
+        id,
+        name: nameOf(id),
+        color: agentColor(id),
+        plug,
+        configOpen,
+        removable: added().includes(id) && !(BASE_PILLS as readonly string[]).includes(id),
+        later: () => {
+          writeStore(STORE.later, JSON.stringify([...new Set([...later(), id])]));
+          render();
+        },
+        close: () => {
+          configOpen = false;
+          render();
+        },
+        remove: () => {
+          writeStore(STORE.added, JSON.stringify(added().filter((x) => x !== id)));
+          writeStore(STORE.pill, "");
+          configOpen = false;
+          render();
+        },
+      });
 
       const draw = async () => {
         // Une session vient peut-être de finir : sa dernière phrase a changé.
         void loadLast();
-        void usage.load();
-        void plan.load();
-        let data: { events: AgentEvent[]; working: number; sessions: Session[]; asks: Ask[]; quiet: { until: number | null; held: number } | null };
+        if (panel === "usage") void usage.load();
         try {
-          data = await api.invoke("history");
+          data = await api.invoke<History>("history");
         } catch {
-          return; // hors de l'appli
+          return render(); // hors de l'appli
         }
+        data.asks ??= [];
         // Les fichiers modifiés en direct (réglage « liveFiles »).
-        let live: LiveFile[] = [];
-        if (liveOn(api)) live = await api.invoke<{ files: LiveFile[] }>("live").then((r) => r.files ?? [], () => []);
-        const waiting = data.sessions.filter((x) => x.state === "waiting").length;
-        // Un morceau par élément : chacun garde son pictogramme et sa traduction.
-        const parts = [data.working ? `🧠 ${data.working} au travail` : "", waiting ? `✋ ${waiting} vous attend${waiting > 1 ? "ent" : ""}` : ""].filter(Boolean);
-        if (!data.sessions.length) status.textContent = "Aucune session pour l'instant.";
-        else if (!parts.length) status.textContent = "Personne ne travaille en ce moment.";
-        else status.replaceChildren(...parts.flatMap((x, i) => [i ? " · " : "", el("span", {}, x)]));
-        // Les questions en attente (aussi après avoir fermé leur notification).
-        asks.replaceChildren(...(data.asks ?? []).map((q) => askRow(q)));
-        drawQuiet(data.quiet);
-        // Le tableau « En cours » : un clic ramène la fenêtre de la session.
-        board.replaceChildren(
-          ...data.sessions.map((x) => {
-            const what = {
-              working: `travaille depuis ${duration(x.since)}`,
-              waiting: `vous attend depuis ${duration(x.since)}`,
-              done: `a fini ${ago(x.since)}`,
-              idle: "sans nouvelles",
-            }[x.state];
-            return el(
-              "li",
-              {},
-              el(
-                "button",
-                { class: `agents-session ${x.state}`, title: "Revenir à sa fenêtre", onclick: api.handler(() => goTo(api, x.id)) },
-                el("i", { class: "agents-dot" }),
-                el("span", { class: "agents-logo" }, icon(sourceIcon(x.source) ?? "🤖")),
-                el("b", {}, SOURCE_NAMES[x.source] ?? sourceName(x.source)),
-                el("span", {}, x.project || "—"),
-                el("small", { class: "muted" }, what),
-                el("span", { class: "agents-go" }, "↗"),
-              ),
-              todosRow(x.todos),
-              live.some((f) => f.session === x.id) ? liveRow(live, x.id, (f) => void diff.show(f)) : null,
-            );
-          }),
-        );
-        list.replaceChildren(
-          ...(data.events.length
-            ? data.events.map((e) =>
-                el(
-                  "li",
-                  { class: `agents-item ${e.kind}` },
-                  el("span", { class: "launch-icon" }, ICON[e.kind] ?? "🤖"),
-                  el(
-                    "span",
-                    { class: "launch-text" },
-                    el("b", {}, e.changes?.files ? `${e.title} · ${changesLine(e.changes)}` : e.title),
-                    // « il y a 6 min » traduit à part : la ligne entière (projet, message) ne l'est pas.
-                    // Relu de l'historique (plus d'un jour) : « il y a 2 j » plutôt qu'une heure.
-                    el("small", { class: "muted" }, [e.project, e.body, t(Date.now() - e.at > 86_400_000 ? since(e.at) : ago(e.at))].filter(Boolean).join(" · ")),
-                  ),
-                ),
-              )
-            : [el("li", { class: "muted agents-empty" }, "Rien reçu pour l'instant. Branchez Claude Code ci-dessous, puis cliquez sur « Essayer ».")]),
-        );
-        if (!data.events.length) guide.open = true;
+        live = liveOn(api) ? await api.invoke<{ files: LiveFile[] } | null>("live").then((r) => r?.files ?? [], () => []) : [];
+        // Les questions fermées : on oublie leur ligne gardée.
+        for (const id of askRows.keys()) if (!data.asks.some((q) => q.id === id)) askRows.delete(id);
+        render();
+        void plan.load().then(() => render());
       };
 
-      void api.invoke<{ exe: string; other?: string }>("hook_config").then(
-        (c) => {
-          exe.textContent = `${c.exe} notify`;
-          otherLine.textContent = c.other ?? `"${c.exe}" notify --source other --event done`;
-        },
-        () => {
-          exe.textContent = "ondine.exe notify";
-          otherLine.textContent = "ondine.exe notify --source other --event done";
-        },
-      );
       redraws.add(draw);
+      render();
       void draw();
       const stopTimer = pacedInterval(() => void draw(), "agentsList", true); // pour « il y a 5 min »
       // Un fichier vient d'être modifié : un seul redessin pour une rafale.
       let liveTimer = 0;
-      const stopLive = api.on("agents.live", () => {
+      const soon = () => {
         if (!liveTimer) liveTimer = window.setTimeout(() => ((liveTimer = 0), void draw()), 300);
-      });
+      };
+      const stopLive = api.on("agents.live", soon);
       // La liste de tâches d'un agent a bougé : pareil.
-      const stopTodos = api.on("agents.todos", () => {
-        if (!liveTimer) liveTimer = window.setTimeout(() => ((liveTimer = 0), void draw()), 300);
-      });
+      const stopTodos = api.on("agents.todos", soon);
+      const stopSettings = api.onSettingsChange(() => void loadHookStates());
       return () => {
         stopLive();
         stopTodos();
+        stopSettings();
         window.clearTimeout(liveTimer);
         redraws.delete(draw);
         stopTimer();

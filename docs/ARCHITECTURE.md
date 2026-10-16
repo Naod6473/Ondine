@@ -2182,6 +2182,11 @@ aucun compte, rien sur Internet. **Désactivé par défaut**
 
 Les outils extérieurs préviennent l'île par une porte d'entrée locale.
 
+L'onglet (refait en 1.2.5, voir « Agents IA : la rangée de pilules » plus
+bas) : une pilule par agent en haut, une seule carte dessous. Le gros guide
+« Brancher un outil » a disparu : chaque agent a sa carte « Brancher »
+(premier clic) et ses « Options avancées » (lien « Configurer »).
+
 - `ondine.exe notify [--source x] [--title t] [--message m]` (`main.rs` →
   `cli.rs`) : ne démarre PAS l'île. Lit l'entrée standard si un programme
   l'envoie (le JSON d'un hook), emballe le tout en
@@ -2439,8 +2444,8 @@ Les outils extérieurs préviennent l'île par une porte d'entrée locale.
   - « Autre outil » : réglage `otherTool` (le mot de commande : lettres,
     chiffres, tirets, points, soulignés, 32 caractères au plus, ni option ni
     chemin ; `agents_tools::valid_word`), lancé comme les autres (chemin
-    complet trouvé dans le PATH). `launch {tool: "other"}`. Le guide de
-    l'onglet montre la ligne `"chemin\ondine.exe" notify --source other
+    complet trouvé dans le PATH). `launch {tool: "other"}`. La carte
+    « Configurer » de l'outil (Options avancées) montre la ligne `"chemin\ondine.exe" notify --source other
     --event done` (`hook_config` → `other`) : `cli.rs` comprend `--event done |
     waiting | working | ended` sans JSON, et `understand` en fait « L'outil a
     fini » / « L'outil attend votre réponse ».
@@ -4231,12 +4236,84 @@ une fenêtre qui disparaît surprend). `lockGoodbye` n'est plus essentiel
   bureaux virtuels (une fenêtre avalée sur un bureau ressort sur le bureau
   courant), aperçu de la fenêtre (le projet d'origine prend une capture).
 
-## Mini-jeux (1.2.5, `src/modules/games/`, `src-tauri/src/modules/games.rs`, `src/styles/games.css`)
+### Agents IA : la rangée de pilules (`src/modules/agents/pills-logic.ts`, `pills-view.ts`, `setup-view.ts`, `index.ts`)
 
+L'onglet était une longue colonne (lanceur, questions, état, concentration,
+tableau, forfait, jetons, GitHub, messages, guide d'installation). Il devient
+une rangée de pilules et UNE carte, façon coucou (MIT, idée réécrite : voir
+THIRD-PARTY.md). Aucune commande Rust nouvelle : tout passe par `history`,
+`hook_status`, `hook_install`, `projects`, `plan`… comme avant.
+
+- **Pilules** (`buildPills`) : une par agent, par son identifiant de
+  lancement (`claude`, `codex`…, `tools.ts` ; une source de hooks
+  `claude-code` → `claude` par `pillOfSource`). Toujours Claude Code, Codex
+  et Gemini CLI (sauf décochés dans « Proposer … » et sans session ni
+  hooks), puis les outils ajoutés avec « + », ceux dont les hooks sont déjà
+  écrits, ceux qui ont une session. Ordre : attend, puis travaille, puis les
+  autres (tri stable). Chaque pilule : l'icône maison de l'agent
+  (`agentIcon`), son nom, sa couleur (`AGENT_COLORS`, variable CSS
+  `--agent`), un badge rond « ! » (attend : une session `waiting` ou une
+  question rattachée par `askPill`), « ✓ » (a fini et plus rien ne
+  travaille), « ✕ » (hooks sur un ancien chemin ou fichier illisible), et le
+  nombre de sessions en cours s'il y en a plusieurs. Boutons, `aria-pressed`
+  sur celle au premier plan, flèches gauche / droite / Début / Fin
+  (`arrowKeys`).
+- **Branché** (`plugState`) : `ready`, `update` (installé sans la liste de
+  tâches, ou sans le hook d'autorisation alors que le réglage
+  `permissions` est activé, Claude Code et Codex seulement), `stale`, `off`,
+  `broken`, `none` (outil sans hooks), `unknown` (état pas lu). `needsSetup`
+  vaut pour `update`, `stale`, `off`, `broken`.
+- **Carte** (`cardFor`) : une petite pilule de droite ouverte → sa carte ;
+  aucun agent choisi → accueil (« Choisissez un agent… », et les questions
+  en attente, jamais cachées) ; « Configurer » → carte « Brancher » ; pas
+  branché et pas de « Plus tard » → carte « Brancher » ; sinon la carte de
+  l'agent. La pilule au premier plan (`defaultPill`) : le choix retenu,
+  sinon une qui attend ou travaille, sinon un agent branché, sinon aucune.
+- **Carte « Brancher »** (`setup-view.ts`) : une phrase, « Brancher
+  <agent> » (confirmation sur place, puis `hook_install` : fusion, copie
+  `.bak`, inchangé), « Plus tard ». Repliés dans « Options avancées » :
+  l'état et le fichier, la copie de sécurité, Copier la configuration /
+  la config MCP / le hook d'autorisation, Retirer, Essayer, la ligne
+  `ondine.exe notify` ; pour un outil sans hooks, la ligne « autre outil » ;
+  « Retirer de la rangée » pour un outil ajouté. Les explications sont dans
+  les bulles (`title`). Une fois branché, la carte laisse place à celle de
+  l'agent ; « Configurer » (lien de sa carte) la rouvre.
+- **Carte de l'agent** : ses questions (Autoriser… avec confirmation,
+  Refuser, Au terminal ; la ligne est gardée d'un dessin à l'autre pour que
+  « Vraiment autoriser ? » ne se referme pas), ses sessions (projet, état,
+  « ↗ Y aller », « ↻ Reprendre » si la session est finie, « VS Code » si le
+  projet est connu, la barre « 3/7 », la dernière phrase, les fichiers en
+  direct), « Lancer » réduit à une ligne (liste des projets, « Dossier
+  utilisateur » sans projet, « Autre dossier… », « Reprendre » avec la
+  dernière phrase), ses derniers messages (3, puis « Afficher N de plus »).
+  La liste d'un bilan (`report-view.ts`) et le changement d'un fichier
+  (`live-view.ts`) s'affichent au-dessus de la carte.
+- **Petites pilules de droite** : forfait de Claude (« 5 h · 42 % », sinon
+  « Sem. · … », « Forfait » sans chiffres ; `planPill`, couleur jaune / rouge
+  aux mêmes seuils que les jauges) et de Codex (seulement avec des
+  chiffres), « Jetons » (réglage `usage`), « GitHub » (seulement avec un
+  identifiant), la concentration (icône 🎧, l'heure de fin quand elle est en
+  cours). Un clic ouvre leur carte à la place de celle de l'agent, avec
+  « ‹ » pour revenir ; le compteur de jetons n'est relu que sa carte
+  ouverte (l'alerte de budget garde sa relecture de fond).
+- **Redessin** : la rangée et la carte ne sont reconstruites que si ce
+  qu'elles montrent change (clé JSON), pour garder le focus clavier, une
+  liste déroulante ouverte, une confirmation en cours ; un fondu de 200 ms
+  quand on change de carte, coupé par « Réduire les animations » et le
+  mode éco (`extras.css`).
+- **Mémoire locale** (navigateur de l'île, `localStorage`, rien
+  d'important) : `agents.pill` (la pilule choisie), `agents.pills-added`,
+  `agents.pills-later` (listes d'identifiants relues par `parseIds`).
+- **Mini-île** : la pastille d'une notification d'agent prend sa couleur
+  (`extras.css`, `.notif-icon:has([data-icon="logo:…"])` : le logo au
+  trait en est rempli, le logo en couleur a un halo).
+- Mode démo : `agents.plan` et `agents.live` ont maintenant une réponse
+  inventée (`demo.ts`).
+- Tests : `tests/front/agents-pills.test.ts`.
+## Mini-jeux (1.2.5, `src/modules/games/`, `src-tauri/src/modules/games.rs`, `src/styles/games.css`)
 Le module « Jeux » (🎮, catégorie « Au quotidien ») : un onglet à quatre
 pastilles (`TabPill`, comme le Minuteur). Toutes les parties vivent dans un
 objet `Live` créé au démarrage du module : fermer l'onglet ne perd rien.
-
 - **Lancer.** L'onglet ; le Lanceur (« jouer », « puissance 4 », « morpion »,
   « aquarium », « course » → `games.play {game}`) ; un **appui long sur
   Ondine** (550 ms sans bouger, `island.ts` `wireCarry` → `mascot.long-press` ;

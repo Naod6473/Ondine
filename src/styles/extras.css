@@ -1,5 +1,5 @@
-/* 1.2.4, les extras (importé en tête de island.css) : limites du forfait et
-   fichiers modifiés en direct (Agents IA). Les animations suivent --ease et
+/* 1.2.4, les extras (importé en tête de island.css) : limites du forfait,
+   fichiers modifiés en direct et, en 1.2.5, la rangée de pilules (Agents IA). Les animations suivent --ease et
    s'arrêtent avec « Réduire les animations » et en mode éco. */
 
 /* ── Agents IA : limites du forfait (plan-view.ts) ─────────────────────── */
@@ -224,4 +224,428 @@ body[data-perf="eco"] .agents-plan-fill,
 body[data-perf="eco"] .agents-live-file {
   transition: none;
   animation: none;
+}
+
+/* ── Agents IA : la rangée de pilules et sa carte (pills-view.ts, 1.2.5) ── */
+/* Une pilule par agent, de sa couleur (--agent, posée par le code) : discrète
+   au repos, colorée au survol et quand elle est au premier plan. Les
+   transitions sont courtes ; « Réduire les animations » et le mode éco les coupent. */
+/* Les pilules des agents à gauche, les petites pilules à droite ; si tout ne
+   tient pas sur une ligne, les petites passent dessous, toujours à droite. */
+.agents-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  min-width: 0;
+}
+.agents-pills,
+.agents-stats {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.agents-pills {
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+}
+.agents-stats {
+  flex: none;
+  margin-left: auto;
+}
+.agents-pill {
+  --agent: #9aa3b2;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 11px 0 7px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--agent) 26%, transparent);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted, rgba(255, 255, 255, 0.6));
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    box-shadow 160ms ease,
+    color 140ms ease,
+    transform 260ms var(--ease);
+}
+.agents-pill:hover,
+.agents-pill:focus-visible {
+  background: color-mix(in srgb, var(--agent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--agent) 55%, transparent);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--agent) 30%, transparent);
+  color: var(--island-fg);
+  outline: none;
+}
+.agents-pill:active {
+  transform: scale(0.96);
+}
+.agents-pill[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--agent) 24%, transparent);
+  border-color: color-mix(in srgb, var(--agent) 70%, transparent);
+  color: var(--island-fg);
+}
+.agents-pill.unplugged:not([aria-pressed="true"]) {
+  opacity: 0.72;
+}
+.agents-pill-logo {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--agent);
+}
+.agents-pill-logo img {
+  width: 16px;
+  height: 16px;
+}
+/* Au travail : le logo respire doucement. */
+.agents-pill.working .agents-pill-logo {
+  animation: agents-pill-breathe 1.6s ease-in-out infinite;
+}
+@keyframes agents-pill-breathe {
+  50% {
+    opacity: 0.55;
+  }
+}
+.agents-pill-count {
+  min-width: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--agent) 30%, transparent);
+  color: var(--island-fg);
+  font-size: 10px;
+  line-height: 15px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+/* Le badge rond : attend (orange « ! »), a fini (vert ✓), erreur (rouge ✕). */
+.agents-pill-badge {
+  position: absolute;
+  top: -4px;
+  right: -3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--island-bg, #111);
+}
+.agents-pill-badge i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #111;
+  font-style: normal;
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1;
+}
+.agents-pill-badge.waiting i {
+  background: #f5a524;
+  box-shadow: 0 0 5px rgba(245, 165, 36, 0.6);
+}
+.agents-pill-badge.done i {
+  background: #22c55e;
+}
+.agents-pill-badge.error i {
+  background: #f4505e;
+}
+.agents-pill-add {
+  padding: 0 9px;
+  font-size: 14px;
+  font-weight: 500;
+}
+/* Les petites pilules de droite : forfait, jetons, GitHub, concentration. */
+.agents-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted, rgba(255, 255, 255, 0.55));
+  font: inherit;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    transform 260ms var(--ease);
+}
+.agents-stat:hover,
+.agents-stat:focus-visible,
+.agents-stat[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--island-fg);
+  outline: none;
+}
+.agents-stat:active {
+  transform: scale(0.95);
+}
+.agents-stat-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 12px;
+  height: 12px;
+  font-size: 11px;
+}
+.agents-stat-icon img {
+  width: 12px;
+  height: 12px;
+}
+.agents-stat.warn {
+  color: #f5c04c;
+}
+.agents-stat.high {
+  color: #ff8a8a;
+}
+.agents-stat.on {
+  background: rgba(160, 120, 255, 0.16);
+  border-color: rgba(160, 120, 255, 0.4);
+  color: var(--island-fg);
+}
+
+/* La carte sous la rangée : du verre, comme le reste de l'île. */
+.agents-stage {
+  min-width: 0;
+}
+.agents-card {
+  --agent: #9aa3b2;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  min-width: 0;
+}
+.agents-agent,
+.agents-setup {
+  border-color: color-mix(in srgb, var(--agent) 22%, rgba(255, 255, 255, 0.06));
+  background: linear-gradient(160deg, color-mix(in srgb, var(--agent) 9%, transparent), rgba(255, 255, 255, 0.03) 60%);
+}
+.agents-card-in {
+  animation: agents-card-in 200ms var(--ease) both;
+}
+@keyframes agents-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.agents-card-head,
+.agents-setup-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.agents-card-head small,
+.agents-setup-head small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agents-setup-logo {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  font-size: 16px;
+  color: var(--agent);
+}
+.agents-setup-logo img {
+  width: 18px;
+  height: 18px;
+}
+.agents-back {
+  border: 0;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--island-fg);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+.agents-back:hover,
+.agents-back:focus-visible {
+  background: rgba(255, 255, 255, 0.15);
+}
+.agents-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--muted, rgba(255, 255, 255, 0.55));
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+}
+.agents-link:hover,
+.agents-link:focus-visible {
+  color: var(--island-fg);
+}
+.agents-session-sep {
+  flex: 1;
+}
+/* Une session : une ligne (point, projet, état, Y aller / Reprendre / VS Code), puis ses tâches et ses fichiers. */
+.agents-session-item {
+  list-style: none;
+}
+.agents-agent .agents-session {
+  cursor: default;
+  padding: 3px 4px;
+}
+.agents-agent .agents-session:hover {
+  background: transparent;
+}
+.agents-agent .agents-session:active {
+  transform: none;
+}
+.agents-agent .agents-session small {
+  margin-left: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.agents-agent .agents-last {
+  display: block;
+  margin: 0 0 2px 20px;
+}
+.agents-agent .agents-todos,
+.agents-agent .agents-live {
+  margin-left: 20px;
+}
+.agents-launch-icon {
+  color: var(--agent);
+  font-size: 11px;
+}
+.agents-launch-where {
+  max-width: 180px;
+  min-width: 0;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--island-fg);
+  font: inherit;
+  font-size: 12px;
+}
+.agents-launch .agents-last {
+  flex: 1;
+}
+/* Options avancées de la carte « Brancher ». */
+.agents-setup-main {
+  align-items: center;
+}
+.agents-advanced {
+  font-size: 12px;
+}
+.agents-advanced summary {
+  cursor: pointer;
+  color: var(--muted, rgba(255, 255, 255, 0.55));
+  width: max-content;
+}
+.agents-advanced[open] summary {
+  margin-bottom: 4px;
+}
+.agents-advanced code {
+  font-size: 11px;
+  user-select: text;
+  overflow-wrap: anywhere;
+}
+.agents-adv-state,
+.agents-adv-exe {
+  margin: 2px 0 4px;
+}
+.agents-advanced .btn-row {
+  flex-wrap: wrap;
+}
+.agents-welcome p {
+  margin: 2px 0;
+}
+.agents-add-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+/* Forfait, jetons, GitHub : la section garde son titre, « ‹ » à sa gauche. */
+.agents-panel {
+  position: relative;
+  padding-left: 40px;
+}
+.agents-panel > .agents-back {
+  position: absolute;
+  left: 10px;
+  top: 8px;
+}
+.agents-card .agents-usage,
+.agents-card .agents-plan {
+  margin: 0;
+}
+/* Les derniers messages de l'agent : plus serrés. */
+.agents-agent .agents-list .agents-item {
+  padding: 2px 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .agents-pill,
+  .agents-stat,
+  .agents-back {
+    transition: none;
+  }
+  .agents-card-in,
+  .agents-pill.working .agents-pill-logo {
+    animation: none;
+  }
+}
+body[data-perf="eco"] .agents-card-in,
+body[data-perf="eco"] .agents-pill.working .agents-pill-logo {
+  animation: none;
+}
+
+/* Mini-île et notifications : la pastille d'un agent prend sa couleur
+   (le logo au trait est un masque rempli par la couleur du texte). */
+.notif-icon:has(> [data-icon="logo:claude"]) { --agent: #e8875b; }
+.notif-icon:has(> [data-icon="logo:codex"]) { --agent: #3cc8b4; }
+.notif-icon:has(> [data-icon="logo:gemini"]) { --agent: #7fa8f5; }
+.notif-icon:has(> [data-icon="logo:copilot"]) { --agent: #9a8cf0; }
+.notif-icon:has(> [data-icon="logo:cursor"]) { --agent: #b8bcc6; }
+.notif-icon:has(> [data-icon="logo:qwen"]) { --agent: #b07cf2; }
+.notif-icon:has(> [data-icon="logo:goose"]) { --agent: #e9c349; }
+.notif-icon:has(> [data-icon="logo:other"]) { --agent: #9aa3b2; }
+.notif-icon:has(> [data-icon^="logo:"]) > .icon-line {
+  color: var(--agent);
+}
+.notif-icon:has(> img[data-icon^="logo:"]) > img {
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--agent) 65%, transparent));
+}
+.agents-quiet-box .agents-quiet > .muted {
+  flex-basis: 100%;
 }
