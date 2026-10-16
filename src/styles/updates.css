@@ -1,0 +1,279 @@
+/* Mises à jour des logiciels (src/modules/updates/view.ts). Chargé avec la vue. */
+
+.upd {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.upd-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.upd-title {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.25;
+}
+.upd-title small {
+  font-size: 11px;
+}
+
+/* La bande « Tout mettre à jour ? » et « winget n'est pas installé ». */
+.upd-confirm,
+.upd-missing {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 1px var(--line);
+  animation: upd-in 260ms var(--ease) both;
+}
+.upd-confirm p,
+.upd-missing p {
+  margin: 0;
+  font-weight: 600;
+}
+.upd-confirm .btn-row,
+.upd-missing .btn-row {
+  margin: 4px 0 0;
+}
+
+/* La file en cours : un point qui respire, « 2 sur 5 · Firefox ». */
+.upd-run {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+.upd-run small {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.upd-run-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  animation: upd-breathe 1.3s ease-in-out infinite;
+}
+
+.upd-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.upd-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 10px;
+  transition: background 160ms ease;
+}
+.upd-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.upd-item.running {
+  background: rgba(124, 196, 255, 0.08);
+}
+.upd-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.25;
+}
+.upd-name,
+.upd-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.upd-sub,
+.upd-state {
+  font-size: 11px;
+}
+.upd-state.good {
+  color: #7ee8a2;
+}
+.upd-state.bad {
+  color: #ff9c8f;
+}
+.upd-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+/* « Ne plus proposer » : visible au survol de la ligne (et au clavier). */
+.upd-item .upd-hide {
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.upd-item:hover .upd-hide,
+.upd-item .upd-hide:focus-visible {
+  opacity: 1;
+}
+/* « Confirmer ? » : le bouton se gonfle un peu, en gelée. */
+.upd-armed {
+  animation: upd-arm 380ms var(--ease) both;
+}
+
+/* La barre d'avancement de la ligne en cours. */
+.upd-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+}
+.upd-bar {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+}
+.upd-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: width 300ms var(--ease-out);
+}
+/* Sans pourcentage (préparation, installateur muet) : un reflet qui passe. */
+.upd-bar-fill.indeterminate {
+  width: 30%;
+  animation: upd-slide 1.4s ease-in-out infinite;
+}
+.upd-phase {
+  flex: none;
+  color: var(--muted);
+}
+
+.upd-error {
+  margin: 0;
+  color: #ff9c8f;
+  font-size: 12px;
+}
+.upd-empty {
+  margin: 6px 0;
+  text-align: center;
+}
+.upd-done-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+}
+.upd-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 2px 0 0;
+  font-size: 11px;
+}
+.upd .link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+.upd .link-btn:hover {
+  text-decoration: underline;
+}
+
+@keyframes upd-in {
+  from {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+@keyframes upd-arm {
+  0% {
+    scale: 1;
+  }
+  45% {
+    scale: 1.08 0.94;
+  }
+  100% {
+    scale: 1;
+  }
+}
+@keyframes upd-breathe {
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes upd-slide {
+  from {
+    left: -30%;
+  }
+  to {
+    left: 100%;
+  }
+}
+
+/* Windows réduit les animations, ou mode Économie : rien ne bouge. */
+@media (prefers-reduced-motion: reduce) {
+  .upd-confirm,
+  .upd-missing,
+  .upd-armed,
+  .upd-run-dot,
+  .upd-bar-fill.indeterminate {
+    animation: none;
+  }
+  .upd-bar-fill {
+    transition: none;
+  }
+}
+body[data-perf="eco"] .upd-run-dot,
+body[data-perf="eco"] .upd-bar-fill.indeterminate {
+  animation: none;
+}
+
+/* La pastille de l'île (island.ts, wireUpdatesDot) : un petit point bleu,
+   discret, à côté de celui des services IA. Pas de halo qui pulse. */
+.upd-dot {
+  position: absolute;
+  top: 7px;
+  left: 24px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #64d2ff;
+  opacity: 0;
+  scale: 0.3;
+  pointer-events: none;
+  transition:
+    opacity var(--speed) var(--ease),
+    scale var(--speed) var(--ease);
+}
+.island[data-updates="1"]:not([data-state="hidden"], [data-state="peek"]) .upd-dot {
+  opacity: 0.85;
+  scale: 1;
+  pointer-events: auto;
+}
+body[data-edge="left"] .upd-dot,
+body[data-edge="right"] .upd-dot {
+  top: auto;
+  bottom: 34px;
+  left: calc(50% - 3px);
+}

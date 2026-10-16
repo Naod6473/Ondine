@@ -2055,6 +2055,59 @@ s'il n'existe pas ou est désactivé).
   de la mini-île, conseil « Claude a un incident en cours » sur les
   événements d'agents) et `mascot.emote` (inquiet / soulagé).
 
+### Module Mises à jour des logiciels (`src/modules/updates/`, `src-tauri/src/modules/updates.rs`, `updates_parse.rs`)
+
+- winget (App Installer) fait le travail. Chemin : l'alias
+  `%LOCALAPPDATA%\Microsoft\WindowsApps\winget.exe` (vu par
+  `symlink_metadata`, l'alias ne passe pas `is_file()`), sinon `find_program`.
+  Absent : l'onglet le dit et ouvre la page d'App Installer du Store
+  (`get_winget`, `ms-windows-store://pdp/?productid=9NBLGGH4NNS1`).
+- Lancé sans shell, chaque argument à part, `CREATE_NO_WINDOW`, depuis le
+  dossier temporaire. Liste : `upgrade --accept-source-agreements
+  --disable-interactivity` (relancé sans ce dernier si winget répond
+  0x8A150002, trop ancien). Une appli : `upgrade --id <Id> -e --silent
+  --accept-package-agreements --accept-source-agreements` (+ `--source`).
+  L'ID passe `valid_id` (ASCII, « . - _ + », pas de « - » au début, 128 au
+  plus) ET doit être dans la dernière liste lue.
+- Lecture (`updates_parse.rs`, pure, testée sur des sorties FR / EN / chinoises) :
+  séquences ANSI et morceaux réécrits par « \r » (roue, barres) enlevés ; la
+  ligne de tirets repère un tableau, la ligne au-dessus donne le début de
+  chaque colonne ; découpe en largeur d'affichage (caractère large = 2) ;
+  une ligne qui n'a pas une espace avant chaque colonne n'en est pas une
+  (bas de tableau) ; sinon relecture par la droite seulement si le dernier mot
+  est une source connue. ID coupé par winget (« … ») : ligne laissée de côté.
+  Second tableau (« ciblage explicite ») : `explicit`. Avancement : « 12 MB /
+  48 MB » ou « 42% », phase téléchargement / installation par mots-clés.
+- Résultat (`Outcome`) d'après le code de sortie (HRESULT de winget, codes
+  MSI 3010 / 1641) et la sortie : ok, reboot, upToDate, admin, cancelled,
+  inUse, busy, diskFull, network, hash, policy, noInstaller, notFound,
+  unsupported, timeout, failed. Le front écrit la phrase (`OUTCOME_TEXT`,
+  traduite). « Demande les droits d'administrateur » propose
+  `upgrade_admin` : la même commande dans une console élevée (`run_as_admin`,
+  `--wait`), dont Ondine ne connaît pas le résultat.
+- La file (un fil) : une à la fois ; `cancel` / `cancel_all` retirent ce qui
+  n'a pas commencé, celle en cours ne s'arrête pas (30 min au plus, sinon
+  arrêtée : timeout). Module coupé : la file s'arrête après celle en cours.
+  `task.started` puis `task.finished` (ou `task.failed` si tout a échoué),
+  envoyés par `bus::emit` même module coupé ; après chaque appli
+  `mascot.emote` : cheer, yawn (redémarrage), shy (annulée), pensive (échec).
+- Bus : `updates.changed` (l'onglet redemande `status`), `updates.progress`
+  `{id, phase, pct, index, total}` (4 fois par seconde au plus, seule la barre
+  est redessinée), `updates.available` `{count, fresh, scheduled, echo?}`
+  (pastille, notification si `scheduled` et du nouveau), `updates.finished`
+  `{ok, failed, reboot}`. Écoute `updates.check` (Lanceur).
+- Vérification automatique (`checkEvery` : off par défaut, daily, weekly) :
+  un fil regarde chaque minute (première fois 3 min après le démarrage).
+  `%APPDATA%\Ondine\updates.json` garde la date et la liste.
+- Applis ignorées : le réglage texte `ignored` (un ID par ligne), donc export,
+  « Modifié » et Annuler ; « Ne plus proposer » l'écrit par `update_settings`.
+- Pastille : `.upd-dot` dans island.ts (`wireUpdatesDot`, `data-updates`),
+  styles dans `src/styles/updates.css` (chargé avec le module). Réglage `dot`.
+- Réglages : catégorie Outils IT, sous-menus Vérification et Applis ignorées
+  (`MODULE_SECTIONS`). Lanceur : « Chercher les mises à jour des logiciels ».
+- Tests : `updates_parse.rs` / `updates.rs` (Rust), `tests/front/updates.test.ts` ;
+  à faire sur Windows : `docs/tests/TESTS-nf16-majlog.md`.
+
 ### Module Contrôles (`src/modules/controls/`, `src-tauri/src/modules/controls.rs`, `src-tauri/src/platform/audio.rs`)
 
 - 1.2.2 : `bt_batteries` (`platform/bt_battery.rs`, propriété

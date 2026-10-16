@@ -80,6 +80,8 @@ const BY_EMOJI: Record<string, string> = {
   "🔔": "bell",
   // Jeux (1.2.4) : la manette au trait, l'emoji en couleur.
   "🎮": "games",
+  // Mises à jour des logiciels : la flèche dans un cercle au trait (arrow-circle-up de Phosphor), l'emoji en couleur.
+  "🔃": "updates",
 };
 
 /**

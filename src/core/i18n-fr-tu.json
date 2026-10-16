@@ -402,7 +402,21 @@
 "Image sombre : ajoutez de la lumière": "Image sombre : ajoute de la lumière",
 "Caméra refusée : autorisez-la dans Paramètres Windows → Confidentialité → Caméra.": "Caméra refusée : autorise-la dans Paramètres Windows → Confidentialité → Caméra.",
 "Micro refusé : autorisez-le dans Paramètres Windows → Confidentialité → Microphone.": "Micro refusé : autorise-le dans Paramètres Windows → Confidentialité → Microphone.",
-"🔇 Votre micro est coupé": "🔇 Ton micro est coupé"
+"🔇 Votre micro est coupé": "🔇 Ton micro est coupé",
+"Cliquez sur « Vérifier » : Ondine demande à winget quelles applis ont une nouvelle version.": "Clique sur « Vérifier » : Ondine demande à winget quelles applis ont une nouvelle version.",
+"Liste les applis qui ont une nouvelle version, grâce à winget (le gestionnaire de paquets de Windows, livré avec App Installer), et les met à jour d'un clic, une à la fois, après confirmation. Rien ne part sur Internet sans votre clic : « Vérifier » interroge les sources de winget (le dépôt de Microsoft et le Microsoft Store). Une vérification chaque jour ou chaque semaine est possible, coupée par défaut. Certaines applis installées pour tous les utilisateurs demandent l'autorisation de l'administrateur : Windows affiche alors sa propre fenêtre, qu'Ondine ne peut pas valider à votre place.": "Liste les applis qui ont une nouvelle version, grâce à winget (le gestionnaire de paquets de Windows, livré avec App Installer), et les met à jour d'un clic, une à la fois, après confirmation. Rien ne part sur Internet sans ton clic : « Vérifier » interroge les sources de winget (le dépôt de Microsoft et le Microsoft Store). Une vérification chaque jour ou chaque semaine est possible, coupée par défaut. Certaines applis installées pour tous les utilisateurs demandent l'autorisation de l'administrateur : Windows affiche alors sa propre fenêtre, qu'Ondine ne peut pas valider à ta place.",
+"Coupé par défaut : la vérification interroge les sources de winget sur Internet. Rien n'est installé sans votre clic.": "Coupé par défaut : la vérification interroge les sources de winget sur Internet. Rien n'est installé sans ton clic.",
+"Un ID winget par ligne (comme Mozilla.Firefox). « Ne plus proposer » dans l'onglet les ajoute ici ; effacez une ligne pour la proposer de nouveau.": "Un ID winget par ligne (comme Mozilla.Firefox). « Ne plus proposer » dans l'onglet les ajoute ici ; efface une ligne pour la proposer de nouveau.",
+"L'appli est ouverte : fermez-la puis réessayez": "L'appli est ouverte : ferme-la puis réessaie",
+"Ouvrez l'onglet pour voir pourquoi.": "Ouvre l'onglet pour voir pourquoi.",
+"Cliquez encore pour lancer la mise à jour": "Clique encore pour lancer la mise à jour",
+"Ouvre une console en administrateur : Windows demande votre accord, puis winget fait la mise à jour": "Ouvre une console en administrateur : Windows demande ton accord, puis winget fait la mise à jour",
+"✅ Toutes vos applis connues de winget sont à jour.": "✅ Toutes tes applis connues de winget sont à jour.",
+"Cliquez sur « Vérifier » pour voir les applis qui ont une nouvelle version.": "Clique sur « Vérifier » pour voir les applis qui ont une nouvelle version.",
+"ℹ️ Une appli installée pour tous les utilisateurs peut demander l'administrateur : Windows affiche alors sa fenêtre, qu'Ondine ne peut pas valider à votre place.": "ℹ️ Une appli installée pour tous les utilisateurs peut demander l'administrateur : Windows affiche alors sa fenêtre, qu'Ondine ne peut pas valider à ta place.",
+"Une appli installée pour tous les utilisateurs peut demander l'administrateur : Windows affiche alors sa fenêtre, qu'Ondine ne peut pas valider à votre place.": "Une appli installée pour tous les utilisateurs peut demander l'administrateur : Windows affiche alors sa fenêtre, qu'Ondine ne peut pas valider à ta place.",
+"Une vérification est en cours : réessayez dans un instant.": "Une vérification est en cours : réessaie dans un instant.",
+"Toutes vos applis connues de winget sont à jour.": "Toutes tes applis connues de winget sont à jour."
 },
 "patterns": [
 ["^(\\d+) nouveautés vous attendent\\.$", "$1 nouveautés t'attendent."],
@@ -597,6 +611,7 @@
 ["^Votre goutte (.+) gagne !$", "Ta goutte $1 gagne !"],
 ["^La goutte (.+) gagne\\. Votre goutte (.+) finit 2e\\.$", "La goutte $1 gagne. Ta goutte $2 finit 2e."],
 ["^La goutte (.+) gagne\\. Votre goutte (.+) finit plus loin\\.$", "La goutte $1 gagne. Ta goutte $2 finit plus loin."],
-["^Votre pari : la goutte (.+)\\. Les tâches de l'agent la font avancer\\.$", "Ton pari : la goutte $1. Les tâches de l'agent la font avancer."]
+["^Votre pari : la goutte (.+)\\. Les tâches de l'agent la font avancer\\.$", "Ton pari : la goutte $1. Les tâches de l'agent la font avancer."],
+["^(.+) n'est pas dans la liste : vérifiez de nouveau\\.$", "$1 n'est pas dans la liste : vérifie de nouveau."]
 ]
 }

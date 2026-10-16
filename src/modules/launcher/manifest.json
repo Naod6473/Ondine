@@ -116,7 +116,8 @@
       "capture.pick",
       "easter.word",
       "games.play",
-      "agenda.mirror"
+      "agenda.mirror",
+      "updates.check"
     ],
     "listens": [
       "launcher.open",

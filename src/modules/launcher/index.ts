@@ -194,6 +194,13 @@ function islandActions(api: ModuleApi, query: string): Result[] {
       api.emit("agenda.mirror", {});
     });
   }
+  // Mises à jour des logiciels (winget) : l'onglet s'ouvre et la vérification part (Entrée = votre clic).
+  if (settingsStore.moduleEnabled("updates")) {
+    add("updates-check", "Chercher les mises à jour des logiciels", "🔃", ["mises à jour", "maj", "winget", "upgrade", "updates", "logiciels"], () => {
+      api.openIsland("updates");
+      api.emit("updates.check", {});
+    });
+  }
   add("settings", "Réglages de l'île", "⚙️", ["parametres", "options", "preferences"], async () => {
     await Bridge.openSettingsWindow();
     close();

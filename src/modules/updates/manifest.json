@@ -1,0 +1,57 @@
+{
+  "id": "updates",
+  "name": "Mises à jour des logiciels",
+  "tip": "Cliquez sur « Vérifier » : Ondine demande à winget quelles applis ont une nouvelle version.",
+  "icon": "🔃",
+  "description": "Liste les applis qui ont une nouvelle version, grâce à winget (le gestionnaire de paquets de Windows, livré avec App Installer), et les met à jour d'un clic, une à la fois, après confirmation. Rien ne part sur Internet sans votre clic : « Vérifier » interroge les sources de winget (le dépôt de Microsoft et le Microsoft Store). Une vérification chaque jour ou chaque semaine est possible, coupée par défaut. Certaines applis installées pour tous les utilisateurs demandent l'autorisation de l'administrateur : Windows affiche alors sa propre fenêtre, qu'Ondine ne peut pas valider à votre place.",
+  "version": "0.1.0",
+  "permissions": ["network"],
+  "settings": {
+    "version": 1,
+    "fields": [
+      {
+        "key": "checkEvery",
+        "essential": true,
+        "type": "select",
+        "label": "Vérifier automatiquement",
+        "help": "Coupé par défaut : la vérification interroge les sources de winget sur Internet. Rien n'est installé sans votre clic.",
+        "default": "off",
+        "options": [
+          { "value": "off", "label": "Jamais (seulement d'un clic)" },
+          { "value": "daily", "label": "Chaque jour" },
+          { "value": "weekly", "label": "Chaque semaine" }
+        ]
+      },
+      {
+        "key": "notify",
+        "essential": true,
+        "type": "boolean",
+        "label": "Prévenir quand de nouvelles mises à jour arrivent",
+        "help": "Après une vérification automatique, une notification discrète. La pastille de l'île s'allume dans tous les cas.",
+        "default": true
+      },
+      {
+        "key": "dot",
+        "type": "boolean",
+        "label": "Pastille sur l'île",
+        "help": "Un petit point bleu dans le coin de l'île tant que des mises à jour attendent.",
+        "default": true
+      },
+      {
+        "key": "ignored",
+        "type": "string",
+        "multiline": true,
+        "label": "Applis à ne plus proposer",
+        "help": "Un ID winget par ligne (comme Mozilla.Firefox). « Ne plus proposer » dans l'onglet les ajoute ici ; effacez une ligne pour la proposer de nouveau.",
+        "default": "",
+        "maxLength": 4000
+      }
+    ]
+  },
+  "views": ["expanded"],
+  "commands": ["status", "check", "upgrade", "upgrade_all", "cancel", "cancel_all", "clear_done", "ignore", "upgrade_admin", "get_winget"],
+  "events": {
+    "emits": ["updates.changed", "updates.progress", "updates.available", "updates.finished", "task.started", "task.finished", "task.failed", "mascot.emote"],
+    "listens": ["updates.changed", "updates.progress", "updates.available", "updates.finished", "updates.check"]
+  }
+}
