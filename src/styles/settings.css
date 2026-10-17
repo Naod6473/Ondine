@@ -775,6 +775,59 @@ option {
 .dpp-tools .toggle {
   margin-left: 6px;
 }
+/* Les favoris (1.2.5) : l'étoile d'une pilule, et la ligne des favoris en puces. */
+.dpp-star {
+  width: 24px;
+  height: 24px;
+  color: var(--muted);
+}
+.dpp-tools .dpp-star.on,
+.dpp-tools .dpp-star.on:is(:hover, :focus-visible) {
+  color: #e8b100;
+}
+/* La place de l'étoile, gardée sur les lignes qui n'en ont pas (groupes). */
+.dpp-nostar {
+  display: inline-block;
+  width: 24px;
+}
+.dpp-star:disabled {
+  opacity: 0.35;
+}
+.dpp-staricon,
+.dpp-staricon svg {
+  display: block;
+  width: 15px;
+  height: 15px;
+}
+.dpp-count {
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.dpp-favs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dpp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 2px 2px 10px;
+  border-radius: 999px;
+  background: var(--field);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #e8b100 55%, transparent);
+}
+.dpp-chip .dpp-name {
+  flex: none;
+  margin-right: 2px;
+}
+.dpp-none {
+  font-size: 13px;
+  padding: 4px 8px;
+}
 .dpp-foot {
   display: flex;
   justify-content: flex-end;
