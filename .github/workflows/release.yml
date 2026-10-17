@@ -60,6 +60,17 @@ jobs:
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: "./src-tauri -> target"
+          cache-directories: src-tauri/target/sherpa-onnx-prebuilt
+
+      # La bibliothèque de sherpa-onnx (dictée Parakeet) est téléchargée par son
+      # build.rs dans target/sherpa-onnx-prebuilt, que le cache Rust ne garde
+      # pas toujours (il nettoie target/). Absente, on force le build.rs à la
+      # télécharger de nouveau ; sinon : « could not find native static
+      # library sherpa-onnx-c-api » dès que Cargo.lock change.
+      - name: Bibliothèque sherpa-onnx
+        working-directory: src-tauri
+        shell: bash
+        run: if [ ! -d target/sherpa-onnx-prebuilt ]; then cargo clean -p sherpa-onnx-sys; fi
 
       - name: Dépendances de l'interface
         run: npm ci
