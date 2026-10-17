@@ -557,11 +557,20 @@ pub fn spawn_wander(app: AppHandle) {
         }
         state.walking.store(true, Ordering::SeqCst);
         let _ = win.emit("pet-walk", dir);
-        // ~45 px logiques par seconde, à 30 images par seconde.
-        let per_frame = (1.5 * scale).max(1.0);
+        // ~45 px logiques par seconde, en pas TOUS égaux (un nombre entier de
+        // px physiques) à intervalle régulier : 1,5 px par image donnait des
+        // pas de 1 puis 2 px, et la promenade saccadait.
+        let (per_frame, tick) = walk_step(scale);
         let mut x = mx as f64;
+        let mut next = std::time::Instant::now();
         loop {
-            std::thread::sleep(Duration::from_millis(33));
+            // Cadencé sur l'horloge : un réveil en retard ne décale pas les suivants.
+            next += tick;
+            if let Some(wait) = next.checked_duration_since(std::time::Instant::now()) {
+                std::thread::sleep(wait);
+            } else {
+                next = std::time::Instant::now();
+            }
             if platform::idle_ms() < 1500 || state.dragging.load(Ordering::SeqCst) || state.layout.locked().open {
                 break;
             }
@@ -580,6 +589,16 @@ pub fn spawn_wander(app: AppHandle) {
             save_place(&app, x.round() as i32, my);
         }
     });
+}
+
+/// Vitesse de la promenade (px logiques par seconde).
+const WALK_SPEED: f64 = 45.0;
+
+/// Un pas de la promenade : un nombre entier de px physiques (au moins 1), et
+/// l'intervalle qui donne WALK_SPEED px logiques par seconde.
+fn walk_step(scale: f64) -> (f64, Duration) {
+    let px = scale.round().max(1.0);
+    (px, Duration::from_secs_f64(px / (WALK_SPEED * scale)))
 }
 
 /// Enregistre la place de la mascotte, sous le verrou des réglages (comme
@@ -653,6 +672,19 @@ pub fn back_to_island(app: &AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn walk_steps_are_whole_and_steady() {
+        for scale in [1.0, 1.25, 1.5, 1.75, 2.0, 3.0] {
+            let (px, tick) = walk_step(scale);
+            assert_eq!(px.fract(), 0.0, "échelle {scale}");
+            assert!(px >= 1.0);
+            // Toujours ~45 px logiques par seconde, à plus de 30 images par seconde.
+            let speed = px / scale / tick.as_secs_f64();
+            assert!((speed - WALK_SPEED).abs() < 0.01, "échelle {scale} : {speed}");
+            assert!(tick <= Duration::from_millis(33), "échelle {scale} : {tick:?}");
+        }
+    }
 
     #[test]
     fn mascot_stays_in_its_corner() {
