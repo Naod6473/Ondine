@@ -9,7 +9,7 @@
 // plus 5, comme l'étoile du menu dans l'île) ; la ligne « Favoris », en tête,
 // les range (← / →) et les retire. Les favoris épinglés depuis l'île pour un
 // dossier favori précis (« shelf-fav-2 ») y apparaissent aussi, sous le nom
-// du dossier. « Réinitialiser » les retire tous.
+// du dossier. « Réinitialiser » remet ZIP, le favori par défaut.
 //
 // Le choix est rangé dans les réglages de l'Étagère (« dropPills ») ; la
 // logique (liste par défaut, migration des anciens interrupteurs, ordre)

@@ -783,7 +783,7 @@ option {
 }
 .dpp-tools .dpp-star.on,
 .dpp-tools .dpp-star.on:is(:hover, :focus-visible) {
-  color: #e8b100;
+  color: var(--accent);
 }
 /* La place de l'étoile, gardée sur les lignes qui n'en ont pas (groupes). */
 .dpp-nostar {
@@ -817,8 +817,11 @@ option {
   gap: 4px;
   padding: 2px 2px 2px 10px;
   border-radius: 999px;
-  background: var(--field);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, #e8b100 55%, transparent);
+  /* Le même reflet que les favoris de l'île : la couleur de l'île. */
+  background:
+    radial-gradient(80% 90% at 20% 0%, color-mix(in srgb, #fff 14%, transparent), transparent 60%),
+    color-mix(in srgb, var(--accent) 14%, var(--field));
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 70%, transparent);
 }
 .dpp-chip .dpp-name {
   flex: none;

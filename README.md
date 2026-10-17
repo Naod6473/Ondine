@@ -67,7 +67,7 @@ Les nouveautés de la version 1.2.4 (la liste complète est dans le
   en verre liquide, avec « Annuler », Ctrl+K, des préréglages et des choix
   en vignettes.
 - **Ondine convertit** : glissez un fichier vers l'île, puis cliquez sur un
-  format du menu de fichiers (images, PDF, vidéo, son, ZIP) ; à côté de l'original, à
+  format du menu de fichiers (images, PDF, vidéo, son ; ZIP et Alléger dans Outils) ; à côté de l'original, à
   sa place ou sur le Bureau. Tout se fait sur le PC.
 - **Mini-jeux** : Puissance 4 contre Ondine, morpion express dans la
   mini-île (appui long sur Ondine), aquarium de gouttes et course de gouttes.
@@ -368,15 +368,17 @@ déplacer). Toute action sur les fichiers est annulable quelques secondes.
 
 **Le menu de fichiers** (1.2.5) : quand vous glissez un fichier sur l'île, elle
 s'ouvre sur des icônes rondes. En haut, trois bulles mères : **Convertir**,
-**Ranger** (Alt) et **Outils** (Ctrl), puis vos favoris ; dessous, les choix du
-groupe ouvert (survolez une bulle mère 0,4 s ou cliquez dessus). Lâcher le
+**Ranger** (Alt) et **Outils** (Ctrl), et vos favoris juste à côté (ZIP d'office) ;
+dessous, les choix du groupe ouvert (survolez une bulle mère 0,4 s ou cliquez dessus). Lâcher le
 fichier ne lance rien : l'île reste ouverte, le fichier en main, et un clic sur
 une icône lance l'action. Échap, un clic en dehors ou **Annuler** referment sans
 rien faire. Seule la pilule **Étagère**, détachée à côté de l'île pendant le
 dépôt, agit dès qu'on y lâche le fichier ; elle revient ensuite se fondre dans
 l'île. Plusieurs fichiers de types différents : les choix qui ne vont qu'à une
-partie sont grisés, et la phrase du bas dit pourquoi. L'étoile d'un choix
-l'épingle en favori (cinq au plus) ; ordre, pilules montrées et favoris dans
+partie sont grisés, et la phrase du bas dit pourquoi. **Convertir** ne propose
+que des formats ; ZIP, Alléger, Redimensionner… et Extraire sont dans **Outils**.
+L'étoile d'un choix l'épingle en favori (cinq au plus) ; les favoris ont un reflet
+de verre aux couleurs de l'île (Réglages → L'île → Apparence) ; ordre, pilules montrées et favoris dans
 **Réglages → Étagère → Pilules du dépôt**.
 
 **📱 Vers le téléphone** (sur un fichier de l'étagère) : l'île montre un QR code ;

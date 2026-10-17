@@ -20,7 +20,7 @@
 //   - le groupe ouvert d'office (Convertir, sinon le premier qui a un choix vif).
 
 import { formatLabel, kindOf, pillsFor, type FormatId, type Kind } from "../modules/convert/convert-logic";
-import { arrange, arrangeFormats, bareLabel, keyOf, KNOWN, OTHER_ICON, ROW_LABEL, ROWS, rowOf, type DropLayout, type DropRow } from "./drop-pills-logic";
+import { arrange, arrangeFormats, bareLabel, favKey, isFormatId, keyOf, KNOWN, OTHER_ICON, ROW_LABEL, ROWS, rowOf, type DropLayout, type DropRow } from "./drop-pills-logic";
 
 /** Le type d'un élément déposé : celui de convert-logic.ts, ou un dossier. */
 export type ItemKind = Kind | "folder";
@@ -59,7 +59,7 @@ export interface DropMenu {
   kinds: ItemKind[];
   /** Des types différents (ou fichiers et dossiers mêlés). */
   mixed: boolean;
-  /** Un groupe sans aucun choix vif : sa bulle est grisée, voici pourquoi. */
+  /** Un groupe sans aucun choix : sa bulle est grisée, voici pourquoi (un groupe tout grisé reste ouvrable). */
   dead: Record<DropRow, string | null>;
   /** Le groupe ouvert d'office. */
   open: DropRow;
@@ -171,7 +171,7 @@ function formatItem(id: FormatId, many: boolean, off: string | null): MenuItem {
   return {
     id,
     key: id,
-    row: "convert",
+    row: rowOf(id),
     type: "format",
     label: formatLabel(id, many),
     icon: id === "zip" ? "" : icon,
@@ -209,34 +209,38 @@ export function buildMenu(input: MenuInput): DropMenu {
     }
   }
   const greyed = [...support.keys()].filter((id) => !live.includes(id));
-  const ids = arrangeFormats(layout, [...live, ...greyed], input.last);
-  for (const id of ids) groups.convert.push(formatItem(id, many, live.includes(id) ? null : offReason(support.get(id) ?? [], kinds)));
-  const hasZip = ids.includes("zip");
+  const all = [...live, ...greyed];
+  const offOf = (id: FormatId) => (live.includes(id) ? null : offReason(support.get(id) ?? [], kinds));
+  // Les vrais formats dans Convertir ; ZIP, Alléger, Extraire, Redimensionner… dans Outils (1.2.5).
+  const ids = arrangeFormats(layout, all.filter((id) => rowOf(id) === "convert"), input.last);
+  for (const id of ids) groups.convert.push(formatItem(id, many, offOf(id)));
+  const hasZip = all.includes("zip");
 
-  // ── Les cibles des modules, ligne par ligne, dans l'ordre des réglages.
-  const byRow: Record<DropRow, MenuTarget[]> = { convert: [], ranger: [], outils: [] };
-  for (const t of input.targets) byRow[rowOf(keyOf(t.id))].push(t);
-  for (const row of ROWS) {
-    for (const t of arrange(layout, row, byRow[row], (x) => keyOf(x.id))) {
-      const key = keyOf(t.id);
-      // « Compresser » de l'Étagère : seulement si Ondine convertit ne propose pas déjà le ZIP.
-      if (key === "zip" && hasZip) continue;
-      const off = applies(TARGET_KINDS[key], kinds);
-      if (off === undefined) continue;
-      groups[row].push(targetItem(t, off));
-    }
+  // ── Les cibles des modules (et les outils d'Ondine convertit), ligne par
+  // ligne, dans l'ordre des réglages.
+  const byRow: Record<DropRow, MenuItem[]> = { convert: [], ranger: [], outils: [] };
+  for (const id of all) if (rowOf(id) !== "convert") byRow[rowOf(id)].push(formatItem(id, many, offOf(id)));
+  for (const t of input.targets) {
+    const key = keyOf(t.id);
+    // « Compresser » de l'Étagère : seulement si Ondine convertit ne propose pas déjà le ZIP.
+    if (key === "zip" && hasZip) continue;
+    const off = applies(TARGET_KINDS[key], kinds);
+    if (off === undefined) continue;
+    byRow[rowOf(key)].push(targetItem(t, off));
   }
+  for (const row of ROWS) groups[row].push(...arrange(layout, row, byRow[row], (x) => x.key));
 
   // ── Les favoris : retrouvés parmi les choix, sinon grisés (ou oubliés : module coupé).
-  const all = ROWS.flatMap((r) => groups[r]);
+  const choices = ROWS.flatMap((r) => groups[r]);
   const favs: MenuItem[] = [];
   for (const id of layout.favs) {
-    const found = all.find((i) => i.id === id);
+    // ZIP : le format d'Ondine convertit, ou « Compresser » de l'Étagère (favKey).
+    const found = choices.find((i) => favKey(i.id) === id);
     if (found) {
       favs.push(found);
       continue;
     }
-    if (KNOWN[id]?.row === "convert" && id !== "shelf-images") {
+    if (isFormatId(id)) {
       favs.push(formatItem(id as FormatId, many, FAV_OFF));
       continue;
     }
@@ -245,8 +249,10 @@ export function buildMenu(input: MenuInput): DropMenu {
   }
 
   const dead = {} as Record<DropRow, string | null>;
-  for (const row of ROWS) dead[row] = groups[row].some((i) => !i.off) ? null : `Rien dans ${ROW_LABEL[row]} pour ce dépôt`;
-  const open = ROWS.find((r) => !dead[r]) ?? "convert";
+  // Un groupe vide est grisé ; un groupe tout grisé s'ouvre quand même (on y
+  // lit pourquoi : « Seulement pour les images »), mais pas de lui-même.
+  for (const row of ROWS) dead[row] = groups[row].length ? null : `Rien dans ${ROW_LABEL[row]} pour ce dépôt`;
+  const open = ROWS.find((r) => groups[r].some((i) => !i.off)) ?? ROWS.find((r) => !dead[r]) ?? "convert";
   return { groups, favs, kinds, mixed, dead, open };
 }
 

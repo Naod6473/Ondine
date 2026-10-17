@@ -65,7 +65,7 @@ What's new in version 1.2.4 (the full list is in the
 - **Settings redone**: two columns (seven sections, then the pages), in
   liquid glass, with "Undo", Ctrl+K, presets and picture choices.
 - **Ondine converts**: drag a file to the island, then click a format in the
-  file menu (images, PDF, video, sound, ZIP); next to the original, in its place or on
+  file menu (images, PDF, video, sound; ZIP and Shrink under Tools); next to the original, in its place or on
   the Desktop. Everything runs on the PC.
 - **Mini-games**: Connect 4 against Ondine, quick tic-tac-toe in the
   mini-island (long press on Ondine), a drop aquarium and drop races.
@@ -353,15 +353,18 @@ seconds.
 
 **The file menu** (1.2.5): when you drag a file onto the island, it opens on
 round icons. At the top, three parent bubbles: **Convert**, **Put away** (Alt)
-and **Tools** (Ctrl), then your favorites; below, the open group's choices
+and **Tools** (Ctrl), and your favorites right next to them (ZIP out of the
+box); below, the open group's choices
 (hover a parent bubble for 0.4 s or click it). Letting go of the file starts
 nothing: the island stays open with the file in hand, and a click on an icon
 runs the action. Esc, a click outside or **Cancel** close without doing
 anything. Only the **Shelf** pill, detached next to the island during the drop,
 acts as soon as you let go of the file on it; it then melts back into the
 island. Several files of different types: the choices that only fit some of
-them are greyed out, and the bottom line says why. A choice's star pins it as a
-favorite (five at most); order, shown pills and favorites in **Settings → Shelf
+them are greyed out, and the bottom line says why. **Convert** only offers
+formats; ZIP, Shrink, Resize… and Extract are under **Tools**. A choice's star
+pins it as a favorite (five at most); favorites have a glassy sheen in the
+island's colours (Settings → The island → Appearance); order, shown pills and favorites in **Settings → Shelf
 → Drop pills**.
 
 **📱 To the phone** (on a file of the shelf): the island shows a QR code; point

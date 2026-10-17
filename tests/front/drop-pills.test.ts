@@ -32,17 +32,17 @@ describe("la liste par défaut", () => {
   test("trois lignes, dans l'ordre de la maquette", () => {
     const d = defaultLayout();
     assert.deepEqual(d.order.ranger, ["shelf-add", "shelf-copy", "shelf-move", "shelf-fav", "shelf-trash"]);
-    assert.deepEqual(d.order.outils, ["askclaude-drop", "shelf-rename", "shelf-path", "shelf-hash", "terminal-here", "team"]);
-    assert.equal(d.order.convert[0], "jpg");
-    assert.ok(d.order.convert.includes("zip") && d.order.convert.includes("shelf-images"));
+    // 1.2.5 : ZIP, Alléger, Redimensionner… et Extraire sont des outils.
+    assert.deepEqual(d.order.outils, ["zip", "shrink", "shelf-images", "unzip", "askclaude-drop", "shelf-rename", "shelf-path", "shelf-hash", "terminal-here", "team"]);
+    assert.deepEqual(d.order.convert, ["jpg", "png", "webp", "pdf", "gif", "bmp", "tiff", "ico", "mp4", "mp3", "m4a", "wav"], "les vrais formats seuls");
     assert.deepEqual(d.hidden, []);
   });
 
   test("sans doublon : « Images… » et « Compresser » ne sont plus des cibles à part", () => {
     assert.equal(keyOf("shelf-zip"), "zip", "Compresser = la pilule ZIP");
-    assert.equal(rowOf("zip"), "convert");
+    assert.equal(rowOf("zip"), "outils");
     assert.equal(KNOWN["shelf-images"].label, "Redimensionner…");
-    assert.equal(rowOf("shelf-images"), "convert");
+    assert.equal(rowOf("shelf-images"), "outils");
     const all = Object.values(defaultLayout().order).flat();
     assert.equal(new Set(all).size, all.length);
     assert.ok(!all.includes("shelf-zip"));

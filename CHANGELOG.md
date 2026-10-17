@@ -4,13 +4,23 @@
 
 - Menu de fichiers dans l'île : glissez un fichier sur l'île, elle montre des
   icônes rondes avec leur nom dessous. En haut, trois bulles mères
-  (Convertir, Ranger avec Alt, Outils avec Ctrl), puis vos favoris ; dessous,
-  les choix du groupe ouvert. Survolez une bulle mère 0,4 s (l'anneau se
-  remplit) ou cliquez pour ouvrir son groupe · File menu in the island: drag
-  a file onto the island, it shows round icons with their name underneath.
-  At the top, three parent bubbles (Convert, Put away with Alt, Tools with
-  Ctrl), then your favorites; below, the open group's choices. Hover a parent
-  bubble for 0.4 s (the ring fills up) or click to open its group
+  (Convertir, Ranger avec Alt, Outils avec Ctrl), et vos favoris juste à côté,
+  sur la même rangée ; dessous, les choix du groupe ouvert. Survolez une
+  bulle mère 0,4 s (l'anneau se remplit) ou cliquez pour ouvrir son groupe.
+  Un groupe dont tous les choix sont grisés s'ouvre quand même, pour lire
+  pourquoi · File menu in the island: drag a file onto the island, it shows
+  round icons with their name underneath. At the top, three parent bubbles
+  (Convert, Put away with Alt, Tools with Ctrl), and your favorites right
+  next to them, on the same row; below, the open group's choices. Hover a
+  parent bubble for 0.4 s (the ring fills up) or click to open its group. A
+  group whose choices are all greyed out still opens, so you can read why
+- Convertir ne garde que les vrais formats (JPG, PNG, PDF, MP3…). ZIP,
+  Alléger, Redimensionner… et Extraire passent dans Outils, dans l'île comme
+  dans le cercle d'Ondine. Un ordre enregistré qui les plaçait encore dans
+  Convertir est remis en place tout seul · Convert only keeps real formats
+  (JPG, PNG, PDF, MP3…). ZIP, Shrink, Resize… and Extract move to Tools, in
+  the island and in Ondine's ring alike. A saved order that still had them
+  in Convert is put right on its own
 - Tenir puis cliquer : lâcher le fichier ne lance plus rien. L'île reste
   ouverte, le fichier en main ; survolez une icône, puis cliquez. Échap, un
   clic en dehors ou « Annuler » referment sans rien faire. « Conserver à
@@ -33,11 +43,17 @@
   drop: a photo and a PDF together, the choices that only fit some of them
   are greyed out, and the sentence says why ("Images only", "Not for a
   folder", "One file type at a time")
-- Favoris : l'étoile d'un choix l'épingle en haut du menu (cinq au plus). On
-  les range aussi dans Réglages → Étagère → Pilules du dépôt (étoile, ← →,
-  retirer) · Favorites: a choice's star pins it at the top of the menu (five
-  at most). You can also arrange them in Settings → Shelf → Drop pills (star,
-  ← →, remove)
+- Favoris : l'étoile d'un choix l'épingle en haut du menu (cinq au plus).
+  ZIP est favori d'office ; « Réinitialiser » le remet. Les bulles favorites
+  ont un reflet de verre aux couleurs de l'île (Réglages → L'île →
+  Apparence, couleur personnalisée comprise), immobile en mode calme, en économie ou avec
+  « Réduire les animations ». On les range aussi dans Réglages → Étagère →
+  Pilules du dépôt (étoile, ← →, retirer) · Favorites: a choice's star pins
+  it at the top of the menu (five at most). ZIP is a favorite out of the
+  box; "Reset" brings it back. Favorite bubbles have a glassy sheen in the
+  island's colours (Settings → The island → Appearance, custom colour
+  included), still in calm mode, power saving or with "Reduce animations". You can also arrange
+  them in Settings → Shelf → Drop pills (star, ← →, remove)
 - Ondine sur le bureau : un fichier lâché sur elle ouvre un menu en cercle
   autour d'elle. Convertir en haut, Outils à gauche, Ranger à droite, les
   favoris et l'Étagère en bas, l'option sous elle. Près d'un bord de l'écran,

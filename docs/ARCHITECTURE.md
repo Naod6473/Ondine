@@ -291,7 +291,14 @@ Le menu d'un dépôt est calculé une fois, sans DOM, par
 `src/island/drop-menu-logic.ts` (`buildMenu`) : les trois groupes (Convertir,
 Ranger, Outils), les favoris, les choix grisés d'un dépôt mixte avec leur
 raison (`offReason` : « Seulement pour les images », « Pas pour un dossier »,
-« Un type de fichier à la fois ») et les groupes vides (`dead`). Les deux
+« Un type de fichier à la fois ») et les groupes vides (`dead` : vide, pas
+seulement grisé). Convertir ne prend que les vrais formats (`isFormatId`) ;
+ZIP, Alléger, Extraire et Redimensionner… sont rangés dans Outils (`KNOWN`,
+`rowOf`), et `normalize` y remet un ordre enregistré qui les plaçait encore
+dans Convertir. Les favoris (`favs`, clés passées par `favKey` : « Compresser »
+de l'Étagère est ZIP) valent `DEFAULT_FAVS` (ZIP) tant que `favsSet` est faux,
+c'est-à-dire tant qu'on n'y a pas touché. Leur reflet de verre suit `--accent`,
+la couleur de l'île (`applyTheme`, `applyIslandTheme` chez Ondine). Les deux
 vues le dessinent :
 
 - **Dans l'île** (`drop-panel.ts`, island.css « Le menu de fichiers ») : des

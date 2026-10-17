@@ -19,7 +19,7 @@ import {
   typeTag,
   type MenuTarget,
 } from "../../src/island/drop-menu-logic";
-import { defaultLayout, effectiveLayout, MAX_FAVS, moveFav, parseLayout, serialize, setShown, toggleFav } from "../../src/island/drop-pills-logic";
+import { defaultLayout, effectiveLayout, isFav, isShown, MAX_FAVS, moveFav, moveKey, parseLayout, serialize, setShown, toggleFav } from "../../src/island/drop-pills-logic";
 import { mergePlan, shelfPlace } from "../../src/island/drop-shelf-logic";
 import { favSpots, hitSpot, motherSpot, MOTHER_ANGLE, RING, ringExtent, shelfSpot, subSpots, SUBS_MAX } from "../../src/pet/ring-layout";
 
@@ -46,24 +46,34 @@ const ids = (items: { id: string }[]) => items.map((i) => i.id);
 const live = (items: { id: string; off: string | null }[]) => items.filter((i) => !i.off).map((i) => i.id);
 
 describe("les choix d'un dépôt", () => {
-  test("une photo : les formats d'abord, Redimensionner, pas de doublon ZIP", () => {
+  test("une photo : les vrais formats dans Convertir, ZIP, Alléger et Redimensionner dans Outils", () => {
     const m = menuFor(["C:\\photos\\vacances.png"], [false]);
     assert.equal(m.mixed, false);
     assert.equal(m.open, "convert");
     assert.deepEqual(ids(m.groups.convert).slice(0, 3), ["jpg", "webp", "pdf"], "pas de PNG pour un PNG");
-    assert.ok(ids(m.groups.convert).includes("zip"));
-    assert.ok(ids(m.groups.convert).includes("shelf-images"));
-    assert.ok(!ids(m.groups.convert).includes("shelf-zip"), "Compresser = la bulle ZIP d'Ondine convertit");
+    for (const tool of ["zip", "shrink", "shelf-images"]) {
+      assert.ok(!ids(m.groups.convert).includes(tool), `${tool} n'est plus dans Convertir`);
+      assert.ok(ids(m.groups.outils).includes(tool), `${tool} est dans Outils`);
+    }
+    assert.deepEqual(ids(m.groups.outils).slice(0, 3), ["zip", "shrink", "shelf-images"], "les outils sur les fichiers d'abord");
+    assert.ok(!ids(m.groups.outils).includes("shelf-zip"), "Compresser = la bulle ZIP d'Ondine convertit");
+    assert.equal(m.groups.outils.find((i) => i.id === "zip")?.row, "outils");
     assert.deepEqual(ids(m.groups.ranger), ["shelf-add", "shelf-copy", "shelf-move", "shelf-fav-0", "shelf-trash"]);
     assert.equal(m.groups.convert.find((i) => i.id === "jpg")?.caption, "image");
-    assert.equal(m.groups.convert.find((i) => i.id === "shrink")?.icon, "🪶");
+    assert.equal(m.groups.outils.find((i) => i.id === "shrink")?.icon, "🪶");
+    // ZIP est le favori par défaut, retrouvé parmi les choix.
+    assert.deepEqual(ids(m.favs), ["zip"]);
+    assert.equal(m.favs[0].off, null);
     assert.ok([...m.groups.convert, ...m.groups.ranger, ...m.groups.outils].every((i) => i.off === null), "rien de grisé");
   });
 
   test("un dossier : le ZIP seul, ni Empreinte ni Parler à Ondine", () => {
     const m = menuFor(["C:\\Vacances"], [true]);
     assert.deepEqual(m.kinds, ["folder"]);
-    assert.deepEqual(ids(m.groups.convert), ["zip"]);
+    assert.deepEqual(ids(m.groups.convert), []);
+    assert.equal(m.dead.convert, "Rien dans Convertir pour ce dépôt");
+    assert.equal(m.open, "ranger");
+    assert.ok(ids(m.groups.outils).includes("zip"));
     assert.ok(!ids(m.groups.outils).includes("shelf-hash"));
     assert.ok(!ids(m.groups.outils).includes("askclaude-drop"));
     assert.ok(ids(m.groups.outils).includes("terminal-here"));
@@ -71,9 +81,11 @@ describe("les choix d'un dépôt", () => {
 
   test("conversion coupée : « Compresser » de l'Étagère devient la bulle ZIP", () => {
     const m = buildMenu({ paths: ["a.png"], formats: null, targets: TARGETS, layout: defaultLayout() });
-    const zip = m.groups.convert.find((i) => i.id === "shelf-zip");
+    const zip = m.groups.outils.find((i) => i.id === "shelf-zip");
     assert.equal(zip?.label, "ZIP");
     assert.equal(zip?.caption, "archive");
+    // Le favori ZIP est alors « Compresser » de l'Étagère.
+    assert.deepEqual(ids(m.favs), ["shelf-zip"]);
   });
 
   test("les réglages : pilule masquée absente, ordre des lignes suivi", () => {
@@ -102,10 +114,14 @@ describe("le dépôt mixte", () => {
   test("des photos et un dossier : les actions communes vives, les autres grisées avec la raison", () => {
     const m = menuFor(["C:\\a\\un.png", "C:\\a\\deux.jpg", "C:\\a\\Vacances"], [false, false, true]);
     assert.equal(m.mixed, true);
-    assert.deepEqual(live(m.groups.convert), ["zip"]);
+    assert.deepEqual(live(m.groups.convert), []);
+    assert.ok(live(m.groups.outils).includes("zip"));
+    // Convertir est tout grisé : il s'ouvre au clic (on y lit pourquoi), mais pas de lui-même.
+    assert.equal(m.dead.convert, null);
+    assert.equal(m.open, "ranger");
     const jpg = m.groups.convert.find((i) => i.id === "jpg");
     assert.equal(jpg?.off, "Pas pour un dossier");
-    assert.equal(m.groups.convert.find((i) => i.id === "shelf-images")?.off, "Pas pour un dossier");
+    assert.equal(m.groups.outils.find((i) => i.id === "shelf-images")?.off, "Pas pour un dossier");
     assert.equal(m.groups.outils.find((i) => i.id === "shelf-hash")?.off, "Pas pour un dossier");
     assert.equal(m.groups.outils.find((i) => i.id === "shelf-path")?.off, null);
     assert.deepEqual(live(m.groups.ranger), ids(m.groups.ranger), "ranger va à tout");
@@ -115,7 +131,7 @@ describe("le dépôt mixte", () => {
     const m = menuFor(["a.mov", "b.png"], [false, false]);
     assert.equal(m.groups.convert.find((i) => i.id === "mp3")?.off, "Seulement pour les vidéos");
     assert.equal(m.groups.convert.find((i) => i.id === "webp")?.off, "Seulement pour les images");
-    assert.equal(m.groups.convert.find((i) => i.id === "zip")?.off, null);
+    assert.equal(m.groups.outils.find((i) => i.id === "zip")?.off, null);
   });
 
   test("les raisons", () => {
@@ -138,6 +154,9 @@ describe("le dépôt mixte", () => {
 describe("les favoris", () => {
   test("cinq au plus, retirer puis remettre, l'ordre se change", () => {
     let l = defaultLayout();
+    assert.deepEqual(l.favs, ["zip"], "ZIP par défaut");
+    l = toggleFav(l, "zip").layout;
+    assert.deepEqual(l.favs, []);
     for (const id of ["jpg", "zip", "shelf-fav-0", "shelf-trash", "pdf"]) l = toggleFav(l, id).layout;
     assert.equal(l.favs.length, MAX_FAVS);
     const full = toggleFav(l, "png");
@@ -150,23 +169,50 @@ describe("les favoris", () => {
     assert.equal(toggleFav(l, "<script>").layout, l);
   });
 
-  test("gardés dans la disposition ; une disposition 1.2.4 (sans favoris) n'en a aucun", () => {
+  test("gardés dans la disposition ; ZIP tant qu'on n'a pas choisi (1.2.4, Réinitialiser)", () => {
     const l = toggleFav(defaultLayout(), "webp").layout;
-    assert.deepEqual(parseLayout(serialize(l))?.favs, ["webp"]);
+    assert.deepEqual(parseLayout(serialize(l))?.favs, ["zip", "webp"]);
+    // Tout retiré exprès : rien ne revient.
+    const none = toggleFav(defaultLayout(), "zip").layout;
+    assert.deepEqual(parseLayout(serialize(none))?.favs, []);
+    // Jamais touchés : pas écrits, ZIP à la relecture.
+    assert.equal("favs" in serialize(moveKey(defaultLayout(), "jpg", 1)), false);
+    assert.deepEqual(parseLayout(serialize(defaultLayout()))?.favs, ["zip"]);
     const old = { v: 1, order: { convert: [], ranger: [], outils: [] }, hidden: ["ico"] };
-    assert.deepEqual(parseLayout(old)?.favs, []);
-    assert.deepEqual(effectiveLayout(undefined, { showTrash: false }).favs, []);
+    assert.deepEqual(parseLayout(old)?.favs, ["zip"]);
+    assert.deepEqual(effectiveLayout(undefined, { showTrash: false }).favs, ["zip"]);
+    // « Compresser » de l'Étagère et ZIP sont le même favori.
+    assert.equal(isFav(defaultLayout(), "shelf-zip"), true);
+    assert.deepEqual(toggleFav(defaultLayout(), "shelf-zip").layout.favs, []);
     assert.deepEqual(parseLayout({ ...old, favs: ["a", "b", "c", "d", "e", "f", "a", 3] })?.favs, ["a", "b", "c", "d", "e"]);
   });
 
   test("dans le menu : vifs s'ils vont, grisés sinon, oubliés si le module est coupé", () => {
-    let layout = defaultLayout();
+    let layout = toggleFav(defaultLayout(), "zip").layout;
     for (const id of ["webp", "mp3", "shelf-fav-0", "team-ab12"]) layout = toggleFav(layout, id).layout;
     const m = menuFor(["a.png"], [false], layout);
     assert.deepEqual(ids(m.favs), ["webp", "mp3", "shelf-fav-0"]);
     assert.equal(m.favs[0].off, null);
     assert.equal(m.favs[1].off, FAV_OFF);
     assert.equal(m.favs[1].label, "MP3");
+  });
+});
+
+describe("migration 1.2.5 : les outils quittent Convertir", () => {
+  test("une disposition qui range ZIP, Alléger, Extraire et Redimensionner dans Convertir", () => {
+    const saved = {
+      v: 1,
+      order: { convert: ["png", "zip", "jpg", "shrink", "shelf-images", "unzip"], ranger: [], outils: ["terminal-here", "askclaude-drop"] },
+      hidden: ["unzip"],
+    };
+    const l = parseLayout(saved)!;
+    assert.ok(l.order.convert.indexOf("png") < l.order.convert.indexOf("jpg"), "l'ordre choisi des vrais formats est gardé");
+    for (const tool of ["zip", "shrink", "shelf-images", "unzip"]) {
+      assert.ok(!l.order.convert.includes(tool));
+      assert.ok(l.order.outils.includes(tool));
+    }
+    assert.ok(l.order.outils.indexOf("terminal-here") < l.order.outils.indexOf("askclaude-drop"), "l'ordre choisi des outils est gardé");
+    assert.ok(!isShown(l, "unzip"), "toujours masqué");
   });
 });
 

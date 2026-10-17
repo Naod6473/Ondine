@@ -18,8 +18,11 @@
 //   { v: 1, order: { convert: [...], ranger: [...], outils: [...] }, hidden: [...], favs: [...] }
 // « favs » (1.2.5, menu de fichiers) : les favoris épinglés, au plus 5, des
 // identifiants de choix (un format « jpg » ou une cible « shelf-fav-0 »).
-// Absent d'une disposition enregistrée en 1.2.4 : aucun favori (pas besoin
-// de migration, une 1.2.4 qui relit la disposition l'ignore simplement).
+// Absent (disposition 1.2.4, ou favoris jamais touchés) : ZIP, le favori par
+// défaut ; « favs » n'est écrit qu'une fois les favoris choisis. Une 1.2.4 qui
+// relit la disposition l'ignore simplement.
+// ZIP, Alléger, Extraire et Redimensionner… sont dans Outils depuis 1.2.5 ;
+// rangés dans Convertir par une version d'avant, normalize les y ramène.
 // Les anciens interrupteurs (cible « Corbeille », « Compresser », « Images et
 // Renommer », « Empreinte », « Terminal ici », « Parler à Ondine ») sont repris
 // la première fois (legacyHidden) : une cible masquée avant reste masquée.
@@ -45,18 +48,30 @@ export interface PillInfo {
   icon: string;
 }
 
-/** Les formats, dans l'ordre par défaut de la ligne Convertir (puis l'ordre propre à chaque type). */
-const FORMAT_KEYS: FormatId[] = ["jpg", "png", "webp", "pdf", "shrink", "gif", "bmp", "tiff", "ico", "mp4", "mp3", "m4a", "wav", "zip", "unzip"];
+/**
+ * Les vrais formats, dans l'ordre par défaut de la ligne Convertir (puis
+ * l'ordre propre à chaque type). ZIP, Alléger, Extraire et Redimensionner…
+ * sont des outils (1.2.5, demande de Simon) : ils vont dans Outils.
+ */
+const FORMAT_KEYS: FormatId[] = ["jpg", "png", "webp", "pdf", "gif", "bmp", "tiff", "ico", "mp4", "mp3", "m4a", "wav"];
+/** Les « formats » d'Ondine convertit qui sont des outils sur les fichiers. */
+const TOOL_FORMATS: FormatId[] = ["zip", "shrink", "unzip"];
 
-const fmt = (id: FormatId, icon = ""): [string, PillInfo] => [id, { row: "convert", label: formatLabel(id, false), icon }];
+/** Un identifiant de format d'Ondine convertit (vrai format ou outil). */
+export function isFormatId(id: string): id is FormatId {
+  return (FORMAT_KEYS as string[]).includes(id) || (TOOL_FORMATS as string[]).includes(id);
+}
+
+const fmt = (id: FormatId, row: DropRow = "convert", icon = ""): [string, PillInfo] => [id, { row, label: formatLabel(id, false), icon }];
 
 /** Toutes les pilules connues, dans l'ordre par défaut de chaque ligne. */
 export const KNOWN: Record<string, PillInfo> = Object.fromEntries<PillInfo>([
-  // « Alléger » a son icône (une plume, 1.2.5) ; les autres formats, leur nom seul.
-  ...FORMAT_KEYS.filter((id) => id !== "zip" && id !== "unzip").map((id) => fmt(id, id === "shrink" ? "🪶" : "")),
-  fmt("zip", "🗜️"),
-  fmt("unzip", "📂"),
-  ["shelf-images", { row: "convert", label: "Redimensionner…", icon: "📏" }],
+  ...FORMAT_KEYS.map((id) => fmt(id)),
+  // Outils : ce qui travaille sur les fichiers d'abord (ZIP, Alléger, Redimensionner…, Extraire).
+  fmt("zip", "outils", "🗜️"),
+  fmt("shrink", "outils", "🪶"),
+  ["shelf-images", { row: "outils", label: "Redimensionner…", icon: "📏" }],
+  fmt("unzip", "outils", "📂"),
   ["shelf-add", { row: "ranger", label: "Étagère", icon: "🧺" }],
   ["shelf-copy", { row: "ranger", label: "Copier vers…", icon: "📄" }],
   ["shelf-move", { row: "ranger", label: "Déplacer vers…", icon: "📦" }],
@@ -95,16 +110,25 @@ export interface DropLayout {
   hidden: string[];
   /** Les favoris épinglés (1.2.5), dans l'ordre où on les a épinglés. */
   favs: string[];
+  /**
+   * Les favoris ont été choisis (étoile, ← →, ×). Sinon ce sont ceux par
+   * défaut (ZIP), et ils ne sont pas enregistrés : « Réinitialiser » et une
+   * disposition qui n'en parle pas (1.2.4) redonnent ZIP.
+   */
+  favsSet?: boolean;
 }
 
 /** Au plus tant de favoris. */
 export const MAX_FAVS = 5;
 
-/** La disposition par défaut : tout est montré, dans l'ordre de KNOWN, sans favori. */
+/** Les favoris tant qu'on n'en a pas choisi. */
+export const DEFAULT_FAVS: readonly string[] = ["zip"];
+
+/** La disposition par défaut : tout est montré, dans l'ordre de KNOWN, ZIP en favori. */
 export function defaultLayout(): DropLayout {
   const order: Record<DropRow, string[]> = { convert: [], ranger: [], outils: [] };
   for (const [key, info] of Object.entries(KNOWN)) order[info.row].push(key);
-  return { order, hidden: [], favs: [] };
+  return { order, hidden: [], favs: [...DEFAULT_FAVS], favsSet: false };
 }
 
 const isKey = (v: unknown): v is string => typeof v === "string" && /^[\w-]{1,64}$/.test(v);
@@ -124,17 +148,20 @@ export function parseLayout(raw: unknown): DropLayout | null {
     order[row] = list.slice(0, 64);
   }
   const hidden = Array.isArray(r.hidden) ? (r.hidden as unknown[]).filter(isKey).slice(0, 128) : [];
-  const favs = Array.isArray(r.favs) ? (r.favs as unknown[]).filter(isKey) : [];
-  return normalize({ order, hidden, favs });
+  // Pas de « favs » (disposition 1.2.4, ou favoris jamais choisis) : ceux par défaut.
+  const favsSet = Array.isArray(r.favs);
+  const favs = favsSet ? (r.favs as unknown[]).filter(isKey) : [...DEFAULT_FAVS];
+  return normalize({ order, hidden, favs, favsSet });
 }
 
 /** Ce qu'on range dans les réglages. */
-export function serialize(layout: DropLayout): { v: 1; order: Record<DropRow, string[]>; hidden: string[]; favs: string[] } {
+export function serialize(layout: DropLayout): { v: 1; order: Record<DropRow, string[]>; hidden: string[]; favs?: string[] } {
   return {
     v: 1,
     order: { convert: [...layout.order.convert], ranger: [...layout.order.ranger], outils: [...layout.order.outils] },
     hidden: [...layout.hidden],
-    favs: [...layout.favs],
+    // Les favoris par défaut ne sont pas écrits : ils suivent la version.
+    ...(layout.favsSet ? { favs: [...layout.favs] } : {}),
   };
 }
 
@@ -142,7 +169,9 @@ export function serialize(layout: DropLayout): { v: 1; order: Record<DropRow, st
  * Remet une disposition d'aplomb : chaque clé connue dans SA ligne, une seule
  * fois ; une clé connue absente (ajoutée dans une version plus récente) est
  * insérée à sa place par défaut (après celle qui la précède) ; une clé
- * inconnue (une cible de module) reste dans Outils.
+ * inconnue (une cible de module) reste dans Outils. C'est aussi la
+ * migration de 1.2.5 : ZIP, Alléger, Extraire et Redimensionner… enregistrés
+ * dans Convertir retrouvent leur place par défaut dans Outils.
  */
 export function normalize(layout: Omit<DropLayout, "favs"> & { favs?: string[] }): DropLayout {
   const seen = new Set<string>();
@@ -168,8 +197,9 @@ export function normalize(layout: Omit<DropLayout, "favs"> & { favs?: string[] }
     });
   }
   const hidden = [...new Set(layout.hidden.filter(isKey))];
-  const favs = [...new Set((layout.favs ?? []).filter(isKey))].slice(0, MAX_FAVS);
-  return { order, hidden, favs };
+  const favsSet = layout.favsSet ?? layout.favs !== undefined;
+  const favs = [...new Set((layout.favs ?? [...DEFAULT_FAVS]).filter(isKey).map(favKey))].slice(0, MAX_FAVS);
+  return { order, hidden, favs, favsSet };
 }
 
 /** Les anciens réglages équivalents (valeurs telles qu'enregistrées, peut-être absentes). */
@@ -232,17 +262,23 @@ export function moveKey(layout: DropLayout, key: string, delta: number): DropLay
 
 /** Ce choix (un format « jpg », une cible « shelf-fav-0 ») est-il épinglé ? */
 export function isFav(layout: DropLayout, id: string): boolean {
-  return layout.favs.includes(id);
+  return layout.favs.includes(favKey(id));
+}
+
+/** L'identifiant d'un favori : « Compresser » de l'Étagère est le même favori que ZIP. */
+export function favKey(id: string): string {
+  return id === "shelf-zip" ? "zip" : id;
 }
 
 /**
  * Épingle ou retire un favori. `full` : il y en a déjà MAX_FAVS, rien n'est
  * ajouté (l'île le dit : « Cinq favoris au plus »).
  */
-export function toggleFav(layout: DropLayout, id: string): { layout: DropLayout; full: boolean } {
-  if (layout.favs.includes(id)) return { layout: { ...layout, favs: layout.favs.filter((f) => f !== id) }, full: false };
+export function toggleFav(layout: DropLayout, raw: string): { layout: DropLayout; full: boolean } {
+  const id = favKey(raw);
+  if (layout.favs.includes(id)) return { layout: { ...layout, favs: layout.favs.filter((f) => f !== id), favsSet: true }, full: false };
   if (!isKey(id) || layout.favs.length >= MAX_FAVS) return { layout, full: layout.favs.length >= MAX_FAVS };
-  return { layout: { ...layout, favs: [...layout.favs, id] }, full: false };
+  return { layout: { ...layout, favs: [...layout.favs, id], favsSet: true }, full: false };
 }
 
 /** Change de place un favori (Réglages : ← / →). */
@@ -254,7 +290,7 @@ export function moveFav(layout: DropLayout, id: string, delta: number): DropLayo
   if (to === from) return layout;
   list.splice(from, 1);
   list.splice(to, 0, id);
-  return { ...layout, favs: list };
+  return { ...layout, favs: list, favsSet: true };
 }
 
 /** Montre ou masque une pilule. */

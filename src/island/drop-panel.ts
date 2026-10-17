@@ -431,11 +431,9 @@ export class DropPanel {
     // L'étoile : épingler ou retirer (fichier tenu, au survol).
     const star = el("span", { class: `dp-star${pinned ? " on" : ""}`, "data-hit": "star", "aria-hidden": "true" });
     star.innerHTML = starSvg(pinned);
-    if (fav) {
-      const badge = el("span", { class: "dp-favmark", "aria-hidden": "true" });
-      badge.innerHTML = starSvg(true);
-      ball.append(badge);
-    }
+    // Un favori : une petite étoile hors de la bulle (la bulle coupe son reflet).
+    const badge = fav ? el("span", { class: "dp-favmark", "aria-hidden": "true" }) : null;
+    if (badge) badge.innerHTML = starSvg(true);
     // Le nom d'un favori ou d'un collègue est le leur : pas de traduction.
     const own = item.type === "target" && /^(shelf-fav-|team-)/.test(item.id);
     const cap = el("span", { class: "dp-cap", ...(own ? { "data-no-i18n": "" } : {}) }, item.caption);
@@ -450,7 +448,7 @@ export class DropPanel {
         "aria-disabled": String(!!item.off),
       },
       ball,
-      fav ? null : star,
+      fav ? badge : star,
       cap,
     );
   }

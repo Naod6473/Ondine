@@ -473,24 +473,69 @@
 }
 .pr-sub.pinned .pr-pin,
 .pr-sub.pinhot .pr-pin {
-  color: #f5c542;
+  color: color-mix(in srgb, var(--accent) 65%, #fff);
 }
 .pr-sub.pinhot .pr-pin {
   scale: 1.25;
-  box-shadow: 0 0 0 1px #f5c542;
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
-/* Les favoris, en bas : un liseré doré. */
-.pr-fav {
+/* Les favoris, en bas, toujours visibles : un reflet de verre aux couleurs
+   de l'île (--accent : le thème de Réglages → L'île, couleur personnalisée
+   comprise). Liseré brillant, éclat en haut à gauche, et un reflet qui passe
+   de temps en temps (pas en mode Calme, Économie, ni « Réduire les animations »). */
+.pr-fav,
+body.motion-studio .pr-fav:not(.hot) {
+  background:
+    radial-gradient(90% 70% at 30% 14%, color-mix(in srgb, #fff 40%, transparent), transparent 55%),
+    linear-gradient(160deg, color-mix(in srgb, var(--accent) 36%, var(--island-bg)), color-mix(in srgb, var(--accent) 12%, var(--island-bg)));
   box-shadow:
-    0 0 0 1.5px color-mix(in srgb, #f5c542 70%, transparent),
+    inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 80%, #fff),
+    inset 0 -8px 12px -8px color-mix(in srgb, var(--accent) 70%, transparent),
+    0 0 18px -4px color-mix(in srgb, var(--accent) 85%, transparent),
     0 6px 18px -6px rgba(0, 0, 0, 0.55);
+}
+body.motion-studio .pr-fav:not(.hot) {
+  background:
+    radial-gradient(90% 70% at 30% 14%, color-mix(in srgb, #fff 46%, transparent), transparent 55%),
+    linear-gradient(160deg, color-mix(in srgb, var(--accent) 40%, transparent), color-mix(in srgb, var(--accent) 14%, transparent));
+}
+.pr-fav::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 38%, color-mix(in srgb, #fff 55%, transparent) 50%, transparent 62%) no-repeat;
+  background-size: 260% 100%;
+  background-position: 130% 0;
+  animation: pr-fav-sheen 5s ease-in-out infinite;
+}
+@keyframes pr-fav-sheen {
+  0%,
+  70% {
+    background-position: 130% 0;
+  }
+  100% {
+    background-position: -30% 0;
+  }
+}
+.pet-ring.pr-quiet .pr-fav::after {
+  animation: none;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pr-fav::after {
+    animation: none;
+    opacity: 0;
+  }
 }
 .pr-favstar {
   position: absolute;
   top: -5px;
   right: -3px;
-  color: #f5c542;
+  color: color-mix(in srgb, var(--accent) 65%, #fff);
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 80%, transparent));
 }
 .pr-fav .pr-name {
   font-size: 11.5px;
