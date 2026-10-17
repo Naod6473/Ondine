@@ -347,13 +347,10 @@ class Pet {
     const l = (await Bridge.petOpen(open, size)) ?? { open, right: true, up: true };
     this.applyLayout(l);
     if (open) {
-      // Bornée à la place que l'écran laisse de ce côté.
-      const fitted = this.measure();
-      this.snapSize(fitted);
-      if (!sameSize(fitted, this.room)) {
-        this.room = fitted;
-        void Bridge.petBubble(fitted.w, fitted.h);
-      }
+      // Bornée à la place que l'écran laisse de ce côté. La fenêtre a déjà
+      // toute cette place (pet.rs, set_open) : la bulle s'anime dedans.
+      this.room = this.maxSize();
+      this.snapSize(this.measure());
       this.mascot?.activity();
       this.sayHello();
       // Le champ de l'onglet (Parler à Ondine, Lanceur) prend le clavier.
@@ -459,7 +456,6 @@ class Pet {
     if (this.glideRaf) return;
     if (reducedMotion() || settingsStore.current.mascot.calm) {
       if (this.want) this.snapSize(this.want);
-      this.settled();
       return;
     }
     this.lastFrame = performance.now();
@@ -476,21 +472,12 @@ class Pet {
       if (springAtRest(this.sw, want.w) && springAtRest(this.sh, want.h)) {
         this.glideRaf = 0;
         this.snapSize(want);
-        this.settled();
         return;
       }
       this.paintSize();
       this.glideRaf = requestAnimationFrame(frame);
     };
     this.glideRaf = requestAnimationFrame(frame);
-  }
-
-  /** Posée : la fenêtre se resserre autour d'elle. */
-  private settled() {
-    const want = this.want;
-    if (!want || !this.layout.open || sameSize(want, this.room)) return;
-    this.room = want;
-    void Bridge.petBubble(want.w, want.h);
   }
 
   /** Cette taille tout de suite, sans animation. */

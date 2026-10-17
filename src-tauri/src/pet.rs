@@ -418,6 +418,15 @@ pub fn set_open(app: &AppHandle, open: bool, want: Option<(f64, f64)>) -> Layout
         *state.bubble.locked() = want;
     }
     let l = if open { open_layout(app, mx, my, bubble_of(app)) } else { CLOSED };
+    // Ouverte, la fenêtre prend tout de suite toute la place que l'écran
+    // laisse à la bulle, et la garde jusqu'à la fermeture : la bulle grandit
+    // et se resserre DEDANS. Changer la taille de la fenêtre pendant
+    // l'animation (une fenêtre qui grandit vers le haut ou la gauche se
+    // déplace aussi) faisait sauter la bulle d'une image. Le reste de la
+    // fenêtre est transparent et laisse passer les clics.
+    if let (true, Some(state)) = (open, app.try_state::<PetState>()) {
+        *state.bubble.locked() = (l.max_w, l.max_h);
+    }
     apply_layout(app, &win, l, mx, my);
     // Ouverte : la bulle prend le clavier (le champ de « Parler à Ondine ») ;
     // fermée : le focus retourne à l'appli d'avant.

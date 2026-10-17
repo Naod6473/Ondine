@@ -319,6 +319,11 @@
   et la ressortir · Ondine on the desktop takes clicks again after her bubble
   opens, even when she sits at the bottom of the screen: no more sending her
   back into the island and out again
+- Ondine sur le bureau plus fluide : sa bulle grandit et se resserre sans à-coup
+  (la fenêtre ne change plus de taille pendant l'animation), et sa promenade
+  avance à pas réguliers · Smoother Ondine on the desktop: her bubble grows and
+  shrinks without jerks (the window no longer resizes during the animation),
+  and her walk moves in even steps
 
 ## 1.2.3 · 2026-10-11
 
