@@ -63,6 +63,10 @@ export interface PetLayout {
   /** La plus grande bulle qui tient dans l'écran de ce côté (px logiques). */
   maxW?: number;
   maxH?: number;
+  /** Le menu en cercle est ouvert (1.2.5) : la case de la mascotte dans son carré (px logiques). */
+  ring?: boolean;
+  ox?: number;
+  oy?: number;
 }
 
 /** L'apparence d'un reflet de l'île (src-tauri/src/island/mirrors.rs). */
@@ -145,6 +149,8 @@ export const Bridge = {
   // Ondine sur le bureau (src-tauri/src/pet.rs)
   /** Ouvre ou ferme la bulle à côté d'elle ; renvoie de quel côté elle s'ouvre. */
   petOpen: (open: boolean, size?: { w: number; h: number }) => call<PetLayout>("pet_open", { open, w: size?.w ?? null, h: size?.h ?? null }),
+  /** Le menu en cercle autour d'elle (un fichier lâché sur elle) : la fenêtre devient son carré. */
+  petRing: (open: boolean) => call<PetLayout>("pet_ring", { open }),
   /** La bulle a besoin d'une autre taille (px logiques) : la fenêtre suit, la mascotte ne bouge pas. */
   petBubble: (w: number, h: number) => call<void>("pet_bubble", { w, h }),
   /** On attrape Ondine : sa fenêtre suit la souris jusqu'au lâcher. */
@@ -263,6 +269,9 @@ export interface DragDropEvent {
   position?: { x: number; y: number };
   /** Maj enfoncée pendant le glisser (cible de dépôt de l'île, Windows). */
   shift?: boolean;
+  /** Ctrl ou Alt enfoncée (menu de fichiers : Ctrl ouvre Outils, Alt ouvre Ranger). */
+  ctrl?: boolean;
+  alt?: boolean;
 }
 
 /**
@@ -284,11 +293,11 @@ function browserDragDrop(handler: (e: DragDropEvent) => void): () => void {
   let depth = 0;
   const enter = (e: DragEvent) => {
     e.preventDefault();
-    if (depth++ === 0) handler({ type: "enter", paths: names(e), position: pos(e), shift: e.shiftKey });
+    if (depth++ === 0) handler({ type: "enter", paths: names(e), position: pos(e), shift: e.shiftKey, ctrl: e.ctrlKey, alt: e.altKey });
   };
   const over = (e: DragEvent) => {
     e.preventDefault();
-    handler({ type: "over", position: pos(e), shift: e.shiftKey });
+    handler({ type: "over", position: pos(e), shift: e.shiftKey, ctrl: e.ctrlKey, alt: e.altKey });
   };
   const leave = () => {
     if (--depth <= 0) {
