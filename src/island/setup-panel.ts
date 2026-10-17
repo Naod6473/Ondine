@@ -104,13 +104,17 @@ export function mountSetupPanel(host: HTMLElement, ctrl: SetupController): () =>
   let focused = false;
   /** Ce que l'étape doit finir avant « Continuer » (la clé collée mais pas enregistrée). */
   let beforeNext: (() => Promise<boolean>) | null = null;
+  /** Faux une fois le panneau défait (l'île l'a remplacé) : il ne dessine plus rien. */
+  let alive = true;
 
   /** Avance (1) ou recule (−1) ; `apply` : enregistrer le choix de l'étape (« Continuer »). */
   async function go(dir: number, apply: boolean) {
     if (dir > 0 && apply && beforeNext && !(await beforeNext())) return;
+    if (!alive) return;
     if (dir > 0) ctrl.next(apply);
     else ctrl.back();
-    draw(dir);
+    // Enregistrer peut avoir redessiné l'île : le nouveau panneau montre déjà l'étape.
+    if (alive) draw(dir);
   }
 
   /** Dessine l'étape courante ; `dir` : d'où elle arrive (0 = sans animation). */
@@ -369,6 +373,7 @@ export function mountSetupPanel(host: HTMLElement, ctrl: SetupController): () =>
   draw(0);
 
   return () => {
+    alive = false;
     undoStep();
     pill.stop();
     panel.remove();

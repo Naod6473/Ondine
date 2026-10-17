@@ -171,8 +171,10 @@ function openSetup(bus: Bus, notifications: NotificationQueue, preview: boolean)
         state.name = name;
         write((d) => (d.general.firstName = name));
       }
-      if (apply && step === "cards") applyCards(state, write);
+      // L'étape avance AVANT d'enregistrer les cartes : allumer des onglets
+      // peut redessiner l'île, et le panneau remonté doit montrer la suivante.
       state.step = Math.min(state.step + 1, SETUP_STEPS.length - 1);
+      if (apply && step === "cards") applyCards(state, write);
       if (SETUP_STEPS[state.step] === "done") markWelcomed(state);
     },
     back() {

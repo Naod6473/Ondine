@@ -314,6 +314,10 @@
   and Home Assistant (Connection, Favorite devices, Voice); Rules: "Keep the
   PC awake" and "Home Assistant: call a service" actions (never a shutdown or
   a sensitive device)
+- Premier lancement : l'étape « Vous faites quoi sur ce PC ? » de l'assistant
+  ne revient plus une seconde fois après « Continuer » · First launch: the
+  wizard's "What do you do on this PC?" step no longer comes back a second
+  time after "Continue"
 
 ## 1.2.3 · 2026-10-11
 

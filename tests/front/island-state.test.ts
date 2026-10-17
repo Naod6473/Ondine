@@ -6,7 +6,7 @@
 
 import { describe, test, beforeEach, afterEach, mock } from "node:test";
 import assert from "node:assert/strict";
-import { IslandStateMachine, type IslandState } from "../../src/island/island-state";
+import { IslandStateMachine, redrawOnModulesChange, type IslandState } from "../../src/island/island-state";
 
 // La machine appelle window.setTimeout : sous Node, `window` n'existe pas.
 (globalThis as unknown as { window: unknown }).window = globalThis;
@@ -448,5 +448,16 @@ describe("format nano (island.size = nano)", () => {
     fsm.hide();
     fsm.restore();
     assert.equal(fsm.form(), "nano");
+  });
+});
+
+describe("redessin quand un module s'allume ou s'éteint", () => {
+  test("une alerte affichée (l'assistant) n'est pas refaite", () => {
+    assert.equal(redrawOnModulesChange("alert"), false);
+  });
+  test("les autres états se redessinent", () => {
+    for (const s of ["hidden", "peek", "compact", "expanded", "drop"] as IslandState[]) {
+      assert.equal(redrawOnModulesChange(s), true, s);
+    }
   });
 });

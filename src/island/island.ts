@@ -26,7 +26,7 @@ import { createRenderer, type MascotRenderer } from "../mascot/renderer";
 import type { MascotManifest } from "../mascot/types";
 import { clear, el } from "./dom";
 import { icon } from "./icon";
-import { IslandStateMachine, type IslandState } from "./island-state";
+import { IslandStateMachine, redrawOnModulesChange, type IslandState } from "./island-state";
 import { IslandForms, islandStyle } from "./island-forms";
 import { contentHeight, FIT_ATTR, FIT_HOLD_ATTR, FIT_MAX_H, FIT_MAX_W, FIT_MAX_W_SIDE, FIT_W_ATTR, fitHeight, fitMode, fitWidth, naturalWidth, settle } from "./fit";
 import { attachHalo } from "./halo";
@@ -348,7 +348,8 @@ export class Island {
       } else if (n && isNew && this.fsm.state === "compact") this.hop(0.5);
     };
 
-    this.registry.onChange = () => this.render(true);
+    // Une alerte affichée (l'assistant) reste telle quelle : voir redrawOnModulesChange.
+    this.registry.onChange = () => this.render(redrawOnModulesChange(this.fsm.state));
     // Sans `force` : on ne redessine que si le module affiché en compact change.
     this.registry.onCompactChange = () => this.render();
     this.registry.onCloseRequest = () => this.fsm.close();
