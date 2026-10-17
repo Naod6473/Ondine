@@ -144,11 +144,21 @@ class Pet {
       if (e.key === "Escape" && this.layout.open) void this.setOpen(false);
     });
     new ResizeObserver(() => this.pushHit()).observe(this.bubble);
+    // La page apprend sa disposition AVANT que la fenêtre change de taille
+    // (pet.rs, apply_layout) : mascotte et bulle collées en bas ou à droite
+    // bougent encore quand la fenêtre grandit. Sans ça, les cases envoyées
+    // restaient celles d'avant, et ni Ondine ni sa bulle ne prenaient plus les
+    // clics (il fallait la rentrer dans l'île et la ressortir).
+    window.addEventListener("resize", () => this.pushHit());
     // Le contenu change (autre onglet, réponse qui s'écrit, liste qui
     // s'allonge, image chargée) : la bulle suit.
     new MutationObserver(() => this.scheduleFit()).observe(this.bubble, { childList: true, subtree: true, characterData: true });
     this.bubble.addEventListener("load", () => this.scheduleFit(), true);
-    this.bubble.addEventListener("transitionend", () => this.scheduleFit());
+    this.bubble.addEventListener("transitionend", () => {
+      // L'ouverture part d'une bulle réduite (scale 0.85) : la case est mesurée à sa vraie taille ensuite.
+      this.pushHit();
+      this.scheduleFit();
+    });
 
     settingsStore.onChange((s) => this.applySettings(s));
     this.applySettings(settingsStore.current);

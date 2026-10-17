@@ -314,6 +314,11 @@
   and Home Assistant (Connection, Favorite devices, Voice); Rules: "Keep the
   PC awake" and "Home Assistant: call a service" actions (never a shutdown or
   a sensitive device)
+- Ondine sur le bureau prend de nouveau les clics après l'ouverture de sa
+  bulle, même posée en bas de l'écran : il ne faut plus la rentrer dans l'île
+  et la ressortir · Ondine on the desktop takes clicks again after her bubble
+  opens, even when she sits at the bottom of the screen: no more sending her
+  back into the island and out again
 
 ## 1.2.3 · 2026-10-11
 
