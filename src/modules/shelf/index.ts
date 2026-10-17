@@ -37,6 +37,11 @@ let tool: { kind: "images" | "rename"; paths: string[] } | null = null;
 
 /** Copie locale de l'étagère, tenue à jour par le sujet "shelf.changed". */
 let items: ShelfItem[] = [];
+
+/** Le nombre d'éléments sur l'étagère (le petit rond « Étagère » du menu de fichiers, island.ts). */
+export function shelfCount(): number {
+  return items.length;
+}
 const redraws = new Set<() => void>();
 
 function setItems(next: ShelfItem[]) {

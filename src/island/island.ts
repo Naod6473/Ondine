@@ -44,8 +44,10 @@ import { reducedMotion, TabPill } from "./tab-pill";
 import { Tips } from "./tips";
 import { playHatch, type HatchTexts } from "./hatch";
 import { ConvertGesture } from "./convert-gesture";
-import { DropPanel } from "./drop-panel";
-import { effectiveLayout, keyOf, LAYOUT_KEY, LAYOUT_MODULE, ROWS, rowOf, isShown, arrange, bareLabel, type DropLayout, type Probe } from "./drop-pills-logic";
+import { DropPanel, type Choice } from "./drop-panel";
+import { effectiveLayout, LAYOUT_KEY, LAYOUT_MODULE, serialize, toggleFav, type DropLayout, type Probe } from "./drop-pills-logic";
+import { parseDest, type DropMenuMessage } from "./drop-menu-logic";
+import { shelfCount } from "../modules/shelf";
 import type { Ring } from "./hatch-plan";
 
 const log = logger("island");
@@ -65,6 +67,8 @@ const PANEL_H = 320;
 const SIDE_PANEL_H = 380;
 /** Les marges haute et basse de l'île en mode dépôt (island.css : 12 + 10 px). */
 const DROP_PAD_Y = 22;
+/** La place du petit rond Étagère sous l'île en mode dépôt (drop-shelf.ts : 36 px + l'air). */
+const SHELF_ROOM = 46;
 /** La place gardée dans la fenêtre pour l'étirement à la souris (gestures.ts). */
 const STRETCH_ROOM = 40;
 /** Zone au bord de l'écran qui compte comme « survol » même si l'île est minuscule. */
@@ -272,16 +276,26 @@ export class Island {
       rectChanged: () => this.pushRect(),
       reshape: () => this.scheduleRetarget(),
     });
-    // Le dépôt unifié : formats, rangements et outils, en pilules dans l'île (drop-panel.ts).
+    // Le menu de fichiers : icônes dans l'île, fichier tenu jusqu'au clic (drop-panel.ts).
     this.dropPanel = new DropPanel({
       convert: this.convert,
+      host: this.root,
+      shell: this.shell,
       targets: () => this.registry.dropTargets(),
       layout: () => this.dropLayout(),
+      saveLayout: (layout) => this.saveDropLayout(layout),
       favoriteMove: () => settingsStore.current.modules.shelf?.values?.favoriteAction === "move",
       lookAt: (point) => this.lookAtPoint(point),
       // La taille des fichiers, pour l'en-tête : le module Ondine convertit répond (convert.probed).
       probe: (paths, id) => this.bus.emit("convert.probe", { id, paths }),
+      shelfCount: () => (settingsStore.moduleEnabled("shelf") ? shelfCount() : null),
+      chosen: (choice, paths) => this.runDropChoice(choice, paths),
+      cancel: () => this.cancelHeld(),
+      rectChanged: () => this.pushRect(),
+      merged: () => this.hop(0.6),
     });
+    // Un fichier posé sur l'étagère (ou parti) : le petit rond le compte.
+    this.bus.on("shelf.changed", () => this.dropPanel.shelfBump(shelfCount()));
     this.bus.on("convert.probed", (msg) => {
       const p = msg.payload as { id?: unknown; items?: unknown } | null;
       if (typeof p?.id !== "number" || !Array.isArray(p.items)) return;
@@ -305,6 +319,7 @@ export class Island {
     // Dans un navigateur (npm run dev) : window.ondinePeek() la fait venir tout de suite.
     // Et window.ondineBus.emit("controls.media-use", { mic: ["Zoom"], cam: [] }) simule un message.
     // window.ondineNotify({ moduleId: "island", title: "Test", priority: "high" }) : une alerte (le choc de jelly.ts).
+    // window.ondineSettings.update((d) => { d.island.edge = "left"; }) : l'île sur un côté, le style Studio…
     if (!IS_TAURI) {
       Object.assign(window, {
         ondinePeek: () => this.hanger.show(),
@@ -312,6 +327,7 @@ export class Island {
         ondineEggs: this.eggs,
         ondineScenes: this.scenes,
         ondineNotify: (n: Parameters<NotificationQueue["push"]>[0]) => this.notifications.push(n),
+        ondineSettings: settingsStore,
       });
     }
 
@@ -365,6 +381,7 @@ export class Island {
     settingsStore.onChange((s) => this.applySettings(s));
     this.applySettings(settingsStore.current);
     this.wireInputs();
+    this.wireHeld();
     this.wireUndo();
     // Design « Studio » : chiffres qui roulent, listes qui glissent, boutons en
     // gélatine, reflet sous la souris (rien de tout ça en Classique).
@@ -523,6 +540,11 @@ export class Island {
       this.collapseTimer = null;
     }
     const token = ++this.collapseToken;
+    // Le mode dépôt se termine (alerte qui attendait, Échap…) : le fichier tenu est lâché.
+    if (from === "drop" && to !== "drop") {
+      this.endHeld();
+      this.dropPanel.leave();
+    }
     this.forms.onTransition(from, to);
     // (Île-bouche partie avec Ondine sur le bureau : la fenêtre reste une bande.)
     if (from === "hidden" && !this.forms.away) {
@@ -648,7 +670,7 @@ export class Island {
     });
 
     window.addEventListener("keydown", (e) => {
-      if (e.key !== "Escape") return;
+      if (e.key !== "Escape" || this.dropPanel.held) return;
       if (this.fsm.escape() === "dismiss-alert") this.notifications.dismissCurrent();
     });
 
@@ -1206,18 +1228,22 @@ export class Island {
     this.setRect(r.left, r.top, r.width, r.height);
   }
 
-  /** Le rectangle qui prend la souris, agrandi aux pilules cliquables d'Ondine convertit. */
+  /**
+   * Le rectangle qui prend la souris, agrandi aux pilules cliquables d'Ondine
+   * convertit et au petit rond Étagère du menu de fichiers (à côté de l'île).
+   */
   private setRect(x: number, y: number, w: number, h: number) {
-    const c = this.convert?.hitRect();
-    if (c) {
-      const left = Math.min(x, c.x);
-      const top = Math.min(y, c.y);
-      const right = Math.max(x + w, c.x + c.w);
-      const bottom = Math.max(y + h, c.y + c.h);
-      void Bridge.islandSetRect(left, top, right - left, bottom - top);
-      return;
+    // (Le Rust ne garde qu'un rectangle : celui qui les contient tous.)
+    const extra = [this.convert?.hitRect(), this.fsm.state === "drop" ? this.dropPanel?.shelfRect() : null];
+    let [left, top, right, bottom] = [x, y, x + w, y + h];
+    for (const c of extra) {
+      if (!c) continue;
+      left = Math.min(left, c.x);
+      top = Math.min(top, c.y);
+      right = Math.max(right, c.x + c.w);
+      bottom = Math.max(bottom, c.y + c.h);
     }
-    void Bridge.islandSetRect(x, y, w, h);
+    void Bridge.islandSetRect(left, top, right - left, bottom - top);
   }
 
   /** Position de la souris (px logiques de la fenêtre). */
@@ -1271,38 +1297,120 @@ export class Island {
   private onDrag(e: DragDropEvent) {
     // Diagnostic : le type d'événement seulement, jamais les chemins.
     if (e.type !== "over") log.info(`glisser-déposer : ${e.type} (état ${this.fsm.state})`);
+    const keys = { shift: !!e.shift, ctrl: !!e.ctrl, alt: !!e.alt };
     switch (e.type) {
-      case "enter":
-        // Le dépôt unifié prépare ses pilules (formats de CE fichier) avant
+      case "enter": {
+        // Un autre fichier arrive pendant qu'un premier est tenu : on repart de zéro.
+        const wasHeld = this.dropPanel.held;
+        if (wasHeld) this.endHeld();
+        // Le menu de fichiers prépare ses choix (formats de CE fichier) avant
         // que l'île passe en mode dépôt et les dessine (renderDrop).
         this.dropPanel.prepare(e.paths ?? []);
-        this.fsm.dragEnter();
+        if (this.fsm.state === "drop") this.render(true);
+        else this.fsm.dragEnter();
         break;
+      }
       case "over":
-        this.dropPanel.over(this.cssPos(e.position), !!e.shift);
+        if (!this.dropPanel.held) this.dropPanel.over(this.cssPos(e.position), keys);
         break;
       case "leave":
+        // Le fichier tenu reste dans la main d'Ondine (Windows envoie « leave » après certains lâchers).
+        if (this.dropPanel.held) break;
         this.dropPanel.leave();
         this.fsm.dragLeave();
         break;
       case "drop": {
+        // LÂCHER = TENIR : sur l'île, rien ne se lance (un clic choisira) ;
+        // sur le petit rond Étagère, le fichier y est posé tout de suite ;
+        // ailleurs, rien (l'île se referme).
         const paths = e.paths ?? [];
-        // Sur une pilule de format : Ondine convertit ; sur une autre pilule,
-        // la cible du module ; ailleurs, rien (l'île se referme).
-        const choice = this.dropPanel.drop(paths, this.cssPos(e.position));
-        if (!choice || !paths.length) {
+        const r = this.dropPanel.drop(paths, this.cssPos(e.position));
+        if (r.type === "hold") this.holdDrop();
+        else if (r.type === "choice") this.runDropChoice(r.choice, paths.length ? paths : this.dropPanel.currentPaths());
+        else {
+          this.dropPanel.leave();
           this.fsm.dragLeave();
-          break;
         }
-        if (choice.type === "convert") this.convert.start(choice.start);
-        this.fsm.dropped();
-        sounds.drop();
-        const id = choice.type === "convert" ? "convert" : choice.target.target.id;
-        this.bus.emit("island.files-dropped", { count: paths.length, target: id });
-        if (choice.type === "target") void this.registry.drop(choice.target.moduleId, choice.target.target, paths);
         break;
       }
     }
+  }
+
+  // ── Le fichier tenu (menu de fichiers, 1.2.5) ──────────────────────────────
+
+  /** Depuis quand l'île a le clavier pour le fichier tenu (un « blur » trop tôt ne compte pas). */
+  private heldSince = 0;
+
+  /**
+   * Le fichier lâché sur l'île y reste, dans la main d'Ondine : l'île garde
+   * le mode dépôt, prend les clics (son rectangle, et celui du petit rond
+   * Étagère) et le clavier (Échap, Ctrl, Alt, Maj). Un clic hors de l'île
+   * (la fenêtre perd le clavier) ou Échap referment.
+   */
+  private holdDrop() {
+    this.heldSince = performance.now();
+    this.shell.classList.add("drop-held");
+    sounds.drop();
+    void Bridge.islandSetFocus(true);
+    this.pushRect();
+  }
+
+  /** Fin du fichier tenu (choix fait ou annulé) : le clavier retourne à l'appli d'avant. */
+  private endHeld() {
+    if (!this.shell.classList.contains("drop-held")) return;
+    this.shell.classList.remove("drop-held");
+    void Bridge.islandSetFocus(false);
+  }
+
+  /** Annuler : Échap, clic dehors, bouton Annuler. Le petit rond revient dans l'île. */
+  private cancelHeld() {
+    if (!this.dropPanel.held) return;
+    this.endHeld();
+    this.dropPanel.leave();
+    this.fsm.dragLeave();
+  }
+
+  /** Un choix du menu de fichiers : convertir, ou la cible d'un module. */
+  private runDropChoice(choice: Choice, paths: string[]) {
+    if (!paths.length) return this.cancelHeld();
+    this.endHeld();
+    this.dropPanel.leave();
+    if (choice.type === "convert") this.convert.start(choice.start);
+    this.fsm.dropped();
+    sounds.drop();
+    const id = choice.type === "convert" ? "convert" : choice.target.target.id;
+    this.bus.emit("island.files-dropped", { count: paths.length, target: id });
+    if (choice.type === "target") void this.registry.drop(choice.target.moduleId, choice.target.target, paths);
+  }
+
+  /** Les touches et les clics qui referment le fichier tenu. */
+  private wireHeld() {
+    window.addEventListener("keydown", (e) => {
+      if (!this.dropPanel.held) return;
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        this.cancelHeld();
+        return;
+      }
+      if (e.repeat) return;
+      // Ctrl ouvre Outils, Alt ouvre Ranger, Maj passe à « Remplacer l'original ».
+      if (e.key === "Control" || e.key === "Alt" || e.key === "Shift") {
+        if (e.key === "Alt") e.preventDefault();
+        this.dropPanel.keys({ ctrl: e.key === "Control", alt: e.key === "Alt", shift: e.key === "Shift" });
+      }
+    }, true);
+    // Un clic dans la fenêtre, hors de l'île et du petit rond : on referme.
+    window.addEventListener("pointerdown", (e) => {
+      if (!this.dropPanel.held) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (this.shell.contains(t) || t.closest(".drop-shelf"))) return;
+      this.cancelHeld();
+    }, true);
+    // Un clic ailleurs sur l'écran (la fenêtre perd le clavier) : on referme.
+    window.addEventListener("blur", () => {
+      if (this.dropPanel.held && performance.now() - this.heldSince > 400) this.cancelHeld();
+    });
   }
 
   /** Ondine regarde un point de la fenêtre (une pilule visée), ou rien de précis (null). */
@@ -1330,39 +1438,80 @@ export class Island {
     });
   }
 
-  /** Les cibles montrées, dans l'ordre des réglages (pour la bulle d'Ondine sur le bureau). */
-  private visibleTargets(): ReturnType<ModuleRegistry["dropTargets"]> {
-    const layout = this.dropLayout();
-    const all = this.registry.dropTargets();
-    return ROWS.flatMap((row) => arrange(layout, row, all.filter((t) => rowOf(keyOf(t.target.id)) === row), (t) => keyOf(t.target.id))).filter((t) => isShown(layout, keyOf(t.target.id)));
+  /** Enregistre la disposition des pilules (un favori épinglé dans le menu de fichiers). */
+  private saveDropLayout(layout: DropLayout) {
+    void settingsStore.update((d) => {
+      const entry = (d.modules[LAYOUT_MODULE] ??= { enabled: settingsStore.moduleEnabled(LAYOUT_MODULE), values: {} });
+      entry.values[LAYOUT_KEY] = serialize(layout);
+    });
   }
 
   /**
-   * Fichiers lâchés sur Ondine sur le bureau (src/pet/) : les cibles de dépôt
-   * des modules vivent ici. On envoie leurs noms à sa bulle (« island.drop-choices »),
-   * et le choix revient (« pet.drop-choice ») : le dépôt se fait comme sur l'île.
+   * Fichiers lâchés sur Ondine sur le bureau (src/pet/) : l'île connaît les
+   * cibles des modules et les formats d'Ondine convertit. Elle calcule le
+   * menu (le même que dans l'île) et l'envoie à Ondine (« island.drop-menu ») ;
+   * le cercle autour d'elle revient avec le choix (« pet.drop-choice ») ou
+   * l'annulation, et l'île fait le reste comme pour un clic chez elle.
    */
   private wirePetDrops() {
-    let pending: { id: number; paths: string[]; targets: ReturnType<ModuleRegistry["dropTargets"]> } | null = null;
+    let pending: { id: number; paths: string[]; send: () => void } | null = null;
     let nextId = 1;
     this.bus.on("pet.files-dropped", (msg) => {
       const paths = ((msg.payload as { paths?: unknown } | null)?.paths ?? []) as unknown[];
       const clean = paths.filter((p): p is string => typeof p === "string").slice(0, 50);
       if (!clean.length) return;
-      const targets = this.visibleTargets();
-      pending = { id: nextId++, paths: clean, targets };
-      this.bus.emit("island.drop-choices", { id: pending.id, count: clean.length, choices: targets.map((t) => ({ label: t.target.id === "shelf-zip" ? "ZIP" : bareLabel(t.target.label), icon: t.target.icon })) });
+      // Pas pendant un glisser sur l'île elle-même.
+      if (this.fsm.state === "drop") return;
+      const id = nextId++;
+      this.dropPanel.prepare(clean);
+      const send = () => {
+        if (pending?.id !== id) return;
+        const head = this.dropPanel.header();
+        const shelf = settingsStore.moduleEnabled("shelf") && this.dropPanel.hasShelf() ? shelfCount() : null;
+        const out: DropMenuMessage = {
+          id,
+          ...head,
+          option: this.dropPanel.optShown(),
+          dest: this.dropPanel.effectiveDest(),
+          menu: this.dropPanel.currentMenu(),
+          shelf,
+          says: this.dropPanel.says(),
+        };
+        this.bus.emit("island.drop-menu", out);
+      };
+      pending = { id, paths: clean, send };
+      send();
+      // La réponse du Rust (dossier ou non, taille) arrive un peu après : le menu se complète.
+      window.setTimeout(send, 260);
+    });
+    // L'étoile d'un choix du cercle : l'île enregistre le favori et renvoie le menu.
+    this.bus.on("pet.drop-pin", (msg) => {
+      const p = msg.payload as { id?: number; choice?: unknown } | null;
+      if (!pending || p?.id !== pending.id || typeof p.choice !== "string") return;
+      const r = toggleFav(this.dropLayout(), p.choice);
+      if (r.full) return;
+      this.saveDropLayout(r.layout);
+      pending.send();
     });
     this.bus.on("pet.drop-choice", (msg) => {
-      const p = msg.payload as { id?: number; index?: number } | null;
-      if (!pending || p?.id !== pending.id || typeof p.index !== "number") return;
-      const chosen = pending.targets[p.index];
+      const p = msg.payload as { id?: number; choice?: unknown; dest?: unknown; cancel?: boolean } | null;
+      if (!pending || p?.id !== pending.id) return;
       const paths = pending.paths;
       pending = null;
-      if (!chosen) return;
+      if (p.cancel || typeof p.choice !== "string") return;
+      // Un glisser sur l'île a pu passer entre-temps : le menu repart de ces fichiers-là.
+      if (this.dropPanel.currentPaths().join("\n") !== paths.join("\n")) this.dropPanel.prepare(paths);
+      const choice = this.dropPanel.choiceById(p.choice, parseDest(p.dest));
+      this.dropPanel.leave(false);
+      if (!choice) return;
       sounds.drop();
-      this.bus.emit("island.files-dropped", { count: paths.length, target: chosen.target.id });
-      void this.registry.drop(chosen.moduleId, chosen.target, paths);
+      if (choice.type === "convert") {
+        // La progression et le résultat se montrent dans la mini-île.
+        this.fsm.showCompact();
+        this.convert.start(choice.start);
+      }
+      this.bus.emit("island.files-dropped", { count: paths.length, target: choice.type === "convert" ? "convert" : choice.target.target.id });
+      if (choice.type === "target") void this.registry.drop(choice.target.moduleId, choice.target.target, paths);
     });
   }
 
@@ -1718,7 +1867,8 @@ export class Island {
     // la gelée est peut-être en train d'animer (ses marges aussi).
     const h = Math.min(FIT_MAX_H, Math.ceil(panel.offsetHeight + DROP_PAD_Y));
     if (this.shell.style.getPropertyValue("--drop-h") === `${h}px`) return;
-    const room = (horizontal(this.edge()) ? PANEL_H : SIDE_PANEL_H) - STRETCH_ROOM;
+    // Le petit rond Étagère se pose sous l'île (ou au-dessus) : sa place aussi.
+    const room = (horizontal(this.edge()) ? PANEL_H : SIDE_PANEL_H) - STRETCH_ROOM - (this.dropPanel.hasShelf() ? SHELF_ROOM : 0);
     if (h > room && !this.tall && !this.dropTall) {
       this.dropTall = true;
       await Bridge.islandSetTall(true);
