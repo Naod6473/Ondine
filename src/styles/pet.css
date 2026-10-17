@@ -255,3 +255,380 @@
     opacity: 0;
   }
 }
+
+/* ── Le menu en cercle (1.2.5, ring.ts, ring-layout.ts) ──────────────────────
+   Un fichier lâché sur Ondine : la fenêtre devient un carré de 600 px
+   (pet.rs, RING_SIZE), la case d'Ondine dedans (--ox, --oy ; décalée près
+   d'un bord de l'écran), et Ondine glisse jusqu'au centre du menu (--gx,
+   --gy). Seules les bulles prennent la souris (pet.rs) ; le reste du carré
+   laisse passer les clics. */
+.pet[data-ring="true"] .pet-mascot {
+  left: var(--ox);
+  top: var(--oy);
+  right: auto;
+  bottom: auto;
+  z-index: 2;
+  /* La goutte du centre reçoit le survol (le titre du fichier). */
+  pointer-events: none;
+  transition: transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.pet[data-gather="true"] .pet-mascot {
+  transform: translate(var(--gx, 0), var(--gy, 0));
+}
+.pet[data-ring="true"] .pet-bubble {
+  display: none;
+}
+
+.pet-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 600px;
+  height: 600px;
+  z-index: 1;
+  color: var(--island-fg);
+  font: 600 11px/1.15 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  user-select: none;
+}
+
+.pr-bub {
+  position: absolute;
+  width: var(--d);
+  height: var(--d);
+  margin: calc(var(--d) / -2) 0 0 calc(var(--d) / -2);
+  box-sizing: border-box;
+  border-radius: 50%;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: var(--island-bg);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 6px 18px -6px rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+  transition:
+    scale 260ms cubic-bezier(0.34, 1.6, 0.5, 1),
+    background 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease,
+    opacity 200ms ease;
+}
+.pr-bub.show {
+  display: flex;
+}
+.pr-icon,
+.pr-icon :is(.icon-line, .icon-img) {
+  width: 20px;
+  height: 20px;
+}
+.pr-name {
+  max-width: calc(var(--d) - 8px);
+  /* Assez haut pour l'accent d'une capitale (« Étagère »), coupé sinon. */
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font-size: 10px;
+  color: color-mix(in srgb, var(--island-fg) 82%, transparent);
+}
+/* Le nom d'un choix à icône : sur deux lignes au plus (« Copier vers »). */
+.pr-sub .pr-name:not(.pr-fmt) {
+  max-width: calc(var(--d) - 6px);
+  white-space: normal;
+  font-size: 9px;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  /* Un mot trop long (« Redimensionner ») : coupé avec un trait d'union là où
+     le navigateur sait le faire (lang de la page), sinon où il peut. */
+  hyphens: auto;
+  overflow-wrap: anywhere;
+}
+.pr-sub .pr-icon,
+.pr-sub .pr-icon :is(.icon-line, .icon-img) {
+  width: 18px;
+  height: 18px;
+}
+.pr-fmt {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--island-fg);
+}
+
+/* Le centre : la goutte, Ondine par-dessus, l'étiquette du type en bas. */
+.pr-core {
+  cursor: default;
+  justify-content: flex-end;
+  padding-bottom: 7px;
+  background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--accent) 26%, var(--island-bg)), var(--island-bg) 70%);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent),
+    0 10px 30px -10px var(--accent);
+}
+.pr-tag {
+  position: relative;
+  z-index: 3;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--island-fg) 14%, transparent);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+/* Les bulles mères : Convertir en haut, Outils à gauche, Ranger à droite. */
+.pr-mother .pr-icon,
+.pr-mother .pr-icon :is(.icon-line, .icon-img) {
+  width: 22px;
+  height: 22px;
+}
+.pr-mother .pr-name {
+  font-size: 10.5px;
+  color: var(--island-fg);
+}
+.pr-key {
+  position: absolute;
+  top: -4px;
+  right: -2px;
+  padding: 2px 4px;
+  border-radius: 5px;
+  background: var(--island-bg);
+  box-shadow: 0 0 0 1px var(--line);
+  font-size: 9px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--island-fg) 75%, transparent);
+}
+/* L'anneau qui se remplit pendant le survol de 0,4 s (--p : 0 → 1). */
+.pr-ring {
+  /* --p est déclaré sans héritage (@property, island.css) : on le reprend de la bulle. */
+  --p: inherit;
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: conic-gradient(var(--accent) calc(var(--p, 0) * 1turn), transparent 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+}
+.pr-mother.open {
+  background: color-mix(in srgb, var(--accent) 22%, var(--island-bg));
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 6px 18px -6px rgba(0, 0, 0, 0.55);
+}
+
+/* Survol : la couleur d'Ondine et un léger grossissement (ressort). */
+.pr-bub.hot:not(.pr-core):not(.off) {
+  scale: 1.12;
+  background: var(--accent);
+  color: #06223a;
+  box-shadow: 0 8px 22px -6px var(--accent);
+}
+.pr-bub.hot:not(.off) .pr-name {
+  color: #06223a;
+}
+/* Grisé (dépôt mixte, groupe sans rien) : la phrase dit pourquoi. */
+.pr-bub.off {
+  opacity: 0.42;
+  cursor: default;
+}
+.pr-bub.off.hot {
+  scale: 1.04;
+}
+
+/* L'étoile d'un choix : visible au survol, ou s'il est déjà en favori. */
+.pr-pin {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--island-bg);
+  box-shadow: 0 0 0 1px var(--line);
+  color: color-mix(in srgb, var(--island-fg) 70%, transparent);
+  opacity: 0;
+  scale: 0.6;
+  transition:
+    opacity 140ms ease,
+    scale 200ms cubic-bezier(0.34, 1.6, 0.5, 1);
+}
+.pr-pin svg,
+.pr-favstar svg {
+  width: 12px;
+  height: 12px;
+}
+.pr-sub.hot .pr-pin,
+.pr-sub.pinned .pr-pin {
+  opacity: 1;
+  scale: 1;
+}
+.pr-sub.pinned .pr-pin,
+.pr-sub.pinhot .pr-pin {
+  color: #f5c542;
+}
+.pr-sub.pinhot .pr-pin {
+  scale: 1.25;
+  box-shadow: 0 0 0 1px #f5c542;
+}
+
+/* Les favoris, en bas : un liseré doré. */
+.pr-fav {
+  box-shadow:
+    0 0 0 1.5px color-mix(in srgb, #f5c542 70%, transparent),
+    0 6px 18px -6px rgba(0, 0, 0, 0.55);
+}
+.pr-favstar {
+  position: absolute;
+  top: -5px;
+  right: -3px;
+  color: #f5c542;
+}
+.pr-fav .pr-name {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--island-fg);
+}
+.pr-fav .pr-name.pr-small {
+  font-size: 9px;
+  font-weight: 600;
+}
+.pr-fav .pr-icon,
+.pr-fav .pr-icon :is(.icon-line, .icon-img) {
+  width: 17px;
+  height: 17px;
+}
+
+/* La bulle Étagère, toujours là, son nombre en pastille. */
+.pr-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #06223a;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* La pilule d'option sous la goutte : Conserver à côté, Remplacer… */
+.pr-opt {
+  position: absolute;
+  z-index: 3;
+  translate: -50% -50%;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--island-bg);
+  box-shadow: 0 0 0 1px var(--line);
+  white-space: nowrap;
+  font-size: 11px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: background 150ms ease;
+}
+.pr-opt.hot {
+  background: color-mix(in srgb, var(--accent) 22%, var(--island-bg));
+}
+.pr-spin {
+  display: inline-flex;
+}
+.pr-spin,
+.pr-spin svg {
+  width: 13px;
+  height: 13px;
+}
+.pr-spin svg {
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pr-opt.turned .pr-spin {
+  animation: pr-spin 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes pr-spin {
+  to {
+    rotate: 1turn;
+  }
+}
+/* Le survol de 0,5 s qui tourne l'option. */
+.pr-dwell {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+/* La phrase sous le cercle. */
+.pr-say {
+  position: absolute;
+  translate: -50% -50%;
+  max-width: 440px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--island-bg);
+  box-shadow: 0 0 0 1px var(--line);
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+.pr-say.show {
+  opacity: 1;
+}
+
+/* Studio : du verre dépoli (seulement là). */
+body.motion-studio .pr-bub:not(.hot),
+body.motion-studio .pr-opt,
+body.motion-studio .pr-say {
+  background: color-mix(in srgb, var(--island-bg) 72%, transparent);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+}
+
+/* Réduire les animations, mode Calme, Économie : pas de ressort. */
+.pet-ring.pr-quiet .pr-bub,
+.pet-ring.pr-quiet .pr-pin {
+  transition:
+    opacity 150ms linear,
+    background 150ms linear;
+}
+.pet-ring.pr-quiet .pr-bub.hot:not(.off) {
+  scale: 1;
+}
+.pet-ring.pr-quiet .pr-opt.turned .pr-spin {
+  animation: none;
+}
+.pet[data-ring="true"]:has(.pr-quiet) .pet-mascot {
+  transition: transform 160ms linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pet[data-ring="true"] .pet-mascot {
+    transition: none;
+  }
+}
