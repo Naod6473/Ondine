@@ -390,7 +390,7 @@
 "Pariez sur une goutte : chaque tâche finie fait avancer la course.": "Parie sur une goutte : chaque tâche finie fait avancer la course.",
 "Glissez un fichier sur l'île : elle s'ouvre et montre en pilules les formats possibles (JPG, PNG, PDF, MP3, ZIP…), à côté de Ranger et Outils. Lâchez-le sur l'une d'elles : Ondine l'avale, le convertit et recrache le nouveau fichier à côté de l'original, à sa place (l'original part à la Corbeille, « Annuler » le remet) ou sur le Bureau. La pilule d'option, en haut de l'île, change ce choix (survol d'une demi-seconde, Maj ou clic). Images (HEIC et AVIF avec l'extension de Windows), images en un seul PDF, PDF en images, vidéo et son courants (MP4, M4A, MP3, WAV), ZIP. Tout se fait sur ce PC avec ce que Windows sait déjà faire : rien ne part sur Internet, et le journal ne note ni les noms ni le contenu des fichiers.": "Glisse un fichier sur l'île : elle s'ouvre et montre en pilules les formats possibles (JPG, PNG, PDF, MP3, ZIP…), à côté de Ranger et Outils. Lâche-le sur l'une d'elles : Ondine l'avale, le convertit et recrache le nouveau fichier à côté de l'original, à sa place (l'original part à la Corbeille, « Annuler » le remet) ou sur le Bureau. La pilule d'option, en haut de l'île, change ce choix (survol d'une demi-seconde, Maj ou clic). Images (HEIC et AVIF avec l'extension de Windows), images en un seul PDF, PDF en images, vidéo et son courants (MP4, M4A, MP3, WAV), ZIP. Tout se fait sur ce PC avec ce que Windows sait déjà faire : rien ne part sur Internet, et le journal ne note ni les noms ni le contenu des fichiers.",
 "Pendant le glissement, survolez la pilule du dessous une demi-seconde pour changer ; la touche Maj donne « Remplacer ».": "Pendant le glissement, survole la pilule du dessous une demi-seconde pour changer ; la touche Maj donne « Remplacer ».",
-"L'ordre et les pilules montrées quand vous glissez un fichier sur l'île.": "L'ordre et les pilules montrées quand tu glisses un fichier sur l'île.",
+"L'ordre, les pilules montrées et vos favoris (étoile, cinq au plus) quand vous glissez un fichier sur l'île.": "L'ordre, les pilules montrées et tes favoris (étoile, cinq au plus) quand tu glisses un fichier sur l'île.",
 "Lâchez sur une pilule": "Lâche sur une pilule",
 "Survolez une demi-seconde pour changer : Conserver, Remplacer, Sur le bureau": "Survole une demi-seconde pour changer : Conserver, Remplacer, Sur le bureau",
 "Glissez des fichiers sur l'île : elle montre tout ce qu'Ondine sait en faire, en pilules. Ranger : poser sur l'étagère, copier ou déplacer (dossiers favoris compris), envoyer à la Corbeille. Outils : renommer plusieurs fichiers d'un coup (avec aperçu), copier leur chemin, calculer leur empreinte (SHA-256, ou comparer à une empreinte copiée). Convertir : redimensionner des images à une largeur, compresser en ZIP. L'ordre des pilules, et celles à masquer, se règlent ici (« Pilules du dépôt »). Toute action sur les fichiers est annulable quelques secondes. « Vers le téléphone » envoie un fichier à un téléphone du même Wi-Fi par un QR code : réseau local seulement, 5 minutes au plus, rien ne passe par Internet.": "Glisse des fichiers sur l'île : elle montre tout ce qu'Ondine sait en faire, en pilules. Ranger : poser sur l'étagère, copier ou déplacer (dossiers favoris compris), envoyer à la Corbeille. Outils : renommer plusieurs fichiers d'un coup (avec aperçu), copier leur chemin, calculer leur empreinte (SHA-256, ou comparer à une empreinte copiée). Convertir : redimensionner des images à une largeur, compresser en ZIP. L'ordre des pilules, et celles à masquer, se règlent ici (« Pilules du dépôt »). Toute action sur les fichiers est annulable quelques secondes. « Vers le téléphone » envoie un fichier à un téléphone du même Wi-Fi par un QR code : réseau local seulement, 5 minutes au plus, rien ne passe par Internet.",
@@ -450,7 +450,17 @@
 "jeton refusé par Home Assistant (créez un jeton d'accès longue durée dans votre profil)": "jeton refusé par Home Assistant (crée un jeton d'accès longue durée dans ton profil)",
 "Home Assistant répond par une redirection : vérifiez l'adresse (http ou https ?)": "Home Assistant répond par une redirection : vérifie l'adresse (http ou https ?)",
 "indiquez l'adresse de Home Assistant": "indique l'adresse de Home Assistant",
-"cette confirmation n'est plus valable : recommencez": "cette confirmation n'est plus valable : recommence"
+"cette confirmation n'est plus valable : recommencez": "cette confirmation n'est plus valable : recommence",
+"Cinq favoris au plus : retirez-en un d'abord": "Cinq favoris au plus : retires-en un d'abord",
+"Restez un instant pour ouvrir, ou cliquez": "Reste un instant pour ouvrir, ou clique",
+"Cliquez pour retirer des favoris": "Clique pour retirer des favoris",
+"Cliquez pour épingler en favori": "Clique pour épingler en favori",
+"Cliquez pour poser sur l'étagère": "Clique pour poser sur l'étagère",
+"Lâchez pour poser sur l'étagère": "Lâche pour poser sur l'étagère",
+"Survolez une icône, puis cliquez · Échap annule": "Survole une icône, puis clique · Échap annule",
+"Lâchez : rien ne se lance avant votre clic": "Lâche : rien ne se lance avant ton clic",
+"Survolez une bulle, puis cliquez · Échap annule": "Survole une bulle, puis clique · Échap annule",
+"Aucun favori : cliquez sur l'étoile d'une pilule.": "Aucun favori : clique sur l'étoile d'une pilule."
 },
 "patterns": [
 ["^(\\d+) nouveautés vous attendent\\.$", "$1 nouveautés t'attendent."],

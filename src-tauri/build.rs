@@ -21,6 +21,7 @@ const COMMANDS: &[&str] = &[
     "island_drag_start",
     "mirror_look",
     "pet_open",
+    "pet_ring",
     "pet_bubble",
     "pet_drag_start",
     "pet_set_hit",

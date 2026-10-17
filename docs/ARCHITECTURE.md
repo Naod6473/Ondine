@@ -285,6 +285,56 @@ qu'une fois les ressorts posés (au plus tard après 1,5 s).
 - **Réduire les animations** (réglage d'accessibilité de Windows) : tout
   devient instantané (`reducedMotion()`, `prefers-reduced-motion`).
 
+#### Le menu de fichiers (1.2.5)
+
+Le menu d'un dépôt est calculé une fois, sans DOM, par
+`src/island/drop-menu-logic.ts` (`buildMenu`) : les trois groupes (Convertir,
+Ranger, Outils), les favoris, les choix grisés d'un dépôt mixte avec leur
+raison (`offReason` : « Seulement pour les images », « Pas pour un dossier »,
+« Un type de fichier à la fois ») et les groupes vides (`dead` : vide, pas
+seulement grisé). Convertir ne prend que les vrais formats (`isFormatId`) ;
+ZIP, Alléger, Extraire et Redimensionner… sont rangés dans Outils (`KNOWN`,
+`rowOf`), et `normalize` y remet un ordre enregistré qui les plaçait encore
+dans Convertir. Les favoris (`favs`, clés passées par `favKey` : « Compresser »
+de l'Étagère est ZIP) valent `DEFAULT_FAVS` (ZIP) tant que `favsSet` est faux,
+c'est-à-dire tant qu'on n'y a pas touché. Leur reflet de verre suit `--accent`,
+la couleur de l'île (`applyTheme`, `applyIslandTheme` chez Ondine). Les deux
+vues le dessinent :
+
+- **Dans l'île** (`drop-panel.ts`, island.css « Le menu de fichiers ») : des
+  icônes rondes, leur nom dessous. Une bulle mère s'ouvre après 0,4 s de survol
+  (`Dwell(0.4)`, l'anneau conique `--p`) ou au clic ; Ctrl ouvre Outils, Alt
+  ouvre Ranger (la cible OLE envoie les touches, `drop_target.rs`). Survol :
+  la couleur d'Ondine et un ressort `cubic-bezier(.34,1.6,.5,1)`.
+- **Tenir puis cliquer** : au lâcher, la machine à états reste en `drop`
+  (`island.ts`, `holdDrop`), l'île garde le clavier (`islandSetFocus`) et toute
+  sa forme prend les clics ; Échap, un clic hors de l'île ou la perte du
+  clavier (400 ms après le lâcher) annulent (`fsm.dragLeave()`), un clic sur un
+  choix le lance (`fsm.dropped()`). Le fichier en main est un petit pictogramme
+  près d'Ondine (`.island.drop-held`).
+- **La pilule Étagère** (`drop-shelf.ts`, `drop-shelf-logic.ts`) : posée hors
+  de la forme de l'île, dans la même fenêtre. `shelfPlace` la met à côté si la
+  fenêtre a la place (île étroite, ou collée à un bout), sinon sous l'île (en
+  haut, sur un côté) ou au-dessus (en bas), à son bout tourné vers le centre ;
+  `fitDrop` lui garde 46 px. Son rectangle est ajouté à celui qui prend la
+  souris (`setRect`). Elle sort en ressort depuis l'île, et y revient
+  (`mergePlan` : vers le milieu du bord collé à l'écran, là où l'île se
+  resserre) ; l'île fait alors un petit saut de gelée.
+- **Le cercle d'Ondine sur le bureau** (`src/pet/ring.ts`, `ring-layout.ts`,
+  pet.css) : l'île calcule le menu et l'envoie (`island.drop-menu`) ; la
+  fenêtre d'Ondine passe à un carré de 600 px (`pet_ring`, `RING_SIZE`), rentré
+  dans la zone de travail : près d'un bord, le carré se décale et Ondine glisse
+  jusqu'au centre (`--gx`, `--gy`, transition en ressort). Les bulles sortent
+  une à une (50 ms) de leur bulle mère ; les cases qui prennent la souris sont
+  celles des bulles (`hitRects`, jusqu'à 64 cases dans `pet.rs`), le reste
+  laisse passer les clics. Le choix repart vers l'île (`pet.drop-choice`), qui
+  le fait comme un clic chez elle ; l'étoile passe par l'île
+  (`pet.drop-pin`), seule à écrire les réglages.
+- **Styles et sobriété** : le verre dépoli (`backdrop-filter`) n'existe qu'en
+  style Studio (`body.motion-studio`) ; « Réduire les animations » et le mode
+  Calme remplacent les ressorts par des fondus ; le mode Économie n'anime rien
+  (`perfMode() === "eco"`).
+
 ### Le halo de l'île (`src/island/halo.ts`, `halo-palettes.ts`, `halo-stack.ts`)
 
 Un liseré de lumière qui court sur le contour de l'île et déborde autour, en

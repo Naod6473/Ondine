@@ -64,8 +64,8 @@ What's new in version 1.2.4 (the full list is in the
   volume, the cover's colour and glow.
 - **Settings redone**: two columns (seven sections, then the pages), in
   liquid glass, with "Undo", Ctrl+K, presets and picture choices.
-- **Ondine converts**: drag a file to the island, drop it on a format pill
-  (images, PDF, video, sound, ZIP); next to the original, in its place or on
+- **Ondine converts**: drag a file to the island, then click a format in the
+  file menu (images, PDF, video, sound; ZIP and Shrink under Tools); next to the original, in its place or on
   the Desktop. Everything runs on the PC.
 - **Mini-games**: Connect 4 against Ondine, quick tic-tac-toe in the
   mini-island (long press on Ondine), a drop aquarium and drop races.
@@ -163,8 +163,8 @@ What's new in version 1.2.4 (the full list is in the
   commands.
 - **[Ondine on the desktop](#mascot)**: drag the mascot out of the island and
   put her wherever you like. A click on her opens a bubble with your favourite
-  tabs; she sits on the taskbar, accepts files dropped on her, opens with
-  Ctrl+Alt+B and wanders around when the PC is idle.
+  tabs; she sits on the taskbar, opens a ring menu around her when you drop a
+  file on her, opens with Ctrl+Alt+B and wanders around when the PC is idle.
 - **Lighter [settings](#settings)**: modules grouped in collapsible
   categories, long pages as sub-menus in the left bar.
 - **[The mascot podium](#mascot)**: every mascot, animated, on 3D steps; drag
@@ -268,7 +268,7 @@ Manager.
 | Open the launcher | **Alt+Space** (search apps, files, notes…) |
 | Close | Move the mouse away (the island folds after 1.5 s), or **Esc** |
 | Switch tabs | Click an icon at the top of the island; ← → keys work too. Drag an icon to reorder |
-| Drop a file | Drag it onto the island: the targets appear (shelf, Recycle Bin, favorites, compress…) |
+| Drop a file | Drag it onto the island: the file menu opens (Convert, Put away, Tools, your favorites). Let go, then click an icon; only the "Shelf" pill acts as soon as you let go. Esc cancels |
 | Move the island | Grab it by the edge touching the screen and drop it elsewhere (top, left, right) |
 | Open settings | The **⚙** button at the top right of the island, or Ondine's icon near the clock (right-click → Settings) |
 | Quit | Icon near the clock → **Quit** |
@@ -350,6 +350,22 @@ convert or shrink images, rename several files at once (with a preview), send
 them to the Recycle Bin, or drag them out of the island to Explorer or the
 desktop (Ctrl: copy, Shift: move). Every file action can be undone for a few
 seconds.
+
+**The file menu** (1.2.5): when you drag a file onto the island, it opens on
+round icons. At the top, three parent bubbles: **Convert**, **Put away** (Alt)
+and **Tools** (Ctrl), and your favorites right next to them (ZIP out of the
+box); below, the open group's choices
+(hover a parent bubble for 0.4 s or click it). Letting go of the file starts
+nothing: the island stays open with the file in hand, and a click on an icon
+runs the action. Esc, a click outside or **Cancel** close without doing
+anything. Only the **Shelf** pill, detached next to the island during the drop,
+acts as soon as you let go of the file on it; it then melts back into the
+island. Several files of different types: the choices that only fit some of
+them are greyed out, and the bottom line says why. **Convert** only offers
+formats; ZIP, Shrink, Resize… and Extract are under **Tools**. A choice's star
+pins it as a favorite (five at most); favorites have a glassy sheen in the
+island's colours (Settings → The island → Appearance); order, shown pills and favorites in **Settings → Shelf
+→ Drop pills**.
 
 **📱 To the phone** (on a file of the shelf): the island shows a QR code; point
 the phone's camera at it and the phone's browser downloads the file. The phone
@@ -872,8 +888,12 @@ worries and sleeps just like in the island; notifications stay in the island.
 To bring her home: drag her onto the island, or use the ⤒ button in her
 bubble or the 💧 button of the open island. She steps out during a
 presentation or full screen, then comes back. Dropped near a screen edge or
-the taskbar, she sits on it. Drop a file on her: her bubble offers the
-island's targets (Talk to Ondine, Shelf…). A notification arrives in the
+the taskbar, she sits on it. Drop a file on her: a ring menu opens around
+her, the same as in the island (Convert at the top, Tools on the left, Put away
+on the right, your favorites and the Shelf at the bottom, the "Keep alongside"
+option under her); hover a bubble then click, Esc or a click in empty space
+cancels. Near a screen edge, the ring shifts inward and Ondine glides to its
+centre. A notification arrives in the
 island: a badge appears on her (a click opens the island). **Ctrl+Alt+B** opens
 her bubble (configurable), the menu of the icon near the clock moves her out or
 back in, and when you leave the PC alone she takes a few steps ("She wanders

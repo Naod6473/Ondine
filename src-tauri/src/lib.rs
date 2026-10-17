@@ -384,6 +384,12 @@ fn pet_open(app: AppHandle, open: bool, w: Option<f64>, h: Option<f64>) -> pet::
     pet::set_open(&app, open, w.zip(h))
 }
 
+/// Ouvre ou ferme le menu en cercle autour d'elle (un fichier lâché sur elle).
+#[tauri::command]
+fn pet_ring(app: AppHandle, open: bool) -> pet::Layout {
+    pet::set_ring(&app, open)
+}
+
 /// La bulle a besoin d'une autre taille (son contenu a changé).
 #[tauri::command]
 fn pet_bubble(app: AppHandle, w: f64, h: f64) {
@@ -710,6 +716,7 @@ pub fn run() {
             island_drag_start,
             mirror_look,
             pet_open,
+            pet_ring,
             pet_bubble,
             pet_drag_start,
             pet_set_hit,

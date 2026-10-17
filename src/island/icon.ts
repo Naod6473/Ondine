@@ -144,6 +144,8 @@ const LINE_ONLY: Record<string, string> = {
   "🌍": "globe-hemisphere-west",
   "📶": "cell-signal-full",
   "⭐": "star",
+  // Le menu de fichiers (1.2.5) : « Alléger » (dessinée pour Ondine, même trait).
+  "🪶": "feather",
   "🗜": "file-zip",
   "💽": "hard-drives",
   "🎫": "ticket",

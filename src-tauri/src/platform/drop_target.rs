@@ -28,7 +28,7 @@ use ::windows::Win32::System::Ole::{
     IDropTarget, IDropTarget_Impl, RegisterDragDrop, ReleaseStgMedium, RevokeDragDrop, CF_HDROP, DROPEFFECT,
     DROPEFFECT_COPY, DROPEFFECT_NONE,
 };
-use ::windows::Win32::System::SystemServices::{MK_SHIFT, MODIFIERKEYS_FLAGS};
+use ::windows::Win32::System::SystemServices::{MK_CONTROL, MK_SHIFT, MODIFIERKEYS_FLAGS};
 use ::windows::Win32::UI::Shell::{DragQueryFileW, HDROP};
 use ::windows::Win32::UI::WindowsAndMessaging::{EnumChildWindows, GetClassNameW, IsWindow};
 
@@ -45,6 +45,9 @@ struct FileDrag {
     /// La touche Maj est enfoncée (Ondine convertit : Maj = « Remplacer »).
     /// Pendant un glisser, la page ne reçoit pas le clavier : on le lit ici.
     shift: bool,
+    /// Ctrl et Alt (menu de fichiers, 1.2.5 : Ctrl ouvre Outils, Alt ouvre Ranger).
+    ctrl: bool,
+    alt: bool,
 }
 
 #[derive(Serialize, Clone)]
@@ -52,6 +55,10 @@ struct Position {
     x: i32,
     y: i32,
 }
+
+/// La touche Alt dans les touches d'un glisser OLE (MK_ALT de oleidl.h, absente
+/// de MODIFIERKEYS_FLAGS dans le crate windows).
+const MK_ALT: u32 = 0x0020;
 
 /// Les fenêtres où notre cible est déjà posée (numéros de fenêtre).
 static INSTALLED: Mutex<Vec<isize>> = Mutex::new(Vec::new());
@@ -115,7 +122,9 @@ impl DropTarget {
             Position { x: p.x, y: p.y }
         });
         let shift = keys.0 & MK_SHIFT.0 != 0;
-        let _ = self.app.emit_to(self.label, "file-drag", FileDrag { kind, paths, position, shift });
+        let ctrl = keys.0 & MK_CONTROL.0 != 0;
+        let alt = keys.0 & MK_ALT != 0;
+        let _ = self.app.emit_to(self.label, "file-drag", FileDrag { kind, paths, position, shift, ctrl, alt });
     }
 }
 

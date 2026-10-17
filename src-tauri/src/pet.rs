@@ -24,6 +24,13 @@
 // (`pet_set_hit`) et un petit thread lit la souris pour basculer
 // set_ignore_cursor_events (voir island/mod.rs pour la technique).
 //
+// Le menu de fichiers (1.2.5) : un fichier lâché sur elle ouvre le menu en
+// cercle autour d'elle (src/pet/ring.ts). La fenêtre devient un carré de
+// RING_SIZE centré sur la mascotte (`set_ring`), décalé vers l'intérieur près
+// d'un bord de l'écran (le sens du menu, lui, ne change pas) ; la page
+// envoie la case de chaque bulle (`pet_set_hit`, jusqu'à MAX_HIT cases) :
+// hors d'elles, les clics passent au travers.
+//
 // Aussi : un raccourci global ouvre sa bulle (`mascot.petHotkey`), lâchée près
 // d'un bord de l'écran ou de la barre des tâches elle s'y aimante, et quand
 // personne ne touche le PC elle se promène un peu (`mascot.petWander`).
@@ -51,6 +58,10 @@ pub const BUBBLE_MIN_W: f64 = 360.0;
 pub const BUBBLE_MIN_H: f64 = 120.0;
 pub const BUBBLE_MAX_W: f64 = 640.0;
 pub const BUBBLE_MAX_H: f64 = 560.0;
+/// Le carré de la fenêtre pendant le menu en cercle (px logiques, RING.size dans src/pet/ring-layout.ts).
+pub const RING_SIZE: f64 = 600.0;
+/// Au plus tant de cases qui prennent la souris (les bulles du cercle).
+const MAX_HIT: usize = 64;
 /// L'air laissé entre la bulle et le bord de la zone de travail (px logiques).
 const SCREEN_GAP: f64 = 8.0;
 /// La marge laissée au bord de l'écran quand Ondine n'a jamais été posée.
@@ -79,9 +90,14 @@ pub struct Layout {
     /// La plus grande bulle qui tient dans l'écran de ce côté (px logiques).
     pub max_w: f64,
     pub max_h: f64,
+    /// Le menu en cercle est ouvert (la fenêtre est le carré RING_SIZE).
+    pub ring: bool,
+    /// La case de la mascotte dans ce carré (px logiques), décalée près d'un bord.
+    pub ox: f64,
+    pub oy: f64,
 }
 
-const CLOSED: Layout = Layout { open: false, right: true, up: true, max_w: BUBBLE_MAX_W, max_h: BUBBLE_MAX_H };
+const CLOSED: Layout = Layout { open: false, right: true, up: true, max_w: BUBBLE_MAX_W, max_h: BUBBLE_MAX_H, ring: false, ox: 0.0, oy: 0.0 };
 
 /// La taille de la bulle (px logiques), bornée par la disposition.
 fn clamp_bubble(l: Layout, (w, h): (f64, f64)) -> (f64, f64) {
@@ -118,7 +134,7 @@ impl Default for PetState {
 /// La page dit où sont la mascotte et la bulle.
 pub fn set_hit(app: &AppHandle, rects: Vec<HitRect>) {
     if let Some(state) = app.try_state::<PetState>() {
-        *state.hit.locked() = rects.into_iter().filter(|r| r.w > 0.0 && r.h > 0.0).take(8).collect();
+        *state.hit.locked() = rects.into_iter().filter(|r| r.w > 0.0 && r.h > 0.0).take(MAX_HIT).collect();
     }
 }
 
@@ -205,6 +221,9 @@ pub fn window(app: &AppHandle) -> Option<WebviewWindow> {
 /// Le décalage (px logiques) de la case de la mascotte dans la fenêtre, pour
 /// une disposition et une taille de bulle.
 fn mascot_offset(l: Layout, (bw, bh): (f64, f64)) -> (f64, f64) {
+    if l.ring {
+        return (l.ox, l.oy);
+    }
     if !l.open {
         return (0.0, 0.0);
     }
@@ -215,7 +234,9 @@ fn mascot_offset(l: Layout, (bw, bh): (f64, f64)) -> (f64, f64) {
 
 /// La taille de la fenêtre (px logiques) pour une disposition et une taille de bulle.
 fn window_size(l: Layout, (bw, bh): (f64, f64)) -> (f64, f64) {
-    if l.open {
+    if l.ring {
+        (RING_SIZE, RING_SIZE)
+    } else if l.open {
         (PET_BOX + bw, bh.max(PET_BOX))
     } else {
         (PET_BOX, PET_BOX)
@@ -310,7 +331,23 @@ fn choose_layout(edges: (i32, i32, i32, i32), scale: f64, mx: i32, my: i32, want
         up,
         max_w: room_w.clamp(BUBBLE_MIN_W, BUBBLE_MAX_W).round(),
         max_h: room_h.clamp(BUBBLE_MIN_H, BUBBLE_MAX_H).round(),
+        ..CLOSED
     }
+}
+
+/// Le menu en cercle pour la mascotte au coin (mx, my) : le carré de
+/// RING_SIZE centré sur elle, rentré dans la zone de travail (`edges`, px
+/// physiques) près d'un bord. Renvoie la disposition, avec la case de la
+/// mascotte dans le carré (px logiques).
+fn ring_layout(edges: (i32, i32, i32, i32), scale: f64, mx: i32, my: i32) -> Layout {
+    let (l, t, r, b) = edges;
+    let ring = (RING_SIZE * scale).round() as i32;
+    let half = ((RING_SIZE - PET_BOX) * scale / 2.0).round() as i32;
+    // Centré sur elle, puis rentré dans l'écran (un écran plus petit que le carré : collé en haut à gauche).
+    let fit = |want: i32, lo: i32, hi: i32| if hi - lo <= ring { lo } else { want.clamp(lo, hi - ring) };
+    let wx = fit(mx - half, l, r);
+    let wy = fit(my - half, t, b);
+    Layout { ring: true, ox: ((mx - wx) as f64 / scale).round(), oy: ((my - wy) as f64 / scale).round(), ..CLOSED }
 }
 
 /// La disposition ouverte pour la mascotte au coin (mx, my).
@@ -409,6 +446,28 @@ fn apply_hotkey(app: &AppHandle, wanted: &str) {
     }
 }
 
+/// Ouvre (ou ferme) le menu en cercle autour de la mascotte : la fenêtre
+/// devient le carré RING_SIZE, et prend le clavier (Échap annule) ; fermé,
+/// elle redevient la case de la mascotte et rend le clavier.
+pub fn set_ring(app: &AppHandle, open: bool) -> Layout {
+    let Some(win) = window(app) else { return CLOSED };
+    let Some((mx, my)) = current_mascot(app, &win) else { return CLOSED };
+    let l = if open {
+        match monitor_at(app, mx as f64 + 4.0, my as f64 + 4.0) {
+            Some(m) => ring_layout(work_edges(&m), m.scale_factor(), mx, my),
+            None => Layout { ring: true, ox: (RING_SIZE - PET_BOX) / 2.0, oy: (RING_SIZE - PET_BOX) / 2.0, ..CLOSED },
+        }
+    } else {
+        CLOSED
+    };
+    apply_layout(app, &win, l, mx, my);
+    platform::set_activating(&win, open);
+    if open {
+        let _ = win.set_focus();
+    }
+    l
+}
+
 /// Ouvre (ou ferme) la bulle à côté de la mascotte. `want` : la taille de la
 /// bulle mesurée par la page (px logiques), si elle l'a.
 pub fn set_open(app: &AppHandle, open: bool, want: Option<(f64, f64)>) -> Layout {
@@ -444,7 +503,7 @@ pub fn set_bubble(app: &AppHandle, w: f64, h: f64) {
     let Some(win) = window(app) else { return };
     let Some(state) = app.try_state::<PetState>() else { return };
     let l = *state.layout.locked();
-    if state.dragging.load(Ordering::SeqCst) {
+    if state.dragging.load(Ordering::SeqCst) || l.ring {
         return;
     }
     let want = clamp_bubble(l, (w, h));
@@ -541,7 +600,7 @@ pub fn spawn_wander(app: AppHandle) {
             s.mascot.enabled && s.mascot.pet && s.mascot.pet_wander && !s.mascot.calm
         }).unwrap_or(false);
         let (Some(win), Some(state)) = (window(&app), app.try_state::<PetState>()) else { continue };
-        if !wanted || !win.is_visible().unwrap_or(false) || state.layout.locked().open || state.dragging.load(Ordering::SeqCst) {
+        if !wanted || !win.is_visible().unwrap_or(false) || state.layout.locked().open || state.layout.locked().ring || state.dragging.load(Ordering::SeqCst) {
             continue;
         }
         if platform::idle_ms() < WANDER_IDLE_MS || platform::presentation_busy() {
@@ -696,6 +755,37 @@ mod tests {
     }
 
     #[test]
+    fn the_ring_is_centred_on_her_and_pushed_inside_the_screen() {
+        let edges = (0, 0, 1920, 1040);
+        // Au milieu de l'écran : le carré est centré sur elle.
+        let mid = ring_layout(edges, 1.0, 900, 500);
+        assert!(mid.ring && !mid.open);
+        assert_eq!((mid.ox, mid.oy), ((RING_SIZE - PET_BOX) / 2.0, (RING_SIZE - PET_BOX) / 2.0));
+        assert_eq!(window_size(mid, (BUBBLE_W, BUBBLE_H)), (RING_SIZE, RING_SIZE));
+        assert_eq!(mascot_offset(mid, (BUBBLE_W, BUBBLE_H)), (mid.ox, mid.oy));
+        // En bas à droite (assise sur la barre des tâches) : le carré rentre, elle est dans son coin.
+        let corner = ring_layout(edges, 1.0, 1920 - 112 - 48, 1040 - 112 + 10);
+        let (wx, wy) = (1920 - 112 - 48 - corner.ox as i32, 1040 - 112 + 10 - corner.oy as i32);
+        assert_eq!((wx + RING_SIZE as i32, wy + RING_SIZE as i32), (1920, 1040));
+        assert!(corner.ox > (RING_SIZE - PET_BOX) / 2.0 && corner.oy > (RING_SIZE - PET_BOX) / 2.0);
+        // À 150 % : les mêmes px logiques.
+        let hi = ring_layout((0, 0, 2880, 1560), 1.5, 1350, 750);
+        assert_eq!((hi.ox, hi.oy), ((RING_SIZE - PET_BOX) / 2.0, (RING_SIZE - PET_BOX) / 2.0));
+        // Un écran plus petit que le carré : collé en haut à gauche, sans planter.
+        let tiny = ring_layout((0, 0, 500, 400), 1.0, 300, 200);
+        assert_eq!((tiny.ox, tiny.oy), (300.0, 200.0));
+    }
+
+    #[test]
+    fn the_ring_bubbles_all_catch_the_mouse() {
+        let rects: Vec<HitRect> = (0..40).map(|i| HitRect { x: i as f64 * 10.0, y: 0.0, w: 8.0, h: 8.0 }).collect();
+        let kept: Vec<HitRect> = rects.into_iter().filter(|r| r.w > 0.0 && r.h > 0.0).take(MAX_HIT).collect();
+        assert_eq!(kept.len(), 40);
+        assert!(on_hit(&kept, 395.0, 4.0));
+        assert!(!on_hit(&kept, 395.0, 40.0));
+    }
+
+    #[test]
     fn mascot_stays_in_its_corner() {
         let b = (BUBBLE_W, BUBBLE_H);
         let open = |right, up| Layout { open: true, right, up, ..CLOSED };
@@ -734,7 +824,7 @@ mod tests {
         assert!(l.right && l.up);
         assert_eq!(l.max_h, BUBBLE_MAX_H);
         // La taille demandée est bornée : jamais plus petite que le minimum, jamais plus grande que l'écran.
-        let small = Layout { open: true, right: true, up: true, max_w: 500.0, max_h: 300.0 };
+        let small = Layout { open: true, right: true, up: true, max_w: 500.0, max_h: 300.0, ..CLOSED };
         assert_eq!(clamp_bubble(small, (100.0, 50.0)), (BUBBLE_MIN_W, BUBBLE_MIN_H));
         assert_eq!(clamp_bubble(small, (900.0, 900.0)), (500.0, 300.0));
         assert_eq!(clamp_bubble(small, (f64::NAN, 200.4)), (BUBBLE_W.min(500.0), 200.0));

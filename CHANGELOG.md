@@ -1,5 +1,73 @@
 # Changements · Changelog
 
+## 1.2.5 · à venir
+
+- Menu de fichiers dans l'île : glissez un fichier sur l'île, elle montre des
+  icônes rondes avec leur nom dessous. En haut, trois bulles mères
+  (Convertir, Ranger avec Alt, Outils avec Ctrl), et vos favoris juste à côté,
+  sur la même rangée ; dessous, les choix du groupe ouvert. Survolez une
+  bulle mère 0,4 s (l'anneau se remplit) ou cliquez pour ouvrir son groupe.
+  Un groupe dont tous les choix sont grisés s'ouvre quand même, pour lire
+  pourquoi · File menu in the island: drag a file onto the island, it shows
+  round icons with their name underneath. At the top, three parent bubbles
+  (Convert, Put away with Alt, Tools with Ctrl), and your favorites right
+  next to them, on the same row; below, the open group's choices. Hover a
+  parent bubble for 0.4 s (the ring fills up) or click to open its group. A
+  group whose choices are all greyed out still opens, so you can read why
+- Convertir ne garde que les vrais formats (JPG, PNG, PDF, MP3…). ZIP,
+  Alléger, Redimensionner… et Extraire passent dans Outils, dans l'île comme
+  dans le cercle d'Ondine. Un ordre enregistré qui les plaçait encore dans
+  Convertir est remis en place tout seul · Convert only keeps real formats
+  (JPG, PNG, PDF, MP3…). ZIP, Shrink, Resize… and Extract move to Tools, in
+  the island and in Ondine's ring alike. A saved order that still had them
+  in Convert is put right on its own
+- Tenir puis cliquer : lâcher le fichier ne lance plus rien. L'île reste
+  ouverte, le fichier en main ; survolez une icône, puis cliquez. Échap, un
+  clic en dehors ou « Annuler » referment sans rien faire. « Conserver à
+  côté », « Remplacer l'original » et « Sur le bureau » restent sur la pilule
+  d'option · Hold, then click: letting go of the file no longer starts
+  anything. The island stays open with the file in hand; hover an icon, then
+  click. Esc, a click outside or "Cancel" close without doing anything.
+  "Keep alongside", "Replace the original" and "On the desktop" stay on the
+  option pill
+- Pilule « Étagère » : pendant un dépôt, elle se détache de l'île et se pose
+  à côté, avec le nombre de fichiers déjà rangés. C'est le seul endroit où
+  lâcher agit tout de suite. Une fois l'action faite, elle revient se fondre
+  dans l'île · "Shelf" pill: during a drop, it comes off the island and sits
+  next to it, with the number of files already on the shelf. It is the only
+  place where letting go acts right away. Once the action is done, it melts
+  back into the island
+- Dépôt mixte : une photo et un PDF ensemble, les choix qui ne vont qu'à une
+  partie sont grisés, et la phrase dit pourquoi (« Seulement pour les
+  images », « Pas pour un dossier », « Un type de fichier à la fois ») · Mixed
+  drop: a photo and a PDF together, the choices that only fit some of them
+  are greyed out, and the sentence says why ("Images only", "Not for a
+  folder", "One file type at a time")
+- Favoris : l'étoile d'un choix l'épingle en haut du menu (cinq au plus).
+  ZIP est favori d'office ; « Réinitialiser » le remet. Les bulles favorites
+  ont un reflet de verre aux couleurs de l'île (Réglages → L'île →
+  Apparence, couleur personnalisée comprise), immobile en mode calme, en économie ou avec
+  « Réduire les animations ». On les range aussi dans Réglages → Étagère →
+  Pilules du dépôt (étoile, ← →, retirer) · Favorites: a choice's star pins
+  it at the top of the menu (five at most). ZIP is a favorite out of the
+  box; "Reset" brings it back. Favorite bubbles have a glassy sheen in the
+  island's colours (Settings → The island → Appearance, custom colour
+  included), still in calm mode, power saving or with "Reduce animations". You can also arrange
+  them in Settings → Shelf → Drop pills (star, ← →, remove)
+- Ondine sur le bureau : un fichier lâché sur elle ouvre un menu en cercle
+  autour d'elle. Convertir en haut, Outils à gauche, Ranger à droite, les
+  favoris et l'Étagère en bas, l'option sous elle. Près d'un bord de l'écran,
+  le cercle se décale vers l'intérieur et Ondine glisse jusqu'à son centre ;
+  ailleurs, les clics passent à travers · Ondine on the desktop: a file
+  dropped on her opens a ring menu around her. Convert at the top, Tools on
+  the left, Put away on the right, favorites and the Shelf at the bottom, the
+  option under her. Near a screen edge, the ring shifts inward and Ondine
+  glides to its centre; elsewhere, clicks go through
+- Ressorts en style Studio et Classique, verre dépoli seulement en Studio ;
+  fondus avec « Réduire les animations » ou en mode Calme ; rien en mode
+  Économie · Springs in the Studio and Classic styles, frosted glass only in
+  Studio; fades with "Reduce animations" or in Calm mode; nothing in Eco mode
+
 ## 1.2.4 · à venir
 
 - Réglages en deux colonnes : à gauche, sept rubriques fixes (Ondine, Voix,

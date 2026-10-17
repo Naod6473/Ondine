@@ -897,27 +897,6 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.dp-row {
-  display: grid;
-  grid-template-columns: max(84px, var(--dp-face, 72px)) minmax(0, 1fr);
-  align-items: start;
-  gap: 8px;
-}
-.dp-lbl {
-  padding-top: 9px;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--island-fg) 48%, transparent);
-  white-space: nowrap;
-}
-.dp-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  min-width: 0;
-}
 .dp-pill {
   flex: none;
   height: 32px;
@@ -942,10 +921,6 @@ body {
     color 160ms ease,
     box-shadow 160ms ease,
     opacity 200ms ease;
-}
-.dp-fmt {
-  font-weight: 700;
-  letter-spacing: 0.02em;
 }
 .dp-icon {
   flex: none;
@@ -1008,32 +983,484 @@ body {
   transform-origin: 0 50%;
   transform: scaleX(0);
 }
-/* Ce qui va se passer. */
+/* ── Le menu de fichiers (1.2.5, drop-panel.ts) ─────────────────────────── */
+/* La rangée du haut : les trois bulles mères, puis les favoris (après un
+   séparateur) ; dessous, les choix du groupe ouvert. Des icônes rondes, leur
+   nom dessous ; survol : la couleur d'Ondine et un léger grossissement. */
+.dp-bar,
+.dp-subs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px 2px;
+  min-width: 0;
+}
+.dp-bar {
+  flex-wrap: nowrap;
+  padding: 0 2px;
+}
+.dp-subs {
+  min-height: 70px;
+  padding: 6px 2px 0;
+  border-top: 1px solid color-mix(in srgb, var(--island-fg) 8%, transparent);
+}
+.dp-mom,
+.dp-choice {
+  position: relative;
+  flex: none;
+  width: 82px;
+  margin: 0;
+  padding: 2px 0 0;
+  border: 0;
+  background: none;
+  color: var(--island-fg);
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  outline: none;
+}
+.dp-ball {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--island-fg) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--island-fg) 10%, transparent);
+  /* Le léger grossissement au survol : un ressort (la courbe dépasse un peu). */
+  transition:
+    transform 280ms cubic-bezier(0.34, 1.6, 0.5, 1),
+    background 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    opacity 200ms ease;
+}
+.dp-mom .dp-ball {
+  width: 52px;
+  height: 52px;
+}
+.dp-ball .dp-icon,
+.dp-ball .dp-icon :is(.icon-line, .icon-img) {
+  width: 22px;
+  height: 22px;
+}
+.dp-face {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+.dp-face.long {
+  font-size: 10.5px;
+  letter-spacing: 0;
+}
+.dp-cap {
+  max-width: 82px;
+  font-size: 10.5px;
+  /* Assez haut pour l'accent d'une capitale (« Étagère ») sous le line-clamp. */
+  line-height: 1.32;
+  text-align: center;
+  color: color-mix(in srgb, var(--island-fg) 78%, transparent);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.dp-mom .dp-cap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  color: var(--island-fg);
+}
+.dp-key {
+  font: 700 9.5px/1 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--island-fg) 14%, transparent);
+  color: color-mix(in srgb, var(--island-fg) 80%, transparent);
+}
+/* Le groupe ouvert : un anneau de la couleur d'Ondine. */
+.dp-mom.open .dp-ball {
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--accent) inset;
+}
+/* L'anneau qui se remplit pendant le survol de 0,4 s (--p : 0 → 1). */
+.dp-ring {
+  /* --p est déclaré sans héritage (@property, island.css) : on le reprend de la bulle. */
+  --p: inherit;
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: conic-gradient(var(--accent) calc(var(--p, 0) * 1turn), transparent 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+}
+.dp-mom.hot .dp-ball,
+.dp-choice.hot .dp-ball,
+.dp-choice:focus-visible .dp-ball,
+.dp-mom:focus-visible .dp-ball {
+  transform: scale(1.1);
+  background: var(--accent);
+  border-color: transparent;
+  color: #06223a;
+  box-shadow: 0 8px 22px -6px var(--accent);
+}
+.dp-mom.open.hot .dp-ball {
+  box-shadow: 0 8px 22px -6px var(--accent);
+}
+.dp-choice.hot .dp-cap,
+.dp-mom.hot .dp-cap {
+  color: var(--island-fg);
+}
+/* Grisé (dépôt mixte, favori qui ne va pas) : la phrase dit pourquoi. */
+.dp-choice.off,
+.dp-mom.off {
+  opacity: 0.42;
+  cursor: default;
+}
+.dp-choice.off.hot .dp-ball,
+.dp-mom.off.hot .dp-ball {
+  transform: scale(1.04);
+  background: color-mix(in srgb, var(--island-fg) 20%, transparent);
+  color: var(--island-fg);
+  box-shadow: none;
+}
+.dp-sep {
+  flex: none;
+  align-self: stretch;
+  width: 1px;
+  margin: 6px 8px 22px;
+  background: color-mix(in srgb, var(--island-fg) 18%, transparent);
+}
+/* Les favoris, à côté des bulles mères : un reflet de verre aux couleurs de
+   l'île (--accent, le thème choisi dans Réglages → L'île, couleur
+   personnalisée comprise), pour les remarquer d'un coup d'œil. Un liseré
+   brillant, un éclat en haut à gauche, et un reflet qui passe de temps en
+   temps (pas en mode Calme, Économie, ni avec « Réduire les animations »). */
+.dp-fav {
+  width: 64px;
+}
+.dp-fav .dp-ball {
+  width: 44px;
+  height: 44px;
+  margin-top: 4px;
+  overflow: hidden;
+  border: 0;
+  background:
+    radial-gradient(90% 70% at 30% 14%, color-mix(in srgb, #fff 42%, transparent), transparent 55%),
+    linear-gradient(160deg, color-mix(in srgb, var(--accent) 34%, var(--island-bg)), color-mix(in srgb, var(--accent) 12%, var(--island-bg)));
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 80%, #fff),
+    inset 0 -6px 10px -6px color-mix(in srgb, var(--accent) 70%, transparent),
+    0 0 14px -4px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+/* Le reflet qui passe (une bande claire en biais, toutes les 5 s). */
+.dp-fav .dp-ball::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 38%, color-mix(in srgb, #fff 55%, transparent) 50%, transparent 62%) no-repeat;
+  background-size: 260% 100%;
+  background-position: 130% 0;
+  animation: dp-fav-sheen 5s ease-in-out infinite;
+}
+@keyframes dp-fav-sheen {
+  0%,
+  70% {
+    background-position: 130% 0;
+  }
+  100% {
+    background-position: -30% 0;
+  }
+}
+.dp-quiet .dp-fav .dp-ball::after,
+body[data-perf="eco"] .dp-fav .dp-ball::after {
+  animation: none;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dp-fav .dp-ball::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+.dp-fav .dp-face {
+  font-size: 11px;
+}
+.dp-fav .dp-face.long {
+  font-size: 9.5px;
+}
+.dp-fav .dp-ball .dp-icon,
+.dp-fav .dp-ball .dp-icon :is(.icon-line, .icon-img) {
+  width: 18px;
+  height: 18px;
+}
+.dp-fav.hot .dp-ball,
+body.motion-studio .dp-fav.hot .dp-ball {
+  background:
+    radial-gradient(90% 70% at 30% 14%, color-mix(in srgb, #fff 45%, transparent), transparent 55%),
+    var(--accent);
+  color: #06223a;
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, #fff 55%, var(--accent)),
+    0 8px 22px -6px var(--accent);
+}
+.dp-favmark {
+  position: absolute;
+  top: -2px;
+  right: 6px;
+  width: 14px;
+  height: 14px;
+  color: color-mix(in srgb, var(--accent) 65%, #fff);
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 80%, transparent));
+}
+.dp-favmark svg,
+.dp-star svg {
+  width: 100%;
+  height: 100%;
+}
+/* L'étoile d'un choix survolé (fichier tenu) : épingler ou retirer. */
+.dp-star {
+  position: absolute;
+  top: -3px;
+  right: 9px;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  padding: 4px;
+  border-radius: 50%;
+  background: var(--island-bg);
+  color: color-mix(in srgb, var(--accent) 65%, #fff);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--island-fg) 25%, transparent);
+  opacity: 0;
+  scale: 0.5;
+  pointer-events: none;
+  transition:
+    opacity 150ms ease,
+    scale 250ms cubic-bezier(0.34, 1.8, 0.5, 1);
+}
+.dp-held .dp-choice.hot .dp-star,
+.dp-held .dp-choice:focus-visible .dp-star,
+.dp-choice.pinned .dp-star {
+  opacity: 1;
+  scale: 1;
+  pointer-events: auto;
+}
+.dp-choice.star-hot .dp-star {
+  background: var(--accent);
+  color: #06223a;
+  scale: 1.15;
+}
+.dp-choice.star-hot .dp-ball {
+  transform: scale(1.04);
+}
+/* Style Studio : un verre liquide sur les bulles (reflet en haut, flou derrière). */
+body.motion-studio .dp-ball {
+  background:
+    radial-gradient(120% 90% at 30% 15%, color-mix(in srgb, #fff 16%, transparent), transparent 55%),
+    color-mix(in srgb, var(--island-fg) 9%, transparent);
+  box-shadow: 0 1px 0 color-mix(in srgb, #fff 14%, transparent) inset;
+  backdrop-filter: blur(8px) saturate(150%);
+}
+/* Studio : le verre des favoris garde sa couleur (plus translucide, flou derrière). */
+body.motion-studio .dp-fav .dp-ball {
+  background:
+    radial-gradient(90% 70% at 30% 14%, color-mix(in srgb, #fff 46%, transparent), transparent 55%),
+    linear-gradient(160deg, color-mix(in srgb, var(--accent) 38%, transparent), color-mix(in srgb, var(--accent) 12%, transparent));
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 75%, #fff),
+    inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent),
+    0 0 16px -4px color-mix(in srgb, var(--accent) 85%, transparent);
+}
+body.motion-studio .dp-mom.open .dp-ball {
+  box-shadow:
+    0 0 0 2px var(--accent) inset,
+    0 1px 0 color-mix(in srgb, #fff 14%, transparent) inset;
+}
+/* Ce qui va se passer, et « Annuler » quand le fichier est tenu. */
+.dp-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+}
 .dp-hint {
+  flex: 1;
+  min-width: 0;
   min-height: 18px;
   padding: 2px 0 0;
   text-align: center;
   font-size: 12.5px;
   color: color-mix(in srgb, var(--island-fg) 72%, transparent);
 }
+.dp-cancel {
+  display: none;
+  flex: none;
+  height: 24px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--island-fg) 22%, transparent);
+  background: transparent;
+  color: var(--island-fg);
+  font: 600 12px/1 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  cursor: pointer;
+}
+.dp-held .dp-cancel {
+  display: block;
+}
+.dp-cancel.hot,
+.dp-cancel:hover,
+.dp-cancel:focus-visible {
+  background: color-mix(in srgb, var(--island-fg) 12%, transparent);
+}
+/* Le fichier tenu : le cadre de l'île devient plein, Ondine a le fichier en main. */
+.island.drop-held[data-state="drop"] {
+  outline-style: solid;
+  outline-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.island.drop-held .mascot-slot::after {
+  content: "";
+  position: absolute;
+  right: -8px;
+  bottom: 0;
+  width: 22px;
+  height: 22px;
+  background: var(--accent);
+  -webkit-mask: url("../assets/icons-line/file.svg") center / contain no-repeat;
+  mask: url("../assets/icons-line/file.svg") center / contain no-repeat;
+  rotate: 14deg;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4));
+  animation: dp-hold-in 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes dp-hold-in {
+  from {
+    scale: 0.3;
+    opacity: 0;
+  }
+}
 /* « Réduire les animations », mode Calme, mode Économie : ni ressort ni grossissement. */
+.dp-quiet :is(.dp-ball, .dp-star) {
+  transition: background 120ms ease, color 120ms ease, opacity 120ms ease;
+}
+.dp-quiet :is(.dp-mom, .dp-choice).hot .dp-ball,
+.dp-quiet .dp-choice.star-hot .dp-star {
+  transform: none;
+  scale: 1;
+}
 .dp-quiet .dp-pill {
   transition: background 120ms ease, color 120ms ease, opacity 120ms ease;
 }
 .dp-quiet .dp-pill.hot {
   transform: none;
 }
-body[data-perf="eco"] .dp-pill.hot {
+.dp-quiet ~ .mascot-slot::after,
+.island:has(.dp-quiet) .mascot-slot::after {
+  animation: none;
+}
+body[data-perf="eco"] :is(.dp-pill, .dp-ball).hot,
+body[data-perf="eco"] .hot .dp-ball {
   box-shadow: none;
 }
 @media (prefers-reduced-motion: reduce) {
-  .dp-pill {
+  .dp-pill,
+  .dp-ball,
+  .dp-star {
     transition: none;
   }
-  .dp-pill.hot {
+  .dp-pill.hot,
+  .hot .dp-ball {
     transform: none;
   }
   .dp-opt.turned .dp-spin {
+    animation: none;
+  }
+}
+
+/* Le petit rond « Étagère », détaché de l'île pendant un dépôt (drop-shelf.ts).
+   Posé en px de la fenêtre (fixed), hors de la forme de l'île. */
+.drop-shelf {
+  position: fixed;
+  z-index: 6;
+  height: 36px;
+  box-sizing: border-box;
+  padding: 0 8px 0 12px;
+  border: 0;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  background: var(--island-bg);
+  color: var(--island-fg);
+  font: 600 13.5px/1 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  box-shadow:
+    0 8px 20px -6px rgba(0, 0, 0, 0.6),
+    0 0 0 1.5px color-mix(in srgb, var(--accent) 50%, transparent) inset;
+  cursor: pointer;
+  transition:
+    background 200ms ease,
+    color 200ms ease,
+    box-shadow 200ms ease,
+    scale 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+body.motion-studio .drop-shelf {
+  background: color-mix(in srgb, var(--island-fg) 6%, color-mix(in srgb, var(--island-bg) 78%, transparent));
+  backdrop-filter: blur(14px) saturate(160%);
+}
+.dps-icon,
+.dps-icon :is(.icon-line, .icon-img) {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+}
+.dps-count {
+  min-width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--island-fg) 16%, transparent);
+  font: 700 12px/22px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.drop-shelf.hot,
+.drop-shelf:focus-visible,
+body.motion-studio .drop-shelf.hot {
+  background: var(--accent);
+  color: #06223a;
+  scale: 1.06;
+  outline: none;
+}
+.drop-shelf.hot .dps-count {
+  background: rgba(6, 34, 58, 0.16);
+}
+.drop-shelf.bump .dps-count {
+  animation: dps-bump 500ms cubic-bezier(0.34, 1.8, 0.5, 1);
+}
+@keyframes dps-bump {
+  40% {
+    scale: 1.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .drop-shelf {
+    transition: background 120ms ease, color 120ms ease;
+  }
+  .drop-shelf.hot {
+    scale: 1;
+  }
+  .drop-shelf.bump .dps-count {
     animation: none;
   }
 }

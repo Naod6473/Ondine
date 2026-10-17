@@ -21,8 +21,8 @@
 // La mascotte écoute le même bus que celle de l'île : humeurs, danse quand la
 // musique joue, fête quand une tâche finit, tout se joue aussi ici.
 //
-// Aussi : un fichier lâché sur elle propose les cibles de dépôt de l'île dans
-// sa bulle ; une notification de l'île met une pastille sur elle ; le
+// Aussi : un fichier lâché sur elle ouvre le menu en cercle autour d'elle
+// (ring.ts, 1.2.5 : les formats et les cibles de l'île, calculés par l'île) ; une notification de l'île met une pastille sur elle ; le
 // raccourci `mascot.petHotkey` ouvre sa bulle ; elle marche quand le Rust la
 // promène (« pet-walk »).
 
@@ -33,7 +33,8 @@ import { startI18n } from "../core/i18n";
 import { errorText, logger } from "../core/log";
 import { ModuleRegistry } from "../core/module-registry";
 import { NotificationQueue, type IslandNotification } from "../core/notifications";
-import { startPerf } from "../core/perf";
+import { perfMode, startPerf } from "../core/perf";
+import { setStudio } from "../island/motion";
 import { startScrollbars } from "../island/scrollbars";
 import { settingsStore } from "../core/settings-store";
 import { helloText } from "../core/setup-plan";
@@ -51,6 +52,8 @@ import { createRenderer, type MascotRenderer } from "../mascot/renderer";
 import { ALL_MODULES } from "../modules";
 import { BUBBLE_MAX_H, BUBBLE_MAX_W, clampBubble, roomFor, sameSize, type Size } from "./bubble-size";
 import { PetMouth } from "./pet-mouth";
+import { PetRing } from "./ring";
+import { parseMenuMessage } from "../island/drop-menu-logic";
 
 const log = logger("pet");
 
@@ -99,6 +102,8 @@ class Pet {
   private lastHit = "";
   /** L'île-bouche partie avec elle (1.2.3, pet-mouth.ts). */
   private readonly mouth: PetMouth;
+  /** Le menu en cercle autour d'elle, quand on lui lâche un fichier (ring.ts). */
+  private readonly ring: PetRing;
 
   constructor(
     root: HTMLElement,
@@ -109,6 +114,23 @@ class Pet {
     this.box.append(el("div", { class: "pet-mascot" }, this.slot, this.badge), this.bubble);
     root.append(this.box);
     this.mouth = new PetMouth({ root, box: this.box, slot: this.slot, bubble: this.bubble, bus, isOpen: () => this.layout.open, open: () => void this.setOpen(true), pushHit: () => this.pushHit() });
+    this.ring = new PetRing({
+      box: this.box,
+      bus,
+      frame: async (open) => {
+        const l = await Bridge.petRing(open);
+        // Hors de l'appli (navigateur, mode démo) : elle est au milieu du carré.
+        const f = l ?? (open ? { open: false, right: true, up: true, ring: true, ox: (600 - PET_BOX) / 2, oy: (600 - PET_BOX) / 2 } : { open: false, right: true, up: true });
+        this.applyLayout(f);
+        return { ox: f.ox ?? 0, oy: f.oy ?? 0 };
+      },
+      hitChanged: () => this.pushHit(),
+      play: (anim) => this.mascot?.request(anim),
+      lookAt: (x, y) => {
+        const m = this.slot.getBoundingClientRect();
+        this.mascot?.lookAt(x - (m.left + m.width / 2), y - (m.top + m.height / 2));
+      },
+    });
     this.wireMascot();
 
     registry.onChange = () => this.layout.open && this.renderBubble(true);
@@ -141,7 +163,7 @@ class Pet {
     this.wireDropChoices();
     if (!IS_TAURI) document.addEventListener("mousemove", (e) => this.pointer(e.clientX, e.clientY));
     window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && this.layout.open) void this.setOpen(false);
+      if (e.key === "Escape" && this.layout.open && !this.ring.open) void this.setOpen(false);
     });
     new ResizeObserver(() => this.pushHit()).observe(this.bubble);
     // La page apprend sa disposition AVANT que la fenêtre change de taille
@@ -168,6 +190,8 @@ class Pet {
 
   private applySettings(s: Settings) {
     applyIslandTheme(s);
+    // Le style Studio (le verre dépoli du menu en cercle), comme dans l'île.
+    setStudio(s.island.motion === "studio" && perfMode() !== "eco");
     this.box.dataset.mascotSize = s.mascot.size ?? "normal";
     // Hors du bureau, pas de mascotte qui tourne pour rien (la fenêtre est cachée).
     const wanted = petOn(s) ? s.mascot.id : "";
@@ -202,7 +226,8 @@ class Pet {
 
   private wireMascot() {
     this.slot.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0) return;
+      // Le menu en cercle est ouvert : Ondine est sa goutte, on ne la déplace pas.
+      if (e.button !== 0 || this.ring.open) return;
       this.press = { x: e.screenX, y: e.screenY, dragging: false };
       this.slot.setPointerCapture(e.pointerId);
       this.react("poke", { x: 0, y: 0 });
@@ -227,6 +252,7 @@ class Pet {
         if (!IS_TAURI) this.dragEnded();
         return;
       }
+      if (this.ring.open) return;
       this.bus.emit("mascot.clicked", null, "pet");
       void this.setOpen(!this.layout.open);
     };
@@ -244,6 +270,7 @@ class Pet {
 
   private onDrag(e: DragDropEvent) {
     if (e.type === "enter" || e.type === "over") {
+      if (this.ring.open) return;
       if (!this.box.classList.contains("drop-over")) this.mascot?.request("surprise");
       this.box.classList.add("drop-over");
     } else if (e.type === "leave") {
@@ -257,21 +284,14 @@ class Pet {
     }
   }
 
+  /** L'île répond par le menu de fichiers (ou le met à jour : favori, dossier su) : le cercle s'ouvre. */
   private wireDropChoices() {
-    this.bus.on("island.drop-choices", (msg) => {
-      const p = msg.payload as { id: number; count: number; choices: { label: string; icon: string }[] } | null;
-      if (!p) return;
-      void this.setOpen(true);
-      const what = p.count > 1 ? `${p.count} fichiers` : "Un fichier";
-      this.notifications.push({
-        moduleId: "pet",
-        title: p.choices.length ? `${what} pour Ondine : qu'en faire ?` : "Aucune cible de dépôt active",
-        icon: "📥",
-        priority: "normal",
-        sticky: true,
-        key: "pet-drop",
-        actions: p.choices.map((c, index) => ({ label: `${c.icon} ${c.label}`, run: () => this.bus.emit("pet.drop-choice", { id: p.id, index }, "pet") })),
-      });
+    this.bus.on("island.drop-menu", (msg) => {
+      const m = parseMenuMessage(msg.payload);
+      if (!m || !petOn(settingsStore.current)) return;
+      // La bulle laisse la place au cercle.
+      if (this.layout.open) void this.setOpen(false).then(() => this.ring.show(m));
+      else void this.ring.show(m);
     }, "pet");
   }
 
@@ -384,6 +404,9 @@ class Pet {
   private applyLayout(l: PetLayout) {
     this.layout = l;
     this.box.dataset.open = String(l.open);
+    // Le menu en cercle : la case de la mascotte dans le carré (décalée près d'un bord).
+    this.box.style.setProperty("--ox", `${l.ox ?? 0}px`);
+    this.box.style.setProperty("--oy", `${l.oy ?? 0}px`);
     this.box.dataset.side = l.right ? "right" : "left";
     this.box.dataset.toward = l.up ? "up" : "down";
     this.pushHit();
@@ -576,7 +599,7 @@ class Pet {
 
   /** Dit au Rust où sont la mascotte et la bulle : ailleurs, les clics passent au travers. */
   private pushHit() {
-    const rects = this.mouth.hitRects() ?? [this.slot.parentElement!, ...(this.layout.open ? [this.bubble] : []), ...(this.badge.hidden ? [] : [this.badge])].map((e) => {
+    const rects = (this.ring.open ? this.ring.hitRects() : null) ?? this.mouth.hitRects() ?? [this.slot.parentElement!, ...(this.layout.open ? [this.bubble] : []), ...(this.badge.hidden ? [] : [this.badge])].map((e) => {
       const r = e.getBoundingClientRect();
       return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) };
     });
@@ -608,6 +631,9 @@ async function start() {
     only: () => (petOn(settingsStore.current) ? (settingsStore.current.mascot.petTabs ?? []) : []),
   });
   new Pet(document.getElementById("root")!, bus, registry, notifications);
+  // Dans un navigateur (mode démo, captures) : window.ondinePetBus.inject("island.drop-menu", …),
+  // window.ondineSettings.update((d) => { d.mascot.pet = true; }).
+  if (!IS_TAURI) Object.assign(window, { ondinePetBus: bus, ondineSettings: settingsStore });
   registry.sync();
   log.info(`Ondine sur le bureau prête (case ${PET_BOX} px)`);
 }
