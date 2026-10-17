@@ -15,7 +15,11 @@
 // « Modulable au besoin » : chaque pilule se masque, et l'ordre de chaque
 // ligne se change (Réglages → Étagère → Pilules du dépôt). Le choix est rangé
 // dans les réglages de l'Étagère, sous « dropPills » (LAYOUT_KEY) :
-//   { v: 1, order: { convert: [...], ranger: [...], outils: [...] }, hidden: [...] }
+//   { v: 1, order: { convert: [...], ranger: [...], outils: [...] }, hidden: [...], favs: [...] }
+// « favs » (1.2.5, menu de fichiers) : les favoris épinglés, au plus 5, des
+// identifiants de choix (un format « jpg » ou une cible « shelf-fav-0 »).
+// Absent d'une disposition enregistrée en 1.2.4 : aucun favori (pas besoin
+// de migration, une 1.2.4 qui relit la disposition l'ignore simplement).
 // Les anciens interrupteurs (cible « Corbeille », « Compresser », « Images et
 // Renommer », « Empreinte », « Terminal ici », « Parler à Ondine ») sont repris
 // la première fois (legacyHidden) : une cible masquée avant reste masquée.
@@ -48,7 +52,8 @@ const fmt = (id: FormatId, icon = ""): [string, PillInfo] => [id, { row: "conver
 
 /** Toutes les pilules connues, dans l'ordre par défaut de chaque ligne. */
 export const KNOWN: Record<string, PillInfo> = Object.fromEntries<PillInfo>([
-  ...FORMAT_KEYS.filter((id) => id !== "zip" && id !== "unzip").map((id) => fmt(id)),
+  // « Alléger » a son icône (une plume, 1.2.5) ; les autres formats, leur nom seul.
+  ...FORMAT_KEYS.filter((id) => id !== "zip" && id !== "unzip").map((id) => fmt(id, id === "shrink" ? "🪶" : "")),
   fmt("zip", "🗜️"),
   fmt("unzip", "📂"),
   ["shelf-images", { row: "convert", label: "Redimensionner…", icon: "📏" }],
@@ -88,13 +93,18 @@ export function rowOf(key: string): DropRow {
 export interface DropLayout {
   order: Record<DropRow, string[]>;
   hidden: string[];
+  /** Les favoris épinglés (1.2.5), dans l'ordre où on les a épinglés. */
+  favs: string[];
 }
 
-/** La disposition par défaut : tout est montré, dans l'ordre de KNOWN. */
+/** Au plus tant de favoris. */
+export const MAX_FAVS = 5;
+
+/** La disposition par défaut : tout est montré, dans l'ordre de KNOWN, sans favori. */
 export function defaultLayout(): DropLayout {
   const order: Record<DropRow, string[]> = { convert: [], ranger: [], outils: [] };
   for (const [key, info] of Object.entries(KNOWN)) order[info.row].push(key);
-  return { order, hidden: [] };
+  return { order, hidden: [], favs: [] };
 }
 
 const isKey = (v: unknown): v is string => typeof v === "string" && /^[\w-]{1,64}$/.test(v);
@@ -105,7 +115,7 @@ const isKey = (v: unknown): v is string => typeof v === "string" && /^[\w-]{1,64
  */
 export function parseLayout(raw: unknown): DropLayout | null {
   if (!raw || typeof raw !== "object") return null;
-  const r = raw as { v?: unknown; order?: unknown; hidden?: unknown };
+  const r = raw as { v?: unknown; order?: unknown; hidden?: unknown; favs?: unknown };
   if (r.v !== 1 || !r.order || typeof r.order !== "object") return null;
   const src = r.order as Record<string, unknown>;
   const order: Record<DropRow, string[]> = { convert: [], ranger: [], outils: [] };
@@ -114,12 +124,18 @@ export function parseLayout(raw: unknown): DropLayout | null {
     order[row] = list.slice(0, 64);
   }
   const hidden = Array.isArray(r.hidden) ? (r.hidden as unknown[]).filter(isKey).slice(0, 128) : [];
-  return normalize({ order, hidden });
+  const favs = Array.isArray(r.favs) ? (r.favs as unknown[]).filter(isKey) : [];
+  return normalize({ order, hidden, favs });
 }
 
 /** Ce qu'on range dans les réglages. */
-export function serialize(layout: DropLayout): { v: 1; order: Record<DropRow, string[]>; hidden: string[] } {
-  return { v: 1, order: { convert: [...layout.order.convert], ranger: [...layout.order.ranger], outils: [...layout.order.outils] }, hidden: [...layout.hidden] };
+export function serialize(layout: DropLayout): { v: 1; order: Record<DropRow, string[]>; hidden: string[]; favs: string[] } {
+  return {
+    v: 1,
+    order: { convert: [...layout.order.convert], ranger: [...layout.order.ranger], outils: [...layout.order.outils] },
+    hidden: [...layout.hidden],
+    favs: [...layout.favs],
+  };
 }
 
 /**
@@ -128,7 +144,7 @@ export function serialize(layout: DropLayout): { v: 1; order: Record<DropRow, st
  * insérée à sa place par défaut (après celle qui la précède) ; une clé
  * inconnue (une cible de module) reste dans Outils.
  */
-export function normalize(layout: DropLayout): DropLayout {
+export function normalize(layout: Omit<DropLayout, "favs"> & { favs?: string[] }): DropLayout {
   const seen = new Set<string>();
   const order: Record<DropRow, string[]> = { convert: [], ranger: [], outils: [] };
   for (const row of ROWS) {
@@ -152,7 +168,8 @@ export function normalize(layout: DropLayout): DropLayout {
     });
   }
   const hidden = [...new Set(layout.hidden.filter(isKey))];
-  return { order, hidden };
+  const favs = [...new Set((layout.favs ?? []).filter(isKey))].slice(0, MAX_FAVS);
+  return { order, hidden, favs };
 }
 
 /** Les anciens réglages équivalents (valeurs telles qu'enregistrées, peut-être absentes). */
@@ -211,6 +228,33 @@ export function moveKey(layout: DropLayout, key: string, delta: number): DropLay
   list.splice(from, 1);
   list.splice(to, 0, key);
   return { ...layout, order: { ...layout.order, [row]: list } };
+}
+
+/** Ce choix (un format « jpg », une cible « shelf-fav-0 ») est-il épinglé ? */
+export function isFav(layout: DropLayout, id: string): boolean {
+  return layout.favs.includes(id);
+}
+
+/**
+ * Épingle ou retire un favori. `full` : il y en a déjà MAX_FAVS, rien n'est
+ * ajouté (l'île le dit : « Cinq favoris au plus »).
+ */
+export function toggleFav(layout: DropLayout, id: string): { layout: DropLayout; full: boolean } {
+  if (layout.favs.includes(id)) return { layout: { ...layout, favs: layout.favs.filter((f) => f !== id) }, full: false };
+  if (!isKey(id) || layout.favs.length >= MAX_FAVS) return { layout, full: layout.favs.length >= MAX_FAVS };
+  return { layout: { ...layout, favs: [...layout.favs, id] }, full: false };
+}
+
+/** Change de place un favori (Réglages : ← / →). */
+export function moveFav(layout: DropLayout, id: string, delta: number): DropLayout {
+  const list = [...layout.favs];
+  const from = list.indexOf(id);
+  if (from < 0) return layout;
+  const to = Math.max(0, Math.min(list.length - 1, from + delta));
+  if (to === from) return layout;
+  list.splice(from, 1);
+  list.splice(to, 0, id);
+  return { ...layout, favs: list };
 }
 
 /** Montre ou masque une pilule. */

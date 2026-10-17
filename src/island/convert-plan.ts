@@ -80,6 +80,9 @@ export class Dwell {
   private since: number | null = null;
   private fired = false;
 
+  /** `secs` : l'attente (s), T.dwell par défaut ; 0,4 s pour ouvrir un groupe du menu de fichiers. */
+  constructor(private readonly secs: number = T.dwell) {}
+
   /** Appelé à chaque image ; renvoie true au moment où la pilule doit tourner. */
   update(over: boolean, now: number): boolean {
     if (!over) {
@@ -88,7 +91,7 @@ export class Dwell {
       return false;
     }
     if (this.since === null) this.since = now;
-    if (!this.fired && now - this.since >= T.dwell * 1000) {
+    if (!this.fired && now - this.since >= this.secs * 1000) {
       this.fired = true;
       return true;
     }
@@ -98,7 +101,7 @@ export class Dwell {
   /** 0 → 1 pendant l'attente (le petit trait sous la pilule), 0 une fois tournée. */
   progress(now: number): number {
     if (this.since === null || this.fired) return 0;
-    return clamp((now - this.since) / (T.dwell * 1000));
+    return clamp((now - this.since) / (this.secs * 1000));
   }
 }
 
