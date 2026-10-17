@@ -66,8 +66,8 @@ Les nouveautés de la version 1.2.4 (la liste complète est dans le
 - **Réglages refaits** : deux colonnes (sept rubriques, puis les pages),
   en verre liquide, avec « Annuler », Ctrl+K, des préréglages et des choix
   en vignettes.
-- **Ondine convertit** : glissez un fichier vers l'île, lâchez-le sur une
-  pilule de format (images, PDF, vidéo, son, ZIP) ; à côté de l'original, à
+- **Ondine convertit** : glissez un fichier vers l'île, puis cliquez sur un
+  format du menu de fichiers (images, PDF, vidéo, son, ZIP) ; à côté de l'original, à
   sa place ou sur le Bureau. Tout se fait sur le PC.
 - **Mini-jeux** : Puissance 4 contre Ondine, morpion express dans la
   mini-île (appui long sur Ondine), aquarium de gouttes et course de gouttes.
@@ -171,8 +171,9 @@ Les nouveautés de la version 1.2.4 (la liste complète est dans le
   Elle ne peut rien supprimer ni lancer de commande.
 - **[Ondine sur le bureau](#mascotte)** : tirez la mascotte hors de l'île et
   posez-la où vous voulez. Un clic sur elle ouvre une bulle avec vos onglets
-  préférés ; elle s'assoit sur la barre des tâches, accepte les fichiers qu'on
-  lui lâche, s'ouvre avec Ctrl+Alt+B et se promène quand le PC est au repos.
+  préférés ; elle s'assoit sur la barre des tâches, ouvre un menu en cercle
+  autour d'elle quand on lui lâche un fichier, s'ouvre avec Ctrl+Alt+B et se
+  promène quand le PC est au repos.
 - **[Réglages](#réglages) plus légers** : les modules rangés en catégories
   repliables, les pages longues en sous-menus dans la barre de gauche.
 - **[Le podium des mascottes](#mascotte)** : toutes les mascottes, animées, sur
@@ -280,7 +281,7 @@ ou depuis le Gestionnaire d'identifiants de Windows.
 | Ouvrir le lanceur | **Alt+Espace** (recherche d'applis, de fichiers, de notes…) |
 | Refermer | Éloignez la souris (l'île se replie après 1,5 s), ou **Échap** |
 | Changer d'onglet | Cliquez sur une icône en haut de l'île ; flèches ← → au clavier. Glissez une icône pour réordonner |
-| Déposer un fichier | Glissez-le sur l'île : les cibles s'affichent (étagère, corbeille, favoris, compresser…) |
+| Déposer un fichier | Glissez-le sur l'île : le menu de fichiers s'ouvre (Convertir, Ranger, Outils, vos favoris). Lâchez, puis cliquez sur une icône ; seule la pilule « Étagère » agit dès le lâcher. Échap annule |
 | Déplacer l'île | Attrapez-la par son bord collé à l'écran et posez-la ailleurs (haut, gauche, droite) |
 | Ouvrir les réglages | Le bouton **⚙** en haut à droite de l'île, ou l'icône d'Ondine près de l'horloge (clic droit → Réglages) |
 | Quitter | Icône près de l'horloge → **Quitter** |
@@ -364,6 +365,19 @@ compresser en .zip, convertir ou réduire des images, renommer plusieurs
 fichiers d'un coup (avec aperçu), les envoyer à la Corbeille, ou les faire
 glisser hors de l'île vers l'Explorateur ou le Bureau (Ctrl : copier, Maj :
 déplacer). Toute action sur les fichiers est annulable quelques secondes.
+
+**Le menu de fichiers** (1.2.5) : quand vous glissez un fichier sur l'île, elle
+s'ouvre sur des icônes rondes. En haut, trois bulles mères : **Convertir**,
+**Ranger** (Alt) et **Outils** (Ctrl), puis vos favoris ; dessous, les choix du
+groupe ouvert (survolez une bulle mère 0,4 s ou cliquez dessus). Lâcher le
+fichier ne lance rien : l'île reste ouverte, le fichier en main, et un clic sur
+une icône lance l'action. Échap, un clic en dehors ou **Annuler** referment sans
+rien faire. Seule la pilule **Étagère**, détachée à côté de l'île pendant le
+dépôt, agit dès qu'on y lâche le fichier ; elle revient ensuite se fondre dans
+l'île. Plusieurs fichiers de types différents : les choix qui ne vont qu'à une
+partie sont grisés, et la phrase du bas dit pourquoi. L'étoile d'un choix
+l'épingle en favori (cinq au plus) ; ordre, pilules montrées et favoris dans
+**Réglages → Étagère → Pilules du dépôt**.
 
 **📱 Vers le téléphone** (sur un fichier de l'étagère) : l'île montre un QR code ;
 visez-le avec l'appareil photo du téléphone, et le navigateur du téléphone
@@ -922,7 +936,11 @@ fond d'écran. Pour la faire rentrer : glissez-la sur l'île, ou utilisez le
 bouton ⤒ de sa bulle ou le bouton 💧 de l'île ouverte. Elle s'éclipse pendant
 une présentation ou un plein écran, puis revient. Lâchée près d'un bord de
 l'écran ou de la barre des tâches, elle s'y assoit. Un fichier lâché sur elle :
-sa bulle propose les cibles de l'île (Parler à Ondine, Étagère…). Une
+un menu en cercle s'ouvre autour d'elle, le même que dans l'île (Convertir en
+haut, Outils à gauche, Ranger à droite, vos favoris et l'Étagère en bas, l'option
+« Conserver à côté » sous elle) ; survolez une bulle puis cliquez, Échap ou un
+clic dans le vide annulent. Près d'un bord de l'écran, le cercle se décale vers
+l'intérieur et Ondine glisse jusqu'à son centre. Une
 notification arrive dans l'île : une pastille apparaît sur elle (un clic ouvre
 l'île). **Ctrl+Alt+B** ouvre sa bulle (réglable), le menu de l'icône près de
 l'horloge la sort ou la rentre, et quand vous ne touchez plus au PC, elle fait
