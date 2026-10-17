@@ -11,6 +11,9 @@
 <meta property="og:image" content="https://ondine.pissits.com/media/ondine-1-mini-ile.jpg">
 <meta property="og:url" content="https://ondine.pissits.com/">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="alternate" hreflang="fr" href="https://ondine.pissits.com/?lang=fr">
+<link rel="alternate" hreflang="en" href="https://ondine.pissits.com/?lang=en">
+<link rel="alternate" hreflang="x-default" href="https://ondine.pissits.com/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
 <style>
@@ -118,6 +121,23 @@ footer a{color:var(--ink)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 
 h1,h2,.brand,.names div{transition:letter-spacing .3s}
+
+/* Nouveautés de la version : des cartes de verre, un petit mot en couleur au-dessus du titre. */
+.news{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:84px}
+.news article{border-radius:20px;padding:18px 18px 16px;min-width:0}
+.news b{display:block;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--lagoon);margin-bottom:4px}
+.news h3{font:700 18px/1.25 var(--f-display);margin:0 0 6px}
+.news p{margin:0;font-size:14px;color:var(--ink-soft)}
+.badge{display:inline-block;font-size:13px;font-weight:600;padding:4px 12px;border-radius:99px;margin-bottom:12px;color:var(--ink)}
+@media (max-width:860px){.news{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.news{grid-template-columns:minmax(0,1fr)}}
+
+/* Sélecteur de langue : deux pastilles, la langue choisie en blanc. */
+.lang{display:inline-flex;border-radius:99px;padding:3px;margin-left:6px}
+.lang button{font:600 13px var(--f-body);color:var(--ink-soft);background:none;border:0;border-radius:99px;padding:4px 10px;cursor:pointer;transition:background .3s var(--ease),color .3s}
+.lang button[aria-pressed="true"]{background:var(--btn);color:var(--btn-ink)}
+.lang button:focus-visible{outline:2px solid var(--lagoon);outline-offset:2px}
+nav .links{align-items:center}
 </style>
 
 <!-- Statistiques de visite (Umami, auto-hébergé sur stats.pissits.com) -->
@@ -129,59 +149,87 @@ h1,h2,.brand,.names div{transition:letter-spacing .3s}
   <nav>
     <a class="brand" href="#top"><img src="media/ondine-icone.png" alt="">Ondine</a>
     <div class="links">
-      <a class="hide-s" href="#fonctions">Fonctions</a>
-      <a class="hide-s" href="#mascottes">Mascottes</a>
-      <a class="hide-s" href="#agents">Agents IA</a>
+      <a class="hide-s" href="#nouveautes" data-i18n="nav-new">Nouveautés</a>
+      <a class="hide-s" href="#fonctions" data-i18n="nav-features">Fonctions</a>
+      <a class="hide-s" href="#mascottes" data-i18n="nav-mascots">Mascottes</a>
+      <a class="hide-s" href="#agents" data-i18n="nav-agents">Agents IA</a>
       <a href="https://github.com/Naod6473/Ondine">GitHub</a>
+      <div class="lang glass" role="group" aria-label="Langue" data-i18n-aria="lang-label">
+        <button type="button" data-lang="fr" lang="fr" aria-pressed="true" title="Français">FR</button>
+        <button type="button" data-lang="en" lang="en" aria-pressed="false" title="English">EN</button>
+      </div>
     </div>
   </nav>
 
   <header class="hero" id="top">
-    <div class="reveal"><div class="drop" id="drop" title="Clique sur Ondine">
-      <img src="media/ondine.png" alt="Ondine, une goutte d'eau bleue souriante">
+    <div class="reveal"><div class="drop" id="drop" title="Clique sur Ondine" data-i18n-title="drop-title">
+      <img src="media/ondine.png" alt="Ondine, une goutte d'eau bleue souriante" data-i18n-alt="drop-alt">
       <div class="eye" style="left:24.4%;top:47.3%;width:16.4%;height:17.2%"><div class="pupil"></div></div>
       <div class="eye" style="left:58.6%;top:47.3%;width:16.4%;height:17.2%"><div class="pupil"></div></div>
     </div></div>
     <h1 class="reveal">Ondine</h1>
-    <p class="tagline reveal">Une petite île en haut de ton écran Windows. Musique, notes, minuteurs, outils et agents IA, sans changer de fenêtre.</p>
+    <p class="tagline reveal" data-i18n="tagline">Une petite île en haut de ton écran Windows. Musique, notes, minuteurs, outils et agents IA, sans changer de fenêtre.</p>
     <div class="cta reveal">
       <a class="btn primary" href="https://github.com/Naod6473/Ondine/releases/latest">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>
-        Télécharger pour Windows</a>
-      <a class="btn ghost glass" href="https://github.com/Naod6473/Ondine">Voir le code</a>
+        <span data-i18n="download">Télécharger pour Windows</span></a>
+      <a class="btn ghost glass" href="https://github.com/Naod6473/Ondine" data-i18n="see-code">Voir le code</a>
     </div>
-    <p class="meta reveal">Windows 10 et 11 · gratuit · open source (MIT)</p>
-    <p class="note reveal">Au premier lancement, Windows peut afficher « Windows a protégé votre ordinateur » : l'installateur n'est pas signé avec un certificat payant. Cliquez sur <b>Informations complémentaires</b>, puis <b>Exécuter quand même</b>. Il est construit par GitHub à partir du code public.</p>
+    <p class="meta reveal" data-i18n="meta">Windows 10 et 11 · gratuit · open source (MIT)</p>
+    <p class="note reveal" data-i18n="smartscreen">Au premier lancement, Windows peut afficher « Windows a protégé votre ordinateur » : l'installateur n'est pas signé avec un certificat payant. Cliquez sur <b>Informations complémentaires</b>, puis <b>Exécuter quand même</b>. Il est construit par GitHub à partir du code public.</p>
   </header>
 
   <div class="video glass">
     <video src="media/ondine.mp4" poster="media/poster.jpg" controls playsinline preload="metadata" muted></video>
   </div>
 
+  <section id="nouveautes">
+    <span class="badge glass" data-i18n="new-badge">Version 1.2.4</span>
+    <h2 data-i18n="new-title">Quoi de neuf dans Ondine.</h2>
+    <p class="lead" data-i18n="new-lead">La 1.2.4 apprend à Ondine à t'écouter, range tes réglages et ajoute une bonne poignée d'outils. La plupart des nouveautés sont coupées par défaut : tu les allumes dans les réglages.</p>
+    <div class="news">
+      <article class="glass" data-i18n="new-1"><b>Voix</b><h3>Dictée partout</h3><p>Maintiens Ctrl droit dans n'importe quelle appli, parle, relâche : le texte est collé. Ton presse-papiers retrouve son contenu.</p></article>
+      <article class="glass" data-i18n="new-2"><b>Voix</b><h3>Notes d'appel</h3><p>D'un clic, Ondine écrit ton appel en direct, puis la transcription personne par personne et un résumé avec les choses à faire. L'audio est effacé ensuite.</p></article>
+      <article class="glass" data-i18n="new-3"><b>Voix</b><h3>Parakeet, sur ton PC</h3><p>La dictée, les notes d'appel et Parler à Ondine peuvent reconnaître ta voix sans Internet, avec le modèle Parakeet de NVIDIA (25 langues).</p></article>
+      <article class="glass" data-i18n="new-4"><b>Voix</b><h3>« Dis Ondine »</h3><p>Parle-lui sans toucher au clavier, choisis ton micro et teste-le, crée ton propre raccourci. Tes mots s'écrivent pendant que tu parles.</p></article>
+      <article class="glass" data-i18n="new-5"><b>Réglages</b><h3>Des Réglages tout neufs</h3><p>Deux colonnes, du verre liquide, Ctrl+K pour tout trouver, des préréglages en un clic et « Annuler » après chaque changement.</p></article>
+      <article class="glass" data-i18n="new-6"><b>Île</b><h3>Ondine convertit</h3><p>Glisse un fichier sur l'île et lâche-le sur un format : JPG, PNG, PDF, MP3, ZIP… Ondine l'avale et recrache le nouveau fichier.</p></article>
+      <article class="glass" data-i18n="new-7"><b>Île</b><h3>Tes notifications Windows</h3><p>Teams, Outlook, WhatsApp… les bulles des autres applis peuvent passer par l'île, avec « Ouvrir ». Coupé par défaut.</p></article>
+      <article class="glass" data-i18n="new-8"><b>Agents IA</b><h3>Tes agents, en détail</h3><p>La liste de tâches de l'agent en barre de progression, les fichiers modifiés en direct et les limites de ton forfait Claude ou Codex.</p></article>
+      <article class="glass" data-i18n="new-9"><b>Jeux</b><h3>Des mini-jeux contre Ondine</h3><p>Puissance 4, morpion express dans la mini-île, un aquarium de gouttes qui grandit avec tes pauses, et une course de gouttes.</p></article>
+      <article class="glass" data-i18n="new-10"><b>PC</b><h3>Rester éveillé, s'arrêter à l'heure</h3><p>Garde le PC éveillé le temps d'un téléchargement ou d'un agent, ou programme son arrêt ou sa mise en veille.</p></article>
+      <article class="glass" data-i18n="new-11"><b>PC</b><h3>Ton PC bien tenu</h3><p>Les mises à jour de tes logiciels en un clic, et « Qu'est-ce qui remplit mon disque ? » quand il n'y a plus de place.</p></article>
+      <article class="glass" data-i18n="new-12"><b>Maison</b><h3>Home Assistant</h3><p>Tes lumières et appareils dans l'île, et à la voix : « Dis Ondine, allume la lumière du salon ».</p></article>
+      <article class="glass" data-i18n="new-13"><b>Visio</b><h3>Se voir avant une visio</h3><p>À côté de « Rejoindre », l'île te montre ton image et le niveau de ton micro avant d'entrer.</p></article>
+      <article class="glass" data-i18n="new-14"><b>Fenêtres</b><h3>Le trou noir</h3><p>Lâche une fenêtre sur l'île : Ondine l'avale. Un clic et elle la recrache. Coupé par défaut.</p></article>
+      <article class="glass" data-i18n="new-15"><b>Sécurité</b><h3>Tes clés API protégées</h3><p>Une clé API ou un jeton copié n'entre plus dans l'historique du presse-papiers.</p></article>
+    </div>
+  </section>
+
   <section id="fonctions">
-    <h2>Tout ce qu'il te faut, juste au-dessus.</h2>
-    <p class="lead">L'île reste discrète en mini et s'ouvre au survol. Chaque module se règle ou se cache dans les réglages.</p>
+    <h2 data-i18n="features-title">Tout ce qu'il te faut, juste au-dessus.</h2>
+    <p class="lead" data-i18n="features-lead">L'île reste discrète en mini et s'ouvre au survol. Chaque module se règle ou se cache dans les réglages.</p>
     <div class="tiles">
-      <div class="tile glass"><img src="media/ondine-1-mini-ile.jpg" alt="La mini-île en haut de l'écran" loading="lazy"></div>
-      <div class="tile glass"><img src="media/ondine-2-musique.jpg" alt="Le lecteur de musique de l'île" loading="lazy"></div>
-      <div class="tile glass"><img src="media/ondine-3-controles.jpg" alt="Les contrôles rapides : son, micro, Wi-Fi" loading="lazy"></div>
-      <div class="tile glass"><img src="media/ondine-4-agents-notification.jpg" alt="Une notification d'agent IA dans l'île" loading="lazy"></div>
-      <div class="tile glass"><img src="media/ondine-6-etagere.jpg" alt="L'étagère de l'île avec trois fichiers" loading="lazy"></div>
-      <div class="tile glass"><img src="media/ondine-7-presse-papiers.jpg" alt="L'historique du presse-papiers" loading="lazy"></div>
+      <div class="tile glass"><img src="media/ondine-1-mini-ile.jpg" alt="La mini-île en haut de l'écran" data-i18n-alt="tile-1" loading="lazy"></div>
+      <div class="tile glass"><img src="media/ondine-2-musique.jpg" alt="Le lecteur de musique de l'île" data-i18n-alt="tile-2" loading="lazy"></div>
+      <div class="tile glass"><img src="media/ondine-3-controles.jpg" alt="Les contrôles rapides : son, micro, Wi-Fi" data-i18n-alt="tile-3" loading="lazy"></div>
+      <div class="tile glass"><img src="media/ondine-4-agents-notification.jpg" alt="Une notification d'agent IA dans l'île" data-i18n-alt="tile-4" loading="lazy"></div>
+      <div class="tile glass"><img src="media/ondine-6-etagere.jpg" alt="L'étagère de l'île avec trois fichiers" data-i18n-alt="tile-6" loading="lazy"></div>
+      <div class="tile glass"><img src="media/ondine-7-presse-papiers.jpg" alt="L'historique du presse-papiers" data-i18n-alt="tile-7" loading="lazy"></div>
     </div>
     <div class="chips">
-      <div class="chip glass"><strong>Étagère</strong><span>Glisse un fichier, reprends-le plus tard.</span></div>
-      <div class="chip glass"><strong>Presse-papiers</strong><span>Historique et extraits réutilisables.</span></div>
-      <div class="chip glass"><strong>Captures et OCR</strong><span>Copie le texte d'une image.</span></div>
-      <div class="chip glass"><strong>Minuteur et agenda</strong><span>Ton prochain rendez-vous d'un coup d'œil.</span></div>
-      <div class="chip glass"><strong>Outils IT</strong><span>Système, réseau, accès distants.</span></div>
-      <div class="chip glass"><strong>Contrôles</strong><span>Son, micro, luminosité, Wi-Fi.</span></div>
+      <div class="chip glass" data-i18n="chip-1"><strong>Étagère</strong><span>Glisse un fichier, reprends-le plus tard.</span></div>
+      <div class="chip glass" data-i18n="chip-2"><strong>Presse-papiers</strong><span>Historique et extraits réutilisables.</span></div>
+      <div class="chip glass" data-i18n="chip-3"><strong>Captures et OCR</strong><span>Copie le texte d'une image.</span></div>
+      <div class="chip glass" data-i18n="chip-4"><strong>Minuteur et agenda</strong><span>Ton prochain rendez-vous d'un coup d'œil.</span></div>
+      <div class="chip glass" data-i18n="chip-5"><strong>Outils IT</strong><span>Système, réseau, accès distants.</span></div>
+      <div class="chip glass" data-i18n="chip-6"><strong>Contrôles</strong><span>Son, micro, luminosité, Wi-Fi.</span></div>
     </div>
   </section>
 
   <section id="mascottes">
-    <h2>Quinze mascottes en gomme.</h2>
-    <p class="lead">Choisis celle qui vivra dans ton île. Elles sont dessinées en direct, exactement comme dans l'appli : passe la souris dessus, elles te font coucou.</p>
+    <h2 data-i18n="mascots-title">Quinze mascottes en gomme.</h2>
+    <p class="lead" data-i18n="mascots-lead">Choisis celle qui vivra dans ton île. Elles sont dessinées en direct, exactement comme dans l'appli : passe la souris dessus, elles te font coucou.</p>
     <div class="gums" id="gums">
       <figure class="gum glass" data-shape="goutte" title="Clique sur Goutte gomme"><div class="gum-stage"><img src="media/mascottes/goutte-gomme.png" alt="Goutte gomme, une mascotte en gomme" width="256" height="256" loading="lazy"><canvas aria-hidden="true"></canvas></div><figcaption>Goutte gomme</figcaption></figure>
       <figure class="gum glass" data-shape="guimauve" title="Clique sur Guimauve"><div class="gum-stage"><img src="media/mascottes/gomme-guimauve.png" alt="Guimauve, une mascotte en gomme" width="256" height="256" loading="lazy"><canvas aria-hidden="true"></canvas></div><figcaption>Guimauve</figcaption></figure>
@@ -203,17 +251,99 @@ h1,h2,.brand,.names div{transition:letter-spacing .3s}
 
   <section class="agents glass" id="agents">
     <div>
-      <h2>Tes agents IA te font signe.</h2>
-      <p class="lead" style="margin:0">Quand un agent a fini ou attend ta réponse, Ondine te prévient dans l'île. Un clic et tu retournes dans le bon terminal.</p>
+      <h2 data-i18n="agents-title">Tes agents IA te font signe.</h2>
+      <p class="lead" style="margin:0" data-i18n="agents-lead">Quand un agent a fini ou attend ta réponse, Ondine te prévient dans l'île. Un clic et tu retournes dans le bon terminal.</p>
     </div>
-    <div class="names" aria-label="Agents compatibles"><div>Claude Code</div><div>Codex</div><div>Gemini CLI</div></div>
+    <div class="names" aria-label="Agents compatibles" data-i18n-aria="agents-aria"><div>Claude Code</div><div>Codex</div><div>Gemini CLI</div></div>
   </section>
 </main>
 <footer>
-  <span>Ondine · Licence MIT · fait par Naod6473</span>
-  <span><a href="https://github.com/Naod6473/Ondine">GitHub</a> · <a href="https://github.com/Naod6473/Ondine/blob/main/PRIVACY.md">Vie privée</a> · <a href="https://github.com/Naod6473/Ondine/blob/main/CODE_SIGNING.md">Signature du code</a> · Musique de la vidéo : Lovely Swindler, Amarià (CC BY 3.0)</span>
+  <span data-i18n="foot-1">Ondine · Licence MIT · fait par Naod6473</span>
+  <span data-i18n="foot-2"><a href="https://github.com/Naod6473/Ondine">GitHub</a> · <a href="https://github.com/Naod6473/Ondine/blob/main/PRIVACY.md">Vie privée</a> · <a href="https://github.com/Naod6473/Ondine/blob/main/CODE_SIGNING.md">Signature du code</a> · Musique de la vidéo : Lovely Swindler, Amarià (CC BY 3.0)</span>
 </footer>
 
+<script>
+// Français ou anglais. Le français est écrit dans la page (il reste sans JavaScript) ;
+// l'anglais vient d'ici. Choix : ?lang=, sinon le dernier choix, sinon la langue du navigateur.
+(()=>{
+const EN={
+  "title":"Ondine · a little island at the top of your Windows screen",
+  "desc":"Ondine is a little island at the top of your Windows screen: music, notes, timers, tools and AI agents, without switching windows. Free and open source.",
+  "lang-label":"Language",
+  "nav-new":"What's new","nav-features":"Features","nav-mascots":"Mascots","nav-agents":"AI agents",
+  "drop-title":"Click Ondine","drop-alt":"Ondine, a smiling blue water drop",
+  "tagline":"A little island at the top of your Windows screen. Music, notes, timers, tools and AI agents, without switching windows.",
+  "download":"Download for Windows","see-code":"See the code",
+  "meta":"Windows 10 and 11 · free · open source (MIT)",
+  "smartscreen":"On first launch, Windows may show “Windows protected your PC”: the installer is not signed with a paid certificate. Click <b>More info</b>, then <b>Run anyway</b>. It is built by GitHub from the public code.",
+  "new-badge":"Version 1.2.4","new-title":"What's new in Ondine.",
+  "new-lead":"1.2.4 teaches Ondine to listen to you, tidies up the settings and adds a good handful of tools. Most of the new features are off by default: you turn them on in the settings.",
+  "new-1":"<b>Voice</b><h3>Dictation everywhere</h3><p>Hold Right Ctrl in any app, speak, release: the text is pasted. Your clipboard gets its content back.</p>",
+  "new-2":"<b>Voice</b><h3>Call notes</h3><p>In one click, Ondine writes your call live, then a transcript person by person and a summary with the to-dos. The audio is deleted afterwards.</p>",
+  "new-3":"<b>Voice</b><h3>Parakeet, on your PC</h3><p>Dictation, call notes and Talk to Ondine can recognise your voice without the Internet, with NVIDIA's Parakeet model (25 languages).</p>",
+  "new-4":"<b>Voice</b><h3>“Hey Ondine”</h3><p>Talk to her without touching the keyboard, pick your microphone and test it, set your own shortcut. Your words appear while you speak.</p>",
+  "new-5":"<b>Settings</b><h3>Brand-new Settings</h3><p>Two columns, liquid glass, Ctrl+K to find anything, one-click presets and “Undo” after every change.</p>",
+  "new-6":"<b>Island</b><h3>Ondine converts</h3><p>Drag a file onto the island and drop it on a format: JPG, PNG, PDF, MP3, ZIP… Ondine swallows it and spits out the new file.</p>",
+  "new-7":"<b>Island</b><h3>Your Windows notifications</h3><p>Teams, Outlook, WhatsApp… other apps' toasts can go through the island, with “Open”. Off by default.</p>",
+  "new-8":"<b>AI agents</b><h3>Your agents, in detail</h3><p>The agent's task list as a progress bar, files modified live and your Claude or Codex plan limits.</p>",
+  "new-9":"<b>Games</b><h3>Mini-games against Ondine</h3><p>Connect Four, express tic-tac-toe in the mini island, a droplet aquarium that grows with your breaks, and a droplet race.</p>",
+  "new-10":"<b>PC</b><h3>Stay awake, shut down on time</h3><p>Keep the PC awake during a download or an agent's work, or schedule it to shut down or sleep.</p>",
+  "new-11":"<b>PC</b><h3>A well-kept PC</h3><p>Your software updates in one click, and “What's filling my disk?” when space runs out.</p>",
+  "new-12":"<b>Home</b><h3>Home Assistant</h3><p>Your lights and devices in the island, and by voice: “Hey Ondine, turn on the living room light”.</p>",
+  "new-13":"<b>Video calls</b><h3>See yourself before a call</h3><p>Next to “Join”, the island shows your picture and your microphone level before you go in.</p>",
+  "new-14":"<b>Windows</b><h3>The black hole</h3><p>Drop a window on the island: Ondine swallows it. One click and she spits it back out. Off by default.</p>",
+  "new-15":"<b>Security</b><h3>Your API keys protected</h3><p>A copied API key or token no longer goes into the clipboard history.</p>",
+  "features-title":"Everything you need, right up top.",
+  "features-lead":"The island stays discreet as a mini island and opens on hover. Every module can be tuned or hidden in the settings.",
+  "tile-1":"The mini island at the top of the screen","tile-2":"The island's music player","tile-3":"Quick controls: sound, microphone, Wi-Fi",
+  "tile-4":"An AI agent notification in the island","tile-6":"The island's shelf with three files","tile-7":"The clipboard history",
+  "chip-1":"<strong>Shelf</strong><span>Drop a file, pick it up later.</span>",
+  "chip-2":"<strong>Clipboard</strong><span>History and reusable snippets.</span>",
+  "chip-3":"<strong>Screenshots and OCR</strong><span>Copy the text from an image.</span>",
+  "chip-4":"<strong>Timer and calendar</strong><span>Your next meeting at a glance.</span>",
+  "chip-5":"<strong>IT tools</strong><span>System, network, remote access.</span>",
+  "chip-6":"<strong>Controls</strong><span>Sound, microphone, brightness, Wi-Fi.</span>",
+  "mascots-title":"Fifteen gummy mascots.",
+  "mascots-lead":"Pick the one that will live in your island. They are drawn live, exactly as in the app: hover over them and they wave at you.",
+  "agents-title":"Your AI agents give you a sign.",
+  "agents-lead":"When an agent is done or waiting for your answer, Ondine lets you know in the island. One click and you are back in the right terminal.",
+  "agents-aria":"Supported agents",
+  "foot-1":"Ondine · MIT licence · made by Naod6473",
+  "foot-2":'<a href="https://github.com/Naod6473/Ondine">GitHub</a> · <a href="https://github.com/Naod6473/Ondine/blob/main/PRIVACY.md">Privacy</a> · <a href="https://github.com/Naod6473/Ondine/blob/main/CODE_SIGNING.md">Code signing</a> · Video music: Lovely Swindler, Amarià (CC BY 3.0)'
+};
+// Les mascottes : nom anglais de chaque forme (comme dans l'appli), et leur petite ligne.
+const GUM={goutte:"Gummy drop",guimauve:"Marshmallow",dragee:"Sugared almond",berlingot:"Berlingot",etoile:"Star",soleil:"Sun",lune:"Moon",nuage:"Cloud",coeur:"Heart",fleur:"Flower",champignon:"Mushroom",fantome:"Ghost",flamme:"Flame",ciel:"Sky",meteo:"Weather"};
+const GUM_SMALL={ciel:"sun by day, moon at night",meteo:"follows the weather"};
+
+const slots=[];
+const keep=(el,get,set,key)=>slots.push({fr:get(el),set:v=>set(el,v),key});
+document.querySelectorAll('[data-i18n]').forEach(el=>keep(el,e=>e.innerHTML,(e,v)=>e.innerHTML=v,el.dataset.i18n));
+for(const [attr,name] of [['i18nAlt','alt'],['i18nTitle','title'],['i18nAria','aria-label']])
+  document.querySelectorAll(`[data-${attr.replace(/[A-Z]/g,c=>'-'+c.toLowerCase())}]`).forEach(el=>keep(el,e=>e.getAttribute(name),(e,v)=>e.setAttribute(name,v),el.dataset[attr]));
+keep(document,d=>d.title,(d,v)=>d.title=v,'title');
+const desc=document.querySelector('meta[name="description"]');
+keep(desc,e=>e.content,(e,v)=>e.content=v,'desc');
+document.querySelectorAll('.gum').forEach(fig=>{
+  const n=GUM[fig.dataset.shape],cap=fig.querySelector('figcaption'),img=fig.querySelector('img');
+  const en={cap:n+(GUM_SMALL[fig.dataset.shape]?`<small>${GUM_SMALL[fig.dataset.shape]}</small>`:''),alt:`${n}, a gummy mascot`,title:`Click ${n}`};
+  const fr={cap:cap.innerHTML,alt:img.alt,title:fig.title};
+  slots.push({fr,en,set:v=>{cap.innerHTML=v.cap;img.alt=v.alt;fig.title=v.title}});
+});
+
+const buttons=[...document.querySelectorAll('.lang button')];
+function apply(lang){
+  document.documentElement.lang=lang;
+  slots.forEach(s=>s.set(lang==='en'?(s.en||EN[s.key]||s.fr):s.fr));
+  buttons.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.lang===lang)));
+}
+const store={get(){try{return localStorage.getItem('ondine-lang')}catch{return null}},set(v){try{localStorage.setItem('ondine-lang',v)}catch{}}};
+const asked=new URLSearchParams(location.search).get('lang');
+const first=['fr','en'].includes(asked)?asked:(store.get()||((navigator.language||'fr').toLowerCase().startsWith('fr')?'fr':'en'));
+if(first!=='fr')apply(first);
+buttons.forEach(b=>b.addEventListener('click',()=>{apply(b.dataset.lang);store.set(b.dataset.lang);
+  const u=new URL(location.href);u.searchParams.delete('lang');history.replaceState(null,'',u)}));
+})();
+</script>
 <script>
 const drop=document.getElementById('drop'),eyes=[...drop.querySelectorAll('.eye')],pupils=[...drop.querySelectorAll('.pupil')];
 addEventListener('pointermove',e=>{const r=drop.getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2),d=Math.hypot(dx,dy)||1,k=Math.min(1,d/300);
