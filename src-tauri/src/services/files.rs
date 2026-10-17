@@ -351,7 +351,7 @@ mod tests {
         let out = zip(&[base.join("a.txt"), base.join("d")]).unwrap();
         assert_eq!(out, base.join("Archive.zip"));
         let archive = zip::ZipArchive::new(fs::File::open(&out).unwrap()).unwrap();
-        let mut names: Vec<String> = archive.file_names().map(String::from).collect();
+        let mut names: Vec<String> = archive.file_names().map(|n| n.unwrap().into_owned()).collect();
         names.sort();
         assert_eq!(names, vec!["a.txt", "d/", "d/b.txt"]);
     }
