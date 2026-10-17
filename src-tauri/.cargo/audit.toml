@@ -15,5 +15,17 @@
 #   - RUSTSEC-2024-0429 : glib 0.18 (GTK, Linux seulement : absent de l'appli
 #     Windows), corrigé dans glib 0.20 que Tauri n'utilise pas encore.
 
+# Au 2026-10-17 : trois failles de zip 2.x (RUSTSEC-2026-0367, -0368, -0369 :
+# extraction qui garde les bits SUID/SGID, liens symboliques, permissions
+# Unix). Ondine passe à zip 9 ; il reste zip 2.4.2, tiré par sherpa-onnx-sys
+# 1.13.8 (dernière version), en dépendance de CONSTRUCTION seulement : son
+# build.rs ne s'en sert que pour les archives iOS (.xcframework.zip) ; sous
+# Windows il lit un .tar.bz2. Jamais dans l'appli. À
+# retirer dès qu'une version de sherpa-onnx passe à zip 9.
+
 [advisories]
-ignore = []
+ignore = [
+  "RUSTSEC-2026-0367",
+  "RUSTSEC-2026-0368",
+  "RUSTSEC-2026-0369",
+]

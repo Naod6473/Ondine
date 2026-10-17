@@ -144,11 +144,21 @@ class Pet {
       if (e.key === "Escape" && this.layout.open) void this.setOpen(false);
     });
     new ResizeObserver(() => this.pushHit()).observe(this.bubble);
+    // La page apprend sa disposition AVANT que la fenêtre change de taille
+    // (pet.rs, apply_layout) : mascotte et bulle collées en bas ou à droite
+    // bougent encore quand la fenêtre grandit. Sans ça, les cases envoyées
+    // restaient celles d'avant, et ni Ondine ni sa bulle ne prenaient plus les
+    // clics (il fallait la rentrer dans l'île et la ressortir).
+    window.addEventListener("resize", () => this.pushHit());
     // Le contenu change (autre onglet, réponse qui s'écrit, liste qui
     // s'allonge, image chargée) : la bulle suit.
     new MutationObserver(() => this.scheduleFit()).observe(this.bubble, { childList: true, subtree: true, characterData: true });
     this.bubble.addEventListener("load", () => this.scheduleFit(), true);
-    this.bubble.addEventListener("transitionend", () => this.scheduleFit());
+    this.bubble.addEventListener("transitionend", () => {
+      // L'ouverture part d'une bulle réduite (scale 0.85) : la case est mesurée à sa vraie taille ensuite.
+      this.pushHit();
+      this.scheduleFit();
+    });
 
     settingsStore.onChange((s) => this.applySettings(s));
     this.applySettings(settingsStore.current);
@@ -337,13 +347,10 @@ class Pet {
     const l = (await Bridge.petOpen(open, size)) ?? { open, right: true, up: true };
     this.applyLayout(l);
     if (open) {
-      // Bornée à la place que l'écran laisse de ce côté.
-      const fitted = this.measure();
-      this.snapSize(fitted);
-      if (!sameSize(fitted, this.room)) {
-        this.room = fitted;
-        void Bridge.petBubble(fitted.w, fitted.h);
-      }
+      // Bornée à la place que l'écran laisse de ce côté. La fenêtre a déjà
+      // toute cette place (pet.rs, set_open) : la bulle s'anime dedans.
+      this.room = this.maxSize();
+      this.snapSize(this.measure());
       this.mascot?.activity();
       this.sayHello();
       // Le champ de l'onglet (Parler à Ondine, Lanceur) prend le clavier.
@@ -449,7 +456,6 @@ class Pet {
     if (this.glideRaf) return;
     if (reducedMotion() || settingsStore.current.mascot.calm) {
       if (this.want) this.snapSize(this.want);
-      this.settled();
       return;
     }
     this.lastFrame = performance.now();
@@ -466,21 +472,12 @@ class Pet {
       if (springAtRest(this.sw, want.w) && springAtRest(this.sh, want.h)) {
         this.glideRaf = 0;
         this.snapSize(want);
-        this.settled();
         return;
       }
       this.paintSize();
       this.glideRaf = requestAnimationFrame(frame);
     };
     this.glideRaf = requestAnimationFrame(frame);
-  }
-
-  /** Posée : la fenêtre se resserre autour d'elle. */
-  private settled() {
-    const want = this.want;
-    if (!want || !this.layout.open || sameSize(want, this.room)) return;
-    this.room = want;
-    void Bridge.petBubble(want.w, want.h);
   }
 
   /** Cette taille tout de suite, sans animation. */

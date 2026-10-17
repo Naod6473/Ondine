@@ -47,6 +47,17 @@
 
 export type IslandState = "hidden" | "peek" | "compact" | "expanded" | "drop" | "alert";
 
+/**
+ * Un module vient de s'allumer ou de s'éteindre : faut-il tout redessiner ?
+ * Pas pendant une alerte : sa carte ne dépend pas des modules, et la refaire
+ * remonterait son contenu (l'assistant de premier lancement : les cartes
+ * « Vous faites quoi sur ce PC ? » allument des onglets, et l'étape revenait
+ * une seconde fois avec son entrée animée).
+ */
+export function redrawOnModulesChange(state: IslandState): boolean {
+  return state !== "alert";
+}
+
 /** La forme de l'île compacte : l'encoche nano ou la mini-île. */
 export type CompactForm = "nano" | "mini";
 
