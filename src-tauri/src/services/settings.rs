@@ -141,8 +141,8 @@ pub struct IslandPrefs {
     /// La taille de la mini-île (1.2.3) : "normal" ou "nano" (une toute petite
     /// encoche qui ne montre qu'Ondine, src/island/island-forms.ts).
     pub size: String,
-    /// Le style de l'île (1.2.3) : "classic" ou "mouth" (l'île-bouche d'Ondine,
-    /// src/island/mouth.ts).
+    /// Le style de l'île (1.2.3) : "classic", "mouth" (l'île-bouche d'Ondine,
+    /// src/island/mouth.ts) ou "notch" (l'encoche noire, 1.2.5).
     pub style: String,
     /// Île-bouche : quand Ondine est sur le bureau, l'île part avec elle (sa
     /// fenêtre fait la bouche) ; sinon une bouche vide reste au bord.
@@ -321,7 +321,7 @@ impl Settings {
         if !["normal", "nano"].contains(&self.island.size.as_str()) {
             self.island.size = "normal".into();
         }
-        if !["classic", "mouth"].contains(&self.island.style.as_str()) {
+        if !["classic", "mouth", "notch"].contains(&self.island.style.as_str()) {
             self.island.style = "classic".into();
         }
         if !["auto", "fr", "en"].contains(&self.general.language.as_str()) {
@@ -554,6 +554,8 @@ mod tests {
         assert_eq!((s.island.size.as_str(), s.island.style.as_str(), s.island.mouth_follow), ("normal", "classic", true));
         let s = parse(r#"{ "version": 2, "island": { "size": "nano", "style": "mouth", "mouthFollow": false } }"#).unwrap();
         assert_eq!((s.island.size.as_str(), s.island.style.as_str(), s.island.mouth_follow), ("nano", "mouth", false));
+        let s = parse(r#"{ "version": 2, "island": { "style": "notch" } }"#).unwrap();
+        assert_eq!(s.island.style.as_str(), "notch");
         let s = parse(r#"{ "version": 2, "island": { "size": "huge", "style": "beak" } }"#).unwrap();
         assert_eq!((s.island.size.as_str(), s.island.style.as_str()), ("normal", "classic"));
     }

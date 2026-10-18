@@ -79,8 +79,8 @@ export interface Settings {
     suggested?: string[];
     /** Taille de la mini-île (1.2.3) : "normal" ou "nano" (une encoche qui ne montre qu'Ondine, src/island/island-forms.ts). */
     size?: "normal" | "nano";
-    /** Style de l'île (1.2.3) : "classic" ou "mouth" (l'île-bouche d'Ondine, src/island/mouth.ts). */
-    style?: "classic" | "mouth";
+    /** Style de l'île (1.2.3) : "classic", "mouth" (l'île-bouche d'Ondine, src/island/mouth.ts) ou "notch" (l'encoche noire, 1.2.5, island-notch.css). */
+    style?: "classic" | "mouth" | "notch";
     /** Île-bouche : quand Ondine est sur le bureau, l'île part avec elle (sinon une bouche vide reste en haut). */
     mouthFollow?: boolean;
     /** L'éclosion de l'île au premier lancement et après une mise à jour (src/island/hatch.ts). */

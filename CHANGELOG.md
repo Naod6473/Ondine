@@ -2,6 +2,16 @@
 
 ## 1.2.5 · à venir
 
+- Nouveau style d'île « Encoche » (Réglages → L'île → Style de l'île), à côté
+  de Classique et Bouche d'Ondine : l'île est noire, fondue dans le bord de
+  l'écran par deux coins creux, et une lueur à la couleur du thème monte du
+  bas. Elle grandit quand un fichier arrive. Les onglets, les raccourcis, la
+  mascotte et les modules ne changent pas. Marche sur les quatre bords ·
+  New "Notch" island style (Settings → The island → Island style), next to
+  Classic and Ondine's mouth: the island is black, blended into the edge of
+  the screen by two curved corners, and a glow in the theme's colour rises
+  from the bottom. It grows when a file comes near. Tabs, shortcuts, the
+  mascot and the modules stay the same. Works on all four edges
 - Menu de fichiers dans l'île : glissez un fichier sur l'île, elle montre des
   icônes rondes avec leur nom dessous. En haut, trois bulles mères
   (Convertir, Ranger avec Alt, Outils avec Ctrl), et vos favoris juste à côté,

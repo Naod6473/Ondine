@@ -1,0 +1,152 @@
+/* Le style d'île « Encoche » (island.style = "notch", 1.2.5, island-forms.ts),
+   inspiré de l'encoche d'un portable : l'île est noire pure, fondue dans le
+   bord de l'écran par deux coins creux, et une lueur à la couleur du thème
+   monte de son bord intérieur. Les onglets, la mascotte et les modules ne
+   changent pas : seulement la matière et la forme.
+   Chargé après island.css et island-mouth.css (index.html). Comme ailleurs,
+   les tailles et les arrondis sont des CIBLES lues par la gelée (jelly.ts) :
+   pas de transition sur width, height, padding ni border-radius. */
+
+body[data-island-style="notch"] {
+  --notch-bg: #000;
+  /* La lueur : l'accent du thème, tiré vers le cyan puis le violet. */
+  --notch-c1: color-mix(in srgb, var(--accent) 70%, #19b8ff);
+  --notch-c2: color-mix(in srgb, var(--accent) 55%, #2d5bff);
+  --notch-c3: color-mix(in srgb, var(--accent) 45%, #7b4bff);
+}
+
+body[data-island-style="notch"] .island {
+  background: var(--notch-bg);
+  /* La lueur (::before, z-index -1) passe sous le contenu, au-dessus du fond. */
+  isolation: isolate;
+  box-shadow: 0 14px 34px -16px rgba(0, 0, 0, 0.95);
+  /* Les coins creux dépassent de la boîte : on les laisse voir (et seulement eux). */
+  overflow: clip;
+  overflow-clip-margin: var(--ear, 0px);
+  --ear: 0px;
+  --glow: 0;
+}
+/* On porte Ondine hors de l'île : rien n'est coupé (comme island.css). */
+body[data-island-style="notch"] .island:has(.mascot-slot.carried) {
+  overflow: visible;
+}
+
+/* ── Les arrondis et les coins creux, état par état ──────────────────────── */
+body[data-island-style="notch"] .island[data-state="peek"] {
+  --ear: 6px;
+}
+body[data-island-style="notch"] .island[data-state="compact"] {
+  --r: 16px;
+  --ear: 12px;
+  --glow: 0.42;
+}
+body[data-island-style="notch"] .island[data-state="expanded"] {
+  --r: 32px;
+  --ear: 22px;
+  --glow: 0.6;
+}
+body[data-island-style="notch"] .island[data-state="alert"] {
+  --r: 24px;
+  --ear: 14px;
+  --glow: 0.65;
+}
+/* Un fichier arrive : la lueur grandit, et respire tant qu'on le tient. L'île
+   fait déjà 700 px sur 720 : des coins plus petits, pour tenir dans la fenêtre. */
+body[data-island-style="notch"] .island[data-state="drop"] {
+  --r: 30px;
+  --ear: 10px;
+  --glow: 0.95;
+}
+body[data-island-style="notch"] .island[data-state="drop"]::before {
+  animation: notch-swell 1.6s ease-in-out infinite alternate;
+}
+@keyframes notch-swell {
+  to {
+    opacity: 0.6;
+  }
+}
+
+/* ── Les coins creux (.notch-ears, un seul élément) ──────────────────────────
+   Chaque coin est un carré noir dont on a creusé un quart de cercle, centré
+   sur le point le plus loin du bord de l'écran et de l'île. */
+.notch-ears {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  --e: var(--ear, 0px);
+  --cut: calc(var(--e) - 0.5px);
+  background-repeat: no-repeat;
+  background-size: var(--e) var(--e);
+}
+/* En haut (et par défaut) : de part et d'autre, collés au bord du haut. */
+.notch-ears {
+  top: 0;
+  left: calc(-1 * var(--e));
+  right: calc(-1 * var(--e));
+  height: var(--e);
+  background-image:
+    radial-gradient(circle at 0 100%, transparent var(--cut), var(--notch-bg) var(--e)),
+    radial-gradient(circle at 100% 100%, transparent var(--cut), var(--notch-bg) var(--e));
+  background-position: left top, right top;
+}
+body[data-edge="bottom"] .notch-ears {
+  top: auto;
+  bottom: 0;
+  background-image:
+    radial-gradient(circle at 0 0, transparent var(--cut), var(--notch-bg) var(--e)),
+    radial-gradient(circle at 100% 0, transparent var(--cut), var(--notch-bg) var(--e));
+  background-position: left bottom, right bottom;
+}
+body:is([data-edge="left"], [data-edge="right"]) .notch-ears {
+  top: calc(-1 * var(--e));
+  bottom: calc(-1 * var(--e));
+  left: 0;
+  right: auto;
+  width: var(--e);
+  height: auto;
+  background-position: left top, left bottom;
+}
+body[data-edge="left"] .notch-ears {
+  background-image:
+    radial-gradient(circle at 100% 0, transparent var(--cut), var(--notch-bg) var(--e)),
+    radial-gradient(circle at 100% 100%, transparent var(--cut), var(--notch-bg) var(--e));
+}
+body[data-edge="right"] .notch-ears {
+  left: auto;
+  right: 0;
+  background-image:
+    radial-gradient(circle at 0 0, transparent var(--cut), var(--notch-bg) var(--e)),
+    radial-gradient(circle at 0 100%, transparent var(--cut), var(--notch-bg) var(--e));
+}
+
+/* ── La lueur qui monte du bord intérieur ────────────────────────────────── */
+body[data-island-style="notch"]:not(.retro) .island::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(var(--glow-across, 90deg), var(--notch-c1), var(--notch-c2) 55%, var(--notch-c3));
+  -webkit-mask: linear-gradient(var(--glow-from, to top), #000, rgba(0, 0, 0, 0.5) 22%, rgba(0, 0, 0, 0.1) 55%, transparent 80%);
+  mask: linear-gradient(var(--glow-from, to top), #000, rgba(0, 0, 0, 0.5) 22%, rgba(0, 0, 0, 0.1) 55%, transparent 80%);
+  opacity: var(--glow);
+  transition: opacity 600ms ease;
+}
+body[data-edge="bottom"] {
+  --glow-from: to bottom;
+}
+body[data-edge="left"] {
+  --glow-from: to left;
+  --glow-across: 180deg;
+}
+body[data-edge="right"] {
+  --glow-from: to right;
+  --glow-across: 180deg;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-island-style="notch"] .island[data-state="drop"]::before {
+    animation: none;
+  }
+}
