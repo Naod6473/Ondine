@@ -460,7 +460,11 @@
 "Survolez une icône, puis cliquez · Échap annule": "Survole une icône, puis clique · Échap annule",
 "Lâchez : rien ne se lance avant votre clic": "Lâche : rien ne se lance avant ton clic",
 "Survolez une bulle, puis cliquez · Échap annule": "Survole une bulle, puis clique · Échap annule",
-"Aucun favori : cliquez sur l'étoile d'une pilule.": "Aucun favori : clique sur l'étoile d'une pilule."
+"Aucun favori : cliquez sur l'étoile d'une pilule.": "Aucun favori : clique sur l'étoile d'une pilule.",
+"Cliquez sur « + 25 cl » à chaque verre, ou appuyez longuement pour retirer le dernier.": "Clique sur « + 25 cl » à chaque verre, ou appuie longuement pour retirer le dernier.",
+"Compte les verres d'eau de la journée, avec un objectif, la semaine en barres et un petit rappel aux heures choisies. Le rappel se tait pendant la concentration (Minuteur), une présentation ou un appel. Tout reste sur votre PC (30 jours gardés) ; rien ne part sur Internet.": "Compte les verres d'eau de la journée, avec un objectif, la semaine en barres et un petit rappel aux heures choisies. Le rappel se tait pendant la concentration (Minuteur), une présentation ou un appel. Tout reste sur ton PC (30 jours gardés) ; rien ne part sur Internet.",
+"Un bouton « Paroles » dans la carte. Quand vous l'ouvrez, Ondine envoie à lrclib.net (gratuit, sans compte) le titre, l'artiste, l'album et la durée du morceau, rien d'autre. Coupé : rien ne part.": "Un bouton « Paroles » dans la carte. Quand tu l'ouvres, Ondine envoie à lrclib.net (gratuit, sans compte) le titre, l'artiste, l'album et la durée du morceau, rien d'autre. Coupé : rien ne part.",
+"Montre ce qui joue en ce moment (Spotify, navigateur, VLC… tout ce qui apparaît dans le panneau multimédia de Windows) avec lecture/pause, suivant, précédent, aléatoire, répétition et le volume du lecteur. Lit seulement ce que Windows expose déjà ; rien ne sort de l'ordinateur, sauf si vous activez les paroles (LRCLIB).": "Montre ce qui joue en ce moment (Spotify, navigateur, VLC… tout ce qui apparaît dans le panneau multimédia de Windows) avec lecture/pause, suivant, précédent, aléatoire, répétition et le volume du lecteur. Lit seulement ce que Windows expose déjà ; rien ne sort de l'ordinateur, sauf si tu actives les paroles (LRCLIB)."
 },
 "patterns": [
 ["^(\\d+) nouveautés vous attendent\\.$", "$1 nouveautés t'attendent."],

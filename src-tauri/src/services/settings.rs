@@ -406,8 +406,9 @@ impl Settings {
 
 /// Les modules désactivés tant qu'on ne les a pas allumés (ceux qui ouvrent un
 /// port sur le réseau local, l'écran de veille, la dictée, les notifications de
-/// Windows qui lisent celles des autres applis, Rester éveillé qui peut éteindre le PC, Home Assistant qui pilote la maison). Même liste dans src/core/settings-store.ts.
-pub const MODULES_OFF_BY_DEFAULT: &[&str] = &["team", "screensaver", "dictation", "winnotifs", "awake", "homeassistant"];
+/// Windows qui lisent celles des autres applis, Rester éveillé qui peut éteindre le PC, Home Assistant qui pilote la maison,
+/// l'Eau qui envoie des rappels). Même liste dans src/core/settings-store.ts.
+pub const MODULES_OFF_BY_DEFAULT: &[&str] = &["team", "screensaver", "dictation", "winnotifs", "awake", "homeassistant", "water"];
 
 /// Une couleur « #rrggbb » (sept caractères, hexadécimaux).
 fn is_hex_color(s: &str) -> bool {

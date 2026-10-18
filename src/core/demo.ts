@@ -101,6 +101,23 @@ const state = {
   todosDone: new Set<number>([2]),
 };
 
+/**
+ * Les paroles du mode démo : INVENTÉES pour Ondine (jamais celles d'une vraie
+ * chanson), une ligne toutes les 4 s, en boucle sur tout le morceau, au format
+ * LRC que renverrait LRCLIB.
+ */
+const DEMO_LYRICS = [
+  ["La mer s'en va sans bruit", "Elle laisse le sable au soleil", "On compte les coquillages", "Comme on compte les jours", "", "Et la marée remonte", "Doucement vers nous", "Garde un peu d'eau dans tes mains", "Pour l'été qui revient"],
+  ["Les néons dorment sous la pluie", "La ville respire en bleu", "On danse au fond du silence", "Les phares dessinent nos pas", "", "Nuit bleue, reste encore", "Le matin peut attendre", "Nuit bleue, tout est calme", "Jusqu'au bout de la rue"],
+];
+function demoLrc(n: number): string {
+  const lines = DEMO_LYRICS[n % DEMO_LYRICS.length];
+  const stamp = (ms: number) => `[${String(Math.floor(ms / 60_000)).padStart(2, "0")}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}.00]`;
+  const out: string[] = [];
+  for (let ms = 8_000, i = 0; ms < TRACKS[n].durationMs - 4_000; ms += 4_000, i++) out.push(`${stamp(ms)} ${lines[i % lines.length]}`);
+  return out.join("\n");
+}
+
 function position(): number {
   const t = TRACKS[state.track];
   const moved = state.playing ? performance.now() - state.since : 0;
@@ -577,6 +594,22 @@ function demoConvert(bus: Bus, args: Record<string, unknown>) {
   window.setTimeout(tick, 300);
 }
 
+/** Eau : les verres d'aujourd'hui en démo (1,25 L), et les 6 jours d'avant (en ml). */
+const waterToday: { at: string; ml: number }[] = ["08:40", "10:05", "11:30", "13:15", "15:00"].map((at) => ({ at, ml: 250 }));
+const WATER_WEEK = [1750, 2000, 1500, 2250, 1250, 1750];
+
+function demoWater() {
+  const key = (n: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const days: Record<string, { at: string; ml: number }[]> = {};
+  WATER_WEEK.forEach((ml, i) => (days[key(6 - i)] = Array.from({ length: ml / 250 }, (_, j) => ({ at: `${String(9 + j).padStart(2, "0")}:00`, ml: 250 }))));
+  if (waterToday.length) days[key(0)] = [...waterToday];
+  return { today: key(0), days };
+}
+
 // ── Les réponses aux modules ─────────────────────────────────────────────────
 
 /** Ce que le Rust aurait répondu. Les actions ne font rien (ou changent les fausses données). */
@@ -607,6 +640,10 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     // Musique
     case "media.state":
       return mediaState();
+    case "media.lyrics": {
+      const t = { ...TRACKS[state.track], ...(danceTrack ?? {}) };
+      return { title: t.title, artist: t.artist, lyrics: { found: true, synced: demoLrc(state.track), plain: DEMO_LYRICS[state.track].join("\n"), instrumental: false } };
+    }
     case "media.artwork":
       return { url: cover(state.track) };
     case "media.tempo":
@@ -1043,6 +1080,18 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       const v = Math.max(0, 0.08 + 0.3 * Math.sin(t * 5.3) * Math.sin(t * 1.7) + 0.12 * Math.sin(t * 11));
       return { mic: args.mic ? v : null, out: args.out ? v : null };
     }
+    // Eau : une semaine inventée (les verres ajoutés en démo restent en mémoire).
+    case "water.read":
+      return demoWater();
+    case "water.add": {
+      const ml = Number(args.ml);
+      const now = new Date();
+      if (ml >= 50 && ml <= 2000) waterToday.push({ at: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`, ml });
+      return demoWater();
+    }
+    case "water.undo":
+      waterToday.pop();
+      return demoWater();
     case "weekly.peek":
       // « Voir le bilan maintenant » : une belle semaine inventée (« due » reste null : pas de vrai bilan en démo).
       return { pomodoros: 9, focusMinutes: 215, todos: 14, until: "", agents: agentsWeek() };
@@ -1055,7 +1104,7 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
 // ── Allumer, éteindre, scènes ────────────────────────────────────────────────
 
 /** Les sujets « …changed » qui font relire leurs données aux modules. */
-const REFRESH = ["agenda.changed", "notes.changed", "clipboard.changed", "rules.changed", "remote.changed", "agents.changed", "weather.changed"];
+const REFRESH = ["agenda.changed", "notes.changed", "clipboard.changed", "rules.changed", "remote.changed", "agents.changed", "weather.changed", "water.changed"];
 
 /** Fait relire leurs données à tous les modules (fausses ou vraies selon le mode). */
 async function refreshAll(bus: Bus) {

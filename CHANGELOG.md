@@ -2,6 +2,27 @@
 
 ## 1.2.5 · à venir
 
+- Paroles synchronisées dans la carte Musique (réglage « Paroles (LRCLIB) »,
+  coupé par défaut) : le bouton « Paroles » coupe la carte en deux, le
+  lecteur à gauche, les paroles à droite ; la ligne chantée s'allume et la
+  liste glisse toute seule. Un clic sur une ligne y va dans le morceau.
+  Seuls le titre, l'artiste, l'album et la durée partent vers lrclib.net,
+  et seulement quand la vue est ouverte · Synced lyrics in the Music card
+  ("Lyrics (LRCLIB)" setting, off by default): the "Lyrics" button splits
+  the card in two, the player on the left, the lyrics on the right; the
+  line being sung lights up and the list scrolls by itself. Click a line to
+  jump there in the track. Only the title, artist, album and duration go to
+  lrclib.net, and only while the view is open
+- Nouveau module « Eau » (coupé par défaut) : le total du jour, l'objectif
+  (2 L), un bouton « + 25 cl » (appui long ou « Annuler » pour retirer le
+  dernier verre) et la semaine en barres. Un rappel « Un verre d'eau ? » aux
+  heures choisies (9 h à 18 h, toutes les 90 min), qui se tait pendant la
+  concentration, une présentation ou un appel. Tout reste sur le PC (30
+  jours) · New "Water" module (off by default): the day's total, the goal
+  (2 L), a "+ 25 cl" button (press and hold, or "Cancel", to remove the last
+  glass) and the week as bars. A "A glass of water?" reminder at the hours
+  you choose (9 am to 6 pm, every 90 min), quiet during focus, a
+  presentation or a call. Everything stays on the PC (30 days)
 - Nouveau style d'île « Encoche » (Réglages → L'île → Style de l'île), à côté
   de Classique et Bouche d'Ondine : l'île est noire, fondue dans le bord de
   l'écran par deux coins creux, et une lueur à la couleur du thème monte du
