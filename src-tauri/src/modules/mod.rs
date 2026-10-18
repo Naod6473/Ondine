@@ -98,6 +98,8 @@ mod terminal;
 mod updates;
 mod updates_parse;
 pub(crate) mod clipboard_qr;
+// L'Eau (1.2.5, coupé par défaut) : le carnet des verres bus (water.json, 30 jours).
+mod water;
 mod weather;
 // Le bilan de la semaine (Pomodoros, concentration, tâches cochées).
 mod weekly;
@@ -316,6 +318,7 @@ impl Registry {
             Box::new(agents::Agents::default()),
             Box::new(askclaude::AskClaude::default()),
             Box::new(weather::WeatherModule::default()),
+            Box::new(water::Water::default()),
             Box::new(weekly::Weekly::default()),
             Box::new(halos::Halos),
             Box::new(team::Team::default()),
@@ -633,6 +636,24 @@ mod tests {
         }
         assert!(m.events.emits.iter().any(|e| e == "mascot.emote"));
         assert!(crate::services::settings::MODULES_OFF_BY_DEFAULT.contains(&"homeassistant"));
+    }
+
+    #[test]
+    fn water_manifest_is_valid() {
+        let m = check_manifest(water::Water::default().manifest_json()).unwrap();
+        assert_eq!(m.id, "water");
+        assert!(m.permissions.is_empty());
+        for c in ["read", "add", "undo"] {
+            assert!(m.commands.iter().any(|x| x == c), "{c}");
+        }
+        assert!(crate::services::settings::MODULES_OFF_BY_DEFAULT.contains(&"water"));
+    }
+
+    #[test]
+    fn media_lyrics_need_network() {
+        let m = check_manifest(media::Media::default().manifest_json()).unwrap();
+        assert!(m.commands.iter().any(|x| x == "lyrics"));
+        assert_eq!(m.permissions, vec!["network".to_string()]);
     }
 
     #[test]

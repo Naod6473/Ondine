@@ -17,6 +17,7 @@ Ondine ne se connecte à Internet que dans ces cas :
 | Vous avez activé l'alerte « changement d'IP publique » (Outils IT, désactivée par défaut) | api.ipify.org | Une demande de votre adresse IP publique. |
 | Vous lancez un ping, un test de port, un accès RDP/SSH ou un agent IA | la machine ou le service que vous avez choisi | Ce que vous avez demandé. |
 | Vous avez activé la Météo (désactivée par défaut) et saisi une ville, au plus toutes les 30 minutes | geocoding-api.open-meteo.com, api.open-meteo.com | Le nom de la ville (une fois, quand elle change), puis ses coordonnées arrondies à 2 décimales (environ 1 km). |
+| Vous avez coché « Paroles (LRCLIB) » (Musique, coupé par défaut) et ouvert la vue Paroles, une fois par morceau | lrclib.net | Le titre, l'artiste, l'album et la durée du morceau en cours, rien d'autre. La réponse est gardée en mémoire le temps de la session, jamais sur le disque. |
 | Vous cliquez « Signaler un problème » (Réglages → Général → À propos) | github.com, dans votre navigateur | Rien tant que vous n'envoyez pas : la page d'une nouvelle issue s'ouvre, préremplie avec la version, Windows et les 40 dernières lignes du journal (chemins personnels masqués). Vous relisez, modifiez ou abandonnez. |
 | Vous avez saisi votre identifiant GitHub (Réglages → Agents IA ; vide par défaut), au plus toutes les 30 minutes, jamais pendant une présentation ni la concentration | github.com (sans jeton) ou api.github.com/graphql (avec un jeton) | Sans jeton : une demande de la page publique des contributions ; seul l'identifiant part. Avec un jeton personnel en lecture seule (`read:user`), gardé dans le Gestionnaire d'identifiants de Windows : la même demande, contributions privées comprises. Une copie du calendrier reste dans `%APPDATA%\Ondine\github-calendar.json`. |
 | Vous cliquez « Tout voir » dans « Quoi de neuf » (après une mise à jour, ou Réglages → Général → À propos → Voir les nouveautés) | github.com, dans votre navigateur | Rien : la page de la version installée s'ouvre. Les nouveautés montrées dans l'île viennent du CHANGELOG intégré à l'appli, sans connexion. |
@@ -71,6 +72,10 @@ specifically requested by the user, with one exception: the update check.
 - **Weather** (off by default; once you turn it on and enter a city, at most every
   30 minutes): sends the city name to geocoding-api.open-meteo.com (once, when it
   changes), then its coordinates rounded to 2 decimals (about 1 km) to api.open-meteo.com.
+- **Lyrics** (Music, "Lyrics (LRCLIB)" setting, off by default; only once you open the
+  Lyrics view, once per track): sends the current track's title, artist, album and
+  duration to lrclib.net, nothing else. The answer is kept in memory for the session,
+  never on disk.
 - **Report a problem** (Settings → General → About): opens a new GitHub issue page in
   your browser, prefilled with the version, Windows and the last 40 log lines
   (personal paths hidden). Nothing is sent until you review it and click Submit.

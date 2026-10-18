@@ -15,6 +15,15 @@
 // publie "media.changed" quand quelque chose change. Entre deux messages, on
 // fait avancer la barre de progression ici, à partir de la dernière position
 // connue. Les calculs sans DOM sont dans logic.ts.
+//
+// Les paroles (1.2.5, réglage « Paroles (LRCLIB) », coupé par défaut) : un
+// bouton « Paroles » coupe la carte en deux, le lecteur réduit à gauche
+// (pochette, titre, barre, boutons), les paroles à droite. La ligne chantée
+// est en blanc, les autres estompées, et la liste glisse avec un ressort.
+// Un clic sur une ligne y va (si le lecteur accepte « seek »), sinon la met
+// seulement en avant. Le Rust demande les paroles à LRCLIB (commande
+// `lyrics`, seulement quand la vue est ouverte) ; le format LRC est lu dans
+// lyrics-logic.ts. La position vient de la même estimation que la barre.
 
 import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
@@ -24,6 +33,7 @@ import { pacedInterval, perfMode, setText } from "../../core/perf";
 import { reducedMotion } from "../../island/tab-pill";
 import { coverTint, onCoverColors, setCover } from "../../mascot/env-tint";
 import { appName, buttons, cardTint, clock, nextRepeat, remaining, throttle, volumeLevel, type NowPlaying, type PlayerVolume, type RepeatMode } from "./logic";
+import { currentLine, lyricsKey, lyricsView, msUntilNextLine, scrollFor, type LyricsReply, type LyricsView } from "./lyrics-logic";
 
 interface MediaState {
   playing: NowPlaying | null;
@@ -45,9 +55,46 @@ let tintFor: { artwork: number; rgb: readonly [number, number, number] } | null 
 const redraws = new Set<() => void>();
 /** Pendant qu'on glisse sur la barre : la position visée (ms), sinon null. */
 let scrub: number | null = null;
+/** La vue Paroles est-elle ouverte ? (gardé quand l'île se referme) */
+let lyricsOpen = false;
+/** Les paroles du morceau en cours : pour quel morceau (lyricsKey), et où on en est. */
+let lyrics: { key: string; status: "loading" | "ready" | "error"; view: LyricsView; error?: string } | null = null;
 
 function redrawAll() {
   for (const r of redraws) r();
+}
+
+/** Le réglage « Paroles (LRCLIB) » est-il coché ? */
+function lyricsAllowed(api: ModuleApi): boolean {
+  return api.settings().lyrics === true;
+}
+
+/**
+ * Demande les paroles du morceau en cours, si la vue Paroles est ouverte et
+ * qu'on ne les a pas déjà (une erreur se retente à la réouverture de la vue).
+ */
+async function loadLyrics(api: ModuleApi, retry = false) {
+  if (!lyricsOpen || !lyricsAllowed(api) || !hasTrack() || !playing) return;
+  const key = lyricsKey(playing);
+  if (lyrics?.key === key && !(retry && lyrics.status === "error")) return;
+  lyrics = { key, status: "loading", view: { kind: "none" } };
+  redrawAll();
+  let reply: LyricsReply | null;
+  try {
+    reply = await api.invoke<LyricsReply | null>("lyrics");
+  } catch (err) {
+    if (lyrics?.key === key) lyrics = { key, status: "error", view: { kind: "none" }, error: errorText(err) };
+    redrawAll();
+    return;
+  }
+  if (lyrics?.key !== key) return; // un autre morceau entre-temps : sa demande est partie
+  if (!reply || !playing || reply.title !== playing.title || reply.artist !== playing.artist) {
+    // Le Rust a déjà vu le morceau suivant : le message "media.changed" arrive et redemande.
+    lyrics = null;
+    return;
+  }
+  lyrics = { key, status: "ready", view: lyricsView(reply.lyrics) };
+  redrawAll();
 }
 
 /** Y a-t-il quelque chose à montrer ? (un lecteur arrêté sans titre : non) */
@@ -291,6 +338,7 @@ export const media: IslandModule = {
 
       if (wasShown !== hasTrack()) api.refreshCompact();
       redrawAll();
+      void loadLyrics(api);
     };
 
     api.on("media.changed", (msg) => void apply(msg.payload as MediaState));
@@ -303,8 +351,16 @@ export const media: IslandModule = {
     // La couleur de la pochette arrive un instant après l'image (env-tint.ts) : on repeint.
     const offTint = onCoverColors(() => redrawAll());
 
-    // Changer le réglage « pilule » doit changer la vue compacte tout de suite.
-    api.onSettingsChange(() => api.refreshCompact());
+    // Changer le réglage « pilule » doit changer la vue compacte tout de suite ;
+    // décocher « Paroles » referme la vue Paroles.
+    api.onSettingsChange(() => {
+      api.refreshCompact();
+      if (!lyricsAllowed(api)) {
+        lyricsOpen = false;
+        lyrics = null;
+      }
+      redrawAll();
+    });
 
     // L'Accueil : une carte large, teintée aux couleurs de la pochette, tant qu'un morceau est là.
     api.homeCard({
@@ -338,6 +394,8 @@ export const media: IslandModule = {
       artworkUrl = null;
       volume = null;
       tintFor = null;
+      lyricsOpen = false;
+      lyrics = null;
       setCover(null);
     };
   },
@@ -542,12 +600,109 @@ export const media: IslandModule = {
         },
       });
       const volBox = el("div", { class: "media-volume" }, volIcon, vol.el, volNum);
-      const controls = el("div", { class: "media-controls" }, shuffleB, prevB, playB, nextB, repeatB, el("span", { class: "media-grow" }), volBox);
 
-      const card = el("div", { class: "media-card" }, el("span", { class: "media-glow", "aria-hidden": "true" }), head, progress, controls);
+      // ── Paroles : le bouton, et le volet de droite ──
+      const lyricsB = btn("media-lyrics-btn", () => {
+        lyricsOpen = !lyricsOpen;
+        sync();
+        void loadLyrics(api, true);
+      });
+      lyricsB.textContent = "Paroles";
+      const lyricsList = el("ol", { class: "media-lyrics-list", "data-no-i18n": true });
+      const lyricsNote = el("p", { class: "media-lyrics-note" });
+      const lyricsPane = el("div", { class: "media-lyrics", "aria-label": "Paroles" }, lyricsNote, lyricsList);
+      /** Les lignes affichées (pour ne pas les refaire à chaque message du lecteur). */
+      let shownView: LyricsView | null = null;
+      let shownLine = -2;
+      /** Une ligne cliquée sans pouvoir y aller : mise en avant tant que la ligne chantée ne change pas. */
+      let pinned: { line: number; while: number } | null = null;
+      let nextLineTimer = 0;
+
+      const controls = el("div", { class: "media-controls" }, shuffleB, prevB, playB, nextB, repeatB, el("span", { class: "media-grow" }), lyricsB, volBox);
+      const main = el("div", { class: "media-main" }, head, progress, controls);
+
+      const card = el("div", { class: "media-card" }, el("span", { class: "media-glow", "aria-hidden": "true" }), main, lyricsPane);
+
+      /** Le volet des paroles : le message, ou la liste (refaite seulement quand les paroles changent). */
+      const drawLyrics = () => {
+        const state = lyrics;
+        const view = state?.status === "ready" ? state.view : null;
+        const note =
+          !state || state.status === "loading"
+            ? "Recherche des paroles…"
+            : state.status === "error"
+              ? "Paroles indisponibles pour l'instant (pas de connexion ?)"
+              : view?.kind === "instrumental"
+                ? "Morceau instrumental : pas de paroles"
+                : view?.kind === "none"
+                  ? "Pas de paroles pour ce morceau"
+                  : view?.kind === "plain"
+                    ? "Paroles non synchronisées"
+                    : "";
+        setText(lyricsNote, note);
+        lyricsNote.hidden = !note;
+        if (state?.status === "error" && state.error) lyricsNote.title = state.error;
+        else lyricsNote.removeAttribute("title");
+        lyricsPane.classList.toggle("plain", view?.kind === "plain");
+        if (view === shownView) return;
+        shownView = view;
+        shownLine = -2;
+        pinned = null;
+        lyricsList.style.transform = "";
+        if (view?.kind === "synced") {
+          lyricsList.replaceChildren(
+            ...view.lines.map((l, i) =>
+              el("li", {}, el("button", { class: "media-lyric", type: "button", "data-no-i18n": true, onclick: api.handler(() => pickLine(i)) }, l.text || "♪")),
+            ),
+          );
+        } else if (view?.kind === "plain") {
+          lyricsList.replaceChildren(...view.lines.map((l) => el("li", { class: "media-lyric-plain", "data-no-i18n": true }, l || " ")));
+        } else lyricsList.replaceChildren();
+      };
+
+      /** Un clic sur une ligne : le lecteur y va s'il le peut, sinon la ligne est mise en avant. */
+      const pickLine = (i: number) => {
+        const view = shownView;
+        if (view?.kind !== "synced") return;
+        if (seek.enabled) {
+          pinned = null;
+          go(view.lines[i].timeMs);
+          return;
+        }
+        const pos = currentPosition();
+        pinned = { line: i, while: pos === null ? -1 : currentLine(view.lines, pos) };
+        markLine();
+      };
+
+      /** Allume la ligne chantée et fait glisser la liste ; prévoit le prochain changement. */
+      const markLine = () => {
+        window.clearTimeout(nextLineTimer);
+        const view = shownView;
+        if (view?.kind !== "synced" || !lyricsPane.isConnected || lyricsPane.hidden) return;
+        const pos = currentPosition();
+        const sung = pos === null ? -1 : currentLine(view.lines, pos);
+        if (pinned && pinned.while !== sung) pinned = null;
+        const line = pinned ? pinned.line : sung;
+        if (line !== shownLine) {
+          const items = lyricsList.children;
+          lyricsList.querySelector(".on")?.classList.remove("on");
+          const li = items[line] as HTMLElement | undefined;
+          li?.classList.add("on");
+          shownLine = line;
+          const top = li ? li.offsetTop : 0;
+          const h = li ? li.offsetHeight : 0;
+          lyricsList.style.transform = `translateY(${scrollFor(lyricsPane.clientHeight, top, h)}px)`;
+        }
+        // La ligne suivante tombe pile, sans attendre le prochain tour de la barre.
+        if (pos !== null && playing?.status === "playing" && scrub === null) {
+          const wait = msUntilNextLine(view.lines, pos);
+          if (wait !== null) nextLineTimer = window.setTimeout(markLine, wait + 20);
+        }
+      };
 
       // La barre avance toute seule entre deux messages du Rust.
       const tick = () => {
+        markLine();
         const pos = currentPosition();
         const duration = playing?.durationMs;
         if (pos === null || !duration) return;
@@ -581,6 +736,17 @@ export const media: IslandModule = {
         }
         paintTint(card);
         card.classList.toggle("on", p.status === "playing");
+
+        // Paroles : le bouton (réglage coché), la carte coupée en deux quand la vue est ouverte.
+        const allowed = lyricsAllowed(api);
+        const split = allowed && lyricsOpen;
+        lyricsB.hidden = !allowed;
+        lyricsB.classList.toggle("on", split);
+        lyricsB.setAttribute("aria-pressed", String(split));
+        setLabel(lyricsB, split ? "Fermer les paroles" : "Afficher les paroles");
+        card.classList.toggle("with-lyrics", split);
+        lyricsPane.hidden = !split;
+        if (split) drawLyrics();
 
         const b = buttons(p, volume);
         const apply = (node: HTMLButtonElement, s: { enabled: boolean; on: boolean; label: string }) => {
@@ -620,6 +786,13 @@ export const media: IslandModule = {
         tick();
       };
 
+      // Le volet change de taille (l'île s'ouvre, la carte se coupe en deux) : on recentre la ligne.
+      const paneSize = new ResizeObserver(() => {
+        shownLine = -2;
+        markLine();
+      });
+      paneSize.observe(lyricsPane);
+
       sync();
       redraws.add(sync);
       void readVolume(api);
@@ -628,6 +801,8 @@ export const media: IslandModule = {
       return () => {
         redraws.delete(sync);
         stopTick();
+        window.clearTimeout(nextLineTimer);
+        paneSize.disconnect();
         sendVolume.flush();
         scrub = null;
       };
