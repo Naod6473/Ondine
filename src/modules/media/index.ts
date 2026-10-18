@@ -76,9 +76,12 @@ function paintTint(node: HTMLElement) {
   if (t) {
     node.style.setProperty("--media-tint", t.tint);
     node.style.setProperty("--media-tint-soft", t.soft);
+    // Style Encoche : la lueur de l'île prend la couleur de la pochette (island-notch.css).
+    document.body.style.setProperty("--notch-tint", t.tint);
   } else {
     node.style.removeProperty("--media-tint");
     node.style.removeProperty("--media-tint-soft");
+    document.body.style.removeProperty("--notch-tint");
   }
 }
 

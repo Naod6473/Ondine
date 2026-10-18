@@ -145,6 +145,107 @@ body[data-edge="right"] {
   --glow-across: 180deg;
 }
 
+/* La musique joue : la lueur prend la couleur de la pochette (--notch-tint,
+   posée par le module Musique), comme la lumière d'un écran dans le noir. */
+body[data-island-style="notch"]:not(.retro) .island:has(.media-card, .media-compact)::before {
+  background: linear-gradient(
+    var(--glow-across, 90deg),
+    color-mix(in srgb, var(--notch-tint, var(--accent)) 75%, #fff),
+    var(--notch-tint, var(--accent)) 50%,
+    color-mix(in srgb, var(--notch-tint, var(--accent)) 70%, #000)
+  );
+}
+
+/* ── L'intérieur, à plat sur le noir ─────────────────────────────────────────
+   Façon encoche de portable : pas de cadres, peu de traits, des pilules
+   blanches. Les onglets restent (le menu et les raccourcis de l'île) ; les
+   icônes des onglets inactifs passent en blanc estompé, l'actif garde ses
+   couleurs. */
+body[data-island-style="notch"] .tabs {
+  border-bottom: 0;
+  padding-bottom: 4px;
+}
+body[data-island-style="notch"] .tab:not(.active) .tab-icon {
+  /* En gris clair, estompée : l'icône garde son dessin (avec les icônes
+     épurées, au trait, elle devient un simple trait blanc). */
+  filter: grayscale(1) brightness(1.35);
+  opacity: 0.6;
+  transition:
+    filter 200ms ease,
+    opacity 200ms ease;
+}
+body[data-island-style="notch"] .tab:not(.active):hover .tab-icon {
+  filter: none;
+  opacity: 1;
+}
+body[data-island-style="notch"] .tab-pill {
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: none;
+}
+/* Les cartes : un voile très léger, sans contour. */
+body[data-island-style="notch"] .media-card,
+body[data-island-style="notch"] .home-card {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.045);
+}
+body[data-island-style="notch"] .home-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+body[data-island-style="notch"] .segmented {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.07);
+}
+/* Les boutons : des pilules, le bouton principal en blanc. */
+body[data-island-style="notch"] .view-expanded .btn {
+  border-color: transparent;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+body[data-island-style="notch"] .view-expanded .btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+body[data-island-style="notch"] .view-expanded .btn.primary {
+  background: #fff;
+  color: #000;
+}
+body[data-island-style="notch"] .view-expanded .btn.primary:hover {
+  background: color-mix(in srgb, #fff 86%, var(--accent));
+}
+
+/* ── Les points de page (island.ts) ──────────────────────────────────────────
+   Un point par onglet sous le contenu, l'actif s'allonge en blanc. Seulement
+   dans ce style, et seulement l'île ouverte. */
+.page-dots {
+  display: none;
+}
+body[data-island-style="notch"] .island[data-state="expanded"] .page-dots {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  height: 10px;
+  margin-top: 4px;
+}
+.page-dots > button {
+  all: unset;
+  width: 4px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition:
+    width var(--speed) var(--ease),
+    background 300ms ease;
+}
+.page-dots > button:hover {
+  background: rgba(255, 255, 255, 0.75);
+}
+.page-dots > button.on {
+  width: 16px;
+  background: #fff;
+}
+
 @media (prefers-reduced-motion: reduce) {
   body[data-island-style="notch"] .island[data-state="drop"]::before {
     animation: none;

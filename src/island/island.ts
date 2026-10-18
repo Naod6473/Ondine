@@ -1722,7 +1722,15 @@ export class Island {
     const body = el("div", { class: "view view-expanded" });
     asPanel(body, this.activeTab);
     stage.append(body);
-    this.content.append(header, banner, stage);
+    // Style Encoche : des points de page sous le contenu, façon encoche de
+    // portable (un par onglet, l'actif s'allonge). Montrés seulement par
+    // island-notch.css ; le clavier et les lecteurs d'écran gardent les onglets.
+    const dots = el("div", { class: "page-dots", "aria-hidden": "true" });
+    for (const t of tabs) {
+      const id = t.module.manifest.id;
+      dots.append(el("button", { class: id === this.activeTab ? "on" : "", "data-id": id, tabindex: -1, title: t.module.manifest.name, onclick: () => this.switchTab(id) }));
+    }
+    this.content.append(header, banner, stage, dots);
     this.expandedUi = { tabs: buttons, pill, stage, body };
 
     const active = this.activeTab ? buttons.get(this.activeTab) : undefined;
@@ -1815,6 +1823,7 @@ export class Island {
       button.tabIndex = tabId === id ? 0 : -1;
     }
     ui.pill.moveTo(ui.tabs.get(id)!);
+    for (const dot of this.content.querySelectorAll<HTMLElement>(".page-dots > button")) dot.classList.toggle("on", dot.dataset.id === id);
 
     // Le contenu : on démonte l'ancien module, mais on garde son dessin le
     // temps qu'il s'efface.
