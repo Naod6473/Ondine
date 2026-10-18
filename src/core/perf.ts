@@ -54,6 +54,10 @@ export const CADENCES = {
   presentationCheck: [2000, 4000, 8000],
   /** Pauses : une pause à proposer ? */
   pausesCheck: [30000, 30000, 60000],
+  /** Notes : un rappel de tâche à l'heure ? (et le jaune « bientôt » qui avance) */
+  notesRemind: [15000, 15000, 30000],
+  /** Eau : l'heure d'un rappel ? */
+  waterCheck: [30000, 30000, 60000],
   /** Bilan de la semaine : est-ce l'heure du bilan ? */
   weeklyCheck: [60000, 60000, 120000],
   /** Agents IA : le budget du jour (coût estimé des jetons) est-il dépassé ? */

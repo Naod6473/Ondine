@@ -621,6 +621,18 @@ body[data-perf="eco"] .module-bar .group-body {
 .vg-fill {
   stroke: none;
 }
+/* Style de l'île « Encoche » : noire même sur un fond sombre (un fin liseré
+   la détache), la lueur à la couleur de la page. */
+.vg-notch {
+  fill: #05060c;
+  stroke: color-mix(in srgb, var(--fg) 22%, transparent);
+  stroke-width: 1;
+}
+.vg-notch-glow {
+  stroke: var(--page-color);
+  stroke-width: 2.4;
+  opacity: 0.9;
+}
 .vg-c1 {
   fill: #ff9a5c;
 }

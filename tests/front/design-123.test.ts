@@ -48,6 +48,10 @@ describe("île en verre clair : le thème Givre", () => {
     assert.equal(effectiveThemeId("prune", "mouth"), "prune");
     assert.equal(effectiveThemeId("custom", "mouth"), "custom");
   });
+  test("style encoche : noire, donc un thème clair redevient Nuit aussi", () => {
+    assert.equal(effectiveThemeId("givre", "notch"), "nuit");
+    assert.equal(effectiveThemeId("prune", "notch"), "prune");
+  });
   test("le liquide garde le texte lisible sur l'île claire (il s'éclaircit au lieu de foncer)", () => {
     const bg = cssToHex(givre.bg, "#000000");
     // Vu au pire au-dessus d'un bureau noir : plus sombre que le blanc pur.

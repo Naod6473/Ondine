@@ -1,0 +1,155 @@
+/* Eau (src/modules/water/index.ts, 1.2.5) : le total du jour, la barre de
+ * l'objectif, le bouton « + 25 cl » et la semaine en barres, comme la
+ * maquette « Eau ». À plat, rien que les couleurs du thème et un bleu d'eau :
+ * même rendu en Classique et en Encoche. */
+
+:root {
+  --water-a: #7fe3ff;
+  --water-b: #3d7bff;
+}
+
+.water {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 18px 22px;
+  min-height: 150px;
+}
+.water-main {
+  flex: 0 1 220px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.water-total {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--island-fg);
+}
+.water-goal {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.water-bar {
+  position: relative;
+  height: 6px;
+  margin-top: 14px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--island-fg) 16%, transparent);
+}
+.water-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--water-p, 0%);
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--water-a), var(--water-b));
+  transition: width 900ms cubic-bezier(0.3, 1.2, 0.5, 1);
+}
+.water.done .water-total {
+  color: var(--water-a);
+}
+.water-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+.water-add {
+  height: 28px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 14px;
+  background: #2b8cff;
+  color: #fff;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: none;
+  transition:
+    background 160ms ease,
+    transform 160ms var(--ease, ease);
+}
+.water-add:hover:not(:disabled) {
+  background: #449bff;
+}
+.water-add:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.water-add:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.water-add:focus-visible,
+.water-undo:focus-visible {
+  outline: 2px solid var(--island-fg);
+  outline-offset: 2px;
+}
+/* « Annuler » : discret, du texte seulement. */
+.water-undo {
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.water-undo:hover {
+  color: var(--island-fg);
+  background: color-mix(in srgb, var(--island-fg) 8%, transparent);
+}
+.water-undo[hidden] {
+  display: none;
+}
+
+/* La semaine : 7 petites barres, aujourd'hui en blanc (la couleur du texte). */
+.water-week {
+  flex: 0 1 200px;
+  height: 78px;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+.water-day {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.water-day i {
+  display: block;
+  width: 8px;
+  height: calc(var(--h, 0) * 60px);
+  border-radius: 4px;
+  background: linear-gradient(var(--water-a), var(--water-b));
+  transition: height 800ms cubic-bezier(0.34, 1.5, 0.5, 1);
+}
+.water-day.today i {
+  background: var(--island-fg);
+}
+.water-day.today {
+  color: var(--island-fg);
+}
+.water-day b {
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .water-fill,
+  .water-day i {
+    transition: none;
+  }
+}

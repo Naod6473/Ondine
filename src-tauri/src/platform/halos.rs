@@ -18,6 +18,10 @@
 // - `keys_down` : quelles touches sont enfoncées EN CE MOMENT parmi une courte
 //   liste fixe (Ctrl, C, X, V, touches de volume), par GetAsyncKeyState. Aucun
 //   crochet clavier, aucune autre touche n'est regardée, rien n'est retenu.
+// - `keyboard_layout` : la langue du clavier de la fenêtre au premier plan
+//   (GetForegroundWindow → GetWindowThreadProcessId → GetKeyboardLayout), avec
+//   cette fenêtre pour savoir si c'est toujours la même. Seulement la langue
+//   (le LANGID), jamais ce qui est tapé.
 
 /// Haut-parleurs (ce qui joue) ou micro.
 pub use super::audio::Device;
@@ -66,6 +70,12 @@ pub fn keys_down() -> Keys {
     imp::keys_down()
 }
 
+/// (fenêtre au premier plan, LANGID de sa disposition du clavier), ou None
+/// (pas de fenêtre au premier plan, bureau verrouillé…).
+pub fn keyboard_layout() -> Option<(isize, u16)> {
+    imp::keyboard_layout()
+}
+
 #[cfg(windows)]
 mod imp {
     use super::{Device, Keys};
@@ -78,7 +88,7 @@ mod imp {
     };
     use ::windows::Win32::System::Com::{CoCreateInstance, CLSCTX_ALL};
     use ::windows::Win32::UI::Input::KeyboardAndMouse::{
-        GetAsyncKeyState, GetKeyState, VIRTUAL_KEY, VK_CAPITAL, VK_CONTROL, VK_NUMLOCK, VK_VOLUME_DOWN, VK_VOLUME_MUTE, VK_VOLUME_UP,
+        GetAsyncKeyState, GetKeyState, GetKeyboardLayout, VIRTUAL_KEY, VK_CAPITAL, VK_CONTROL, VK_NUMLOCK, VK_VOLUME_DOWN, VK_VOLUME_MUTE, VK_VOLUME_UP,
     };
 
     pub fn peak(device: Device) -> Option<f32> {
@@ -201,6 +211,23 @@ mod imp {
             mute: down(VK_VOLUME_MUTE),
         }
     }
+
+    pub fn keyboard_layout() -> Option<(isize, u16)> {
+        use ::windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
+        unsafe {
+            let hwnd = GetForegroundWindow();
+            if hwnd.0.is_null() {
+                return None;
+            }
+            let thread = GetWindowThreadProcessId(hwnd, None);
+            if thread == 0 {
+                return None;
+            }
+            // Le mot bas du HKL : la langue (LANGID) ; le mot haut : la disposition elle-même.
+            let lang = (GetKeyboardLayout(thread).0 as usize & 0xFFFF) as u16;
+            (lang != 0).then_some((hwnd.0 as isize, lang))
+        }
+    }
 }
 
 #[cfg(not(windows))]
@@ -228,5 +255,8 @@ mod imp {
     }
     pub fn keys_down() -> Keys {
         Keys::default()
+    }
+    pub fn keyboard_layout() -> Option<(isize, u16)> {
+        None
     }
 }

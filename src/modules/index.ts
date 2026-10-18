@@ -14,6 +14,7 @@ import { launcher } from "./launcher";
 import { media } from "./media";
 import { notes } from "./notes";
 import { pauses } from "./pauses";
+import { water } from "./water";
 import { games } from "./games";
 import { rules } from "./rules";
 import { shelf } from "./shelf";
@@ -43,5 +44,5 @@ import { homeassistant } from "./homeassistant";
 // sienne, le point rouge de l'enregistrement, passe avant celle des autres.
 // Il n'a pas d'onglet. Rester éveillé ensuite : le compte à rebours d'un arrêt
 // programmé passe avant la musique ou le minuteur.
-export const ALL_MODULES: IslandModule[] = [home, askclaude, callnotes, awake, convert, shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, updates, team, agents, launcher, rules, media, controls, homeassistant, winnotifs, pauses, games, weather, weekly, halos, windowlife, screensaver, dictation];
+export const ALL_MODULES: IslandModule[] = [home, askclaude, callnotes, awake, convert, shelf, clipboard, capture, timerModule, notes, agenda, terminal, system, remote, nettools, updates, team, agents, launcher, rules, media, controls, homeassistant, winnotifs, pauses, water, games, weather, weekly, halos, windowlife, screensaver, dictation];
 

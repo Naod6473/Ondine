@@ -6,6 +6,10 @@
 //   - la sortie de veille : le fil dort un court instant à chaque tour ; si
 //     l'horloge a avancé de bien plus que ça, le PC dormait → « halos.wake » ;
 //   - Verr Maj / Verr Num (« halos.lock-key » {key: "caps" | "num", on}) ;
+//   - la langue du clavier qui change (« halos.keyboard-layout » {from, to,
+//     name} : « FR », « EN », « Anglais (États-Unis) ») : seulement quand elle
+//     change DANS la même fenêtre au premier plan (Win+Espace, Alt+Maj…), pas
+//     au démarrage ni quand on passe à une fenêtre qui a une autre langue ;
 //   - Copié / Coupé / Collé (« halos.clip » {action, text?}) : Ctrl+C, Ctrl+X,
 //     Ctrl+V vus par GetAsyncKeyState sur ces quatre touches seulement (aucun
 //     crochet clavier). Copié / Coupé n'est dit que si le presse-papiers a
@@ -124,6 +128,106 @@ fn snippet(text: &str) -> String {
     out
 }
 
+/// La langue du clavier a changé : (avant, après), en LANGID. Seulement si la
+/// fenêtre au premier plan est la même qu'au tour d'avant : passer à une
+/// fenêtre qui a une autre langue n'est pas un changement (Windows peut garder
+/// une langue par fenêtre), et au premier tour il n'y a rien à comparer.
+fn layout_news(prev: Option<(isize, u16)>, now: Option<(isize, u16)>) -> Option<(u16, u16)> {
+    let ((was_window, was), (window, lang)) = (prev?, now?);
+    (window == was_window && lang != was).then_some((was, lang))
+}
+
+/// Le code court (« FR ») et le nom (« Français (Canada) ») d'un LANGID de
+/// Windows, d'après sa langue (les 10 bits bas) et sa variante (les 6 bits
+/// hauts). La variante ne se dit que quand elle compte (anglais, portugais…).
+/// Une langue inconnue : ("", "").
+fn lang_label(langid: u16) -> (&'static str, &'static str) {
+    let sub = langid >> 10;
+    match langid & 0x3FF {
+        0x01 => ("AR", "Arabe"),
+        0x02 => ("BG", "Bulgare"),
+        0x03 => ("CA", "Catalan"),
+        // Chine et Singapour : caractères simplifiés ; Taïwan, Hong Kong, Macao : traditionnels.
+        0x04 => ("ZH", if matches!(sub, 2 | 4) { "Chinois (simplifié)" } else { "Chinois (traditionnel)" }),
+        0x05 => ("CS", "Tchèque"),
+        0x06 => ("DA", "Danois"),
+        0x07 => (
+            "DE",
+            match sub {
+                2 => "Allemand (Suisse)",
+                3 => "Allemand (Autriche)",
+                _ => "Allemand",
+            },
+        ),
+        0x08 => ("EL", "Grec"),
+        0x09 => (
+            "EN",
+            match sub {
+                2 => "Anglais (Royaume-Uni)",
+                3 => "Anglais (Australie)",
+                4 => "Anglais (Canada)",
+                5 => "Anglais (Nouvelle-Zélande)",
+                6 => "Anglais (Irlande)",
+                16 => "Anglais (Inde)",
+                _ => "Anglais (États-Unis)",
+            },
+        ),
+        0x0A => ("ES", if sub == 2 { "Espagnol (Mexique)" } else { "Espagnol" }),
+        0x0B => ("FI", "Finnois"),
+        0x0C => (
+            "FR",
+            match sub {
+                2 => "Français (Belgique)",
+                3 => "Français (Canada)",
+                4 => "Français (Suisse)",
+                _ => "Français",
+            },
+        ),
+        0x0D => ("HE", "Hébreu"),
+        0x0E => ("HU", "Hongrois"),
+        0x0F => ("IS", "Islandais"),
+        0x10 => ("IT", if sub == 2 { "Italien (Suisse)" } else { "Italien" }),
+        0x11 => ("JA", "Japonais"),
+        0x12 => ("KO", "Coréen"),
+        0x13 => ("NL", if sub == 2 { "Néerlandais (Belgique)" } else { "Néerlandais" }),
+        0x14 => ("NO", "Norvégien"),
+        0x15 => ("PL", "Polonais"),
+        0x16 => ("PT", if sub == 2 { "Portugais (Portugal)" } else { "Portugais (Brésil)" }),
+        0x18 => ("RO", "Roumain"),
+        0x19 => ("RU", "Russe"),
+        // Croate, serbe et bosnien partagent la même langue chez Windows.
+        0x1A => match sub {
+            1 | 4 => ("HR", "Croate"),
+            5 | 8 => ("BS", "Bosnien"),
+            _ => ("SR", "Serbe"),
+        },
+        0x1B => ("SK", "Slovaque"),
+        0x1D => ("SV", "Suédois"),
+        0x1E => ("TH", "Thaï"),
+        0x1F => ("TR", "Turc"),
+        0x22 => ("UK", "Ukrainien"),
+        0x24 => ("SL", "Slovène"),
+        0x25 => ("ET", "Estonien"),
+        0x26 => ("LV", "Letton"),
+        0x27 => ("LT", "Lituanien"),
+        0x29 => ("FA", "Persan"),
+        0x2A => ("VI", "Vietnamien"),
+        0x2D => ("EU", "Basque"),
+        0x36 => ("AF", "Afrikaans"),
+        0x39 => ("HI", "Hindi"),
+        0x3E => ("MS", "Malais"),
+        0x41 => ("SW", "Swahili"),
+        0x52 => ("CY", "Gallois"),
+        0x56 => ("GL", "Galicien"),
+        0x62 => ("FY", "Frison"),
+        0x6E => ("LB", "Luxembourgeois"),
+        0x83 => ("CO", "Corse"),
+        0x7E => ("BR", "Breton"),
+        0x92 => ("KU", "Kurde"),
+        _ => ("", ""),
+    }
+}
+
 // ── Le fil de fond ───────────────────────────────────────────────────────────
 
 /// Les réglages qui comptent ici (relus une fois par seconde).
@@ -136,6 +240,7 @@ struct Wanted {
     clip_text: bool,
     volume: bool,
     wifi: bool,
+    layout: bool,
 }
 
 impl Wanted {
@@ -149,10 +254,11 @@ impl Wanted {
             clip_text: on("clipText"),
             volume: on("volumeKeys"),
             wifi: on("wifi"),
+            layout: on("keyboardLayout"),
         }
     }
     fn keys(&self) -> bool {
-        self.caps || self.num || self.clip || self.volume
+        self.caps || self.num || self.clip || self.volume || self.layout
     }
 }
 
@@ -162,6 +268,7 @@ fn watch(app: AppHandle) {
     let mut last_wall = SystemTime::now();
     let mut prev_keys = Keys::default();
     let mut locks: Option<(bool, bool)> = None;
+    let mut layout: Option<(isize, u16)> = None;
     let mut wifi_weak = false;
     let mut wifi_at: Option<Instant> = None;
     // Ctrl+C / Ctrl+X vus : on attend que le presse-papiers change.
@@ -174,6 +281,7 @@ fn watch(app: AppHandle) {
         last_wall = SystemTime::now();
         if !super::is_active(&app, ID) {
             locks = None;
+            layout = None;
             pending = None;
             continue;
         }
@@ -196,6 +304,17 @@ fn watch(app: AppHandle) {
                 }
             }
             locks = Some(now_locks);
+            // La langue du clavier : au même rythme que les touches de verrouillage.
+            if wanted.layout {
+                let now_layout = platform::halos::keyboard_layout();
+                if let Some((from, to)) = layout_news(layout, now_layout) {
+                    let ((from, _), (to, name)) = (lang_label(from), lang_label(to));
+                    super::with_context(&app, ID, |ctx| ctx.emit("halos.keyboard-layout", json!({ "from": from, "to": to, "name": name })));
+                }
+                layout = now_layout;
+            } else {
+                layout = None;
+            }
             if wanted.clip || wanted.volume {
                 let keys = platform::halos::keys_down();
                 for news in key_news(prev_keys, keys) {
@@ -288,6 +407,32 @@ mod tests {
         assert_eq!(wifi_news(&mut weak, 34), None);
         assert_eq!(wifi_news(&mut weak, 60), None);
         assert_eq!(wifi_news(&mut weak, 30), Some(30));
+    }
+
+    #[test]
+    fn layout_change_only_in_the_same_window() {
+        let (fr, en) = (0x040C, 0x0409);
+        assert_eq!(layout_news(None, Some((1, fr))), None); // démarrage
+        assert_eq!(layout_news(Some((1, fr)), Some((1, fr))), None);
+        assert_eq!(layout_news(Some((1, fr)), Some((1, en))), Some((fr, en))); // Win+Espace
+        assert_eq!(layout_news(Some((1, fr)), Some((2, en))), None); // autre fenêtre
+        assert_eq!(layout_news(Some((1, fr)), None), None);
+    }
+
+    #[test]
+    fn langid_gives_a_short_code_and_a_name() {
+        assert_eq!(lang_label(0x040C), ("FR", "Français"));
+        assert_eq!(lang_label(0x0C0C), ("FR", "Français (Canada)"));
+        assert_eq!(lang_label(0x080C), ("FR", "Français (Belgique)"));
+        assert_eq!(lang_label(0x0409), ("EN", "Anglais (États-Unis)"));
+        assert_eq!(lang_label(0x0809), ("EN", "Anglais (Royaume-Uni)"));
+        assert_eq!(lang_label(0x0407), ("DE", "Allemand"));
+        assert_eq!(lang_label(0x0807), ("DE", "Allemand (Suisse)"));
+        assert_eq!(lang_label(0x0416), ("PT", "Portugais (Brésil)"));
+        assert_eq!(lang_label(0x0804), ("ZH", "Chinois (simplifié)"));
+        assert_eq!(lang_label(0x0419), ("RU", "Russe"));
+        assert_eq!(lang_label(0x0000), ("", ""));
+        assert_eq!(lang_label(0x0477), ("", "")); // une langue que la table ne connaît pas
     }
 
     #[test]

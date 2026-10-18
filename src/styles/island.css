@@ -439,6 +439,30 @@ body {
   gap: 4px;
   align-items: center;
 }
+/* Des pastilles (la langue du clavier : « FR » puis « EN »), la dernière allumée. */
+.notif-chips {
+  display: flex;
+  gap: 4px;
+  margin-right: 2px;
+}
+.notif-chip {
+  min-width: 28px;
+  height: 22px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--island-fg);
+  font-size: 12px;
+  font-weight: 700;
+}
+.notif-chip.on {
+  background: var(--island-fg);
+  color: var(--island-bg);
+}
 /* Une question à choix : le texte en haut, les boutons dessous (l'alerte grandit). */
 .notif.many {
   flex-wrap: wrap;
@@ -2090,6 +2114,175 @@ body[data-perf="eco"] .media-compact.on .media-eq i {
   }
 }
 
+/* ── Musique → Paroles (1.2.5) ──────────────────────────────────────────────
+   Le bouton « Paroles » coupe la carte en deux : le lecteur réduit à gauche
+   (pochette, titre, barre, boutons), les paroles à droite. La ligne chantée
+   est de la couleur du texte, les autres estompées ; la liste glisse avec un
+   ressort, dans un cadre fondu en haut et en bas. Même rendu en Classique et
+   en Encoche : rien que les couleurs du thème. */
+.media-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.media-lyrics-btn {
+  flex: none;
+  height: 26px;
+  padding: 0 11px;
+  margin-right: 8px;
+  border: 0;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--island-fg) 12%, transparent);
+  color: var(--island-fg);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    transform 160ms var(--ease, ease);
+}
+.media-lyrics-btn[hidden] {
+  display: none;
+}
+.media-lyrics-btn:hover {
+  background: color-mix(in srgb, var(--island-fg) 20%, transparent);
+}
+.media-lyrics-btn:active {
+  transform: scale(0.94);
+}
+.media-lyrics-btn.on {
+  background: var(--mt);
+  color: #05070b;
+}
+.media-lyrics-btn:focus-visible {
+  outline: 2px solid var(--mt);
+  outline-offset: 2px;
+}
+
+/* La carte coupée en deux. */
+.media-card.with-lyrics {
+  flex-direction: row;
+  align-items: stretch;
+  gap: 18px;
+}
+.media-card.with-lyrics .media-main {
+  flex: 0 0 232px;
+  justify-content: center;
+}
+.media-card.with-lyrics .media-head {
+  gap: 12px;
+}
+.media-card.with-lyrics .media-cover-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+}
+.media-card.with-lyrics .media-title {
+  font-size: 15px;
+}
+.media-card.with-lyrics :is(.media-app, .media-time, .media-btn.toggle, .media-volume) {
+  display: none;
+}
+.media-card.with-lyrics .media-controls {
+  gap: 2px;
+}
+
+/* Le volet des paroles. */
+.media-lyrics {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 150px;
+  /* Le volet prend la hauteur du lecteur, jamais celle des paroles : sans
+     ça, la liste entière étire la carte (et le lecteur se perd en bas). */
+  contain: size;
+  overflow: hidden;
+  -webkit-mask: linear-gradient(transparent, #000 22%, #000 78%, transparent);
+  mask: linear-gradient(transparent, #000 22%, #000 78%, transparent);
+}
+.media-lyrics[hidden] {
+  display: none;
+}
+.media-lyrics-note {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+.media-lyrics-note[hidden] {
+  display: none;
+}
+.media-lyrics-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  transition: transform 700ms cubic-bezier(0.34, 1.32, 0.5, 1);
+}
+.media-lyric {
+  display: block;
+  width: 100%;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  font: inherit;
+  font-size: 15.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: color-mix(in srgb, var(--island-fg) 30%, transparent);
+  transform: scale(0.93);
+  transform-origin: left center;
+  cursor: pointer;
+  transition:
+    color 500ms ease,
+    transform 500ms ease;
+}
+.media-lyric:hover {
+  color: color-mix(in srgb, var(--island-fg) 55%, transparent);
+}
+.on > .media-lyric {
+  color: var(--island-fg);
+  transform: none;
+}
+.media-lyric:focus-visible {
+  outline: 2px solid var(--mt);
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+/* Paroles sans horodatage : tout le texte, qu'on fait défiler soi-même. */
+.media-lyrics.plain {
+  overflow-y: auto;
+  -webkit-mask: linear-gradient(#000 78%, transparent);
+  mask: linear-gradient(#000 78%, transparent);
+}
+.media-lyrics.plain .media-lyrics-note {
+  position: static;
+  display: block;
+  text-align: left;
+  font-size: 11.5px;
+  margin-bottom: 6px;
+}
+.media-lyric-plain {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.45;
+  min-height: 0.7em;
+  color: color-mix(in srgb, var(--island-fg) 80%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .media-lyrics-list,
+  .media-lyric {
+    transition: none;
+  }
+}
+
 /* ── Module Presse-papiers ───────────────────────────────────────────────── */
 
 .clip-head {
@@ -2587,6 +2780,86 @@ body[data-perf="eco"] .media-compact.on .media-eq i {
 }
 .todo-item:hover .todo-del {
   opacity: 1;
+}
+/* Le rappel d'une tâche : une horloge (au survol), puis l'heure à droite. */
+.todo-when {
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 150ms ease,
+    color 220ms ease;
+}
+.todo-when svg {
+  width: 11px;
+  height: 11px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.todo-when + .todo-del {
+  margin-left: 0;
+}
+.todo-item:hover .todo-when,
+.todo-when:focus-visible,
+.todo-when.set {
+  opacity: 1;
+}
+.todo-when:not(:disabled):hover {
+  color: var(--island-fg);
+}
+/* Bientôt (moins de 30 min) : l'heure passe en jaune. */
+.todo-when.soon,
+.todo-when.soon:hover {
+  color: #ffc65c;
+}
+/* Une tâche faite : son heure reste, éteinte, sans horloge (plus de rappel). */
+.todo-item.done .todo-when {
+  cursor: default;
+  opacity: 0.6;
+}
+.todo-item.done .todo-when svg {
+  display: none;
+}
+.todo-item.done .todo-when:not(.set) {
+  display: none;
+}
+/* Le choix de l'heure, sous la tâche. */
+.todo-item:has(.todo-when-panel) {
+  flex-wrap: wrap;
+}
+.todo-when-panel {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0 6px 24px;
+}
+.todo-when-panel .btn-row {
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.todo-when-panel input {
+  color-scheme: dark; /* l'île est toujours sombre : icônes du calendrier et de l'heure lisibles */
+}
+.todo-when-date {
+  width: 9.5em;
+}
+.todo-when-time {
+  width: 6.5em;
 }
 .notes-foot {
   align-items: center;

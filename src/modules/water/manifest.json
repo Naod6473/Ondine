@@ -1,0 +1,25 @@
+{
+  "id": "water",
+  "name": "Eau",
+  "tip": "Cliquez sur « + 25 cl » à chaque verre, ou appuyez longuement pour retirer le dernier.",
+  "icon": "🥛",
+  "description": "Compte les verres d'eau de la journée, avec un objectif, la semaine en barres et un petit rappel aux heures choisies. Le rappel se tait pendant la concentration (Minuteur), une présentation ou un appel. Tout reste sur votre PC (30 jours gardés) ; rien ne part sur Internet.",
+  "version": "0.1.0",
+  "permissions": [],
+  "settings": {
+    "version": 1,
+    "fields": [
+      { "key": "glassCl", "essential": true, "type": "number", "label": "Taille du verre (cl)", "default": 25, "min": 5, "max": 100, "step": 5 },
+      { "key": "goalL", "essential": true, "type": "number", "label": "Objectif du jour (litres)", "default": 2, "min": 0.5, "max": 5, "step": 0.25 },
+      { "key": "startHour", "type": "number", "label": "Rappels à partir de (heure)", "default": 9, "min": 0, "max": 23, "step": 1 },
+      { "key": "endHour", "type": "number", "label": "Rappels jusqu'à (heure)", "default": 18, "min": 1, "max": 24, "step": 1 },
+      { "key": "everyMin", "essential": true, "type": "number", "label": "Un rappel toutes les (minutes, 0 = jamais)", "help": "Compté depuis le dernier verre. Plus de rappel une fois l'objectif atteint.", "default": 90, "min": 0, "max": 240, "step": 15 }
+    ]
+  },
+  "views": ["expanded"],
+  "commands": ["read", "add", "undo"],
+  "events": {
+    "emits": ["mascot.emote", "water.changed"],
+    "listens": ["water.changed", "timer.focus", "controls.media-use"]
+  }
+}

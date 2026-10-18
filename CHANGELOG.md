@@ -2,6 +2,54 @@
 
 ## 1.2.5 · à venir
 
+- Notes : chaque tâche peut avoir une heure (le bouton horloge de la ligne :
+  une heure, ou « Dans 30 min », « Ce soir 18:00 », « Demain 9:00 »).
+  L'heure s'affiche à droite, en jaune dans les 30 dernières minutes. À
+  l'heure, une alerte de l'île : « Fait » coche la tâche, « 10 min » la
+  repousse. Rien pendant une concentration ou une présentation, et ce qui a
+  été manqué (PC en veille) arrive ensuite en une seule alerte · Notes: each
+  task can have a time (the clock button on the row: a time, or "In 30 min",
+  "Tonight 18:00", "Tomorrow 9:00"). The time shows on the right, in yellow
+  in the last 30 minutes. On time, an island alert: "Done" ticks the task,
+  "10 min" snoozes it. Nothing during focus or a presentation, and what was
+  missed (PC asleep) comes afterwards in a single alert
+- Un petit aperçu quand la langue du clavier change (Win + Espace, Alt +
+  Maj), comme pour Verr Maj : « Clavier en anglais », avec FR → EN. Réglage
+  « Langue du clavier » dans Animations et halos · A short preview when the
+  keyboard language changes (Win + Space, Alt + Shift), like Caps Lock:
+  "Keyboard in English", with FR → EN. "Keyboard language" setting in
+  Animations and halos
+- Paroles synchronisées dans la carte Musique (réglage « Paroles (LRCLIB) »,
+  coupé par défaut) : le bouton « Paroles » coupe la carte en deux, le
+  lecteur à gauche, les paroles à droite ; la ligne chantée s'allume et la
+  liste glisse toute seule. Un clic sur une ligne y va dans le morceau.
+  Seuls le titre, l'artiste, l'album et la durée partent vers lrclib.net,
+  et seulement quand la vue est ouverte · Synced lyrics in the Music card
+  ("Lyrics (LRCLIB)" setting, off by default): the "Lyrics" button splits
+  the card in two, the player on the left, the lyrics on the right; the
+  line being sung lights up and the list scrolls by itself. Click a line to
+  jump there in the track. Only the title, artist, album and duration go to
+  lrclib.net, and only while the view is open
+- Nouveau module « Eau » (coupé par défaut) : le total du jour, l'objectif
+  (2 L), un bouton « + 25 cl » (appui long ou « Annuler » pour retirer le
+  dernier verre) et la semaine en barres. Un rappel « Un verre d'eau ? » aux
+  heures choisies (9 h à 18 h, toutes les 90 min), qui se tait pendant la
+  concentration, une présentation ou un appel. Tout reste sur le PC (30
+  jours) · New "Water" module (off by default): the day's total, the goal
+  (2 L), a "+ 25 cl" button (press and hold, or "Cancel", to remove the last
+  glass) and the week as bars. A "A glass of water?" reminder at the hours
+  you choose (9 am to 6 pm, every 90 min), quiet during focus, a
+  presentation or a call. Everything stays on the PC (30 days)
+- Nouveau style d'île « Encoche » (Réglages → L'île → Style de l'île), à côté
+  de Classique et Bouche d'Ondine : l'île est noire, fondue dans le bord de
+  l'écran par deux coins creux, et une lueur à la couleur du thème monte du
+  bas. Elle grandit quand un fichier arrive. Les onglets, les raccourcis, la
+  mascotte et les modules ne changent pas. Marche sur les quatre bords ·
+  New "Notch" island style (Settings → The island → Island style), next to
+  Classic and Ondine's mouth: the island is black, blended into the edge of
+  the screen by two curved corners, and a glow in the theme's colour rises
+  from the bottom. It grows when a file comes near. Tabs, shortcuts, the
+  mascot and the modules stay the same. Works on all four edges
 - Menu de fichiers dans l'île : glissez un fichier sur l'île, elle montre des
   icônes rondes avec leur nom dessous. En haut, trois bulles mères
   (Convertir, Ranger avec Alt, Outils avec Ctrl), et vos favoris juste à côté,

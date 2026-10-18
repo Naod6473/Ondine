@@ -63,6 +63,8 @@ const BY_EMOJI: Record<string, string> = {
   "🔑": "credentials",
   "💾": "backup",
   "☕": "pauses",
+  // Eau (1.2.5) : la goutte au trait (drop de Phosphor), l'emoji en couleur.
+  "🥛": "drop",
   "🎨": "appearance",
   // Animations de l'île, Ondine et les fenêtres, Équipe (images de Simon ;
   // au trait : magic-wand, app-window et users-three de Phosphor).

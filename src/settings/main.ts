@@ -287,7 +287,7 @@ const ISLAND_PAGES: Page[] = [
     icon: "🎨",
     label: "Apparence",
     sub: "La couleur de l'île, ses icônes, son élasticité et ses petits sons.",
-    keywords: ["Thème", "Givre", "Verre clair", "Icônes", "Style des icônes", "Animations", "Style des animations", "Studio", "Élasticité de l'île", "Halo autour de l'île", "Couleur de l'île", "Taille de la mini-île", "Nano", "Style de l'île", "Bouche d'Ondine", "Couleur personnalisée", "Sons de clic", "Volume des sons", "Fond des Réglages", "Noir profond", "Dégradés"],
+    keywords: ["Thème", "Givre", "Verre clair", "Icônes", "Style des icônes", "Animations", "Style des animations", "Studio", "Élasticité de l'île", "Halo autour de l'île", "Couleur de l'île", "Taille de la mini-île", "Nano", "Style de l'île", "Bouche d'Ondine", "Encoche", "Couleur personnalisée", "Sons de clic", "Volume des sons", "Fond des Réglages", "Noir profond", "Dégradés"],
     render: look,
   },
   {
@@ -1973,8 +1973,8 @@ function look(main: HTMLElement) {
       ),
       wideRow(
         "Style de l'île",
-        vignettes(s.island.style ?? "classic", [["classic", "Classique"], ["mouth", "Bouche d'Ondine"]].map(([v, l]) => ({ value: v, label: l, art: styleArt(v) })), (v) => save((d) => (d.island.style = v as "classic" | "mouth"), true), "Style de l'île"),
-        "Bouche d'Ondine : Ondine est suspendue tête en bas au bord de l'écran, et l'île est sa bouche. Elle l'ouvre pour vous montrer ce qui se passe.",
+        vignettes(s.island.style ?? "classic", [["classic", "Classique"], ["mouth", "Bouche d'Ondine"], ["notch", "Encoche"]].map(([v, l]) => ({ value: v, label: l, art: styleArt(v) })), (v) => save((d) => (d.island.style = v as "classic" | "mouth" | "notch"), true), "Style de l'île"),
+        "Bouche d'Ondine : Ondine est suspendue tête en bas au bord de l'écran, et l'île est sa bouche. Elle l'ouvre pour vous montrer ce qui se passe. Encoche : l'île est noire, fondue dans le bord de l'écran par deux coins creux, avec une lueur à la couleur du thème qui monte du bas.",
       ),
       ...(s.island.style === "mouth"
         ? [

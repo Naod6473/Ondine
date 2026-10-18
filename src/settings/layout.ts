@@ -24,7 +24,7 @@ export type NavGroup = (typeof NAV_GROUPS)[number];
 export const MODULE_CATEGORIES: { id: string; label: string; modules: string[] }[] = [
   { id: "ai", label: "IA", modules: ["agents"] },
   { id: "files", label: "Fichiers", modules: ["shelf", "clipboard", "capture", "launcher", "convert"] },
-  { id: "organize", label: "Organisation", modules: ["timer", "notes", "agenda", "pauses", "weekly"] },
+  { id: "organize", label: "Organisation", modules: ["timer", "notes", "agenda", "pauses", "water", "weekly"] },
   { id: "it", label: "Outils IT", modules: ["terminal", "system", "remote", "nettools", "updates", "team"] },
   { id: "daily", label: "Le PC au quotidien", modules: ["home", "media", "controls", "homeassistant", "winnotifs", "weather", "screensaver", "awake", "games"] },
   { id: "other", label: "Autres modules", modules: [] },
@@ -82,7 +82,7 @@ export const ANIMATION_SUBS: AnimationSub[] = [
     ],
   },
   { id: "agents", label: "Ondine et les agents", blocks: [{ title: "Moments", module: "halos", keys: ["think", "agents", "update", "streak"] }] },
-  { id: "keys", label: "Son et clavier", blocks: [{ title: "Moments", module: "halos", keys: ["music", "musicCover", "voice", "dance", "volumeKeys", "capsLock", "numLock", "clipboard", "clipText"] }] },
+  { id: "keys", label: "Son et clavier", blocks: [{ title: "Moments", module: "halos", keys: ["music", "musicCover", "voice", "dance", "volumeKeys", "capsLock", "numLock", "keyboardLayout", "clipboard", "clipText"] }] },
   { id: "day", label: "Ma journée", blocks: [{ title: "Moments", module: "halos", keys: ["morning", "leaveTime", "meeting", "weather", "sky", "focus", "timerRing"] }] },
   // Le liquide à l'intérieur de l'île (src/island/liquid.ts, modules/halos/liquid-moments.ts).
   {

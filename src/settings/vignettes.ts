@@ -42,8 +42,10 @@ export function sizeArt(size: string): string {
   return SCREEN + (size === "nano" ? island(28, 5, 8, 6) : island(20, 5, 24, 7));
 }
 
-/** Style de l'île : la pilule classique, ou la bouche d'Ondine (la goutte suspendue, tête en bas). */
+/** Style de l'île : la pilule classique, la bouche d'Ondine (la goutte suspendue, tête en bas), ou l'encoche noire. */
 export function styleArt(style: string): string {
+  // L'encoche : collée au bord du haut, les deux coins creux, la lueur en bas.
+  if (style === "notch") return `${SCREEN}<path class="vg-notch" d="M16 2a3 3 0 0 1 3 3v2a5 5 0 0 0 5 5h16a5 5 0 0 0 5-5V5a3 3 0 0 1 3-3z"/><path class="vg-notch-glow" d="M25 10.5h14"/>`;
   if (style !== "mouth") return SCREEN + island(20, 5, 24, 7);
   // La goutte pend du bord, la pointe en haut ; l'île est sa bouche.
   return `${SCREEN}<path class="vg-line" d="M32 3c-6 6-9 10-9 15a9 9 0 0 0 18 0c0-5-3-9-9-15z"/>${island(26, 18, 12, 5)}<path class="vg-line" d="M28 13h.01M36 13h.01"/>`;

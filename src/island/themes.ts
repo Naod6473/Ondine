@@ -106,10 +106,11 @@ export function themeFor(id: string, color: string): Theme {
 
 /**
  * Le thème vraiment appliqué : le style « Bouche d'Ondine » (`island.style`
- * = "mouth") est une bouche, donc sombre ; un thème clair y redevient « Nuit ».
+ * = "mouth") est une bouche, et l'encoche ("notch") est noire, donc sombres ;
+ * un thème clair y redevient « Nuit ».
  */
 export function effectiveThemeId(id: string, style?: string): string {
-  return style === "mouth" && THEMES.find((t) => t.id === id)?.light ? "nuit" : id;
+  return (style === "mouth" || style === "notch") && THEMES.find((t) => t.id === id)?.light ? "nuit" : id;
 }
 
 /** Applique un thème à la page de l'île. */

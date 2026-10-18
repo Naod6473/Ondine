@@ -2,6 +2,10 @@
 //
 //   island.size  = "normal" | "nano"   le format nano de la mini-île
 //   island.style = "classic" | "mouth" l'île-bouche d'Ondine
+//                | "notch"            l'encoche noire (1.2.5) : noire, collée
+//                                     au bord avec deux coins creux, une
+//                                     lueur qui monte du bord intérieur
+//                                     (island-notch.css)
 //   island.mouthFollow (oui)           Ondine sortie : l'île part avec elle
 //
 // Format nano : l'état compact a deux formes (island-state.ts, `form`). Ici :
@@ -39,7 +43,7 @@ const PINCH_MS = 90;
 /** La fermeture : le clignement « gloups » une fois la bouche presque refermée. */
 const CLOSE_BLINK_MS = 380;
 
-export type IslandStyle = "classic" | "mouth";
+export type IslandStyle = "classic" | "mouth" | "notch";
 
 export interface FormsHooks {
   shell: HTMLElement;
@@ -57,7 +61,8 @@ export interface FormsHooks {
 
 /** Le style de l'île d'après les réglages (valeur inconnue : classique). */
 export function islandStyle(s: Settings): IslandStyle {
-  return s.island.style === "mouth" ? "mouth" : "classic";
+  const style = s.island.style;
+  return style === "mouth" || style === "notch" ? style : "classic";
 }
 
 export class IslandForms {
@@ -67,6 +72,8 @@ export class IslandForms {
   private mouth: MouthBody | null = null;
   private status: NanoStatus = NANO_START;
   private dots = el("div", { class: "nano-dots", "aria-hidden": "true" });
+  /** Encoche : les deux coins creux qui fondent l'île dans le bord de l'écran (un seul élément, island-notch.css). */
+  private ears = el("div", { class: "notch-ears", "aria-hidden": "true" });
   private dotKey = "";
   private dozeTimer = 0;
   private dozing = false;
@@ -131,6 +138,9 @@ export class IslandForms {
       this.nano = nano;
       this.h.fsm.setNano(nano);
     }
+    if (style === "notch") {
+      if (!this.ears.isConnected) this.h.shell.prepend(this.ears);
+    } else this.ears.remove();
     if (style !== this.style) {
       this.style = style;
       if (style === "mouth") {
