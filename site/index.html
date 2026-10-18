@@ -132,6 +132,24 @@ h1,h2,.brand,.names div{transition:letter-spacing .3s}
 @media (max-width:860px){.news{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:560px){.news{grid-template-columns:minmax(0,1fr)}}
 
+/* Versions : une rangée de bulles, une par version ; la pastille blanche glisse vers celle qu'on choisit
+   et les cartes arrivent du côté où l'on va. Sans JavaScript, toutes les versions s'affichent à la suite. */
+.versions{position:relative;display:flex;gap:2px;width:max-content;max-width:100%;border-radius:99px;padding:4px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;scroll-behavior:smooth}
+.versions::-webkit-scrollbar{display:none}
+.versions a{position:relative;z-index:1;flex:none;display:flex;align-items:baseline;gap:6px;font:700 14px var(--f-body);color:var(--ink-soft);text-decoration:none;border-radius:99px;padding:7px 14px;transition:color .35s var(--ease)}
+.versions a small{font-size:12px;font-weight:500;opacity:.75}
+.versions a:hover{color:var(--ink)}
+.versions a[aria-selected="true"]{color:var(--btn-ink)}
+.versions a:focus-visible{outline:2px solid var(--lagoon);outline-offset:-2px}
+.versions .pill{position:absolute;z-index:0;top:4px;bottom:4px;left:0;width:0;border-radius:99px;background:var(--btn);box-shadow:0 8px 20px -8px rgba(140,180,255,.8);opacity:0}
+.versions.ready .pill{opacity:1;transition:transform .55s cubic-bezier(.34,1.3,.64,1),width .55s cubic-bezier(.34,1.3,.64,1)}
+.versions:not(.ready) a[aria-selected="true"]{background:var(--btn)}
+.when{font-size:13px;font-weight:600;letter-spacing:.02em;color:var(--lagoon);margin:0 0 6px}
+.release.in .when,.release.in .lead{animation:slide-in .5s var(--ease) backwards}
+.release.in .news article{animation:card-in .6s var(--ease) backwards;animation-delay:calc(var(--i,0)*35ms)}
+@keyframes slide-in{from{opacity:0;transform:translateX(calc(var(--dir,1)*24px))}}
+@keyframes card-in{from{opacity:0;transform:translate(calc(var(--dir,1)*28px),8px) scale(.98)}}
+
 /* Sélecteur de langue : deux pastilles, la langue choisie en blanc. */
 .lang{display:inline-flex;border-radius:99px;padding:3px;margin-left:6px}
 .lang button{font:600 13px var(--f-body);color:var(--ink-soft);background:none;border:0;border-radius:99px;padding:4px 10px;cursor:pointer;transition:background .3s var(--ease),color .3s}
@@ -184,25 +202,134 @@ nav .links{align-items:center}
   </div>
 
   <section id="nouveautes">
-    <span class="badge glass" data-i18n="new-badge">Version 1.2.4</span>
+    <div class="versions glass" role="tablist" aria-label="Versions d'Ondine" data-i18n-aria="rel-label">
+      <span class="pill" aria-hidden="true"></span>
+      <a role="tab" id="tab-v1-2-4" href="#v1-2-4" aria-controls="v1-2-4" aria-selected="true">1.2.4<small data-i18n="rel-124-tab">17 oct.</small></a>
+      <a role="tab" id="tab-v1-2-3" href="#v1-2-3" aria-controls="v1-2-3" aria-selected="false" tabindex="-1">1.2.3<small data-i18n="rel-123-tab">11 oct.</small></a>
+      <a role="tab" id="tab-v1-2-2" href="#v1-2-2" aria-controls="v1-2-2" aria-selected="false" tabindex="-1">1.2.2<small data-i18n="rel-122-tab">10 oct.</small></a>
+      <a role="tab" id="tab-v1-2-1" href="#v1-2-1" aria-controls="v1-2-1" aria-selected="false" tabindex="-1">1.2.1<small data-i18n="rel-121-tab">9 oct.</small></a>
+      <a role="tab" id="tab-v1-2-0" href="#v1-2-0" aria-controls="v1-2-0" aria-selected="false" tabindex="-1">1.2.0<small data-i18n="rel-120-tab">8 oct.</small></a>
+      <a role="tab" id="tab-v1-1-0" href="#v1-1-0" aria-controls="v1-1-0" aria-selected="false" tabindex="-1">1.1.0<small data-i18n="rel-110-tab">7 oct.</small></a>
+      <a role="tab" id="tab-v1-0-1" href="#v1-0-1" aria-controls="v1-0-1" aria-selected="false" tabindex="-1">1.0.1<small data-i18n="rel-101-tab">7 oct.</small></a>
+      <a role="tab" id="tab-v1-0-0" href="#v1-0-0" aria-controls="v1-0-0" aria-selected="false" tabindex="-1">1.0.0<small data-i18n="rel-100-tab">7 oct.</small></a>
+    </div>
     <h2 data-i18n="new-title">Quoi de neuf dans Ondine.</h2>
-    <p class="lead" data-i18n="new-lead">La 1.2.4 apprend à Ondine à t'écouter, range tes réglages et ajoute une bonne poignée d'outils. La plupart des nouveautés sont coupées par défaut : tu les allumes dans les réglages.</p>
-    <div class="news">
-      <article class="glass" data-i18n="new-1"><b>Voix</b><h3>Dictée partout</h3><p>Maintiens Ctrl droit dans n'importe quelle appli, parle, relâche : le texte est collé. Ton presse-papiers retrouve son contenu.</p></article>
-      <article class="glass" data-i18n="new-2"><b>Voix</b><h3>Notes d'appel</h3><p>D'un clic, Ondine écrit ton appel en direct, puis la transcription personne par personne et un résumé avec les choses à faire. L'audio est effacé ensuite.</p></article>
-      <article class="glass" data-i18n="new-3"><b>Voix</b><h3>Parakeet, sur ton PC</h3><p>La dictée, les notes d'appel et Parler à Ondine peuvent reconnaître ta voix sans Internet, avec le modèle Parakeet de NVIDIA (25 langues).</p></article>
-      <article class="glass" data-i18n="new-4"><b>Voix</b><h3>« Dis Ondine »</h3><p>Parle-lui sans toucher au clavier, choisis ton micro et teste-le, crée ton propre raccourci. Tes mots s'écrivent pendant que tu parles.</p></article>
-      <article class="glass" data-i18n="new-5"><b>Réglages</b><h3>Des Réglages tout neufs</h3><p>Deux colonnes, du verre liquide, Ctrl+K pour tout trouver, des préréglages en un clic et « Annuler » après chaque changement.</p></article>
-      <article class="glass" data-i18n="new-6"><b>Île</b><h3>Ondine convertit</h3><p>Glisse un fichier sur l'île et lâche-le sur un format : JPG, PNG, PDF, MP3, ZIP… Ondine l'avale et recrache le nouveau fichier.</p></article>
-      <article class="glass" data-i18n="new-7"><b>Île</b><h3>Tes notifications Windows</h3><p>Teams, Outlook, WhatsApp… les bulles des autres applis peuvent passer par l'île, avec « Ouvrir ». Coupé par défaut.</p></article>
-      <article class="glass" data-i18n="new-8"><b>Agents IA</b><h3>Tes agents, en détail</h3><p>La liste de tâches de l'agent en barre de progression, les fichiers modifiés en direct et les limites de ton forfait Claude ou Codex.</p></article>
-      <article class="glass" data-i18n="new-9"><b>Jeux</b><h3>Des mini-jeux contre Ondine</h3><p>Puissance 4, morpion express dans la mini-île, un aquarium de gouttes qui grandit avec tes pauses, et une course de gouttes.</p></article>
-      <article class="glass" data-i18n="new-10"><b>PC</b><h3>Rester éveillé, s'arrêter à l'heure</h3><p>Garde le PC éveillé le temps d'un téléchargement ou d'un agent, ou programme son arrêt ou sa mise en veille.</p></article>
-      <article class="glass" data-i18n="new-11"><b>PC</b><h3>Ton PC bien tenu</h3><p>Les mises à jour de tes logiciels en un clic, et « Qu'est-ce qui remplit mon disque ? » quand il n'y a plus de place.</p></article>
-      <article class="glass" data-i18n="new-12"><b>Maison</b><h3>Home Assistant</h3><p>Tes lumières et appareils dans l'île, et à la voix : « Dis Ondine, allume la lumière du salon ».</p></article>
-      <article class="glass" data-i18n="new-13"><b>Visio</b><h3>Se voir avant une visio</h3><p>À côté de « Rejoindre », l'île te montre ton image et le niveau de ton micro avant d'entrer.</p></article>
-      <article class="glass" data-i18n="new-14"><b>Fenêtres</b><h3>Le trou noir</h3><p>Lâche une fenêtre sur l'île : Ondine l'avale. Un clic et elle la recrache. Coupé par défaut.</p></article>
-      <article class="glass" data-i18n="new-15"><b>Sécurité</b><h3>Tes clés API protégées</h3><p>Une clé API ou un jeton copié n'entre plus dans l'historique du presse-papiers.</p></article>
+    <div class="release" id="v1-2-4" role="tabpanel" aria-labelledby="tab-v1-2-4">
+      <p class="when" data-i18n="new-badge">Version 1.2.4 · sortie le 17 octobre 2026</p>
+      <p class="lead" data-i18n="new-lead">La 1.2.4 apprend à Ondine à t'écouter, range tes réglages et ajoute une bonne poignée d'outils. La plupart des nouveautés sont coupées par défaut : tu les allumes dans les réglages.</p>
+      <div class="news">
+        <article class="glass" data-i18n="new-1"><b>Voix</b><h3>Dictée partout</h3><p>Maintiens Ctrl droit dans n'importe quelle appli, parle, relâche : le texte est collé. Ton presse-papiers retrouve son contenu.</p></article>
+        <article class="glass" data-i18n="new-2"><b>Voix</b><h3>Notes d'appel</h3><p>D'un clic, Ondine écrit ton appel en direct, puis la transcription personne par personne et un résumé avec les choses à faire. L'audio est effacé ensuite.</p></article>
+        <article class="glass" data-i18n="new-3"><b>Voix</b><h3>Parakeet, sur ton PC</h3><p>La dictée, les notes d'appel et Parler à Ondine peuvent reconnaître ta voix sans Internet, avec le modèle Parakeet de NVIDIA (25 langues).</p></article>
+        <article class="glass" data-i18n="new-4"><b>Voix</b><h3>« Dis Ondine »</h3><p>Parle-lui sans toucher au clavier, choisis ton micro et teste-le, crée ton propre raccourci. Tes mots s'écrivent pendant que tu parles.</p></article>
+        <article class="glass" data-i18n="new-5"><b>Réglages</b><h3>Des Réglages tout neufs</h3><p>Deux colonnes, du verre liquide, Ctrl+K pour tout trouver, des préréglages en un clic et « Annuler » après chaque changement.</p></article>
+        <article class="glass" data-i18n="new-6"><b>Île</b><h3>Ondine convertit</h3><p>Glisse un fichier sur l'île et lâche-le sur un format : JPG, PNG, PDF, MP3, ZIP… Ondine l'avale et recrache le nouveau fichier.</p></article>
+        <article class="glass" data-i18n="new-7"><b>Île</b><h3>Tes notifications Windows</h3><p>Teams, Outlook, WhatsApp… les bulles des autres applis peuvent passer par l'île, avec « Ouvrir ». Coupé par défaut.</p></article>
+        <article class="glass" data-i18n="new-8"><b>Agents IA</b><h3>Tes agents, en détail</h3><p>La liste de tâches de l'agent en barre de progression, les fichiers modifiés en direct et les limites de ton forfait Claude ou Codex.</p></article>
+        <article class="glass" data-i18n="new-9"><b>Jeux</b><h3>Des mini-jeux contre Ondine</h3><p>Puissance 4, morpion express dans la mini-île, un aquarium de gouttes qui grandit avec tes pauses, et une course de gouttes.</p></article>
+        <article class="glass" data-i18n="new-10"><b>PC</b><h3>Rester éveillé, s'arrêter à l'heure</h3><p>Garde le PC éveillé le temps d'un téléchargement ou d'un agent, ou programme son arrêt ou sa mise en veille.</p></article>
+        <article class="glass" data-i18n="new-11"><b>PC</b><h3>Ton PC bien tenu</h3><p>Les mises à jour de tes logiciels en un clic, et « Qu'est-ce qui remplit mon disque ? » quand il n'y a plus de place.</p></article>
+        <article class="glass" data-i18n="new-12"><b>Maison</b><h3>Home Assistant</h3><p>Tes lumières et appareils dans l'île, et à la voix : « Dis Ondine, allume la lumière du salon ».</p></article>
+        <article class="glass" data-i18n="new-13"><b>Visio</b><h3>Se voir avant une visio</h3><p>À côté de « Rejoindre », l'île te montre ton image et le niveau de ton micro avant d'entrer.</p></article>
+        <article class="glass" data-i18n="new-14"><b>Fenêtres</b><h3>Le trou noir</h3><p>Lâche une fenêtre sur l'île : Ondine l'avale. Un clic et elle la recrache. Coupé par défaut.</p></article>
+        <article class="glass" data-i18n="new-15"><b>Sécurité</b><h3>Tes clés API protégées</h3><p>Une clé API ou un jeton copié n'entre plus dans l'historique du presse-papiers.</p></article>
+      </div>
+    </div>
+    <div class="release" id="v1-2-3" role="tabpanel" aria-labelledby="tab-v1-2-3">
+      <p class="when" data-i18n="rel-123-date">Version 1.2.3 · sortie le 11 octobre 2026</p>
+      <p class="lead" data-i18n="rel-123-lead">La 1.2.3 donne une bouche à Ondine, un vrai accueil à l'île et un tout petit format nano.</p>
+      <div class="news">
+        <article class="glass" data-i18n="rel-123-1"><b>Île</b><h3>« Bouche d'Ondine »</h3><p>Un nouveau style au choix : Ondine pend tête en bas et l'île devient sa bouche, en gomme de la couleur de ta mascotte.</p></article>
+        <article class="glass" data-i18n="rel-123-2"><b>Île</b><h3>Un onglet Accueil</h3><p>Une carte par module qui a quelque chose à dire (musique, agents, minuteur, rendez-vous, météo…) et une phrase d'Ondine qui résume ta journée.</p></article>
+        <article class="glass" data-i18n="rel-123-3"><b>Mascotte</b><h3>Ondine se promène dans l'île</h3><p>Pour une vingtaine d'actions, elle quitte sa place en petits sauts de gomme, agit, puis revient. Elle ne cache jamais le texte.</p></article>
+        <article class="glass" data-i18n="rel-123-4"><b>Île</b><h3>Le format nano</h3><p>La mini-île devient une toute petite encoche qui ne montre qu'Ondine. Elle s'élargit au survol, pour un morceau, un minuteur ou un agent.</p></article>
+        <article class="glass" data-i18n="rel-123-5"><b>Thème</b><h3>Givre</h3><p>L'île en verre clair, blanc dépoli. Tous les onglets restent lisibles.</p></article>
+        <article class="glass" data-i18n="rel-123-6"><b>Île</b><h3>Le volume à la molette</h3><p>La molette au-dessus de l'île règle le volume, sans cliquer. Un double-clic sur Ondine lance l'action de ton choix.</p></article>
+        <article class="glass" data-i18n="rel-123-7"><b>Concentration</b><h3>Sons d'ambiance</h3><p>Pluie, vagues, bruit doux, fabriqués par Ondine sans aucun fichier. Le liquide de l'île suit le son.</p></article>
+        <article class="glass" data-i18n="rel-123-8"><b>PC</b><h3>Un écran de veille</h3><p>Ondine se promène au bord de l'eau, l'heure au centre. Jamais pendant une présentation ou un appel. Coupé par défaut.</p></article>
+        <article class="glass" data-i18n="rel-123-9"><b>Équipe</b><h3>Appairage par QR code</h3><p>Ajoute un collègue en lisant son QR code, et gère tes téléphones dans Réglages → Téléphones, chacun avec son propre certificat.</p></article>
+      </div>
+    </div>
+    <div class="release" id="v1-2-2" role="tabpanel" aria-labelledby="tab-v1-2-2">
+      <p class="when" data-i18n="rel-122-date">Version 1.2.2 · sortie le 10 octobre 2026</p>
+      <p class="lead" data-i18n="rel-122-lead">La 1.2.2 fait parler Ondine à voix haute, allume des halos autour de l'île et crée l'Équipe, pour que les Ondine d'un même réseau se parlent.</p>
+      <div class="news">
+        <article class="glass" data-i18n="rel-122-1"><b>Voix</b><h3>Parle-lui à voix haute</h3><p>Ctrl+Alt+V, tu parles, tes mots s'écrivent en direct et le halo tremble avec ta voix. Elle répond en « plop plip », la bouche synchro.</p></article>
+        <article class="glass" data-i18n="rel-122-2"><b>Île</b><h3>Des halos de lumière</h3><p>Vert quand tu branches le PC, orange quand la batterie faiblit, rouge critique avec Ondine qui panique. Et des halos pour l'USB, les agents, la météo…</p></article>
+        <article class="glass" data-i18n="rel-122-3"><b>Île</b><h3>Du liquide dans l'île</h3><p>Eau, gelée, lumière ou sable : il monte avec un minuteur, ondule avec la musique et penche quand tu déplaces l'île.</p></article>
+        <article class="glass" data-i18n="rel-122-4"><b>Fenêtres</b><h3>Ondine et les fenêtres</h3><p>Elle s'écarte des réglages avec une petite peur, s'assoit sur une fenêtre, met ses lunettes de soleil la nuit. L'île peut aussi se poser en bas.</p></article>
+        <article class="glass" data-i18n="rel-122-5"><b>Bienvenue</b><h3>Un premier lancement guidé</h3><p>Ondine se présente et configure tout en 5 étapes. L'île commence petite et propose le bon onglet au bon moment.</p></article>
+        <article class="glass" data-i18n="rel-122-6"><b>Équipe</b><h3>L'Équipe, sans serveur</h3><p>Les Ondine d'un même réseau local se parlent : chat chiffré de bout en bout, présence, coucou, fichiers toujours à accepter. Coupé par défaut.</p></article>
+        <article class="glass" data-i18n="rel-122-7"><b>Mascotte</b><h3>Elle danse sur ta musique</h3><p>Ondine trouve le tempo et danse dans le style du morceau (rock, rap, jazz, électro…), pour les 15 mascottes.</p></article>
+        <article class="glass" data-i18n="rel-122-8"><b>Mascotte</b><h3>Des mascottes plus vivantes</h3><p>Un reflet qui suit la souris, une gomme translucide avec des bulles, des pupilles qui se dilatent et 15 nouvelles expressions.</p></article>
+        <article class="glass" data-i18n="rel-122-9"><b>Lanceur</b><h3>Commandes et recherche web</h3><p>« volume 30 », « minuteur 10 minutes » sans IA ni clé, et une recherche Google, DuckDuckGo ou Qwant depuis le Lanceur.</p></article>
+      </div>
+    </div>
+    <div class="release" id="v1-2-1" role="tabpanel" aria-labelledby="tab-v1-2-1">
+      <p class="when" data-i18n="rel-121-date">Version 1.2.1 · sortie le 9 octobre 2026</p>
+      <p class="lead" data-i18n="rel-121-lead">La 1.2.1 transforme « Demander à Claude » en vraie conversation avec Ondine, et la laisse sortir de l'île.</p>
+      <div class="news">
+        <article class="glass" data-i18n="rel-121-1"><b>IA</b><h3>Parler à Ondine</h3><p>Une vraie conversation en bulles, avec sa personnalité et ses humeurs. Avec Claude, GPT ou Gemini et ta clé ; rien n'est écrit sur le disque.</p></article>
+        <article class="glass" data-i18n="rel-121-2"><b>IA</b><h3>Elle retrouve tes fichiers</h3><p>Ondine cherche tes fichiers par leur nom, en lit un ou en crée un dans son dossier. Elle te montre tout et attend ton accord.</p></article>
+        <article class="glass" data-i18n="rel-121-3"><b>IA</b><h3>Elle agit sur le PC</h3><p>Volume, luminosité, mode sombre, minuteur, note, Wi-Fi… quand tu le lui demandes. Elle ne peut rien supprimer.</p></article>
+        <article class="glass" data-i18n="rel-121-4"><b>Bureau</b><h3>Ondine sur le bureau</h3><p>Tire la mascotte hors de l'île et pose-la où tu veux. Un clic ouvre une bulle à côté d'elle, et elle s'assoit sur la barre des tâches.</p></article>
+        <article class="glass" data-i18n="rel-121-5"><b>Réglages</b><h3>Des réglages plus légers</h3><p>Les modules en catégories repliables, les pages longues en sous-menus. Rien n'a été retiré.</p></article>
+        <article class="glass" data-i18n="rel-121-6"><b>Mascotte</b><h3>Le podium en 3D</h3><p>Toutes les mascottes, animées, sur des marches : glisse celle que tu veux sur la première.</p></article>
+      </div>
+    </div>
+    <div class="release" id="v1-2-0" role="tabpanel" aria-labelledby="tab-v1-2-0">
+      <p class="when" data-i18n="rel-120-date">Version 1.2.0 · sortie le 8 octobre 2026</p>
+      <p class="lead" data-i18n="rel-120-lead">La 1.2.0 fait naître la famille gomme : quinze mascottes, une île en gelée et des agents IA bien mieux suivis.</p>
+      <div class="news">
+        <article class="glass" data-i18n="rel-120-1"><b>Mascottes</b><h3>Quinze mascottes en gomme</h3><p>Guimauve, Dragée, Berlingot, étoile, lune, nuage, fantôme… plus Ciel et Météo. Avec des mains, des accessoires et douze expressions.</p></article>
+        <article class="glass" data-i18n="rel-120-2"><b>Île</b><h3>L'île en gelée</h3><p>Elle se creuse sous un clic, gonfle au survol et s'étire sous la souris. Réglage Élasticité : Doux, Normal, Gelée.</p></article>
+        <article class="glass" data-i18n="rel-120-3"><b>Mascotte</b><h3>Elle réagit à tout</h3><p>Des étoiles dans les yeux pour un fichier, les bras levés à la fin du minuteur, un parapluie quand il va pleuvoir. Et une couleur sur mesure.</p></article>
+        <article class="glass" data-i18n="rel-120-4"><b>Agents IA</b><h3>Compteur de jetons</h3><p>Entrée, sortie, cache, par jour, par modèle et par projet, une courbe sur 30 jours, un coût estimé et une alerte de budget.</p></article>
+        <article class="glass" data-i18n="rel-120-5"><b>Agents IA</b><h3>Neuf agents de plus</h3><p>GitHub Copilot CLI, Cursor CLI, Qwen Code, Goose, OpenCode, Kiro CLI, Hermes, Aider et Amp se lancent depuis l'île.</p></article>
+        <article class="glass" data-i18n="rel-120-6"><b>Agents IA</b><h3>Ce que Claude a dit</h3><p>« Claude a fini » montre sa dernière phrase, et les fichiers modifiés s'ouvrent dans VS Code ou en comparaison.</p></article>
+        <article class="glass" data-i18n="rel-120-7"><b>Agents IA</b><h3>Ton calendrier GitHub</h3><p>La grille de tes contributions dans la couleur de l'île, et une fête pour les séries de 7, 30 et 100 jours.</p></article>
+        <article class="glass" data-i18n="rel-120-8"><b>Réglages</b><h3>Le mode Simple</h3><p>Seul l'essentiel de chaque page par défaut, tout le reste à un clic. La recherche trouve toujours tout.</p></article>
+        <article class="glass" data-i18n="rel-120-9"><b>Mascotte</b><h3>Mode Calme</h3><p>Moins de gestes spontanés pour une île tranquille ; les états utiles restent.</p></article>
+      </div>
+    </div>
+    <div class="release" id="v1-1-0" role="tabpanel" aria-labelledby="tab-v1-1-0">
+      <p class="when" data-i18n="rel-110-date">Version 1.1.0 · sortie le 7 octobre 2026</p>
+      <p class="lead" data-i18n="rel-110-lead">Sortie le soir même de la 1.0, la 1.1.0 ajoute une bonne liste d'outils du quotidien.</p>
+      <div class="news">
+        <article class="glass" data-i18n="rel-110-1"><b>Lanceur</b><h3>Des calculs</h3><p>Opérations, pourcentages, unités, octets, sous-réseaux IPv4 et l'heure dans une autre ville.</p></article>
+        <article class="glass" data-i18n="rel-110-2"><b>Étagère</b><h3>Vers ton téléphone</h3><p>Envoie un fichier de l'étagère au téléphone par un QR code, sur le Wi-Fi local.</p></article>
+        <article class="glass" data-i18n="rel-110-3"><b>Agents IA</b><h3>Quand un agent a fini</h3><p>Les fichiers modifiés, « Ouvrir dans VS Code » et « Reprendre » la dernière session.</p></article>
+        <article class="glass" data-i18n="rel-110-4"><b>Outils</b><h3>Décoder une copie</h3><p>JWT, Base64, URL, JSON, date Unix, et l'empreinte SHA-256 d'un fichier.</p></article>
+        <article class="glass" data-i18n="rel-110-5"><b>Captures</b><h3>Un GIF de l'écran</h3><p>Enregistre une zone de l'écran en GIF animé.</p></article>
+        <article class="glass" data-i18n="rel-110-6"><b>Contrôles</b><h3>Plus de contrôles</h3><p>Éjecter une clé USB, mode sombre et éclairage nocturne.</p></article>
+        <article class="glass" data-i18n="rel-110-7"><b>Réseau</b><h3>Réveiller un PC</h3><p>Réveille un PC à distance (Wake-on-LAN), et un redémarrage en attente est signalé.</p></article>
+        <article class="glass" data-i18n="rel-110-8"><b>Agenda</b><h3>Réunions et horloges</h3><p>Rejoindre une réunion en un clic, horloges du monde et bilan de la semaine.</p></article>
+        <article class="glass" data-i18n="rel-110-9"><b>Île</b><h3>« Quoi de neuf »</h3><p>Un panneau après chaque mise à jour, et une astuce à la première ouverture de chaque onglet.</p></article>
+      </div>
+    </div>
+    <div class="release" id="v1-0-1" role="tabpanel" aria-labelledby="tab-v1-0-1">
+      <p class="when" data-i18n="rel-101-date">Version 1.0.1 · sortie le 7 octobre 2026</p>
+      <p class="lead" data-i18n="rel-101-lead">Quelques heures après la 1.0, une version de correctifs.</p>
+      <div class="news">
+        <article class="glass" data-i18n="rel-101-1"><b>Bienvenue</b><h3>Gomme dès le départ</h3><p>Au premier lancement, la mascotte Gomme et la mini-île toujours affichée.</p></article>
+        <article class="glass" data-i18n="rel-101-2"><b>Agents IA</b><h3>« Y aller » retrouve le terminal</h3><p>« Y aller » ramène bien la fenêtre de Windows Terminal dans la version installée.</p></article>
+        <article class="glass" data-i18n="rel-101-3"><b>Installation</b><h3>Plus simple sur un PC neuf</h3><p>Plus besoin d'installer le « Visual C++ Redistributable ».</p></article>
+      </div>
+    </div>
+    <div class="release" id="v1-0-0" role="tabpanel" aria-labelledby="tab-v1-0-0">
+      <p class="when" data-i18n="rel-100-date">Version 1.0.0 · sortie le 7 octobre 2026</p>
+      <p class="lead" data-i18n="rel-100-lead">La toute première version publique : l'île, ses modules, ses agents IA et quelques surprises.</p>
+      <div class="news">
+        <article class="glass" data-i18n="rel-100-1"><b>Surprises</b><h3>Des trésors cachés</h3><p>Pluie de code, Ondine 8 bits (code Konami), jours de fête et un carnet des trésors dans les réglages. Désactivables.</p></article>
+        <article class="glass" data-i18n="rel-100-2"><b>Mascotte</b><h3>Ondine réagit au PC</h3><p>Bonnet de nuit, lunettes de soleil le vendredi soir, café le lundi matin, mains sur les oreilles à 100 % de volume…</p></article>
+        <article class="glass" data-i18n="rel-100-3"><b>Île</b><h3>Recherche dans l'île</h3><p>Notes, presse-papiers, étagère, captures et apps, sans te soucier des accents ni des majuscules.</p></article>
+        <article class="glass" data-i18n="rel-100-4"><b>Profils</b><h3>Travail, Maison…</h3><p>Des profils qui changent tout seuls selon l'heure ou le Wi-Fi.</p></article>
+        <article class="glass" data-i18n="rel-100-5"><b>Agenda</b><h3>Agenda et météo</h3><p>Plusieurs calendriers colorés, un clic pour rejoindre Teams, Meet, Zoom ou Webex, et la météo (coupée par défaut).</p></article>
+        <article class="glass" data-i18n="rel-100-6"><b>Outils</b><h3>Pipette et QR code</h3><p>La couleur d'un point de l'écran en HEX, RGB ou HSL, et un QR code de ce que tu viens de copier.</p></article>
+        <article class="glass" data-i18n="rel-100-7"><b>Agents IA</b><h3>Hooks installés pour toi</h3><p>Claude Code, Codex et Gemini CLI préviennent l'île sans rien configurer, avec sauvegarde et bouton « Retirer ».</p></article>
+        <article class="glass" data-i18n="rel-100-8"><b>Concentration</b><h3>Mode concentration</h3><p>Le minuteur met les notifications en pause.</p></article>
+        <article class="glass" data-i18n="rel-100-9"><b>PC</b><h3>Léger sur batterie</h3><p>Haute performance, équilibré ou économie d'énergie, automatique sur batterie.</p></article>
+      </div>
     </div>
   </section>
 
@@ -276,7 +403,8 @@ const EN={
   "download":"Download for Windows","see-code":"See the code",
   "meta":"Windows 10 and 11 · free · open source (MIT)",
   "smartscreen":"On first launch, Windows may show “Windows protected your PC”: the installer is not signed with a paid certificate. Click <b>More info</b>, then <b>Run anyway</b>. It is built by GitHub from the public code.",
-  "new-badge":"Version 1.2.4","new-title":"What's new in Ondine.",
+  "rel-label":"Ondine versions","rel-124-tab":"Oct 17",
+  "new-badge":"Version 1.2.4 · released October 17, 2026","new-title":"What's new in Ondine.",
   "new-lead":"1.2.4 teaches Ondine to listen to you, tidies up the settings and adds a good handful of tools. Most of the new features are off by default: you turn them on in the settings.",
   "new-1":"<b>Voice</b><h3>Dictation everywhere</h3><p>Hold Right Ctrl in any app, speak, release: the text is pasted. Your clipboard gets its content back.</p>",
   "new-2":"<b>Voice</b><h3>Call notes</h3><p>In one click, Ondine writes your call live, then a transcript person by person and a summary with the to-dos. The audio is deleted afterwards.</p>",
@@ -293,6 +421,74 @@ const EN={
   "new-13":"<b>Video calls</b><h3>See yourself before a call</h3><p>Next to “Join”, the island shows your picture and your microphone level before you go in.</p>",
   "new-14":"<b>Windows</b><h3>The black hole</h3><p>Drop a window on the island: Ondine swallows it. One click and she spits it back out. Off by default.</p>",
   "new-15":"<b>Security</b><h3>Your API keys protected</h3><p>A copied API key or token no longer goes into the clipboard history.</p>",
+  "rel-123-date":"Version 1.2.3 · released October 11, 2026","rel-123-tab":"Oct 11",
+  "rel-123-lead":"1.2.3 gives Ondine a mouth, gives the island a real home page and adds a tiny nano size.",
+  "rel-123-1":"<b>Island</b><h3>“Ondine's mouth”</h3><p>A new optional style: Ondine hangs upside down and the island becomes her mouth, in gum matching your mascot's colour.</p>",
+  "rel-123-2":"<b>Island</b><h3>A Home tab</h3><p>One card per module with something to say (music, agents, timer, next event, weather…) and a sentence from Ondine summing up your day.</p>",
+  "rel-123-3":"<b>Mascot</b><h3>Ondine moves around the island</h3><p>For about twenty actions, she leaves her spot in little gummy hops, does her thing, then comes back. She never covers text.</p>",
+  "rel-123-4":"<b>Island</b><h3>Nano size</h3><p>The mini island becomes a tiny notch showing only Ondine. It widens on hover, for a song, a timer or an agent.</p>",
+  "rel-123-5":"<b>Theme</b><h3>Frost</h3><p>A light, frosted-glass island. Every tab stays readable.</p>",
+  "rel-123-6":"<b>Island</b><h3>Volume on the wheel</h3><p>The mouse wheel over the island sets the volume, no click needed. A double-click on Ondine runs the action of your choice.</p>",
+  "rel-123-7":"<b>Focus</b><h3>Ambient sounds</h3><p>Rain, waves, soft noise, made by Ondine with no files at all. The island's liquid follows the sound.</p>",
+  "rel-123-8":"<b>PC</b><h3>A screensaver</h3><p>Ondine strolls by the water with the time in the middle. Never during a presentation or a call. Off by default.</p>",
+  "rel-123-9":"<b>Team</b><h3>Pairing by QR code</h3><p>Add a teammate by reading their QR code, and manage your phones in Settings → Phones, each with its own certificate.</p>",
+  "rel-122-date":"Version 1.2.2 · released October 10, 2026","rel-122-tab":"Oct 10",
+  "rel-122-lead":"1.2.2 lets you talk to Ondine out loud, lights up halos around the island and creates Team, so Ondines on the same network can talk to each other.",
+  "rel-122-1":"<b>Voice</b><h3>Talk to her out loud</h3><p>Ctrl+Alt+V, you speak, your words appear live and the halo trembles with your voice. She answers with « plop plip », mouth in sync.</p>",
+  "rel-122-2":"<b>Island</b><h3>Light halos</h3><p>Green when you plug in, orange when the battery runs low, red when critical with a panicking Ondine. And halos for USB, agents, weather…</p>",
+  "rel-122-3":"<b>Island</b><h3>Liquid in the island</h3><p>Water, jelly, light or sand: it rises with a timer, ripples with the music and tilts when you move the island.</p>",
+  "rel-122-4":"<b>Windows</b><h3>Ondine and your windows</h3><p>She moves away from the settings with a little fright, sits on a window, wears sunglasses at night. The island can also sit at the bottom.</p>",
+  "rel-122-5":"<b>Welcome</b><h3>A guided first launch</h3><p>Ondine introduces herself and sets everything up in 5 steps. The island starts small and suggests the right tab at the right moment.</p>",
+  "rel-122-6":"<b>Team</b><h3>Team, with no server</h3><p>Ondines on the same local network talk to each other: end-to-end encrypted chat, presence, hellos, files always to be accepted. Off by default.</p>",
+  "rel-122-7":"<b>Mascot</b><h3>She dances to your music</h3><p>Ondine finds the tempo and dances in the style of the track (rock, rap, jazz, electro…), for all 15 mascots.</p>",
+  "rel-122-8":"<b>Mascot</b><h3>More alive mascots</h3><p>A shine that follows the mouse, translucent gum with bubbles, pupils that dilate and 15 new expressions.</p>",
+  "rel-122-9":"<b>Launcher</b><h3>Commands and web search</h3><p>“volume 30”, “timer 10 minutes” without AI or a key, and a Google, DuckDuckGo or Qwant search from the Launcher.</p>",
+  "rel-121-date":"Version 1.2.1 · released October 9, 2026","rel-121-tab":"Oct 9",
+  "rel-121-lead":"1.2.1 turns “Ask Claude” into a real conversation with Ondine, and lets her out of the island.",
+  "rel-121-1":"<b>AI</b><h3>Talk to Ondine</h3><p>A real conversation in bubbles, with her personality and moods. With Claude, GPT or Gemini and your key; nothing is written to disk.</p>",
+  "rel-121-2":"<b>AI</b><h3>She finds your files</h3><p>Ondine searches your files by name, reads one or creates one in her folder. She shows you everything and waits for your OK.</p>",
+  "rel-121-3":"<b>AI</b><h3>She acts on the PC</h3><p>Volume, brightness, dark mode, timer, note, Wi-Fi… when you ask her. She cannot delete anything.</p>",
+  "rel-121-4":"<b>Desktop</b><h3>Ondine on the desktop</h3><p>Drag the mascot out of the island and put her anywhere. A click opens a bubble next to her, and she sits on the taskbar.</p>",
+  "rel-121-5":"<b>Settings</b><h3>Lighter settings</h3><p>Modules in collapsible categories, long pages as sub-menus. Nothing was removed.</p>",
+  "rel-121-6":"<b>Mascot</b><h3>The 3D podium</h3><p>Every mascot, animated, on steps: drag the one you want onto the top step.</p>",
+  "rel-120-date":"Version 1.2.0 · released October 8, 2026","rel-120-tab":"Oct 8",
+  "rel-120-lead":"1.2.0 brings the gummy family to life: fifteen mascots, a jelly island and much better tracking of your AI agents.",
+  "rel-120-1":"<b>Mascots</b><h3>Fifteen gummy mascots</h3><p>Marshmallow, Sugared almond, Berlingot, star, moon, cloud, ghost… plus Sky and Weather. With hands, accessories and twelve expressions.</p>",
+  "rel-120-2":"<b>Island</b><h3>The jelly island</h3><p>It dents under a click, swells on hover and stretches under the mouse. Elasticity setting: Soft, Normal, Jelly.</p>",
+  "rel-120-3":"<b>Mascot</b><h3>She reacts to everything</h3><p>Starry eyes for a file, arms up when the timer ends, an umbrella when rain is coming. And a custom colour.</p>",
+  "rel-120-4":"<b>AI agents</b><h3>Token counter</h3><p>Input, output, cache, per day, model and project, a 30-day chart, an estimated cost and a budget alert.</p>",
+  "rel-120-5":"<b>AI agents</b><h3>Nine more agents</h3><p>GitHub Copilot CLI, Cursor CLI, Qwen Code, Goose, OpenCode, Kiro CLI, Hermes, Aider and Amp launch from the island.</p>",
+  "rel-120-6":"<b>AI agents</b><h3>What Claude said</h3><p>“Claude is done” shows its last sentence, and changed files open in VS Code or as a diff.</p>",
+  "rel-120-7":"<b>AI agents</b><h3>Your GitHub calendar</h3><p>Your contribution grid in the island's colour, and a celebration for 7, 30 and 100-day streaks.</p>",
+  "rel-120-8":"<b>Settings</b><h3>Simple mode</h3><p>Only the essentials of each page by default, everything else one click away. Search still finds everything.</p>",
+  "rel-120-9":"<b>Mascot</b><h3>Calm mode</h3><p>Fewer spontaneous gestures for a quiet island; the useful states stay.</p>",
+  "rel-110-date":"Version 1.1.0 · released October 7, 2026","rel-110-tab":"Oct 7",
+  "rel-110-lead":"Released the same evening as 1.0, 1.1.0 adds a good list of everyday tools.",
+  "rel-110-1":"<b>Launcher</b><h3>Calculations</h3><p>Math, percentages, units, bytes, IPv4 subnets and the time in another city.</p>",
+  "rel-110-2":"<b>Shelf</b><h3>To your phone</h3><p>Send a shelf file to your phone with a QR code, over local Wi-Fi.</p>",
+  "rel-110-3":"<b>AI agents</b><h3>When an agent is done</h3><p>The changed files, “Open in VS Code” and “Resume” the last session.</p>",
+  "rel-110-4":"<b>Tools</b><h3>Decode a copy</h3><p>JWT, Base64, URL, JSON, Unix time, and a file's SHA-256 hash.</p>",
+  "rel-110-5":"<b>Captures</b><h3>A screen GIF</h3><p>Record an area of the screen as an animated GIF.</p>",
+  "rel-110-6":"<b>Controls</b><h3>More controls</h3><p>Eject a USB drive, dark mode and night light.</p>",
+  "rel-110-7":"<b>Network</b><h3>Wake a PC</h3><p>Wake a remote PC (Wake-on-LAN), and a pending restart is flagged.</p>",
+  "rel-110-8":"<b>Calendar</b><h3>Meetings and clocks</h3><p>Join a meeting in one click, world clocks and a weekly summary.</p>",
+  "rel-110-9":"<b>Island</b><h3>“What's new”</h3><p>A panel after each update, and a tip the first time each tab opens.</p>",
+  "rel-101-date":"Version 1.0.1 · released October 7, 2026","rel-101-tab":"Oct 7",
+  "rel-101-lead":"A few hours after 1.0, a bug-fix release.",
+  "rel-101-1":"<b>Welcome</b><h3>Gomme from the start</h3><p>On first launch, the Gomme mascot and the always-visible mini island.</p>",
+  "rel-101-2":"<b>AI agents</b><h3>“Go there” finds the terminal</h3><p>“Go there” brings back the Windows Terminal window in the installed version.</p>",
+  "rel-101-3":"<b>Install</b><h3>Easier on a fresh PC</h3><p>No more need to install the Visual C++ Redistributable.</p>",
+  "rel-100-date":"Version 1.0.0 · released October 7, 2026","rel-100-tab":"Oct 7",
+  "rel-100-lead":"The very first public release: the island, its modules, its AI agents and a few surprises.",
+  "rel-100-1":"<b>Surprises</b><h3>Hidden treasures</h3><p>Code rain, 8-bit Ondine (Konami code), holidays and a treasure book in the settings. Can be turned off.</p>",
+  "rel-100-2":"<b>Mascot</b><h3>Ondine reacts to the PC</h3><p>A nightcap, Friday-evening sunglasses, Monday-morning coffee, hands over her ears at full volume…</p>",
+  "rel-100-3":"<b>Island</b><h3>Search in the island</h3><p>Notes, clipboard, shelf, captures and apps, without worrying about accents or capitals.</p>",
+  "rel-100-4":"<b>Profiles</b><h3>Work, Home…</h3><p>Profiles that switch by themselves depending on the time or the Wi-Fi.</p>",
+  "rel-100-5":"<b>Calendar</b><h3>Calendar and weather</h3><p>Several coloured calendars, one click to join Teams, Meet, Zoom or Webex, and the weather (off by default).</p>",
+  "rel-100-6":"<b>Tools</b><h3>Colour picker and QR code</h3><p>The colour of any point on screen in HEX, RGB or HSL, and a QR code of what you just copied.</p>",
+  "rel-100-7":"<b>AI agents</b><h3>Hooks installed for you</h3><p>Claude Code, Codex and Gemini CLI notify the island with nothing to set up, with a backup and a “Remove” button.</p>",
+  "rel-100-8":"<b>Focus</b><h3>Focus mode</h3><p>The timer pauses notifications.</p>",
+  "rel-100-9":"<b>PC</b><h3>Light on battery</h3><p>High performance, balanced or power saving, automatic on battery.</p>",
   "features-title":"Everything you need, right up top.",
   "features-lead":"The island stays discreet as a mini island and opens on hover. Every module can be tuned or hidden in the settings.",
   "tile-1":"The mini island at the top of the screen","tile-2":"The island's music player","tile-3":"Quick controls: sound, microphone, Wi-Fi",
@@ -342,6 +538,39 @@ const first=['fr','en'].includes(asked)?asked:(store.get()||((navigator.language
 if(first!=='fr')apply(first);
 buttons.forEach(b=>b.addEventListener('click',()=>{apply(b.dataset.lang);store.set(b.dataset.lang);
   const u=new URL(location.href);u.searchParams.delete('lang');history.replaceState(null,'',u)}));
+})();
+</script>
+<script>
+// Les versions : une bulle par version, un seul panneau à la fois. L'adresse garde la version
+// choisie (#v1-2-3) pour pouvoir la partager. Flèches, Début et Fin passent d'une bulle à l'autre.
+(()=>{
+const list=document.querySelector('.versions');if(!list)return;
+const tabs=[...list.querySelectorAll('[role=tab]')],pill=list.querySelector('.pill');
+const panel=t=>document.getElementById(t.getAttribute('aria-controls'));
+let cur=tabs.find(t=>t.getAttribute('aria-selected')==='true')||tabs[0];
+tabs.forEach(t=>{if(t!==cur)panel(t).hidden=true;panel(t).querySelectorAll('.news article').forEach((a,i)=>a.style.setProperty('--i',i))});
+const place=()=>{pill.style.width=cur.offsetWidth+'px';pill.style.transform=`translateX(${cur.offsetLeft}px)`};
+function show(t,keep){
+  if(t===cur)return;
+  const dir=tabs.indexOf(t)>tabs.indexOf(cur)?1:-1;
+  panel(cur).hidden=true;cur.setAttribute('aria-selected','false');cur.tabIndex=-1;
+  cur=t;t.setAttribute('aria-selected','true');t.removeAttribute('tabindex');
+  const p=panel(t);p.hidden=false;p.style.setProperty('--dir',dir);p.classList.remove('in');void p.offsetWidth;p.classList.add('in');
+  place();list.scrollTo({left:t.offsetLeft-(list.clientWidth-t.offsetWidth)/2});
+  if(!keep)history.replaceState(null,'',location.pathname+location.search+'#'+p.id);
+}
+tabs.forEach(t=>t.addEventListener('click',e=>{e.preventDefault();show(t)}));
+list.addEventListener('keydown',e=>{
+  const i=tabs.indexOf(cur),n={ArrowRight:i+1,ArrowLeft:i-1,Home:0,End:tabs.length-1}[e.key];
+  if(n===undefined||!tabs[n])return;e.preventDefault();show(tabs[n]);tabs[n].focus();
+});
+const fromHash=()=>{const t=tabs.find(t=>'#'+t.getAttribute('aria-controls')===location.hash);
+  if(!t)return;show(t,true);
+  const go=()=>document.getElementById('nouveautes').scrollIntoView();go();
+  if(document.readyState!=='complete')addEventListener('load',go,{once:true})};
+addEventListener('hashchange',fromHash);fromHash();
+tabs.forEach(t=>new ResizeObserver(place).observe(t));
+place();requestAnimationFrame(()=>list.classList.add('ready'));
 })();
 </script>
 <script>
