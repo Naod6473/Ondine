@@ -1931,6 +1931,10 @@ export class Island {
         ),
       );
     }
+    if (n.chips?.length) {
+      const last = n.chips.length - 1;
+      actions.append(el("span", { class: "notif-chips", "data-no-i18n": "" }, ...n.chips.map((c, i) => el("span", { class: `notif-chip${i === last ? " on" : ""}` }, c))));
+    }
     actions.append(el("button", { class: "icon-btn", title: "Fermer", onclick: () => this.notifications.dismiss(n.id) }, "×"));
     // Un contenu dessiné par le demandeur (« Quoi de neuf » et ses mascottes
     // animées) : dans l'alerte seulement, défait avec la carte (unmountView).

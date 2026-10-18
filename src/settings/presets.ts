@@ -40,6 +40,7 @@ export const CALM_OFF = [
   "dance",
   "capsLock",
   "numLock",
+  "keyboardLayout",
   "clipboard",
   "clipText",
   "volumeKeys",

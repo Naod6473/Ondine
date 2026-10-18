@@ -116,3 +116,21 @@ export function timerHaloPlan(p: TimerProgress | null | undefined): TimerHaloPla
   const left = typeof p.left === "number" ? p.left : 0;
   return { action: "show", id, palette, endsAt: null, total, fill: Math.max(0, Math.min(1, left / total)) };
 }
+
+/**
+ * Le petit retour quand la langue du clavier change (« halos.keyboard-layout »
+ * {from, to, name} du Rust) : « Clavier en anglais », avec les pastilles
+ * FR → EN. Le nom vient du Rust (« Anglais (États-Unis) ») : sa variante, s'il
+ * en a une, passe dessous ; sinon, comment revenir en arrière.
+ */
+export function layoutNote(p: { from?: unknown; to?: unknown; name?: unknown }): { title: string; body: string; chips: string[] } {
+  const from = typeof p.from === "string" ? p.from : "";
+  const to = typeof p.to === "string" ? p.to : "";
+  const name = typeof p.name === "string" ? p.name.trim() : "";
+  const chips = from && to && from !== to ? [from, to] : to ? [to] : [];
+  const hint = "Win + Espace pour changer";
+  // Une langue que le Rust ne connaît pas : on le dit sans la nommer.
+  if (!name) return { title: "Langue du clavier changée", body: hint, chips };
+  const lang = name.split(" (")[0].toLowerCase();
+  return { title: `Clavier en ${lang}`, body: name.includes("(") ? name : hint, chips };
+}

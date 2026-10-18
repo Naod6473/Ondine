@@ -10,12 +10,22 @@
 //
 // Le Lanceur (recherche dans l'île) publie « notes.open » { kind, id } : l'onglet
 // s'ouvre alors sur cette note (dans l'éditeur) ou sur cette tâche (mise en avant).
+//
+// Rappels (1.2.5) : une tâche peut avoir une heure (bouton horloge de la ligne).
+// L'heure s'affiche à droite, en jaune dans les 30 dernières minutes. À l'heure,
+// une alerte de l'île : « Fait » coche la tâche, « 10 min » la repousse. Rien
+// pendant une concentration (Minuteur) ni une présentation (plein écran) : c'est
+// rattrapé ensuite, comme au réveil du PC, en une seule alerte. Les calculs sont
+// dans remind-logic.ts.
 
 import manifest from "./manifest.json";
+import { Bridge } from "../../core/bridge";
 import { errorText } from "../../core/log";
+import { pacedInterval } from "../../core/perf";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
 import { reducedMotion, TabPill } from "../../island/tab-pill";
+import { atFrom, dateValue, dueReminders, hhmm, isSoon, quickChoices, reminderAlert, reminderLabel, snoozeAt } from "./remind-logic";
 
 interface Note {
   id: number;
@@ -28,6 +38,10 @@ interface Todo {
   text: string;
   done: boolean;
   created: number;
+  /** L'heure du rappel (ms), s'il y en a un. */
+  remindAt?: number;
+  /** L'alerte du rappel a été faite. */
+  reminded?: boolean;
 }
 
 interface Data {
@@ -75,6 +89,101 @@ function ago(ms: number): string {
 
 const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
 
+/** La petite horloge de la ligne (au trait, couleur du texte). */
+function clockIcon(): SVGSVGElement {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 12 12");
+  svg.setAttribute("aria-hidden", "true");
+  const circle = document.createElementNS(NS, "circle");
+  circle.setAttribute("cx", "6");
+  circle.setAttribute("cy", "6.5");
+  circle.setAttribute("r", "4.2");
+  const hands = document.createElementNS(NS, "path");
+  hands.setAttribute("d", "M6 4.3v2.3l1.5 1");
+  svg.append(circle, hands);
+  return svg;
+}
+
+/**
+ * Les rappels à l'heure : regardés toutes les 15 s (et à chaque changement).
+ * Ce qui est dû pendant une concentration ou une présentation attend : au tour
+ * d'après la fin, tout ce qui a été manqué part en une seule alerte.
+ */
+function watchReminders(api: ModuleApi): () => void {
+  let focus = false;
+  /** Déjà dits, en attendant que le Rust l'ait enregistré (pas deux alertes). */
+  const told = new Set<number>();
+  const offFocus = api.on("timer.focus", (msg) => {
+    focus = !!(msg.payload as { on?: boolean } | null)?.on;
+  });
+  const check = async () => {
+    const due = dueReminders(data.todos, Date.now()).filter((t) => !told.has(t.id));
+    if (!due.length || focus) return;
+    // Mode présentation : comme les Pauses, on demande à Windows (plein écran, diaporama).
+    if ((await Bridge.deskState())?.busy) return;
+    const now = Date.now();
+    const alert = reminderAlert(due, now);
+    if (!alert) return;
+    for (const t of due) told.add(t.id);
+    void attempt(api, () => api.invoke("todo_reminded", { ids: due.map((t) => t.id) }));
+    if (alert.kind === "one") {
+      const id = alert.todo.id;
+      api.notify({
+        title: alert.title,
+        body: alert.body,
+        icon: "⏰",
+        priority: "high",
+        key: "notes-remind",
+        durationMs: 30_000,
+        actions: [
+          { label: "10 min", run: () => void attempt(api, () => api.invoke("todo_remind", { id, at: snoozeAt(Date.now()) })) },
+          {
+            label: "Fait",
+            run: () => {
+              // Déjà cochée entre-temps (autre fenêtre) : on ne la décoche pas.
+              if (data.todos.find((t) => t.id === id)?.done === false) void attempt(api, () => api.invoke("todo_toggle", { id }));
+            },
+          },
+        ],
+      });
+    } else {
+      api.notify({
+        title: alert.title,
+        body: alert.body,
+        icon: "⏰",
+        priority: "high",
+        key: "notes-remind",
+        durationMs: 30_000,
+        actions: [
+          {
+            label: "Voir les tâches",
+            run: () => {
+              pane = "todo";
+              api.openIsland("notes");
+            },
+          },
+        ],
+      });
+    }
+  };
+  const tick = () => {
+    // Le jaune « bientôt » avance avec l'heure, même sans changement.
+    for (const r of redraws) r();
+    void check();
+  };
+  const offChanged = api.on("notes.changed", () => {
+    told.clear(); // le Rust a enregistré : `reminded` fait foi
+    window.setTimeout(() => void check(), 300); // après la relecture de la liste
+  });
+  const stop = pacedInterval(tick, "notesRemind");
+  return () => {
+    stop();
+    offFocus();
+    offChanged();
+  };
+}
+
 /** Fait apparaître un élément en douceur. */
 function enter(node: HTMLElement) {
   if (reducedMotion()) return;
@@ -106,6 +215,7 @@ export const notes: IslandModule = {
 
   setup(api) {
     api.on("notes.changed", () => void refresh(api));
+    const stopReminders = watchReminders(api);
     api.on("notes.open", (msg) => {
       const p = msg.payload as { kind?: string; id?: number } | null;
       if (typeof p?.id !== "number") return;
@@ -124,7 +234,7 @@ export const notes: IslandModule = {
         return {
           value: String(open.length),
           sub: open.length > 1 ? "tâches à faire" : "tâche à faire",
-          rows: open.slice(0, 4).map((t) => ({ label: t.text, value: "" })),
+          rows: open.slice(0, 4).map((t) => ({ label: t.text, value: t.remindAt && !t.reminded ? reminderLabel(t.remindAt, Date.now()) : "" })),
           phrase: open.length > 1 ? `${open.length} tâches à faire` : "1 tâche à faire",
         };
       },
@@ -158,6 +268,7 @@ export const notes: IslandModule = {
         api.notify({ title: `${open} tâche(s) à faire`, icon: "✅", priority: "low", key: "notes-start" });
       }
     });
+    return stopReminders;
   },
 
   views: {
@@ -205,7 +316,58 @@ export const notes: IslandModule = {
         requestAnimationFrame(() => input.focus());
 
         /** Les éléments déjà affichés, par numéro de tâche. */
-        const rows = new Map<number, { li: HTMLElement; text: HTMLElement }>();
+        const rows = new Map<number, { li: HTMLElement; text: HTMLElement; when: HTMLButtonElement; label: HTMLElement }>();
+        /** Le choix de l'heure ouvert (un seul à la fois), sous sa tâche. */
+        let picker: { id: number; node: HTMLElement } | null = null;
+
+        const closePicker = () => {
+          picker?.node.remove();
+          picker = null;
+        };
+
+        /** Le choix de l'heure d'une tâche : jour (aujourd'hui par défaut), heure, raccourcis. */
+        const openPicker = (t: Todo, li: HTMLElement) => {
+          const again = picker?.id === t.id;
+          closePicker();
+          if (again) return; // second clic sur l'horloge : on referme
+          const now = Date.now();
+          const at = t.remindAt && !t.reminded ? t.remindAt : null;
+          const date = el("input", { class: "clip-input todo-when-date", type: "date", value: dateValue(at ?? now), "aria-label": "Jour du rappel" });
+          const time = el("input", { class: "clip-input todo-when-time", type: "time", value: at ? hhmm(at) : "", "aria-label": "Heure du rappel" });
+          const set = async (value: number | null) => {
+            closePicker();
+            await attempt(api, () => api.invoke("todo_remind", { id: t.id, at: value }));
+          };
+          const ok = el(
+            "button",
+            {
+              class: "btn small primary",
+              onclick: api.handler(async () => {
+                const value = atFrom(date.value, time.value);
+                if (value === null) return time.focus();
+                await set(value);
+              }),
+            },
+            "Valider",
+          );
+          const quick = quickChoices(now).map((q) => el("button", { class: "btn small", onclick: api.handler(() => set(q.at)) }, q.label));
+          const node = el(
+            "div",
+            { class: "todo-when-panel" },
+            el("div", { class: "btn-row" }, date, time, ok),
+            el("div", { class: "btn-row" }, ...quick, at ? el("button", { class: "btn small", onclick: api.handler(() => set(null)) }, "Retirer le rappel") : null),
+          );
+          node.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") {
+              e.stopPropagation(); // Échap referme le choix, pas l'île
+              closePicker();
+            }
+            if (e.key === "Enter" && e.target instanceof HTMLInputElement) ok.click();
+          });
+          li.append(node);
+          picker = { id: t.id, node };
+          requestAnimationFrame(() => time.focus());
+        };
 
         const row = (t: Todo) => {
           const check = el("button", {
@@ -215,13 +377,40 @@ export const notes: IslandModule = {
           });
           const text = el("span", { class: "todo-text", title: "Double-clic pour modifier" }, t.text);
           text.addEventListener("dblclick", () => edit(t.id, text));
+          const label = el("span", { class: "todo-when-label" });
+          const when = el("button", { class: "todo-when", title: "Ajouter un rappel" }, clockIcon(), label);
           const del = el(
             "button",
             { class: "icon-btn todo-del", title: "Supprimer", "data-scene": "note-delete", onclick: api.handler(() => attempt(api, () => api.invoke("todo_delete", { id: t.id }))) },
             "×",
           );
-          const li = el("li", { class: "todo-item", "data-id": String(t.id) }, check, text, del);
-          return { li, text };
+          const li = el("li", { class: "todo-item", "data-id": String(t.id) }, check, text, when, del);
+          when.addEventListener(
+            "click",
+            api.handler(() => {
+              const now = data.todos.find((x) => x.id === t.id);
+              if (now && !now.done) openPicker(now, li);
+            }),
+          );
+          return { li, text, when, label };
+        };
+
+        /** L'heure à droite de la ligne : jaune si elle arrive bientôt, éteinte sur une tâche faite. */
+        const paintWhen = (r: { when: HTMLButtonElement; label: HTMLElement }, t: Todo, now: number) => {
+          const at = t.remindAt;
+          const shown = at !== undefined && (t.done || !t.reminded);
+          const text = shown ? reminderLabel(at, now) : "";
+          if (r.label.textContent !== text) r.label.textContent = text;
+          r.when.classList.toggle("set", shown);
+          r.when.classList.toggle("soon", isSoon(t, now));
+          r.when.disabled = t.done;
+          const hint = t.done ? "" : shown ? "Changer le rappel" : "Ajouter un rappel";
+          if (r.when.title !== hint) {
+            r.when.title = hint;
+            // Sans texte, le lecteur d'écran lit la bulle ; avec l'heure, l'heure suffit.
+            if (shown) r.when.removeAttribute("aria-label");
+            else r.when.setAttribute("aria-label", hint || "Rappel");
+          }
         };
 
         /** Modifier une tâche sur place : Entrée valide, Échap annule. */
@@ -262,6 +451,8 @@ export const notes: IslandModule = {
               rows.set(t.id, r);
             }
             r.li.classList.toggle("done", t.done);
+            paintWhen(r, t, Date.now());
+            if (t.done && picker?.id === t.id) closePicker();
             if (r.text.isConnected && r.text.textContent !== t.text) r.text.textContent = t.text;
             // Remettre à la bonne place seulement si besoin (sinon l'animation saute).
             const live = [...list.children].filter((c) => !c.classList.contains("leaving"));
@@ -270,6 +461,7 @@ export const notes: IslandModule = {
           });
           for (const [id, r] of rows) {
             if (!seen.has(id)) {
+              if (picker?.id === id) closePicker();
               rows.delete(id);
               leave(r.li);
             }

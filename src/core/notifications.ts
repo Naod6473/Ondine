@@ -38,6 +38,11 @@ export interface NotificationRequest {
   /** Identifiant de sujet : une nouvelle notification de même clé remplace l'ancienne. */
   key?: string;
   actions?: NotificationAction[];
+  /**
+   * De petites pastilles à droite, la dernière allumée : la langue du clavier
+   * qui change (« FR » puis « EN »). Montrées telles quelles (pas traduites).
+   */
+  chips?: string[];
   /** Le titre en vert (« Identique ✓ ») ou en rouge (« Différente ✗ »). */
   tone?: "good" | "bad";
   /** En alerte, une île plus large et plus haute : pour un long texte (une empreinte entière). */
