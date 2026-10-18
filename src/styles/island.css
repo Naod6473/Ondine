@@ -2196,6 +2196,9 @@ body[data-perf="eco"] .media-compact.on .media-eq i {
   flex: 1;
   min-width: 0;
   min-height: 150px;
+  /* Le volet prend la hauteur du lecteur, jamais celle des paroles : sans
+     ça, la liste entière étire la carte (et le lecteur se perd en bas). */
+  contain: size;
   overflow: hidden;
   -webkit-mask: linear-gradient(transparent, #000 22%, #000 78%, transparent);
   mask: linear-gradient(transparent, #000 22%, #000 78%, transparent);

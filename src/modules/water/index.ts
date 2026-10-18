@@ -189,7 +189,7 @@ export const water: IslandModule = {
         setText(total, litres(today, lang));
         setText(goal, goalLine(s.goalMl, lang));
         const p = progress(today, s.goalMl);
-        fill.style.setProperty("--p", `${(p * 100).toFixed(1)}%`);
+        fill.style.setProperty("--water-p", `${(p * 100).toFixed(1)}%`);
         bar.setAttribute("aria-valuenow", String(Math.round(p * 100)));
         box.classList.toggle("done", p >= 1);
         setText(add, glassLabel(s.glassMl));
