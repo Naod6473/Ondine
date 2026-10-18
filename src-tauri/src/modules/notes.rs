@@ -8,6 +8,12 @@
 // Le texte des notes n'est jamais écrit dans le journal ni envoyé sur le bus :
 // le message "notes.changed" ne contient que des nombres ; le front redemande
 // la liste.
+//
+// Une tâche peut avoir une heure de rappel (`remindAt`, 1.2.5) : c'est le
+// front qui la surveille et lève l'alerte (src/modules/notes/remind-logic.ts) ;
+// ici, on la garde, et `reminded` retient que l'alerte a été faite (pour ne
+// pas la refaire au redémarrage, mais rattraper celle qui a été manquée).
+// Les deux champs sont facultatifs : les anciens fichiers se relisent tels quels.
 
 use crate::sync::LockExt;
 use std::path::PathBuf;
@@ -29,6 +35,8 @@ const MAX_NOTE_CHARS: usize = 20_000;
 const MAX_TODO_CHARS: usize = 300;
 const MAX_NOTES: usize = 200;
 const MAX_TODOS: usize = 500;
+/// Une heure de rappel au-delà (an 3000) est forcément une erreur.
+const MAX_REMIND_MS: u64 = 32_503_680_000_000;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Note {
@@ -39,11 +47,30 @@ struct Note {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct Todo {
     id: u64,
     text: String,
     done: bool,
     created: u64,
+    /// L'heure du rappel (ms depuis 1970), s'il y en a un.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    remind_at: Option<u64>,
+    /// L'alerte de ce rappel a déjà été faite (ou la tâche a été cochée).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    reminded: bool,
+}
+
+impl Todo {
+    fn new(id: u64, text: String) -> Self {
+        Todo { id, text, done: false, created: now_ms(), remind_at: None, reminded: false }
+    }
+
+    /// Cochée : plus de rappel. Décochée : le rappel revient s'il est encore à venir.
+    fn set_done(&mut self, done: bool, now: u64) {
+        self.done = done;
+        self.reminded = done || self.remind_at.is_some_and(|at| at <= now);
+    }
 }
 
 /// Tout ce qui est enregistré. `next_id` : le prochain numéro à donner.
@@ -99,7 +126,7 @@ impl RustModule for Notes {
                     return ctx.log_warn(format!("tâche refusée : au plus {MAX_TODOS} tâches"));
                 }
                 let id = d.new_id();
-                d.todos.push(Todo { id, text, done: false, created: now_ms() });
+                d.todos.push(Todo::new(id, text));
             }
             ctx.log_info("tâche ajoutée par un autre module");
             changed(ctx.app, &self.data);
@@ -186,7 +213,7 @@ impl RustModule for Notes {
                         return Err(format!("au plus {MAX_TODOS} tâches"));
                     }
                     let id = d.new_id();
-                    d.todos.push(Todo { id, text, done: false, created: now_ms() });
+                    d.todos.push(Todo::new(id, text));
                     id
                 };
                 changed(ctx.app, &self.data);
@@ -197,8 +224,9 @@ impl RustModule for Notes {
                 let done = {
                     let mut d = self.data.locked();
                     let todo = d.todos.iter_mut().find(|t| t.id == id).ok_or("tâche introuvable")?;
-                    todo.done = !todo.done;
-                    todo.done
+                    let done = !todo.done;
+                    todo.set_done(done, now_ms());
+                    done
                 };
                 // Une tâche cochée : la mascotte est contente.
                 if done {
@@ -218,6 +246,42 @@ impl RustModule for Notes {
                     todo.text = text;
                 }
                 changed(ctx.app, &self.data);
+                Ok(Value::Null)
+            }
+            // { id, at: ms | null } : l'heure du rappel (null = plus de rappel).
+            "todo_remind" => {
+                let id = arg_id(&args)?;
+                let at = match args.get("at") {
+                    None | Some(Value::Null) => None,
+                    Some(v) => Some(v.as_u64().filter(|&at| at > 0 && at < MAX_REMIND_MS).ok_or("heure de rappel invalide")?),
+                };
+                {
+                    let mut d = self.data.locked();
+                    let todo = d.todos.iter_mut().find(|t| t.id == id).ok_or("tâche introuvable")?;
+                    if todo.done && at.is_some() {
+                        return Err("cette tâche est déjà faite".into());
+                    }
+                    todo.remind_at = at;
+                    todo.reminded = false;
+                }
+                changed(ctx.app, &self.data);
+                Ok(Value::Null)
+            }
+            // { ids } : l'alerte de ces rappels a été faite (à l'heure ou rattrapée).
+            "todo_reminded" => {
+                let ids: Vec<u64> = args.get("ids").and_then(Value::as_array).map(|a| a.iter().filter_map(Value::as_u64).collect()).unwrap_or_default();
+                let any = {
+                    let mut d = self.data.locked();
+                    let mut any = false;
+                    for t in d.todos.iter_mut().filter(|t| ids.contains(&t.id) && !t.reminded) {
+                        t.reminded = true;
+                        any = true;
+                    }
+                    any
+                };
+                if any {
+                    changed(ctx.app, &self.data);
+                }
                 Ok(Value::Null)
             }
             "todo_delete" => {
@@ -413,8 +477,8 @@ mod tests {
                 Note { id: 2, text: "Courses\npain, café".into(), updated: 20 },
             ],
             todos: vec![
-                Todo { id: 3, text: "Appeler Léa".into(), done: true, created: 30 },
-                Todo { id: 4, text: "Réserver le resto".into(), done: false, created: 40 },
+                Todo { done: true, created: 30, ..Todo::new(3, "Appeler Léa".into()) },
+                Todo { created: 40, ..Todo::new(4, "Réserver le resto".into()) },
             ],
             next_id: 4,
         };
@@ -435,5 +499,28 @@ mod tests {
         let d: Data = serde_json::from_str(r#"{ "todos": [{ "id": 4, "text": "x", "done": false, "created": 0 }] }"#).unwrap();
         assert_eq!(d.todos.len(), 1);
         assert_eq!(d.next_id, 0); // load() le recale sur le plus grand numéro
+        assert_eq!(d.todos[0].remind_at, None);
+        assert!(!d.todos[0].reminded);
+    }
+
+    #[test]
+    fn reminder_fields_are_optional_and_round_trip() {
+        let plain = serde_json::to_value(Todo { created: 5, ..Todo::new(1, "x".into()) }).unwrap();
+        // Sans rappel, le fichier reste comme avant (pas de champ en plus).
+        assert_eq!(plain, json!({ "id": 1, "text": "x", "done": false, "created": 5 }));
+        let t: Todo = serde_json::from_value(json!({ "id": 2, "text": "y", "done": false, "created": 0, "remindAt": 1000, "reminded": true })).unwrap();
+        assert_eq!((t.remind_at, t.reminded), (Some(1000), true));
+    }
+
+    #[test]
+    fn done_task_has_no_more_reminder() {
+        let mut t = Todo { remind_at: Some(1000), ..Todo::new(1, "x".into()) };
+        t.set_done(true, 500);
+        assert!(t.reminded);
+        t.set_done(false, 500); // décochée avant l'heure : le rappel revient
+        assert!(!t.reminded);
+        t.set_done(true, 500);
+        t.set_done(false, 2000); // décochée après l'heure : pas d'alerte en retard
+        assert!(t.reminded);
     }
 }

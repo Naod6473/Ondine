@@ -2,6 +2,23 @@
 
 ## 1.2.5 · à venir
 
+- Notes : chaque tâche peut avoir une heure (le bouton horloge de la ligne :
+  une heure, ou « Dans 30 min », « Ce soir 18:00 », « Demain 9:00 »).
+  L'heure s'affiche à droite, en jaune dans les 30 dernières minutes. À
+  l'heure, une alerte de l'île : « Fait » coche la tâche, « 10 min » la
+  repousse. Rien pendant une concentration ou une présentation, et ce qui a
+  été manqué (PC en veille) arrive ensuite en une seule alerte · Notes: each
+  task can have a time (the clock button on the row: a time, or "In 30 min",
+  "Tonight 18:00", "Tomorrow 9:00"). The time shows on the right, in yellow
+  in the last 30 minutes. On time, an island alert: "Done" ticks the task,
+  "10 min" snoozes it. Nothing during focus or a presentation, and what was
+  missed (PC asleep) comes afterwards in a single alert
+- Un petit aperçu quand la langue du clavier change (Win + Espace, Alt +
+  Maj), comme pour Verr Maj : « Clavier en anglais », avec FR → EN. Réglage
+  « Langue du clavier » dans Animations et halos · A short preview when the
+  keyboard language changes (Win + Space, Alt + Shift), like Caps Lock:
+  "Keyboard in English", with FR → EN. "Keyboard language" setting in
+  Animations and halos
 - Nouveau style d'île « Encoche » (Réglages → L'île → Style de l'île), à côté
   de Classique et Bouche d'Ondine : l'île est noire, fondue dans le bord de
   l'écran par deux coins creux, et une lueur à la couleur du thème monte du

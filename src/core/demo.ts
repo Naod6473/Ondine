@@ -99,6 +99,11 @@ const state = {
   player: { shuffle: true, repeat: "none" as "none" | "track" | "list", volume: 68, muted: false },
   pinnedClips: new Set<number>([1]),
   todosDone: new Set<number>([2]),
+  /** Les rappels des tâches (1.2.5) : le garage dans 20 min (en jaune), la démo en fin de journée. */
+  reminders: new Map<number, { at: number; reminded: boolean }>([
+    [3, { at: Date.now() + 20 * MIN, reminded: false }],
+    [1, { at: Date.now() + 150 * MIN, reminded: false }],
+  ]),
 };
 
 function position(): number {
@@ -215,7 +220,14 @@ function agenda() {
 }
 
 function notes() {
-  const todo = (id: number, text: string) => ({ id, text, done: state.todosDone.has(id), created: Date.now() - id * 3600_000 });
+  const todo = (id: number, text: string) => ({
+    id,
+    text,
+    done: state.todosDone.has(id),
+    created: Date.now() - id * 3600_000,
+    remindAt: state.reminders.get(id)?.at,
+    reminded: state.reminders.get(id)?.reminded,
+  });
   return {
     notes: [
       { id: 1, text: "Idées pour le site\n- une vidéo courte\n- les captures de chaque onglet\n- la page en anglais", updated: Date.now() - 25 * MIN },
@@ -717,9 +729,26 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       const id = Number(args.id);
       if (state.todosDone.has(id)) state.todosDone.delete(id);
       else state.todosDone.add(id);
+      // Comme le Rust : cochée, plus de rappel ; décochée, il revient s'il est à venir.
+      const r = state.reminders.get(id);
+      if (r) r.reminded = state.todosDone.has(id) || r.at <= Date.now();
       bus.inject("notes.changed", null, "notes");
       return null;
     }
+    case "notes.todo_remind": {
+      const id = Number(args.id);
+      if (typeof args.at === "number") state.reminders.set(id, { at: args.at, reminded: false });
+      else state.reminders.delete(id);
+      bus.inject("notes.changed", null, "notes");
+      return null;
+    }
+    case "notes.todo_reminded":
+      for (const id of Array.isArray(args.ids) ? args.ids : []) {
+        const r = state.reminders.get(Number(id));
+        if (r) r.reminded = true;
+      }
+      bus.inject("notes.changed", null, "notes");
+      return null;
     case "notes.note_save":
       return { id: Number(args.id) || 99 };
     case "clipboard.list":
@@ -1263,6 +1292,7 @@ const HALOS_TOUR: Step[] = [
   [37500, "agents.event", { at: 0, source: "claude-code", kind: "waiting", title: "Claude attend votre permission", body: "npm run build", project: "site-ondine" }],
   [42000, "agents.event", { at: 0, source: "claude-code", kind: "done", title: "Claude a fini", body: "Le site est à jour", project: "site-ondine" }],
   [46500, "halos.lock-key", { key: "caps", on: true }],
+  [47500, "halos.keyboard-layout", { from: "FR", to: "EN", name: "Anglais (États-Unis)" }],
   [48500, "halos.clip", { action: "copy", text: "Bonjour tout le monde" }],
   [50500, "halos.volume", { volume: 45, muted: false }],
   [51200, "halos.volume", { volume: 60, muted: false }],

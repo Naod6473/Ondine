@@ -8,7 +8,7 @@
 //
 // D'où viennent les moments :
 //   le Rust de ce module (src-tauri/src/modules/halos.rs) : sortie de veille,
-//     Verr Maj / Verr Num, Copié / Coupé / Collé, touches de volume, Wi-Fi faible,
+//     Verr Maj / Verr Num, langue du clavier, Copié / Coupé / Collé, touches de volume, Wi-Fi faible,
 //     et le niveau du micro ou du son (commande `levels`) ;
 //   les autres modules, par le bus : clés USB (Contrôles), téléchargements
 //     (Étagère), disque presque plein et processeur (Système), météo, réseau,
@@ -27,7 +27,7 @@ import { MIN_PERIOD_MS, skyPalette } from "../../island/halo-palettes";
 import { beatFrom, haloBeatMs, sameBeat, type Beat } from "../../mascot/beat";
 import { calmMode } from "../../mascot/mascot-state";
 import { liquidMoments, ringReplaced } from "./liquid-moments";
-import { dayKey, leaveDue, levelFromPeak, mediaPlaying, meetingCometMs, morningDue, parseTime, sessionProgress, timerHaloPlan, weatherKind, type TimerProgress } from "./halo-rules";
+import { dayKey, layoutNote, leaveDue, levelFromPeak, mediaPlaying, meetingCometMs, morningDue, parseTime, sessionProgress, timerHaloPlan, weatherKind, type TimerProgress } from "./halo-rules";
 import { settingsStore } from "../../core/settings-store";
 import { helloText } from "../../core/setup-plan";
 import { coverColors, onCoverColors } from "../../mascot/env-tint";
@@ -68,8 +68,8 @@ export const halos: IslandModule = {
     const listen = (topic: string, fn: (p: Record<string, unknown>) => void) =>
       offs.push(api.on(topic, (msg) => fn((msg.payload ?? {}) as Record<string, unknown>)));
     /** Le petit retour des événements du clavier : une ligne, et une comète de couleur dessous. */
-    const keyNote = (title: string, icon: string, body?: string) =>
-      api.notify({ title, body, icon, priority: "low", key: "halo-key", durationMs: KEY_NOTE_MS });
+    const keyNote = (title: string, icon: string, body?: string, chips?: string[]) =>
+      api.notify({ title, body, icon, chips, priority: "low", key: "halo-key", durationMs: chips ? KEY_NOTE_MS + 800 : KEY_NOTE_MS });
 
     // ── Le PC ──────────────────────────────────────────────────────────────
     listen("halos.wake", () => {
@@ -275,6 +275,13 @@ export const halos: IslandModule = {
       if (!on(caps ? "capsLock" : "numLock")) return;
       showHalo({ id: "key", palette: caps ? "caps" : "num", shape: "comet", rhythm: 1100, durationMs: 1100 });
       keyNote(`${caps ? "Verr Maj" : "Verr Num"} · ${p.on ? "Activé" : "Désactivé"}`, caps ? "⇪" : "🔢");
+    });
+    // La langue du clavier (Win + Espace, Alt + Maj) : « Clavier en anglais », FR → EN.
+    listen("halos.keyboard-layout", (p) => {
+      if (!on("keyboardLayout")) return;
+      const note = layoutNote(p);
+      showHalo({ id: "key", palette: "caps", shape: "comet", rhythm: 1100, durationMs: 1100 });
+      keyNote(note.title, "⌨️", note.body, note.chips);
     });
     listen("halos.clip", (p) => {
       if (!on("clipboard")) return;

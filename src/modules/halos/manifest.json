@@ -201,6 +201,13 @@
         "default": true
       },
       {
+        "key": "keyboardLayout",
+        "type": "boolean",
+        "label": "Langue du clavier",
+        "default": true,
+        "help": "Un petit aperçu quand la langue du clavier change (Win + Espace, Alt + Maj) : « Clavier en anglais ». Ondine lit seulement la langue, jamais ce qui est tapé."
+      },
+      {
         "key": "numLock",
         "type": "boolean",
         "label": "Verr Num",
@@ -479,6 +486,7 @@
     "emits": [
       "halos.wake",
       "halos.lock-key",
+      "halos.keyboard-layout",
       "halos.clip",
       "halos.volume",
       "halos.wifi",
@@ -489,6 +497,7 @@
     "listens": [
       "halos.wake",
       "halos.lock-key",
+      "halos.keyboard-layout",
       "halos.clip",
       "halos.volume",
       "halos.wifi",

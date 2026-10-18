@@ -439,6 +439,30 @@ body {
   gap: 4px;
   align-items: center;
 }
+/* Des pastilles (la langue du clavier : « FR » puis « EN »), la dernière allumée. */
+.notif-chips {
+  display: flex;
+  gap: 4px;
+  margin-right: 2px;
+}
+.notif-chip {
+  min-width: 28px;
+  height: 22px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--island-fg);
+  font-size: 12px;
+  font-weight: 700;
+}
+.notif-chip.on {
+  background: var(--island-fg);
+  color: var(--island-bg);
+}
 /* Une question à choix : le texte en haut, les boutons dessous (l'alerte grandit). */
 .notif.many {
   flex-wrap: wrap;
@@ -2587,6 +2611,86 @@ body[data-perf="eco"] .media-compact.on .media-eq i {
 }
 .todo-item:hover .todo-del {
   opacity: 1;
+}
+/* Le rappel d'une tâche : une horloge (au survol), puis l'heure à droite. */
+.todo-when {
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 150ms ease,
+    color 220ms ease;
+}
+.todo-when svg {
+  width: 11px;
+  height: 11px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.todo-when + .todo-del {
+  margin-left: 0;
+}
+.todo-item:hover .todo-when,
+.todo-when:focus-visible,
+.todo-when.set {
+  opacity: 1;
+}
+.todo-when:not(:disabled):hover {
+  color: var(--island-fg);
+}
+/* Bientôt (moins de 30 min) : l'heure passe en jaune. */
+.todo-when.soon,
+.todo-when.soon:hover {
+  color: #ffc65c;
+}
+/* Une tâche faite : son heure reste, éteinte, sans horloge (plus de rappel). */
+.todo-item.done .todo-when {
+  cursor: default;
+  opacity: 0.6;
+}
+.todo-item.done .todo-when svg {
+  display: none;
+}
+.todo-item.done .todo-when:not(.set) {
+  display: none;
+}
+/* Le choix de l'heure, sous la tâche. */
+.todo-item:has(.todo-when-panel) {
+  flex-wrap: wrap;
+}
+.todo-when-panel {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0 6px 24px;
+}
+.todo-when-panel .btn-row {
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.todo-when-panel input {
+  color-scheme: dark; /* l'île est toujours sombre : icônes du calendrier et de l'heure lisibles */
+}
+.todo-when-date {
+  width: 9.5em;
+}
+.todo-when-time {
+  width: 6.5em;
 }
 .notes-foot {
   align-items: center;
