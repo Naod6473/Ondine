@@ -18,14 +18,17 @@ class Voice(context: Context, private val onDone: () -> Unit) {
     private var tts: TextToSpeech? = null
 
     init {
-        tts = TextToSpeech(context.applicationContext) { status ->
+        // Le moteur « voix-ondine-… » (sherpa-onnx, voix Piper) s'il est installé,
+        // sans passer par les paramètres Android, sinon le moteur par défaut.
+        val engine = SHERPA_ENGINE.takeIf { installed(context, it) }
+        tts = TextToSpeech(context.applicationContext, { status ->
             state = if (status != TextToSpeech.SUCCESS) {
                 "sans-moteur"
             } else {
                 val r = tts?.setLanguage(Locale.FRANCE) ?: TextToSpeech.LANG_NOT_SUPPORTED
                 if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) "sans-francais" else "ok"
             }
-        }
+        }, engine)
         tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(id: String?) {}
             override fun onDone(id: String?) = onDone()
@@ -51,5 +54,16 @@ class Voice(context: Context, private val onDone: () -> Unit) {
     fun release() {
         tts?.shutdown()
         tts = null
+    }
+
+    private fun installed(context: Context, pkg: String) = try {
+        context.packageManager.getPackageInfo(pkg, 0)
+        true
+    } catch (_: Exception) {
+        false
+    }
+
+    companion object {
+        const val SHERPA_ENGINE = "com.k2fsa.sherpa.onnx.tts.engine"
     }
 }
