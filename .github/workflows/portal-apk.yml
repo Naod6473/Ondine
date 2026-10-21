@@ -1,0 +1,50 @@
+# Ondine Portal : construit l'APK Android (Meta Portal) à chaque push sur la
+# branche ondine-portal. Cette branche n'est jamais fusionnée dans main.
+# L'APK se télécharge dans l'onglet Actions (artefact « ondine-portal-apk »),
+# puis s'installe en le glissant sur https://openportal.cc/.
+name: portal-apk
+
+on:
+  push:
+    branches: [ondine-portal]
+    paths:
+      - "portal/**"
+      - "site/media/ondine-gomme.js"
+      - ".github/workflows/portal-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Java 17
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          gradle-version: "8.14.3"
+
+      - name: AAR sherpa-onnx, modèle français, goutte
+        run: bash portal/scripts/prepare.sh
+
+      - name: Tests et APK
+        working-directory: portal
+        run: gradle --no-daemon testReleaseUnitTest assembleRelease
+
+      - name: Taille de l'APK
+        run: ls -lh portal/app/build/outputs/apk/release/
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ondine-portal-apk
+          path: portal/app/build/outputs/apk/release/*.apk
+          retention-days: 30

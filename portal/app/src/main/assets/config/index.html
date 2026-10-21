@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Régler Ondine</title>
+<!--
+  La page de réglages d'Ondine Portal, servie par le Portal lui-même
+  (ConfigServer.kt, port 8787) et ouverte depuis un PC ou un téléphone du
+  même Wi-Fi. Le jeton arrive par le QR code (#k=…) ou contre le code à
+  6 chiffres ; il est gardé dans ce navigateur. Tout est enregistré dès
+  qu'on change quelque chose.
+-->
+<style>
+  :root {
+    --fond: #f3f6f9;
+    --carte: #ffffff;
+    --texte: #0b1c2c;
+    --doux: #5d7183;
+    --bord: #dde5ec;
+    --accent: #1f8fd6;
+    --accent-doux: #e3f2fc;
+    --ok: #1f9d55;
+    --alerte: #c77700;
+    --ease: cubic-bezier(0.2, 0.9, 0.25, 1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fond: #0b1c2c; --carte: #12283b; --texte: #eef4f9; --doux: #9fb6c9;
+      --bord: #21405a; --accent: #5bc0f8; --accent-doux: #173b57; --ok: #4cd38a; --alerte: #f0aa3c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--fond); color: var(--texte);
+    font: 15px/1.45 system-ui, "Segoe UI", Roboto, sans-serif;
+  }
+  .page { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+  header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+  header canvas { width: 64px; height: 64px; }
+  h1 { font-size: 22px; margin: 0; }
+  header p { margin: 2px 0 0; color: var(--doux); }
+  section {
+    background: var(--carte); border: 1px solid var(--bord); border-radius: 18px;
+    padding: 18px; margin-bottom: 14px;
+  }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  label { display: block; font-weight: 600; margin: 12px 0 6px; }
+  label:first-of-type { margin-top: 0; }
+  .aide { color: var(--doux); font-size: 13px; margin: 4px 0 0; }
+  input[type=text], input[type=password], textarea {
+    width: 100%; font: inherit; color: inherit; background: var(--fond);
+    border: 1px solid var(--bord); border-radius: 12px; padding: 10px 12px;
+  }
+  textarea { min-height: 110px; resize: vertical; }
+  input:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button {
+    font: inherit; color: inherit; cursor: pointer; border-radius: 12px;
+    border: 1px solid var(--bord); background: var(--fond); padding: 9px 14px;
+    transition: transform 120ms var(--ease), background 160ms;
+  }
+  button:active { transform: scale(0.97); }
+  button.principal { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .ligne { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .ligne > input { flex: 1; min-width: 180px; }
+
+  /* Les choix en cartes (au lieu des menus déroulants). */
+  .choix { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+  .choix button { text-align: left; padding: 12px; }
+  .choix button b { display: block; }
+  .choix button span { color: var(--doux); font-size: 13px; }
+  .choix button[aria-pressed=true] { background: var(--accent-doux); border-color: var(--accent); }
+
+  .mascottes { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+  .mascottes button { padding: 6px; display: grid; justify-items: center; gap: 2px; font-size: 12px; }
+  .mascottes canvas { width: 60px; height: 60px; }
+  .mascottes button[aria-pressed=true] { background: var(--accent-doux); border-color: var(--accent); }
+  .teintes { display: flex; gap: 8px; flex-wrap: wrap; }
+  .teintes button { width: 34px; height: 34px; padding: 0; border-radius: 50%; }
+  .teintes button[aria-pressed=true] { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  .curseur { display: grid; grid-template-columns: 90px 1fr 44px; gap: 10px; align-items: center; }
+  .curseur input { width: 100%; accent-color: var(--accent); }
+  .interrupteur { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .interrupteur input { width: 44px; height: 24px; accent-color: var(--accent); }
+
+  .etat { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+  .etat div { background: var(--fond); border-radius: 12px; padding: 10px 12px; }
+  .etat b { display: block; font-size: 13px; color: var(--doux); font-weight: 500; }
+  .ok { color: var(--ok); } .alerte { color: var(--alerte); }
+
+  .code { font-size: 28px; letter-spacing: 0.3em; text-align: center; font-variant-numeric: tabular-nums; }
+  .toast {
+    position: fixed; left: 50%; bottom: 20px; transform: translate(-50%, 20px); opacity: 0;
+    background: var(--texte); color: var(--fond); padding: 8px 16px; border-radius: 999px;
+    transition: opacity 200ms, transform 200ms var(--ease); pointer-events: none;
+  }
+  .toast.vue { opacity: 1; transform: translate(-50%, 0); }
+  [hidden] { display: none !important; }
+  @media (prefers-reduced-motion: reduce) { * { transition-duration: 1ms !important; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <canvas id="logo"></canvas>
+    <div>
+      <h1>Régler Ondine</h1>
+      <p>Le Portal du salon, depuis ce navigateur.</p>
+    </div>
+  </header>
+
+  <!-- Appairage : sans jeton, on demande le code affiché par le Portal. -->
+  <section id="appairer" hidden>
+    <h2>Relier ce navigateur au Portal</h2>
+    <p class="aide">Sur le Portal, touchez la roue en haut à droite : un code à 6 chiffres s'affiche (ou scannez le QR code).</p>
+    <label for="code">Code</label>
+    <div class="ligne">
+      <input id="code" class="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="000 000">
+      <button class="principal" id="relier">Relier</button>
+    </div>
+    <p class="aide alerte" id="erreurCode"></p>
+  </section>
+
+  <div id="reglages" hidden>
+    <section>
+      <h2>État</h2>
+      <div class="etat">
+        <div><b>Voix</b><span id="etatVoix">…</span></div>
+        <div><b>Micro</b><span id="etatMicro">…</span></div>
+        <div><b>Clé Claude</b><span id="etatCle">…</span></div>
+        <div><b>Version</b><span id="etatVersion">…</span></div>
+      </div>
+      <p class="aide" id="aideVoix" hidden>Le Portal n'a pas de voix française. Avec OpenPortal, installez un moteur de synthèse vocale (par exemple RHVoice, ou « sherpa-onnx TTS Engine » avec une voix française), puis choisissez-le dans les paramètres Android. En attendant, Ondine écrit ses réponses.</p>
+    </section>
+
+    <section>
+      <h2>Claude</h2>
+      <label for="cle">Clé de l'API Claude</label>
+      <div class="ligne">
+        <input id="cle" type="password" autocomplete="off" placeholder="sk-ant-…">
+        <button id="enregistrerCle">Enregistrer</button>
+      </div>
+      <p class="aide">Elle est chiffrée sur le Portal et n'est jamais réaffichée. Ce Wi-Fi la voit passer une fois, en clair : faites-le chez vous, pas sur un réseau public.</p>
+      <label>Modèle</label>
+      <div class="choix" id="modeles"></div>
+    </section>
+
+    <section>
+      <h2>Micro</h2>
+      <div class="choix" id="micro">
+        <button data-v="toucher"><b>Toucher Ondine</b><span>Le micro est fermé. On touche la goutte, elle écoute une phrase.</span></button>
+        <button data-v="permanent"><b>Micro permanent</b><span>Elle attend « Dis Ondine ». Rien ne part avant ce mot. Consomme plus.</span></button>
+      </div>
+      <p class="aide">Dans les deux cas, la voix est reconnue sur le Portal ; seul le texte de la question part chez Claude.</p>
+    </section>
+
+    <section>
+      <h2>Voix</h2>
+      <div class="interrupteur">
+        <span>Ondine répond à voix haute</span>
+        <input type="checkbox" id="voix">
+      </div>
+      <div class="curseur" style="margin-top:12px">
+        <span>Vitesse</span><input type="range" id="vitesse" min="0.6" max="1.6" step="0.05"><span id="vitesseV"></span>
+      </div>
+      <div class="curseur">
+        <span>Hauteur</span><input type="range" id="hauteur" min="0.7" max="1.6" step="0.05"><span id="hauteurV"></span>
+      </div>
+    </section>
+
+    <section>
+      <h2>Ondine</h2>
+      <label>S'adresser à moi</label>
+      <div class="choix" id="adresse">
+        <button data-v="vous"><b>Vous</b></button>
+        <button data-v="tu"><b>Tu</b></button>
+      </div>
+      <label>Mascotte</label>
+      <div class="mascottes" id="mascottes"></div>
+      <label>Couleur</label>
+      <div class="teintes" id="teintes"></div>
+      <label for="perso">Personnalité</label>
+      <textarea id="perso" maxlength="1500" placeholder="Vide = la personnalité d'Ondine (joyeuse, curieuse, réponses courtes à voix haute)."></textarea>
+      <p class="aide">Enregistrée en quittant le champ.</p>
+    </section>
+
+    <section>
+      <h2>Essayer</h2>
+      <div class="ligne">
+        <input id="essai" type="text" maxlength="500" placeholder="Une question, comme si vous la disiez au Portal">
+        <button class="principal" id="envoyer">Demander</button>
+      </div>
+      <p class="aide">Ondine répond sur le Portal.</p>
+    </section>
+
+    <section>
+      <h2>Avancé</h2>
+      <div class="ligne">
+        <button id="oublier">Oublier la conversation</button>
+        <button id="revoquer">Déconnecter tous les navigateurs</button>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="gomme.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const G = window.OndineGomme;
+  const TINTS = ["auto", "blue", "pink", "violet", "green", "mint", "yellow", "orange", "coral", "red", "gold", "lilac", "night", "cloud"];
+  const SWATCH = { auto: "conic-gradient(#5bc0f8,#ff8fc8,#ffd54f,#5bc0f8)", blue: "#4da3ff", pink: "#ff8fc8", violet: "#a07cf5", green: "#5ccf7a", mint: "#6fe0c3", yellow: "#ffd54f", orange: "#ffa64d", coral: "#ff7f6b", red: "#f05a5a", gold: "#e8b84a", lilac: "#c9a7ff", night: "#2d3e66", cloud: "#e6eef5" };
+  const MODEL_NAMES = { "claude-sonnet-5-5": ["Sonnet", "Le bon équilibre (conseillé)"], "claude-opus-5-5": ["Opus", "Le plus fort, plus lent et plus cher"], "claude-haiku-4-5-20251001": ["Haiku", "Le plus rapide et le moins cher"] };
+
+  // Le jeton : celui du QR code (#k=…), sinon celui gardé dans ce navigateur.
+  let token = "";
+  try { token = localStorage.getItem("ondine-jeton") || ""; } catch (_) {}
+  const fromQr = new URLSearchParams(location.hash.slice(1)).get("k");
+  if (fromQr) {
+    token = fromQr;
+    try { localStorage.setItem("ondine-jeton", token); } catch (_) {}
+    history.replaceState(null, "", location.pathname);
+  }
+
+  let s = null;
+  let toastTimer = 0;
+  function toast(m) {
+    $("toast").textContent = m; $("toast").classList.add("vue");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => $("toast").classList.remove("vue"), 1800);
+  }
+
+  async function api(path, body) {
+    const r = await fetch(path, {
+      method: body ? "POST" : "GET",
+      headers: { "content-type": "application/json; charset=utf-8", "x-ondine-jeton": token },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (r.status === 401) { showPairing(); throw new Error("jeton"); }
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || "erreur");
+    return j;
+  }
+
+  function showPairing() {
+    $("reglages").hidden = true; $("appairer").hidden = false; $("code").focus();
+  }
+
+  async function save(patch, msg) {
+    try { s = await api("/api/settings", patch); render(); toast(msg || "Enregistré"); }
+    catch (e) { if (e.message !== "jeton") toast("Pas enregistré : " + e.message); }
+  }
+
+  function pressed(container, value) {
+    container.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === value)));
+  }
+
+  function render() {
+    $("appairer").hidden = true; $("reglages").hidden = false;
+    const st = s.status || {};
+    const voix = { ok: ["Prête", "ok"], attente: ["Se prépare…", ""], "sans-moteur": ["Aucun moteur", "alerte"], "sans-francais": ["Pas de voix française", "alerte"] }[st.voice] || [st.voice, ""];
+    $("etatVoix").textContent = voix[0]; $("etatVoix").className = voix[1];
+    $("aideVoix").hidden = st.voice === "ok" || st.voice === "attente";
+    $("etatMicro").textContent = { charge: "Se prépare…", ouvert: "Ouvert", ferme: "Fermé" }[st.ears] || "";
+    $("etatCle").textContent = s.hasKey ? "Enregistrée" + (s.keyEnd ? " (…" + s.keyEnd + ")" : "") : "Manquante";
+    $("etatCle").className = s.hasKey ? "ok" : "alerte";
+    $("etatVersion").textContent = st.version || "";
+    pressed($("modeles"), s.model);
+    pressed($("micro"), s.micMode);
+    pressed($("adresse"), s.tutoie ? "tu" : "vous");
+    pressed($("mascottes"), s.mascot);
+    pressed($("teintes"), s.color);
+    $("voix").checked = s.voiceOn;
+    $("vitesse").value = s.voiceRate; $("vitesseV").textContent = (+s.voiceRate).toFixed(2);
+    $("hauteur").value = s.voicePitch; $("hauteurV").textContent = (+s.voicePitch).toFixed(2);
+    if (document.activeElement !== $("perso")) $("perso").value = s.personality;
+  }
+
+  function build() {
+    $("modeles").innerHTML = "";
+    s.models.forEach((m) => {
+      const b = document.createElement("button");
+      b.dataset.v = m;
+      const [name, hint] = MODEL_NAMES[m] || [m, ""];
+      b.innerHTML = "<b></b><span></span>";
+      b.querySelector("b").textContent = name; b.querySelector("span").textContent = hint;
+      b.onclick = () => save({ model: m });
+      $("modeles").append(b);
+    });
+    $("mascottes").innerHTML = "";
+    const list = G ? G.MASCOTS.filter((m) => m.shape !== "meteo") : [{ shape: "goutte", name: "Goutte gomme" }];
+    list.forEach((m) => {
+      const b = document.createElement("button");
+      b.dataset.v = m.shape;
+      const c = document.createElement("canvas");
+      const n = document.createElement("span");
+      n.textContent = m.name.replace(/\s*\(.*\)/, "");
+      b.append(c, n);
+      b.onclick = () => save({ mascot: m.shape });
+      $("mascottes").append(b);
+      if (G) requestAnimationFrame(() => G.mount(c, { shape: m.shape, maxFps: 20 }));
+    });
+    $("teintes").innerHTML = "";
+    TINTS.forEach((t) => {
+      const b = document.createElement("button");
+      b.dataset.v = t; b.title = t === "auto" ? "Celle de la mascotte" : t;
+      b.setAttribute("aria-label", b.title);
+      b.style.background = SWATCH[t];
+      b.onclick = () => save({ color: t });
+      $("teintes").append(b);
+    });
+  }
+
+  async function start() {
+    if (G) G.mount($("logo"), { shape: "goutte", anim: "coucou" });
+    if (!token) return showPairing();
+    try { s = await api("/api/settings"); build(); render(); } catch (_) {}
+  }
+
+  $("relier").onclick = async () => {
+    $("erreurCode").textContent = "";
+    try {
+      const r = await fetch("/api/pair", { method: "POST", headers: { "content-type": "application/json; charset=utf-8" }, body: JSON.stringify({ code: $("code").value.replace(/\D/g, "") }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      token = j.token;
+      try { localStorage.setItem("ondine-jeton", token); } catch (_) {}
+      start();
+    } catch (e) { $("erreurCode").textContent = e.message || "Code refusé."; }
+  };
+  $("code").addEventListener("keydown", (e) => { if (e.key === "Enter") $("relier").click(); });
+  $("enregistrerCle").onclick = () => { const k = $("cle").value.trim(); if (!k) return; $("cle").value = ""; save({ apiKey: k }, "Clé enregistrée"); };
+  $("micro").querySelectorAll("button").forEach((b) => (b.onclick = () => save({ micMode: b.dataset.v })));
+  $("adresse").querySelectorAll("button").forEach((b) => (b.onclick = () => save({ tutoie: b.dataset.v === "tu" })));
+  $("voix").onchange = () => save({ voiceOn: $("voix").checked });
+  $("vitesse").onchange = () => save({ voiceRate: +$("vitesse").value });
+  $("hauteur").onchange = () => save({ voicePitch: +$("hauteur").value });
+  $("vitesse").oninput = () => ($("vitesseV").textContent = (+$("vitesse").value).toFixed(2));
+  $("hauteur").oninput = () => ($("hauteurV").textContent = (+$("hauteur").value).toFixed(2));
+  $("perso").onchange = () => save({ personality: $("perso").value });
+  $("envoyer").onclick = async () => {
+    const t = $("essai").value.trim(); if (!t) return;
+    try { await api("/api/test", { text: t }); $("essai").value = ""; toast("Envoyé au Portal"); } catch (_) {}
+  };
+  $("essai").addEventListener("keydown", (e) => { if (e.key === "Enter") $("envoyer").click(); });
+  $("oublier").onclick = async () => { try { await api("/api/forget", {}); toast("Conversation oubliée"); } catch (_) {} };
+  $("revoquer").onclick = async () => {
+    if (!confirm("Déconnecter tous les navigateurs, celui-ci compris ?")) return;
+    try { await api("/api/revoke", {}); } catch (_) {}
+    token = ""; try { localStorage.removeItem("ondine-jeton"); } catch (_) {}
+    showPairing();
+  };
+  // L'état (voix, micro) bouge tout seul : on le relit de temps en temps.
+  setInterval(async () => { if (s && !document.hidden) { try { s = await api("/api/settings"); render(); } catch (_) {} } }, 8000);
+  start();
+})();
+</script>
+</body>
+</html>

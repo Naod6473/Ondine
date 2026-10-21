@@ -1,0 +1,8 @@
+.gradle/
+build/
+app/build/
+app/libs/
+local.properties
+# Préparés par scripts/prepare.sh (modèle de reconnaissance, goutte du site).
+app/src/main/assets/sherpa-onnx-streaming-zipformer-fr-2023-04-14/
+app/src/main/assets/face/ondine-gomme.js

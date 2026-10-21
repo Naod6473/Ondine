@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Ondine</title>
+<!--
+  L'écran du Portal : la goutte (le moteur du site, ondine-gomme.js), ce
+  qu'Ondine entend, sa réponse, et le QR code de la page de réglages.
+  Appelé par MainActivity.kt à travers window.face ; parle à Kotlin par
+  window.Ondine (tap, gear, closePairing, ready).
+-->
+<style>
+  :root {
+    --fond: #0b1c2c;
+    --fond-2: #12304a;
+    --texte: #f2f7fb;
+    --doux: #9fb6c9;
+    --accent: #5bc0f8;
+    --verre: rgba(255, 255, 255, 0.08);
+    --bord: rgba(255, 255, 255, 0.16);
+    --ease: cubic-bezier(0.2, 0.9, 0.25, 1);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: radial-gradient(120% 90% at 30% 40%, var(--fond-2), var(--fond) 70%);
+    color: var(--texte);
+    font: 500 28px/1.35 system-ui, "Segoe UI", Roboto, sans-serif;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  main {
+    height: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 44%) minmax(0, 1fr);
+    align-items: center;
+    gap: 3vw;
+    padding: 5vh 5vw;
+  }
+  @media (orientation: portrait) {
+    main { grid-template-columns: 1fr; grid-template-rows: 46% 1fr; align-items: start; }
+  }
+
+  /* La goutte et son halo (écoute : il respire ; réflexion : il tourne). */
+  .goutte { position: relative; aspect-ratio: 1; width: 100%; max-height: 80vh; justify-self: center; }
+  .goutte canvas { position: absolute; inset: 6%; width: 88%; height: 88%; }
+  .halo {
+    position: absolute; inset: 0; border-radius: 50%;
+    opacity: 0; transform: scale(0.85);
+    transition: opacity 400ms var(--ease), transform 400ms var(--ease);
+    background: radial-gradient(closest-side, rgba(91, 192, 248, 0.35), transparent 70%);
+  }
+  body[data-state="ecoute"] .halo { opacity: 1; transform: scale(1); animation: respire 1.6s ease-in-out infinite; }
+  body[data-state="reflechit"] .halo {
+    opacity: 1; transform: scale(1);
+    background: conic-gradient(from 0deg, transparent, rgba(91, 192, 248, 0.45), transparent 40%);
+    mask: radial-gradient(closest-side, transparent 78%, #000 80%, transparent 100%);
+    animation: tourne 1.4s linear infinite;
+  }
+  body[data-state="guette"] .halo { opacity: 0.35; transform: scale(0.95); }
+  @keyframes respire { 50% { transform: scale(1.06); opacity: 0.7; } }
+  @keyframes tourne { to { transform: rotate(1turn); } }
+
+  /* Les paroles. */
+  .paroles { display: flex; flex-direction: column; gap: 2.4vh; min-width: 0; }
+  .entendu { color: var(--doux); font-size: 0.85em; min-height: 1.4em; transition: opacity 300ms; }
+  .entendu:empty { opacity: 0; }
+  .bulle {
+    background: var(--verre);
+    border: 1px solid var(--bord);
+    border-radius: 28px;
+    padding: 0.9em 1.1em;
+    backdrop-filter: blur(18px);
+    max-height: 62vh;
+    overflow: auto;
+    opacity: 0; transform: translateY(12px) scale(0.98);
+    transition: opacity 350ms var(--ease), transform 350ms var(--ease);
+  }
+  .bulle.vue { opacity: 1; transform: none; }
+  .bulle .mot { opacity: 0; animation: mot 260ms var(--ease) forwards; }
+  @keyframes mot { from { opacity: 0; filter: blur(4px); } to { opacity: 1; filter: none; } }
+  .aide { color: var(--doux); font-size: 0.75em; }
+
+  /* La roue (page de réglages) et l'état. */
+  .roue {
+    position: fixed; right: 2.4vw; top: 2.4vh; width: 64px; height: 64px;
+    border-radius: 50%; border: 1px solid var(--bord); background: var(--verre);
+    display: grid; place-items: center; color: var(--doux);
+  }
+  .roue svg { width: 30px; height: 30px; }
+  .etat {
+    position: fixed; left: 2.4vw; top: 2.4vh; padding: 0.35em 0.9em;
+    border-radius: 999px; border: 1px solid var(--bord); background: var(--verre);
+    font-size: 0.6em; color: var(--doux);
+  }
+  .info {
+    position: fixed; left: 50%; bottom: 4vh; transform: translate(-50%, 20px);
+    max-width: 86vw; padding: 0.6em 1.1em; border-radius: 18px;
+    background: rgba(240, 170, 60, 0.16); border: 1px solid rgba(240, 170, 60, 0.4);
+    font-size: 0.7em; opacity: 0; transition: opacity 300ms, transform 300ms var(--ease);
+  }
+  .info.vue { opacity: 1; transform: translate(-50%, 0); }
+
+  /* Le QR code de la page de réglages. */
+  .appairage {
+    position: fixed; inset: 0; display: grid; place-items: center;
+    background: rgba(5, 14, 22, 0.72); backdrop-filter: blur(10px);
+    opacity: 0; pointer-events: none; transition: opacity 300ms;
+  }
+  .appairage.vue { opacity: 1; pointer-events: auto; }
+  .carte {
+    display: grid; grid-template-columns: auto 1fr; gap: 4vw; align-items: center;
+    background: var(--verre); border: 1px solid var(--bord); border-radius: 32px; padding: 4vh 4vw;
+    max-width: 92vw;
+  }
+  .qr { width: min(38vh, 38vw); aspect-ratio: 1; border-radius: 18px; overflow: hidden; background: #fff; }
+  .qr svg { width: 100%; height: 100%; display: block; }
+  .carte h2 { font-size: 1.1em; margin-bottom: 0.5em; }
+  .carte p { color: var(--doux); font-size: 0.75em; margin-bottom: 0.6em; }
+  .carte .url { color: var(--texte); font-size: 0.9em; font-variant-numeric: tabular-nums; word-break: break-all; }
+  .carte .code { font-size: 1.6em; letter-spacing: 0.18em; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .fermer { margin-top: 1em; font: inherit; font-size: 0.7em; color: var(--texte); background: var(--verre); border: 1px solid var(--bord); border-radius: 999px; padding: 0.5em 1.4em; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+  }
+</style>
+</head>
+<body data-state="charge">
+<div class="etat" id="etat">Je me réveille…</div>
+<button class="roue" id="roue" aria-label="Réglages">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+  </svg>
+</button>
+<main>
+  <div class="goutte" id="goutte">
+    <div class="halo"></div>
+    <canvas id="canvas"></canvas>
+  </div>
+  <section class="paroles">
+    <div class="entendu" id="entendu"></div>
+    <div class="bulle" id="bulle"></div>
+    <div class="aide" id="aide"></div>
+  </section>
+</main>
+<div class="info" id="info"></div>
+<div class="appairage" id="appairage">
+  <div class="carte">
+    <div class="qr" id="qr"></div>
+    <div>
+      <h2>Régler Ondine</h2>
+      <p>Scannez le QR code avec votre téléphone, ou ouvrez cette adresse sur un PC du même Wi-Fi :</p>
+      <p class="url" id="url"></p>
+      <p>puis tapez le code :</p>
+      <div class="code" id="code"></div>
+      <button class="fermer" id="fermer">Fermer</button>
+    </div>
+  </div>
+</div>
+<script src="ondine-gomme.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const native = window.Ondine || { tap() {}, gear() {}, closePairing() {}, ready() {} };
+  const G = window.OndineGomme;
+  let gum = null;
+  let shape = "goutte", color = "auto";
+  let infoTimer = 0, clearTimer = 0;
+
+  function mount() {
+    if (!G) return;
+    if (gum) gum.destroy();
+    gum = G.mount($("canvas"), { shape, color, maxFps: 30 });
+  }
+
+  const TEXTS = {
+    charge: ["Je me réveille…", ""],
+    pret: ["Touchez-moi pour parler", "Touchez Ondine, puis parlez."],
+    guette: ["J'écoute « Dis Ondine »", "Dites « Dis Ondine », puis votre question. Ou touchez-moi."],
+    ecoute: ["Je vous écoute", ""],
+    reflechit: ["Je réfléchis…", ""],
+    parle: ["", "Touchez-moi pour que je me taise."],
+  };
+
+  /** Les mots apparaissent un à un, comme dans l'île. */
+  function words(el, text) {
+    el.textContent = "";
+    text.split(/(\s+)/).forEach((w, i) => {
+      if (/^\s+$/.test(w)) { el.append(w); return; }
+      const s = document.createElement("span");
+      s.className = "mot";
+      s.style.animationDelay = Math.min(i * 18, 1800) + "ms";
+      s.textContent = w;
+      el.append(s);
+    });
+  }
+
+  window.face = {
+    state(s) {
+      document.body.dataset.state = s;
+      const [etat, aide] = TEXTS[s] || ["", ""];
+      $("etat").textContent = etat || "Je parle";
+      $("aide").textContent = aide;
+      if (s === "reflechit") gum && gum.play("thinking");
+      if (s === "pret" || s === "guette") {
+        clearTimeout(clearTimer);
+        // La réponse reste un moment, puis s'efface.
+        clearTimer = setTimeout(() => { $("bulle").classList.remove("vue"); $("entendu").textContent = ""; }, 20000);
+      }
+    },
+    partial(t) { $("entendu").textContent = t ? "« " + t + " »" : ""; },
+    heard(t) { $("entendu").textContent = "« " + t + " »"; $("bulle").classList.remove("vue"); },
+    answer(text, mood) {
+      clearTimeout(clearTimer);
+      words($("bulle"), text);
+      $("bulle").classList.add("vue");
+      if (gum) { gum.play("parle"); setTimeout(() => gum.play(mood || "happy"), 1200); }
+    },
+    play(anim) { gum && gum.play(anim); },
+    mascot(s, c) {
+      if (s === shape && c === color && gum) return;
+      shape = s || "goutte"; color = c || "auto"; mount();
+    },
+    info(m) {
+      $("info").textContent = m; $("info").classList.add("vue");
+      clearTimeout(infoTimer); infoTimer = setTimeout(() => $("info").classList.remove("vue"), 7000);
+    },
+    pairing(o) {
+      if (!o) { $("appairage").classList.remove("vue"); return; }
+      $("qr").innerHTML = o.qr; // SVG fabriqué par Pairing.kt (pas de texte extérieur)
+      $("url").textContent = o.url;
+      $("code").textContent = o.code.replace(/(\d{3})(\d{3})/, "$1 $2");
+      $("appairage").classList.add("vue");
+    },
+  };
+
+  $("goutte").addEventListener("click", () => native.tap());
+  $("bulle").addEventListener("click", () => native.tap());
+  $("roue").addEventListener("click", () => native.gear());
+  $("fermer").addEventListener("click", () => { face.pairing(null); native.closePairing(); });
+  mount();
+  native.ready();
+})();
+</script>
+</body>
+</html>

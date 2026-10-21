@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Le micro (reconnaissance sur l'appareil), Internet (Claude, page de réglages). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <uses-feature android:name="android.hardware.microphone" android:required="true" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+    <!-- Les voix : Android 11+ ne montre les moteurs qu'à qui les demande. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+
+    <application
+        android:allowBackup="false"
+        android:icon="@drawable/ic_ondine"
+        android:label="@string/app_name"
+        android:supportsRtl="false"
+        android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

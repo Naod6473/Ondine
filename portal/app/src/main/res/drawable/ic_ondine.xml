@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Une goutte bleue, l'icône de l'appli. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp"
+    android:viewportWidth="48" android:viewportHeight="48">
+    <path android:fillColor="#0B1C2C" android:pathData="M0,0h48v48h-48z" />
+    <path android:fillColor="#5BC0F8"
+        android:pathData="M24,6C24,6 11,21 11,30a13,13 0,0 0,26 0C37,21 24,6 24,6z" />
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M18,29a2.2,2.2 0,1 0,4.4 0a2.2,2.2 0,1 0,-4.4 0zM25.6,29a2.2,2.2 0,1 0,4.4 0a2.2,2.2 0,1 0,-4.4 0z" />
+</vector>
