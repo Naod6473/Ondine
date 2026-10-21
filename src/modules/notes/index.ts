@@ -26,6 +26,7 @@ import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-
 import { el } from "../../island/dom";
 import { reducedMotion, TabPill } from "../../island/tab-pill";
 import { atFrom, dateValue, dueReminders, hhmm, isSoon, quickChoices, reminderAlert, reminderLabel, snoozeAt } from "./remind-logic";
+import { EASE_OUT } from "../../core/easing";
 
 interface Note {
   id: number;
@@ -87,7 +88,7 @@ function ago(ms: number): string {
   return new Date(ms).toLocaleDateString("fr-FR");
 }
 
-const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
+const EASE = EASE_OUT;
 
 /** La petite horloge de la ligne (au trait, couleur du texte). */
 function clockIcon(): SVGSVGElement {

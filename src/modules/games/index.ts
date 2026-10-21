@@ -27,6 +27,7 @@ import { Connect4Game, mountConnect4 } from "./connect4-view";
 import { EXPRESS_IDLE_MS, mountTtt, TttGame } from "./ttt-view";
 import { mountAquarium } from "./aquarium-view";
 import { mountRace, RaceTracker } from "./race-view";
+import { EASE_OUT } from "../../core/easing";
 
 export type GameId = "connect4" | "ttt" | "aquarium" | "race";
 
@@ -213,7 +214,7 @@ export const games: IslandModule = {
                 ? mountAquarium(host, kit)
                 : mountRace(host, kit, l.race);
         if (animate && !reducedMotion()) {
-          host.animate([{ opacity: 0, transform: "translateY(4px)" }, { opacity: 1, transform: "none" }], { duration: 260, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" });
+          host.animate([{ opacity: 0, transform: "translateY(4px)" }, { opacity: 1, transform: "none" }], { duration: 260, easing: EASE_OUT });
         }
       };
       show(l.pill, false);

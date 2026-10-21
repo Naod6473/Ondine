@@ -27,7 +27,6 @@ import { settingsStore } from "../../core/settings-store";
 import { magicWord } from "../../eggs/words";
 import { el } from "../../island/dom";
 import { agentIcon, icon, setLabel } from "../../island/icon";
-import { reducedMotion } from "../../island/tab-pill";
 import { ALL_MODULES } from "..";
 import { currentLang } from "../../core/i18n";
 import { type CalcKind, calculate, newGuid } from "./calc";
@@ -383,7 +382,6 @@ export const launcher: IslandModule = {
 
       let current: Result[] = [];
       let selected = 0;
-      let first = true;
 
       const select = (i: number) => {
         selected = Math.max(0, Math.min(current.length - 1, i));
@@ -476,18 +474,8 @@ export const launcher: IslandModule = {
               : "↑ ↓ pour choisir · Entrée pour ouvrir",
         );
         foot.classList.toggle("bad", Boolean(listing.hotkeyError));
-        // Petite entrée en cascade à l'ouverture seulement (pas à chaque frappe).
-        if (first && !reducedMotion()) {
-          [...list.querySelectorAll<HTMLElement>(".launch-item")].slice(0, 7).forEach((n, i) =>
-            n.animate([{ opacity: 0, transform: "translateY(5px)" }, { opacity: 1, transform: "none" }], {
-              duration: 260,
-              delay: i * 22,
-              easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
-              fill: "backwards",
-            }),
-          );
-        }
-        first = false;
+        // Pas d'entrée en cascade : le Lanceur s'ouvre au clavier des dizaines
+        // de fois par jour, les résultats doivent être là tout de suite.
       };
 
       search.addEventListener("input", () => {

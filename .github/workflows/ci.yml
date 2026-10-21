@@ -43,11 +43,17 @@ jobs:
       # build.rs dans target/sherpa-onnx-prebuilt, que le cache Rust ne garde
       # pas toujours (il nettoie target/). Absente, on force le build.rs à la
       # télécharger de nouveau ; sinon : « could not find native static
-      # library sherpa-onnx-c-api » dès que Cargo.lock change.
+      # library sherpa-onnx-c-api » dès que Cargo.lock change. Le dossier peut
+      # aussi revenir du cache SANS la bibliothèque (lib/ vide) : le build.rs
+      # voit lib/ et ne retélécharge rien. On vérifie donc le fichier lui-même.
       - name: Bibliothèque sherpa-onnx
         working-directory: src-tauri
         shell: bash
-        run: if [ ! -d target/sherpa-onnx-prebuilt ]; then cargo clean -p sherpa-onnx-sys; fi
+        run: |
+          if ! compgen -G "target/sherpa-onnx-prebuilt/*/lib/*sherpa-onnx-c-api*" > /dev/null; then
+            rm -rf target/sherpa-onnx-prebuilt
+            cargo clean -p sherpa-onnx-sys
+          fi
 
       - name: Dépendances de l'interface
         run: npm ci

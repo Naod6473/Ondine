@@ -6,7 +6,7 @@
 //   island.ts (ici)   dessine l'état, écoute la souris, le clavier, le glisser-déposer
 //   Rust (island/)    place la fenêtre, gère les clics traversants, lit la souris
 
-import { jellyButtons, motionOn, popIn, setStudio, spotlight, staggerIn, studioOn, tabOut, watchContent } from "./motion";
+import { calmFade, jellyButtons, motionOn, popIn, setStudio, spotlight, staggerIn, studioOn, tabIn, tabOut, watchContent } from "./motion";
 import { Bridge, IS_TAURI, onDragDrop, onTauriEvent, type DragDropEvent } from "../core/bridge";
 import type { Bus } from "../core/bus";
 import { logger } from "../core/log";
@@ -1600,10 +1600,11 @@ export class Island {
     this.jelly.retarget();
 
     // Le contenu arrive en douceur quand l'île change de forme (motion.ts :
-    // en douceur en Classique, plus franc en Studio).
-    if (state !== this.renderedState && state !== "hidden" && state !== "peek" && motionOn()) {
+    // en douceur en Classique, plus franc en Studio, un simple fondu si
+    // Windows demande moins d'animations).
+    if (state !== this.renderedState && state !== "hidden" && state !== "peek") {
       this.entrance(state);
-    } else if (state === this.renderedState && (state === "compact" || state === "alert") && motionOn()) {
+    } else if (state === this.renderedState && (state === "compact" || state === "alert")) {
       // Même forme, nouvelle notification : elle sort quand même de la pilule.
       const card = this.content.querySelector(".notif");
       if (card) popIn(card);
@@ -1621,6 +1622,15 @@ export class Island {
     const card = this.content.querySelector(".notif");
     if (card && state !== "expanded") {
       popIn(card);
+      return;
+    }
+    // Le Lanceur s'ouvre au clavier, très souvent : on veut taper tout de
+    // suite. L'île change de forme, son contenu apparaît d'un fondu bref.
+    if (state === "expanded" && this.activeTab === "launcher") {
+      requestAnimationFrame(() => {
+        const view = this.content.querySelector(".view");
+        if (view) calmFade(view, 120);
+      });
       return;
     }
     const tabs = this.content.querySelector(".tabs");
@@ -1842,6 +1852,7 @@ export class Island {
 
     if (reducedMotion()) {
       old.remove();
+      tabIn(body, direction); // un simple fondu
       return;
     }
     old.classList.add("leaving");
@@ -1850,8 +1861,8 @@ export class Island {
       () => old.remove(),
       () => old.remove(), // animation interrompue (île refermée) : on nettoie quand même
     );
-    // Le nouveau contenu arrive en cascade une fois dessiné par le module.
-    requestAnimationFrame(() => staggerIn(body, 60));
+    // Le nouveau contenu glisse d'un bloc (la cascade, c'est pour l'ouverture).
+    tabIn(body, direction);
   }
 
   private renderDrop() {

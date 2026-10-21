@@ -15,6 +15,7 @@ import { errorText } from "../../core/log";
 import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
 import { reducedMotion } from "../../island/tab-pill";
+import { EASE_OUT } from "../../core/easing";
 
 type Kind = "rdp" | "ssh";
 
@@ -34,7 +35,7 @@ type Probe = { state: "wait" } | { state: "up"; ms: number } | { state: "down" }
 
 const KIND_ICON: Record<Kind, string> = { rdp: "🖥️", ssh: "⌨️" };
 const KIND_LABEL: Record<Kind, string> = { rdp: "RDP", ssh: "SSH" };
-const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
+const EASE = EASE_OUT;
 
 let favorites: Favorite[] = [];
 const probes = new Map<number, Probe>();

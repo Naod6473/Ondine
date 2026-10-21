@@ -5,15 +5,27 @@
 //   Studio    : façon vidéo de présentation (flou → net franc, rebonds,
 //               boutons en gélatine).
 //
-// Les éléments arrivent l'un après l'autre, les chiffres « roulent » quand ils
-// changent, les listes glissent à leur nouvelle place… Si Windows demande
-// moins d'animations (prefers-reduced-motion), rien ne bouge.
+// Les éléments arrivent l'un après l'autre à l'ouverture de l'île, les
+// chiffres « roulent » quand ils changent, les listes glissent à leur nouvelle
+// place… Ce qui revient des dizaines de fois par jour (changer d'onglet) reste
+// court : un glissement d'un bloc, sans cascade. Si Windows demande moins
+// d'animations (prefers-reduced-motion), plus rien ne se déplace : il ne reste
+// que des fondus courts (calmFade).
 
+import { EASE_OUT, POP } from "../core/easing";
 import { reducedMotion } from "./tab-pill";
 
 /** Les animations sont-elles autorisées ? */
 export function motionOn(): boolean {
   return !reducedMotion();
+}
+
+/**
+ * « Réduire les animations » : on ne coupe pas tout. Ce qui aide à suivre
+ * (un contenu qui change) garde un fondu court, sans aucun déplacement.
+ */
+export function calmFade(node: Element, ms = 160) {
+  node.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms, easing: "ease", fill: "backwards" });
 }
 
 /** Le design Studio (la version forte) est-il choisi ? */
@@ -32,13 +44,20 @@ export function setStudio(on: boolean) {
  */
 function feel() {
   return studioOn()
-    ? { blur: 10, rise: 10, scale: 0.96, gap: 45, ms: 520, ease: SPRING }
-    : { blur: 0, rise: 6, scale: 0.99, gap: 28, ms: 340, ease: OUT };
+    ? { blur: 6, rise: 10, scale: 0.96, gap: 40, ms: 460, ease: SPRING }
+    : { blur: 0, rise: 6, scale: 0.99, gap: 28, ms: 300, ease: OUT };
 }
 
 // La courbe « ressort » : part vite, dépasse un peu, revient se poser.
-const SPRING = "cubic-bezier(0.34, 1.4, 0.5, 1)";
-const OUT = "cubic-bezier(0.2, 0.8, 0.2, 1)";
+const SPRING = POP;
+const OUT = EASE_OUT;
+
+/**
+ * Le flou coûte cher (surtout au-dessus du verre de l'île, déjà flouté) : en
+ * Studio, seuls les premiers morceaux d'une cascade arrivent flous, les
+ * suivants seulement en fondu et en glissant.
+ */
+const BLURRED_PIECES = 3;
 
 /**
  * Les « morceaux » d'une vue à faire apparaître un par un. On descend dans les
@@ -60,12 +79,16 @@ function pieces(root: Element): Element[] {
  * l'un après l'autre (plus franc en Studio).
  */
 export function staggerIn(root: Element, startDelay = 40) {
-  if (!motionOn()) return;
+  if (!motionOn()) {
+    calmFade(root);
+    return;
+  }
   const f = feel();
   pieces(root).forEach((piece, i) => {
+    const blur = i < BLURRED_PIECES ? f.blur : 0;
     piece.animate(
       [
-        { opacity: 0, transform: `translateY(${f.rise}px) scale(${f.scale})`, filter: `blur(${f.blur}px)` },
+        { opacity: 0, transform: `translateY(${f.rise}px) scale(${f.scale})`, filter: `blur(${blur}px)` },
         { opacity: 1, transform: "none", filter: "blur(0)" },
       ],
       { duration: f.ms, delay: startDelay + i * f.gap, easing: f.ease, fill: "backwards" },
@@ -86,11 +109,13 @@ function revealTitles(root: Element, delay: number) {
   const strong = studioOn();
   root.querySelectorAll<HTMLElement>(TITLES).forEach((title, i) => {
     // Un masque en dégradé glisse sur le texte : les lettres apparaissent une à une.
-    // (On ne touche pas au texte lui-même : la traduction anglaise reste intacte.)
+    // (On ne touche pas au texte lui-même : la traduction anglaise reste intacte.
+    // Pas d'écartement des lettres qui se resserre : letter-spacing refait la
+    // mise en page de la ligne à chaque image.)
     title.animate(
       [
-        { maskImage: "linear-gradient(90deg, #000 40%, transparent 60%)", maskSize: "260% 100%", maskPosition: "100% 0", filter: `blur(${strong ? 5 : 0}px)`, letterSpacing: strong ? "0.12em" : "normal" },
-        { maskImage: "linear-gradient(90deg, #000 40%, transparent 60%)", maskSize: "260% 100%", maskPosition: "0% 0", filter: "blur(0)", letterSpacing: "normal" },
+        { maskImage: "linear-gradient(90deg, #000 40%, transparent 60%)", maskSize: "260% 100%", maskPosition: "100% 0", filter: `blur(${strong ? 4 : 0}px)` },
+        { maskImage: "linear-gradient(90deg, #000 40%, transparent 60%)", maskSize: "260% 100%", maskPosition: "0% 0", filter: "blur(0)" },
       ],
       { duration: strong ? 620 : 420, delay: delay + 60 + i * 60, easing: OUT, fill: "backwards" },
     );
@@ -144,42 +169,71 @@ function drawBars(view: Element) {
   drawnViews.add(view);
   bars.forEach((bar, i) => {
     const strong = studioOn();
-    bar.animate([{ width: "0%" }, { width: bar.style.width || "0%" }], { duration: strong ? 900 : 600, delay: i * 60, easing: strong ? SPRING : OUT, fill: "backwards" });
+    // Par la découpe (clip-path, comme dans island.css), pas par la largeur :
+    // la largeur referait la mise en page à chaque image.
+    const to = getComputedStyle(bar).clipPath;
+    bar.animate([{ clipPath: "inset(0 100% 0 0 round 3px)" }, { clipPath: to }], { duration: strong ? 900 : 600, delay: i * 60, easing: strong ? SPRING : OUT, fill: "backwards" });
   });
 }
 
 // ── Le changement d'onglet ───────────────────────────────────────────────────
 
-/** L'ancien onglet s'en va (en Studio : plus de flou, un léger recul). */
+// On change d'onglet des dizaines de fois par jour : ça doit être court. Un
+// seul bloc glisse (pas de cascade, réservée à l'ouverture de l'île), dans le
+// sens du déplacement de la pastille, en un peu plus de 0,2 s.
+
+/** L'ancien onglet s'en va (en Studio : un léger flou en plus). */
 export function tabOut(old: Element, direction: number): Animation {
   const strong = studioOn();
   return old.animate(
     [
       { opacity: 1, transform: "none", filter: "blur(0)" },
       strong
-        ? { opacity: 0, transform: `translateX(${-direction * 30}px) scale(0.92)`, filter: "blur(14px)" }
-        : { opacity: 0, transform: `translateX(${-direction * 18}px) scale(0.98)` },
+        ? { opacity: 0, transform: `translateX(${-direction * 16}px) scale(0.98)`, filter: "blur(4px)" }
+        : { opacity: 0, transform: `translateX(${-direction * 12}px)` },
     ],
-    { duration: strong ? 260 : 220, easing: OUT, fill: "forwards" },
+    { duration: strong ? 180 : 150, easing: OUT, fill: "forwards" },
+  );
+}
+
+/** Le nouvel onglet arrive de l'autre côté, d'un seul bloc. */
+export function tabIn(body: Element, direction: number) {
+  resetLists();
+  if (!motionOn()) {
+    calmFade(body);
+    return;
+  }
+  const strong = studioOn();
+  body.animate(
+    [
+      strong
+        ? { opacity: 0, transform: `translateX(${direction * 16}px) scale(0.98)`, filter: "blur(4px)" }
+        : { opacity: 0, transform: `translateX(${direction * 12}px)` },
+      { opacity: 1, transform: "none", filter: "blur(0)" },
+    ],
+    { duration: strong ? 240 : 210, delay: 40, easing: OUT, fill: "backwards" },
   );
 }
 
 /** Une notification qui arrive : elle « sort » de la pilule en grossissant. */
 export function popIn(card: Element) {
-  if (!motionOn()) return;
+  if (!motionOn()) {
+    calmFade(card);
+    return;
+  }
   const strong = studioOn();
   card.animate(
     strong
       ? [
-          { opacity: 0, transform: "scale(0.6)", filter: "blur(12px)" },
-          { opacity: 1, transform: "scale(1.03)", filter: "blur(0)", offset: 0.6 },
+          { opacity: 0, transform: "scale(0.9)", filter: "blur(6px)" },
+          { opacity: 1, transform: "scale(1.02)", filter: "blur(0)", offset: 0.6 },
           { opacity: 1, transform: "none", filter: "blur(0)" },
         ]
       : [
           { opacity: 0, transform: "scale(0.92)" },
           { opacity: 1, transform: "none" },
         ],
-    { duration: strong ? 560 : 340, easing: OUT, fill: "backwards" },
+    { duration: strong ? 420 : 300, easing: OUT, fill: "backwards" },
   );
 }
 
@@ -286,18 +340,23 @@ export function jellyButtons(root: Element) {
     const release = () => {
       button.removeEventListener("pointerup", release);
       button.removeEventListener("pointerleave", release);
+      // On repart de là où le bouton en est : un clic rapide (moins de
+      // 120 ms) ne l'a pas encore enfoncé jusqu'au bout, il ne doit pas
+      // « sauter » plus bas avant de revenir.
+      const now = getComputedStyle(button).transform;
+      const from = now && now !== "none" ? now : down;
       press.cancel();
       // Classique : il revient simplement ; Studio : il rebondit comme une gomme.
       button.animate(
         strong
           ? [
-              { transform: down },
+              { transform: from },
               { transform: "scale(1.08, 0.95)", offset: 0.35 },
               { transform: "scale(0.97, 1.04)", offset: 0.65 },
               { transform: "none" },
             ]
-          : [{ transform: down }, { transform: "none" }],
-        { duration: strong ? 480 : 200, easing: "ease-out" },
+          : [{ transform: from }, { transform: "none" }],
+        { duration: strong ? 480 : 200, easing: OUT },
       );
     };
     button.addEventListener("pointerup", release);

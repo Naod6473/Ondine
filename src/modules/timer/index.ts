@@ -46,6 +46,7 @@ import { frameLoop, pacedInterval, setText } from "../../core/perf";
 import { reducedMotion, TabPill } from "../../island/tab-pill";
 import { ambientFollowPomodoro, ambientTeardown, drawAmbient } from "./ambient-pane";
 import { unlockAmbient } from "./ambient";
+import { EASE_OUT } from "../../core/easing";
 
 // ── Les trois compteurs ──────────────────────────────────────────────────────
 
@@ -467,7 +468,7 @@ export const timerModule: IslandModule = {
         if (animate && !reducedMotion()) {
           body.animate([{ opacity: 0, transform: "translateY(4px)" }, { opacity: 1, transform: "none" }], {
             duration: 260,
-            easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+            easing: EASE_OUT,
           });
         }
       };

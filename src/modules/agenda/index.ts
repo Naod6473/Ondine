@@ -28,6 +28,7 @@ import { reducedMotion } from "../../island/tab-pill";
 import { pacedInterval, setText } from "../../core/perf";
 import { closeSelfView, mountSelfView } from "./selfview";
 import { mirrorMode } from "./selfview-logic";
+import { EASE_OUT } from "../../core/easing";
 
 interface Meeting {
   key: string;
@@ -84,7 +85,7 @@ function sourcesLine(calendars: number, read: number | undefined, latest: string
 
 let listing: Listing = { events: [], errors: [], calendars: [] };
 const redraws = new Set<() => void>();
-const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
+const EASE = EASE_OUT;
 const MINUTE = 60_000;
 
 /**

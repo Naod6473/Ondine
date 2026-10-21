@@ -12,6 +12,7 @@ import { Bridge, IS_TAURI, onTauriEvent } from "../core/bridge";
 import { errorText } from "../core/log";
 import { el } from "../island/dom";
 import { reducedMotion, TabPill } from "../island/tab-pill";
+import { EASE_OUT } from "../core/easing";
 
 type Tool = "arrow" | "rect" | "pen" | "marker" | "text";
 type Point = { x: number; y: number };
@@ -147,7 +148,7 @@ async function load() {
           { opacity: 0, transform: "scale(0.96)" },
           { opacity: 1, transform: "none" },
         ],
-        { duration: 420, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
+        { duration: 420, easing: EASE_OUT },
       );
     }
   } catch (err) {

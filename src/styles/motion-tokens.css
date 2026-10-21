@@ -1,0 +1,14 @@
+/* Les courbes d'animation d'Ondine, partagées par toutes les fenêtres
+   (île, Ondine sur le bureau, Réglages, annotation). Les mêmes en
+   TypeScript : src/core/easing.ts. Pourquoi seulement quatre : voir ce
+   fichier. */
+:root {
+  /* Arrivées et départs : part vite, se pose doucement. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  /* Grands mouvements (pages, tiroirs), façon iOS. */
+  --ios: cubic-bezier(0.32, 0.72, 0, 1);
+  /* Rebond franc (petits moments de plaisir). */
+  --pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Rebond léger (ce qui revient souvent). */
+  --pop-soft: cubic-bezier(0.34, 1.36, 0.64, 1);
+}

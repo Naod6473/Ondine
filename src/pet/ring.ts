@@ -36,6 +36,7 @@ import { lineIcon } from "../island/icon";
 import { sounds } from "../island/sounds";
 import { reducedMotion } from "../island/tab-pill";
 import { favSpots, motherSpot, MOTHER_ORDER, RING, shelfSpot, subSpots, SUBS_MAX, type Spot } from "./ring-layout";
+import { POP } from "../core/easing";
 
 /** Survol d'une bulle mère avant qu'elle s'ouvre (s). */
 const OPEN_DWELL = 0.4;
@@ -361,7 +362,7 @@ export class PetRing {
             { opacity: 1, offset: 0.35 },
             { opacity: 1, transform: "none" },
           ],
-      { duration: calm ? 160 : 440, delay: calm ? 0 : delay * 1000, easing: calm ? "linear" : "cubic-bezier(.34,1.56,.64,1)", fill: "backwards" },
+      { duration: calm ? 160 : 440, delay: calm ? 0 : delay * 1000, easing: calm ? "linear" : POP, fill: "backwards" },
     );
   }
 

@@ -38,6 +38,7 @@ import {
   warnTitle,
 } from "./logic";
 import "../../styles/awake.css";
+import { EASE_OUT } from "../../core/easing";
 
 let state: AwakeState = IDLE_STATE;
 /** Les vues ouvertes qui se redessinent quand l'état change. */
@@ -172,7 +173,7 @@ export const awake: IslandModule = {
         if (animate) pill.moveTo(buttons.get(id)!);
         redraw();
         if (animate && !reducedMotion()) {
-          body.animate([{ opacity: 0, transform: "translateY(4px)" }, { opacity: 1, transform: "none" }], { duration: 240, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" });
+          body.animate([{ opacity: 0, transform: "translateY(4px)" }, { opacity: 1, transform: "none" }], { duration: 240, easing: EASE_OUT });
         }
       };
       const redraw = () => {

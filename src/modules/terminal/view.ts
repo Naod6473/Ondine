@@ -12,6 +12,7 @@ import { errorText } from "../../core/log";
 import type { DropTarget, IslandModule, ModuleApi, ModuleManifest } from "../../core/module-types";
 import { el } from "../../island/dom";
 import { reducedMotion } from "../../island/tab-pill";
+import { EASE_OUT } from "../../core/easing";
 
 type ShellId = "powershell" | "cmd" | "pwsh" | "wt";
 
@@ -109,7 +110,7 @@ export const terminal: IslandModule = {
       if (!reducedMotion()) {
         box.animate([{ opacity: 0, transform: "translateY(6px) scale(0.99)" }, { opacity: 1, transform: "none" }], {
           duration: 320,
-          easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+          easing: EASE_OUT,
         });
       }
       return api.onSettingsChange(() => {

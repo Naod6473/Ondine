@@ -29,6 +29,7 @@ import { motionOn } from "../../island/motion";
 import { glassSelect } from "../../settings/glass-select";
 import "../../styles/selfview.css";
 import { deviceOptions, meanLuma, meterLevel, openError, pickDevice, smoothLevel, tooDark, type Device } from "./selfview-logic";
+import { EASE_OUT } from "../../core/easing";
 
 const stopTracks = (s: MediaStream) => s.getTracks().forEach((t) => t.stop());
 
@@ -120,7 +121,7 @@ export function mountSelfView(host: HTMLElement, api: ModuleApi): () => void {
         { transform: "scale(0.98, 1.02)", offset: 0.72 },
         { transform: "none", opacity: 1 },
       ],
-      { duration: 620, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)", fill: "backwards" },
+      { duration: 620, easing: EASE_OUT, fill: "backwards" },
     );
   }
 

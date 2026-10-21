@@ -198,12 +198,15 @@
   background: color-mix(in srgb, var(--island-fg) 15%, transparent);
   overflow: hidden;
 }
+/* Découpée (--fill, posée par view.ts), pas élargie : pas de mise en page à
+   chaque image. */
 .home-card-bar i {
   display: block;
   height: 100%;
   border-radius: inherit;
   background: var(--island-fg);
-  transition: width 900ms linear;
+  clip-path: inset(0 calc(100% - var(--fill, 0%)) 0 0 round 99px);
+  transition: clip-path 900ms linear;
 }
 .home-card-actions {
   display: flex;

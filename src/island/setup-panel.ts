@@ -28,6 +28,7 @@ import { icon } from "./icon";
 import { staggerIn, tabOut } from "./motion";
 import { reducedMotion, TabPill } from "./tab-pill";
 import { mountWhatsNewPanel } from "./whats-new-panel";
+import { POP_SOFT } from "../core/easing";
 
 /** Animations coupées : Windows le demande, ou la mascotte est en mode Calme. */
 function quiet(): boolean {
@@ -35,7 +36,7 @@ function quiet(): boolean {
 }
 
 /** Une courbe « ressort » (dépasse un peu, revient se poser), comme motion.ts. */
-const SPRING = "cubic-bezier(0.34, 1.45, 0.5, 1)";
+const SPRING = POP_SOFT;
 
 /** Une rangée de choix (« segmented » de l'île) dont la pastille glisse au ressort. */
 function choices<T extends string>(options: [T, string][], value: T, onPick: (v: T) => void, label: string): HTMLElement {

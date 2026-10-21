@@ -13,6 +13,7 @@
 
 import { stepSpring, type Spring } from "../../island/spring";
 import { reducedMotion } from "../../island/tab-pill";
+import { EASE_OUT } from "../../core/easing";
 
 /** Pesanteur (px/s²) et part de la vitesse gardée au rebond. */
 const GRAVITY = 3200;
@@ -90,6 +91,6 @@ export function wobble(node: HTMLElement, amount = 1): void {
       { transform: `scale(${1 - 0.08 * amount}, ${1 + 0.08 * amount})`, offset: 0.7 },
       { transform: "scale(1, 1)" },
     ],
-    { duration: 520, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
+    { duration: 520, easing: EASE_OUT },
   );
 }

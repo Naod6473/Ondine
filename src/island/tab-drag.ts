@@ -10,10 +10,11 @@
 // (Invert), puis on anime ce décalage vers zéro (Play).
 
 import { reducedMotion } from "./tab-pill";
+import { EASE_OUT } from "../core/easing";
 
 /** Au-delà de ce déplacement (px), un appui devient un glisser. */
 const DRAG_THRESHOLD = 6;
-const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
+const EASE = EASE_OUT;
 
 export interface TabDragOptions {
   /** Appelée à chaque image du glisser (pour la pastille). */

@@ -16,6 +16,7 @@ import { el } from "../../island/dom";
 import { reducedMotion } from "../../island/tab-pill";
 import { signTextDrawn } from "../../mascot/mascot-state";
 import { countText, summary, type Listing } from "./shared";
+import { EASE_OUT } from "../../core/easing";
 
 let listing: Listing = { rules: [], paused: false, history: [], errors: {}, topics: [] };
 const redraws = new Set<() => void>();
@@ -156,7 +157,7 @@ export const rules: IslandModule = {
             n.animate([{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], {
               duration: 300,
               delay: i * 24,
-              easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+              easing: EASE_OUT,
               fill: "backwards",
             }),
           );
