@@ -1,0 +1,54 @@
+# Ondine Portal : prépare les moteurs de voix français de sherpa-onnx (voix
+# Piper), prêts à glisser sur OpenPortal. Les APK publiés par sherpa-onnx ne
+# sont pas signés (Android refuse de les installer) : on les signe ici avec
+# une clé de test, comme l'APK d'Ondine Portal. Branche ondine-portal seulement.
+name: portal-voix
+
+on:
+  push:
+    branches: [ondine-portal]
+    paths:
+      - ".github/workflows/portal-voix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  voix:
+    runs-on: ubuntu-latest
+    env:
+      SHERPA_VERSION: "1.13.8"
+      HF: https://huggingface.co/csukuangfj2/sherpa-onnx-apk
+    steps:
+      - name: Liste des moteurs français publiés
+        run: |
+          # Les fichiers sont nommés sherpa-onnx-<version>-<arch>-fra-tts-engine-<voix>.apk
+          curl -fsSL "https://huggingface.co/api/models/csukuangfj2/sherpa-onnx-apk/tree/main/tts-engine-new/${SHERPA_VERSION}" \
+            | jq -r '.[].path' | grep -E 'arm64-v8a-fra-tts-engine-vits-piper-fr_FR' | tee liste.txt
+          test -s liste.txt
+
+      - name: Téléchargement et signature
+        run: |
+          keytool -genkeypair -v -keystore voix.jks -alias voix -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass ondine -keypass ondine -dname "CN=Ondine Portal"
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          mkdir -p signes
+          while read -r path; do
+            name="$(basename "$path" .apk)"
+            # Seulement les voix les plus naturelles (moyennes et hautes), pas les « low ».
+            case "$name" in *-low) continue ;; esac
+            curl -fsSL -o "$name.apk" "$HF/resolve/main/$path"
+            "$BT/zipalign" -f -p 4 "$name.apk" "aligne.apk"
+            short="${name#*fr_FR-}"
+            "$BT/apksigner" sign --ks voix.jks --ks-pass pass:ondine --key-pass pass:ondine \
+              --out "signes/voix-ondine-${short}.apk" aligne.apk
+            "$BT/apksigner" verify "signes/voix-ondine-${short}.apk"
+          done < liste.txt
+          ls -lh signes
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ondine-portal-voix
+          path: signes/*.apk
+          retention-days: 30
