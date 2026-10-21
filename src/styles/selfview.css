@@ -219,12 +219,24 @@
   color: var(--island-fg);
   font-size: 12px;
   transform-origin: bottom right;
-  animation: selfview-menu-in 340ms var(--ease) both;
+  /* Comme le menu en verre des Réglages : une transition interruptible de
+     0,2 s, qui part d'un poil plus petit depuis le coin du bouton. */
+  transition:
+    opacity 160ms var(--ease-out),
+    transform 200ms var(--ease-out);
   scrollbar-width: thin;
   outline: none;
 }
+@starting-style {
+  .gsel-menu.selfview-menu {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+}
 .gsel-menu.selfview-menu.out {
-  animation: selfview-menu-out 150ms ease-in both;
+  opacity: 0;
+  transform: scale(0.97);
+  transition-duration: 140ms;
   pointer-events: none;
 }
 body[data-perf="eco"] .gsel-menu.selfview-menu {
@@ -271,26 +283,11 @@ body[data-perf="eco"] .gsel-menu.selfview-menu {
     height 280ms var(--ease),
     opacity 150ms ease;
 }
-@keyframes selfview-menu-in {
-  from {
-    opacity: 0;
-    transform: scale(0.85) translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-@keyframes selfview-menu-out {
-  to {
-    opacity: 0;
-    transform: scale(0.94);
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .gsel-menu.selfview-menu,
   .gsel-menu.selfview-menu.out {
-    animation: none;
+    transform: none;
+    transition: opacity 120ms ease;
   }
   .selfview .gsel-chevron,
   .gsel-menu.selfview-menu .gsel-hl {

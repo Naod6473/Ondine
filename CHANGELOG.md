@@ -2,6 +2,24 @@
 
 ## 1.2.5 · à venir
 
+- Des animations plus fines, d'après les règles d'Emil Kowalski : changer
+  d'onglet ne rejoue plus toute la cascade (un glissement d'un bloc, 0,25 s),
+  le Lanceur s'ouvre sans cascade, les pages des Réglages arrivent en moins
+  de 0,3 s (la cascade seulement à la première visite), les menus de choix
+  en verre s'ouvrent en 0,2 s et se laissent interrompre, un bouton pressé
+  ne « saute » plus sur un clic rapide. « Réduire les animations » de
+  Windows garde maintenant des fondus courts au lieu de tout couper. Les
+  barres (disques, eau, Accueil) se remplissent sans refaire la mise en
+  page, le flou du style Studio est plus léger, et toutes les courbes
+  viennent de quatre réglages partagés · Finer animations, following Emil
+  Kowalski's rules: switching tabs no longer replays the whole cascade (one
+  block slides, 0.25 s), the Launcher opens without a cascade, Settings pages
+  arrive in under 0.3 s (cascade on first visit only), glass pickers open in
+  0.2 s and can be interrupted, a pressed button no longer "jumps" on a quick
+  click. Windows "Reduce animations" now keeps short fades instead of
+  cutting everything. Bars (disks, water, Home) fill without re-laying out
+  the page, the Studio blur is lighter, and every curve comes from four
+  shared tokens
 - Notes : chaque tâche peut avoir une heure (le bouton horloge de la ligne :
   une heure, ou « Dans 30 min », « Ce soir 18:00 », « Demain 9:00 »).
   L'heure s'affiche à droite, en jaune dans les 30 dernières minutes. À

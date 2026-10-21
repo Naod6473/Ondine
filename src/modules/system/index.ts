@@ -307,7 +307,7 @@ export const system: IslandModule = {
           ...s.disks.map((d) => {
             const used = d.totalGb ? ((d.totalGb - d.freeGb) / d.totalGb) * 100 : 0;
             const bar = el("i", {});
-            bar.style.width = `${used}%`;
+            bar.style.setProperty("--v", `${used}%`);
             return el(
               "div",
               { class: "sys-disk lookable", "data-level": level(used) },

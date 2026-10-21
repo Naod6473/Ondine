@@ -106,7 +106,7 @@ export function close(focus = false) {
   if (focus) button.focus();
   if (reducedMotion()) return menu.remove();
   menu.classList.add("out");
-  window.setTimeout(() => menu.remove(), 170);
+  window.setTimeout(() => menu.remove(), 150);
 }
 
 function show(button: HTMLButtonElement, select: HTMLSelectElement) {
@@ -126,7 +126,7 @@ function show(button: HTMLButtonElement, select: HTMLSelectElement) {
       el("span", { class: "gsel-option-text" }, o.textContent ?? ""),
     );
     item.insertAdjacentHTML("afterbegin", CHECK);
-    item.style.animationDelay = `${Math.min(i, 10) * 26}ms`;
+    item.style.animationDelay = `${Math.min(i, 6) * 15}ms`;
     menu.append(item);
     return item;
   });

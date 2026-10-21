@@ -1,3 +1,5 @@
+@import "./motion-tokens.css";
+
 /* La fenêtre de réglages, façon « verre liquide » :
  *   - derrière, des taches de couleur floues qui bougent très lentement ;
  *   - devant, des panneaux en verre dépoli (backdrop-filter) avec un reflet
@@ -28,8 +30,8 @@
   --blob-b: #c7b8ff;
   --blob-c: #9ff0d4;
   --track-off: rgba(20, 30, 60, 0.16);
-  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --ease: var(--ease-out);
+  --spring: var(--pop-soft);
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {

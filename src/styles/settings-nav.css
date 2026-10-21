@@ -7,7 +7,7 @@
  *   - « verre liquide » : les deux colonnes sont translucides et floutées
  *     au-dessus d'un fond coloré qui bouge lentement ; une pastille en verre
  *     glisse sous la ligne choisie (glass-pill.ts) et son reflet suit la souris ;
- *   - le mouvement façon iOS : la courbe cubic-bezier(.32,.72,0,1) ;
+ *   - le mouvement façon iOS : la courbe cubic-bezier(.32,.72,0,1) (--ios) ;
  *   - le menu de choix en verre (glass-select.ts), la bulle « Annuler », la
  *     pastille « Modifié », les préréglages, les vignettes, la ligne « Activé »
  *     collée en haut des pages de modules.
@@ -18,8 +18,8 @@
  */
 
 :root {
-  --ios: cubic-bezier(0.32, 0.72, 0, 1);
-  --spring-ios: cubic-bezier(0.34, 1.36, 0.64, 1);
+  /* --ios vient de motion-tokens.css ; le léger rebond des Réglages. */
+  --spring-ios: var(--pop-soft);
   --glass-col: rgba(248, 249, 251, 0.56);
   --glass-col-solid: #f3f5f9;
   --glass-line: rgba(255, 255, 255, 0.7);
@@ -763,15 +763,32 @@ body[data-perf="eco"] .module-bar .group-body {
   color: var(--fg);
   font-size: 13px;
   transform-origin: top right;
-  animation: gsel-in 380ms var(--spring-ios) both;
+  /* Une transition (pas des keyframes) : si on referme pendant l'ouverture,
+     le menu repart de là où il en est au lieu de sauter. Un menu de choix
+     s'ouvre souvent : 0,2 s, sans rebond ; il part d'un poil plus petit,
+     depuis le coin du bouton (jamais de rien). */
+  transition:
+    opacity 160ms var(--ease-out),
+    transform 200ms var(--ease-out);
   scrollbar-width: thin;
   outline: none;
+}
+@starting-style {
+  .gsel-menu {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+  .gsel-menu.up {
+    transform: scale(0.96) translateY(4px);
+  }
 }
 .gsel-menu.up {
   transform-origin: bottom right;
 }
 .gsel-menu.out {
-  animation: gsel-out 160ms ease-in both;
+  opacity: 0;
+  transform: scale(0.97);
+  transition-duration: 140ms;
   pointer-events: none;
 }
 body[data-perf="eco"] .gsel-menu {
@@ -779,28 +796,10 @@ body[data-perf="eco"] .gsel-menu {
   backdrop-filter: none;
   background: var(--glass-col-solid);
 }
-@keyframes gsel-in {
-  from {
-    opacity: 0;
-    transform: scale(0.82) translateY(-6px);
-    filter: blur(4px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-    filter: none;
-  }
-}
-@keyframes gsel-out {
-  to {
-    opacity: 0;
-    transform: scale(0.94);
-  }
-}
 @keyframes gsel-item {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -817,7 +816,7 @@ body[data-perf="eco"] .gsel-menu {
   border-radius: 9px;
   cursor: pointer;
   outline: none;
-  animation: gsel-item 300ms var(--ios) both;
+  animation: gsel-item 180ms var(--ease-out) both;
 }
 .gsel-option[aria-disabled="true"] {
   opacity: 0.45;
@@ -1052,9 +1051,14 @@ body[data-perf="eco"] .undo-toast {
   .vignette:active {
     transform: none;
   }
-  .gsel-menu,
-  .gsel-menu.out,
   .gsel-option {
     animation: none;
+  }
+  /* Le menu ne grandit plus : il apparaît d'un simple fondu. */
+  .gsel-menu,
+  .gsel-menu.up,
+  .gsel-menu.out {
+    transform: none;
+    transition: opacity 120ms ease;
   }
 }

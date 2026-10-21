@@ -66,6 +66,7 @@ import { DropShelf } from "./drop-shelf";
 import { lineIcon } from "./icon";
 import { sounds } from "./sounds";
 import { reducedMotion } from "./tab-pill";
+import { POP } from "../core/easing";
 
 /** Une cible de module, telle que la donne le registre. */
 export interface ModuleTarget {
@@ -743,7 +744,7 @@ export class DropPanel {
               { opacity: 1, transform: "none" },
             ],
         // Le ressort de la maquette (cubic-bezier(.34,1.56,.64,1), 0,44 s).
-        { duration: calm ? 180 : 440, delay: (calm ? 0 : base + Math.min(i, 14) * 0.05) * 1000, easing: calm ? "ease-out" : "cubic-bezier(.34,1.56,.64,1)", fill: "backwards" },
+        { duration: calm ? 180 : 440, delay: (calm ? 0 : base + Math.min(i, 14) * 0.05) * 1000, easing: calm ? "ease-out" : POP, fill: "backwards" },
       );
     });
   }

@@ -137,7 +137,7 @@ describe("la pastille qui glisse comme une goutte", () => {
   });
 
   test("la courbe d'iOS", () => {
-    assert.equal(IOS_EASE, "cubic-bezier(.32,.72,0,1)");
+    assert.equal(IOS_EASE, "cubic-bezier(0.32, 0.72, 0, 1)");
   });
 });
 

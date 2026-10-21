@@ -31,7 +31,7 @@ import type { Settings } from "../core/types";
 import { el } from "../island/dom";
 import { icon as iconNode } from "../island/icon";
 import { sounds, setSoundPrefs } from "../island/sounds";
-import { jellyButtons, setStudio, staggerIn, watchContent } from "../island/motion";
+import { calmFade, jellyButtons, setStudio, staggerIn, watchContent } from "../island/motion";
 import { reducedMotion } from "../island/tab-pill";
 import { THEMES, themeFor } from "../island/themes";
 import { haloPreview } from "../island/halo";
@@ -63,7 +63,7 @@ import { dropPillsGroup } from "./drop-pills-group";
 import { customSoundRows } from "./sounds-page";
 import { perfGroup } from "./perf-group";
 import { phonesPage } from "./phone-certificate";
-import { startPerf } from "../core/perf";
+import { perfMode, startPerf } from "../core/perf";
 import { applyMode, hiddenByMode, modeSwitch } from "./mode";
 import { isHidden, modeOf, moduleEssentialKeys, pageEssentials, WHOLE_PAGE, type SettingsMode } from "./visibility";
 import { SCENE_IDS, SCENES } from "../island/scenes/scene-rules";
@@ -73,6 +73,7 @@ import { castFor, pageColor } from "./hero-theme";
 import { VOICE_ICONS, VOICE_PAGES, type VoicePage } from "./voice/pages";
 import { applyBackdrop, backdropChoice, navStatus } from "./frame";
 import { statusLine } from "./frame-logic";
+import { EASE_OUT, POP } from "../core/easing";
 
 const PERMISSION_LABELS: Record<string, string> = {
   files: "Fichiers",
@@ -699,7 +700,7 @@ function showUndo(entry: UndoEntry, undone: boolean) {
   const fresh = undoToast.hidden || undoToast.classList.contains("out");
   undoToast.hidden = false;
   undoToast.classList.remove("out");
-  if (fresh && !still()) undoToast.animate([{ opacity: 0, transform: "translate(-50%, 16px) scale(.9)" }, { opacity: 1, transform: "translate(-50%, 0) scale(1)" }], { duration: 420, easing: "cubic-bezier(.34,1.56,.64,1)" });
+  if (fresh && !still()) undoToast.animate([{ opacity: 0, transform: "translate(-50%, 16px) scale(.9)" }, { opacity: 1, transform: "translate(-50%, 0) scale(1)" }], { duration: 420, easing: POP });
   hideUndoLater(5000);
 }
 
@@ -1277,15 +1278,25 @@ function showPage(animate: boolean, focusKey?: string) {
     return;
   }
   content.scrollTop = 0;
-  if (still() || !old) return;
+  if (!old) return;
+  // « Réduire les animations » : rien ne glisse, la page apparaît d'un fondu.
+  if (reducedMotion() && perfMode() !== "eco") return calmFade(page);
+  if (still()) return;
   // Façon iOS : on avance, la page arrive de la droite ; on revient, de la
   // gauche ; même place (un réglage changé ailleurs), elle se pose sur place.
   // Même page (un autre sous-menu) : la bande reste où elle est.
+  // On passe d'une page à l'autre très souvent : moins de 0,3 s, et la
+  // cascade seulement la première fois qu'on ouvre une page.
   const moving = kept ? ([...page.children] as HTMLElement[]).filter((c) => !c.matches(".page-hero, .page-subs, .crumbs")) : [page];
-  const from = dir ? { opacity: 0, transform: `translateX(${dir * 28}px)` } : { opacity: 0, transform: "translateY(10px) scale(.985)" };
-  for (const part of moving) part.animate([from, { opacity: 1, transform: "none" }], { duration: dir ? 500 : 420, easing: IOS_EASE });
-  if (!kept) staggerIn(page, 0);
+  const from = dir ? { opacity: 0, transform: `translateX(${dir * 20}px)` } : { opacity: 0, transform: "translateY(6px) scale(.99)" };
+  const firstVisit = !!p && !pagesSeen.has(p.id);
+  if (p) pagesSeen.add(p.id);
+  for (const part of moving) part.animate([from, { opacity: 1, transform: "none" }], { duration: dir ? 280 : 220, easing: IOS_EASE });
+  if (!kept && firstVisit) staggerIn(page, 0);
 }
+
+/** Les pages déjà ouvertes depuis l'ouverture des Réglages (cascade la 1re fois seulement). */
+const pagesSeen = new Set<string>();
 
 /**
  * Les sous-menus de la page en pilules sous la bande : les mêmes que dans la
@@ -2111,7 +2122,7 @@ function tabs(main: HTMLElement) {
       if (!reducedMotion()) {
         for (const x of rows) {
           const dy = (before.get(x) ?? 0) - x.offsetTop;
-          if (dy && x !== dragged) x.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 200, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" });
+          if (dy && x !== dragged) x.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 200, easing: EASE_OUT });
         }
       }
     });

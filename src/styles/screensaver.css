@@ -1,3 +1,5 @@
+@import "./motion-tokens.css";
+
 /* L'écran de veille d'Ondine (1.2.3, src/screensaver/main.ts) : un fond
    sombre, l'heure au centre, l'eau en bas, Ondine qui se promène. */
 
@@ -14,7 +16,7 @@ body {
   font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   color: #eef0f6;
   opacity: 0;
-  transition: opacity 250ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: opacity 250ms var(--ease-out);
   background: radial-gradient(120% 90% at 50% 20%, #0d1424 0%, #060912 55%, #03050a 100%);
 }
 body.on {

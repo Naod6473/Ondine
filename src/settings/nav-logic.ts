@@ -13,6 +13,7 @@
 // verre qui glisse d'une ligne à l'autre comme une goutte.
 
 import { MODULE_CATEGORIES, NAV_GROUPS, type NavGroup } from "./layout";
+import { IOS } from "../core/easing";
 
 /** Ce que la navigation sait d'une page (le reste vit dans main.ts). */
 export interface NavPage {
@@ -190,4 +191,4 @@ export function glideFrames(from: Span, to: Span): { frames: GlideFrame[]; durat
 }
 
 /** La courbe des transitions d'iOS : un départ franc, une arrivée très douce. */
-export const IOS_EASE = "cubic-bezier(.32,.72,0,1)";
+export const IOS_EASE = IOS;

@@ -17,6 +17,7 @@ import { el } from "./dom";
 import { mergePlan, shelfPlace, type Rect, type ShelfPlace } from "./drop-shelf-logic";
 import { lineIcon } from "./icon";
 import { reducedMotion } from "./tab-pill";
+import { POP } from "../core/easing";
 
 export interface DropShelfHooks {
   /** La fenêtre de l'île (le rond y est posé, hors de la forme de l'île). */
@@ -79,7 +80,7 @@ export class DropShelf {
             { opacity: 1, transform: "none" },
           ],
       // Le ressort de la maquette (il dépasse un peu, puis se pose).
-      { duration: this.quiet() ? 180 : 560, delay: this.quiet() ? 0 : 140, easing: this.quiet() ? "ease-out" : "cubic-bezier(.34,1.56,.64,1)", fill: "backwards" },
+      { duration: this.quiet() ? 180 : 560, delay: this.quiet() ? 0 : 140, easing: this.quiet() ? "ease-out" : POP, fill: "backwards" },
     );
   }
 

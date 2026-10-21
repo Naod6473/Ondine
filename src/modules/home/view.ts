@@ -46,15 +46,16 @@ import {
   type HomeLayout,
   type PlacedCard,
 } from "./home-rules";
+import { EASE_OUT, POP_SOFT } from "../../core/easing";
 
 /** La clé de la carte « Reprendre », faite par l'Accueil lui-même. */
 const RESUME_KEY = "home.resume";
 const RESUME_MOMENTS: Partial<Record<HomeMoment, number>> = { morning: 62, day: 45, evening: 35 };
 /** Au-delà de ce déplacement (px), un appui sur une carte devient un glisser. */
 const DRAG_THRESHOLD = 6;
-const OUT = "cubic-bezier(0.2, 0.8, 0.2, 1)";
+const OUT = EASE_OUT;
 /** Un ressort un peu mou : la gelée de l'île. */
-const JELLY = "cubic-bezier(0.34, 1.45, 0.5, 1)";
+const JELLY = POP_SOFT;
 
 // ── Réglages et disposition ──────────────────────────────────────────────────
 
@@ -149,7 +150,7 @@ function paintCard(ui: CardUi, view: HomeCardView, fallbackTitle: string, size: 
   ui.sub.hidden = !view.sub;
   const p = view.progress;
   ui.bar.hidden = p === undefined || p === null;
-  if (!ui.bar.hidden) ui.barFill.style.width = `${Math.round(Math.max(0, Math.min(1, p!)) * 100)}%`;
+  if (!ui.bar.hidden) ui.barFill.style.setProperty("--fill", `${Math.round(Math.max(0, Math.min(1, p!)) * 100)}%`);
   const image = view.image ?? null;
   if (image !== ui.shown.image) {
     ui.shown.image = image;

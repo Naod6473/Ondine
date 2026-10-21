@@ -23,9 +23,10 @@
 // morceaux (`span`) à la place.
 
 import { CROSSFADE_MAX_CHARS, diffWords, wordEnd, wordsOf } from "./flow-logic";
+import { EASE_OUT } from "../../core/easing";
 
 /** La courbe des fondus et des glissements (la même que --ease). */
-const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
+const EASE = EASE_OUT;
 /** Durée d'un glissement de hauteur (ms). */
 const GROW_MS = 240;
 

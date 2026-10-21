@@ -270,7 +270,7 @@
   z-index: 2;
   /* La goutte du centre reçoit le survol (le titre du fichier). */
   pointer-events: none;
-  transition: transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 520ms var(--pop);
 }
 .pet[data-gather="true"] .pet-mascot {
   transform: translate(var(--gx, 0), var(--gy, 0));
@@ -309,7 +309,7 @@
     0 6px 18px -6px rgba(0, 0, 0, 0.55);
   cursor: pointer;
   transition:
-    scale 260ms cubic-bezier(0.34, 1.6, 0.5, 1),
+    scale 260ms var(--pop),
     background 150ms ease,
     color 150ms ease,
     box-shadow 150ms ease,
@@ -459,7 +459,7 @@
   scale: 0.6;
   transition:
     opacity 140ms ease,
-    scale 200ms cubic-bezier(0.34, 1.6, 0.5, 1);
+    scale 200ms var(--pop);
 }
 .pr-pin svg,
 .pr-favstar svg {
@@ -606,7 +606,7 @@ body.motion-studio .pr-fav:not(.hot) {
   stroke-linejoin: round;
 }
 .pr-opt.turned .pr-spin {
-  animation: pr-spin 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: pr-spin 420ms var(--pop);
 }
 @keyframes pr-spin {
   to {
