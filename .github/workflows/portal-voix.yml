@@ -37,7 +37,8 @@ jobs:
           while read -r path; do
             name="$(basename "$path" .apk)"
             # Seulement les voix les plus naturelles (moyennes et hautes), pas les « low ».
-            case "$name" in *-low) continue ;; esac
+            # Trois voix féminines, les plus naturelles pour Ondine.
+            case "$name" in *siwis-medium|*tjiho-model1|*upmc-medium) ;; *) continue ;; esac
             curl -fsSL -o "$name.apk" "$HF/resolve/main/$path"
             "$BT/zipalign" -f -p 4 "$name.apk" "aligne.apk"
             short="${name#*fr_FR-}"
@@ -45,10 +46,22 @@ jobs:
               --out "signes/voix-ondine-${short}.apk" aligne.apk
             "$BT/apksigner" verify "signes/voix-ondine-${short}.apk"
           done < liste.txt
+          rm -f signes/*.idsig
           ls -lh signes
 
+      # Un fichier .apk par voix, sans zip (archive: false) : rien à extraire.
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ondine-portal-voix
-          path: signes/*.apk
+          path: signes/voix-ondine-siwis-medium.apk
+          archive: false
+          retention-days: 30
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          path: signes/voix-ondine-tjiho-model1.apk
+          archive: false
+          retention-days: 30
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          path: signes/voix-ondine-upmc-medium.apk
+          archive: false
           retention-days: 30
