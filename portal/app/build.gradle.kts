@@ -20,12 +20,22 @@ android {
         }
     }
 
+    // Une clé de test, fixe et versionnée (branche personnelle) : chaque
+    // nouvel APK peut ainsi remplacer le précédent sans perdre les réglages.
+    // Pas une clé de publication.
+    signingConfigs {
+        create("test") {
+            storeFile = rootProject.file("signature-test.jks")
+            storePassword = "ondine-portal"
+            keyAlias = "ondine"
+            keyPassword = "ondine-portal"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Pas de clé de signature dans le dépôt : la version de test est
-            // signée avec la clé de débogage, ce qui suffit pour OpenPortal.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("test")
         }
     }
 

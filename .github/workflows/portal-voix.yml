@@ -1,7 +1,7 @@
 # Ondine Portal : prépare les moteurs de voix français de sherpa-onnx (voix
 # Piper), prêts à glisser sur OpenPortal. Les APK publiés par sherpa-onnx ne
 # sont pas signés (Android refuse de les installer) : on les signe ici avec
-# une clé de test, comme l'APK d'Ondine Portal. Branche ondine-portal seulement.
+# la clé de test de l'APK d'Ondine Portal. Branche ondine-portal seulement.
 name: portal-voix
 
 on:
@@ -21,6 +21,8 @@ jobs:
       SHERPA_VERSION: "1.13.8"
       HF: https://huggingface.co/csukuangfj2/sherpa-onnx-apk
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
       - name: Liste des moteurs français publiés
         run: |
           # Les fichiers sont nommés sherpa-onnx-<version>-<arch>-fra-tts-engine-<voix>.apk
@@ -30,8 +32,6 @@ jobs:
 
       - name: Téléchargement et signature
         run: |
-          keytool -genkeypair -v -keystore voix.jks -alias voix -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass ondine -keypass ondine -dname "CN=Ondine Portal"
           BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
           mkdir -p signes
           while read -r path; do
@@ -42,7 +42,7 @@ jobs:
             curl -fsSL -o "$name.apk" "$HF/resolve/main/$path"
             "$BT/zipalign" -f -p 4 "$name.apk" "aligne.apk"
             short="${name#*fr_FR-}"
-            "$BT/apksigner" sign --ks voix.jks --ks-pass pass:ondine --key-pass pass:ondine \
+            "$BT/apksigner" sign --ks portal/signature-test.jks --ks-key-alias ondine --ks-pass pass:ondine-portal --key-pass pass:ondine-portal \
               --out "signes/voix-ondine-${short}.apk" aligne.apk
             "$BT/apksigner" verify "signes/voix-ondine-${short}.apk"
           done < liste.txt
