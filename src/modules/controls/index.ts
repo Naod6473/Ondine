@@ -13,7 +13,8 @@
 //
 // Les clés USB (bande du bas, notifications « branchée » et « éjectée ») sont
 // dans usb.ts ; la batterie des appareils Bluetooth et « Bureau propre »
-// (cacher les icônes du bureau), dans bt.ts.
+// (cacher les icônes du bureau), dans bt.ts. Le volume de chaque appli, les
+// réseaux Wi-Fi à portée et les boutons d'alimentation (1.2.5), dans extras.ts.
 
 import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
@@ -24,6 +25,7 @@ import { usbStrip, wireUsbNotifications } from "./usb";
 import { btStrip, wireBtNotifications } from "./bt";
 import { onRemoteChange, remotePanel, remoteSession, wireRemote } from "./remote";
 import { wireWheelVolume } from "./wheel";
+import { appsPage, moreStrip, wifiPage, type ExtraPage } from "./extras";
 import type { UsbDrive } from "./usb-text";
 
 type DeviceId = "speakers" | "microphone";
@@ -373,7 +375,7 @@ type TileId = keyof typeof TILE_NAMES;
 const FIXED_TILES: TileId[] = ["mic", "pin", "dark", "night"];
 
 /** La carte de pastilles rondes : radios, mode avion, micro coupé, premier plan, mode sombre, éclairage nocturne. */
-function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>) {
+function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>, onWifiMenu: () => void) {
   const fail = (err: unknown) => api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "controls-error" });
   const card = el("div", { class: "ctl-card ctl-toggles" });
   const tiles = new Map<TileId, HTMLButtonElement>();
@@ -434,7 +436,12 @@ function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>) {
         shown = key;
         for (const id of [...tiles.keys()]) if (!FIXED_TILES.includes(id)) tiles.delete(id);
         card.replaceChildren(
-          ...list.map((r) => tile(r.kind, r.kind, (on) => api.invoke("set_radio", { kind: r.kind, on }))),
+          ...list.map((r) => {
+            const t = tile(r.kind, r.kind, (on) => api.invoke("set_radio", { kind: r.kind, on }));
+            // Clic droit sur le Wi-Fi : les réseaux à portée (page « Réseaux »).
+            if (r.kind === "wifi") t.addEventListener("contextmenu", (e) => (e.preventDefault(), onWifiMenu()));
+            return t;
+          }),
           ...(list.length ? [tile("airplane", "airplane", (on) => api.invoke("set_airplane", { on }))] : []),
           mic,
           pin,
@@ -537,22 +544,41 @@ export const controls: IslandModule = {
       // Le micro apparaît deux fois (pastille + pilier) : le pilier tient la pastille à jour.
       const speakers = devicePillar(api, "speakers", () => {});
       const microphone = devicePillar(api, "microphone", (level) => toggles.mic(level));
-      const toggles = toggleCard(api, () => microphone.toggleMute());
+      const toggles = toggleCard(api, () => microphone.toggleMute(), () => openPage("wifi"));
       const screensBox = el("div", { class: "ctl-screens" });
       const ctl = el("div", { class: "ctl" }, toggles.node, el("div", { class: "ctl-card ctl-pillars" }, speakers.node, microphone.node, screensBox));
       // En bas, les clés USB branchées (la bande se cache quand il n'y en a pas).
       const usb = usbStrip(api);
       // Puis la batterie des appareils Bluetooth et « Bureau propre ».
       const bt = btStrip(api);
-      const ctlRoot = el("div", { class: "ctl-root" }, ctl, usb.node, bt.node);
+      // Tout en bas : « Applis », « Réseaux » et les boutons d'alimentation (extras.ts).
+      const more = moreStrip(api, (page) => openPage(page));
+      // L'île grandit quand les bandes du bas (clés USB, Bluetooth, « Plus ») ne
+      // tiennent plus dans sa hauteur habituelle (src/island/fit.ts).
+      const ctlRoot = el("div", { class: "ctl-root", "data-island-fit": true }, ctl, usb.node, bt.node, more.node);
       // La télécommande tourne : son panneau (QR code) remplace l'onglet.
       const remoteHost = el("div", { class: "ctl-remote-host" });
+      // « Applis » ou « Réseaux » : la page remplace l'onglet, « Retour » le ramène.
+      const pageHost = el("div", { class: "ctl-page-host" });
+      let page: { node: HTMLElement; stop: () => void } | null = null;
+      const closePage = () => {
+        page?.stop();
+        page = null;
+        pageHost.replaceChildren();
+        showRemote();
+      };
+      function openPage(kind: ExtraPage) {
+        page?.stop();
+        page = kind === "apps" ? appsPage(api, closePage) : wifiPage(api, closePage);
+        pageHost.replaceChildren(page.node);
+        showRemote();
+      }
       const showRemote = () => {
         const s = remoteSession();
-        ctlRoot.hidden = !!s;
-        remoteHost.replaceChildren(...(s ? [remotePanel(api, s)] : []));
+        ctlRoot.hidden = !!s || !!page;
+        remoteHost.replaceChildren(...(s && !page ? [remotePanel(api, s)] : []));
       };
-      root.append(ctlRoot, remoteHost);
+      root.append(ctlRoot, remoteHost, pageHost);
       showRemote();
       const offRemote = onRemoteChange(showRemote);
       const closeMenu = outputMenu(api, speakers.caption, ctl);
@@ -598,6 +624,7 @@ export const controls: IslandModule = {
       };
 
       const refreshRadios = async () => {
+        more.sync();
         void refreshWindow();
         void refreshTheme();
         void refreshUsb();
@@ -646,6 +673,7 @@ export const controls: IslandModule = {
       ];
       return () => {
         alive = false;
+        page?.stop();
         closeMenu();
         usb.stop();
         bt.stop();

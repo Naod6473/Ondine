@@ -31,6 +31,13 @@
 // Windows attend un redémarrage, depuis quand et pourquoi ; `open_update`
 // ouvre la page Windows Update des Paramètres. Ondine ne redémarre jamais le
 // PC elle-même. Le résumé pour le support le mentionne aussi.
+//
+// Débit réseau en direct (1.2.5, idée d'Orbix) : à chaque tour, le fil de
+// fond compte les octets reçus et envoyés par les cartes réseau (`sysinfo`,
+// les compteurs de Windows) et en déduit le débit. On ne regarde que des
+// totaux : jamais le contenu, ni avec qui le PC parle. Si le réglage
+// « netCompact » est coché, le débit part aussi sur le bus
+// (« system.net-rate » {down, up}) pour la mini-île.
 
 use crate::sync::LockExt;
 use std::collections::HashSet;
@@ -62,6 +69,9 @@ struct State {
     warned: HashSet<String>,
     battery: BatteryWatch,
     cpu: CpuWatch,
+    /// Le débit réseau en ce moment (octets par seconde, toutes cartes réunies).
+    net_down: f64,
+    net_up: f64,
 }
 
 /// Ce qu'on a déjà dit de la batterie (pour ne prévenir qu'une fois).
@@ -269,6 +279,8 @@ fn watch(app: AppHandle, state: Shared) {
         s.cpu_cores = sys.cpus().len();
     }
     let mut last_disks: Option<Instant> = None;
+    let mut networks = Networks::new_with_refreshed_list();
+    let mut last_net: Option<((u64, u64), Instant)> = None;
     loop {
         // Toutes les 2 s (1 s en haute, 5 s en éco : services/perf.rs).
         std::thread::sleep(perf::every(Loop::System));
@@ -284,7 +296,25 @@ fn watch(app: AppHandle, state: Shared) {
                 s.mem_total = sys.total_memory();
                 s.mem_used = sys.used_memory();
             }
+            // Le débit : la différence des compteurs depuis le tour d'avant.
+            networks.refresh(true);
+            let totals = net_totals(&networks);
+            let now = Instant::now();
+            if let Some((before, at)) = last_net {
+                let (down, up) = net_rate(before, totals, now.duration_since(at).as_secs_f64());
+                let mut s = state.locked();
+                s.net_down = down;
+                s.net_up = up;
+            }
+            last_net = Some((totals, now));
             super::with_context(&app, ID, |ctx| {
+                if ctx.settings().get("netCompact").and_then(Value::as_bool).unwrap_or(false) {
+                    let (down, up) = {
+                        let s = state.locked();
+                        (s.net_down, s.net_up)
+                    };
+                    ctx.emit("system.net-rate", json!({ "down": down.round(), "up": up.round() }));
+                }
                 check_cpu(ctx, &state);
                 // À chaque tour : le branchement du chargeur doit se voir tout de suite.
                 check_battery(ctx, &state);
@@ -362,10 +392,30 @@ fn check_disks(ctx: &ModuleContext, state: &Shared) {
 
 // ── La photo de l'état du PC ─────────────────────────────────────────────────
 
+/// Les octets reçus et envoyés depuis le démarrage, toutes cartes réunies,
+/// sauf la boucle locale (« Loopback ») : ce que le PC se dit à lui-même.
+fn net_totals(networks: &Networks) -> (u64, u64) {
+    networks
+        .list()
+        .iter()
+        .filter(|(name, _)| !name.to_lowercase().contains("loopback"))
+        .fold((0u64, 0u64), |(down, up), (_, d)| (down.saturating_add(d.total_received()), up.saturating_add(d.total_transmitted())))
+}
+
+/// Le débit (octets par seconde) entre deux relevés des compteurs. Un
+/// compteur qui recule (carte débranchée, remise à zéro) compte pour 0.
+fn net_rate(before: (u64, u64), now: (u64, u64), secs: f64) -> (f64, f64) {
+    if secs <= 0.05 {
+        return (0.0, 0.0);
+    }
+    let per_sec = |a: u64, b: u64| b.checked_sub(a).map(|d| d as f64 / secs).unwrap_or(0.0);
+    (per_sec(before.0, now.0), per_sec(before.1, now.1))
+}
+
 fn snapshot(state: &Shared) -> Value {
-    let (cpu_usage, cpu_brand, cpu_cores, mem_total, mem_used) = {
+    let (cpu_usage, cpu_brand, cpu_cores, mem_total, mem_used, net_down, net_up) = {
         let s = state.locked();
-        (s.cpu_usage, s.cpu_brand.clone(), s.cpu_cores, s.mem_total, s.mem_used)
+        (s.cpu_usage, s.cpu_brand.clone(), s.cpu_cores, s.mem_total, s.mem_used, s.net_down, s.net_up)
     };
 
     let disks: Vec<Value> = Disks::new_with_refreshed_list()
@@ -417,6 +467,7 @@ fn snapshot(state: &Shared) -> Value {
         "mem": { "totalGb": round1(mem_total as f64 / GIB), "usedGb": round1(mem_used as f64 / GIB) },
         "disks": disks,
         "net": net,
+        "rate": { "down": net_down.round(), "up": net_up.round() },
         "battery": platform::battery().map(|b| json!({ "percent": b.percent, "charging": b.charging, "plugged": b.plugged })),
     })
 }
@@ -646,6 +697,15 @@ mod tests {
         assert_eq!(busy_ticks(ms(1_000)), 20); // haute
         assert_eq!(busy_ticks(ms(5_000)), 4); // éco
         assert_eq!(busy_ticks(ms(60_000)), 3); // jamais moins de 3 mesures
+    }
+
+    #[test]
+    fn network_rate_per_second() {
+        assert_eq!(net_rate((1_000, 500), (3_000, 1_500), 2.0), (1_000.0, 500.0));
+        // Un compteur qui recule (carte débranchée) : 0, pas un nombre géant.
+        assert_eq!(net_rate((5_000, 500), (1_000, 700), 1.0), (0.0, 200.0));
+        // Deux relevés au même instant : rien à calculer.
+        assert_eq!(net_rate((0, 0), (9_999, 9_999), 0.0), (0.0, 0.0));
     }
 
     #[test]

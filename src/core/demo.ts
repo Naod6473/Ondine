@@ -427,8 +427,19 @@ function system() {
     ],
     net: [{ name: "Wi-Fi", ips: ["192.168.1.42"], mac: "02-00-4C-4F-4F-50" }],
     battery: { percent: 84, charging: true, plugged: true },
+    // Un téléchargement en cours : 4 à 6 Mo/s reçus.
+    rate: { down: Math.round((4 + Math.random() * 2) * 1024 * 1024), up: Math.round((60 + Math.random() * 40) * 1024) },
   };
 }
+
+/** Contrôles 1.2.5 : le volume des applis et les réseaux Wi-Fi inventés. */
+const demoApps = [
+  { key: "pid:4120", name: "Spotify", volume: 80, muted: false, active: true },
+  { key: "pid:2210", name: "Chrome", volume: 64, muted: false, active: true },
+  { key: "pid:5532", name: "Teams", volume: 100, muted: true, active: false },
+  { key: "system", name: "Sons système", volume: 50, muted: false, active: false },
+];
+let demoWifiOn = "Maison";
 
 function agentsHistory() {
   const now = Date.now();
@@ -686,6 +697,13 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       return { volume: state.player.volume, muted: state.player.muted };
     case "media.open":
       return null; // en démo, aucun vrai lecteur à montrer
+    case "media.levels": {
+      // Un niveau qui bat à peu près au tempo du morceau.
+      if (!state.playing) return { level: 0, left: 0, right: 0 };
+      const beat = Math.abs(Math.sin((Date.now() / 1000) * Math.PI * 2));
+      const level = 0.35 + beat * 0.5 + Math.random() * 0.1;
+      return { level, left: level * (0.8 + Math.random() * 0.2), right: level * (0.75 + Math.random() * 0.25) };
+    }
 
     // Contrôles
     case "controls.state":
@@ -748,6 +766,32 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
     case "controls.set_night":
       state.night = args.on === true;
       return { opened: false };
+    case "controls.app_volumes":
+      return demoApps.map((a) => ({ ...a, peak: a.active && !a.muted ? 0.25 + Math.random() * 0.6 : 0 }));
+    case "controls.set_app_volume": {
+      const app = demoApps.find((a) => a.key === args.key);
+      if (app && typeof args.volume === "number") app.volume = Math.max(0, Math.min(100, Math.round(args.volume)));
+      if (app && typeof args.muted === "boolean") app.muted = args.muted;
+      return null;
+    }
+    case "controls.wifi_networks":
+      return {
+        networks: [
+          { ssid: "Maison", signal: 92, secure: true, known: true, connected: demoWifiOn === "Maison" },
+          { ssid: "Maison-5G", signal: 71, secure: true, known: true, connected: demoWifiOn === "Maison-5G" },
+          { ssid: "Café du coin", signal: 48, secure: false, known: false, connected: false },
+          { ssid: "Voisins", signal: 22, secure: true, known: false, connected: false },
+        ].sort((a, b) => Number(b.connected) - Number(a.connected)),
+      };
+    case "controls.wifi_connect":
+      demoWifiOn = String(args.ssid);
+      return null;
+    case "controls.wifi_disconnect":
+      demoWifiOn = "";
+      return null;
+    case "controls.open_wifi_settings":
+    case "controls.power_now":
+      return null; // en démo, rien ne s'ouvre et le PC ne s'éteint pas
     case "controls.usb_drives":
       return state.usbKey ? [DEMO_USB] : [];
     case "controls.eject":

@@ -39,6 +39,13 @@
 //
 // Télécommande sur le téléphone (controls_remote.rs, réglage phoneRemote,
 // désactivé par défaut) : musique, volume, minuteur, diapositives.
+//
+// 1.2.5 (idées d'Orbix, réécrites de zéro) :
+//   - le volume de chaque appli (platform::app_volume, comme le mélangeur de Windows) ;
+//   - les réseaux Wi-Fi à portée et la connexion à un réseau déjà connu
+//     (platform::wifi_networks ; jamais de mot de passe dans Ondine) ;
+//   - verrouiller, mettre en veille, redémarrer, éteindre tout de suite
+//     (platform::power, le front demande un appui maintenu).
 
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -58,7 +65,7 @@ use crate::platform::brightness;
 use crate::platform::radios::{self, Kind};
 use crate::platform::eject::{self, DriveCache, EjectError, Ejectable};
 use crate::platform::bt_battery::{self, BtBattery};
-use crate::platform::{desktop_icons, nightlight, theme};
+use crate::platform::{app_volume, desktop_icons, nightlight, theme, wifi_networks};
 
 const ID: &str = "controls";
 
@@ -72,6 +79,9 @@ static MIC_HOTKEY: Mutex<String> = Mutex::new(String::new());
 static DRIVES: Mutex<DriveCache> = Mutex::new(Vec::new());
 /// Les lecteurs en cours d'éjection (« E:\ »).
 static EJECTING: Mutex<Vec<String>> = Mutex::new(Vec::new());
+
+/// Les actions d'alimentation acceptées par « power_now ».
+const POWER_ACTIONS: &[&str] = &["lock", "sleep", "restart", "shutdown"];
 
 /// La télécommande sur le téléphone (une seule à la fois).
 static REMOTE: Remote = Remote::new();
@@ -281,6 +291,66 @@ impl RustModule for Controls {
                 let hide = args.get("hidden").and_then(Value::as_bool).ok_or("« hidden » doit valoir true ou false")?;
                 let now = desktop_icons::set_hidden(hide)?;
                 Ok(json!({ "hidden": now }))
+            }
+            // {} → [{ key, name, volume, muted, active, peak }] : le volume de chaque appli.
+            "app_volumes" => Ok(json!(app_volume::list())),
+            // { key, volume?: 0..100, muted?: bool } : règle une appli de la liste.
+            "set_app_volume" => {
+                let key = args.get("key").and_then(Value::as_str).filter(|s| s.len() <= 32).ok_or("appli inconnue")?;
+                let volume = match args.get("volume") {
+                    None | Some(Value::Null) => None,
+                    Some(v) => Some(v.as_u64().filter(|v| *v <= 100).ok_or("le volume doit être un nombre entre 0 et 100")? as u32),
+                };
+                let muted = match args.get("muted") {
+                    None | Some(Value::Null) => None,
+                    Some(v) => Some(v.as_bool().ok_or("« muted » doit valoir true ou false")?),
+                };
+                app_volume::set(key, volume, muted)?;
+                Ok(Value::Null)
+            }
+            // { scan?: bool } → { networks: [{ ssid, signal, secure, known, connected }] }
+            // ou { error: "location" | "no-adapter" | "failed", message }.
+            "wifi_networks" => {
+                if args.get("scan").and_then(Value::as_bool).unwrap_or(false) {
+                    wifi_networks::scan();
+                }
+                Ok(match wifi_networks::list() {
+                    Ok(list) => json!({ "networks": list }),
+                    Err(e) => json!({ "error": e.code(), "message": e.text() }),
+                })
+            }
+            // { ssid } : se connecter à un réseau déjà connu de Windows (jamais de mot de passe ici).
+            "wifi_connect" => {
+                let ssid = args.get("ssid").and_then(Value::as_str).ok_or("réseau inconnu")?;
+                wifi_networks::connect(ssid)?;
+                Ok(Value::Null)
+            }
+            "wifi_disconnect" => {
+                wifi_networks::disconnect()?;
+                Ok(Value::Null)
+            }
+            // { page: "networks" | "location" } : la liste des réseaux de Windows (nouveau
+            // réseau, mot de passe), ou la page « Localisation » (Windows 11 24H2).
+            "open_wifi_settings" => {
+                let uri = match args.get("page").and_then(Value::as_str) {
+                    Some("location") => "ms-settings:privacy-location",
+                    _ => "ms-availablenetworks:",
+                };
+                if crate::platform::shell_open(uri).is_err() {
+                    crate::platform::shell_open("ms-settings:network-wifi")?;
+                }
+                Ok(Value::Null)
+            }
+            // { action: "lock" | "sleep" | "restart" | "shutdown" } : tout de suite
+            // (le front demande un appui maintenu). Jamais de fermeture forcée des applis.
+            "power_now" => {
+                let action = args.get("action").and_then(Value::as_str).ok_or("action inconnue")?;
+                if !POWER_ACTIONS.contains(&action) {
+                    return Err(format!("action inconnue : {action}"));
+                }
+                log::info(format!("contrôles : « {action} » demandé depuis l'île"));
+                crate::platform::power::act(action)?;
+                Ok(Value::Null)
             }
             _ => Err(format!("commande non gérée : {command}")),
         }

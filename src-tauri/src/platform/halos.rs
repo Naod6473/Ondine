@@ -42,6 +42,13 @@ pub fn peak(device: Device) -> Option<f32> {
     imp::peak(device)
 }
 
+/// Le niveau de la sortie par défaut, en entier et canal par canal (gauche,
+/// droite…) : (niveau, [canaux]). Pour l'égaliseur de la mini-île (module
+/// Musique). Le même indicateur que `peak` : des nombres, jamais le son.
+pub fn channel_peaks() -> Option<(f32, Vec<f32>)> {
+    imp::channel_peaks()
+}
+
 pub fn wifi_quality() -> Option<u8> {
     imp::wifi_quality()
 }
@@ -101,6 +108,22 @@ mod imp {
             let dev = devices.GetDefaultAudioEndpoint(flow, eConsole).ok()?;
             let meter = dev.Activate::<IAudioMeterInformation>(CLSCTX_ALL, None).ok()?;
             meter.GetPeakValue().ok().map(|v| v.clamp(0.0, 1.0))
+        })
+    }
+
+    pub fn channel_peaks() -> Option<(f32, Vec<f32>)> {
+        crate::platform::with_com(|| unsafe {
+            let devices: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).ok()?;
+            let dev = devices.GetDefaultAudioEndpoint(eRender, eConsole).ok()?;
+            let meter = dev.Activate::<IAudioMeterInformation>(CLSCTX_ALL, None).ok()?;
+            let all = meter.GetPeakValue().ok()?.clamp(0.0, 1.0);
+            // 8 canaux au plus (7.1) : on n'en montre de toute façon que deux.
+            let count = meter.GetMeteringChannelCount().unwrap_or(0).min(8) as usize;
+            let mut channels = vec![0f32; count];
+            if count > 0 && meter.GetChannelsPeakValues(&mut channels).is_err() {
+                channels.clear();
+            }
+            Some((all, channels.into_iter().map(|v| v.clamp(0.0, 1.0)).collect()))
         })
     }
 
@@ -236,6 +259,9 @@ mod imp {
     use super::{Device, Keys};
 
     pub fn peak(_device: Device) -> Option<f32> {
+        None
+    }
+    pub fn channel_peaks() -> Option<(f32, Vec<f32>)> {
         None
     }
     pub struct Meter;

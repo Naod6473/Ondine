@@ -2,6 +2,27 @@
 
 ## 1.2.5 · à venir
 
+- Contrôles, en bas de l'onglet : **Applis** règle le volume de chaque appli
+  qui joue du son (curseur, couper, niveau qui bouge), **Réseaux** (ou clic
+  droit sur la pastille Wi-Fi) montre les Wi-Fi à portée et se connecte d'un
+  clic à un réseau connu (un nouveau réseau passe par Windows), et quatre
+  boutons **Verrouiller, Mettre en veille, Redémarrer, Éteindre** partent
+  après une seconde d'appui (un anneau se remplit, lâcher annule). L'onglet
+  grandit au lieu de tasser ses cartes quand des bandes s'ajoutent · Controls,
+  at the bottom of the tab: **Apps** sets the volume of each app playing
+  sound (slider, mute, moving level), **Networks** (or right-click the Wi-Fi
+  toggle) lists Wi-Fi networks in range and connects to a known one in one
+  click (a new network goes through Windows), and four **Lock, Sleep,
+  Restart, Shut down** buttons fire after a one-second hold (a ring fills,
+  letting go cancels). The tab grows instead of squeezing its cards when
+  strips are added
+- Système : le débit réseau en direct (reçu et envoyé, chaque seconde), et en
+  option la vitesse dans la mini-île pendant un gros téléchargement · System:
+  live network speed (in and out, every second), and optionally the speed in
+  the mini island during a big download
+- Musique : l'égaliseur de la mini-île suit le vrai son (gauche, ensemble,
+  droite) au lieu de danser tout seul · Music: the mini island's equalizer
+  follows the real sound (left, both, right) instead of dancing on its own
 - Des animations plus fines, d'après les règles d'Emil Kowalski : changer
   d'onglet ne rejoue plus toute la cascade (un glissement d'un bloc, 0,25 s),
   le Lanceur s'ouvre sans cascade, les pages des Réglages arrivent en moins

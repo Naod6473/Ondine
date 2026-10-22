@@ -216,6 +216,18 @@ impl RustModule for Media {
                 Ok(Value::Null)
             }
             "state" => Ok(payload(&self.state.locked())),
+            // {} → { level, left, right } (0 à 1) ou null : le niveau de ce qui
+            // joue, pour l'égaliseur de la mini-île (1.2.5). Des nombres lus
+            // par l'indicateur de niveau de Windows : jamais le son lui-même.
+            "levels" => Ok(match crate::platform::halos::channel_peaks() {
+                Some((level, ch)) => {
+                    let left = ch.first().copied().unwrap_or(level);
+                    let right = ch.get(1).copied().unwrap_or(left);
+                    let round = |v: f32| (v * 1000.0).round() / 1000.0;
+                    json!({ "level": round(level), "left": round(left), "right": round(right) })
+                }
+                None => Value::Null,
+            }),
             // Les paroles du morceau en cours (réglage « Paroles (LRCLIB) »).
             "lyrics" => self.lyrics(ctx),
             "artwork" => Ok(json!({ "url": self.state.locked().artwork })),

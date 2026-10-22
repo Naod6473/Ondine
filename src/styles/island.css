@@ -2107,6 +2107,12 @@ body[data-perf="eco"] .media-compact.on .media-eq i {
     transform: none;
   }
 }
+/* L'égaliseur qui suit le vrai son (1.2.5) : la hauteur vient du module
+   (style.height, ~13 fois par seconde), la danse CSS s'arrête. */
+.media-compact.on .media-eq.live i {
+  animation: none;
+  transition: height 80ms linear;
+}
 @keyframes media-eq {
   from {
     height: 3px;
@@ -3484,6 +3490,22 @@ body[data-perf="eco"] .media-compact.on .media-eq i {
 }
 .sys-side .btn {
   align-self: flex-start;
+}
+/* Débit réseau (1.2.5) : la ligne de l'onglet, et la mini-île pendant un gros transfert. */
+.sys-rate span:last-child,
+.sys-rate-compact {
+  font-variant-numeric: tabular-nums;
+}
+.sys-rate[hidden] {
+  display: none;
+}
+.sys-rate-compact {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  font-weight: 600;
+  white-space: nowrap;
 }
 .sys-title {
   font-size: 11px;

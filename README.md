@@ -329,6 +329,7 @@ expose déjà.
 
 - **Montrer l'île quand un nouveau morceau commence** (oui)
 - **Afficher le morceau dans la pilule** (oui), avec **les boutons précédent / lecture / suivant** (oui)
+- **L'égaliseur de la mini-île suit le vrai son** (oui, 1.2.5) : les trois barres montent et descendent avec la musique (gauche, ensemble, droite). Ondine lit seulement le niveau du son, jamais le son lui-même.
 
 ### Contrôles
 
@@ -354,6 +355,24 @@ le sait (par exemple WINWORD.EXE), sinon pourquoi Windows refuse.
 - **Raccourci pour couper / rétablir le micro** : Ctrl+Alt+M (ou Ctrl+Maj+M, Alt+Maj+M, Pause, aucun). Il marche partout, même en visio ; Ondine porte un petit badge tant que le micro est coupé.
 - **Montrer un point quand une appli utilise le micro ou la caméra** (oui) : orange pour le micro, vert pour la caméra. Rien n'est écouté : Ondine lit seulement ce que Windows note pour sa page Confidentialité.
 - **Prévenir quand une clé USB est branchée** (oui) : une notification avec **Ouvrir** et **Éjecter**.
+
+**En bas de l'onglet** (1.2.5) :
+
+- **Applis** : le volume de chaque appli qui joue du son (Spotify, le
+  navigateur, Discord…), avec un curseur, un bouton pour la couper et une
+  petite barre verte qui bouge quand elle fait du bruit. Comme le mélangeur
+  de volume de Windows, sans l'ouvrir.
+- **Réseaux** (ou clic droit sur la pastille Wi-Fi) : les réseaux Wi-Fi à
+  portée, avec leur signal et un cadenas. Un clic se connecte à un réseau
+  déjà connu ; pour un nouveau réseau (mot de passe), **Ouvrir Windows**.
+  Depuis Windows 11 24H2, la liste demande que la localisation soit permise
+  aux applications de bureau : Ondine le dit et ouvre la bonne page, sans
+  jamais lire votre position.
+- **Verrouiller, Mettre en veille, Redémarrer, Éteindre** : maintenez le
+  bouton une seconde (un anneau se remplit) ; lâcher avant annule. Un simple
+  clic ne fait rien.
+
+- **Boutons d'alimentation dans l'onglet** (oui)
 
 ### Étagère
 
@@ -537,10 +556,14 @@ Windows), une ligne le dit : « Redémarrage en attente depuis 3 jours (mises à
 jour de Windows) », avec un bouton **Ouvrir Windows Update**. Le résumé pour
 le support le mentionne aussi. Ondine ne redémarre jamais le PC elle-même.
 
+Le **débit réseau en direct** (1.2.5) : une ligne « Débit » montre ce qui
+arrive et ce qui part, chaque seconde (par exemple « ↓ 4,2 Mo/s · ↑ 210 ko/s »).
+
 - **Prévenir quand un disque a moins de** 10 % de place libre ; **quand la batterie descend à** 20 % ; **quand la batterie est chargée** (oui)
 - **L'humeur d'Ondine suit le PC** (oui) : elle transpire quand le processeur est à fond, fatigue quand la batterie est faible ou qu'il est tard.
 - **Horloges du monde** (vide) : jusqu'à 4 villes séparées par des virgules, par exemple `Montréal, Tokyo`. L'onglet montre l'heure de chacune, « demain » ou « hier » si le jour diffère, et l'écart avec ici (« +6 h »). Environ 200 grandes villes connues (noms français ou anglais, sans accents si vous voulez) et `UTC` ; une ville inconnue est signalée sous le champ. Les heures sont calculées sur le PC.
 - **Rappeler un redémarrage en attente** (oui) : une notification douce, au plus une fois par jour, après un jour d'attente, jamais pendant un appel (micro utilisé) ni une présentation.
+- **Montrer le débit dans la mini-île pendant un gros téléchargement** (non) : au-delà de 1 Mo/s, la mini-île montre la vitesse, puis s'efface 6 s après la fin.
 
 <img src="docs/captures/fr/systeme-horloges.webp" width="696" alt="Onglet Système, plus bas : les horloges de Montréal (08:02, −6 h) et de Tokyo (21:02, +7 h), puis les disques et le réseau">
 

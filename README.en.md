@@ -315,6 +315,7 @@ bar. Ondine only reads what Windows already exposes.
 
 - **Show the island when a new track starts** (on)
 - **Show the track in the island's pill** (on), with **previous / play / next buttons** (on)
+- **The mini island's equalizer follows the real sound** (on, 1.2.5): the three bars rise and fall with the music (left, both, right). Ondine only reads the sound level, never the sound itself.
 
 ### Controls
 
@@ -339,6 +340,21 @@ WINWORD.EXE), otherwise it says why Windows refused.
 - **Shortcut to mute / unmute the microphone**: Ctrl+Alt+M (or Ctrl+Shift+M, Alt+Shift+M, Pause, none). Works everywhere, even in a video call; Ondine wears a small badge while the mic is muted.
 - **Show a dot when an app uses the microphone or camera** (on): orange for the mic, green for the camera. Nothing is recorded: Ondine only reads what Windows notes for its Privacy page.
 - **Notify when a USB drive is plugged in** (on): a notification with **Open** and **Eject**.
+
+**At the bottom of the tab** (1.2.5):
+
+- **Apps**: the volume of each app playing sound (Spotify, the browser,
+  Discord…), with a slider, a mute button and a small green bar that moves
+  when it makes noise. Like the Windows volume mixer, without opening it.
+- **Networks** (or right-click the Wi-Fi toggle): Wi-Fi networks in range,
+  with their signal and a padlock. One click connects to a known network; for
+  a new one (password), **Open Windows**. Since Windows 11 24H2, the list
+  needs location to be allowed for desktop apps: Ondine says so and opens the
+  right page, without ever reading your location.
+- **Lock, Sleep, Restart, Shut down**: hold the button for one second (a ring
+  fills up); letting go earlier cancels. A plain click does nothing.
+
+- **Power buttons in the tab** (on)
 
 ### Shelf
 
@@ -503,6 +519,9 @@ Your PC at a glance: CPU, memory, disks, IP and MAC addresses, battery, Windows
 version, weather (if enabled). **Copy for support** copies a summary to paste
 into a ticket. Everything is read on the PC.
 
+**Live network speed** (1.2.5): a "Speed" line shows what comes in and goes
+out, every second (for example "↓ 4.2 MB/s · ↑ 210 kB/s").
+
 When Windows is waiting for a restart (installed updates, Windows components),
 a line says so: "Restart pending for 3 days (Windows updates)", with an **Open
 Windows Update** button. The support summary mentions it too. Ondine never
@@ -512,6 +531,7 @@ restarts the PC itself.
 - **Ondine's mood follows the PC** (on): she sweats when the CPU is maxed out, gets tired when the battery is low or it's late.
 - **World clocks** (empty): up to 4 cities separated by commas, for example `Montreal, Tokyo`. The tab shows the time in each, "tomorrow" or "yesterday" when the day differs, and the difference with here ("+6 h"). About 200 major cities (French or English names, accents optional) and `UTC`; an unknown city is flagged under the field. Times are computed on the PC.
 - **Remind me of a pending restart** (on): a gentle notification, at most once a day, after a day of waiting, never during a call (mic in use) or a presentation.
+- **Show the speed in the mini island during a big download** (off): above 1 MB/s, the mini island shows the speed, then fades 6 s after it ends.
 
 <img src="docs/captures/en/systeme-horloges.webp" width="696" alt="System tab, further down: the clocks of Montreal (08:02, −6 h) and Tokyo (21:02, +7 h), then the disks and the network">
 
