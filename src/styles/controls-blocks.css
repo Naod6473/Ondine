@@ -1,0 +1,672 @@
+/* Contrôles en blocs qui se déplient (1.2.5, src/modules/controls/blocks.ts) :
+ * la carte des connexions avec son en-tête, les quatre blocs, la pastille du
+ * bas, et les pages qui grandissent depuis le bloc cliqué (Son, Écrans,
+ * Appareils, Outils, Alimentation, aide-mémoire, nettoyage). Même verre que
+ * le reste de l'onglet (.ctl-card de island.css).
+ * « Réduire les animations » : les pages apparaissent en fondu (bas du fichier). */
+
+/* ---- Accueil : trois cartes côte à côte ---- */
+.ctl-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px 10px;
+}
+.ctl-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 2px;
+}
+.ctl-card-title {
+  font-size: 11px;
+  color: var(--muted);
+}
+.ctl-tiles {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 54px);
+  align-content: center;
+  justify-content: center;
+  gap: 8px 4px;
+}
+/* Une radio de plus (données mobiles) : trois colonnes. */
+.ctl-tiles:has(> :nth-child(5)) {
+  grid-template-columns: repeat(3, 54px);
+}
+.ctl-root:has(> .ctl-usb:not([hidden])) .ctl-toggles {
+  padding-block: 6px;
+}
+
+/* « Tout › », « Son › », « Écrans › » : de petits liens en pilule. */
+.ctl-more-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px 6px 2px 9px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--island-fg);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    background 200ms ease,
+    transform 300ms var(--pop-soft);
+}
+.ctl-more-link:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+.ctl-more-link:active {
+  transform: scale(0.94);
+}
+.ctl-more-link svg,
+.ctl-block-icon svg,
+.ctl-chip svg,
+.ctl-level-icon svg,
+.ctl-screen-off svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ctl-more-link svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Sous un pilier, le nom ouvre sa page (Son, Écrans). */
+.ctl-caption-btn {
+  cursor: pointer;
+  border-radius: 999px;
+  color: var(--island-fg);
+  transition: background 200ms ease;
+}
+.ctl-caption-btn::after {
+  content: " ›";
+  opacity: 0.7;
+}
+.ctl-caption-btn:hover,
+.ctl-caption-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+}
+.ctl-pillars {
+  flex: 0 1 auto;
+  padding-inline: 12px;
+}
+
+/* ---- Les quatre blocs ---- */
+.ctl-blocks {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px;
+}
+.ctl-blocks.three {
+  grid-template-rows: auto auto;
+}
+.ctl-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--island-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 200ms ease,
+    transform 320ms var(--pop-soft);
+}
+.ctl-block[hidden] {
+  display: none;
+}
+.ctl-block:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.ctl-block:active {
+  transform: scale(0.95);
+}
+.ctl-block:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.ctl-block-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-bottom: 1px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.ctl-block-icon svg {
+  width: 15px;
+  height: 15px;
+}
+.ctl-block-name {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.ctl-block-sub {
+  max-width: 100%;
+  font-size: 10.5px;
+  line-height: 1.25;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ctl-block-sub:empty {
+  display: none;
+}
+
+/* ---- Pastilles (le bas de l'accueil, la sortie audio, les onglets de l'aide-mémoire) ---- */
+.ctl-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ctl-now:not(:has(> :not([hidden]))) {
+  display: none;
+}
+.ctl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 5px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--island-fg);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition:
+    background 200ms ease,
+    border-color 200ms ease;
+}
+.ctl-chip[hidden] {
+  display: none;
+}
+.ctl-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ctl-chip svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.ctl-chip:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+.ctl-chip.on {
+  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.ctl-chip.ctl-low {
+  border-color: color-mix(in srgb, #ff5a4e 55%, transparent);
+  color: #ffb4a8;
+}
+
+/* ---- Une page dépliée : elle grandit depuis le bloc cliqué ---- */
+.ctl-page.ctl-unfold {
+  transform-origin: var(--ox, 50%) var(--oy, 50%);
+  animation: ctl-unfold 440ms var(--ios) both;
+}
+@keyframes ctl-unfold {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+    filter: blur(6px);
+  }
+  55% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+/* Le contenu arrive juste après, en cascade courte. */
+.ctl-unfold > :nth-child(n + 2) {
+  animation: ctl-rise 320ms var(--ease-out) 90ms both;
+}
+@keyframes ctl-rise {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+.ctl-block-page .ctl-page-list {
+  gap: 5px;
+}
+.ctl-section {
+  margin: 6px 0 0 2px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.ctl-section:first-child {
+  margin-top: 0;
+}
+.ctl-section-box[hidden] {
+  display: none;
+}
+.ctl-page-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.ctl-level.off {
+  opacity: 0.55;
+}
+.ctl-level-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+}
+.ctl-level-icon svg {
+  width: 15px;
+  height: 15px;
+}
+.ctl-new {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #ffd166;
+  color: #1a1400;
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 700;
+  vertical-align: 1px;
+}
+
+/* ---- Écrans ---- */
+.ctl-seg {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.ctl-seg-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--island-fg);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    background 200ms ease,
+    border-color 200ms ease;
+}
+.ctl-seg-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+.ctl-seg-btn.on {
+  border-color: color-mix(in srgb, var(--accent) 75%, transparent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.ctl-seg-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.ctl-mini {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 18px;
+}
+.ctl-mini-screen {
+  width: 20px;
+  height: 14px;
+  box-sizing: border-box;
+  border: 1.6px solid currentColor;
+  border-radius: 3px;
+}
+.ctl-mini-screen.fill {
+  background: currentColor;
+}
+.ctl-mini-screen.off {
+  opacity: 0.35;
+  border-style: dashed;
+}
+.ctl-mini-screen.join-l {
+  border-radius: 3px 0 0 3px;
+}
+.ctl-mini-screen.join-r {
+  margin-left: -3px;
+  border-radius: 0 3px 3px 0;
+}
+.ctl-monitors {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.ctl-monitor {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  max-width: 120px;
+  padding: 4px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--island-fg);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.ctl-monitor:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+.ctl-monitor-box {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  transition:
+    border-color 200ms ease,
+    background 200ms ease;
+}
+.ctl-monitor.on .ctl-monitor-box {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.ctl-monitor-name {
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ctl-screen-toggles {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+.ctl-screen-off {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  border-radius: 999px;
+}
+.ctl-screen-off svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* ---- Outils ---- */
+.ctl-tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 6px;
+}
+.ctl-tool {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: start;
+  gap: 6px 10px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.ctl-tool-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.ctl-tool-text b {
+  font-size: 12px;
+}
+.ctl-tool > :last-child {
+  grid-column: 2;
+  justify-self: start;
+}
+.ctl-tool .ctl-toggle {
+  flex-direction: row;
+  gap: 6px;
+}
+.ctl-tool .ctl-dot {
+  width: 30px;
+  height: 30px;
+}
+.ctl-tool .ctl-dot svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* ---- Alimentation ---- */
+.ctl-power-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 6px 0;
+}
+.ctl-power-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.ctl-power-grid .ctl-power {
+  width: 58px;
+  height: 58px;
+}
+.ctl-power-grid .ctl-power svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* ---- Aide-mémoire ---- */
+.ctl-cheat-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ctl-cheat-tabs {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.ctl-cheat-filter {
+  margin-left: auto;
+  width: 130px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--island-fg);
+  font: inherit;
+  font-size: 11.5px;
+  outline: none;
+}
+.ctl-cheat-filter:focus-visible {
+  border-color: var(--accent);
+}
+.ctl-cheat-grid {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 4px 12px;
+}
+.ctl-cheat-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ctl-cheat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 3px 6px 3px 10px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 12px;
+}
+.ctl-keys {
+  flex: none;
+  order: 2;
+  margin-left: auto;
+  display: inline-flex;
+  gap: 3px;
+}
+.ctl-keys kbd {
+  min-width: 22px;
+  height: 20px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.13);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.3);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ctl-cheat-what {
+  order: 1;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+/* ---- Nettoyage : Ondine passe le chiffon ---- */
+.ctl-clean {
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+}
+.ctl-clean-drop {
+  position: relative;
+  width: 64px;
+  height: 74px;
+  border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.55), transparent 40%), var(--accent);
+  animation: ctl-wobble 1.2s ease-in-out infinite;
+}
+.ctl-clean-drop .eye {
+  position: absolute;
+  top: 32px;
+  width: 7px;
+  height: 10px;
+  border-radius: 50%;
+  background: #0b0d12;
+}
+.ctl-clean-drop .eye.l {
+  left: 20px;
+}
+.ctl-clean-drop .eye.r {
+  left: 37px;
+}
+.ctl-clean-cloth {
+  position: absolute;
+  left: 46px;
+  top: 40px;
+  width: 34px;
+  height: 22px;
+  border-radius: 7px;
+  background: #ffd166;
+  animation: ctl-wipe 0.6s ease-in-out infinite alternate;
+}
+@keyframes ctl-wipe {
+  from {
+    transform: translate(-6px, -4px) rotate(-14deg);
+  }
+  to {
+    transform: translate(10px, 5px) rotate(12deg);
+  }
+}
+@keyframes ctl-wobble {
+  50% {
+    transform: scale(1.05, 0.95);
+  }
+}
+.ctl-clean-count {
+  font-size: 34px;
+  font-variant-numeric: tabular-nums;
+}
+.ctl-clean-bar {
+  width: 240px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.ctl-clean-bar i {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+  transition: width 1s linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ctl-page.ctl-unfold,
+  .ctl-unfold > :nth-child(n + 2) {
+    animation: ctl-page-fade 160ms ease both;
+  }
+  .ctl-clean-drop,
+  .ctl-clean-cloth {
+    animation: none;
+  }
+  .ctl-block,
+  .ctl-more-link {
+    transition: background 200ms ease;
+  }
+  .ctl-block:active,
+  .ctl-more-link:active {
+    transform: none;
+  }
+}
+body[data-perf="eco"] .ctl-page.ctl-unfold {
+  animation-duration: 220ms;
+}
+body[data-perf="eco"] .ctl-unfold {
+  filter: none;
+}

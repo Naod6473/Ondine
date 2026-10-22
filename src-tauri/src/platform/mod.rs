@@ -65,6 +65,12 @@ pub mod convert;
 pub mod diskuse;
 // Rester éveillé et arrêt programmé (module awake). Contient sa propre version Linux.
 pub mod power;
+// Contrôles → Écrans (1.2.5) : Windows+P, écran principal, éteindre l'écran. Contient sa propre version Linux.
+pub mod displays;
+// Contrôles → Outils → Mode nettoyage (1.2.5) : clavier et souris bloqués. Contient sa propre version Linux.
+pub mod clean_lock;
+// Contrôles → Aide-mémoire des raccourcis (1.2.5) : Ctrl gauche maintenu. Contient sa propre version Linux.
+pub mod cheat_key;
 
 #[cfg(windows)]
 mod drop_target;

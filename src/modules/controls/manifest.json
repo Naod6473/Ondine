@@ -1,9 +1,9 @@
 {
   "id": "controls",
   "name": "Contrôles",
-  "tip": "Glissez un pilier vers le haut ou le bas pour régler le son, le micro ou la luminosité.",
+  "tip": "Cliquez sur un bloc pour le déplier, ou glissez un pilier pour régler le son ou la luminosité.",
   "icon": "🎚️",
-  "description": "Le volume des haut-parleurs, du micro et de chaque appli, la luminosité des écrans, le Wi-Fi, le Bluetooth, le mode avion, le mode sombre et l'éclairage nocturne de Windows, sans ouvrir Windows. Les réseaux Wi-Fi à portée s'affichent, et un réseau déjà connu se rejoint d'un clic (Ondine ne demande ni ne garde jamais de mot de passe Wi-Fi). Verrouiller, mettre en veille, redémarrer ou éteindre le PC : un appui maintenu, pour éviter les erreurs. Les clés et disques USB s'éjectent d'un clic, la batterie des appareils Bluetooth s'affiche, les icônes du bureau se cachent d'un clic, et le téléphone peut servir de télécommande (si vous l'activez). Un point orange (micro) ou vert (caméra) sur l'île montre quand une appli s'en sert, et un raccourci coupe le micro de partout. Agit sur les périphériques que Windows utilise par défaut ; les écrans externes doivent accepter le réglage DDC/CI (souvent activé dans leur menu). Rien n'est écouté ni enregistré : on lit seulement ce que Windows note pour sa page Confidentialité.",
+  "description": "Le volume des haut-parleurs, du micro et de chaque appli, la luminosité des écrans, le Wi-Fi, le Bluetooth, le mode avion, le mode sombre et l'éclairage nocturne de Windows, sans ouvrir Windows. Les réseaux Wi-Fi à portée s'affichent, et un réseau déjà connu se rejoint d'un clic (Ondine ne demande ni ne garde jamais de mot de passe Wi-Fi). Verrouiller, mettre en veille, redémarrer ou éteindre le PC : un appui maintenu, pour éviter les erreurs. Le mode d'affichage de Windows+P (dupliquer, étendre, deuxième écran seul), l'écran principal et « éteindre seulement l'écran » sont dans le bloc Écrans. Le mode nettoyage bloque le clavier et la souris 30 secondes, le temps de les essuyer (Échap maintenue 2 s pour arrêter). L'aide-mémoire montre les raccourcis de l'appli ouverte quand vous maintenez Ctrl gauche. Les clés et disques USB s'éjectent d'un clic, la batterie des appareils Bluetooth s'affiche, les icônes du bureau se cachent d'un clic, et le téléphone peut servir de télécommande (si vous l'activez). Un point orange (micro) ou vert (caméra) sur l'île montre quand une appli s'en sert, et un raccourci coupe le micro de partout. Agit sur les périphériques que Windows utilise par défaut ; les écrans externes doivent accepter le réglage DDC/CI (souvent activé dans leur menu). Rien n'est écouté ni enregistré : on lit seulement ce que Windows note pour sa page Confidentialité.",
   "version": "0.1.0",
   "permissions": [
     "network"
@@ -44,7 +44,14 @@
     "wifi_connect",
     "wifi_disconnect",
     "open_wifi_settings",
-    "power_now"
+    "power_now",
+    "display_layout",
+    "set_display_mode",
+    "displays",
+    "set_primary",
+    "screen_off",
+    "clean_start",
+    "cheat_app"
   ],
   "events": {
     "emits": [
@@ -56,7 +63,9 @@
       "controls.bt-battery-low",
       "controls.remote",
       "timer.start",
-      "controls.volume"
+      "controls.volume",
+      "controls.clean",
+      "controls.cheat"
     ],
     "listens": [
       "controls.mic-muted",
@@ -66,7 +75,9 @@
       "controls.usb-ejected",
       "controls.bt-battery-low",
       "controls.remote",
-      "island.wheel"
+      "island.wheel",
+      "controls.clean",
+      "controls.cheat"
     ]
   },
   "settings": {
@@ -147,6 +158,33 @@
         "label": "Boutons d'alimentation dans l'onglet",
         "help": "Verrouiller, veille, redémarrer, éteindre : maintenez le bouton appuyé une seconde (un cercle se remplit) ; lâcher avant annule. Les applis ne sont jamais fermées de force : une appli qui a un document à enregistrer peut arrêter l'arrêt.",
         "default": true
+      },
+      {
+        "key": "cheatHold",
+        "type": "select",
+        "label": "Aide-mémoire des raccourcis",
+        "help": "Maintenez Ctrl gauche seul 1,5 seconde : l'île montre les raccourcis de l'appli ouverte (Explorateur, Excel, Word, navigateur…), ceux de Windows et ceux d'Ondine. Relâchez Ctrl pour la refermer. Un clic, la molette ou une autre touche pendant l'appui annule (Ctrl+C, Ctrl+clic restent normaux).",
+        "default": "leftCtrl",
+        "options": [
+          {
+            "value": "leftCtrl",
+            "label": "Ctrl gauche maintenu"
+          },
+          {
+            "value": "",
+            "label": "Désactivé (bouton dans Outils seulement)"
+          }
+        ]
+      },
+      {
+        "key": "cleanSeconds",
+        "type": "number",
+        "label": "Durée du mode nettoyage (secondes)",
+        "help": "Le clavier et la souris sont bloqués ce temps-là. Échap maintenue 2 secondes arrête plus tôt, et Ctrl+Alt+Suppr marche toujours.",
+        "default": 30,
+        "min": 10,
+        "max": 120,
+        "step": 5
       }
     ]
   }

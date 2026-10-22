@@ -470,6 +470,8 @@ const DEMO_AI = [
 
 /** « Bureau propre » du mode démo : les icônes du bureau sont-elles cachées ? */
 let demoDeskHidden = false;
+let demoDisplayMode = "extend";
+let demoPrimary = 1;
 const RULE_EMPTY = { extensions: [], nameContains: "", minKb: null, maxKb: null };
 
 /** La clé USB inventée de l'onglet Contrôles. */
@@ -799,6 +801,32 @@ export async function demoInvoke(bus: Bus, module: string, command: string, raw:
       state.usbKey = false;
       window.setTimeout(() => bus.inject("controls.usb-ejected", { ...DEMO_USB, ok: true }, "controls"), 800);
       return null;
+    // Écrans, mode nettoyage, aide-mémoire (1.2.5).
+    case "controls.display_layout":
+      return { mode: demoDisplayMode, connected: 2 };
+    case "controls.set_display_mode":
+      demoDisplayMode = String(args.mode);
+      return null;
+    case "controls.displays":
+      return [
+        { id: "\\\\.\\DISPLAY1", name: "Écran intégré", primary: demoPrimary === 1, internal: true, x: 0, y: 0, width: 1920, height: 1200 },
+        { id: "\\\\.\\DISPLAY2", name: "Dell U2723QE", primary: demoPrimary === 2, internal: false, x: 1920, y: 0, width: 3840, height: 2160 },
+      ];
+    case "controls.set_primary":
+      demoPrimary = String(args.id).endsWith("2") ? 2 : 1;
+      return null;
+    case "controls.screen_off":
+      return null; // en démo, l'écran reste allumé
+    case "controls.clean_start": {
+      // Comme le Rust : le temps qui reste chaque seconde, puis la fin (rien n'est bloqué).
+      const seconds = Math.max(1, Math.min(120, Number(args.seconds) || 30));
+      for (let left = seconds - 1; left >= 0; left--) {
+        window.setTimeout(() => bus.inject("controls.clean", left ? { left } : { done: true, early: false }, "controls"), (seconds - left) * 1000);
+      }
+      return { seconds };
+    }
+    case "controls.cheat_app":
+      return { app: "excel" };
 
     // Agenda, notes, presse-papiers, étagère
     case "agenda.upcoming":

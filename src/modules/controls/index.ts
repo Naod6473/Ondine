@@ -1,9 +1,12 @@
-// Module « Contrôles » : Wi-Fi, Bluetooth, mode avion, micro coupé, et des
-// piliers verticaux pour le son, le micro et la luminosité des écrans.
+// Module « Contrôles » : Wi-Fi, Bluetooth, mode avion, micro coupé, des
+// piliers verticaux pour le son et la luminosité, et des blocs qui se
+// déplient (1.2.5, blocks.ts) pour tout le reste.
 //
 // Façon centre de contrôle de l'iPhone, en verre liquide : à gauche une carte
-// de pastilles rondes (interrupteurs), à droite des « piliers » qu'on remplit
-// en glissant de bas en haut. Tout tient dans la vue de l'île, sans défiler.
+// de pastilles rondes (interrupteurs), au milieu des « piliers » qu'on remplit
+// en glissant de bas en haut, à droite les blocs Écrans, Appareils, Outils et
+// Alimentation. Un clic sur un bloc (ou sur « Son », « Écran », « Tout ») le
+// déplie en page ; « Retour » ramène l'accueil.
 //
 // Le Rust (src-tauri/src/modules/controls.rs) lit et change les réglages de
 // Windows. Tant que l'onglet est ouvert, on relit le son chaque seconde (le
@@ -14,7 +17,8 @@
 // Les clés USB (bande du bas, notifications « branchée » et « éjectée ») sont
 // dans usb.ts ; la batterie des appareils Bluetooth et « Bureau propre »
 // (cacher les icônes du bureau), dans bt.ts. Le volume de chaque appli, les
-// réseaux Wi-Fi à portée et les boutons d'alimentation (1.2.5), dans extras.ts.
+// réseaux Wi-Fi à portée et les boutons d'alimentation (1.2.5), dans extras.ts ;
+// les pages des blocs dans blocks.ts, screens.ts, clean.ts et cheat.ts.
 
 import manifest from "./manifest.json";
 import { errorText } from "../../core/log";
@@ -22,10 +26,14 @@ import type { IslandModule, ModuleApi, ModuleManifest } from "../../core/module-
 import { el } from "../../island/dom";
 import { pacedInterval } from "../../core/perf";
 import { usbStrip, wireUsbNotifications } from "./usb";
-import { btStrip, wireBtNotifications } from "./bt";
+import { btStrip, wireBtNotifications, type BtBattery } from "./bt";
 import { onRemoteChange, remotePanel, remoteSession, wireRemote } from "./remote";
 import { wireWheelVolume } from "./wheel";
-import { appsPage, moreStrip, wifiPage, type ExtraPage } from "./extras";
+import { wifiPage } from "./extras";
+import { blocksCard, devicesPage, hub, moreButton, powerPage, sonPage, toolsPage, unfoldFrom, type BlockPage, type Page, type SoundState } from "./blocks";
+import { screensPage } from "./screens";
+import { cleanPage } from "./clean";
+import { cheatPage } from "./cheat";
 import type { UsbDrive } from "./usb-text";
 
 type DeviceId = "speakers" | "microphone";
@@ -47,12 +55,6 @@ interface Radio {
   on: boolean;
   /** Bloquée (interrupteur matériel, carte désactivée) : on ne peut pas l'allumer d'ici. */
   disabled: boolean;
-}
-
-interface Output {
-  id: string;
-  name: string;
-  default: boolean;
 }
 
 interface Screen {
@@ -276,74 +278,6 @@ function devicePillar(api: ModuleApi, device: DeviceId, onState: (level: Level |
   };
 }
 
-/**
- * Choisir la sortie audio (casque, haut-parleurs, écran…) : le nom « Son »
- * sous le pilier devient un bouton qui ouvre une petite liste en verre.
- * Changer la sortie passe par une API interne de Windows (voir audio.rs).
- */
-function outputMenu(api: ModuleApi, caption: HTMLElement, host: HTMLElement) {
-  caption.classList.add("ctl-output-btn");
-  caption.setAttribute("role", "button");
-  caption.tabIndex = 0;
-  caption.title = "Choisir la sortie audio";
-  let menu: HTMLElement | null = null;
-  const close = () => {
-    menu?.remove();
-    menu = null;
-    document.removeEventListener("pointerdown", outside, true);
-  };
-  const outside = (e: Event) => {
-    if (menu && !menu.contains(e.target as Node) && e.target !== caption) close();
-  };
-  const open = async () => {
-    if (menu) return close();
-    let list: Output[] = [];
-    try {
-      list = await api.invoke<Output[]>("outputs");
-    } catch (err) {
-      api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "controls-error" });
-      return;
-    }
-    menu = el("div", { class: "ctl-menu", role: "menu" });
-    if (!list.length) menu.append(el("div", { class: "ctl-menu-empty muted" }, "Aucune sortie audio"));
-    for (const o of list) {
-      menu.append(
-        el(
-          "button",
-          {
-            class: `ctl-menu-item ${o.default ? "on" : ""}`,
-            role: "menuitemradio",
-            "aria-checked": String(o.default),
-            title: o.name,
-            onclick: api.handler(async () => {
-              close();
-              if (o.default) return;
-              try {
-                await api.invoke("set_output", { id: o.id });
-                api.notify({ title: `Le son sort sur ${o.name}`, icon: "🎧", priority: "low", key: "controls-output" });
-              } catch (err) {
-                api.notify({ title: errorText(err), icon: "⚠️", priority: "normal", key: "controls-error" });
-              }
-            }),
-          },
-          el("span", { class: "ctl-menu-check" }, o.default ? "✓" : ""),
-          el("span", { class: "ctl-menu-name" }, o.name),
-        ),
-      );
-    }
-    // La liste s'ouvre au-dessus du bouton, à sa gauche (dans la vue, sans déborder).
-    const h = host.getBoundingClientRect();
-    const c = caption.getBoundingClientRect();
-    menu.style.left = `${Math.max(0, c.left - h.left - 8)}px`;
-    menu.style.bottom = `${h.bottom - c.top + 4}px`;
-    host.append(menu);
-    document.addEventListener("pointerdown", outside, true);
-  };
-  caption.addEventListener("click", api.handler(open));
-  caption.addEventListener("keydown", (e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), void open()));
-  return close;
-}
-
 /** Le pilier de luminosité d'un écran. */
 function screenPillar(api: ModuleApi, screen: Screen) {
   const fail = (err: unknown) => api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "controls-error" });
@@ -355,14 +289,12 @@ function screenPillar(api: ModuleApi, screen: Screen) {
     onMove: (v) => p.show(v),
     send: (v) => api.invoke("set_brightness", { id: screen.id, brightness: v }).catch(fail),
   });
-  const col = column(p.pill, "Écran");
-  col.caption.title = screen.name;
+  // Sur l'accueil, un seul pilier (le premier écran) ; tous les écrans sont
+  // dans la page Écrans, que ce nom ouvre.
+  const col = column(p.pill, "Écrans");
   return {
     node: col.node,
-    /** Plusieurs écrans : on les nomme (« Écran intégré », « DELL U2720Q »). */
-    named(on: boolean) {
-      col.caption.textContent = on ? screen.name : "Écran";
-    },
+    caption: col.caption,
     update(s: Screen) {
       if (!p.dragging()) p.show(s.brightness);
     },
@@ -374,10 +306,20 @@ type TileId = keyof typeof TILE_NAMES;
 /** Les pastilles toujours là (les radios, elles, dépendent du PC). */
 const FIXED_TILES: TileId[] = ["mic", "pin", "dark", "night"];
 
-/** La carte de pastilles rondes : radios, mode avion, micro coupé, premier plan, mode sombre, éclairage nocturne. */
-function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>, onWifiMenu: () => void) {
+/**
+ * La carte de pastilles rondes : radios, mode avion, micro coupé. Les
+ * pastilles « Épingler », « Sombre » et « Veilleuse » sont tenues à jour ici
+ * aussi, mais rangées dans les pages Outils et Écrans (`moved`).
+ */
+function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>, onWifiMenu: () => void, openAll: (from: HTMLElement) => void) {
   const fail = (err: unknown) => api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "controls-error" });
-  const card = el("div", { class: "ctl-card ctl-toggles" });
+  const grid = el("div", { class: "ctl-tiles" });
+  const card = el(
+    "div",
+    { class: "ctl-card ctl-toggles" },
+    el("div", { class: "ctl-card-head" }, el("span", { class: "ctl-card-title" }, "Connexions"), moreButton("Tout", "Les réseaux Wi-Fi à portée", openAll)),
+    grid,
+  );
   const tiles = new Map<TileId, HTMLButtonElement>();
   let busy = false;
 
@@ -426,8 +368,13 @@ function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>, onWifiMenu
   });
   let shown: string | null = null;
 
+  // Avant la première lecture des radios : au moins le micro.
+  grid.append(mic);
+
   return {
     node: card,
+    /** Rangées ailleurs : « Épingler » (Outils), « Sombre » et « Veilleuse » (Écrans). */
+    moved: { pin, dark, night },
     /** Les radios présentes (la carte se refait si la liste change). */
     radios(list: Radio[]) {
       if (busy) return;
@@ -435,7 +382,7 @@ function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>, onWifiMenu
       if (key !== shown) {
         shown = key;
         for (const id of [...tiles.keys()]) if (!FIXED_TILES.includes(id)) tiles.delete(id);
-        card.replaceChildren(
+        grid.replaceChildren(
           ...list.map((r) => {
             const t = tile(r.kind, r.kind, (on) => api.invoke("set_radio", { kind: r.kind, on }));
             // Clic droit sur le Wi-Fi : les réseaux à portée (page « Réseaux »).
@@ -444,9 +391,6 @@ function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>, onWifiMenu
           }),
           ...(list.length ? [tile("airplane", "airplane", (on) => api.invoke("set_airplane", { on }))] : []),
           mic,
-          pin,
-          dark,
-          night,
         );
       }
       for (const r of list) {
@@ -505,6 +449,17 @@ function toggleCard(api: ModuleApi, onMicToggle: () => Promise<void>, onWifiMenu
   };
 }
 
+/**
+ * L'aide-mémoire demandé par Ctrl gauche maintenu ("controls.cheat") :
+ * l'onglet ouvert le montre tout de suite (`live`) ; sinon l'île s'ouvre sur
+ * Contrôles et l'onglet le trouve en arrivant (`pending`).
+ */
+const cheat: {
+  pending: { app: string | null } | null;
+  live: ((app: string | null) => void) | null;
+  release: (() => void) | null;
+} = { pending: null, live: null, release: null };
+
 export const controls: IslandModule = {
   manifest: manifest as ModuleManifest,
 
@@ -529,7 +484,24 @@ export const controls: IslandModule = {
     const offRemote = wireRemote(api);
     // La molette sur l'île règle le volume (wheel.ts, 1.2.3).
     const offWheel = wireWheelVolume(api);
+    // Ctrl gauche maintenu : l'aide-mémoire (platform/cheat_key.rs).
+    const offCheat = api.on("controls.cheat", (msg) => {
+      const p = (msg.payload ?? {}) as { show?: boolean; app?: string | null };
+      if (p.show) {
+        if (cheat.live) cheat.live(p.app ?? null);
+        else {
+          cheat.pending = { app: p.app ?? null };
+          api.openIsland("controls");
+        }
+      } else if (cheat.release) cheat.release();
+      else if (cheat.pending) {
+        // Relâché avant que l'onglet n'arrive : on n'ouvre rien.
+        cheat.pending = null;
+        api.closeIsland();
+      }
+    });
     return () => {
+      offCheat();
       offWheel();
       offRemote();
       offMuted();
@@ -541,56 +513,140 @@ export const controls: IslandModule = {
 
   views: {
     expanded(root, api: ModuleApi) {
-      // Le micro apparaît deux fois (pastille + pilier) : le pilier tient la pastille à jour.
+      let alive = true;
+      // Ce que les pages lisent pendant que l'accueil relit Windows.
+      const sound = hub<SoundState | null>(null);
+      const drives = hub<UsbDrive[]>([]);
+      let btCount = 0;
+
+      // Le micro : sa pastille sur l'accueil, son curseur dans la page Son.
+      // Le pilier n'est plus affiché ; il garde l'état et sait couper le micro.
       const speakers = devicePillar(api, "speakers", () => {});
       const microphone = devicePillar(api, "microphone", (level) => toggles.mic(level));
-      const toggles = toggleCard(api, () => microphone.toggleMute(), () => openPage("wifi"));
+      const toggles = toggleCard(
+        api,
+        () => microphone.toggleMute(),
+        () => openPage("net", null),
+        (from) => openPage("net", from),
+      );
+      // Le premier écran sur l'accueil ; tous les écrans dans la page Écrans.
       const screensBox = el("div", { class: "ctl-screens" });
-      const ctl = el("div", { class: "ctl" }, toggles.node, el("div", { class: "ctl-card ctl-pillars" }, speakers.node, microphone.node, screensBox));
-      // En bas, les clés USB branchées (la bande se cache quand il n'y en a pas).
+      speakers.caption.classList.add("ctl-caption-btn");
+      speakers.caption.setAttribute("role", "button");
+      speakers.caption.tabIndex = 0;
+      speakers.caption.title = "Sortie audio, micro, volume de chaque appli";
+      const openFromCaption = (caption: HTMLElement, page: BlockPage) => {
+        caption.addEventListener("click", api.handler(() => openPage(page, caption)));
+        caption.addEventListener("keydown", (e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), openPage(page, caption)));
+      };
+      openFromCaption(speakers.caption, "son");
+      const blocks = blocksCard(api, (page, from) => openPage(page, from));
+      const ctl = el("div", { class: "ctl" }, toggles.node, el("div", { class: "ctl-card ctl-pillars" }, speakers.node, screensBox), blocks.node);
+
+      // En bas, seulement ce qui compte maintenant : les clés USB branchées,
+      // un appareil Bluetooth presque vide.
       const usb = usbStrip(api);
-      // Puis la batterie des appareils Bluetooth et « Bureau propre ».
-      const bt = btStrip(api);
-      // Tout en bas : « Applis », « Réseaux » et les boutons d'alimentation (extras.ts).
-      const more = moreStrip(api, (page) => openPage(page));
-      // L'île grandit quand les bandes du bas (clés USB, Bluetooth, « Plus ») ne
-      // tiennent plus dans sa hauteur habituelle (src/island/fit.ts).
-      const ctlRoot = el("div", { class: "ctl-root", "data-island-fit": true }, ctl, usb.node, bt.node, more.node);
+      const lowChip = el("button", { class: "ctl-chip ctl-low", type: "button", hidden: true }) as HTMLButtonElement;
+      lowChip.addEventListener("click", () => openPage("app", lowChip));
+      const bt = btStrip(api, (low: BtBattery[], all: BtBattery[]) => {
+        lowChip.hidden = low.length === 0;
+        lowChip.textContent = low.length ? `Batterie faible : ${low[0].name} (${low[0].percent} %)` : "";
+        btCount = all.length;
+        syncBlocks();
+      });
+      const chips = el("div", { class: "ctl-chips ctl-now" }, lowChip);
+      const home = el("div", { class: "ctl-root", "data-island-fit": true }, ctl, usb.node, chips);
+
       // La télécommande tourne : son panneau (QR code) remplace l'onglet.
       const remoteHost = el("div", { class: "ctl-remote-host" });
-      // « Applis » ou « Réseaux » : la page remplace l'onglet, « Retour » le ramène.
+      // Un bloc déplié : sa page remplace l'accueil, « Retour » le ramène.
       const pageHost = el("div", { class: "ctl-page-host" });
-      let page: { node: HTMLElement; stop: () => void } | null = null;
+      let page: (Page & { kind: string }) | null = null;
+      let modeName = "";
+
       const closePage = () => {
         page?.stop();
         page = null;
         pageHost.replaceChildren();
-        showRemote();
+        show();
       };
-      function openPage(kind: ExtraPage) {
+      const mount = (kind: string, p: Page, from: HTMLElement | null) => {
         page?.stop();
-        page = kind === "apps" ? appsPage(api, closePage) : wifiPage(api, closePage);
-        pageHost.replaceChildren(page.node);
-        showRemote();
+        page = { ...p, kind };
+        unfoldFrom(p.node, from, root);
+        pageHost.replaceChildren(p.node);
+        show();
+      };
+      function openPage(kind: BlockPage, from: HTMLElement | null) {
+        const p =
+          kind === "net"
+            ? wifiPage(api, closePage)
+            : kind === "son"
+              ? sonPage(api, closePage, sound)
+              : kind === "ecr"
+                ? screensPage(api, closePage, { dark: toggles.moved.dark, night: toggles.moved.night, onMode: (name) => blocks.sync({ mode: (modeName = name) }) })
+                : kind === "app"
+                  ? devicesPage(api, closePage, drives, bt.node)
+                  : kind === "out"
+                    ? toolsPage(api, closePage, { pin: toggles.moved.pin, desk: bt.desk, startClean, openCheat: (b) => openCheat(cheatTarget(), false, b) })
+                    : powerPage(api, closePage);
+        mount(kind, p, from);
       }
-      const showRemote = () => {
+      /** Le programme de la fenêtre où vous travailliez (« excel »). */
+      const cheatTarget = async () => {
+        try {
+          return (await api.invoke<{ app: string | null }>("cheat_app")).app;
+        } catch {
+          return null;
+        }
+      };
+      let heldCheat: ReturnType<typeof cheatPage> | null = null;
+      async function openCheat(app: Promise<string | null> | string | null, held: boolean, from: HTMLElement | null) {
+        const program = await app;
+        if (!alive) return;
+        const p = cheatPage(api, closePage, program, { held, onKeep: () => (heldCheat = null) });
+        heldCheat = held ? p : null;
+        mount("cheat", p, from);
+      }
+      function startClean() {
+        const seconds = Math.max(10, Math.min(120, Number(api.settings().cleanSeconds ?? 30) || 30));
+        mount("clean", cleanPage(api, seconds, closePage), null);
+      }
+
+      cheat.live = (app) => void openCheat(app, true, null);
+      cheat.release = () => {
+        if (!heldCheat || heldCheat.kept() || page?.kind !== "cheat") return;
+        heldCheat = null;
+        if (openedByHold) api.closeIsland();
+        else closePage();
+      };
+      // L'île vient de s'ouvrir pour l'aide-mémoire (Ctrl gauche maintenu).
+      const openedByHold = cheat.pending !== null;
+      if (cheat.pending) {
+        const app = cheat.pending.app;
+        cheat.pending = null;
+        void openCheat(app, true, null);
+      }
+
+      const show = () => {
         const s = remoteSession();
-        ctlRoot.hidden = !!s || !!page;
+        // Le nettoyage passe avant tout : rien d'autre ne doit s'afficher.
+        const busy = page?.kind === "clean";
+        home.hidden = (!!s && !busy) || !!page;
         remoteHost.replaceChildren(...(s && !page ? [remotePanel(api, s)] : []));
       };
-      root.append(ctlRoot, remoteHost, pageHost);
-      showRemote();
-      const offRemote = onRemoteChange(showRemote);
-      const closeMenu = outputMenu(api, speakers.caption, ctl);
+      root.append(home, remoteHost, pageHost);
+      show();
+      const offRemote = onRemoteChange(show);
       toggles.radios([]);
 
-      let alive = true;
       const refreshSound = async () => {
         try {
           const s = await api.invoke<State>("state");
           if (!alive) return;
           speakers.update(s.speakers);
           microphone.update(s.microphone);
+          sound.set(s);
         } catch {
           // hors de l'appli (navigateur) : on garde l'affichage
         }
@@ -617,14 +673,34 @@ export const controls: IslandModule = {
       const refreshUsb = async () => {
         try {
           const list = await api.invoke<UsbDrive[]>("usb_drives");
-          if (alive) usb.update(list);
+          if (!alive) return;
+          usb.update(list);
+          drives.set(list);
+          syncBlocks();
         } catch {
           // hors de l'appli : pas de clé USB
         }
       };
 
+      /** Le sous-titre des blocs : le mode d'affichage, les appareils branchés. */
+      function syncBlocks() {
+        const n = drives.get().length;
+        const parts = [n ? `${n} USB` : "", btCount ? `${btCount} Bluetooth` : ""].filter(Boolean);
+        blocks.sync({ mode: modeName, devices: parts.length ? parts.join(" · ") : "Aucun branché" });
+      }
+      const refreshLayout = async () => {
+        try {
+          const l = await api.invoke<{ mode: "internal" | "clone" | "extend" | "external" | null; connected: number }>("display_layout");
+          const names = { internal: "PC seul", clone: "Dupliquer", extend: "Étendre", external: "2e écran seul" };
+          modeName = l.mode ? names[l.mode] : l.connected < 2 ? "1 écran" : "";
+        } catch {
+          modeName = "";
+        }
+        if (alive) syncBlocks();
+      };
+
       const refreshRadios = async () => {
-        more.sync();
+        syncBlocks();
         void refreshWindow();
         void refreshTheme();
         void refreshUsb();
@@ -637,27 +713,28 @@ export const controls: IslandModule = {
         }
       };
 
-      const pillars = new Map<string, ReturnType<typeof screenPillar>>();
-      let screensKey = "";
+      let pillarFor = "";
+      let mainPillar: ReturnType<typeof screenPillar> | null = null;
       const refreshScreens = async () => {
         try {
           const list = await api.invoke<Screen[]>("screens");
           if (!alive) return;
-          // La liste des écrans a changé (branché, débranché) : on refait les piliers.
-          const key = list.map((s) => s.id).join(",");
-          if (key !== screensKey) {
-            screensKey = key;
-            pillars.clear();
-            screensBox.replaceChildren(
-              ...list.map((s) => {
-                const p = screenPillar(api, s);
-                p.named(list.length > 1);
-                pillars.set(s.id, p);
-                return p.node;
-              }),
-            );
+          // Le premier écran a changé (branché, débranché) : on refait le pilier.
+          const first = list[0];
+          if ((first?.id ?? "") !== pillarFor) {
+            pillarFor = first?.id ?? "";
+            mainPillar = first ? screenPillar(api, first) : null;
+            screensBox.replaceChildren(...(mainPillar ? [mainPillar.node] : []));
+            if (mainPillar) {
+              const caption = mainPillar.caption;
+              caption.classList.add("ctl-caption-btn");
+              caption.setAttribute("role", "button");
+              caption.tabIndex = 0;
+              caption.title = "Windows+P, écran principal, chaque écran, mode sombre, veilleuse";
+              openFromCaption(caption, "ecr");
+            }
           }
-          for (const s of list) pillars.get(s.id)?.update(s);
+          if (first) mainPillar?.update(first);
         } catch {
           // hors de l'appli : pas d'écran
         }
@@ -666,15 +743,18 @@ export const controls: IslandModule = {
       void refreshRadios();
       void refreshSound();
       void refreshScreens();
+      void refreshLayout();
       const timers = [
         pacedInterval(() => void refreshSound(), "controlsSound", true),
         pacedInterval(() => void refreshRadios(), "controlsRadios", true),
         pacedInterval(() => void refreshScreens(), "controlsScreens", true),
+        pacedInterval(() => void refreshLayout(), "controlsScreens", true),
       ];
       return () => {
         alive = false;
+        cheat.live = null;
+        cheat.release = null;
         page?.stop();
-        closeMenu();
         usb.stop();
         bt.stop();
         offRemote();

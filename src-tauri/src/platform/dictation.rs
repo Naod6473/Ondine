@@ -361,6 +361,11 @@ mod win {
         }
     }
 
+    /// Le programme d'une fenêtre donnée par son numéro (« excel »), sauf Ondine.
+    pub fn program_of_window(hwnd: isize) -> Option<String> {
+        program_of(HWND(hwnd as *mut _))
+    }
+
     /// L'appli au premier plan (« outlook »), sauf Ondine.
     pub fn foreground_app() -> Option<String> {
         let hwnd = unsafe { GetForegroundWindow() };
@@ -490,6 +495,10 @@ mod stub {
     }
 
     pub fn wait_key_released(_key: DictKey) {}
+
+    pub fn program_of_window(_hwnd: isize) -> Option<String> {
+        None
+    }
 
     pub fn foreground_app() -> Option<String> {
         None

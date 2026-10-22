@@ -1,17 +1,16 @@
 // Contrôles : trois idées d'Orbix (1.2.5), réécrites pour Ondine.
 //
-//   - la bande « Plus » en bas de l'onglet : « Applis », « Réseaux » et les
-//     quatre boutons d'alimentation (verrouiller, veille, redémarrer,
+//   - les quatre boutons d'alimentation (verrouiller, veille, redémarrer,
 //     éteindre) qu'il faut MAINTENIR appuyés une seconde (un anneau se
-//     remplit ; lâcher avant annule) ;
-//   - la page « Applis » : le volume de chaque appli qui a du son, avec son
-//     niveau qui bouge et un bouton pour la couper (platform/app_volume.rs) ;
+//     remplit ; lâcher avant annule), dans le bloc « Alimentation » ;
+//   - le volume de chaque appli qui a du son, avec son niveau qui bouge et
+//     un bouton pour la couper (platform/app_volume.rs), dans la page « Son » ;
 //   - la page « Réseaux » : les Wi-Fi à portée ; un réseau déjà connu de
 //     Windows se rejoint d'un clic, un nouveau réseau ouvre la liste de
 //     Windows (Ondine ne demande ni ne garde jamais de mot de passe Wi-Fi).
 //
-// Une page prend la place de l'onglet (comme la télécommande) ; « Retour »
-// ramène les piliers. La logique sans DOM est dans extras-logic.ts.
+// Les pages des blocs (blocks.ts) prennent la place de l'onglet ; « Retour »
+// ramène les blocs. La logique sans DOM est dans extras-logic.ts.
 
 import "../../styles/controls-extras.css";
 import { errorText } from "../../core/log";
@@ -21,7 +20,6 @@ import { el } from "../../island/dom";
 import {
   HOLD_MS,
   meterLevel,
-  POWER_ACTIONS,
   POWER_DONE,
   POWER_NAMES,
   sameApps,
@@ -32,8 +30,6 @@ import {
   type WifiAnswer,
   type WifiNetwork,
 } from "./extras-logic";
-
-export type ExtraPage = "apps" | "wifi";
 
 /** Pendant qu'on fait glisser un curseur d'appli, au plus un envoi tous les… */
 const SEND_MS = 60;
@@ -52,7 +48,7 @@ const PATHS = {
   shutdown: "M12 3v9M6.3 6.3a8 8 0 1 0 11.4 0",
 } as const;
 
-function icon(kind: keyof typeof PATHS): SVGSVGElement {
+export function icon(kind: keyof typeof PATHS): SVGSVGElement {
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", "0 0 24 24");
@@ -84,17 +80,17 @@ function bars(n: number): SVGSVGElement {
   return svg;
 }
 
-function fail(api: ModuleApi, err: unknown) {
+export function fail(api: ModuleApi, err: unknown) {
   api.notify({ title: errorText(err), icon: "⚠️", priority: "low", key: "controls-error" });
 }
 
-// ── La bande « Plus » ────────────────────────────────────────────────────────
+// ── Les boutons d'alimentation ───────────────────────────────────────────────
 
 /** L'icône des notifications (au trait dans le style épuré : src/island/icon.ts). */
 const POWER_ICON: Record<PowerAction, string> = { lock: "🔒", sleep: "🌙", restart: "🔄", shutdown: "🔌" };
 
 /** Un bouton d'alimentation : il faut le maintenir appuyé HOLD_MS. */
-function powerButton(api: ModuleApi, action: PowerAction): HTMLButtonElement {
+export function powerButton(api: ModuleApi, action: PowerAction): HTMLButtonElement {
   const name = POWER_NAMES[action];
   const button = el(
     "button",
@@ -156,27 +152,8 @@ function powerButton(api: ModuleApi, action: PowerAction): HTMLButtonElement {
   return button;
 }
 
-/** La bande du bas : « Applis », « Réseaux », et les boutons d'alimentation (réglage powerButtons). */
-export function moreStrip(api: ModuleApi, open: (page: ExtraPage) => void) {
-  const pageButton = (page: ExtraPage, kind: keyof typeof PATHS, label: string, title: string) =>
-    el("button", { class: "btn small ctl-more-btn", type: "button", title, onclick: api.handler(() => open(page)) }, icon(kind), el("span", {}, label));
-  const power = el("div", { class: "ctl-power-row", role: "group", "aria-label": "Alimentation" }, ...POWER_ACTIONS.map((a) => powerButton(api, a)));
-  const node = el(
-    "div",
-    { class: "ctl-card ctl-more", role: "group", "aria-label": "Plus de contrôles" },
-    pageButton("apps", "mixer", "Applis", "Le volume de chaque appli"),
-    pageButton("wifi", "wifi", "Réseaux", "Les réseaux Wi-Fi à portée"),
-    power,
-  );
-  const sync = () => {
-    power.hidden = api.settings().powerButtons === false;
-  };
-  sync();
-  return { node, sync };
-}
-
 /** L'en-tête d'une page : « Retour » et le titre. */
-function pageHead(title: string, back: () => void, ...extra: HTMLElement[]) {
+export function pageHead(title: string, back: () => void, ...extra: HTMLElement[]) {
   return el(
     "div",
     { class: "ctl-page-head" },
@@ -186,7 +163,7 @@ function pageHead(title: string, back: () => void, ...extra: HTMLElement[]) {
   );
 }
 
-// ── La page « Applis » ───────────────────────────────────────────────────────
+// ── Le volume des applis (page « Son ») ─────────────────────────────────────
 
 /** Une ligne du mélangeur ; mise à jour sur place à chaque lecture. */
 function appRow(api: ModuleApi, app: AppVolume) {
@@ -270,15 +247,10 @@ function appRow(api: ModuleApi, app: AppVolume) {
   };
 }
 
-export function appsPage(api: ModuleApi, back: () => void) {
-  const list = el("div", { class: "ctl-page-list ctl-apps" });
-  const node = el(
-    "div",
-    { class: "ctl-page", "data-island-fit": true },
-    pageHead("Volume des applis", back),
-    list,
-    el("p", { class: "muted ctl-page-note" }, "Relatif au volume général, comme le mélangeur de Windows."),
-  );
+/** La liste du mélangeur (relue tant qu'elle est affichée). */
+export function appsList(api: ModuleApi) {
+  const list = el("div", { class: "ctl-apps" });
+  const node = list;
   let shown: AppVolume[] = [];
   let rows = new Map<string, ReturnType<typeof appRow>>();
   let busy = false;

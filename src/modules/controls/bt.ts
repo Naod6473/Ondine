@@ -1,7 +1,9 @@
-// Contrôles : la bande du bas « Bluetooth et bureau » :
+// Contrôles : la carte « Batteries Bluetooth » du bloc Appareils, et le
+// bouton « Bureau propre » du bloc Outils :
 //   - la batterie des appareils Bluetooth (écouteurs, souris, clavier…) telle
 //     que Windows la connaît, relue toutes les 30 s tant que l'onglet est
-//     ouvert ; en rouge sous le seuil du réglage btBatteryLow ;
+//     ouvert ; en rouge sous le seuil du réglage btBatteryLow (et une pastille
+//     sur la page des blocs, `onLow`) ;
 //   - « Bureau propre » : cacher / montrer les icônes du bureau d'un clic ;
 //   - « Télécommande » (si le réglage phoneRemote est activé, voir remote.ts).
 // Et la notification quand un appareil passe sous le seuil
@@ -33,7 +35,7 @@ export function wireBtNotifications(api: ModuleApi): () => void {
   });
 }
 
-export function btStrip(api: ModuleApi) {
+export function btStrip(api: ModuleApi, onLow: (low: BtBattery[], all: BtBattery[]) => void = () => {}) {
   const list = el("div", { class: "ctl-usb-list" });
   const desk = el("button", { class: "btn small", type: "button" }, "Cacher les icônes du bureau") as HTMLButtonElement;
   const remote = el(
@@ -43,11 +45,10 @@ export function btStrip(api: ModuleApi) {
   ) as HTMLButtonElement;
   const node = el(
     "div",
-    { class: "ctl-card ctl-usb ctl-bt", role: "group", "aria-label": "Bluetooth et bureau", hidden: true },
+    { class: "ctl-card ctl-usb ctl-bt", role: "group", "aria-label": "Batteries Bluetooth" },
     el("span", { class: "ctl-usb-title" }, "Batteries Bluetooth"),
     list,
     remote,
-    desk,
   );
   let devices: BtBattery[] = [];
   let hidden: boolean | null = null;
@@ -61,7 +62,10 @@ export function btStrip(api: ModuleApi) {
     if (key === shown) return;
     shown = key;
     remote.hidden = !remoteOn;
-    node.hidden = devices.length === 0 && hidden === null && !remoteOn;
+    onLow(
+      devices.filter((b) => threshold > 0 && b.percent < threshold && b.connected !== false),
+      devices,
+    );
     list.replaceChildren(
       ...devices.map((b) => {
         const low = threshold > 0 && b.percent < threshold && b.connected !== false;
@@ -124,6 +128,8 @@ export function btStrip(api: ModuleApi) {
   const timer = window.setInterval(() => void refreshBt(), 30_000);
   return {
     node,
+    /** « Cacher les icônes du bureau » (placé dans le bloc Outils). */
+    desk,
     /** Relu avec les radios (toutes les 2 s) : l'état du bureau a pu changer (menu du bureau). */
     refreshDesk,
     stop: () => window.clearInterval(timer),
