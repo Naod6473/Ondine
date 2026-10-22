@@ -22,6 +22,10 @@ pub mod ocr;
 pub mod picker;
 // Le nom du Wi-Fi connecté (profils automatiques). Contient sa propre version Linux.
 pub mod wifi;
+// Les réseaux Wi-Fi à portée, se connecter à un réseau connu (Contrôles). Contient sa propre version Linux.
+pub mod wifi_networks;
+// Le volume de chaque application (mélangeur, Contrôles). Contient sa propre version Linux.
+pub mod app_volume;
 // Glisser des fichiers de l'île vers l'Explorateur (Étagère). Contient sa propre version Linux.
 pub mod drag_out;
 // Agents IA : lancer git avec un délai maximum, trouver et ouvrir VS Code. Contient sa propre version Linux.

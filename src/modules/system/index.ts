@@ -14,6 +14,7 @@ import { worldClocks } from "./world-clocks";
 import { rebootRow, watchReboot } from "./reboot";
 import { watchBattery } from "./battery-halo";
 import { diskPane } from "./disk-view";
+import { CompactRate, rateNodes } from "./net-rate";
 
 interface Disk {
   mount: string;
@@ -35,6 +36,8 @@ interface Snapshot {
   disks: Disk[];
   net: { name: string; ips: string[]; mac: string }[];
   battery: { percent: number | null; charging: boolean; plugged: boolean } | null;
+  /** Le débit réseau en ce moment (octets par seconde). */
+  rate?: { down: number; up: number };
 }
 
 // L'onglet se rafraîchit toutes les 2 s (1 s en haute, 5 s en éco) : "systemTab" de src/core/perf.ts.
@@ -48,6 +51,11 @@ interface WeatherLine {
   detail: string;
 }
 let weather: WeatherLine | null = null;
+
+// Le débit pour la mini-île (réglage netCompact) : « system.net-rate », à chaque mesure du Rust.
+const compactRate = new CompactRate();
+let lastRate = { down: 0, up: 0 };
+const rateDraws = new Set<() => void>();
 
 // « Voir ce qui prend la place » (disk-view.ts) demandé depuis l'alerte ou le
 // Lanceur : l'onglet ouvert le prend tout de suite (diskHook), sinon il le
@@ -136,6 +144,15 @@ export const system: IslandModule = {
     });
     // Le Lanceur (« disque », « place ») : l'analyse du disque le plus plein.
     api.on("system.disk-open", (msg) => askDisk(api, String((msg.payload as { mount?: string } | null)?.mount ?? "")));
+    // Le débit pour la mini-île : elle ne le montre que pendant un gros transfert.
+    api.on("system.net-rate", (msg) => {
+      const p = (msg.payload ?? {}) as { down?: number; up?: number };
+      lastRate = { down: Number(p.down) || 0, up: Number(p.up) || 0 };
+      const before = compactRate.shown(Date.now());
+      const now = compactRate.push(lastRate.down, lastRate.up, Date.now());
+      rateDraws.forEach((draw) => draw());
+      if (before !== now) api.refreshCompact();
+    });
     // La batterie : notifications et halos autour de l'île (battery-halo.ts).
     const stopBattery = watchBattery(api);
     // Redémarrage en attente (reboot.ts) : le rappel doux.
@@ -168,6 +185,20 @@ export const system: IslandModule = {
   },
 
   views: {
+    // La mini-île : « ↓ 4,2 Mo/s · ↑ 85 ko/s » pendant un gros téléchargement
+    // ou envoi (réglage netCompact, coupé par défaut).
+    compactWhen: (api) => api.settings().netCompact === true && compactRate.shown(Date.now()),
+    compact(root) {
+      const text = el("span", { class: "sys-rate-text" });
+      root.append(el("div", { class: "sys-rate-compact", title: "Débit réseau en ce moment" }, text));
+      const draw = () => {
+        text.replaceChildren(...rateNodes(lastRate.down, lastRate.up));
+      };
+      draw();
+      rateDraws.add(draw);
+      return () => rateDraws.delete(draw);
+    },
+
     expanded(root, api: ModuleApi) {
       const cpu = gauge("Processeur", "");
       const mem = gauge("Mémoire", "");
@@ -247,7 +278,10 @@ export const system: IslandModule = {
       const clocks = worldClocks(api);
       // Redémarrage en attente (reboot.ts) : une ligne sous les jauges, cachée sinon.
       const reboot = rebootRow(api);
-      const sysNode = el("div", { class: "sys" }, el("div", { class: "sys-top" }, cpu.node, mem.node, disk.node, el("div", { class: "sys-side" }, facts, el("div", { class: "btn-row" }, copy, ticketBtn))), reboot.node, clocks.node, details);
+      // Le débit réseau en direct, sous les infos (mis à jour sur place à chaque mesure).
+      const rateValue = el("span", {}, "–");
+      const rateRow = el("div", { class: "sys-line sys-rate", title: "Reçu et envoyé en ce moment, toutes cartes réseau réunies" }, el("span", { class: "muted" }, "Débit"), rateValue);
+      const sysNode = el("div", { class: "sys" }, el("div", { class: "sys-top" }, cpu.node, mem.node, disk.node, el("div", { class: "sys-side" }, facts, rateRow, el("div", { class: "btn-row" }, copy, ticketBtn))), reboot.node, clocks.node, details);
       root.append(sysNode);
 
       let alive = true;
@@ -280,6 +314,9 @@ export const system: IslandModule = {
           const used = c.totalGb ? ((c.totalGb - c.freeGb) / c.totalGb) * 100 : 0;
           disk.set(used, `${Math.round(used)} %`, `${fmt(c.freeGb)} Go libres`);
         }
+
+        rateRow.hidden = !s.rate;
+        if (s.rate) rateValue.replaceChildren(...rateNodes(s.rate.down, s.rate.up));
 
         const ip = s.net.flatMap((n) => n.ips.filter((x) => !x.includes(":")).map((x) => `${x} (${n.name})`))[0] ?? "aucune";
         const bat = s.battery

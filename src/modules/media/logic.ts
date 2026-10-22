@@ -193,3 +193,32 @@ export function throttle<T>(
     },
   };
 }
+
+// ── L'égaliseur de la mini-île sur le vrai son (1.2.5) ──────────────────────
+
+/** Ce que renvoie la commande `levels` (0 à 1) : ensemble, gauche, droite. */
+export interface Levels {
+  level: number;
+  left: number;
+  right: number;
+}
+
+/** La hauteur des barres (px) : au repos, au plus haut (comme .media-eq dans island.css). */
+export const EQ_MIN = 3;
+export const EQ_MAX = 14;
+
+/**
+ * Les trois hauteurs suivantes (gauche, ensemble, droite) : la barre monte
+ * tout de suite vers le niveau, et redescend en douceur (comme un vumètre),
+ * pour ne pas trembler entre deux lectures. Le niveau passe par une racine
+ * carrée : la musique douce bouge déjà un peu (l'oreille entend en
+ * logarithme, l'indicateur de Windows est linéaire).
+ */
+export function eqHeights(before: readonly number[], l: Levels): [number, number, number] {
+  const target = [l.left, l.level, l.right].map((v) => EQ_MIN + Math.sqrt(Math.max(0, Math.min(1, Number(v) || 0))) * (EQ_MAX - EQ_MIN));
+  return target.map((t, i) => {
+    const b = before[i] ?? EQ_MIN;
+    const next = t >= b ? t : Math.max(t, b - (b - EQ_MIN) * 0.35);
+    return Math.round(next * 10) / 10;
+  }) as [number, number, number];
+}

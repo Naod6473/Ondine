@@ -1577,6 +1577,16 @@ Côté Rust (`modules/media.rs`, `platform/media.rs`) :
 - **Démo** (`src/core/demo.ts`) : aléatoire, répétition et volume inventés
   (`state.player`), `open` ne fait rien.
 
+### L'égaliseur qui suit le vrai son (1.2.5)
+
+La commande `media.levels` lit la crête de la sortie par défaut et de chaque
+canal (`platform::halos::channel_peaks`, `GetChannelsPeakValues`) et renvoie
+`{level, left, right}` ou `null`. La vue compacte l'interroge au rythme
+`mediaEq` (environ 15 fois par seconde, rien en mode Économie ni avec
+« Réduire les animations ») tant qu'un morceau joue et que `liveEqualizer`
+est coché ; `eqHeights` (testé) donne la hauteur des trois barres (gauche,
+ensemble, droite). Seuls des nombres sont lus, jamais le son.
+
 ## Module Presse-papiers (phase 4)
 
 Front : `src/modules/clipboard/index.ts`. Rust : `src-tauri/src/modules/clipboard.rs`,
@@ -2048,6 +2058,16 @@ s'il n'existe pas ou est désactivé).
   n'est là (5 min sans clavier ni souris : il attend le retour). La règle est
   dans `reboot-text.ts` (testée).
 
+#### Le débit réseau en direct (1.2.5, `system/net-rate.ts`)
+
+La boucle `watch` garde un `sysinfo::Networks` et calcule le débit à chaque
+tour (`net_rate`, testé : le loopback est exclu, un compteur qui recule
+compte 0). `snapshot` le donne dans `rate {down, up}` ; si le réglage
+`netCompact` est coché, la boucle publie aussi `system.net-rate`. Le front
+l'affiche dans la ligne « Débit » ; `CompactRate` décide de la mini-île
+(au-dessus de 1 Mio/s, gardée 6 s après). Les nombres sont en
+`data-no-i18n`, les unités traduites à part.
+
 #### « Qu'est-ce qui remplit mon disque ? » (NF16, `system_disk.rs`, `platform/diskuse.rs`, `system/disk-view.ts`, `disk-logic.ts`)
 
 - Entrées : le bouton « Voir ce qui prend la place » de la notification
@@ -2269,6 +2289,41 @@ s'il n'existe pas ou est désactivé).
   `controls.usb-added` pour chaque nouvelle (pas celles déjà là au
   démarrage), si le réglage `usbNotify` est coché. Le journal ne note jamais
   le nom d'un volume ni d'un programme.
+
+#### La bande « Plus » (1.2.5, `extras.ts`, `extras-logic.ts`, `platform/app_volume.rs`, `platform/wifi_networks.rs`)
+
+Idées venues d'Orbix (GPL v3 : rien de son code, tout est réécrit).
+
+- **Applis** : `app_volumes` parcourt les sessions Core Audio de toutes les
+  sorties actives (`IAudioSessionManager2`, `IAudioSessionControl2`), saute
+  les sessions expirées, et renvoie `{key, name, volume, muted, active,
+  peak}`. La clé est `pid:N` (ou `system` pour « Sons système ») ; le nom
+  vient du nom affiché, sinon de l'exécutable (table `KNOWN`, testée).
+  `set_app_volume {key, volume?, muted?}` passe par `ISimpleAudioVolume` sur
+  toutes les sessions de ce processus. Le front envoie au plus un réglage
+  toutes les 60 ms et relit au rythme `controlsMixer` ; la barre verte suit
+  `peak` (`IAudioMeterInformation`) avec `meterLevel` (monte tout de suite,
+  redescend en douceur).
+- **Réseaux** : `wifi_networks {scan?}` (Native Wifi : `WlanScan`, puis
+  `WlanGetAvailableNetworkList`) renvoie `{networks}` (dédoublonnés par nom,
+  connecté puis connus puis signal, 20 au plus) ou `{error, message}`.
+  Windows 11 24H2 refuse (code 5) sans le droit de localisation des applis de
+  bureau : erreur `location`, et la page propose
+  `open_wifi_settings {page: "location"}`. `wifi_connect {ssid}` se connecte
+  seulement **par un profil existant** (`WlanConnect` en mode profil) : un
+  nouveau réseau ouvre `ms-availablenetworks:`. Ondine ne lit ni ne garde
+  aucun mot de passe. `wifi_disconnect` coupe la connexion en cours.
+- **Alimentation** : `power_now {action}` (lock, sleep, restart, shutdown,
+  vérifiée contre `POWER_ACTIONS`) appelle `platform::power::act` et note
+  l'action dans le journal. Le front ne l'envoie qu'après `HOLD_MS` (1 s)
+  d'appui continu, au pointeur ou au clavier (Espace, Entrée) ; un clic
+  simple montre un rappel. Réglage `powerButtons` (oui).
+- Une page (Applis, Réseaux) remplace le contenu de l'onglet le temps de sa
+  visite (`openPage` / `closePage`, coordonné avec la télécommande).
+  `.ctl-root` porte `data-island-fit` : les cartes gardent 176 px et l'île
+  grandit pour les bandes du bas (USB, Bluetooth, Plus) au lieu de les
+  tasser. Pas de `min-height: 100%` (boucle : l'île grandit, les cartes
+  aussi).
 
 ### Module Équipe (`src/modules/team/`, `src-tauri/src/modules/team.rs`, `team_net.rs`, `team_proto.rs`)
 
@@ -3301,6 +3356,9 @@ Front (ms) :
 | Halo de l'île (pendant un halo seulement) | 60 im/s | 60 im/s | 30 im/s | `halo.ts` ; 30 im/s pour les halos lents ; arrêté sans halo ou île cachée |
 | Animations de l'île : heure de partir, bonjour, ciel | 30 000 | 30 000 | 60 000 | `halosClock` |
 | Animations de l'île : niveau du micro / de la musique | 66 | 80 | 160 | `halosLevel`, seulement micro utilisé ou musique (réglage) |
+| Contrôles : volume et niveau de chaque appli | 250 | 400 | 1 000 | `controlsMixer`, seulement page « Applis » ouverte |
+| Contrôles : réseaux Wi-Fi à portée | 3 000 | 3 000 | 6 000 | `controlsWifi`, seulement page « Réseaux » ouverte |
+| Musique : égaliseur de la mini-île sur le vrai son | 66 | 80 | 160 | `mediaEq`, seulement musique jouée en mini-île (jamais en éco) |
 | Accueil : cartes relues (seulement Accueil affiché) | 1 000 | 1 000 | 2 000 | `homeTick` ; les `load()` des cartes toutes les 5 à 30 s |
 
 En éco, en plus : les effets « Studio » (flou → net) sont remplacés par ceux de

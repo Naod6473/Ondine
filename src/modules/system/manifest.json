@@ -3,7 +3,7 @@
   "name": "Système",
   "tip": "Cliquez sur « Copier pour le support » : tout est prêt à coller dans un ticket.",
   "icon": "📊",
-  "description": "L'état du PC d'un coup d'œil : processeur, mémoire, disques, adresses IP et MAC, batterie, version de Windows, redémarrage en attente. Un bouton copie un résumé à coller dans un ticket de support. Prévient quand un disque est presque plein, quand la batterie est faible ou chargée, avec un halo de couleur autour de l'île (vert en charge, orange faible, rouge critique). Ondine transpire quand le processeur est à fond. « Voir ce qui prend la place » montre les plus gros dossiers d'un disque et propose un nettoyage (Corbeille, fichiers temporaires, vieux téléchargements envoyés à la Corbeille). Tout est lu sur le PC : rien ne part sur Internet.",
+  "description": "L'état du PC d'un coup d'œil : processeur, mémoire, disques, adresses IP et MAC, débit réseau en direct (reçu et envoyé), batterie, version de Windows, redémarrage en attente. Un bouton copie un résumé à coller dans un ticket de support. Prévient quand un disque est presque plein, quand la batterie est faible ou chargée, avec un halo de couleur autour de l'île (vert en charge, orange faible, rouge critique). Ondine transpire quand le processeur est à fond. « Voir ce qui prend la place » montre les plus gros dossiers d'un disque et propose un nettoyage (Corbeille, fichiers temporaires, vieux téléchargements envoyés à la Corbeille). Tout est lu sur le PC : rien ne part sur Internet.",
   "version": "0.1.0",
   "permissions": [
     "clipboard",
@@ -132,10 +132,18 @@
         "label": "Rappeler un redémarrage en attente",
         "help": "Au plus une fois par jour, après un jour d'attente, jamais pendant un appel ni une présentation. Ondine ne redémarre jamais le PC elle-même.",
         "default": true
+      },
+      {
+        "key": "netCompact",
+        "type": "boolean",
+        "label": "Montrer le débit dans la mini-île pendant un gros téléchargement",
+        "help": "Au-dessus de 1 Mo/s (reçu ou envoyé), la mini-île montre ↓ et ↑ ; elle reprend sa place quelques secondes après. On ne lit que les compteurs de Windows : jamais ce qui passe, ni avec qui.",
+        "default": false
       }
     ]
   },
   "views": [
+    "compact",
     "expanded"
   ],
   "commands": [
@@ -165,7 +173,8 @@
       "mascot.scene",
       "task.started",
       "task.finished",
-      "task.failed"
+      "task.failed",
+      "system.net-rate"
     ],
     "listens": [
       "system.disk-low",
@@ -176,7 +185,8 @@
       "system.battery-plug",
       "system.battery-critical",
       "system.disk-scan",
-      "system.disk-open"
+      "system.disk-open",
+      "system.net-rate"
     ]
   }
 }

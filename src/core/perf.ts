@@ -34,6 +34,10 @@ export const CADENCES = {
   controlsSound: [500, 1000, 2000],
   /** Onglet Contrôles : Wi-Fi, Bluetooth. */
   controlsRadios: [1000, 2000, 4000],
+  /** Onglet Contrôles : le volume de chaque appli et son niveau (page « Applis » ouverte). */
+  controlsMixer: [250, 400, 1000],
+  /** Onglet Contrôles : les réseaux Wi-Fi à portée (page « Réseaux » ouverte). */
+  controlsWifi: [3000, 3000, 6000],
   /** Onglet Contrôles : luminosité des écrans (lent à lire). */
   controlsScreens: [5000, 5000, 10000],
   /** Onglet Home Assistant : l'état des appareils favoris (relu chez Home Assistant). */
@@ -68,6 +72,8 @@ export const CADENCES = {
   homeTick: [1000, 1000, 2000],
   /** Animations de l'île : le niveau du micro (visio) ou de la musique, pendant qu'ils servent. */
   halosLevel: [66, 80, 160],
+  /** Musique : l'égaliseur de la mini-île qui suit le vrai son (rien en éco). */
+  mediaEq: [66, 80, 160],
 } satisfies Record<string, readonly [number, number, number]>;
 
 export type Cadence = keyof typeof CADENCES;

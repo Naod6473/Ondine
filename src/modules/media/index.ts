@@ -32,7 +32,7 @@ import { el } from "../../island/dom";
 import { pacedInterval, perfMode, setText } from "../../core/perf";
 import { reducedMotion } from "../../island/tab-pill";
 import { coverTint, onCoverColors, setCover } from "../../mascot/env-tint";
-import { appName, buttons, cardTint, clock, nextRepeat, remaining, throttle, volumeLevel, type NowPlaying, type PlayerVolume, type RepeatMode } from "./logic";
+import { appName, buttons, cardTint, clock, eqHeights, EQ_MIN, nextRepeat, remaining, throttle, volumeLevel, type Levels, type NowPlaying, type PlayerVolume, type RepeatMode } from "./logic";
 import { currentLine, lyricsKey, lyricsView, msUntilNextLine, scrollFor, type LyricsReply, type LyricsView } from "./lyrics-logic";
 
 interface MediaState {
@@ -288,6 +288,53 @@ function equalizer(): HTMLElement {
   return el("span", { class: "media-eq", "aria-hidden": "true" }, el("i"), el("i"), el("i"));
 }
 
+/**
+ * L'égaliseur qui suit le vrai son (1.2.5, réglage liveEqualizer) : tant que
+ * ça joue, on lit le niveau de la sortie (commande `levels` : des nombres,
+ * jamais le son) et les trois barres (gauche, ensemble, droite) le suivent.
+ * Sans réponse (hors de l'appli) ou en éco, les barres gardent leur danse CSS.
+ * Renvoie `sync(on)` (à appeler à chaque dessin) et de quoi tout arrêter.
+ */
+function liveEqualizer(api: ModuleApi, eq: HTMLElement) {
+  const bars = [...eq.querySelectorAll("i")] as HTMLElement[];
+  let heights = [EQ_MIN, EQ_MIN, EQ_MIN];
+  let stop: (() => void) | null = null;
+  let busy = false;
+  let failed = false;
+  const off = () => {
+    stop?.();
+    stop = null;
+    eq.classList.remove("live");
+    bars.forEach((b) => b.style.removeProperty("height"));
+  };
+  const read = () => {
+    if (busy) return;
+    busy = true;
+    api
+      .invoke<Levels | null>("levels")
+      .then((l) => {
+        if (!l || !stop) return;
+        heights = eqHeights(heights, l);
+        eq.classList.add("live");
+        bars.forEach((b, i) => (b.style.height = `${heights[i]}px`));
+      })
+      .catch(() => {
+        // hors de l'appli : on garde la danse CSS, et on ne redemande plus
+        failed = true;
+        off();
+      })
+      .finally(() => (busy = false));
+  };
+  return {
+    sync(on: boolean) {
+      const want = on && !failed && api.settings().liveEqualizer !== false && !reducedMotion() && perfMode() !== "eco";
+      if (want && !stop) stop = pacedInterval(read, "mediaEq", true);
+      else if (!want && stop) off();
+    },
+    stop: off,
+  };
+}
+
 export const media: IslandModule = {
   manifest: manifest as ModuleManifest,
 
@@ -418,7 +465,9 @@ export const media: IslandModule = {
       setIcon(next, "next");
       const controls = el("span", { class: "media-minis" }, play, next);
       const coverSlot = el("span", { class: "media-cover-slot" });
-      const eqSlot = el("span", { class: "media-eq-slot" }, equalizer());
+      const eqBars = equalizer();
+      const eqSlot = el("span", { class: "media-eq-slot" }, eqBars);
+      const live = liveEqualizer(api, eqBars);
       const compact = el("div", { class: "media-compact" }, coverSlot, box, eqSlot, controls);
       root.append(compact);
 
@@ -466,10 +515,12 @@ export const media: IslandModule = {
         // avec « Réduire les animations » ni en éco).
         compact.classList.toggle("on", on);
         compact.classList.toggle("playing", on && !reducedMotion() && perfMode() !== "eco");
+        live.sync(on);
       };
       draw();
       redraws.add(draw);
       return () => {
+        live.stop();
         redraws.delete(draw);
         sizes.disconnect();
       };
