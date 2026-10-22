@@ -2,20 +2,60 @@
 
 ## 1.2.5 · à venir
 
-- Contrôles, en bas de l'onglet : **Applis** règle le volume de chaque appli
-  qui joue du son (curseur, couper, niveau qui bouge), **Réseaux** (ou clic
-  droit sur la pastille Wi-Fi) montre les Wi-Fi à portée et se connecte d'un
-  clic à un réseau connu (un nouveau réseau passe par Windows), et quatre
-  boutons **Verrouiller, Mettre en veille, Redémarrer, Éteindre** partent
-  après une seconde d'appui (un anneau se remplit, lâcher annule). L'onglet
-  grandit au lieu de tasser ses cartes quand des bandes s'ajoutent · Controls,
-  at the bottom of the tab: **Apps** sets the volume of each app playing
-  sound (slider, mute, moving level), **Networks** (or right-click the Wi-Fi
-  toggle) lists Wi-Fi networks in range and connects to a known one in one
-  click (a new network goes through Windows), and four **Lock, Sleep,
-  Restart, Shut down** buttons fire after a one-second hold (a ring fills,
-  letting go cancels). The tab grows instead of squeezing its cards when
-  strips are added
+- Contrôles, onglet réorganisé en **blocs qui se déplient** : sur l'accueil,
+  les pastilles (Wi-Fi, Bluetooth, Avion, Micro), les piliers Son et Écrans,
+  et quatre blocs **Écrans, Appareils, Outils, Alimentation** qui s'ouvrent
+  en page depuis l'endroit cliqué (Retour pour revenir). Rien n'est perdu :
+  « Tout › » sur les pastilles montre les Wi-Fi à portée, « Son › » la sortie
+  audio, le volume du micro et celui de chaque appli ; Appareils les clés USB
+  et les batteries Bluetooth ; Outils Garder au premier plan et Bureau
+  propre ; Alimentation Verrouiller, Veille, Redémarrer, Éteindre (appui
+  d'une seconde). Une clé USB ou une batterie faible s'affiche aussi en bas
+  de l'accueil · Controls, tab reorganized into **unfolding blocks**: on the
+  home page, the toggles (Wi-Fi, Bluetooth, Airplane, Mic), the Sound and
+  Screens sliders, and four **Screens, Devices, Tools, Power** blocks that
+  open as a page from where you clicked (Back to return). Nothing is lost:
+  "All ›" on the toggles lists Wi-Fi networks, "Sound ›" the audio output,
+  the mic volume and each app's volume; Devices the USB drives and Bluetooth
+  batteries; Tools Keep on top and Clean desktop; Power Lock, Sleep, Restart,
+  Shut down (one-second hold). A USB drive or a low battery also shows at the
+  bottom of the home page
+- Contrôles → **Écrans** : le mode d'affichage de Windows+P (PC seul,
+  Dupliquer, Étendre, 2e écran seul), le choix de l'écran principal en
+  cliquant son dessin, la luminosité de chaque écran, Sombre, Veilleuse et
+  « Éteindre seulement l'écran » (le PC continue de tourner) · Controls →
+  **Screens**: the Windows+P display mode (PC only, Duplicate, Extend, Second
+  screen only), picking the main display by clicking its drawing, each
+  screen's brightness, Dark, Night light and "Turn off just the screen" (the
+  PC keeps running)
+- Contrôles → Outils → **Mode nettoyage** : le clavier et la souris sont
+  bloqués 30 secondes (réglable de 10 à 120) le temps de les essuyer, avec un
+  compte à rebours ; Échap maintenue 2 secondes arrête avant, Ctrl+Alt+Suppr
+  marche toujours · Controls → Tools → **Cleaning mode**: keyboard and mouse
+  are blocked for 30 seconds (10 to 120, adjustable) so you can wipe them,
+  with a countdown; holding Esc for 2 seconds stops earlier,
+  Ctrl+Alt+Del always works
+- **Aide-mémoire des raccourcis** : maintenez Ctrl gauche seul 1,5 seconde,
+  l'île montre les raccourcis de l'appli ouverte (Explorateur, Excel, Word,
+  PowerPoint, Outlook, navigateurs, VS Code, Teams, Bloc-notes, ou ceux qui
+  marchent presque partout), ceux de Windows et ceux d'Ondine, avec un
+  filtre ; relâcher Ctrl la referme, sauf « Garder ouvert ». Aussi dans
+  Contrôles → Outils, et réglable (ou coupé) dans les Réglages du module ·
+  **Shortcut cheat sheet**: hold left Ctrl alone for 1.5 seconds and the
+  island shows the shortcuts of the open app (File Explorer, Excel, Word,
+  PowerPoint, Outlook, browsers, VS Code, Teams, Notepad, or the ones that
+  work almost everywhere), Windows' and Ondine's, with a filter; letting go
+  of Ctrl closes it, unless "Keep open". Also in Controls → Tools, and
+  adjustable (or off) in the module's settings
+- Contrôles : le volume de chaque appli qui joue du son (curseur, couper,
+  niveau qui bouge), les Wi-Fi à portée avec connexion d'un clic à un réseau
+  connu (un nouveau réseau passe par Windows), et Verrouiller, Mettre en
+  veille, Redémarrer, Éteindre après une seconde d'appui (un anneau se
+  remplit, lâcher annule) · Controls: the volume of each app playing sound
+  (slider, mute, moving level), Wi-Fi networks in range with one-click
+  connection to a known one (a new network goes through Windows), and Lock,
+  Sleep, Restart, Shut down after a one-second hold (a ring fills, letting go
+  cancels)
 - Système : le débit réseau en direct (reçu et envoyé, chaque seconde), et en
   option la vitesse dans la mini-île pendant un gros téléchargement · System:
   live network speed (in and out, every second), and optionally the speed in

@@ -46,6 +46,14 @@
 //     (platform::wifi_networks ; jamais de mot de passe dans Ondine) ;
 //   - verrouiller, mettre en veille, redémarrer, éteindre tout de suite
 //     (platform::power, le front demande un appui maintenu).
+//
+// 1.2.5, l'onglet en blocs qui se déplient :
+//   - Écrans (platform::displays) : le mode de Windows+P, l'écran principal,
+//     éteindre seulement l'écran ;
+//   - Mode nettoyage (platform::clean_lock) : clavier et souris bloqués
+//     quelques secondes ("controls.clean" {left} chaque seconde, puis {done}) ;
+//   - Aide-mémoire des raccourcis (platform::cheat_key, réglage cheatHold) :
+//     Ctrl gauche maintenu seul → "controls.cheat" {show, app}.
 
 use crate::sync::LockExt;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -65,7 +73,7 @@ use crate::platform::brightness;
 use crate::platform::radios::{self, Kind};
 use crate::platform::eject::{self, DriveCache, EjectError, Ejectable};
 use crate::platform::bt_battery::{self, BtBattery};
-use crate::platform::{app_volume, desktop_icons, nightlight, theme, wifi_networks};
+use crate::platform::{app_volume, cheat_key, clean_lock, desktop_icons, dictation, displays, nightlight, theme, wifi_networks};
 
 const ID: &str = "controls";
 
@@ -82,6 +90,9 @@ static EJECTING: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
 /// Les actions d'alimentation acceptées par « power_now ».
 const POWER_ACTIONS: &[&str] = &["lock", "sleep", "restart", "shutdown"];
+
+/// L'aide-mémoire : le crochet de Ctrl gauche, tant que le réglage le demande.
+static CHEAT: Mutex<Option<cheat_key::CheatListener>> = Mutex::new(None);
 
 /// La télécommande sur le téléphone (une seule à la fois).
 static REMOTE: Remote = Remote::new();
@@ -352,6 +363,47 @@ impl RustModule for Controls {
                 crate::platform::power::act(action)?;
                 Ok(Value::Null)
             }
+            // {} → { mode: "internal"|"clone"|"extend"|"external"|null, connected } (Windows+P).
+            "display_layout" => Ok(json!(displays::layout())),
+            // { mode } : comme un choix dans le panneau de Windows+P.
+            "set_display_mode" => {
+                let mode = args.get("mode").and_then(Value::as_str).and_then(displays::Mode::from_id).ok_or("mode d'affichage inconnu")?;
+                displays::set_mode(mode)?;
+                Ok(Value::Null)
+            }
+            // {} → [{ id, name, primary, internal, x, y, width, height }] : les écrans actifs.
+            "displays" => Ok(json!(displays::list())),
+            // { id } : cet écran devient l'écran principal.
+            "set_primary" => {
+                let id = args.get("id").and_then(Value::as_str).filter(|s| s.len() <= 64).ok_or("écran inconnu")?;
+                displays::set_primary(id)?;
+                log::info("contrôles : écran principal changé");
+                Ok(Value::Null)
+            }
+            // {} : éteint les écrans (le PC continue).
+            "screen_off" => {
+                displays::screen_off()?;
+                Ok(Value::Null)
+            }
+            // { seconds } : bloque le clavier et la souris le temps de les nettoyer.
+            "clean_start" => {
+                let seconds = args.get("seconds").and_then(Value::as_u64).unwrap_or(30).min(u64::from(clean_lock::MAX_SECONDS)) as u32;
+                let app = ctx.app.clone();
+                clean_lock::start(
+                    seconds,
+                    Box::new(move |tick| {
+                        let payload = match tick {
+                            clean_lock::Tick::Left(left) => json!({ "left": left }),
+                            clean_lock::Tick::Done { early } => json!({ "done": true, "early": early }),
+                        };
+                        bus::emit(&app, ID, "controls.clean", payload);
+                    }),
+                )?;
+                log::info(format!("contrôles : mode nettoyage ({seconds} s)"));
+                Ok(json!({ "seconds": seconds }))
+            }
+            // {} → { app } : le programme de la fenêtre où vous travailliez (« excel »).
+            "cheat_app" => Ok(json!({ "app": crate::platform::user_window(ctx.app).and_then(dictation::program_of_window) })),
             _ => Err(format!("commande non gérée : {command}")),
         }
     }
@@ -466,19 +518,22 @@ fn watch(app: AppHandle) {
                 bus::emit(&app, ID, "controls.media-use", json!(last_use));
             }
             apply_mic_hotkey(&app, "");
+            apply_cheat(&app, false);
             last_usb = None;
             continue;
         }
         let step = catch_unwind(AssertUnwindSafe(|| {
-            let (wanted, usb_notify, bt_low) = super::with_context(&app, ID, |ctx| {
+            let (wanted, usb_notify, bt_low, cheat) = super::with_context(&app, ID, |ctx| {
                 let s = ctx.settings();
                 // Absents (réglages jamais ouverts) : les valeurs par défaut du manifeste.
                 let hotkey = s.get("micHotkey").and_then(Value::as_str).unwrap_or("Ctrl+Alt+M").to_string();
                 let bt_low = s.get("btBatteryLow").and_then(Value::as_u64).unwrap_or(15).min(50) as u8;
-                (hotkey, s.get("usbNotify").and_then(Value::as_bool).unwrap_or(true), bt_low)
+                let cheat = s.get("cheatHold").and_then(Value::as_str).unwrap_or("leftCtrl") == "leftCtrl";
+                (hotkey, s.get("usbNotify").and_then(Value::as_bool).unwrap_or(true), bt_low, cheat)
             })
             .unwrap_or_default();
             apply_mic_hotkey(&app, &wanted);
+            apply_cheat(&app, cheat);
 
             // La batterie des appareils Bluetooth, toutes les 5 min.
             if last_bt.is_none_or(|t| t.elapsed() >= BT_EVERY) {
@@ -512,6 +567,37 @@ fn watch(app: AppHandle) {
         }));
         if step.is_err() {
             log::warn("contrôles : erreur inattendue pendant la surveillance, on continue");
+        }
+    }
+}
+
+/// Démarre (ou arrête) le crochet de l'aide-mémoire : Ctrl gauche maintenu
+/// seul → "controls.cheat" {show: true, app}, relâché → {show: false}.
+fn apply_cheat(app: &AppHandle, wanted: bool) {
+    let mut current = CHEAT.locked();
+    if current.is_some() == wanted {
+        return;
+    }
+    if !wanted {
+        *current = None;
+        return;
+    }
+    let app = app.clone();
+    let sink = Box::new(move |e: cheat_key::CheatEvent| {
+        let payload = match e {
+            cheat_key::CheatEvent::Show(program) => json!({ "show": true, "app": program }),
+            cheat_key::CheatEvent::Hide => json!({ "show": false }),
+        };
+        bus::emit(&app, ID, "controls.cheat", payload);
+    });
+    match cheat_key::listen(sink) {
+        Ok(l) => *current = Some(l),
+        Err(e) => {
+            // Une seule fois : sans crochet, on ne réessaie pas à chaque tour.
+            static WARNED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+            if !WARNED.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                log::warn(format!("contrôles : aide-mémoire indisponible ({e})"));
+            }
         }
     }
 }
