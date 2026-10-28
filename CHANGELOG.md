@@ -4,8 +4,9 @@
 
 - Contrôles, onglet réorganisé en **blocs qui se déplient** : sur l'accueil,
   les pastilles (Wi-Fi, Bluetooth, Avion, Micro), les piliers Son et Écrans,
-  et quatre blocs **Écrans, Appareils, Outils, Alimentation** qui s'ouvrent
-  en page depuis l'endroit cliqué (Retour pour revenir). Rien n'est perdu :
+  et quatre blocs **Écrans, Appareils, Outils, Alimentation** (leur symbole
+  seul, le nom dans l'infobulle) qui s'ouvrent en page depuis l'endroit
+  cliqué (Retour pour revenir). Rien n'est perdu :
   « Tout › » sur les pastilles montre les Wi-Fi à portée, « Son › » la sortie
   audio, le volume du micro et celui de chaque appli ; Appareils les clés USB
   et les batteries Bluetooth ; Outils Garder au premier plan et Bureau
@@ -13,8 +14,9 @@
   d'une seconde). Une clé USB ou une batterie faible s'affiche aussi en bas
   de l'accueil · Controls, tab reorganized into **unfolding blocks**: on the
   home page, the toggles (Wi-Fi, Bluetooth, Airplane, Mic), the Sound and
-  Screens sliders, and four **Screens, Devices, Tools, Power** blocks that
-  open as a page from where you clicked (Back to return). Nothing is lost:
+  Screens sliders, and four **Screens, Devices, Tools, Power** blocks (just
+  their symbol, the name in the tooltip) that open as a page from where you
+  clicked (Back to return). Nothing is lost:
   "All ›" on the toggles lists Wi-Fi networks, "Sound ›" the audio output,
   the mic volume and each app's volume; Devices the USB drives and Bluetooth
   batteries; Tools Keep on top and Clean desktop; Power Lock, Sleep, Restart,
