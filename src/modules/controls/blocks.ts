@@ -109,7 +109,7 @@ export function blocksCard(api: ModuleApi, open: (page: BlockPage, from: HTMLEle
     const sub = el("span", { class: "ctl-block-sub" });
     const b = el(
       "button",
-      { class: "ctl-block", type: "button", "data-page": page, title },
+      { class: "ctl-block", type: "button", "data-page": page, title: `${name} · ${title}` },
       el("span", { class: "ctl-block-icon" }, blockIcon(kind)),
       el("span", { class: "ctl-block-name" }, name),
       sub,
