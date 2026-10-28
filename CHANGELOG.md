@@ -1,6 +1,6 @@
 # Changements · Changelog
 
-## 1.2.5 · à venir
+## 1.2.5 · 28/10/2026
 
 - Contrôles, onglet réorganisé en **blocs qui se déplient** : sur l'accueil,
   les pastilles (Wi-Fi, Bluetooth, Avion, Micro), les piliers Son et Écrans,
