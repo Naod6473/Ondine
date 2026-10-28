@@ -23,9 +23,22 @@
 # Windows il lit un .tar.bz2. Jamais dans l'appli. À
 # retirer dès qu'une version de sherpa-onnx passe à zip 9.
 
+# Au 2026-10-28 : quatre failles de zstd (RUSTSEC-2026-0391, zstd 0.13.3 ;
+# -0398 et -0403, zstd-safe 7.3.0 ; -0410, zstd-sys 2.1.1, allocateur
+# WebAssembly). zstd n'arrive QUE par ce même zip 2.4.2 de sherpa-onnx-sys
+# 1.13.8, en dépendance de construction : jamais dans l'appli (zip 9 d'Ondine
+# n'a que « deflate »), et le build.rs ne décompresse que l'archive officielle
+# de sherpa-onnx. sherpa-onnx 2.0.1 (sorti le 2026-10-27) passe à zip 9 et
+# corrige tout, mais change le moteur de dictée : à faire dans sa propre MAJ,
+# puis retirer ces quatre lignes ET les trois de zip ci-dessus.
+
 [advisories]
 ignore = [
   "RUSTSEC-2026-0367",
   "RUSTSEC-2026-0368",
   "RUSTSEC-2026-0369",
+  "RUSTSEC-2026-0391",
+  "RUSTSEC-2026-0398",
+  "RUSTSEC-2026-0403",
+  "RUSTSEC-2026-0410",
 ]
